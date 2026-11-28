@@ -1,0 +1,226 @@
+{
+  "schema": "carr-ci-terminal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run_id": 46088683363,
+  "job_id": 140804190758,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46088683363/job/140804190758",
+  "scope": "Windows bibliography workflow: strict source regressions and installed native citation controls",
+  "platform": "windows-2022",
+  "python": "3.11.9",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T00:38:37Z",
+  "completed_at": "2026-11-28T00:46:08Z",
+  "log": {
+    "provenance": "Completed GitHub job log decoded by connector; SHA256 covers those exact decoded UTF-8 text bytes, not an original ZIP member.",
+    "sha256": "3a4ae83d9f74cd1ac67d5cee7349e61fe7ae5ff119391c8d062b4eb403564bc3",
+    "characters": 139805
+  },
+  "modules": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0
+  },
+  "cases": {
+    "passed": 1092,
+    "failed": 0,
+    "skipped": 0
+  },
+  "module_verdicts": [
+    {
+      "status": "PASS",
+      "suite": "tests/research/test_bibtex_import.py",
+      "detail": "junit_passed=68, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/research/test_academic_library.py",
+      "detail": "junit_passed=94, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/research/test_csl_author_boundaries.py",
+      "detail": "junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_csl.py",
+      "detail": "junit_passed=79, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_custom_csl.py",
+      "detail": "junit_passed=132, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_bibliography_workbench.py",
+      "detail": "junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_custom_workbench.py",
+      "detail": "junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_citation_styles_jobs.py",
+      "detail": "junit_passed=31, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_academic_library_dialog.py",
+      "detail": "junit_passed=63, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_academic_actions.py",
+      "detail": "junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_academic_export_handler.py",
+      "detail": "junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_bibliography.py",
+      "detail": "junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_archive_portability.py",
+      "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_intake_portability.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_reference_exchange.py",
+      "detail": "junit_passed=64, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ingest/test_import_replay_identity.py",
+      "detail": "junit_passed=22, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ingest/test_txt_replay_registration.py",
+      "detail": "junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_export_no_clobber.py",
+      "detail": "junit_passed=35, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_export_reconciliation.py",
+      "detail": "junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_file_export.py",
+      "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_binary_file_export.py",
+      "detail": "junit_passed=35, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_academic_documents.py",
+      "detail": "junit_passed=41, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_bibliographic_locators.py",
+      "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_evidence_export.py",
+      "detail": "junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_academic_migration.py",
+      "detail": "junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_academic_workflow.py",
+      "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_academic_workflows.py",
+      "detail": "junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_academic_document_export.py",
+      "detail": "junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_export_destination.py",
+      "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "source_wheel_proof": {
+    "payload_files": 489,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 394,
+    "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "source_tree": "f0f24e27326e4eac0d9658c69e3b68039b837368",
+    "wheel_sha256": "b893be6e9e656e12348b7035f826303c4b892e6e2e86a5d0d33bbe9d76ec37c9"
+  },
+  "native_citation_report_from_completed_log": {
+    "checks": 69,
+    "custom_style_file_choice": "controlled path only",
+    "installed_modules": {
+      "carr_library.citations.bibliography_workbench": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+      "carr_library.citations.csl": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+      "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+      "carr_library.ui.academic_library_dialog": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+      "carr_library.ui.citation_styles_dialog": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"
+    },
+    "installer": "NOT_RUN",
+    "manual_keyboard": "NOT_RUN",
+    "native_clipboard": "PASS",
+    "native_custom_style": "PASS",
+    "native_file_pickers": "NOT_RUN",
+    "native_keyboard": "PASS",
+    "nvda": "NOT_RUN",
+    "platform": "Windows-10-10.0.20348-SP0",
+    "python": "3.11.9",
+    "result": "PASS",
+    "service_exports": [
+      "text",
+      "html",
+      "docx"
+    ],
+    "style": "harvard",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "artifact_from_completed_upload_log": {
+    "id": 15240408107,
+    "name": "bibliography-windows-17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "size_bytes": 6629,
+    "sha256": "3081d17e724f63fd1aa02c1a14978f3d97aa36e7cb99d4979111c2c49fdd423d",
+    "member_bytes_decoded": false
+  },
+  "qualification": "PASS only for this exact completed bibliography gate. The 69 native checks are dynamic assertions, not 69 independent tests. Manual keyboard, native file pickers, NVDA and installer checks remain NOT_RUN as stated by the original native receipt. No complete-release qualification is inferred.",
+  "strict_regression_mode": {
+    "mode": "source",
+    "evidence": "The exact workflow invokes scripts/ci_check.py, whose current run_suite sets PYTHONPATH to ROOT/src. Only the separate -I native citation probe asserts installed module origins."
+  }
+}

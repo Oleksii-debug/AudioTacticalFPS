@@ -1,0 +1,29 @@
+PASS: native document modules are loaded from the installed distribution
+PASS: native file selector includes all additional formats
+PASS: document support help is reachable from the native menu
+PASS: format help has a named read-only multiline text control
+PASS: format help describes unverified text and unsupported conversions
+PASS: format help can receive native keyboard focus
+PASS: native document help menu event is handled
+PASS: native import controls expose their spoken names
+PASS: document preflight runs asynchronously with cancellation enabled
+PASS: native queue recognizes HTML and Markdown as two documents
+PASS: native Start queued files button event launches work
+PASS: native queue completes both actual document imports
+PASS: queue does not approve additional format text
+PASS: native selected-file event is handled
+PASS: selected file details explain unverified logical segments
+PASS: actual result details control can receive keyboard focus
+PASS: native document import workflow completed
+PASS: native import retains source bytes and digest exactly
+PASS: script text is not searchable after real HTML parsing
+PASS: native document reader loads asynchronously
+PASS: native reader shows actual imported Unicode text
+PASS: native reader exposes named read-only source text
+PASS: native reader exposes the unverified logical source location
+PASS: native imported text receives keyboard focus
+PASS: native next-segment command retains its accessible name
+PASS: native next-document-segment button event is handled
+PASS: native next-segment reads second source paragraph
+PASS: reading never converts imported text into approved quotation
+{"checks": 28, "input_selection": "synthetic paths supplied to actual Import Center", "native_file_picker_operation": "NOT_RUN", "nvda": "NOT_RUN", "origins": {"carr_library.extract.document_formats": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\extract\\document_formats.py", "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py", "carr_library.ui.import_center": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\import_center.py"}, "platform": "Windows", "source_override": null, "status": "PASS", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}

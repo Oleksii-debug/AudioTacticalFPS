@@ -34,6 +34,7 @@ from .research.saved_topic_query import SavedTopicQueries
 from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
+from .search.pagination import CursorStore, catalog_snapshot, request_identity
 from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
                                 _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
@@ -113,18 +114,23 @@ class _SearchBudget:
 
 class _CatalogPublisher:
     """Keep the existing ingest journal, with one atomic catalog publication."""
-    def __init__(self, storage, registration):
+    def __init__(self, storage, registration, *, root=None, request_id=None, request_guard=None):
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
+        self.root, self.request_id = root, request_id
+        self.request_guard = request_guard or (lambda: None)
         self.published_here = False
-        self.before_commit = lambda workspace, revision: None
+        self.publication_result = None
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
+        self.request_guard()
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
             raise ValueError('Import identity changed.')
+        from .ingest.worker import publication_before, prepare_publication, confirm_publication
         with self.storage.transaction():
             LibraryApp._authorize(self.db, workspace)
+            before = publication_before(self.db, workspace, edition, revision, self.record.collections)
             register_batch(Catalog(self.db, workspace), (self.record,))
             self.storage.stage_revision(workspace, edition, revision, asset, config, pages)
             self.db.execute('INSERT INTO source_metadata '
@@ -145,10 +151,19 @@ class _CatalogPublisher:
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
             self.storage._check()
-            self.before_commit(workspace, revision)
+            count = self.db.execute('SELECT count(*) FROM page WHERE revision=?', (revision,)).fetchone()[0]
+            result = self.publication_result or dict(state='complete', id=revision,
+                workspace=workspace, edition=edition, asset=asset, completed=count,
+                total=count, error=None, verified=self.record.manifest['mime'] == 'text/plain')
+            self.request_guard()
+            prepare_publication(self.root, self.request_id, self.db, revision, before, result)
+        # Set only after the catalog/source transaction committed. Replays must
+        # still pass their independent cancellation and membership checks.
         self.published_here = True
+        confirm_publication(self.root, self.request_id)
 
     def check(self):
+        self.request_guard()
         return self.storage.check()
 
 
@@ -169,6 +184,7 @@ class LibraryApp:
         self.semantic_ranker = semantic_ranker
         self.semantic_cache = None
         self._selections = {}
+        self._search_cursors = CursorStore()
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
@@ -196,10 +212,10 @@ class LibraryApp:
         with closing(sqlite3.connect(self.database.as_uri() + '?mode=ro', uri=True,
                                      isolation_level=None, timeout=0 if budget is not None else 5)) as db:
             db.row_factory = sqlite3.Row
+            # Schema and authorization reads are part of the search, too. A
+            # SQLite busy handler cannot poll cancellation, so budgeted readers
+            # return an actionable retry instead of waiting its fixed 5 seconds.
             if budget is not None:
-                # Schema validation and authorization belong to the same
-                # cancellable operation as retrieval. A SQLite busy handler
-                # would otherwise sleep for five seconds without checking it.
                 db.set_progress_handler(lambda: int(budget.stopped()), 1000)
             try:
                 db.execute('PRAGMA foreign_keys=ON')
@@ -216,7 +232,6 @@ class LibraryApp:
                 yield db
             finally:
                 if budget is not None:
-                    # Cleanup must work even when cancellation remains latched.
                     db.set_progress_handler(None, 0)
                 db.rollback()
 
@@ -244,9 +259,9 @@ class LibraryApp:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             raise
         except sqlite3.OperationalError as exc:
-            # Include SQLite's extended BUSY/LOCKED codes in the same retry
-            # policy while preserving unrelated database errors.
-            code = (getattr(exc, 'sqlite_errorcode', 0) or 0) & 0xff
+            code = getattr(exc, 'sqlite_errorcode', None)
+            # Extended SQLite codes retain the primary code in the low byte.
+            code = code & 0xff if isinstance(code, int) else code
             if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             if code in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
@@ -357,6 +372,12 @@ class LibraryApp:
         from .acquisition.service import service_for
         return service_for(self).save_reference(workspace, preview, cancelled=cancelled)
 
+    def lookup_isbn(self, workspace, isbn, *, online_allowed=False, cancelled=lambda: False):
+        """Preview one exact book ISBN through an explicitly approved metadata request."""
+        from .acquisition.service import service_for
+        return service_for(self).lookup_isbn(workspace, isbn, online_allowed=online_allowed,
+            cancelled=cancelled)
+
     def apply_doi_metadata(self, workspace, edition_id, preview, *, expected_metadata,
                            cancelled=lambda: False):
         from .acquisition.service import service_for
@@ -400,7 +421,7 @@ class LibraryApp:
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
                         language=None, edition=None, volume=None, expected_metadata=None,
-                        selected_fields=None, cancelled=lambda: False):
+                        cancelled=lambda: False):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -409,39 +430,17 @@ class LibraryApp:
         new citation snapshots when those fields change. Edition-specific fields
         change only on the selected edition. An optional prior EditionView guards
         interactive edits against overwriting a concurrently changed catalog.
-        Partial imports must supply both selected_fields and expected_metadata.
-        Unselected values are retained exactly from the locked current catalog;
-        only explicitly selected values receive the usual edit validation.
         """
         def check_cancelled():
             if cancelled():
                 raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
 
         check_cancelled()
-        allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
-        if selected_fields is None:
-            fields = allowed_fields
-        else:
-            if (not isinstance(selected_fields, (tuple, list, set, frozenset))
-                    or not selected_fields
-                    or any(not isinstance(field, str) for field in selected_fields)
-                    or expected_metadata is None):
-                raise ValueError('A partial metadata edit requires selected fields and the reviewed metadata.')
-            fields = frozenset(selected_fields)
-            if not fields <= allowed_fields:
-                raise ValueError('Select only supported metadata fields.')
-        if 'title' in fields:
-            title = _name(title)
-        if 'authors' in fields:
-            if not isinstance(authors, (tuple, list)) or len(authors) > 100:
-                raise ValueError('authors must be a list or tuple of at most 100 names.')
-            authors = tuple(_name(name) for name in authors)
-        if 'language' in fields:
-            language = _metadata(language)
-        if 'edition' in fields:
-            edition = _metadata(edition)
-        if 'volume' in fields:
-            volume = _metadata(volume)
+        title = _name(title)
+        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+            raise ValueError('authors must be a list or tuple of at most 100 names.')
+        authors = tuple(_name(name) for name in authors)
+        language, edition, volume = map(_metadata, (language, edition, volume))
         revision = uuid4().hex
         with exclusive_writer(self.root):
             check_cancelled()
@@ -453,12 +452,6 @@ class LibraryApp:
                     current = get_edition(Catalog(db, workspace), edition_id)
                     if expected_metadata is not None and current != expected_metadata:
                         raise ValueError('Book metadata changed. Refresh the catalog before editing again.')
-                    if selected_fields is not None:
-                        title = title if 'title' in fields else current.title
-                        authors = authors if 'authors' in fields else current.authors
-                        language = language if 'language' in fields else current.language
-                        edition = edition if 'edition' in fields else current.edition
-                        volume = volume if 'volume' in fields else current.volume
                     row = db.execute('SELECT e.work,e.asset,a.revision,r.config FROM catalog_edition e '
                         'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
                         'JOIN revision r ON r.id=a.revision WHERE e.workspace=? AND e.id=?',
@@ -537,7 +530,8 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0,
+                    source_profile=None):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
@@ -545,15 +539,21 @@ class LibraryApp:
         if not isinstance(collections, (tuple, list)) or len(collections) > 100:
             raise ValueError('invalid collections')
         path = Path(path).absolute()
+        if source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            source_profile = profile_from_value(source_profile)
+            if path.suffix.casefold() != source_profile.suffix:
+                raise ValueError('The selected source format differs from its explicit profile.')
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+        if source_profile is not None or path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout,
+                               **(dict(source_profile=source_profile) if source_profile is not None else {}))
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
@@ -622,10 +622,92 @@ class LibraryApp:
             return confirm_review(self.root, workspace, request_id, reviewer,
                                   confirmed=confirmed, expected_checksum=expected_checksum)
 
+    def _reconcile_import_publication(self, request):
+        """Read-only terminal reconciliation; caller holds the writer guard.
+
+        Neither a request result nor a journal terminal flag proves publication.
+        The exact request, original, sealed pages, catalog authorization and
+        requested memberships must all agree, after the child has exited.
+        """
+        from .ingest.worker import (validate_publication_document, publication_pages,
+                                    validate_committed_publication, reconcile_legacy_publication)
+        intent = validate_publication_document(request)
+        if intent is None:
+            return reconcile_legacy_publication(self, request)
+        before, result, metadata = intent['before'], intent['result'], request['metadata']
+        # A prior revision with no new requested membership is a replay, not
+        # evidence that this attempt crossed a commit boundary. Its explicit
+        # post-commit acknowledgment still needs all database checks below.
+        if (before['revision_existed'] and not before['missing_memberships']
+                and not intent['committed']):
+            return None
+        workspace, edition, revision = request['workspace'], metadata['edition_id'], intent['revision']
+        with self.read(workspace) as db:
+            if validate_committed_publication(db, request) is None:
+                return None
+            published = db.execute('SELECT r.workspace,r.edition,r.asset,r.config,a.revision '
+                'FROM revision r JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
+                'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?', (revision,)).fetchone()
+            if published is None:
+                return None  # Prepared intent followed by rollback or pre-commit stop.
+            if (tuple(published[:3]) != (workspace, edition, request.get('asset_sha256'))
+                    or published[4] is None
+                    or (published[4] == revision) != (result['state'] == 'complete')
+                    or (result['state'] == 'superseded' and published[4] != before['active_revision'])
+                    or sha256(published[3].encode('utf-8')).hexdigest() != intent['config_sha256']
+                    or sha256(canonical([workspace, edition, published[2], published[3]])
+                              .encode('utf-8')).hexdigest() != revision):
+                raise ValueError('Sealed import publication identity or active revision changed.')
+            settings = json.loads(published[3])
+            if (not isinstance(settings, dict) or
+                    (settings.get('kind') == 'physical_page' and settings.get('config') != request['config'])):
+                raise ValueError('Import source or configuration changed.')
+            if publication_pages(db, revision) != (intent['page_count'], intent['pages_sha256']):
+                raise ValueError('Sealed import publication pages changed.')
+            from .ingest.worker import request_profile
+            profile = request_profile(request)
+            if profile is not None and settings != profile.configuration():
+                raise ValueError('Streamed import publication source profile changed.')
+            original = (self.assets.resolve(published[2]) if profile is None else
+                        self.assets.resolve(published[2], profile=profile))
+            manifest = db.execute('SELECT mime,size FROM catalog_asset WHERE digest=?',
+                                  (published[2],)).fetchone()
+            if (manifest is None or manifest[1] != original.stat().st_size
+                    or SUFFIXES.get(manifest[0]) != original.suffix):
+                raise ValueError('Import publication retained source manifest changed.')
+            expected_manifest = request.get('expected_manifest')
+            if expected_manifest is not None and expected_manifest != dict(
+                    sha256=published[2], mime=manifest[0], size=manifest[1]):
+                raise ValueError('Import publication differs from its planned source manifest.')
+            if result['verified'] != (manifest[0] == 'text/plain' and result['state'] == 'complete'):
+                raise ValueError('Import publication verification claim changed.')
+            actual = db.execute('SELECT e.work,e.asset,e.language,e.edition,e.volume,w.title '
+                'FROM catalog_edition e JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
+                'WHERE e.workspace=? AND e.id=?', (workspace, edition)).fetchone()
+            expected = (metadata['work_id'], published[2], _metadata(metadata['language']),
+                        _metadata(metadata['edition']), _metadata(metadata['volume']),
+                        _metadata(metadata['title']) or Path(request['source']).stem)
+            authors = tuple(row[0] for row in db.execute('SELECT name FROM catalog_author '
+                'WHERE workspace=? AND work=? ORDER BY position', (workspace, metadata['work_id'])))
+            if actual is None or tuple(actual) != expected or authors != tuple(metadata['authors']):
+                raise ValueError('Import publication catalog registration changed.')
+            catalog = Catalog(db, workspace)
+            for collection in metadata['collections']:
+                catalog._active_collection(collection)
+                if db.execute('SELECT 1 FROM catalog_membership WHERE workspace=? '
+                        'AND collection=? AND edition=?', (workspace, collection, edition)).fetchone() is None:
+                    return None  # A replay's new membership was rolled back.
+            for key, expected_value in (('workspace', workspace), ('asset', published[2]),
+                                        ('total', intent['page_count'])):
+                if key in result and result[key] != expected_value:
+                    raise ValueError('Import publication result identity changed.')
+            return dict(result)
+
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
-                     _request_id=None, _resume_job=None, _expected_manifest=None):
+                     _request_id=None, _resume_job=None, _expected_manifest=None,
+                     _source_profile=None, _request_sha256=None, _request_attempt=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -633,13 +715,32 @@ class LibraryApp:
         OCR is reported explicitly and never silently exposed as verified text.
         """
         from .extract.page_ocr import Config
+        profile = None
+        request_guard = lambda: None
+        if _source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            from .ingest.worker import request_profile, validate_request_admission
+            profile = profile_from_value(_source_profile)
+            if _request_id is None:
+                raise ValueError('Streamed text must use the existing owned import request.')
+            def request_guard():
+                record = validate_request_admission(self.root, _request_id,
+                    _request_sha256, _request_attempt)
+                if request_profile(record) != profile:
+                    raise ValueError('The admitted streamed source profile changed.')
+            request_guard()
+        elif _request_sha256 is not None or _request_attempt is not None:
+            raise ValueError('Frozen streamed admission cannot change the original source adapter.')
         path = Path(path).absolute()
         collections = tuple(collections)
         with self.read(workspace) as db:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
-        if _expected_manifest is None:
+        if profile is not None:
+            from .ingest.streamed_text import inspect_text
+            asset = inspect_text(path, profile, cancelled=cancelled)
+        elif _expected_manifest is None:
             asset = snapshot(path.parent, path.name)
         else:
             from .ingest.batch_scan import planned_snapshot
@@ -655,13 +756,15 @@ class LibraryApp:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
-                retained = self.assets.retain(asset.data, asset.mime, asset.digest)
+                request_guard()
+                retained = (self.assets.retain(asset.data, asset.mime, asset.digest) if profile is None else
+                    self.assets.retain_file(path, asset.mime, asset.digest, asset.size,
+                        profile=profile, expected_identity=asset.identity, cancelled=cancelled))
                 from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
-                                            record_publication_candidate)
+                    publication_before, prepare_publication, confirm_publication)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
-                publisher = _CatalogPublisher(storage, record)
-                publisher.before_commit = lambda scope, revision: record_publication_candidate(
-                    self.root, _request_id, storage.db, scope, revision)
+                publisher = _CatalogPublisher(storage, record, root=self.root, request_id=_request_id,
+                                              request_guard=request_guard)
                 if asset.mime in EXTENDED_MIMES or asset.mime in (
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         'application/epub+zip'):
@@ -687,6 +790,15 @@ class LibraryApp:
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
                                       .encode('utf-8')).hexdigest()
+                    record_progress(self.root, _request_id, job=revision)
+                    completion = {'state': 'complete', 'edition': record.edition_id, 'id': revision,
+                        'asset': asset.digest, 'workspace': workspace, 'total': len(extracted['records']),
+                        'completed': len(extracted['records']), 'verified': False,
+                        'format': source_format, 'warnings': extracted['warnings'],
+                        'message': f'{source_format} imported as unverified logical segments; '
+                                   'printed pages are unknown. ' + (
+                                       FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
+                    publisher.publication_result = completion
                     prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
                                                (revision,)).fetchone()
                     if prior is None:
@@ -703,19 +815,24 @@ class LibraryApp:
                                 'SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()):
                             raise ValueError(f'Published {source_format} import differs from retained source bytes.')
                         with storage.transaction():
+                            before = publication_before(storage.db, workspace, record.edition_id,
+                                                        revision, collections)
                             register_batch(Catalog(storage.db, workspace), (record,))
                             # Replays may add memberships; validate before exposing them.
                             storage._check()
+                            prepare_publication(self.root, _request_id, storage.db,
+                                                revision, before, completion)
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
+                        confirm_publication(self.root, _request_id)
                     publisher.check()
-                    return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
-                            'completed': len(extracted['records']), 'verified': False,
-                            'format': source_format, 'warnings': extracted['warnings'],
-                            'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown. ' + (
-                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
+                    return completion
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
+                if profile is not None:
+                    from .ingest.streamed_ingest import StreamedTextIngest
+                    engine, extra = StreamedTextIngest, dict(profile=profile)
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
                         publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
@@ -728,37 +845,44 @@ class LibraryApp:
                         if previous['state'] in ('failed', 'cancelled', 'quarantined'):
                             ingest.retry(workspace, job)
                     else:
-                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings,
+                                           **(dict(cancelled=cancelled) if profile is not None else {}))
                     record_progress(self.root, _request_id, job=job)
+                    request_guard()
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
+                    result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     if result['state'] in ('complete', 'superseded') and not publisher.published_here:
                         if cancelled():
                             raise InterruptedError('Import cancelled before catalog registration.')
-                        # A terminal journal state is not proof of publication.
-                        # Validate the sealed source and active/result identity
-                        # even when the journal has no previously stored revision.
+                        # Recovery validates the retained asset/configuration and
+                        # checkpoint/page identity, but does not replay catalog
+                        # registration. Apply the same atomic membership and
+                        # metadata-conflict gate as the DOCX/EPUB replay path.
+                        # A journal's terminal state alone is not proof that its
+                        # source was actually published. Never reactivate an old
+                        # revision when current metadata has superseded it.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
-                            current = storage.db.execute(
+                            before = publication_before(storage.db, workspace, record.edition_id,
+                                                        job, collections)
+                            published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (current is None or tuple(current[:3]) !=
+                            if (published is None or tuple(published[:3]) !=
                                     (workspace, record.edition_id, asset.digest)
-                                    or current[3] is None):
+                                    or published[3] is None):
                                 raise ValueError('Completed import is missing its sealed source revision.')
-                            if (current[3] == job) != (result['state'] == 'complete'):
+                            if (published[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            # A replay may add membership with exact current
-                            # metadata, including after a metadata revision.
-                            # Registration rejects stale metadata atomically;
-                            # it never reactivates the old source revision.
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
+                            request_guard()
+                            prepare_publication(self.root, _request_id, storage.db, job, before, result)
                             if cancelled():
                                 raise InterruptedError('Import registration cancelled before commit.')
-                    result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
+                        confirm_publication(self.root, _request_id)
                     return result
 
     def import_files(self, workspace, paths, *, progress=None, **metadata):
@@ -786,8 +910,6 @@ class LibraryApp:
                     progress = None
 
         cancelled = metadata.get('cancelled', lambda: False)
-        if not callable(cancelled):
-            raise ValueError('An import cancellation callback is required.')
         report(0)
         results = []
         for path in paths:
@@ -830,16 +952,19 @@ class LibraryApp:
         if row is None:
             raise ValueError('Source is outside the selected library.')
         mime, size = row
-        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+        if mime not in SUFFIXES or type(size) is not int or size < 1:
             raise ValueError('Invalid original source catalog manifest.')
+        from .ingest.streamed_text import catalog_profile
+        profile = catalog_profile(db, identity.asset_sha256, mime, size)
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
         key = identity.asset_sha256, mime, size
         if checked_assets is not None and key in checked_assets:
             return checked_assets[key], mime, size
-        # Existing retention resolution checks regular-file/link rules, the
-        # 64 MiB size bound, and the complete original-byte SHA256.
-        path = self.assets.resolve(identity.asset_sha256)
+        # Larger TXT admission comes only from exact sealed extraction state.
+        # Both paths still verify the complete original-byte SHA256 and links.
+        path = (self.assets.resolve(identity.asset_sha256) if profile is None else
+                self.assets.resolve(identity.asset_sha256, profile=profile, cancelled=cancelled))
         if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -860,6 +985,10 @@ class LibraryApp:
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
         resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
         text = strict_text_attestor(db, workspace, resolve_asset)
+        from .citations.streamed_text_attestation import streamed_text_attestor
+        streamed_paths = {}
+        streamed = streamed_text_attestor(db, workspace, lambda identity: self._retained_source(
+            db, workspace, identity, checked_assets=streamed_paths, cancelled=cancelled)[0], cancelled=cancelled)
 
         def review(identity, physical):
             row = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
@@ -874,7 +1003,8 @@ class LibraryApp:
         def attest(identity, locator, raw_hash):
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
-            verified = text(identity, locator, raw_hash) or pdf(identity, locator, raw_hash)
+            verified = (text(identity, locator, raw_hash) or streamed(identity, locator, raw_hash)
+                        or pdf(identity, locator, raw_hash))
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
             return verified
@@ -935,6 +1065,44 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
+        return self._search(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition,
+            limit=limit, timeout=timeout, cancelled=cancelled,
+            authorized_topic=authorized_topic, on_status=on_status, result_mode=result_mode)
+
+    def search_page(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                    author=None, language=None, edition=None, limit=100, timeout=60.0,
+                    cancelled=lambda: False, authorized_topic=None, on_status=None,
+                    result_mode=None, cursor=None, page_budget=500,
+                    character_budget=5_000_000):
+        """Continue the current authorized source search through bounded pages.
+
+        Compatible exact scopes retain the existing literal route. Ranked and
+        larger scopes use source windows; their ordering never claims a global
+        relevance rank. An empty page may still carry a continuation.
+        """
+        from .search.source_windows import validate_budgets
+        validate_budgets(page_budget, character_budget)
+        if mode not in ('word', 'phrase', 'terms', 'advanced', 'thematic', 'semantic'):
+            raise ValueError('Unknown search mode.')
+        request = request_identity(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition, limit=limit,
+            authorized_topic=authorized_topic, result_mode=result_mode,
+            page_budget=page_budget, character_budget=character_budget)
+        continuation = self._search_cursors.begin(request, cursor)
+        if continuation.kind not in ('literal', 'window'):
+            raise ValueError('The search continuation belongs to another search scope.')
+        return self._search(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition,
+            limit=limit, timeout=timeout, cancelled=cancelled,
+            authorized_topic=authorized_topic, on_status=on_status,
+            result_mode=result_mode, _continuation=continuation,
+            _window_budget=(page_budget, character_budget))
+
+    def _search(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                author=None, language=None, edition=None, limit=100, timeout=60.0,
+                cancelled=lambda: False, authorized_topic=None, on_status=None,
+                result_mode=None, _continuation=None, _window_budget=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -946,31 +1114,59 @@ class LibraryApp:
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
-            budget.check()
-            if len(views) == 500:
-                more = browse_editions(catalog, collection=collection, title=title, author=author,
-                    language=language, edition=edition, after=views[-1].edition_id, limit=1)
-                budget.check()
-                if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
-            allowed = {v.edition_id: v.work_id for v in views}
-            if mode in ('thematic', 'semantic'):
-                if mode == 'semantic' and self.semantic_ranker is not None:
-                    from .semantic import search_snapshot
-                    hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
-                else:
-                    if mode == 'semantic' and on_status is not None:
-                        on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
+            counts = None
+            windowed = False
+            if _continuation is not None:
+                from .search import source_windows
+                page_budget, character_budget = _window_budget
+                filters = dict(collection=collection, title=title, author=author,
+                               language=language, edition=edition)
+                counts = source_windows.scope_statistics(db, workspace, filters, budget)
+                windowed = (_continuation.kind == 'window' or (
+                    _continuation.after is None and (
+                        mode in ('thematic', 'semantic') or counts[0] > 500
+                        or counts[1] > literal.MAX_PAGES or counts[2] > literal.MAX_CHARS
+                        or page_budget != source_windows.DEFAULT_PAGE_SOURCES
+                        or character_budget != source_windows.MAX_PAGE_CHARACTERS)))
+            if windowed:
+                page = source_windows.candidates(db, workspace, query,
+                    continuation=_continuation, mode=mode, filters=filters,
+                    limit=limit, page_budget=page_budget, character_budget=character_budget,
+                    result_mode=result_mode, budget=budget, ranker=self.semantic_ranker,
+                    cache=self.semantic_cache, on_status=on_status)
+                hits = page.hits
             else:
-                hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                catalog = Catalog(db, workspace)
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
+                budget.check()
+                if len(views) == 500:
+                    more = browse_editions(catalog, collection=collection, title=title, author=author,
+                        language=language, edition=edition, after=views[-1].edition_id, limit=1)
+                    budget.check()
+                    if more:
+                        raise ValueError('Narrow the search to at most 500 editions using filters.')
+                allowed = {v.edition_id: v.work_id for v in views}
+                if _continuation is not None:
+                    page = literal.search_page(db, workspace, query, edition_ids=tuple(allowed),
+                        mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                        after=_continuation.after, expected_snapshot=_continuation.snapshot,
+                        scope_key=catalog_snapshot(_continuation.request, views), result_mode=result_mode)
+                    hits = page.hits
+                elif mode in ('thematic', 'semantic'):
+                    if mode == 'semantic' and self.semantic_ranker is not None:
+                        from .semantic import search_snapshot
+                        hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
+                                               limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                                               on_status=on_status, cache=self.semantic_cache)
+                    else:
+                        if mode == 'semantic' and on_status is not None:
+                            on_status('Local model unavailable; keyword search used.')
+                        hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
+                                                      timeout=budget.remaining(), cancelled=budget.stopped)
+                else:
+                    hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
+                                          mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1019,9 +1215,17 @@ class LibraryApp:
                     raw[selected.start:selected.end], citation, verified, reason))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
+        prepared = None
+        if _continuation is not None:
+            answer, prepared = self._search_cursors.prepare(_continuation, results, page,
+                scanned_segments=None if windowed else counts[1],
+                scope_editions=None if windowed else counts[0])
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
+        if _continuation is not None:
+            self._search_cursors.publish(prepared)
+            return answer
         return tuple(results)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
@@ -1238,8 +1442,11 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
+    def transcription(self, workspace):
+        from .transcription import TranscriptionService
+        return TranscriptionService(self, workspace)
+
+    def backup(self, destination):
         from .library_backup import create_backup
-        return create_backup(self, destination, max_bytes=max_bytes,
-                             include_generated=include_generated, cancelled=cancelled)
+        return create_backup(self, destination)
 

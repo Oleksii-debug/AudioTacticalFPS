@@ -247,120 +247,63 @@ def test_resume_cannot_substitute_another_import_queue(environment):
     assert not app.browse(workspace)
 
 
-@pytest.mark.parametrize('worker_finished', [False, True])
-def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_finished):
-    """An old completed summary is not the result of the new async resume.
-
-    Execute the actual installed dialog Run handler and saved-job service with
-    an explicit GUI queue. The Windows probe must wait both while the worker
-    runs and after it finishes but before its queued native update is applied.
-    """
-    import ast
-    from concurrent.futures import ThreadPoolExecutor
-    import inspect
-    from queue import Queue
-    from types import SimpleNamespace
-
-    from carr_library.ui import assistant_dialog
-
-    app, inputs, outputs = environment
-    source = inputs / 'railway.txt'
-    source.write_text('Railway transport connected cities.', encoding='utf-8')
+def test_restored_job_at_original_data_path_requires_fresh_review(environment):
+    app, _, _ = environment
     service = AssistantService(app)
-    plan = service.preview('Create library "Resumed"\nImport "' + str(source)
-                           + '"\nSearch "Railway transport"',
-                           Scope(input_roots=(inputs,), output_root=outputs, allow_create=True))
+    plan = Plan(Scope(allow_create=True), (Step('library.create', {'name': 'Must not execute'}),))
     identity = service.submit(plan)
-    completed = service.run(identity)
-    assert completed.status == 'complete' and completed.completed == completed.total == 3
-    workspace = completed.results[0]['workspace']
-    imported = tuple(row.edition_id for row in app.browse(workspace))
+    record = service.store.load(identity)
+    record['restore_requires_review'] = True
+    service.store.save(record)
+    assert service.get(identity).status == 'queued'
+    with pytest.raises(PermissionError, match='Restored assistant jobs'):
+        service.run(identity)
+    with pytest.raises(PermissionError, match='Restored assistant jobs'):
+        service.resume(identity)
+    assert not app.workspaces()
 
-    class Control:
-        enabled = True
 
-        def __init__(self, value=''):
-            self.value = value
+def test_restored_history_does_not_resolve_missing_original_paths(environment, monkeypatch):
+    from carr_library.assistant import models
+    app, inputs, outputs = environment
+    service = AssistantService(app)
+    plan = Plan(Scope(input_roots=(inputs,), output_root=outputs), (Step('library.list'),))
+    identity = service.submit(plan)
+    record = service.store.load(identity)
+    original_plan = json.dumps(record['plan'], sort_keys=True)
+    original_digest = record['plan_sha256']
+    record['restore_requires_review'] = True
+    record['data_dir'] = 'Z:/another-host/former-data'
+    service.store.save(record)
+    inputs.rmdir()
+    outputs.rmdir()
+    before = service.store.path(identity).read_bytes()
+    def forbidden(*args, **kwargs):
+        pytest.fail('Review reopened a historical permission path.')
+    monkeypatch.setattr(models, 'local_path', forbidden)
+    assert service.get(identity).status == 'queued'
+    assert service.jobs()[0].id == identity
+    assert service.store.path(identity).read_bytes() == before
+    unchanged = service.store.load(identity)
+    assert json.dumps(unchanged['plan'], sort_keys=True) == original_plan
+    assert unchanged['plan_sha256'] == original_digest
+    with pytest.raises(PermissionError, match='Restored assistant jobs'):
+        service.run(identity)
+    unchanged['plan']['summary'] = 'tampered history'
+    service.store.save(unchanged)
+    with pytest.raises(ValueError, match='approved assistant plan'):
+        service.get(identity)
 
-        def Enable(self): self.enabled = True
-        def Disable(self): self.enabled = False
-        def IsEnabled(self): return self.enabled
-        def GetValue(self): return self.value
-        def ChangeValue(self, value): self.value = value
-        def SetFocus(self): pass
 
-    review = Control('complete: 3/3. All selected operations completed.\n'
-                     'Resume uses the original reviewed scope.')
-    buttons = {name: Control() for name in ('preview', 'run', 'jobs', 'pause')}
-    callbacks, entered, release = Queue(), Event(), Event()
-
-    def resume(*args, **kwargs):
-        entered.set()
-        if not release.wait(5):
-            raise TimeoutError('The synthetic resume barrier was not released.')
-        return service.resume(*args, **kwargs)
-
-    dialog_tree = ast.parse(inspect.getsource(assistant_dialog))
-    show = next(node for node in dialog_tree.body
-                if isinstance(node, ast.FunctionDef) and node.name == 'create_assistant_dialog')
-    handlers = [node for node in show.body
-                if isinstance(node, ast.FunctionDef) and node.name in ('report', 'run')]
-    assert len(handlers) == 2
-    factory = ast.parse('def make_run(identity):\n'
-                        '    busy, job_id, plan, alive = None, identity, None, True\n').body[0]
-    factory.body.extend(handlers)
-    factory.body.append(ast.Return(value=ast.Name(id='run', ctx=ast.Load())))
-
-    probe = Path(__file__).resolve().parents[2] / 'scripts/windows_assistant_smoke.py'
-    poll = next(node for node in ast.walk(ast.parse(probe.read_text(encoding='utf-8')))
-                if isinstance(node, ast.FunctionDef) and node.name == 'poll')
-    predicate = next(node.test for node in ast.walk(poll)
-                     if isinstance(node, ast.If)
-                     and ast.unparse(node.test).startswith("state['phase'] == 'running'"))
-    predicate_code = compile(ast.Expression(body=predicate), str(probe), 'eval')
-    ready = lambda: eval(predicate_code, {
-        'state': {'phase': 'running'}, 'review': review, 'dialog': object(),
-        'button': lambda dialog, label: buttons['run'],
-    })
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        submitted = []
-
-        def submit(*args, **kwargs):
-            future = executor.submit(*args, **kwargs)
-            submitted.append(future)
-            return future
-
-        namespace = {
-            'executor': SimpleNamespace(submit=submit), 'service': SimpleNamespace(resume=resume),
-            'cancel': Event(), 'review': review, 'buttons': buttons, 'json': json,
-            'frame': SimpleNamespace(library=app), 'library_root': app.root, 'folder_buttons': [],
-            'wx': SimpleNamespace(CallAfter=lambda function, *args: callbacks.put((function, args))),
-            **{name: Control() for name in
-               ('scope_choice', 'instruction', 'input_folder', 'output_folder', 'full_backup', 'planning_source')},
-        }
-        exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
-                     assistant_dialog.__file__, 'exec'), namespace)
-        namespace['make_run'](identity)()
-        try:
-            assert entered.wait(5)
-            if worker_finished:
-                release.set()
-                assert submitted[0].result(timeout=5).status == 'complete'
-            assert not buttons['run'].IsEnabled()
-            assert review.GetValue().startswith('complete:')
-            assert '3 of 3 verified operations' not in review.GetValue()
-            assert not ready(), 'A stale saved-job summary was mistaken for the resumed result.'
-        finally:
-            release.set()
-        # The durable service emits a final numeric progress update before
-        # the dialog's completion callback. Dispatch both through the GUI queue.
-        for _ in range(3):
-            if buttons['run'].IsEnabled():
-                break
-            callback, arguments = callbacks.get(timeout=5)
-            callback(*arguments)
-        assert ready() and '3 of 3 verified operations' in review.GetValue()
-    verified = service.get(identity)
-    assert verified.status == 'complete' and verified.results == completed.results
-    assert tuple(row.edition_id for row in app.browse(workspace)) == imported
+@pytest.mark.parametrize('marker', [1, 'false', None])
+def test_assistant_restore_marker_must_be_boolean(environment, marker):
+    app, _, _ = environment
+    service = AssistantService(app)
+    identity = service.submit(Plan(Scope(), (Step('library.list'),)))
+    record = service.store.load(identity)
+    record['restore_requires_review'] = marker
+    service.store.save(record)
+    with pytest.raises(ValueError, match='restore-review marker'):
+        service.get(identity)
+    with pytest.raises(ValueError, match='restore-review marker'):
+        service.run(identity)

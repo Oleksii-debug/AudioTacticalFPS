@@ -334,6 +334,18 @@ def test_real_unicode_inventory_keeps_bounded_native_discovery(real_models, monk
     runtime.assert_unchanged()
 
 
+def test_real_unicode_inventory_reaches_the_ordered_product_chooser(real_models, monkeypatch):
+    from carr_library.extract import ocr_runtime
+    from carr_library.extract.ocr_languages import discover_languages
+    runtime, _ = real_models
+    monkeypatch.setattr(ocr_runtime, 'discover_ocr_runtime', lambda *args, **kwargs: runtime)
+    catalog = discover_languages()
+    assert catalog.codes == ('eng', 'osd')
+    assert catalog.selectable == ('eng',)
+    assert catalog.validate('eng', orientation=True) == ('eng',)
+    runtime.assert_unchanged()
+
+
 @pytest.mark.parametrize('failure', ['digest', 'deadline', 'size'], ids=['wrong-digest', 'cancelled', 'size-limit'])
 def test_private_copy_failure_removes_only_its_partial_output(tmp_path, failure):
     from carr_library.extract.ocr_process import _copy

@@ -140,81 +140,17 @@ def test_parallel_barrier():
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
 
-    def _run_report_cleanup_fixture(self, failures, *, timed_out=False):
-        spec = importlib.util.spec_from_file_location('cleanup_ci_check', SCRIPT)
-        runner = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(runner)
-        original_temp = tempfile.TemporaryDirectory
-        directories, attempts = [], []
-        output = io.StringIO()
-        with original_temp(prefix='CARR report cleanup ') as temporary:
-            root = Path(temporary).resolve()
-            (root / 'test_sample.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
-
-            def report_directory(*args, **kwargs):
-                directory = original_temp(*args, dir=root, **kwargs)
-                directories.append(directory)
-
-                def cleanup():
-                    attempts.append(directory.name)
-                    if len(attempts) <= failures:
-                        raise PermissionError('Synthetic report handle is still held')
-                    directory.cleanup()
-
-                return types.SimpleNamespace(name=directory.name, cleanup=cleanup)
-
-            def completed_child(command, *, env):
-                if timed_out:
-                    raise subprocess.TimeoutExpired('synthetic required suite', .15)
-                report = Path(command[command.index('--junitxml') + 1])
-                report.write_text(
-                    '<testsuites><testsuite><testcase name="test_ok"/></testsuite></testsuites>',
-                    encoding='utf-8')
-                return 0
-
-            try:
-                with (mock.patch.object(runner, 'ROOT', root),
-                      mock.patch.object(runner, 'tempfile',
-                          types.SimpleNamespace(TemporaryDirectory=report_directory)),
-                      mock.patch.object(runner, '_run_test_process', side_effect=completed_child) as child,
-                      mock.patch.object(runner, 'sleep'),
-                      contextlib.redirect_stdout(output)):
-                    result = runner.run_suite('test_sample.py')
-                child.assert_called_once()
-            finally:
-                for directory in directories:
-                    directory.cleanup()
-        return result, output.getvalue(), len(attempts)
-
-    def test_transient_report_cleanup_permission_error_is_retried_before_pass(self):
-        result, output, attempts = self._run_report_cleanup_fixture(1)
-        self.assertTrue(result, output)
-        self.assertEqual(attempts, 2)
-        self.assertIn('PASS: test_sample.py:', output)
-        self.assertNotIn('FAIL:', output)
-
-    def test_persistent_report_cleanup_permission_error_is_named_and_never_passes(self):
-        result, output, attempts = self._run_report_cleanup_fixture(5)
-        self.assertFalse(result, output)
-        self.assertEqual(attempts, 5)
-        self.assertIn('FAIL: test_sample.py:', output)
-        self.assertIn('PermissionError', output)
-        self.assertNotIn('PASS:', output)
-
-    def test_report_cleanup_permission_error_preserves_original_timeout(self):
-        result, output, attempts = self._run_report_cleanup_fixture(5, timed_out=True)
-        self.assertFalse(result, output)
-        self.assertEqual(attempts, 5)
-        self.assertIn('FAIL: test_sample.py:', output)
-        self.assertIn('TimeoutExpired', output)
-        self.assertIn('PermissionError', output)
-        self.assertNotIn('PASS:', output)
-
     def test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed(self):
+        self._assert_timeout_reaps_real_descendant(orphan_parent=False)
+
+    def test_timeout_owns_real_descendant_even_after_intermediate_parent_exits(self):
+        self._assert_timeout_reaps_real_descendant(orphan_parent=True)
+
+    def _assert_timeout_reaps_real_descendant(self, *, orphan_parent):
         spec = importlib.util.spec_from_file_location('reviewed_ci_check', SCRIPT)
         runner = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(runner)
-        original_popen = subprocess.Popen
+        original_start = runner._start_test_process
         original_temp = tempfile.TemporaryDirectory
         processes, directories, observed = [], [], {}
         kernel = None
@@ -237,31 +173,46 @@ def test_parallel_barrier():
             previous_subreaper = ctypes.c_int()
             self.assertEqual(libc.prctl(37, ctypes.byref(previous_subreaper), 0, 0, 0), 0)
         with original_temp(prefix='CARR timeout Ž ') as temporary:
-            # Windows TEMP may use an 8.3 alias; the runner resolves candidates
-            # before checking that they remain inside its canonical root.
-            root = Path(temporary).resolve()
+            root = Path(temporary).resolve(strict=True)
             marker = root / 'descendant.pid'
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "pending = marker.with_suffix('.pending')\n"
+                "pending.write_text(str(os.getpid()), encoding='ascii')\n"
+                "os.replace(pending, marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
+            if orphan_parent:
+                # The direct parent exits before timeout. A terminal PPID
+                # snapshot/taskkill traversal cannot discover this orphan;
+                # the job established before suite startup must still own it.
+                (root / 'spawner.py').write_text(
+                    "import subprocess,sys\n"
+                    "subprocess.Popen([sys.executable, *sys.argv[1:]],\n"
+                    "    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n",
+                    encoding='utf-8')
+            launch = ('subprocess.run' if orphan_parent else 'subprocess.Popen')
+            prefix = "str(Path.cwd()/'spawner.py'), " if orphan_parent else ''
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport subprocess,sys,time\n"
                 "def test_wait(tmp_path):\n"
-                "    subprocess.Popen([sys.executable, str(Path.cwd()/'descendant.py'),\n"
+                f"    {launch}([sys.executable, {prefix}str(Path.cwd()/'descendant.py'),\n"
                 "        str(tmp_path/'held-library.lock'), str(Path.cwd()/'descendant.pid')],\n"
                 "        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+                "    (Path.cwd()/'launch-complete').write_text('parent returned')\n"
                 "    while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_ok.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
 
             def observe_started_descendant(*args, **kwargs):
-                process = original_popen(*args, **kwargs)
+                # Observe only after the production suspended-launch owner
+                # has assigned its job and resumed the initial thread.
+                process = original_start(*args, **kwargs)
                 processes.append(process)
                 if Path(args[0][-1]).name != 'test_timeout.py':
                     return process
                 deadline = time.monotonic() + 30
-                while not marker.exists():
+                while not marker.exists() or not (root / 'launch-complete').exists():
                     self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
                     self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
                     time.sleep(.02)
@@ -292,14 +243,12 @@ def test_parallel_barrier():
                         return real_run_suite(suite)
                 return real_run_suite(suite)
 
-            subprocess_api = types.SimpleNamespace(**vars(subprocess))
-            subprocess_api.Popen = observe_started_descendant
             output = io.StringIO()
             try:
                 if previous_subreaper is not None:
                     self.assertEqual(libc.prctl(36, 1, 0, 0, 0), 0)
                 with (mock.patch.object(runner, 'ROOT', root),
-                      mock.patch.object(runner, 'subprocess', subprocess_api),
+                      mock.patch.object(runner, '_start_test_process', side_effect=observe_started_descendant),
                       mock.patch.object(runner, 'tempfile', types.SimpleNamespace(TemporaryDirectory=tracked_temporary)),
                       mock.patch.object(runner, 'run_suite', side_effect=with_test_deadline),
                       mock.patch.object(sys, 'argv', ['ci_check.py', 'test_timeout.py', 'test_ok.py']),
@@ -352,6 +301,200 @@ def test_parallel_barrier():
                     if observed.get('pid') and not observed.get('reaped'):
                         os.waitpid(observed['pid'], 0)
                     libc.prctl(36, previous_subreaper.value, 0, 0, 0)
+
+
+    def _runner(self):
+        spec = importlib.util.spec_from_file_location('ci_job_boundary', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        return runner
+
+    @contextlib.contextmanager
+    def _modeled_job(self):
+        runner = self._runner()
+        kernel = types.SimpleNamespace(**{
+            name: mock.Mock(return_value=1) for name in (
+                'CreateJobObjectW', 'SetInformationJobObject', 'AssignProcessToJobObject',
+                'TerminateJobObject', 'QueryInformationJobObject', 'CreateToolhelp32Snapshot',
+                'Thread32First', 'Thread32Next', 'OpenThread', 'GetProcessIdOfThread',
+                'ResumeThread', 'CloseHandle')})
+        kernel.CreateJobObjectW.return_value = 101
+        kernel.CreateToolhelp32Snapshot.return_value = 102
+        kernel.OpenThread.return_value = 103
+        kernel.GetProcessIdOfThread.return_value = 42
+        kernel.Thread32Next.return_value = 0
+        def first(snapshot, pointer):
+            entry = pointer._obj
+            entry.th32OwnerProcessID = 42
+            entry.th32ThreadID = 99
+            return 1
+        kernel.Thread32First.side_effect = first
+        with (mock.patch.object(ctypes, 'WinDLL', return_value=kernel, create=True),
+              mock.patch.object(ctypes, 'get_last_error', return_value=18, create=True),
+              mock.patch.object(ctypes, 'WinError', side_effect=lambda code: OSError(code, 'modeled Win32 failure'), create=True)):
+            job = runner._WindowsJob()
+            try:
+                yield runner, job, kernel
+            finally:
+                job.close()
+
+    def test_windows_job_abi_and_exact_launch_ownership_before_resume(self):
+        with self._modeled_job() as (runner, job, kernel):
+            limits = kernel.SetInformationJobObject.call_args.args[2]._obj
+            self.assertEqual(limits.BasicLimitInformation.LimitFlags, 0x2000)
+            self.assertEqual(ctypes.sizeof(limits), 144 if ctypes.sizeof(ctypes.c_void_p) == 8 else 112)
+            self.assertEqual(ctypes.sizeof(job.Accounting), 48)
+            self.assertEqual(ctypes.sizeof(job.ThreadEntry), 28)
+            kernel.CreateJobObjectW.assert_called_once_with(None, None)
+            events = []
+            process = mock.Mock(pid=42, _handle=9876)
+            process.poll.return_value = None
+            def popen(command, **kwargs):
+                self.assertEqual(command, ['python.exe', '-c', 'trusted suite'])
+                self.assertEqual(kwargs['creationflags'], 0x204)  # suspended + process group; no breakaway
+                self.assertIs(kwargs['env'], environment)
+                events.append('created suspended')
+                return process
+            def assign(job_handle, process_handle):
+                self.assertEqual((job_handle, process_handle), (101, 9876))
+                events.append('assigned exact process')
+                return 1
+            kernel.AssignProcessToJobObject.side_effect = assign
+            kernel.ResumeThread.side_effect = lambda handle: (events.append('resumed'), 1)[1]
+            environment = {'CARR_TEST': 'kept'}
+            api = types.SimpleNamespace(**vars(subprocess))
+            api.Popen = popen
+            with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+                  mock.patch.object(runner, '_WindowsJob', return_value=job),
+                  mock.patch.object(runner, 'subprocess', api)):
+                self.assertIs(runner._start_test_process(['python.exe', '-c', 'trusted suite'], env=environment), process)
+            self.assertEqual(events, ['created suspended', 'assigned exact process', 'resumed'])
+            self.assertIs(process._carr_job, job)
+            kernel.OpenThread.assert_called_once_with(0x802, False, 99)
+            self.assertEqual(kernel.CloseHandle.call_args_list, [mock.call(102), mock.call(103)])
+            process.kill.assert_not_called()
+
+    def test_failed_windows_assignment_never_resumes_and_reaps_suspended_child(self):
+        with self._modeled_job() as (runner, job, kernel):
+            kernel.AssignProcessToJobObject.return_value = 0
+            process = mock.Mock(pid=42, _handle=9876)
+            api = types.SimpleNamespace(**vars(subprocess))
+            api.Popen = mock.Mock(return_value=process)
+            with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+                  mock.patch.object(runner, '_WindowsJob', return_value=job),
+                  mock.patch.object(runner, 'subprocess', api)):
+                with self.assertRaisesRegex(OSError, 'modeled Win32 failure'):
+                    runner._start_test_process(['python.exe'], env={})
+            kernel.ResumeThread.assert_not_called()
+            process.kill.assert_called_once_with()
+            process.wait.assert_called_once()
+            kernel.TerminateJobObject.assert_called_once_with(101, 1)
+            kernel.CloseHandle.assert_called_once_with(101)
+            self.assertIsNone(job.handle)
+
+    def test_windows_launch_failure_closes_unassigned_job(self):
+        with self._modeled_job() as (runner, job, kernel):
+            api = types.SimpleNamespace(**vars(subprocess))
+            api.Popen = mock.Mock(side_effect=OSError('launch refused'))
+            with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+                  mock.patch.object(runner, '_WindowsJob', return_value=job),
+                  mock.patch.object(runner, 'subprocess', api)):
+                with self.assertRaisesRegex(OSError, 'launch refused'):
+                    runner._start_test_process(['python.exe'], env={})
+            kernel.AssignProcessToJobObject.assert_not_called()
+            kernel.TerminateJobObject.assert_not_called()
+            kernel.CloseHandle.assert_called_once_with(101)
+
+    def test_windows_resume_refuses_changed_thread_owner_or_suspend_count(self):
+        for owner, count in ((43, 1), (42, 0), (42, 2), (42, 0xffffffff)):
+            with self.subTest(owner=owner, count=count), self._modeled_job() as (runner, job, kernel):
+                kernel.GetProcessIdOfThread.return_value = owner
+                kernel.ResumeThread.return_value = count
+                process = mock.Mock(pid=42)
+                process.poll.return_value = None
+                with self.assertRaises(OSError):
+                    job.resume(process)
+                if owner != 42:
+                    kernel.ResumeThread.assert_not_called()
+                self.assertEqual(kernel.CloseHandle.call_args_list, [mock.call(102), mock.call(103)])
+
+    def test_windows_job_termination_acknowledgement_waits_for_all_active_descendants(self):
+        with self._modeled_job() as (runner, job, kernel):
+            states, events = iter((2, 1, 0)), []
+            kernel.TerminateJobObject.side_effect = lambda *args: (events.append('terminate'), 1)[1]
+            def query(handle, kind, pointer, size, returned):
+                self.assertEqual((handle, kind, size, returned), (101, 1, 48, None))
+                count = next(states)
+                pointer._obj.ActiveProcesses = count
+                events.append(('active', count))
+                return 1
+            kernel.QueryInformationJobObject.side_effect = query
+            process = mock.Mock(pid=42, _carr_job=job)
+            process.wait.side_effect = lambda **kwargs: events.append('root waited')
+            with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+                  mock.patch.object(runner, 'sleep', side_effect=lambda seconds: events.append('wait descendants'))):
+                runner._terminate_process_tree(process)
+            self.assertEqual(events, ['terminate', 'root waited', ('active', 2),
+                                     'wait descendants', ('active', 1), 'wait descendants', ('active', 0)])
+            process.kill.assert_not_called()
+
+    def test_windows_descendant_that_never_finishes_keeps_cleanup_failed(self):
+        with self._modeled_job() as (runner, job, kernel):
+            def active(handle, kind, pointer, size, returned):
+                pointer._obj.ActiveProcesses = 1
+                return 1
+            kernel.QueryInformationJobObject.side_effect = active
+            process = mock.Mock(pid=42, _carr_job=job)
+            process.wait.return_value = 1
+            with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+                  mock.patch.object(runner, 'monotonic', side_effect=[0, 0, 11])):
+                with self.assertRaisesRegex(runner._ProcessCleanupError, 'process-tree cleanup failed'):
+                    runner._terminate_process_tree(process)
+            kernel.QueryInformationJobObject.assert_called_once()
+            process.kill.assert_not_called()
+
+    def test_windows_successful_root_exit_still_drains_owned_descendants(self):
+        with self._modeled_job() as (runner, job, kernel):
+            process = mock.Mock(pid=42, _carr_job=job)
+            process.wait.return_value = 0
+            with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+                  mock.patch.object(runner, '_start_test_process', return_value=process)):
+                self.assertEqual(runner._run_test_process(['python.exe'], env={}), 0)
+            kernel.TerminateJobObject.assert_called_once_with(101, 1)
+            kernel.QueryInformationJobObject.assert_called_once()
+            self.assertEqual(process.wait.call_count, 2)
+            kernel.CloseHandle.assert_called_once_with(101)
+
+    def test_unproved_windows_cleanup_retains_files_and_preserves_timeout_failure(self):
+        runner = self._runner()
+        process = mock.Mock(pid=42)
+        process.wait.side_effect = subprocess.TimeoutExpired(['synthetic'], .1)
+        job = mock.Mock()
+        process._carr_job = job
+        job.terminate_and_wait.side_effect = OSError('owned descendant still active')
+        original_temp = tempfile.TemporaryDirectory
+        directories = []
+        with original_temp(prefix='CARR retained Ž ') as tmp:
+            root = Path(tmp).resolve(strict=True)
+            (root / 'suite.py').write_text('def test_ok(): pass', encoding='utf-8')
+            def tracked(*args, **kwargs):
+                directory = original_temp(*args, dir=root, **kwargs)
+                directories.append(directory)
+                return directory
+            output = io.StringIO()
+            with (mock.patch.object(runner, 'ROOT', root),
+                  mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt', environ={})),
+                  mock.patch.object(runner, '_start_test_process', return_value=process),
+                  mock.patch.object(runner, 'tempfile', types.SimpleNamespace(TemporaryDirectory=tracked)),
+                  contextlib.redirect_stdout(output)):
+                self.assertFalse(runner.run_suite('suite.py'))
+            self.assertIn('TimeoutExpired', output.getvalue())
+            self.assertIn('Temporary suite files retained', output.getvalue())
+            self.assertEqual(len(directories), 1)
+            self.assertTrue(Path(directories[0].name).is_dir())
+            self.assertFalse(directories[0]._finalizer.alive)
+            job.close.assert_called_once_with()
+            directories[0].cleanup()  # The synthetic model has no live process.
 
 
 if __name__ == '__main__':

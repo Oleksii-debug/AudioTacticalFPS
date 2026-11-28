@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_RESULTS_WITH_REVIEWED_NOT_RUN_FIX",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "tested_head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "tested_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "run_id": 46101827090,
+  "observed_at_utc": "2026-11-28 03:24:02 UTC",
+  "overall_run_conclusion": "failure",
+  "modes": [
+    {
+      "job_id": 140845769289,
+      "name": "Reader voice controls / ubuntu-24.04 / installed",
+      "conclusion": "success",
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "native_status": "NOT_RUN",
+      "native_checks": 0
+    },
+    {
+      "job_id": 140845769461,
+      "name": "Reader voice controls / ubuntu-24.04 / source",
+      "conclusion": "success",
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "native_status": "NOT_RUN",
+      "native_checks": 0
+    },
+    {
+      "job_id": 140845769489,
+      "name": "Reader voice controls / windows-2022 / source",
+      "conclusion": "failure",
+      "passed": 745,
+      "failed": 1,
+      "skipped": 0,
+      "native_status": "PASS",
+      "native_checks": 80
+    },
+    {
+      "job_id": 140845769522,
+      "name": "Reader voice controls / windows-2022 / installed",
+      "conclusion": "failure",
+      "passed": 745,
+      "failed": 1,
+      "skipped": 0,
+      "native_status": "PASS",
+      "native_checks": 80
+    }
+  ],
+  "source_identity": {
+    "python_module_count": 380,
+    "all_four_inventory_rows_identical": true,
+    "rows_compact_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971"
+  },
+  "failure": {
+    "case": "tests/speech/test_progress_speech.py::test_progress_model_reserves_actual_shared_resources_only_while_synthesizing",
+    "affected_modes": [
+      "windows-source",
+      "windows-installed"
+    ],
+    "actual": "Resource broker records the canonical long Windows output-directory path.",
+    "fixture": "The expected ResourceRequest used the render chunk's retained short 8.3 path spelling.",
+    "evidence": "Both traces differ only in disk_path spelling (RUNNER~1 versus runneradmin); all seven other request fields match.",
+    "production_change": false
+  },
+  "fix": {
+    "path": "carr-library/tests/speech/test_progress_speech.py",
+    "before_git_blob": "9ebff94cca02a0519c4cc987c45f89e17bb62397",
+    "after_git_blob": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157",
+    "source_only_tree": "174ee1292e9a93f63d9f78e233ef775fe5c318f6",
+    "execution_status": "NOT_RUN",
+    "changes": "Capture resolve(strict=True) from the actual render chunk parent while the admitted directory exists; independently assert samefile with the recorded reservation; preserve full expected ResourceRequest equality and lexical cleanup checks.",
+    "case_count_unchanged": 53,
+    "old_assertion_lines_preserved": 142,
+    "additional_assertions": 2,
+    "inverse_exact": true,
+    "exact_hunk": {
+      "before": "def test_progress_model_reserves_actual_shared_resources_only_while_synthesizing():\n    from carr_library.speech.synthesis_admission import PROTOCOL_SCRATCH_BYTES\n    speech, provider, player = selected()\n    broker = ResourceBroker.for_app(speech.library_root)\n    observations = []\n    render = provider.render\n    def admitted(*args):\n        observations.append(broker.snapshot())\n        return render(*args)\n    provider.render = admitted\n    original_play = player.play\n    def play(path):\n        assert not broker.snapshot()['leases']\n        return original_play(path)\n    player.play = play\n    assert speech.speak_progress('A reserved local notification.', volume=.2, cancelled=lambda: False)\n    assert len(observations) == 1 and len(observations[0]['leases']) == 1\n    record = observations[0]['leases'][0]\n    output_parent = provider.calls[0][2].parent.parent\n    assert record['operation_id'].startswith('reader.synthesis.')\n    assert record['request'] == ResourceRequest(\n        cpu_slots=broker.limits.cpu_slots, memory_bytes=broker.limits.memory_bytes,\n        disk_bytes=4 * 1024 * 1024 + PROTOCOL_SCRATCH_BYTES,\n        disk_path=output_parent).to_dict()\n    assert record['request']['gpu_device'] is None\n    assert record['request']['gpu_memory_bytes'] == 0\n    assert not broker.snapshot()['leases'] and not speech._run_lock.locked()\n    assert not output_parent.exists() and len(player.played) == 1\n\n",
+      "after": "def test_progress_model_reserves_actual_shared_resources_only_while_synthesizing():\n    from carr_library.speech.synthesis_admission import PROTOCOL_SCRATCH_BYTES\n    speech, provider, player = selected()\n    broker = ResourceBroker.for_app(speech.library_root)\n    observations, canonical_parents = [], []\n    render = provider.render\n    def admitted(*args):\n        observations.append(broker.snapshot())\n        # Capture the actual directory while it exists: Windows temp paths can\n        # retain an 8.3 spelling while resource admission records its long form.\n        parent = Path(args[2]).parent.parent\n        canonical_parents.append(parent.resolve(strict=True))\n        assert Path(observations[-1]['leases'][0]['request']['disk_path']).samefile(parent)\n        return render(*args)\n    provider.render = admitted\n    original_play = player.play\n    def play(path):\n        assert not broker.snapshot()['leases']\n        return original_play(path)\n    player.play = play\n    assert speech.speak_progress('A reserved local notification.', volume=.2, cancelled=lambda: False)\n    assert len(observations) == 1 and len(observations[0]['leases']) == 1\n    assert len(canonical_parents) == 1\n    record = observations[0]['leases'][0]\n    output_parent = provider.calls[0][2].parent.parent\n    assert record['operation_id'].startswith('reader.synthesis.')\n    assert record['request'] == ResourceRequest(\n        cpu_slots=broker.limits.cpu_slots, memory_bytes=broker.limits.memory_bytes,\n        disk_bytes=4 * 1024 * 1024 + PROTOCOL_SCRATCH_BYTES,\n        disk_path=canonical_parents[0]).to_dict()\n    assert record['request']['gpu_device'] is None\n    assert record['request']['gpu_memory_bytes'] == 0\n    assert not broker.snapshot()['leases'] and not speech._run_lock.locked()\n    assert not output_parent.exists() and len(player.played) == 1\n\n"
+    },
+    "independent_source_reviews": [
+      "audio_render: CLEAR",
+      "root: CLEAR"
+    ]
+  },
+  "scope": [
+    "No production module, workflow, deadline, resource limit or source guard was changed by this fix.",
+    "The focused Windows native probe passed 80 preferences/native synthesis-option checks in each mode; the separate endpoint-based percentage Seek probe was not selected by this workflow.",
+    "Manual NVDA, private-model inference, language/hearing quality and release qualification remain open."
+  ],
+  "evidence": [
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/python-source-inventory.json",
+      "git_blob": "53549620bf5f51961c9ff4e5ed50fd33575f8ef7",
+      "utf8_bytes": 65059,
+      "sha256": "507f84249c04e5d5ec09cb53000aae5090758c6317145a2207e3c780b93a05c9"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/linux-installed.json",
+      "git_blob": "28c2a7cee2331053a437321e52639e5cdeeac8f6",
+      "utf8_bytes": 8740,
+      "sha256": "0f4b1cab51d0cc34b9772ebfe8f1b097645b16ff530dbbf8d65d5d25295f6873"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/linux-source.json",
+      "git_blob": "62741e18a0e6a2d1cfc9db18c72f7d69b8b154e7",
+      "utf8_bytes": 12719,
+      "sha256": "bb72c32a38309d5fa33f31c8dd6cd3dc2537f4628ec52701389fb4b87940aea8"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-source-native-checks.txt",
+      "git_blob": "982123b38ba4a31b457bfe48ce16274d41cd2b18",
+      "utf8_bytes": 3544,
+      "sha256": "acf272ea83d0f8d375feb221ce319c1153b2fadc58c1949f62ebf6e66e2b660b"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-source-failure.txt",
+      "git_blob": "71122d317e9455f481481fddab26739724bb6b1d",
+      "utf8_bytes": 4012,
+      "sha256": "ab5f5dc53b02d3ddc4dbb5dd69e6aa95eab983ed437683dd8e51c8f0fe5c9472"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-source.json",
+      "git_blob": "db5e1d29b0f144b18c4b9bb393e7756afdeb3303",
+      "utf8_bytes": 12969,
+      "sha256": "88a5389fa4f347e0c60a226f6520636cbf39bfd8d3c5586ea8b57b73a835ff9e"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-installed-native-checks.txt",
+      "git_blob": "b9f50d403221af7d455bcb02893d0d8a3504792e",
+      "utf8_bytes": 3552,
+      "sha256": "123e7a26372579fde8ad2daaa23db562d9024f2adef8b2b006bd9bacc466d9ad"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-installed-failure.txt",
+      "git_blob": "a1eb2d88308091cf8a820d374aea2a44358b199b",
+      "utf8_bytes": 3790,
+      "sha256": "f83075d7c15ac7d89f0b2cea3729eea0bed0605887a849f9b56aec0a77b9c26b"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-installed.json",
+      "git_blob": "c9e9d3001f92d681731f6bf8ce7e0509b9371ea4",
+      "utf8_bytes": 8993,
+      "sha256": "5fff1577ef0c7872cc5199c9678bdab87bb73b8fdc33d1067e3f6b434b106a49"
+    }
+  ]
+}

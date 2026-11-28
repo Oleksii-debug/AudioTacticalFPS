@@ -1,0 +1,137 @@
+{
+  "schema": "carr-standard-uninstall-exact-artifact/1",
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "source_run": 46088685885,
+  "source_job": 140804199202,
+  "source_attempt": 1,
+  "source_workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+  "source_branch": "carr/standard-installation-evaluation-20261128",
+  "native_lifecycle": "FAILED",
+  "reader": {
+    "head": "e9edd79b1e988a93ef49d41d8213bac9fe211025",
+    "run": 46090220485,
+    "job": 140809145413,
+    "status": "success",
+    "decoded_log_utf8": {
+      "sha256": "e5ec15c27f8c38c28d9b67c663841db3a8e90b3e05f876cb56941a4e13bfa8dc",
+      "bytes": 145309
+    },
+    "scope": "Read only pinned public immutable text receipts; never extracted/imported/executed"
+  },
+  "artifact": {
+    "id": 15240398613,
+    "name": "carr-standard-installation-windows-2022-17c581015fc1ca6f3294f4cce1fe894f33a843cd-1",
+    "bytes": 137752,
+    "sha256": "9016128c2b8fa951c665e01a7343b2d89dacd29ebbd57f8c9c121e1d4ec4c777",
+    "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "run": 46088685885
+  },
+  "members": [
+    {
+      "artifact": 15240398613,
+      "mode": "standard",
+      "path": "native/uninstall.log",
+      "bytes": 7208,
+      "sha256": "87c9891a17f0bf70f530c98da6cf071882ca9a14ead7fa14087720a3644b88be",
+      "encoding": "utf-8-sig",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/uninstall.log",
+      "complete_original_bytes": true
+    },
+    {
+      "artifact": 15240398613,
+      "mode": "standard",
+      "path": "native/busy-uninstall.log",
+      "bytes": 3810,
+      "sha256": "e4582a59e21aa9eef9a4f0205b4bab01622ba4ea384db4fa1b89a2e5a61f12c3",
+      "encoding": "utf-8-sig",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/busy-uninstall.log",
+      "complete_original_bytes": true
+    },
+    {
+      "artifact": 15240398613,
+      "mode": "standard",
+      "path": "native/modified-uninstall.log",
+      "bytes": 4285,
+      "sha256": "3fb1f243cd634b6d629e457a04aaa393be67733481a650e7334091da464f43a9",
+      "encoding": "utf-8-sig",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/modified-uninstall.log",
+      "complete_original_bytes": true
+    },
+    {
+      "artifact": 15240398613,
+      "mode": "standard",
+      "path": "native/shortcuts.json",
+      "bytes": 449,
+      "sha256": "317280853c522f2b11216d77b9f423d5c1f4f182463f20f9d7285915aaabdd4c",
+      "encoding": "utf-8-sig",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/shortcuts.json",
+      "complete_original_bytes": true
+    },
+    {
+      "artifact": 15240398613,
+      "mode": "standard",
+      "path": "setup-build.json",
+      "bytes": 1761,
+      "sha256": "77387ff2caefe672a550c613912facfa6b59d00372fd254fb19cccc8f0120e0b",
+      "encoding": "utf-8-sig",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/setup-build.json",
+      "complete_original_bytes": true
+    },
+    {
+      "artifact": 15240398613,
+      "mode": "standard",
+      "path": "native-standard-installation.txt",
+      "bytes": 742,
+      "sha256": "9e357496da23757fb0678e5301b5b5f5b817a113e34830b568c0304c87a831c9",
+      "encoding": "utf-8-sig",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native-standard-installation.txt",
+      "complete_original_bytes": true
+    },
+    {
+      "artifact": 15240398613,
+      "path": "native/install.log",
+      "original_bytes": 700758,
+      "original_sha256": "3b20840499a50b7dc1010a43cb7ddb93b38a30f74fa3a0493750afe1127931fe",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/install-excerpt.txt",
+      "complete_original_bytes": false,
+      "excerpt_utf8": {
+        "sha256": "82792d41851c69c4b3452f6b6d641d5aa5b1496b937249917c9238cf6803156d",
+        "bytes": 32826
+      },
+      "scope": "Bounded error context and final tail emitted by the reviewed reader; not the complete original member."
+    },
+    {
+      "artifact": 15240398613,
+      "path": "native/repair.log",
+      "original_bytes": 700478,
+      "original_sha256": "22be73d294fd84250452ac2f88e9ea6ec0605b4d118d075dfc2990d561601ea8",
+      "destination": "carr-library/review/standard-uninstall-17c58101-2026-11-28/repair-excerpt.txt",
+      "complete_original_bytes": false,
+      "excerpt_utf8": {
+        "sha256": "368ba2bed17f6336f00d85f2c89a0b614c42e0e31eb251f85b89d7f5275d101a",
+        "bytes": 32825
+      },
+      "scope": "Bounded error context and final tail emitted by the reviewed reader; not the complete original member."
+    }
+  ],
+  "raw_member_verification": "Ordered base64 chunks reassembled; exact SHA256/length checked independently; UTF-8 roundtrip preserves original BOM/CRLF.",
+  "observed_uninstall": {
+    "inno_version": "6.7.4",
+    "python_check": "PASS",
+    "python_uninstall": "PASS",
+    "user_data_modified": false,
+    "inno_registry_removal_logged": true,
+    "inno_shortcut_removal_logged": true,
+    "inno_maintenance_files_removal_logged": true,
+    "inno_uninstall_success_logged": true,
+    "maintenance_directory_removal_logged": false,
+    "final_combined_assertion": "registry() is not None or (root / 'app').exists() or (root / 'maintenance').exists()",
+    "failure": "Normal uninstall left program files or registration."
+  },
+  "interpretation": "The completed log records successful maintenance deletion, registry/shortcut/file cleanup and successful Inno exit, but no maintenance-directory removal. Combining that trace with the exact producer pre-creating maintenance and Inno's existing-directory behavior supports the empty-maintenance-directory explanation; the original probe did not print separate post-uninstall stat values. A corrected same-head actual native rerun is required.",
+  "limits": [
+    "No original acceptance assertion is relaxed.",
+    "No uninstaller, application binary, private model or user data is published.",
+    "No full native lifecycle PASS, signed release, physical input or human NVDA claim."
+  ]
+}

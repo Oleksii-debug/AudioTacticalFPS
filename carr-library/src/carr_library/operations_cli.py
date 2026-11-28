@@ -1,5 +1,6 @@
 """Read shared operation checkpoints or explicitly configure cooperative limits."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ from .durable_state import read_json
 from .studio.cli import data_directory
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Resonance saved operations and resource allowances')
     parser.add_argument('--data-dir', type=Path)

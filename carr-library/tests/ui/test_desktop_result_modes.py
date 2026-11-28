@@ -29,7 +29,7 @@ def panel(tmp_path):
     instance.bound_workspace = workspace
     instance.bound_library = app
     instance.bound_topic = None
-    for name in ('query', 'retrieval', 'result_mode', 'grid', 'details', 'status', 'collection'):
+    for name in ('query', 'retrieval', 'result_mode', 'grid', 'details', 'status', 'collection', 'previous_page', 'next_page'):
         setattr(instance, name, Mock())
     instance.query.GetValue.return_value = 'railway'
     instance.retrieval.GetSelection.return_value = 0
@@ -40,6 +40,7 @@ def panel(tmp_path):
     instance.results = {}
     instance._context_epoch = 0
     instance._refresh_details = Mock()
+    instance._reset_pages()
     return instance
 
 
@@ -47,7 +48,7 @@ def panel(tmp_path):
 def test_control_dispatches_presentation_to_real_application(panel, selection):
     panel.result_mode.GetSelection.return_value = selection
     panel.on_search(None)
-    _, operation, done = panel.frame.run_job.call_args.args
+    _, operation, done = panel.frame.run_job.call_args.args[:3]
     rows = operation()
     done(rows)
     assert rows and panel.model.hits[0].quote == rows[0].quote
@@ -65,7 +66,7 @@ def test_invalid_control_selection_is_rejected_before_search(panel):
 
 def test_changed_options_clear_selection_and_discard_pending_search(panel):
     panel.on_search(None)
-    _, operation, done = panel.frame.run_job.call_args.args
+    _, operation, done = panel.frame.run_job.call_args.args[:3]
     rows = operation()
     done(rows)
     assert panel.model.hits and panel.results
@@ -83,7 +84,7 @@ def test_advanced_control_dispatches_to_real_scoped_search(panel):
     panel.retrieval.GetSelection.return_value = panel.MODES.index('advanced')
     panel.query.GetValue.return_value = 'railway AND NOT airport'
     panel.on_search(None)
-    _, operation, done = panel.frame.run_job.call_args.args
+    _, operation, done = panel.frame.run_job.call_args.args[:3]
     rows = operation()
     done(rows)
     assert len(rows) == 1
@@ -107,7 +108,7 @@ def test_query_builder_cancel_preserves_current_results(panel, monkeypatch):
     monkeypatch.setitem(sys.modules, 'carr_library.ui.advanced_search',
                         SimpleNamespace(show_query_builder=builder))
     panel.on_search(None)
-    _, operation, done = panel.frame.run_job.call_args.args
+    _, operation, done = panel.frame.run_job.call_args.args[:3]
     done(operation())
     before = panel.model.hits, dict(panel.results), panel._context_epoch
     panel.on_build_query()
@@ -122,7 +123,7 @@ def test_query_builder_use_selects_advanced_and_invalidates_pending_results(pane
     monkeypatch.setitem(sys.modules, 'carr_library.ui.advanced_search',
                         SimpleNamespace(show_query_builder=builder))
     panel.on_search(None)
-    _, operation, done = panel.frame.run_job.call_args.args
+    _, operation, done = panel.frame.run_job.call_args.args[:3]
     rows = operation()
     panel.on_build_query()
     panel.retrieval.SetSelection.assert_called_once_with(panel.MODES.index('advanced'))

@@ -12,7 +12,6 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.research import topic_literature_matrix as matrix_module
 from carr_library.research.topic_literature_matrix import build_literature_matrix, export_matrix
-from carr_library.research.outline_export import export_topic_outline as export_outline
 
 
 @pytest.fixture
@@ -153,7 +152,7 @@ def test_one_snapshot_for_topics_notes_and_tags(research, monkeypatch):
     assert refreshed.sources[0].notes == ('New note',) and refreshed.themes == ('New theme',)
 
 
-@pytest.mark.parametrize('action', [build_literature_matrix, export_matrix, export_outline])
+@pytest.mark.parametrize('action', [build_literature_matrix, export_matrix])
 def test_damaged_retained_source_is_never_hidden_by_filter(research, action):
     app, workspace = research
     imported, _ = save_source(app, workspace, 'root', tags=('Included',))
@@ -178,7 +177,7 @@ def test_revoked_pdf_review_blocks_fresh_matrix_and_exports(research, tmp_path):
     shown = build_literature_matrix(app, workspace, 'root')
     assert shown.sources[0].evidence[0].locations == ('PDF page 1 (printed page unverified)',)
     app.revoke_pdf_review(workspace, hit.edition_id, hit.revision, 1)
-    for action in (build_literature_matrix, export_matrix, export_outline):
+    for action in (build_literature_matrix, export_matrix):
         with pytest.raises(ValueError):
             action(app, workspace, 'root')
 
@@ -216,11 +215,10 @@ def test_real_two_page_span_keeps_individual_quotes_locations_and_citations(rese
     assert 'PDF page 1' in evidence.citations[0] and 'PDF page 2' in evidence.citations[1]
     csv_row, = csv.DictReader(io.StringIO(export_matrix(app, workspace, 'root')))
     assert json.loads(csv_row['quotation_slices_json']) == [[a.quote for a in anchors]]
-    text = export_outline(app, workspace, 'root', format='text')
+    text = export_matrix(app, workspace, 'root', format='markdown')
     assert 'Source slice 1 of 2' in text and 'Source slice 2 of 2' in text
-    quotes = [json.loads(line.removeprefix('Exact quotation: ')) for line in text.splitlines()
-              if line.startswith('Exact quotation: ')]
-    assert quotes == [a.quote for a in anchors]
+    for anchor in anchors:
+        assert json.dumps(anchor.quote, ensure_ascii=False) in text
 
 
 def test_cancel_before_read_and_during_historical_verification(research, monkeypatch):
@@ -310,5 +308,3 @@ def test_export_is_fresh_and_output_limit_is_explicit(research, monkeypatch):
     monkeypatch.setattr(matrix_module, 'MAX_EXPORT_BYTES', 1)
     with pytest.raises(ValueError, match='output size'):
         export_matrix(app, workspace, 'root')
-    with pytest.raises(ValueError, match='output size'):
-        export_outline(app, workspace, 'root')

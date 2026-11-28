@@ -8,6 +8,7 @@ import sys
 
 import pytest
 
+import carr_library
 from carr_library.application import LibraryApp
 from carr_library.evidence_drafts import (
     DraftConflict, EvidenceDrafts, FILENAME, MAX_NOTE_BYTES, validate_evidence_drafts,
@@ -181,20 +182,28 @@ def test_limits_reject_new_entries_without_evicting_old_notes(evidence, monkeypa
 def test_checkpoint_survives_process_exit_without_destructors(evidence):
     app, row, store = evidence
     program = '''import os, sys
+sys.path[:0] = sys.argv[4:]
+from pathlib import Path
+import carr_library
 from carr_library.application import LibraryApp
 from carr_library.evidence_drafts import EvidenceDrafts
 app=LibraryApp(sys.argv[1])
 row,=app.evidence(sys.argv[2],sys.argv[3])
 EvidenceDrafts(app.root).checkpoint(row,'Process stopped after durable checkpoint')
+print(Path(carr_library.__file__).resolve(), flush=True)
 os._exit(19)
 '''
-    environment = dict(os.environ)
-    source = Path(__file__).resolve().parents[2] / 'src'
-    environment['PYTHONPATH'] = os.pathsep.join((str(source), str(source.parent)))
-    result = subprocess.run([sys.executable, '-c', program, str(app.root),
-                             row.anchor.identity.workspace, row.topic_id], env=environment,
+    # Use the package imported by this test: an installed-wheel gate must not
+    # silently replace it with the adjacent source checkout in its subprocess.
+    package_root = Path(carr_library.__file__).resolve().parent.parent
+    roots = [str(package_root)]
+    if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+        roots.append(str(package_root.parent))
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c', program,
+                             str(app.root), row.anchor.identity.workspace, row.topic_id, *roots],
                             capture_output=True, timeout=20)
     assert result.returncode == 19, result.stderr.decode()
+    assert result.stdout.decode().strip() == str(Path(carr_library.__file__).resolve())
     assert EvidenceDrafts(app.root).get(row.anchor.identity.workspace, row.topic_id, row.evidence_id).text == (
         'Process stopped after durable checkpoint')
     assert app.evidence(row.anchor.identity.workspace, row.topic_id)[0].note == 'Saved baseline'

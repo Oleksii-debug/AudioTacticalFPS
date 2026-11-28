@@ -16,8 +16,10 @@ from uuid import uuid4
 
 from ..audio.models import AudioBudget, AudioCancelled, AudioError
 from ..audio.process import publish_file, run_process
+from ..audio.cleanup import AudioCleanupPending
+from .ownership import operation_lock, retained_context
 from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
-                             read_json, regular, state_lock, sync_directory)
+                             read_json, read_json_snapshot, regular, state_lock, sync_directory)
 from ..research.export_file import write_binary_export
 from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
                      fingerprint, settings as validate_settings, validated_result,
@@ -149,6 +151,8 @@ def _published_identity(path):
 
 
 class TranscriptionService:
+    protocol = 'local-file-job/1'
+
     def __init__(self, root, *, broker=None, budget=None, stop_grace=2.0):
         self.root = local_path(root)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -302,8 +306,20 @@ class TranscriptionService:
     jobs = list_jobs
 
     def _control(self, identity):
-        path = self._job_root(identity) / 'control.json'
-        value = read_json(path) if path.exists() else {'action': 'run'}
+        path = self.jobs_root / _id(identity) / 'control.json'
+        if '..' in path.parts or not path.is_relative_to(self.root):
+            raise ValueError('The transcription control path is outside the selected directory.')
+        # The shared reader checks every ancestor before and after opening.
+        # Keep those fresh checks and actual bytes on every call, without a
+        # redundant eager walk of the same present-file ancestors.
+        value, token = read_json_snapshot(path, allow_missing=True)
+        if token is None:
+            # Preserve the legacy absent-control default only after the
+            # original strict root check; a newly appeared control still wins.
+            path = self._job_root(identity) / 'control.json'
+            value, token = read_json_snapshot(path, allow_missing=True)
+            if token is None:
+                value = {'action': 'run'}
         if value.get('action') not in ('run', 'pause', 'cancel'):
             raise ValueError('Invalid transcription control state.')
         return value['action']
@@ -352,7 +368,7 @@ class TranscriptionService:
 
     def rebind_runtime(self, identity, profile_id):
         job_root = self._job_root(identity)
-        with state_lock(job_root, 'run'):
+        with operation_lock(job_root, 'run'):
             state = self._load(identity)
             if state['status'] in ACTIVE or (state.get('recovery_review_required') and not state.get('restored')):
                 raise RuntimeError('Confirm the interrupted external worker stopped before rebinding this job.')
@@ -378,7 +394,7 @@ class TranscriptionService:
 
     def continue_job(self, identity):
         job_root = self._job_root(identity)
-        with state_lock(job_root, 'run'):
+        with operation_lock(job_root, 'run'):
             state = self._load(identity)
             if state['status'] in ACTIVE:
                 state.update(status='interrupted', recovery_review_required=True)
@@ -564,7 +580,7 @@ class TranscriptionService:
     def run(self, identity, *, progress=None, cancel=None):
         from ..operations import ResourceBroker, ResourceRequest
         job_root = self._job_root(identity)
-        with state_lock(job_root, 'run'):
+        with operation_lock(job_root, 'run'):
             state = self._load(identity)
             if state['status'] in ACTIVE:
                 state.update(status='interrupted', recovery_review_required=True)
@@ -689,8 +705,8 @@ class TranscriptionService:
                 environment.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
                                    HF_HUB_DISABLE_TELEMETRY='1', PYTHONUTF8='1')
                 process_active = False
-                with broker.reserve(request, operation_id='asr:' + identity,
-                                    cancelled=lambda: not process_active and action() != 'run', timeout=60) as lease:
+                with retained_context(broker.reserve(request, operation_id='asr:' + identity,
+                                    cancelled=lambda: not process_active and action() != 'run', timeout=60)) as lease:
                     # Admission can wait behind another task. Revalidate after
                     # that wait so changed code/weights never inherit old trust.
                     self._verify_profile(profile, cancel=lambda: action() != 'run', progress=progress)
@@ -703,7 +719,7 @@ class TranscriptionService:
                     run_process([profile['python_executable'], '-I', '-B', '-X', 'utf8', profile['worker_path'],
                                  '--job-dir', str(worker_root)], budget=self.budget,
                                 cancelled=checked_poll, watch=(worker_root / 'logs', worker_root / 'results'),
-                                env=environment, cwd=worker_root)
+                                env=environment, cwd=worker_root, owned_tree=True)
                 selected = action()
                 if selected != 'run':
                     state['status'] = 'paused' if selected == 'pause' else 'cancelled'
@@ -715,6 +731,13 @@ class TranscriptionService:
                         raise ValueError('The worker exited without a complete set of verified requested results.')
                     state['status'] = 'complete'
                 state['error'] = ''
+            except AudioCleanupPending:
+                # No checkpoint admission, runtime rehash, or cache movement is
+                # safe until the original worker family actually exits.
+                state.update(status='interrupted', recovery_review_required=True,
+                    error='Worker cleanup remains pending; job and resource ownership are retained.')
+                self._save(state)
+                raise
             except Exception as error:
                 invalid_runtime = error if isinstance(error, _RuntimeProfileChanged) else None
                 if invalid_runtime is None and action() == 'run':

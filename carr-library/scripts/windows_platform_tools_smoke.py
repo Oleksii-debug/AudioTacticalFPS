@@ -9,6 +9,10 @@ Manual NVDA acceptance and physical playback remain NOT_RUN.
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import json
+import argparse
+import faulthandler
+from hashlib import sha256
+import sysconfig
 from pathlib import Path
 import struct
 import sys
@@ -115,11 +119,21 @@ class SyntheticTranscriptionService:
         return {'status': 'complete', 'fixture': True, 'files': [str(target)], 'citation_authority': False}
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--source', type=Path)
+    parser.add_argument('--installed-root', type=Path)
+    args = parser.parse_args(argv)
+    if args.source is not None and args.installed_root is not None:
+        parser.error('Select source or installed provenance, not both.')
+    if args.source is not None:
+        sys.path.insert(0, str(args.source.resolve() / 'src'))
     if sys.platform != 'win32':
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Actual Windows is required.',
                           'manual_nvda': 'NOT_RUN'}))
         return 77
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(180, exit=True)
     import wx
     from carr_library.application import LibraryApp
     from carr_library.operations import ResourceBroker
@@ -129,22 +143,37 @@ def main():
     from carr_library.speech.progress_speech import LocalProgressSpeech
     from carr_library.speech.runtime import NativeSapiProvider
     from dataclasses import replace
-    from carr_library.progress import ProgressHub
-    from carr_library.progress_feedback import ProgressFeedback
-    from carr_library.progress_preferences import ProgressPreferences
-    from carr_library.speech.progress_speech import snapshot_speech_provider
+    from carr_library.ui.operation_progress import ProgressPreferences
     import carr_library.ui.transcription_dialog as transcription_module
     import carr_library.ui.operations_dialog as operations_module
+    import carr_library.transcription as receipt_module
+    import carr_library.transcription.service as local_file_module
 
     app = wx.App(False)
     result = {'status': 'RUNNING', 'platform': 'win32', 'checks': [],
               'asr_service': 'SYNTHETIC_UI_FIXTURE', 'model_inference': 'NOT_RUN',
               'manual_nvda': 'NOT_RUN', 'physical_playback': 'NOT_RUN',
+              'protocol': 'local-file-job/1',
               'origins': {module.__name__: str(Path(module.__file__).resolve())
-                          for module in (transcription_module, operations_module)}}
+                          for module in (transcription_module, operations_module, receipt_module, local_file_module)}}
     source_root = Path(__file__).resolve().parents[1] / 'src'
-    assert all(not Path(path).is_relative_to(source_root) for path in result['origins'].values()), \
-        'Platform smoke must exercise the installed distribution.'
+    expected_root = (args.source.resolve() / 'src' / 'carr_library' if args.source is not None else
+                     args.installed_root.resolve() if args.installed_root is not None else
+                     Path(sysconfig.get_path('purelib')).resolve() / 'carr_library')
+    package_root = Path(receipt_module.__file__).resolve().parents[1]
+    assert package_root == expected_root, 'The selected distribution differs from the actual imported package.'
+    result['source_override'] = str(args.source) if args.source is not None else None
+    result['module_sha256'] = {}
+    for module, origin in result['origins'].items():
+        path = Path(origin)
+        assert path.is_relative_to(expected_root), 'A mixed source/installed module was imported.'
+        if args.source is None:
+            assert not path.is_relative_to(source_root), 'Platform smoke requires installed modules.'
+        raw = path.read_bytes()
+        result['module_sha256'][module] = sha256(raw).hexdigest()
+        source = source_root / 'carr_library' / path.relative_to(expected_root)
+        if args.source is None and source.is_file():
+            assert raw == source.read_bytes(), 'Installed module differs from the exact checkout source.'
 
     def check(name, value):
         if not value:
@@ -364,34 +393,44 @@ def main():
         selected_voice = progress_voices[0]
         provider = LocalProgressSpeech(registry, selected_voice.id,
             library_root=library.root, _player_factory=CapturePlayback)
-        preferences = ProgressPreferences(mode='speech', volume=35)
-        adapter = snapshot_speech_provider(provider)
-        speech = ProgressFeedback(preferences, speech_provider=adapter)
-        reporter = ProgressHub().start('Verifying local transcript files', total=2)
-        reporter.update(completed=1, phase='Verifying local transcript files')
+        preferences = ProgressPreferences(mode='speech', volume=.35, background=True)
+        speech = frame.operation_progress
+        speech.set_speech_provider(provider, root=library.root)
+        speech.configure(preferences)
+        sound = speech.sound
         try:
+            token = speech.start('Verifying local transcript files', total=2)
+            speech.update(completed=1, total=2, phase='Verifying local transcript files', token=token)
             check('native progress speech queues without blocking the GUI',
-                  speech.update(reporter.snapshot()) is not None)
+                  sound._thread is not None and sound._thread.ident != threading.get_ident())
             check('actual native SAPI progress synthesis produces measured non-silent PCM',
-                  pump(lambda: played.is_set() or bool(speech.last_error), timeout=45)
+                  pump(lambda: played.is_set() or bool(sound.last_error), timeout=45)
                   and played.is_set() and measured['frames'] > 0 and measured['width'] == 2
                   and measured['peak'] > 100 and measured['thread'] != threading.get_ident())
-            speech.set_preferences(replace(preferences, muted=True))
-            reporter.update(completed=2)
-            check('quiet progress speech rejects queued playback', speech.update(reporter.snapshot()) is None)
+            check('the first owned progress notification drains before quiet review',
+                  pump(lambda: sound._thread is None or not sound._thread.is_alive(), timeout=10))
+            before = len(pcm_paths)
+            speech.configure(replace(preferences, quiet=True))
+            speech.update(completed=2, total=2, token=token)
+            speech._tick()
+            check('quiet progress speech rejects queued playback',
+                  sound.muted and speech._pending_sound is None and len(pcm_paths) == before)
         finally:
-            speech.close()
-            if speech._worker is not None:
-                speech._worker.join(5)
-            adapter.close()
+            speech.configure(ProgressPreferences())
+            speech.set_speech_provider(None)
+            sound.close()
+            if sound._thread is not None:
+                sound._thread.join(5)
+            registry.close()
         check('progress speech worker stops and removes temporary PCM',
-              speech._worker is not None and not speech._worker.is_alive()
+              sound._thread is not None and not sound._thread.is_alive()
               and all(not path.exists() for path in pcm_paths))
         result['native_sapi_progress_pcm'] = {key: value for key, value in measured.items() if key != 'thread'}
         result['native_sapi_progress_voice'] = {'id': selected_voice.id, 'language': selected_voice.language}
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'
+    faulthandler.cancel_dump_traceback_later()
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), flush=True)
     return 0
 

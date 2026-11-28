@@ -1,0 +1,150 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a"
+  },
+  "observed": {
+    "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+    "run": 46093366008,
+    "job": 140819158582,
+    "module": "tests/academic_integration/test_formatting.py",
+    "passed": 31,
+    "failed": 1,
+    "test": "test_actual_engine_timeout_is_bounded",
+    "error": "The expected CitationError for the .1s processor budget is followed and masked by PermissionError WinError32 deleting private error.txt.",
+    "evidence_tree": "95bd04fc8583fb236741a3ca1fcaa0168a45816a",
+    "trace_blob": "01c2e16c14ba100686f8c57bba25a61c8bd9a536",
+    "source_blob_unchanged_on_base": "1efe0803a14101797d203f80b384b87e7bbd4fec",
+    "interpreter": {
+      "implementation": "CPython",
+      "version": "3.11.9",
+      "source_command": "Existing CARR_PYTHON venv Scripts/python.exe",
+      "observed_in": "Completed source-step environment and pytest platform lines"
+    },
+    "cause_limit": "The log proves the private diagnostic file remains locked after leader-only cleanup. It does not identify the live PID/handle holder. A Windows venv redirector and its child retaining inherited streams are a source-supported explanation, not a measured attribution here."
+  },
+  "implementation": {
+    "description": "Reuse the existing native process-family owner with the existing fixed citation file protocol.",
+    "lifecycle": [
+      "Retain the exact TemporaryDirectory through all causal cleanup owners.",
+      "Retain all three existing input/output/error file objects through the same owners.",
+      "Enter existing owned_process inside the existing caller lifetime.",
+      "Drain native family before final cancellation, output-size and exit-status checks.",
+      "Close streams before removing the retained private directory."
+    ],
+    "preserved": [
+      "Selected interpreter/explicit Node selection and argv construction.",
+      "Input/style/locale/processor source authority and hashes.",
+      "Environment allowlist, no preload injection and shell=False.",
+      "Existing .1–60s processor budget, .025s polling, input/output/error size limits.",
+      "Existing error/result decoding and public formatter contract.",
+      "No filesystem deletion retry, new process runner, broker, service, timeout increase or gate relaxation."
+    ],
+    "reuse": [
+      {
+        "path": "src/carr_library/audio/process.py",
+        "blob": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c",
+        "api": "owned_process"
+      },
+      {
+        "path": "src/carr_library/audio/cleanup.py",
+        "blob": "139d382383083301b21f38da3301ed36e590fbb6",
+        "api": "retained_context"
+      },
+      {
+        "path": "src/carr_library/audio/windows_process.py",
+        "blob": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+        "api": "Existing native Windows Job member proof"
+      },
+      {
+        "path": "src/carr_library/audio/models.py",
+        "blob": "085587e46381a5b2db17dd75fa8b7b793f4094d1",
+        "api": "Unchanged typed dependencies"
+      }
+    ]
+  },
+  "changed_files": [
+    {
+      "path": "carr-library/src/carr_library/academic_integration/formatting.py",
+      "before": "1efe0803a14101797d203f80b384b87e7bbd4fec",
+      "after": "798560a96e409047dd36a6f77e1ca6a864c5ccc1",
+      "before_sha256": "a03e3f837f45e1d0561619ef0fbec113a8991861d7fd712ff60b1f6f41689780",
+      "after_sha256": "344f1b31286a23cbb6379dbbaf51cbe7e6883fe9588b4341ae9e76435f64cb90",
+      "hunk_count": 6,
+      "full_cloud_readback": "EXACT",
+      "inverse": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_formatting.py",
+      "before": "08bb9228fa52781a39b203549fdaed51f5288c55",
+      "after": "349f32097e93164e07fbbe978392d955c596a596",
+      "before_sha256": "b70218f25d9b594c84f61bb39e10025c5a1786dd08c663983affd533ac1decba",
+      "after_sha256": "2c46cf4fcc08cb6118ad35cdc08a8b61f1bbf6856088ed00e8e690e3317d0bdd",
+      "hunk_count": 8,
+      "full_cloud_readback": "EXACT",
+      "inverse": "EXACT"
+    }
+  ],
+  "preservation": {
+    "source_inverse": "EXACT",
+    "test_inverse": "EXACT",
+    "authority_and_worker_prefix": true,
+    "public_render_tail": true,
+    "original_timeout_test": true,
+    "original_assertions": 64,
+    "original_assertions_ordered": true,
+    "ordinary_cases": 32,
+    "added_actual_family_cases": 7,
+    "planned_total_cases": 39,
+    "old_timeout_seconds": 0.1,
+    "old_elapsed_assert_seconds": 3,
+    "selector": "tests/academic_integration/test_formatting.py",
+    "added_skips": 0,
+    "changed_workflows": 0
+  },
+  "tests": {
+    "selector": "tests/academic_integration/test_formatting.py",
+    "planned_existing": 32,
+    "planned_added": 7,
+    "planned_total": 39,
+    "old_fixture_adaptations": [
+      "Real cancellation observer wraps the current owned_process context.",
+      "Tampered-processor refusal sentinel observes the same adapter entry.",
+      "Explicit Node dispatch-only fixture yields its existing completed object through the adapter context; it retains all original assertions and no actual Node qualification is claimed."
+    ],
+    "new_cases": [
+      {
+        "cases": 3,
+        "scope": "Real actual-file descendant under the native owner; complete executes the original pinned QuickJS worker, timeout and cancellation use a real sleeping family. Independent Windows process handle or Linux pidfd proves descendant exit before files/stage release."
+      },
+      {
+        "cases": 4,
+        "scope": "Two actual native families, direct pending or a later CitationCancelled cause, in both completion orders. Stage and original file objects remain live after the first owner stops; final callback acknowledgment proves release only after both."
+      }
+    ],
+    "fixture_bounds": "New readiness waits are finite10s; cleanup checks5s. The existing unstubbed .1s product-timeout/<3s elapsed test is byte-identical. New readiness observation does not change production deadlines.",
+    "adjacent_api_review": "Six other academic integration test modules contain no formatting.subprocess/signal adapter patch dependency; distinct DOI runner remains untouched.",
+    "added_skips": 0
+  },
+  "reviewers": [
+    {
+      "agent": "/root",
+      "verdict": "CLEAR",
+      "scope": "Full source delta and all39 planned cases; source-only."
+    },
+    {
+      "agent": "/root/voice_reading",
+      "verdict": "CLEAR",
+      "scope": "Same-owner family proof, nested retained contexts, all64 old assertions, actual child/member fixtures and notification order; source-only."
+    }
+  ],
+  "qualification_limits": [
+    "No tests executed by this review.",
+    "Actual new source/installed Linux/Windows CI remains required.",
+    "No citation quality claim derives from synthetic timeout/cleanup fixtures; original actual pinned-engine cases remain."
+  ]
+}

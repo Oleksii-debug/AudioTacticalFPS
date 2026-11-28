@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "base_head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "base_blob": "23f5e6524e5b230a71cff2e8d06beace7d225450",
+  "path": ".github/workflows/carr-windows.yml",
+  "reason": "Completed immutable 5d bundle stdout and JUnit show the ImmediateFailures print observer itself raises CP1252 UnicodeEncodeError while reporting the preceding UTF-8 fixture failure.",
+  "change": "Render non-ASCII diagnostic code points as ASCII escapes only in the failure observer display. Preserve the whole nodeid and longrepr and original pytest status. This is not a byte-exact reconstruction of console output; the unchanged JUnit XML remains the underlying report.",
+  "invariants": [
+    "all test selectors and assertions unchanged",
+    "all product modules unchanged",
+    "Python/global/default filesystem encoding unchanged",
+    "no exception swallowing or result relabeling",
+    "all timeouts and permissions unchanged",
+    "exact endpoint/branch/privacy guards unchanged",
+    "head-qualified non-cancelling concurrency unchanged"
+  ],
+  "source_proof": {
+    "artifact_id": 15246270861,
+    "zip_sha256": "439f806508f05a9a49a233add106b8749cc4b4fe79b94ab1d5498d7b73ade388",
+    "xml_sha256": "16fabea1e9ec1e9bfc3a0e2b403fa01c6e3861e429a58deb3846885fe9ccc675",
+    "text_sha256": "9ad60d294dfed08e354082c5a99708721fd19900763c4b1d160192c29c2b2578"
+  },
+  "inverse_preimage_recovery": true,
+  "execution": "NOT_RUN on successor",
+  "independent_review": {
+    "reviewer": "locate_project",
+    "verdict": "CLEAR",
+    "scope": "Exact inverse to 23f5e652 with only the reviewed 1-to-3-line observer hunk; full caller and strict JUnit context inspected."
+  }
+}

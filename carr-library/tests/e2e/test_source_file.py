@@ -156,8 +156,8 @@ def test_cancel_after_copy_verification_removes_only_the_new_copy(source,monkeyp
     app,workspace,_,_,imported,hit,raw = source
     cancelled = Event()
     check = source_file._view_matches
-    def cancel_after_check(*args):
-        result = check(*args)
+    def cancel_after_check(*args, **kwargs):
+        result = check(*args, **kwargs)
         cancelled.set()
         return result
     monkeypatch.setattr(source_file,'_view_matches',cancel_after_check)
@@ -173,8 +173,8 @@ def test_cancellation_is_rechecked_at_the_native_launch_boundary(source,monkeypa
     selected = prepare_source_file(app,workspace,hit.ref,hit.revision)
     cancelled = Event()
     check = source_file._view_matches
-    def cancel_after_check(*args):
-        result = check(*args)
+    def cancel_after_check(*args, **kwargs):
+        result = check(*args, **kwargs)
         cancelled.set()
         return result
     monkeypatch.setattr(source_file,'_view_matches',cancel_after_check)

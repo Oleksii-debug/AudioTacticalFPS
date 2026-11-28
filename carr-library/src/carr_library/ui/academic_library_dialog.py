@@ -8,8 +8,7 @@ from pathlib import Path
 import threading
 
 from ..research.academic_library import AcademicLibrary
-from ..research.export_file import capture_export_destination, write_export, export_completion
-from .export_destination import confirm_export_destination
+from ..research.export_file import capture_export_destination, export_completion, write_export
 
 
 PAGE_SIZE = 200
@@ -96,18 +95,27 @@ class AcademicController:
                 None if identity is None else (identity,), format=format, include_notes=include_notes)
 
     def export_to(self, destination, *, identity=None, format='text', include_notes=False,
-                  approval=None, return_receipt=False):
-        content, receipt = self.export_result(destination, identity=identity, format=format,
-            include_notes=include_notes, approval=approval)
-        return receipt if return_receipt else content
+                  cancelled=lambda: False, approval=None):
+        """Preserve the existing text-returning controller API."""
+        content, _receipt = self.export_with_receipt(destination, identity=identity,
+            format=format, include_notes=include_notes, cancelled=cancelled, approval=approval)
+        return content
 
-    def export_result(self, destination, *, identity=None, format='text', include_notes=False,
-                      approval=None):
-        """Return the rendered text and its publication receipt without rereading."""
-        if approval is None:
-            approval = capture_export_destination(destination, private_root=self.library.root)
+    def export_with_receipt(self, destination, *, identity=None, format='text', include_notes=False,
+                            cancelled=lambda: False, approval=None):
+        """Return the text and its committed publication receipt to the UI."""
+        if not callable(cancelled):
+            raise ValueError('An export cancellation callback is required.')
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
         content = self.export(identity=identity, format=format, include_notes=include_notes)
-        receipt = write_export(destination, content, private_root=self.library.root, approval=approval)
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+        # Reauthorize after rendering, immediately before the guarded writer.
+        with self.library.read(self.workspace):
+            pass
+        receipt = write_export(destination, content, private_root=self.library.root,
+                               cancelled=cancelled, approval=approval)
         return content, receipt
 
     def books(self):
@@ -556,6 +564,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self._window_alive = True
             self.controller, self.executor = controller, executor
+            self._export_host = parent
             self.rows, self.offset, self.has_more = (), 0, False
             self.pending = False
             self.cancel_event = threading.Event()
@@ -674,7 +683,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.previous.Enable(self.offset > 0)
             self.next.Enable(self.has_more)
 
-        def _run(self, title, operation, done):
+        def _run(self, title, operation, done, *, publication=False):
             if not self._window_alive:
                 return
             if self.pending:
@@ -699,11 +708,14 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     report(self.status, f'{title} not completed: {error}')
                     return
                 try:
-                    if self.cancel_event.is_set():
+                    # A successful writer result means the atomic publication
+                    # completed; a later cancel cannot undo that saved file.
+                    if self.cancel_event.is_set() and not publication:
                         raise TimeoutError('Operation cancelled.')
                     done(result)
                 except Exception as exc:
-                    report(self.status, f'{title} not completed: {exc}')
+                    if self._window_alive:
+                        report(self.status, f'{title} not completed: {exc}')
 
             if self.executor is None:
                 try:
@@ -731,8 +743,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
         def on_cancel(self, event=None):
             if not self._window_alive:
                 return
+            self.cancel_event.set()
             if self.pending:
-                self.cancel_event.set()
                 report(self.status, 'Cancellation requested. Wait for the current operation to stop.')
             elif self.IsModal():
                 self.EndModal(wx.ID_CANCEL)
@@ -742,6 +754,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
         def on_close(self, event):
             if not self._window_alive:
                 return
+            self.cancel_event.set()
             if self.pending:
                 self.on_cancel()
                 if event.CanVeto():
@@ -985,17 +998,41 @@ def create_academic_dialog(parent, controller, *, executor=None):
             finally:
                 dialog.Destroy()
 
-        def export_to(self, path, *, format='text', identity=None, include_notes=False, approval=None):
-            content, receipt = self.controller.export_result(path, identity=identity, format=format,
-                include_notes=include_notes, approval=approval)
-            message = (f'Bibliography exported to {path}. '
-                       + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
-            report(self.status, export_completion(message, receipt))
+        def export_to(self, path, *, format='text', identity=None, include_notes=False):
+            content, receipt = self.controller.export_with_receipt(
+                path, identity=identity, format=format, include_notes=include_notes)
+            report(self.status, export_completion(f'Bibliography exported to {path}. '
+                   + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'), receipt))
             return content
 
         def on_export(self, event=None):
+            if not self._window_alive or self.pending:
+                return
             try:
+                if self.executor is None:
+                    raise ValueError('The background export worker is unavailable.')
+                controller = self.controller
+                library, workspace = controller.library, controller.workspace
+                host = getattr(self, '_export_host', None)
+                host_library = getattr(host, 'library', None)
+                host_scope = getattr(host, 'active', None)
+                token = self._export_token = object()
+                self.cancel_event.clear()
+
+                def cancelled():
+                    return (not self._window_alive or self._export_token is not token
+                        or self.controller is not controller or self.cancel_event.is_set()
+                        or controller.library is not library or controller.workspace != workspace
+                        or getattr(host, '_closing', False)
+                        or getattr(host, 'library', None) is not host_library
+                        or getattr(host, 'active', None) != host_scope)
+
+                def current():
+                    if cancelled():
+                        raise TimeoutError('Export cancelled or its library changed; the destination was not changed.')
+
                 options = self._export_options()
+                current()
                 if options is None:
                     return
                 (format, label, extension), identity, include_notes = options
@@ -1009,14 +1046,42 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     path = Path(dialog.GetPath())
                 finally:
                     dialog.Destroy()
-                approval = confirm_export_destination(self, path,
-                    private_root=self.controller.library.root, wx_module=wx)
-                if approval is None:
-                    return
-                self.export_to(path, format=format, identity=identity,
-                               include_notes=include_notes, approval=approval)
+                current()
+
+                def capture():
+                    current()
+                    with library.read(workspace):
+                        pass
+                    return capture_export_destination(path, private_root=library.root, cancelled=cancelled)
+
+                def captured(approval):
+                    current()
+                    if not approval.require_absent:
+                        decision = wx.MessageBox(
+                            f'Replace the existing export {path.name}?', 'Replace bibliography',
+                            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self)
+                        current()  # A modal confirmation can close or change its owner.
+                        if decision != wx.YES:
+                            report(self.status, 'Bibliography export cancelled.')
+                            return
+                    current()
+
+                    def publish():
+                        current()
+                        return controller.export_with_receipt(path, format=format, identity=identity,
+                            include_notes=include_notes, cancelled=cancelled, approval=approval)
+
+                    def saved(result):
+                        _content, receipt = result
+                        report(self.status, export_completion(f'Bibliography exported to {path}. '
+                            + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'), receipt))
+
+                    self._run('Exporting bibliography', publish, saved, publication=True)
+
+                self._run('Checking export destination', capture, captured)
             except Exception as exc:
-                report(self.status, f'Bibliography export: {exc}')
+                if self._window_alive:
+                    report(self.status, f'Bibliography not exported: {exc}')
 
     return AcademicDialog()
 

@@ -1,0 +1,839 @@
+{
+  "schema_version": 1,
+  "scope": "Public synthetic native diagnostic. Same retained basename, bytes, format and suffix controls isolate the measured filename-length boundary. Product route, capture and human listening qualification remain separate.",
+  "run": 46069532528,
+  "job": 140742876934,
+  "head": "c68d7142d5e49443526bb2189b7d6d6ac9b71cc4",
+  "artifact": {
+    "id": 15232945390,
+    "sha256": "ef03fed7af889d7f672587a38069090c60d0a53d86ac35094754d839aeef6a8a"
+  },
+  "prior_trial": {
+    "run": 46068481665,
+    "job": 140739455297,
+    "head": "ab449a078dd3b9c8de8001f3cceddef8393ed4ea",
+    "limitation": "Original short/long matrix used a different basename; retained below as diagnostic history, not sole evidence for a length-only decision."
+  },
+  "records": [
+    {
+      "status": "COMPLETE",
+      "phase": "complete-diagnostic-observations",
+      "commit": "c68d7142d5e49443526bb2189b7d6d6ac9b71cc4",
+      "application_commit": "10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "installed": false,
+      "microphone_capture": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "default_device_changed": false,
+      "device_policy_changed": false,
+      "application_acceptance": "NOT_RUN",
+      "module_evidence": {
+        "speech/player.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\player.py",
+          "sha256": "7f4f489408707a2d4197a89f48fc8e602866dfdc6036acfe0c4ed621d2158cc8"
+        },
+        "speech/_wave_output.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\_wave_output.py",
+          "sha256": "a65fb7a81984d6d2b68f5061dc990423374f31fa3afa32d4d896518344441fcc"
+        },
+        "speech/output_devices.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\output_devices.py",
+          "sha256": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5"
+        },
+        "speech/_io.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\_io.py",
+          "sha256": "ad3a247fa9e18b9a5cb4a26c59a280e64000950ab8d470da69098bf39119f081"
+        },
+        "audio/recording_monitor.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\recording_monitor.py",
+          "sha256": "14f8274f6fed8ad0ac2923717aa17f482b399ebcf3291f8746b8772013364ac7"
+        },
+        "audio/process.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py",
+          "sha256": "2c6009febd3d4e5bcc845f1d43d6da813730c2cd827192555263418cda02ea36"
+        },
+        "audio/windows_process.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\windows_process.py",
+          "sha256": "b3dcd0a5781816349e95e2201ebe5bb8d27f7e30325f5e33d51c244da30333b8"
+        }
+      },
+      "expected_source_blobs": {
+        "speech/player.py": "b67e1134fe9a5b63a3c5822e1ecd5ca8691942ac",
+        "speech/_wave_output.py": "6d827eddc503ccd68c6b1f2f3d3c85ed8651fedf",
+        "speech/output_devices.py": "a2b604ac3be0fdb7591179be12e76dd4b49d9f9f",
+        "speech/_io.py": "90d86bac79bd7b34b279a56afe2e6d49e776e188",
+        "audio/recording_monitor.py": "d30d359e9b69400716ddeb81e2be2c06d2eec9f1",
+        "audio/process.py": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+        "audio/windows_process.py": "12b249c548c211333d783877a7ef0c08f2dd2ed1"
+      },
+      "source_proof_helper_sha256": "844e08076bcab43a820ade9696e43442426caa794181e7b1e3b1298268437f30",
+      "package_root": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+      "distribution": null,
+      "outputs": [
+        {
+          "index": 0,
+          "name": "Speakers (VB-Audio Virtual Cabl",
+          "identity": "59c36d6a3ea1a78f3572d10a8aeedd99a0717e6ac3f3ba3ed8381ee01fccbdcc"
+        },
+        {
+          "index": 1,
+          "name": "CABLE In 16 Ch (VB-Audio Virtua",
+          "identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b"
+        }
+      ],
+      "selected_output": {
+        "index": 1,
+        "name": "CABLE In 16 Ch (VB-Audio Virtua",
+        "identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b"
+      },
+      "mci_open_parameters_bytes": 36,
+      "pcm": {
+        "sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+        "bytes": 96044,
+        "rate": 16000,
+        "channels": 1,
+        "bits": 16,
+        "frames": 48000
+      },
+      "fixture_root": "D:\\a\\_temp\\carr-mci-zw8zc097",
+      "fixture_cleanup": "COMPLETE",
+      "matrix": [
+        {
+          "length": "short",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\s.wav",
+          "filename_utf16_units": 34,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "short",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\s.audio",
+          "filename_utf16_units": 36,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "long",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "long",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "short-same-leaf",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 97,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "short-same-leaf",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 99,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "boundary-127",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 127,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "boundary-127",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\rxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 127,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "boundary-128",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 128,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "boundary-128",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-zw8zc097\\rxxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 128,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        }
+      ],
+      "wave_output": {
+        "status": "PASS",
+        "selected_index": 1,
+        "selected_identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b",
+        "opened": true,
+        "closed": true,
+        "position_seconds": 0.1543125,
+        "admitted_paused": true,
+        "actual_index": 1,
+        "actual_identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b",
+        "format": {
+          "rate": 16000,
+          "channels": 1,
+          "width": 2,
+          "frames": 48000
+        },
+        "paused_after_advance": true
+      }
+    },
+    {
+      "status": "COMPLETE",
+      "phase": "complete-diagnostic-observations",
+      "commit": "c68d7142d5e49443526bb2189b7d6d6ac9b71cc4",
+      "application_commit": "10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "installed": true,
+      "microphone_capture": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "default_device_changed": false,
+      "device_policy_changed": false,
+      "application_acceptance": "NOT_RUN",
+      "module_evidence": {
+        "speech/player.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\player.py",
+          "sha256": "7f4f489408707a2d4197a89f48fc8e602866dfdc6036acfe0c4ed621d2158cc8"
+        },
+        "speech/_wave_output.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\_wave_output.py",
+          "sha256": "a65fb7a81984d6d2b68f5061dc990423374f31fa3afa32d4d896518344441fcc"
+        },
+        "speech/output_devices.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\output_devices.py",
+          "sha256": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5"
+        },
+        "speech/_io.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\_io.py",
+          "sha256": "ad3a247fa9e18b9a5cb4a26c59a280e64000950ab8d470da69098bf39119f081"
+        },
+        "audio/recording_monitor.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\audio\\recording_monitor.py",
+          "sha256": "14f8274f6fed8ad0ac2923717aa17f482b399ebcf3291f8746b8772013364ac7"
+        },
+        "audio/process.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\audio\\process.py",
+          "sha256": "2c6009febd3d4e5bcc845f1d43d6da813730c2cd827192555263418cda02ea36"
+        },
+        "audio/windows_process.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+          "sha256": "b3dcd0a5781816349e95e2201ebe5bb8d27f7e30325f5e33d51c244da30333b8"
+        }
+      },
+      "expected_source_blobs": {
+        "speech/player.py": "b67e1134fe9a5b63a3c5822e1ecd5ca8691942ac",
+        "speech/_wave_output.py": "6d827eddc503ccd68c6b1f2f3d3c85ed8651fedf",
+        "speech/output_devices.py": "a2b604ac3be0fdb7591179be12e76dd4b49d9f9f",
+        "speech/_io.py": "90d86bac79bd7b34b279a56afe2e6d49e776e188",
+        "audio/recording_monitor.py": "d30d359e9b69400716ddeb81e2be2c06d2eec9f1",
+        "audio/process.py": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+        "audio/windows_process.py": "12b249c548c211333d783877a7ef0c08f2dd2ed1"
+      },
+      "source_proof_helper_sha256": "844e08076bcab43a820ade9696e43442426caa794181e7b1e3b1298268437f30",
+      "package_root": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library",
+      "distribution": {
+        "name": "universal-research-library",
+        "version": "0.2.0.dev2"
+      },
+      "outputs": [
+        {
+          "index": 0,
+          "name": "Speakers (VB-Audio Virtual Cabl",
+          "identity": "59c36d6a3ea1a78f3572d10a8aeedd99a0717e6ac3f3ba3ed8381ee01fccbdcc"
+        },
+        {
+          "index": 1,
+          "name": "CABLE In 16 Ch (VB-Audio Virtua",
+          "identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b"
+        }
+      ],
+      "selected_output": {
+        "index": 1,
+        "name": "CABLE In 16 Ch (VB-Audio Virtua",
+        "identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b"
+      },
+      "mci_open_parameters_bytes": 36,
+      "pcm": {
+        "sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+        "bytes": 96044,
+        "rate": 16000,
+        "channels": 1,
+        "bits": 16,
+        "frames": 48000
+      },
+      "fixture_root": "D:\\a\\_temp\\carr-mci-y2h72bd8",
+      "fixture_cleanup": "COMPLETE",
+      "matrix": [
+        {
+          "length": "short",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\s.wav",
+          "filename_utf16_units": 34,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "short",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\s.audio",
+          "filename_utf16_units": 36,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "long",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "long",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "short-same-leaf",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 97,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "short-same-leaf",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 99,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "boundary-127",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 127,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "boundary-127",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\rxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 127,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "boundary-128",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 128,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "boundary-128",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-y2h72bd8\\rxxxxxxxxxxxxxxxxxxxxxxxxxxx\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 128,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        }
+      ],
+      "wave_output": {
+        "status": "PASS",
+        "selected_index": 1,
+        "selected_identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b",
+        "opened": true,
+        "closed": true,
+        "position_seconds": 0.1561875,
+        "admitted_paused": true,
+        "actual_index": 1,
+        "actual_identity": "64b151bc6ab831e522eca7aaecee9442fa0323fecb8991236ec2e3823d13c46b",
+        "format": {
+          "rate": 16000,
+          "channels": 1,
+          "width": 2,
+          "frames": 48000
+        },
+        "paused_after_advance": true
+      }
+    }
+  ],
+  "prior_records": [
+    {
+      "status": "COMPLETE",
+      "phase": "complete-diagnostic-observations",
+      "commit": "ab449a078dd3b9c8de8001f3cceddef8393ed4ea",
+      "application_commit": "10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "installed": false,
+      "microphone_capture": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "default_device_changed": false,
+      "device_policy_changed": false,
+      "application_acceptance": "NOT_RUN",
+      "module_evidence": {
+        "speech/player.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\player.py",
+          "sha256": "7f4f489408707a2d4197a89f48fc8e602866dfdc6036acfe0c4ed621d2158cc8"
+        },
+        "speech/_wave_output.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\_wave_output.py",
+          "sha256": "a65fb7a81984d6d2b68f5061dc990423374f31fa3afa32d4d896518344441fcc"
+        },
+        "speech/output_devices.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\output_devices.py",
+          "sha256": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5"
+        },
+        "speech/_io.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\_io.py",
+          "sha256": "ad3a247fa9e18b9a5cb4a26c59a280e64000950ab8d470da69098bf39119f081"
+        },
+        "audio/recording_monitor.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\recording_monitor.py",
+          "sha256": "14f8274f6fed8ad0ac2923717aa17f482b399ebcf3291f8746b8772013364ac7"
+        },
+        "audio/process.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py",
+          "sha256": "2c6009febd3d4e5bcc845f1d43d6da813730c2cd827192555263418cda02ea36"
+        },
+        "audio/windows_process.py": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\windows_process.py",
+          "sha256": "b3dcd0a5781816349e95e2201ebe5bb8d27f7e30325f5e33d51c244da30333b8"
+        }
+      },
+      "expected_source_blobs": {
+        "speech/player.py": "b67e1134fe9a5b63a3c5822e1ecd5ca8691942ac",
+        "speech/_wave_output.py": "6d827eddc503ccd68c6b1f2f3d3c85ed8651fedf",
+        "speech/output_devices.py": "a2b604ac3be0fdb7591179be12e76dd4b49d9f9f",
+        "speech/_io.py": "90d86bac79bd7b34b279a56afe2e6d49e776e188",
+        "audio/recording_monitor.py": "d30d359e9b69400716ddeb81e2be2c06d2eec9f1",
+        "audio/process.py": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+        "audio/windows_process.py": "12b249c548c211333d783877a7ef0c08f2dd2ed1"
+      },
+      "source_proof_helper_sha256": "844e08076bcab43a820ade9696e43442426caa794181e7b1e3b1298268437f30",
+      "package_root": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+      "distribution": null,
+      "outputs": [
+        {
+          "index": 0,
+          "name": "Speakers (VB-Audio Virtual Cabl",
+          "identity": "e5735dc79af3753833f7f3867ef113ae37ff197879346716a2ad8b1c05c62c84"
+        },
+        {
+          "index": 1,
+          "name": "CABLE In 16 Ch (VB-Audio Virtua",
+          "identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6"
+        }
+      ],
+      "selected_output": {
+        "index": 1,
+        "name": "CABLE In 16 Ch (VB-Audio Virtua",
+        "identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6"
+      },
+      "mci_open_parameters_bytes": 36,
+      "pcm": {
+        "sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+        "bytes": 96044,
+        "rate": 16000,
+        "channels": 1,
+        "bits": 16,
+        "frames": 48000
+      },
+      "fixture_root": "D:\\a\\_temp\\carr-mci-k_bvdap0",
+      "fixture_cleanup": "COMPLETE",
+      "matrix": [
+        {
+          "length": "short",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-k_bvdap0\\s.wav",
+          "filename_utf16_units": 34,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "short",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-k_bvdap0\\s.audio",
+          "filename_utf16_units": 36,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "long",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-k_bvdap0\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "long",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-k_bvdap0\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        }
+      ],
+      "wave_output": {
+        "status": "PASS",
+        "selected_index": 1,
+        "selected_identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6",
+        "opened": true,
+        "closed": true,
+        "position_seconds": 0.1528125,
+        "admitted_paused": true,
+        "actual_index": 1,
+        "actual_identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6",
+        "format": {
+          "rate": 16000,
+          "channels": 1,
+          "width": 2,
+          "frames": 48000
+        },
+        "paused_after_advance": true
+      }
+    },
+    {
+      "status": "COMPLETE",
+      "phase": "complete-diagnostic-observations",
+      "commit": "ab449a078dd3b9c8de8001f3cceddef8393ed4ea",
+      "application_commit": "10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "installed": true,
+      "microphone_capture": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "default_device_changed": false,
+      "device_policy_changed": false,
+      "application_acceptance": "NOT_RUN",
+      "module_evidence": {
+        "speech/player.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\player.py",
+          "sha256": "7f4f489408707a2d4197a89f48fc8e602866dfdc6036acfe0c4ed621d2158cc8"
+        },
+        "speech/_wave_output.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\_wave_output.py",
+          "sha256": "a65fb7a81984d6d2b68f5061dc990423374f31fa3afa32d4d896518344441fcc"
+        },
+        "speech/output_devices.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\output_devices.py",
+          "sha256": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5"
+        },
+        "speech/_io.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\speech\\_io.py",
+          "sha256": "ad3a247fa9e18b9a5cb4a26c59a280e64000950ab8d470da69098bf39119f081"
+        },
+        "audio/recording_monitor.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\audio\\recording_monitor.py",
+          "sha256": "14f8274f6fed8ad0ac2923717aa17f482b399ebcf3291f8746b8772013364ac7"
+        },
+        "audio/process.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\audio\\process.py",
+          "sha256": "2c6009febd3d4e5bcc845f1d43d6da813730c2cd827192555263418cda02ea36"
+        },
+        "audio/windows_process.py": {
+          "path": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+          "sha256": "b3dcd0a5781816349e95e2201ebe5bb8d27f7e30325f5e33d51c244da30333b8"
+        }
+      },
+      "expected_source_blobs": {
+        "speech/player.py": "b67e1134fe9a5b63a3c5822e1ecd5ca8691942ac",
+        "speech/_wave_output.py": "6d827eddc503ccd68c6b1f2f3d3c85ed8651fedf",
+        "speech/output_devices.py": "a2b604ac3be0fdb7591179be12e76dd4b49d9f9f",
+        "speech/_io.py": "90d86bac79bd7b34b279a56afe2e6d49e776e188",
+        "audio/recording_monitor.py": "d30d359e9b69400716ddeb81e2be2c06d2eec9f1",
+        "audio/process.py": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+        "audio/windows_process.py": "12b249c548c211333d783877a7ef0c08f2dd2ed1"
+      },
+      "source_proof_helper_sha256": "844e08076bcab43a820ade9696e43442426caa794181e7b1e3b1298268437f30",
+      "package_root": "D:\\a\\_temp\\carr-mci-path-python\\Lib\\site-packages\\carr_library",
+      "distribution": {
+        "name": "universal-research-library",
+        "version": "0.2.0.dev2"
+      },
+      "outputs": [
+        {
+          "index": 0,
+          "name": "Speakers (VB-Audio Virtual Cabl",
+          "identity": "e5735dc79af3753833f7f3867ef113ae37ff197879346716a2ad8b1c05c62c84"
+        },
+        {
+          "index": 1,
+          "name": "CABLE In 16 Ch (VB-Audio Virtua",
+          "identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6"
+        }
+      ],
+      "selected_output": {
+        "index": 1,
+        "name": "CABLE In 16 Ch (VB-Audio Virtua",
+        "identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6"
+      },
+      "mci_open_parameters_bytes": 36,
+      "pcm": {
+        "sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+        "bytes": 96044,
+        "rate": 16000,
+        "channels": 1,
+        "bits": 16,
+        "frames": 48000
+      },
+      "fixture_root": "D:\\a\\_temp\\carr-mci-as69ergw",
+      "fixture_cleanup": "COMPLETE",
+      "matrix": [
+        {
+          "length": "short",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-as69ergw\\s.wav",
+          "filename_utf16_units": 34,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "short",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-as69ergw\\s.audio",
+          "filename_utf16_units": 36,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": true,
+          "closed": true,
+          "mci_code": 0
+        },
+        {
+          "length": "long",
+          "suffix": ".wav",
+          "path": "D:\\a\\_temp\\carr-mci-as69ergw\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.wav",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        },
+        {
+          "length": "long",
+          "suffix": ".audio",
+          "path": "D:\\a\\_temp\\carr-mci-as69ergw\\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\state\\studio\\inputs\\e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb.audio",
+          "filename_utf16_units": 174,
+          "same_pcm_sha256": "e823d04e10ef073bb76b4af9be7a4b82ceb63695a754c8db4d29c1f6ef20eccb",
+          "api": "unchanged WavePlayer._mci_open / mciSendCommandW",
+          "play_called": false,
+          "opened": false,
+          "closed": null,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Windows audio device rejected the operation (MCI 304).",
+            "mci_code": 304,
+            "native_error_text": "The filename is invalid.  Make sure the filename is not longer than 8 characters, followed by a period and an extension."
+          }
+        }
+      ],
+      "wave_output": {
+        "status": "PASS",
+        "selected_index": 1,
+        "selected_identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6",
+        "opened": true,
+        "closed": true,
+        "position_seconds": 0.15175,
+        "admitted_paused": true,
+        "actual_index": 1,
+        "actual_identity": "1a5fe723de84e4c9c841ec45884f8a1a5d134837b07a427fca453ead54dfdad6",
+        "format": {
+          "rate": 16000,
+          "channels": 1,
+          "width": 2,
+          "frames": 48000
+        },
+        "paused_after_advance": true
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """Accessible, persistent file-import plans in the existing desktop host."""
 import unicodedata
+from pathlib import Path
 from ..extract.document_formats import file_dialog_wildcard
 
 
@@ -181,12 +182,16 @@ class ImportCenterActions:
             finish(error=exc)
 
     def plan(self, paths):
+        from dataclasses import replace
+        from ..extract.page_ocr import Config
         self._bound()
         index = self.collection.GetSelection()
-        if not 0 <= index < len(self.collection_ids):
+        if not 0 <= index < len(self.collection_ids) or not isinstance(self.ocr_config, Config):
             raise ValueError('Choose a destination collection and text recognition languages.')
-        config = self._new_plan_ocr_config()
         collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
+        # Capture a complete immutable choice. Later model-dialog changes affect
+        # new plans only; durable existing plans keep their original settings.
+        config = replace(self.ocr_config)
         recursive = self.recursive.GetValue()
 
         def done(batch):
@@ -198,51 +203,25 @@ class ImportCenterActions:
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
             cancelled=self.frame.cancel_event.is_set), done, planning=True)
 
-    def _new_plan_ocr_config(self):
+    def choose_languages(self, event=None):
         from ..extract.page_ocr import Config
-        from .ocr_options import LANGUAGES
-        language = self.languages.GetSelection()
-        if 0 <= language < len(LANGUAGES):
-            return Config(languages=LANGUAGES[language][1])
-        custom = getattr(self, 'custom_ocr_config', None)
-        if language == len(LANGUAGES) and isinstance(custom, Config):
-            return custom
-        raise ValueError('Choose a destination collection and text recognition languages.')
-
-    def choose_ocr_models(self, event=None):
-        """Change only the explicit settings captured by future import plans."""
-        from ..extract.page_ocr import Config
-        from .ocr_options import LANGUAGES
-        from .ocr_selection import choose_model_config
-        if self.busy or self.frame.working:
-            self.report('An operation is already running. Wait or choose Cancel operation.')
-            return
+        from .ocr_options import choose_model_config, config_summary
         try:
             self._bound()
-            try:
-                initial = self._new_plan_ocr_config()
-            except ValueError:
-                initial = Config()
-            chosen = choose_model_config(self, initial=initial)
-            if chosen is None:
+            if self.busy or self.frame.working:
+                raise ValueError('Wait for the current operation before changing recognition models.')
+            config = choose_model_config(self, self.ocr_config, preset_root=self.library.root)
+            if config is None:
                 return
-            if not isinstance(chosen, Config):
+            if not isinstance(config, Config):
                 raise ValueError('The OCR model selection did not return valid import settings.')
             self._bound()
             if self.busy or self.frame.working:
                 raise ValueError('An import operation started. Choose model settings when it finishes.')
-            profile = {'installed': 'Installed', 'fast': 'Fast', 'best': 'Best'}[chosen.model_profile]
-            identifiers = chosen.languages.split('+')
-            preview = ', '.join(identifiers[:6])
-            if len(identifiers) > 6:
-                preview += f'; {len(identifiers) - 6} more'
-            label = f'Custom — {profile}: {preview}'
-            self.languages.SetItems([text for text, _ in LANGUAGES] + [label])
-            self.languages.SetSelection(len(LANGUAGES))
-            self.custom_ocr_config = chosen
-            orientation = 'on' if chosen.orientation else 'off'
-            self.report(f'OCR settings for new plans: {profile}; {", ".join(identifiers)}. '
-                        f'Page orientation detection: {orientation}.')
+            self.ocr_config = config
+            self.languages.SetValue(config_summary(config))
+            self.report('New plans will use ' + config_summary(config) +
+                        '. Existing saved plans keep their previous settings.')
         except Exception as exc:
             self.report(str(exc))
 
@@ -260,6 +239,55 @@ class ImportCenterActions:
                 self.plan(paths)
             except Exception as exc:
                 self.report(str(exc))
+
+    def import_streamed_text(self, path):
+        """Explicit single-source action; the ordinary batch defaults stay put."""
+        from dataclasses import replace
+        from ..ingest.streamed_text import TextProfile
+        self._bound()
+        maximum = self.stream_mib.GetValue()
+        if type(maximum) is not int or not 1 <= maximum <= 128:
+            raise ValueError('Choose a streamed source allowance from 1 through 128 MiB.')
+        index = self.collection.GetSelection()
+        if not 0 <= index < len(self.collection_ids):
+            raise ValueError('Choose the destination for this source.')
+        collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
+        profile, config = TextProfile(maximum * 1024**2), replace(self.ocr_config)
+        library, workspace = self.library, self.workspace
+        def operation():
+            self._bound()
+            return library.import_file(workspace, path, source_profile=profile,
+                collections=collections, config=config, timeout=180,
+                cancelled=self.frame.cancel_event.is_set)
+        def done(result):
+            if result.get('state') == 'complete':
+                if self.frame.book is not None:
+                    self.frame.book.GetPage(1).refresh()
+                self.report(f'Streamed text imported: {result["completed"]} exact logical fragments. '
+                            'Original bytes are retained; these locations are unpaginated.')
+            else:
+                self.report('Streamed text request: ' + readable(result.get('state', 'failed')) + '. '
+                    + readable(result.get('message', '')) +
+                    ' Close Import Center and choose Library, Resume interrupted import. '
+                    'The saved request keeps its original byte allowance.')
+        self._job('Importing selected streamed UTF-8 text', operation, done)
+
+    def choose_streamed_text(self, event=None):
+        import wx
+        try:
+            self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait or cancel the current operation before selecting another source.')
+            dialog = wx.FileDialog(self, 'Import a selected large UTF-8 text',
+                wildcard='UTF-8 text (*.txt)|*.txt', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+            try:
+                path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
+            finally:
+                dialog.Destroy()
+            if path:
+                self.import_streamed_text(path)
+        except Exception as exc:
+            self.report(str(exc))
 
     def add_folder(self, event=None):
         import wx
@@ -322,30 +350,73 @@ class ImportCenterActions:
 
     def save_report(self, event=None):
         import wx
-        from ..research.export_file import write_export, export_completion
-        from .export_destination import confirm_export_destination
+        from ..research.export_file import capture_export_destination, export_completion, write_export
         try:
             self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait for the current operation before exporting its report.')
             if self.batch is None:
                 raise ValueError('Select a saved import batch first.')
-            batch = self.library.import_batch(self.workspace, self.batch['batch_id'])
+            library, workspace, batch_id = self.library, self.workspace, self.batch['batch_id']
             dialog = wx.FileDialog(self, 'Save import report', defaultFile='Import-report.txt',
                 wildcard='Text report (*.txt)|*.txt', style=wx.FD_SAVE)
             try:
                 path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
             finally:
                 dialog.Destroy()
-            if path:
+            if not path:
+                return
+            self._bound()
+            if self.library is not library or self.workspace != workspace or self.batch is None or self.batch['batch_id'] != batch_id:
+                raise ValueError('The selected import batch changed. Choose its report again.')
+            token = object()
+
+            def cancelled():
+                return (self.closed or getattr(self.frame, '_closing', False)
+                    or self.frame.cancel_event.is_set() or self._job_token is not token
+                    or self.library is not library or self.frame.library is not library
+                    or self.workspace != workspace or (self.batch or {}).get('batch_id') != batch_id)
+
+            def current():
+                if cancelled():
+                    raise InterruptedError('Import report export cancelled; the destination was not changed.')
                 self._bound()
-                approval = confirm_export_destination(self, path, private_root=self.library.root, wx_module=wx)
-                if approval is None:
-                    return
-                self._bound()
-                receipt = write_export(path, batch_report(batch), private_root=self.library.root,
-                                       approval=approval)
-                self.report(export_completion('Import report saved.', receipt))
+
+            def capture():
+                current()
+                library.import_batch(workspace, batch_id)
+                return capture_export_destination(path, private_root=library.root, cancelled=cancelled)
+
+            def captured(approval):
+                current()
+                if not approval.require_absent:
+                    decision = wx.MessageBox(
+                        f'Replace the existing export {Path(path).name}?', 'Replace import report',
+                        wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self)
+                    if self.closed:
+                        return
+                    current()
+                    if decision != wx.YES:
+                        self.report('Import report export cancelled.')
+                        return
+                current()
+
+                def publish():
+                    current()
+                    batch = library.import_batch(workspace, batch_id)
+                    content = batch_report(batch)
+                    current()
+                    return write_export(path, content, private_root=library.root,
+                                        cancelled=cancelled, approval=approval)
+
+                self._job('Saving import report', publish,
+                          lambda receipt: self.report(export_completion('Import report saved.', receipt)),
+                          token=token)
+
+            self._job('Checking report destination', capture, captured, token=token)
         except Exception as exc:
-            self.report(str(exc))
+            if not self.closed:
+                self.report(str(exc))
 
     def cancel_operation(self, event=None):
         if self.busy:
@@ -368,7 +439,9 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
-    from .ocr_options import LANGUAGES
+    from wx.lib.scrolledpanel import ScrolledPanel
+    from ..extract.page_ocr import Config
+    from .ocr_options import config_summary
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
@@ -377,10 +450,13 @@ def show_import_center(frame, workspace):
             self.frame, self.library, self.workspace = frame, frame.library, workspace
             self.busy = self.closed = False
             self.batch, self.summaries = None, ()
-            self.custom_ocr_config = None
             self.mutable = []
+            outer = wx.BoxSizer(wx.VERTICAL)
+            self.form = ScrolledPanel(self, style=wx.TAB_TRAVERSAL | wx.VSCROLL)
+            self.form.SetName('Import Center scrollable form')
+            self.form.SetMinSize((0, 200))
             layout = wx.BoxSizer(wx.VERTICAL)
-            introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
+            introduction = wx.StaticText(self.form, label='Prepare a file or folder import, review the plan, then start. '
                        'Saved queues can be continued after restarting the program.')
             introduction.Wrap(750)
             layout.Add(introduction, 0, wx.ALL, 8)
@@ -391,45 +467,59 @@ def show_import_center(frame, workspace):
             for number, (identity, name) in enumerate(self.library.collections(workspace), 1):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
-            self.collection = wx.Choice(self, choices=collection_labels)
-            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
+            self.collection = wx.Choice(self.form, choices=collection_labels)
+            self.collection.SetSelection(0)
+            self.ocr_config = Config()
+            self.languages = wx.TextCtrl(self.form, value=config_summary(self.ocr_config),
+                                         style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 40))
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
-                control.SetSelection(0)
-                options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                options.Add(wx.StaticText(self.form, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
-                self.mutable.append(control)
+            self.mutable.append(self.collection)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
-            self.ocr_models_button.SetName('Choose installed or managed OCR models for new plans')
-            self.ocr_models_button.Bind(wx.EVT_BUTTON, self.choose_ocr_models)
-            self.mutable.append(self.ocr_models_button)
-            layout.Add(self.ocr_models_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-            self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
+            models = wx.Button(self.form, label='Choose installed or managed OCR &models...')
+            models.SetName('Choose installed or managed OCR models for new plans')
+            models.Bind(wx.EVT_BUTTON, self.choose_languages)
+            self.mutable.append(models)
+            layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.recursive = wx.CheckBox(self.form, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
             layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
                                    ('Refresh saved &queues', self.refresh)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(self.form, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.batches = wx.ListBox(self, size=(-1, 65))
+            streamed = wx.BoxSizer(wx.HORIZONTAL)
+            self.stream_mib = wx.SpinCtrl(self.form, min=1, max=128, initial=128)
+            self.stream_mib.SetName('Maximum bytes for one streamed UTF-8 text, in MiB')
+            streamed.Add(wx.StaticText(self.form, label='Streamed UTF-8 source limit (MiB)'),
+                         0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            streamed.Add(self.stream_mib, 0, wx.RIGHT, 8)
+            large_text = wx.Button(self.form, label='Import large UTF-8 te&xt...')
+            large_text.SetName('Import selected UTF-8 text in bounded logical fragments')
+            large_text.Bind(wx.EVT_BUTTON, self.choose_streamed_text)
+            streamed.Add(large_text, 0)
+            self.mutable.extend((self.stream_mib, large_text))
+            layout.Add(streamed, 0, wx.ALL, 8)
+            layout.Add(wx.StaticText(self.form, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.batches = wx.ListBox(self.form, size=(-1, 65))
             self.batches.SetName('Saved import batches')
             self.batches.Bind(wx.EVT_LISTBOX, self.select_batch)
             self.mutable.append(self.batches)
             layout.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.rows = wx.ListBox(self, size=(-1, 100))
+            layout.Add(wx.StaticText(self.form, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.rows = wx.ListBox(self.form, size=(-1, 100))
             self.rows.SetName('Files and import status')
             self.rows.Bind(wx.EVT_LISTBOX, self.select_row)
             layout.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
-            self.details = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
+            self.details = wx.TextCtrl(self.form, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
             self.details.SetName('Selected file details')
             layout.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             actions = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
@@ -438,14 +528,17 @@ def show_import_center(frame, workspace):
             for label, handler in [('&Start queued files', self.run),
                     ('&Retry failed or reviewed files', lambda event: self.run(event, retry=True)),
                     ('&Exclude or include selected file', self.toggle_row), ('Save re&port...', self.save_report)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(self.form, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
             layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            self.form.SetSizer(layout)
+            self.form.SetupScrolling(scroll_x=False, scroll_y=True, scrollIntoView=True)
+            outer.Add(self.form, 1, wx.EXPAND)
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
             self.status.SetName('Import Center status')
-            layout.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            outer.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             bottom = wx.BoxSizer(wx.HORIZONTAL)
             self.cancel = wx.Button(self, label='&Cancel operation')
             self.cancel.Disable()
@@ -454,8 +547,8 @@ def show_import_center(frame, workspace):
             close = wx.Button(self, wx.ID_CANCEL, 'Cl&ose')
             close.Bind(wx.EVT_BUTTON, self.close)
             bottom.Add(close)
-            layout.Add(bottom, 0, wx.ALL, 8)
-            self.SetSizer(layout)
+            outer.Add(bottom, 0, wx.ALL, 8)
+            self.SetSizer(outer)
             self.SetMinSize((800, 650))
             self.Bind(wx.EVT_CLOSE, self.close)
             self.refresh()

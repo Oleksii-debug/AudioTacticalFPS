@@ -1,0 +1,148 @@
+{
+  "schema": "carr-bounded-source-reuse-audit/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "reviewed_at_utc": "2026-11-28 01:02 UTC",
+  "current": {
+    "commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "tree": "f0f24e27326e4eac0d9658c69e3b68039b837368"
+  },
+  "scope": "Read-only inspection of recent PR99, PR209 and PR152 commits and targeted current-source compatibility. No merge, production edit, branch mutation or execution was performed.",
+  "decisions": [
+    {
+      "pull_request": 99,
+      "head": "89c07e451540e4caac6a36cd6142fcdd274264b1",
+      "compared_base": "fd0cca2405f33c813c4cf43c9661edf1f2e93a55",
+      "decision": "NO_ADOPTION",
+      "scope": "Exact ten-commit, seven-path delta after the earlier adopted donor head.",
+      "changed_paths": [
+        {
+          "path": ".github/workflows/carr-windows.yml",
+          "blob": "e46c7a8cac48df9ba3f85b79950b3a86e2ddae8b"
+        },
+        {
+          "path": "carr-library/docs/acceptance/ACADEMIC_MENU_ACCESS_KEYS_20261128.md",
+          "blob": "fcd81753c5dc250f7b8bb26e2e02900acd385e2c"
+        },
+        {
+          "path": "carr-library/docs/acceptance/NATIVE_DOCUMENT_FORMATS_CI_COMPLETION_20261128.md",
+          "blob": "0d522f384b94b6218c39f7a0295676dc6171f200"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/api_connections.py",
+          "blob": "13aa48dfa9d158fd249704c2236947b39e54399a"
+        },
+        {
+          "path": "carr-library/tests/ui/native_academic_comparison_smoke.py",
+          "blob": "f5859d555829e8186487811a16b26a020a1b79b8"
+        },
+        {
+          "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+          "blob": "bea82feb59a19138b5d946a5a9950476c5928b46"
+        },
+        {
+          "path": "carr-library/tests/ui/test_api_connections.py",
+          "blob": "0b0872fd5871c0a671be2a8652d880ac3c5d6325"
+        }
+      ],
+      "finding": "The new delta contains native control lookup fixtures, workflow/evidence changes and the Settings mnemonic change only. It changes no installer, uninstall, installation lease or owned-process implementation. The donor ui/api_connections.py module is absent from the current composition, which retains its existing provider-settings integration.",
+      "limits": "This is not a claim that every historical PR99 implementation or newer future commit is equivalent to the current application."
+    },
+    {
+      "pull_request": 209,
+      "head": "014b128f13d47a900008f8970de4d0024ff0047d",
+      "decision": "NO_ADOPTION",
+      "inspected_commits": [
+        "014b128f13d47a900008f8970de4d0024ff0047d",
+        "f77cdd445c158f3f66d13c03d920418965840d16",
+        "3a094cd09d79fff86122f472c230aa751d4fda62"
+      ],
+      "inspected_blobs": [
+        {
+          "path": "carr-library/tests/loopback/test_local_planning.py",
+          "blob": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab",
+          "scope": "Latest exact fixture patch"
+        },
+        {
+          "path": "carr-library/packaging/probe_standard_update_windows.py",
+          "blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+          "scope": "Exact f77 probe patch"
+        },
+        {
+          "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+          "blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+          "scope": "New separate shell-classification acceptance script"
+        },
+        {
+          "path": "carr-library/docs/evidence/standard-native-managed-library-final-independent-read-20261127.json",
+          "blob": "097945a7f730dfab5a199ca9380202e6ba51b0be",
+          "scope": "Complete retained evidence source, inspected ordinary uninstall receipts"
+        }
+      ],
+      "finding": "The latest head changes local-planning cancellation fixtures and workflow/docs, preserving product source. The earlier standard probe change sets PATHEXT=.EXE for a separate WinPS installed-library qualification and records its existing bounded child output. It contains no uninstall implementation correction. The later ordinary install/repair/uninstall success is evidence for a different 5d09d9a8677d15587d9965a9f25ce40184e55f34 managed-update composition.",
+      "authority_limit": "That donor success does not identify or repair the current17 remaining-path failure and does not qualify current17. No alternate security/update/installation stack was adopted."
+    },
+    {
+      "pull_request": 152,
+      "head": "7a445cfa0701465facc80fe5dee226ba628aa4d6",
+      "compared_base": "95efc7d06a82f19e9d247acadd027894608d7891",
+      "decision": "NO_ADOPTION",
+      "scope": "Recent sixteen-commit delta; only two application production paths changed. Remaining paths are tests, acceptance diagnostics, CI sharding or evidence.",
+      "production": [
+        {
+          "path": "carr-library/src/carr_library/application.py",
+          "current_blob": "84b03eb9348ab04321f59bf613f8b9709eede364",
+          "donor_blob": "0d7a6a9c5fe53931d2740eabc1d3cd0beb1cb8fb",
+          "donor_change": "Catch InterruptedError around donor cancellation-aware source_snapshot/planned_snapshot and return cancelled only when its cancellation callback confirms the stop.",
+          "current_dependencies": [
+            {
+              "path": "carr-library/src/carr_library/catalog/intake.py",
+              "blob": "7cdb9471906b1c6a5e5943ab792a4d3d549a09c7"
+            },
+            {
+              "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+              "blob": "d8ebb0149a4838b0b02157f5eca1b016e98d01be"
+            },
+            {
+              "path": "carr-library/src/carr_library/ingest/streamed_text.py",
+              "blob": "12e36ccc43f3943a89ee97573e804a1d3109e75b"
+            },
+            {
+              "path": "carr-library/src/carr_library/ingest/worker.py",
+              "blob": "8e8a5b4848ce48aea32f9bc1bfdb48c0db356266"
+            },
+            {
+              "path": "carr-library/tests/e2e/test_application.py",
+              "blob": "e390fd526c31e8ddd5fa088f1fc43fdc8d661ac5"
+            }
+          ],
+          "reason": "Current inline legacy snapshot and planned_snapshot do not accept the donor cancellation callback and cannot raise that same callback-triggered exception. Current public profiled TXT/isolated-document routes use run_request: the parent _invoke supervises cancellation, stops/reaps its exact worker and then _settle_request reconciles publication. The actual worker calls _import_file without a cancellation callback. The donor catch therefore does not map to an equivalent reachable public exception boundary, and by itself would not add source-read responsiveness.",
+          "preserved_requirement": "Keep current request/profile/attempt identities, publication reconciliation and restored authority. Existing application coverage asserts cancelled imports publish no catalog/search result. No claim is made that legacy snapshot reads acquired a new cancellation checkpoint."
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/ebook_model.py",
+          "current_blob": "f56f287322fe411ca33c4a0451773618ad78fc0d",
+          "donor_blob": "2b6c85c7b1949ed1f9a1097e67a512cd4dceb24e",
+          "current_regression": {
+            "path": "carr-library/tests/ui/test_ebook_audio_initialization.py",
+            "blob": "6dbbe3f8b74336d3137344f76e2cfc594275b102"
+          },
+          "donor_change": "Try bounded codepoint/UTF16 and LF/CRLF absolute positions before native XY mapping; verify the prefix and prefer larger candidates.",
+          "reason": "Current source already detects native soft wrapping and tries the same finite representations with native-end bounds. Its fallback verifies both the exact prefix and suffix, including the pinned wx trailing-CR normalization case. Existing regressions prove that a half-CRLF position can match the prefix yet must be rejected, and exercise actual wrapped EPUB loading, adoption and cleanup. The donor ordering change is not needed for the already handled issue and omits this explicit two-sided verification.",
+          "observed_current_test_limit": {
+            "run_id": 46089080509,
+            "job_id": 140805512135,
+            "mode": "Windows source",
+            "module": "tests/ui/test_ebook_audio_initialization.py",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "note": "This exact module passed in an overall failed component job; it is not a new native or complete-release qualification."
+          }
+        }
+      ],
+      "finding": "No installer/uninstall or owned-process implementation delta was present in this inspected recent PR152 range."
+    }
+  ],
+  "conclusion": "NO_ADOPTION for these bounded recent deltas. Retain current stronger or differently owned boundaries and investigate current failures using their own immutable receipts.",
+  "execution": "No new code or test execution by this audit."
+}

@@ -1,0 +1,157 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "baseline_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "baseline_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "failure": {
+    "run_id": 46098474617,
+    "job_id": 140835230479,
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "evidence_commit": "f800393492850ff2fb9f58d57333208d762945d9",
+    "trace_blob": "ed48991fc1d8622cd0ceddf2aed3a4cf2462d7ae",
+    "test": "tests/search/test_source_page_benchmark.py::test_owned_child_refuses_changed_harness_and_keeps_partial_evidence",
+    "observed": "FileNotFoundError WinError 3 from os.scandir opening a .carr-original-* staging directory after the same check had successfully called lstat.",
+    "scope": "The historical failure is retained. No passing result for this new candidate is inferred from a different head."
+  },
+  "change": {
+    "summary": "Allow a watched directory to disappear between lstat and opening scandir only when a second non-following lstat independently confirms absence.",
+    "opening_only": true,
+    "reappeared_object": "Re-raise the original FileNotFoundError without reading or enumerating the replacement.",
+    "other_errors": "PermissionError, NotADirectoryError, arbitrary OSError, metadata errors and iterator errors continue to propagate.",
+    "preserved": "All other process bytes, argument validation, native family ownership, EOF observation/handoff, cleanup retries, cancellation, deadlines, quotas and disk reserve checks remain unchanged.",
+    "limits": "This handles the evidenced directory-disappearance window. It does not claim to eliminate every filesystem check-to-use race."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "preimage_blob": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c",
+      "candidate_blob": "2287f6a6423229b5a5c476cff4970bbe108bef5e",
+      "utf8_bytes": 29448,
+      "sha256": "b507c118d3aa93152169df7965dad2cb6dcf1fe824b5bdd9c5f627e243be5dd1"
+    },
+    {
+      "path": "carr-library/tests/audio/test_audio_process.py",
+      "preimage_blob": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db",
+      "candidate_blob": "3b4b9d648c0e3e31c60c8522a5396042a1c06add",
+      "utf8_bytes": 16188,
+      "sha256": "66f379e4dd4a6e48f611720f84761ba065f7ed02bba436ea4e7f65c1eb06c1d4"
+    }
+  ],
+  "inverse": {
+    "production_hunks": [
+      {
+        "oldline": 512,
+        "newline": 512,
+        "before": "                with os.scandir(path) as entries:",
+        "after": "                try:\n                    scan = os.scandir(path)\n                except FileNotFoundError:\n                    # A worker may remove its temporary directory after lstat.\n                    # Accept only fresh absence, never a replacement object.\n                    try:\n                        path.lstat()\n                    except FileNotFoundError:\n                        continue\n                    raise\n                with scan as entries:"
+      }
+    ],
+    "production_inverse_exact": true,
+    "original_test_prefix_utf8_bytes": 4523,
+    "original_test_prefix_sha256": "82bc657cb3b43cfd3aa46181c2224804dce67bd96ffcd7757d108d6fc7f99241",
+    "old_test_prefix_exact": true,
+    "test_inverse": "Remove only the appended suffix after the original 4,523-byte UTF-8 prefix.",
+    "fixture_successor": {
+      "before": "        if path == victim and replaced:\n            followed.append(True)\n",
+      "after": "        if path == victim and replaced and kwargs.get('follow_symlinks', True) is not False:\n            followed.append(True)\n",
+      "prior_sha": "fa4f31be0bdba311319ac0e8b97a6fbe8ec75278"
+    }
+  },
+  "tests": {
+    "selector": "tests/audio/test_audio_process.py",
+    "prior_cases": 12,
+    "added_named_functions": 7,
+    "added_parameterized_cases": 15,
+    "total_planned_cases": 27,
+    "existing_assertion_lines": 8,
+    "old_assertions_preserved_by_exact_prefix": true,
+    "cases": [
+      {
+        "name": "owned worker removes its actual temporary directory at scanner opening",
+        "count": 2,
+        "variants": [
+          "success exit 0",
+          "original error exit 7"
+        ]
+      },
+      {
+        "name": "reappeared object is rejected without enumeration",
+        "count": 2,
+        "variants": [
+          "directory",
+          "regular file"
+        ]
+      },
+      {
+        "name": "opening error propagation",
+        "count": 3,
+        "variants": [
+          "PermissionError",
+          "NotADirectoryError",
+          "other OSError"
+        ]
+      },
+      {
+        "name": "iteration FileNotFoundError remains fatal and closes iterator",
+        "count": 1
+      },
+      {
+        "name": "absence-confirmation metadata errors propagate",
+        "count": 2,
+        "variants": [
+          "PermissionError",
+          "other OSError"
+        ]
+      },
+      {
+        "name": "remaining guards after valid disappearance",
+        "count": 3,
+        "variants": [
+          "output bytes",
+          "entry count",
+          "caller cancellation"
+        ]
+      },
+      {
+        "name": "modeled dangling link metadata is not followed",
+        "count": 2,
+        "variants": [
+          "symlink",
+          "Windows reparse"
+        ]
+      }
+    ],
+    "ownership": "All new cases use actual owned children and assert terminated leader, closed diagnostic streams, and closed Windows Job/port handles where applicable. No synthetic process result or owner is substituted.",
+    "budget": "New child allowance and readiness observation are bounded to 5 seconds. Every original test, benchmark and product deadline is unchanged.",
+    "affected_existing_reproducer": "tests/search/test_source_page_benchmark.py remains byte-identical at 3d378d312450198c8ee9a52f2a8ac7d69c6b6bb7; its 19 cases require actual execution.",
+    "platform_modeling": "Only the two link/reparse tests model metadata facets to avoid requiring Windows symlink privileges; underlying files, scanner failure and owned child cleanup remain real."
+  },
+  "bounded_reuse_review": [
+    {
+      "pr": 152,
+      "head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "blob": "524969868d2f2c9a2ed20fe8aa16f52272a0d117",
+      "finding": "Same unguarded os.scandir opening remains; no applicable fix to reuse."
+    },
+    {
+      "pr": 99,
+      "head": "6752e8d94fdc7d84a95242f204554f4a8d10b842",
+      "finding": "Complete tree inspected for corresponding process.py; this branch uses a different audio runtime layout and has no matching module. No broad owner/runtime transplant selected.",
+      "queried_tree_ref": "6752e8d94fdc7d84a95242f204554f4a8d10b842"
+    },
+    {
+      "pr": 209,
+      "head": "c31e680b15d2334420f6cf19d5587636e948258b",
+      "finding": "Complete tree inspected for corresponding process.py; this branch uses a different audio runtime layout and has no matching module. No broad owner/runtime transplant selected.",
+      "queried_tree_ref": "c31e680b15d2334420f6cf19d5587636e948258b"
+    }
+  ],
+  "reviews": {
+    "root": "Production hunk and original test prefix clear; one lstat/stat fixture-delegation issue identified and corrected without changing assertions.",
+    "audio_peer": "Final source and all 15 additive cases reviewed clear, including the exact one-line lstat/stat fixture successor. Source review only; no execution."
+  },
+  "host_execution": false,
+  "refs_mutated": false
+}

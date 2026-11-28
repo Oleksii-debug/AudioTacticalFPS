@@ -1,0 +1,51 @@
+{
+  "source_sha256": {
+    "launcher.c": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+    "probe_pe.py": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+    "windows_child_probe.c": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+    "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+    "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+    "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+    "build_msvc.ps1": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+  },
+  "pe": {
+    "schema": 1,
+    "file": "ResearchLibrary.exe",
+    "bytes": 15360,
+    "sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+    "machine": "x86_64",
+    "subsystem": "windows-gui",
+    "aslr": true,
+    "high_entropy_aslr": true,
+    "dep": true,
+    "timestamp": 1677176572,
+    "imports": [
+      "KERNEL32.dll",
+      "USER32.dll",
+      "SHELL32.dll"
+    ],
+    "reproducible_build_marker": true,
+    "embedded_as_invoker": true,
+    "certificate_table_present": false,
+    "authenticode_signed": false,
+    "windows_execution_verified": false,
+    "nvda_verified": false
+  },
+  "schema": 1,
+  "release_status": "unsigned-private-candidate",
+  "toolchain": {
+    "link.exe": {
+      "version": "14.44.35230.0",
+      "sha256": "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+    },
+    "cl.exe": {
+      "version": "19.44.35230.0",
+      "sha256": "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+    },
+    "rc.exe": {
+      "version": "10.0.26100.9457 (WinBuild.160101.0800)",
+      "sha256": "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+    }
+  },
+  "target": "Windows x64 / MSVC"
+}

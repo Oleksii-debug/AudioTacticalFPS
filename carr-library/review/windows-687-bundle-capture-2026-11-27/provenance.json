@@ -1,0 +1,215 @@
+{
+  "schema": "carr-retained-public-ci-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "application": {
+    "commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+    "run_id": 46075232185,
+    "run_attempt": 1,
+    "aggregate_result": "NOT_ASSESSED",
+    "status_at_initial_artifact_read": "in_progress",
+    "status_at_endpoint_artifact_read": "completed",
+    "conclusion_at_endpoint_artifact_read": "failure"
+  },
+  "reader": {
+    "commit": "4d981634a451f979a3eea61be651a0f6a4f1bc61",
+    "run_id": 46080720722,
+    "job_id": 140778804584,
+    "conclusion": "success",
+    "script_blob": "f9df89bcd254be88093a0d245971f1cec57d60d7",
+    "complete": {
+      "run": 46075232185,
+      "head": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "artifacts": 2,
+      "selected_files": 76,
+      "zip_digests_verified": true,
+      "application_acceptance": "NOT_ASSESSED",
+      "long_logs": "bounded excerpts; full member hashes retained",
+      "private_assets": "NOT_READ"
+    }
+  },
+  "artifacts": [
+    {
+      "id": 15236066233,
+      "name": "carr-windows-pre-source-68777f9f36b142ed1ce847ee47d82e20d0bdd132-1",
+      "bytes": 270313,
+      "sha256": "c4770d5c00d0d7303c92ce1e5c06d9be3ce8c89df923ee6aa3ae065756859750",
+      "created_at": "2026-11-27T22:36:06Z",
+      "updated_at": "2026-11-27T22:36:06Z",
+      "run": 46075232185,
+      "head": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "mode": "pre-source"
+    },
+    {
+      "id": 15235060544,
+      "name": "carr-windows-recording-68777f9f36b142ed1ce847ee47d82e20d0bdd132-1",
+      "bytes": 12328,
+      "sha256": "72ad943136e318bdc99ba7866e5ac1301d02eabda493aec672ba2d800a179bc2",
+      "created_at": "2026-11-27T22:19:22Z",
+      "updated_at": "2026-11-27T22:19:22Z",
+      "run": 46075232185,
+      "head": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "mode": "recording"
+    }
+  ],
+  "extraction": {
+    "method": "Both bounded read-only CI readers verified each complete ZIP SHA256 before reading. Exact small members were transmitted as numbered base64 chunks in the completed reader job logs. The five raw files were reconstructed from those chunks and independently matched each original member byte length and SHA256.",
+    "members": [
+      {
+        "path": "bundle-reader-player.json",
+        "artifact": 15236066233,
+        "bytes": 5195,
+        "sha256": "d5144df925f3371219e124959f6be5312000f703a5c627fea4d6dcd45cfb3562"
+      },
+      {
+        "path": "native-recording-device.json",
+        "artifact": 15235060544,
+        "bytes": 2773,
+        "sha256": "7be83441be5f67dbc9b87a2bc749dbd2c8aeada1e2bc1c67ea86926266a83e4f"
+      },
+      {
+        "path": "audio-services.json",
+        "artifact": 15236066233,
+        "bytes": 376,
+        "sha256": "e48a53b15f05714977d4219d96eda7646e6b2caaf265187c29b607ef367ade33"
+      },
+      {
+        "path": "audio-endpoint.json",
+        "artifact": 15236066233,
+        "bytes": 949,
+        "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1"
+      },
+      {
+        "path": "endpoint-evaluation.json",
+        "artifact": 15236066233,
+        "bytes": 5259,
+        "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf"
+      }
+    ],
+    "archive_extraction": false,
+    "artifact_execution": false
+  },
+  "current_capture_additional_receipts": {
+    "status": "READ_AND_BYTE_VERIFIED",
+    "reader_commit": "14ecd4e01f0c6bd6d4bcdc4ab69d06e3a2785da2",
+    "reader_run": 46082166844,
+    "reader_job": 140783380670,
+    "members": [
+      {
+        "path": "audio-services.json",
+        "artifact": 15236066233,
+        "bytes": 376,
+        "sha256": "e48a53b15f05714977d4219d96eda7646e6b2caaf265187c29b607ef367ade33"
+      },
+      {
+        "path": "audio-endpoint.json",
+        "artifact": 15236066233,
+        "bytes": 949,
+        "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1"
+      },
+      {
+        "path": "endpoint-evaluation.json",
+        "artifact": 15236066233,
+        "bytes": 5259,
+        "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf"
+      }
+    ],
+    "observed": {
+      "driver": {
+        "version": "3.5.2.0",
+        "provider": "VB-Audio Software",
+        "service": "VBAudioVACMME",
+        "devnode_problem": 0,
+        "device_state": "started_retained_until_VM_teardown",
+        "reboot_required": false
+      },
+      "output_devices": [
+        {
+          "index": 0,
+          "name": "Speakers (VB-Audio Virtual Cabl",
+          "format_query_result": 0
+        },
+        {
+          "index": 1,
+          "name": "CABLE In 16 Ch (VB-Audio Virtua",
+          "format_query_result": 0
+        }
+      ],
+      "output_query_format": {
+        "sample_rate": 16000,
+        "bits_per_sample": 16,
+        "channels": 1
+      },
+      "wave_mapper_format_query_result": 0,
+      "services": [
+        {
+          "name": "AudioEndpointBuilder",
+          "before": "Stopped",
+          "after": "Running",
+          "start_type": "Manual"
+        },
+        {
+          "name": "Audiosrv",
+          "before": "Stopped",
+          "after": "Running",
+          "start_type": "Manual"
+        }
+      ],
+      "reported_change_flags": {
+        "trust_store_changed": false,
+        "security_policy_changed": false,
+        "service_startup_policy_changed": false,
+        "vendor_setup_exe_executed": false
+      }
+    },
+    "not_recorded": [
+      "microphone consent registry values",
+      "raw microphone privacy or capture policy values",
+      "WASAPI IAudioClient.Initialize HRESULT",
+      "actual MME waveInOpen result"
+    ],
+    "interpretation": "Output inventory and format-query success do not establish capture input-open success. No specific current consent/policy/WASAPI/MME cause is proved by these reports; the separate actual capture receipt still records its exact DirectShow output-pin failure."
+  },
+  "workflow_correction": {
+    "base_commit": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+    "path": ".github/workflows/carr-windows.yml",
+    "preimage_blob": "83f30a998d47224971e8757d1f6edf7d675c320b",
+    "candidate_blob": "09de51356d69e4c3c21dc1794ebc98118a09aeee",
+    "sparse_tree": "de15dd3caf372ca2f5412b75c1838e1911b00c5c",
+    "inverse_readback": "EXACT",
+    "changed_hunks": 2,
+    "execution": "NOT_RUN",
+    "product_probe_runtime_changed": false
+  },
+  "qualification_limits": [
+    "These are immutable early artifacts from the ordinary run. The first reader observed that run in progress; the later endpoint reader observed it completed with failure. This evidence does not re-evaluate the complete source aggregate.",
+    "A receipt status is retained as recorded; no missing status field is converted to PASS.",
+    "No sealed aggregate acceptance is claimed.",
+    "Synthetic recording controls are distinct from actual device capture, physical microphone capture, human listening, and NVDA.",
+    "An older VM's WASAPI/MME/access-policy result is not attributed to this runner."
+  ],
+  "absent_later_bundle_receipts": [
+    "bundle-reader-navigation.json",
+    "bundle-ebook-daisy.json",
+    "bundle-recording-monitor.json",
+    "bundle-translation-v3.json",
+    "full-bundle-verified.json",
+    "full-bundle-workflows.json"
+  ],
+  "endpoint_reader": {
+    "commit": "14ecd4e01f0c6bd6d4bcdc4ab69d06e3a2785da2",
+    "run_id": 46082166844,
+    "job_id": 140783380670,
+    "conclusion": "success",
+    "script_blob": "a56dc96157593ef6709fa99b80442ca042c3cddb",
+    "complete": {
+      "run": 46075232185,
+      "head": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "artifacts": 2,
+      "selected_files": 79,
+      "zip_digests_verified": true,
+      "application_acceptance": "NOT_ASSESSED",
+      "long_logs": "bounded excerpts; full member hashes retained",
+      "private_assets": "NOT_READ"
+    }
+  }
+}

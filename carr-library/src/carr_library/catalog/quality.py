@@ -8,8 +8,8 @@ from dataclasses import dataclass
 import sqlite3
 import unicodedata
 
-from .membership import Catalog
 from . import insights
+from .membership import Catalog
 from .read_views import EditionView, browse_editions
 
 
@@ -68,7 +68,9 @@ are names in the catalog, not independently disambiguated people.
 All edition pages and memberships use one LibraryApp.read transaction. Missing
 metadata never becomes a duplicate key. A possible duplicate requires title,
 ordered authors and language; edition/volume distinctions are always retained.
-Cancellation raises instead of returning a misleading partial report.
+Cancellation raises instead of returning a misleading partial report. The existing
+catalog report budgets bound selected sources, active collection names and UTF-8
+metadata before the read views materialize author lists.
 """
     if not callable(cancelled):
         raise ValueError('A cancellation callback is required.')
@@ -86,9 +88,11 @@ Cancellation raises instead of returning a misleading partial report.
             collections = insights.report_collections(catalog)
             if collection is not None:
                 catalog._active_collection(collection)
+            # The page reader materializes author lists. Bound the selected
+            # UTF-8 metadata in SQLite before the first such allocation.
             insights._preflight_editions(catalog, collection,
                 insights.MAX_METADATA_BYTES - sum(len(name.encode('utf-8'))
-                                                  for _, name in collections))
+                                                   for _, name in collections))
             editions = []
             after = None
             while True:

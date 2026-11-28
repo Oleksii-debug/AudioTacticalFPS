@@ -1,0 +1,373 @@
+_ test_observer_failure_cannot_replace_verified_epub_success[EPUB saved and its exact bytes verified-AudioCancelled] _
+
+self = <carr_library.audio.cleanup.CleanupOwner object at 0x0000014DD1D1CE10>
+
+    def close(self):
+        """Attempt once, without overlapping native waits; return confirmed status."""
+        if self.quiescent:
+            return True
+        if not self._attempt_lock.acquire(blocking=False):
+            return self.quiescent
+        callbacks = ()
+        try:
+            if self.quiescent:
+                return True
+            try:
+>               if self._attempt() is False:
+                   ^^^^^^^^^^^^^^^
+
+src\carr_library\audio\cleanup.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\carr_library\audio\process.py:595: in cleanup_process
+    if _stop_owned(process) is not True:
+       ^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\process.py:291: in _stop_owned
+    return job.close(leader=process)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\windows_process.py:356: in close
+    raise self._admission_failure
+src\carr_library\audio\process.py:606: in run_process
+    cleanup_process()
+src\carr_library\audio\process.py:595: in cleanup_process
+    if _stop_owned(process) is not True:
+       ^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\process.py:291: in _stop_owned
+    return job.close(leader=process)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\windows_process.py:356: in close
+    raise self._admission_failure
+src\carr_library\audio\windows_process.py:347: in close
+    self._retain_members(deadline)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <carr_library.audio.windows_process._Job object at 0x0000014DD1D01550>
+deadline = 1234.484
+
+    def _retain_members(self, deadline):
+        # Hold exact process objects before termination, including nested jobs.
+        # A job's accounting counter is not a per-process signaled-handle wait.
+        while True:
+            self._drain_notifications(deadline)
+            self._remaining(deadline)
+            before = self._query(1, _Accounting())
+            if not 1 <= before.total_processes <= _MAX_JOB_MEMBERS:
+                raise OSError('The Windows audio job exceeds its bounded lifetime inventory.')
+            members = self._query(3, _ProcessIds())
+            if members.assigned != members.listed or members.listed > _MAX_JOB_MEMBERS:
+>               raise OSError('The Windows audio job exceeds its bounded membership inventory.')
+E               OSError: The Windows audio job exceeds its bounded membership inventory.
+
+src\carr_library\audio\windows_process.py:269: OSError
+
+The above exception was the direct cause of the following exception:
+
+source_job = (<carr_library.studio.render.ProductionService object at 0x0000014DD13F7890>, {'artifacts': [{'path': 'C:\\Users\\runn...eradmin\\AppData\\Local\\Temp\\carr-ci-guty0_tp\\pytest\\test_observer_failure_cannot_r2\\rendered', 'error': '', ...})
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-guty0_tp/pytest/test_observer_failure_cannot_r2')
+phase = 'EPUB saved and its exact bytes verified'
+error = <class 'carr_library.audio.models.AudioCancelled'>
+
+    @pytest.mark.parametrize('phase,error', [
+        ('Verifying source artifact', RuntimeError),
+        ('EPUB saved and its exact bytes verified', RuntimeError),
+        ('EPUB saved and its exact bytes verified', AudioCancelled),
+    ])
+    def test_observer_failure_cannot_replace_verified_epub_success(source_job, tmp_path, phase, error):
+        service, state = source_job
+        publisher = PublicationService(service)
+        output = tmp_path / 'completed-despite-observer.epub'
+        observed = []
+        def progress(message):
+            if message.startswith(phase):
+                observed.append(message)
+                raise error('Synthetic notification failure; no cancellation request')
+>       result = publisher.export_epub(state['id'], output, progress=progress)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_publishing.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\carr_library\studio\publishing.py:850: in export_epub
+    return self._export_narrated(job_id, output, book_format='epub3', language=language,
+src\carr_library\studio\publishing.py:974: in _export_narrated
+    runtime.convert(selected_audio, audio, sample_rate=observed.sample_rate,
+src\carr_library\audio\dsp.py:470: in convert
+    chain = self._chain(effects, sample_rate, cancelled=cancelled)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\dsp.py:323: in _chain
+    available = set(self.capabilities(cancelled=cancelled)['filters'])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\dsp.py:297: in capabilities
+    muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget, cancelled=cancelled, owned_tree=True).stdout.decode('utf-8', 'replace')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = ['D:\\a\\_temp\\carr-component-audio\\bin\\ffmpeg.exe', '-hide_banner', '-muxers']
+
+    def run_process(args, *, budget=None, cancelled=lambda: False,
+                    watch=(), progress=None, env=None, cwd=None, owned_tree=False,
+                    stop_requested=None, allow_failure=False):
+        """Run an already constructed argument vector, never a shell expression.
+    
+        Progress callbacks receive rendered seconds from FFmpeg's progress stream.
+        Ordinary stdout/stderr have a *total* byte cap, including a fast child which
+        finishes between polls. Expected progress is streamed into a single latest
+        value rather than accumulated for multi-hour renders.  Callbacks run on the
+        caller's thread. No child inherits stdin. Explicit recording calls may send
+        only FFmpeg's fixed q command to an owned pipe; Cancel still discards output.
+        The worker timeout ends at its first observed exit; later caller-side
+        validation does not extend execution or erase cancellation/output checks.
+        ProcessResult.elapsed still includes that validation and pipe collection.
+        Existing diagnostic readers may observe the same leader after EOF while
+        the caller validates a checkpoint. EOF itself never proves process exit;
+        native family shutdown and reader completion remain required cleanup.
+        """
+        budget = budget or AudioBudget()
+        if not isinstance(args, (tuple, list)) or not args:
+            raise ValueError('Audio worker requires an argument vector.')
+        if any(not isinstance(a, str) or '\x00' in a for a in args):
+            raise ValueError('Invalid audio worker argument.')
+        if not Path(args[0]).is_absolute():
+            raise ValueError('Audio worker must use a resolved executable.')
+        if type(owned_tree) is not bool or type(allow_failure) is not bool:
+            raise ValueError('Audio process ownership and diagnostic exits must be explicit.')
+        if stop_requested is not None and (not callable(stop_requested) or not owned_tree):
+            raise ValueError('Graceful recording stop requires an owned process and callback.')
+        if cancelled():
+            raise AudioCancelled('Audio operation cancelled before starting.')
+        watched = tuple(Path(path) for path in watch)
+        overflow = threading.Event()
+        stop_observers = threading.Event()
+        exit_lock = threading.Lock()
+        wait_lock = threading.Lock()
+        buffers = {'stdout': bytearray(), 'stderr': bytearray()}
+        latest = [None]
+        process = _start_process(args, owned_tree=owned_tree,
+            stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+            cwd=cwd, env=native_audio_environment(env))
+        started = time.monotonic()
+        stopped_at = None
+        observed_exit_at = None
+        reader_failures = []
+    
+        def record_exit():
+            nonlocal observed_exit_at
+            # Capture only after an exact-process poll/wait positively returned.
+            # Never infer this time from EOF, a callback, or the start of a wait.
+            observed = time.monotonic()
+            with exit_lock:
+                if observed_exit_at is None or observed < observed_exit_at:
+                    observed_exit_at = observed
+    
+        def exit_time():
+            with exit_lock:
+                return observed_exit_at
+    
+        def observe_eof_exit():
+            while not stop_observers.is_set():
+                # The same lock hands an in-flight bounded wait to native cleanup.
+                # In particular, a Windows Job may close the leader handle there.
+                # Caller validation never holds or waits for this observation lock.
+                with wait_lock:
+                    if stop_observers.is_set() or exit_time() is not None:
+                        return
+                    remaining = budget.timeout - (time.monotonic() - started)
+                    if remaining <= 0:
+                        return
+                    try:
+                        code = process.wait(timeout=min(.05, remaining))
+                    except subprocess.TimeoutExpired:
+                        continue
+                    if code is None:
+                        raise AudioError('Audio worker exit observation returned no status.')
+                    record_exit()
+                    return
+    
+        def read_pipe(pipe, name):
+            count = 0
+            partial = b''
+            try:
+                while True:
+                    data = pipe.read1(4096)
+                    if not data:
+                        observe_eof_exit()
+                        break
+                    if name == 'stdout' and progress is not None:
+                        partial += data
+                        if len(partial) > budget.max_log_bytes:
+                            overflow.set()
+                            partial = b''
+                        lines = partial.split(b'\n')
+                        partial = lines.pop()
+                        for line in lines:
+                            if len(line) > 1024:
+                                overflow.set()
+                            if line.startswith(b'out_time_us='):
+                                try:
+                                    latest[0] = max(0, int(line.split(b'=', 1)[1]) / 1000000)
+                                except (ValueError, OverflowError):
+                                    pass
+                        continue
+                    count += len(data)
+                    if count > budget.max_log_bytes:
+                        overflow.set()
+                    available = budget.max_log_bytes - len(buffers[name])
+                    buffers[name].extend(data[:max(0, available)])
+            except Exception as exc:
+                reader_failures.append(exc)
+            finally:
+                try:
+                    pipe.close()
+                except Exception as exc:
+                    reader_failures.append(exc)
+    
+        threads, started_pipes = [], set()
+        last_progress = None
+    
+        def check():
+            nonlocal last_progress, stopped_at
+            # A cancellation callback may also verify a completed checkpoint. Take
+            # positive process evidence before that work, never backdate an exit
+            # first observed after the allowance or during a slow callback.
+            if exit_time() is None and process.poll() is not None:
+                record_exit()
+            if cancelled():
+                raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
+            if (stop_requested is not None and stopped_at is None
+                    and stop_requested() and process.poll() is None):
+                stopped_at = time.monotonic()
+                try:
+                    process.stdin.write(b'q\n')
+                    process.stdin.flush()
+                    process.stdin.close()
+                except BrokenPipeError:
+                    pass  # A concurrent exit is checked by the normal result path.
+            if stopped_at is not None and time.monotonic() - stopped_at > 5 and process.poll() is None:
+                raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
+            if reader_failures:
+                raise AudioError('Audio worker diagnostic stream could not be read.') from reader_failures[0]
+            if overflow.is_set():
+                raise AudioError('Audio worker exceeded its diagnostic output budget.')
+            worker_until = exit_time()
+            if worker_until is None:
+                worker_until = time.monotonic()
+            if worker_until - started > budget.timeout:
+                raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
+            total, count = 0, 0
+            pending = list(watched)
+            while pending:
+                if cancelled():
+                    raise AudioCancelled('Audio operation cancelled during staging inspection.')
+                path = pending.pop()
+                try:
+                    info = path.lstat()
+                except FileNotFoundError:
+                    continue
+                if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                    raise AudioError('Audio worker output is not a regular file.')
+                if stat.S_ISDIR(info.st_mode):
+                    with os.scandir(path) as entries:
+                        for entry in entries:
+                            if cancelled():
+                                raise AudioCancelled('Audio operation cancelled during staging inspection.')
+                            count += 1
+                            if count > budget.max_staging_files:
+                                raise AudioError('Audio worker exceeded its staging file budget.')
+                            pending.append(Path(entry.path))
+                    continue
+                if not stat.S_ISREG(info.st_mode):
+                    raise AudioError('Audio worker output is not a regular file.')
+                total += info.st_size
+                if total > budget.max_output_bytes:
+                    raise AudioError('Audio worker exceeded its output disk budget.')
+            if watched and shutil.disk_usage(watched[0].parent).free < budget.reserve_disk_bytes:
+                raise AudioError('Audio render stopped to preserve the configured free disk reserve.')
+            if progress is not None and latest[0] is not None and latest[0] != last_progress:
+                progress(latest[0])
+                last_progress = latest[0]
+    
+        try:
+            # Allocation and startup can both fail after the child is created.
+            # Keep both inside its existing owned-process cleanup boundary.
+            for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
+                thread = threading.Thread(target=read_pipe, args=(pipe, name), daemon=True)
+                threads.append(thread)
+                thread.start()
+                started_pipes.add(pipe)
+            while process.poll() is None:
+                check()
+                try:
+                    if process.wait(timeout=.05) is not None:
+                        record_exit()
+                except subprocess.TimeoutExpired:
+                    pass
+            # Observe a cancellation even when the leader exits between polls;
+            # an owned descendant may still hold its diagnostic pipes open.
+            check()
+            for thread in threads:
+                thread.join(timeout=2)
+            if any(thread.is_alive() for thread in threads):
+                raise AudioError('Audio worker did not close its diagnostic streams.')
+            # Required even for a child which exited before the first polling tick.
+            check()
+            if process.returncode and not allow_failure:
+                message = bytes(buffers['stderr']).decode('utf-8', errors='replace')[-3000:]
+                raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
+            return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
+                                 time.monotonic() - started, process.returncode, stopped_at is not None)
+        finally:
+            stop_observers.set()
+            stopped = False
+    
+            def release_streams():
+                close_error = None
+                if process.stdin is not None:
+                    try:
+                        process.stdin.close()
+                    except OSError as exc:
+                        if owned_tree:
+                            close_error = exc
+                for thread in threads:
+                    if thread.ident is not None:
+                        thread.join(timeout=2)
+                if any(thread.ident is not None and thread.is_alive() for thread in threads):
+                    raise AudioError('Audio worker diagnostic readers have not confirmed shutdown.')
+                # Join first: a started reader owns its pipe until its thread ends.
+                # Retry a failed owned close as well as allocation/start failures.
+                for pipe in (process.stdout, process.stderr):
+                    if pipe is not None and (owned_tree or pipe not in started_pipes):
+                        try:
+                            pipe.close()
+                        except Exception as exc:
+                            if close_error is None:
+                                close_error = exc
+                if close_error is not None:
+                    raise close_error
+    
+            def cleanup_process():
+                nonlocal stopped
+                with wait_lock:
+                    if not stopped:
+                        if owned_tree:
+                            if _stop_owned(process) is not True:
+                                raise RuntimeError('The owned audio process has not confirmed shutdown.')
+                        else:
+                            _terminate(process)
+                        stopped = True
+                # Required I/O completion precedes CleanupOwner quiescence. It is
+                # not a notification which could fail after staging is released.
+                release_streams()
+                return True
+    
+            try:
+                cleanup_process()
+            except Exception as exc:
+                if not owned_tree:
+                    release_streams()
+                    raise
+                from .cleanup import pending_cleanup
+>               raise pending_cleanup(cleanup_process,
+                    message='Audio process cleanup is still pending; capture remains reserved.') from exc
+E               carr_library.audio.cleanup.AudioCleanupPending: Audio process cleanup is still pending; capture remains reserved.
+
+src\carr_library\audio\process.py:612: AudioCleanupPending
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-guty0_tp\junit.xml -

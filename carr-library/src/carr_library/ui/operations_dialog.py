@@ -1,5 +1,4 @@
 """Accessible shared job view and explicit local resource policy."""
-from dataclasses import asdict
 from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
@@ -27,6 +26,59 @@ def policy_from_fields(*, cpu, memory_mib, disk_gib, free_mib, gpu, max_leases):
         gpu_devices=tuple(devices), max_leases=max_leases)
 
 
+def operation_details_text(value):
+    """Format only the facade's redacted snapshot, without refreshing a producer."""
+    details = value.details
+    unknown = 'Unknown; not recorded'
+    lines = [
+        'Saved operation metadata; current output files have not been checked.',
+        'Operation: ' + value.key,
+        'Stored status: ' + value.status,
+        'Workspace: ' + (value.workspace or unknown),
+        'Saved update time: ' + (value.updated or unknown),
+        'Available controls: ' + (', '.join(value.controls) or 'None in the current context'),
+        'Phase: ' + value.phase,
+        'Recorded progress: ' + (str(value.completed) if value.completed is not None else 'Unknown') +
+            (' of ' + str(value.total) if value.total is not None else ''),
+        'Active broker reservation: ' + ('Observed' if value.live is True else 'Unknown'),
+        'Current canonical handler: ' + (details.handler_schema or unknown),
+        'Selected engine or model adapter: ' + (details.adapter or unknown),
+        'Saved operation-plan SHA-256: ' + (details.operation_plan_sha256 or unknown),
+        'Separate settings SHA-256: ' + (details.settings_sha256 or unknown),
+        'Saved project fingerprint: ' + (details.project_fingerprint or unknown),
+    ]
+    plan = details.resource_plan
+    if plan is None:
+        lines.append('Declared resource plan: ' + unknown)
+    else:
+        lines.extend([
+            'Declared CPU slots: ' + str(plan.cpu_slots),
+            'Declared memory bytes: ' + str(plan.memory_bytes),
+            'GPU requested: ' + ('Yes' if plan.gpu_requested else 'No'),
+            'Declared GPU memory bytes: ' + str(plan.gpu_memory_bytes),
+            'Declared disk reservations in bytes: ' +
+                (', '.join(str(size) for size in plan.disk_reservation_bytes) or 'None requested'),
+            'Exclusive device count: ' + str(plan.exclusive_device_count),
+            'Recorded input count: ' + (str(plan.source_count) if plan.source_count is not None else unknown),
+            'Estimated duration in seconds: ' + (str(plan.estimated_duration_seconds)
+                if plan.estimated_duration_seconds is not None else unknown),
+        ])
+    if details.completed_artifact_count is None:
+        lines.append('Completed artifact identities: Unavailable in this saved checkpoint')
+    else:
+        lines.append('Recorded completed artifact identities: showing ' +
+            str(len(details.completed_artifacts)) + ' of ' + str(details.completed_artifact_count))
+        for artifact in details.completed_artifacts:
+            lines.append('Artifact ' + str(artifact.ordinal) + ': ' + str(artifact.size) +
+                         ' bytes; SHA-256 ' + artifact.sha256)
+        lines.append('Omitted artifact identities: ' + str(details.omitted_artifact_count))
+    marker = details.restore_requires_new_output
+    lines.append('Saved restore marker requires a new output: ' +
+                 (unknown if marker is None else 'Yes' if marker else 'Recorded as no'))
+    lines.extend(['Checkpoint: ' + value.checkpoint, details.note])
+    return '\n'.join(lines)
+
+
 def show_operations(frame):
     import wx
     from ..operations import OperationFacade
@@ -35,11 +87,13 @@ def show_operations(frame):
     broker = ResourceBroker.for_app(frame.library.root)
     facade = OperationFacade(frame.library, broker=broker,
         studio=ProductionService(frame.library.root / 'state' / 'studio', broker=broker),
-        transcription=TranscriptionService(frame.library.root / 'state' / 'transcription', broker=broker))
+        transcription=TranscriptionService(frame.library.root / 'state' / 'transcription', broker=broker, protocol='local-file-job/1'))
     dialog = wx.Dialog(frame, title='Tasks and resources', size=(850, 780),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, jobs, close_when_idle = True, False, (), False
+    destroyed = False
+    owner_id = dialog.GetId()
     opened_root = Path(frame.library.root).absolute()
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='operation-dashboard')
 
@@ -95,7 +149,7 @@ def show_operations(frame):
             return
         index = listing.GetSelection()
         if 0 <= index < len(jobs):
-            detail.ChangeValue(json.dumps(asdict(jobs[index]), ensure_ascii=False, indent=2))
+            detail.ChangeValue(operation_details_text(jobs[index]))
         controls()
 
     def begin(title, operation, done):
@@ -203,6 +257,12 @@ def show_operations(frame):
                           ('pause', lambda event: control('pause')),
                           ('cancel', lambda event: control('cancel'))):
         buttons[key].Bind(wx.EVT_BUTTON, callback)
+    def destroyed_owner(event):
+        nonlocal alive, destroyed
+        if event.GetId() == owner_id:
+            alive, destroyed = False, True
+        event.Skip()
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed_owner)
     dialog.Bind(wx.EVT_CLOSE, close)
     controls()
     detail.ChangeValue('Refresh lists saved jobs across this data folder. Choose a job to inspect its '
@@ -213,13 +273,14 @@ def show_operations(frame):
     finally:
         alive = False
         executor.shutdown(wait=False, cancel_futures=True)
-        dialog.Destroy()
+        if not destroyed:
+            dialog.Destroy()
 
 
 def install_operations_actions(frame):
     import wx
-    from .command_registry import CommandSpec
-    from .keyboard_settings import register_menu_command
+    if getattr(frame, '_operations_menu_item', None) is not None:
+        return frame._operations_menu_item
     menu = next((frame.menu_bar.GetMenu(i) for i in range(frame.menu_bar.GetMenuCount())
                  if frame.menu_bar.GetMenuLabel(i).replace('&', '') == 'Tools'), None)
     if menu is None:
@@ -227,4 +288,6 @@ def install_operations_actions(frame):
         frame.menu_bar.Append(menu, '&Tools')
     item = menu.Append(wx.ID_ANY, 'Tasks and resources...')
     frame.Bind(wx.EVT_MENU, lambda event: show_operations(frame), item)
-    register_menu_command(frame, CommandSpec('operations.tasks', 'Tasks and resources...', 'main'), item)
+    frame._operations_menu_item = item
+    # The existing host captures this native menu into its one shortcut/palette registry.
+    return item

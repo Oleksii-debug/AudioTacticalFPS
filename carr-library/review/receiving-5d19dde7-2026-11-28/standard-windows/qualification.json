@@ -1,0 +1,247 @@
+{
+  "schema": "carr-ci-observation/1",
+  "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098476106,
+  "job_id": 140835235429,
+  "status": "PASS",
+  "source_contracts": {
+    "modules": 11,
+    "passed": 345,
+    "failed": 0,
+    "skipped": 0,
+    "module_verdicts": [
+      {
+        "line": 1453,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1465,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_native_checks.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1476,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_windows_bundle.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1488,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_windows_launcher_bundle.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1499,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_standard_installer.py",
+        "passed": 149,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1510,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_worker_bytecode.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1521,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_install_bytecode.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1532,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_native_runtime.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1543,
+        "verdict": "PASS",
+        "selector": "tests/audio/test_local_runtime_cli.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1554,
+        "verdict": "PASS",
+        "selector": "tests/test_delivery_cli.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1559,
+        "verdict": "PASS",
+        "selector": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "installed_contracts": {
+    "passed": 345,
+    "subtests_passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "junit_testcases": 345,
+    "summary": "345 passed, 22 subtests passed in 65.00s (0:01:04)",
+    "junit_verdict": "INSTALLED_CASES_PASS 345",
+    "scope": "Same eleven selectors, isolated installed-wheel interpreter with empty pytest pythonpath; strict JUnit asserts no failure/error/skipped testcase."
+  },
+  "source_and_installed_identity": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "python_files": 380,
+    "rows_sha256": "3dca930d425c6e6d0564edc344aa6eb568002e79babf75e2a1298b72190791b3",
+    "rows_encoding": "SHA256 of UTF-8 JSON.stringify(python_files), no trailing LF",
+    "reader_reference_match": true,
+    "reader_reference_source": "Parent supplied completed reader-gate common-row digest; this review independently recomputed the standard-gate rows.",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "installed_package": "D:\\a\\_temp\\carr-standard-installation-python\\Lib\\site-packages\\carr_library",
+    "wheel_source_proof": {
+      "payload_files": 490,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 395,
+      "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+      "source_tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a",
+      "wheel_sha256": "9e7cea24cdfafabe10963a18e74f96a8872a2ad087cd7cc45df4402a3966905d"
+    }
+  },
+  "setup": {
+    "schema": 1,
+    "status": "BUILT_NOT_INSTALLED",
+    "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "bundle_manifest_sha256": "6d26cdbf50d39391988fe65dedb3c483049bc5b6ea313c2249a3e46464f2b5cd",
+    "application_version": "0.2.0.dev2",
+    "managed_upgrade_protocol": "carr-managed-upgrade/1",
+    "template_sha256": "bd74dee7960ccfed0f72879cafe4f06e64524f340f16548f04e614789fc2c9b7",
+    "maintenance_sha256": {
+      "maintenance.py": "db2cd3f07d3af6055667ed818a7889c6b9094100643578dda347841aed2cb5fb",
+      "installation_lease.py": "63068eeb4ab1aa734719df0d2b6156bda5907b8ee74dd690da958bcfb8a72562",
+      "bundle_verifier.py": "68dffedea8e372302bbe7a0407fb382d2730dec9b16603c537b591ad8d7fe3eb",
+      "managed_installation.py": "9b70d31705ad4ee7a600649018d3d7c1e07bbe922814fbd70a337f8e9f2d86fe",
+      "process.py": "2af9d942637da3c675a7a4861c86aca1b63a072ffbb4d5c30af7e304967dc95d",
+      "windows_process.py": "6907f4bf2253cc2459b3d0369947dc319a4a084ebbd8500f92fd1360177d5fa6",
+      "models.py": "a22ba261813330f2e4ce1dc6d44fb02c8988ea1a849cb43b2951a175293945dc",
+      "cleanup.py": "ce26559c9f460d347f2e67f792adaa0da53080513723432f5dab6a3c32fee588"
+    },
+    "release_status": "unsigned-private-candidate",
+    "authenticode_verified": false,
+    "windows_installation_verified": false,
+    "nvda_verified": false,
+    "setup_sha256": "b112d8c2fcbb80e7336edc44fc2a41c02418a5a4ea6898dcee17d6f03718eb86",
+    "setup_bytes": 82411877,
+    "toolchain": {
+      "archive_sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c",
+      "schema": 1,
+      "version": "6.7.4",
+      "iscc_sha256": "f02fa0e5f237b47d7ed1edae9b991866ec94fe02af61eb6a73e94f92fe8e0604",
+      "upstream_signature": "Valid",
+      "publisher": "Pyrsys B.V."
+    }
+  },
+  "native_standard": {
+    "checks": 12,
+    "required": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "result": {
+      "schema": 1,
+      "status": "PASS",
+      "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+      "setup_sha256": "b112d8c2fcbb80e7336edc44fc2a41c02418a5a4ea6898dcee17d6f03718eb86",
+      "bundle_manifest_sha256": "6d26cdbf50d39391988fe65dedb3c483049bc5b6ea313c2249a3e46464f2b5cd",
+      "actual_inno_install": true,
+      "actual_offline_runtime_bootstrap": true,
+      "per_user_start_menu": true,
+      "per_user_repair_uninstall_registration": true,
+      "fresh_shortcut_collision_refused": true,
+      "uninstaller_wrapper_removed": true,
+      "native_launcher_prelaunch_lease": true,
+      "live_job_preserved": true,
+      "repair_retains_modified_and_foreign_files": true,
+      "actual_repair": true,
+      "actual_uninstall": true,
+      "populated_library_bytes_preserved": true,
+      "authenticode_verified": false,
+      "nvda_verified": false,
+      "unprivileged_account_qualification": "NOT_RUN",
+      "native_network_trace": "NOT_RUN",
+      "release_status": "unsigned-private-candidate"
+    }
+  },
+  "artifact_metadata": {
+    "id": 15244403636,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NDQwMzYzNg==",
+    "name": "carr-standard-installation-windows-2022-5d19dde77aca6a257ee601c1bc49b8504c342cee-1",
+    "size_in_bytes": 140474,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244403636",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244403636/zip",
+    "expired": false,
+    "digest": "sha256:49f0cee4786b88cdc90d42d24fd6502f6db0983bbdf4425da2d62e02eb0b1b1a",
+    "created_at": "2026-11-28T02:51:24Z",
+    "updated_at": "2026-11-28T02:51:24Z",
+    "expires_at": "2026-12-05T02:51:22Z",
+    "workflow_run": {
+      "id": 46098476106,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee"
+    }
+  },
+  "qualification_limits": {
+    "artifact_bytes_downloaded": false,
+    "original_artifact_member_hashes": "NOT_CLAIMED",
+    "authenticode_verified": false,
+    "nvda_verified": false,
+    "unprivileged_account_qualification": "NOT_RUN",
+    "native_network_trace": "NOT_RUN",
+    "release_status": "unsigned-private-candidate",
+    "full_optional_audio_model_runtime_qualification": "NOT_CLAIMED"
+  }
+}

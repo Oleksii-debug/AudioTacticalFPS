@@ -34,14 +34,43 @@ if hasattr(os, 'register_at_fork'):
     os.register_at_fork(before=_GUARD.acquire, after_in_parent=_GUARD.release, after_in_child=_after_fork)
 
 
+def _checked_lock_path(value):
+    # Release may remove the unowned leaf between its presence and metadata
+    # checks. A replacement must pass a fresh full validation before opening.
+    path = Path(value).absolute()
+    for _ in range(3):
+        try:
+            checked = local_path(value)
+        except FileNotFoundError:
+            pass
+        else:
+            parent = local_path(checked.parent, exists=True)
+            regular(parent, directory=True)
+            try:
+                regular(checked)
+            except FileNotFoundError:
+                pass
+            else:
+                return checked
+        # Revalidate the parent after the missing-path observation. Keep
+        # missing/invalid parents, links and access failures visible.
+        parent = local_path(path.parent, exists=True)
+        regular(parent, directory=True)
+        checked = parent / path.name
+        try:
+            checked.lstat()
+        except FileNotFoundError:
+            return checked
+        # A contender recreated the leaf; revalidate it instead of returning
+        # an unchecked replacement or rethrowing a stale absence observation.
+    raise ResourceStateError('A resource lock path kept changing before native acquisition.')
+
 class NativeLock:
     def __init__(self, path):
         expected = WindowsFileLock if sys.platform == 'win32' else UnixFileLock
         if version('filelock') != '3.29.0' or FileLock is not expected:
             raise ResourceStateError('The reviewed native file locking backend is unavailable.')
-        self.path = local_path(path)
-        if os.path.lexists(self.path):
-            regular(self.path)
+        self.path = _checked_lock_path(path)
         self.expected, self.pid = expected, os.getpid()
         with _GUARD:
             self.lock = FileLock(self.path, mode=0o600, thread_local=False)
@@ -50,9 +79,7 @@ class NativeLock:
     def acquire(self):
         if self.pid != os.getpid():
             raise ResourceStateError('A resource lock cannot be reused in a forked child.')
-        local_path(self.path)
-        if os.path.lexists(self.path):
-            regular(self.path)
+        _checked_lock_path(self.path)
         with _GUARD:
             try:
                 self.lock.acquire(timeout=0)

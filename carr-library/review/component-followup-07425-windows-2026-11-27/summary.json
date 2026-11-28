@@ -1,0 +1,148 @@
+{
+  "schema": "carr-component-failure-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run_id": 46069568992,
+  "job_id": 140742999376,
+  "commit": "07425b55fdcd703e0e9150c5c5479b37bb64c750",
+  "workflow_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069568992/job/140742999376",
+  "mode": "Windows source",
+  "job_conclusion": "cancelled",
+  "source_step": {
+    "started_at": "2026-11-27T21:23:41Z",
+    "completed_at": "2026-11-27T22:33:21Z",
+    "conclusion": "failure",
+    "required_modules": 36,
+    "passed_modules": 29,
+    "failed_modules": 7
+  },
+  "installed_step": {
+    "started_at": "2026-11-27T22:33:21Z",
+    "completed_at": "2026-11-27T22:35:57Z",
+    "conclusion": "cancelled",
+    "qualification": "NOT_COMPLETED"
+  },
+  "evidence": {
+    "kind": "completed GitHub job log returned by github_fetch_workflow_job_logs",
+    "decoded_utf8_sha256": "21ffb7c02c853c47cb0d45fa2bba4ec3e2f11cbb1d8890c170c4315b77f52f90",
+    "decoded_characters": 4470211,
+    "excerpts": "ANSI escapes, CRs and leading runner timestamps removed for readability; interleaved pytest output retained. Original complete decoded log remains in the session. These are log excerpts, not original artifact-member bytes."
+  },
+  "suites": [
+    {
+      "path": "tests/transcription/test_service.py",
+      "passed": 22,
+      "failed": 6,
+      "skipped": 0,
+      "pytest_seconds": 243.42
+    },
+    {
+      "path": "tests/transcription/test_admission_boundaries.py",
+      "passed": 6,
+      "failed": 8,
+      "skipped": 0,
+      "pytest_seconds": 269.27
+    }
+  ],
+  "failed_nodeids": [
+    "tests/transcription/test_service.py::test_actual_process_receipts_reading_and_subtitle_rollover",
+    "tests/transcription/test_service.py::test_isolated_worker_preserves_unicode_paths_and_diagnostics",
+    "tests/transcription/test_service.py::test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint",
+    "tests/transcription/test_service.py::test_rebind_preserves_accepted_artifact_and_its_original_profile",
+    "tests/transcription/test_service.py::test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust",
+    "tests/transcription/test_service.py::test_unclean_runner_requires_explicit_review_before_resume",
+    "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit]",
+    "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit]",
+    "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit]",
+    "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit]",
+    "tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[OSError]",
+    "tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit]",
+    "tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[False]",
+    "tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[True]"
+  ],
+  "diagnostic_observations": {
+    "process_timeout_seconds": 5,
+    "timings_are_inclusive": true,
+    "caution": "Nested wrapper times must not be summed. These observations alone do not establish when the native child exited, nor prove a timeout root cause.",
+    "resume_process": {
+      "first_completed_wait": {
+        "ended": 23.952999999999975,
+        "returncode": 0,
+        "started": 23.952999999999975
+      },
+      "first_exit_poll": {
+        "ended": 23.952999999999975,
+        "returncode": 0,
+        "started": 23.952999999999975
+      },
+      "last_running_poll": {
+        "ended": 18.702999999999975,
+        "started": 18.702999999999975
+      },
+      "owned_tree": true,
+      "phase": "resume",
+      "poll_calls": 6,
+      "returned": 18.609000000000037,
+      "started": 18.609000000000037,
+      "wait_calls": 3,
+      "wait_timeouts": 1
+    },
+    "resume_process_failure": {
+      "caught": 23.968000000000075,
+      "error": "AudioError",
+      "original_check": {
+        "observed_exit_at": 23.952999999999975,
+        "started": 18.609000000000037,
+        "worker_until": 23.952999999999975
+      },
+      "phase": "resume"
+    },
+    "selected_resume_timings": {
+      "resume:_admit_results": {
+        "calls": 4,
+        "first_started": 16.062000000000012,
+        "last_ended": 26.514999999999986,
+        "maximum_ended": 23.922000000000025,
+        "maximum_seconds": 5.062999999999988,
+        "maximum_started": 18.859000000000037,
+        "seconds": 5.093999999999937
+      },
+      "resume:_control": {
+        "calls": 1446,
+        "first_started": 13.609000000000037,
+        "last_ended": 26.514999999999986,
+        "maximum_ended": 17.031000000000063,
+        "maximum_seconds": 0.031000000000062755,
+        "maximum_started": 17,
+        "seconds": 11.375999999999976
+      },
+      "resume:_verify_profile": {
+        "calls": 5,
+        "first_started": 13.609000000000037,
+        "last_ended": 26.484000000000037,
+        "maximum_ended": 26.484000000000037,
+        "maximum_seconds": 2.4840000000000373,
+        "maximum_started": 24,
+        "seconds": 12.063000000000216
+      },
+      "resume:process_callback": {
+        "calls": 18,
+        "first_started": 18.593000000000075,
+        "last_ended": 23.968000000000075,
+        "maximum_ended": 23.922000000000025,
+        "maximum_seconds": 5.078999999999951,
+        "maximum_started": 18.843000000000075,
+        "seconds": 5.312000000000012
+      },
+      "resume:run_process": {
+        "calls": 1,
+        "first_started": 18.593000000000075,
+        "last_ended": 23.968000000000075,
+        "maximum_ended": 23.968000000000075,
+        "maximum_seconds": 5.375,
+        "maximum_started": 18.593000000000075,
+        "seconds": 5.375
+      }
+    }
+  },
+  "interpretation": "The existing 5-second worker deadline and all test assertions remained unchanged. Root owns production diagnosis. No fix, runtime re-execution, installed success or aggregate qualification is claimed."
+}

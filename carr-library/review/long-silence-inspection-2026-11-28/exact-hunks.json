@@ -1,0 +1,434 @@
+{
+  "schema": 1,
+  "basis": {
+    "commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "before_blob": "f6892a649b51e9670744dabedaee8322a889f564",
+      "after_blob": "d336957bbd017891a9686797077c953f52023e64",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 518,
+          "newLine": 518,
+          "contextBefore": [
+            "                            bit_depth=widths[info.codec], sources=(source,),",
+            "                            cancelled=cancelled, progress=progress, before_publish=verify)",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "    def inspect_silence(self, source, *, threshold_dbfs, minimum_seconds,",
+            "                        cancelled=lambda: False, progress=None, deadline=None):",
+            "        from .silence import inspect_silence",
+            "        return inspect_silence(self, source, threshold_dbfs=threshold_dbfs,",
+            "            minimum_seconds=minimum_seconds, cancelled=cancelled, progress=progress, deadline=deadline)",
+            ""
+          ],
+          "contextAfter": [
+            "    def audiobook(self, source, output, *, chapters, title, sample_rate=24000,",
+            "                  channels=2, bitrate=192, cancelled=lambda: False, progress=None):",
+            "        from .audiobook import publish_m4b"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before_blob": "4b5a04ca80e881ed7fbcfb07392d4332cfdaf280",
+      "after_blob": "4a2b750195ffda21a688da19a0df6551549c46bc",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 451,
+          "newLine": 451,
+          "contextBefore": [
+            "        return audio_runtime(self.cache, state_root=self.root.parent,",
+            "                             input_roots=(self.cache, *self.input_roots))",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "    def inspect_silence(self, job_id, *, threshold_dbfs, minimum_seconds,",
+            "                        cancelled=lambda: False, progress=None, source_guard=None, budget=None,",
+            "                        runtime_binding=None):",
+            "        from .silence_inspection import inspect_job",
+            "        return inspect_job(self, job_id, threshold_dbfs=threshold_dbfs,",
+            "            minimum_seconds=minimum_seconds, cancelled=cancelled,",
+            "            progress=progress, source_guard=source_guard, budget=budget,",
+            "            runtime_binding=runtime_binding)",
+            ""
+          ],
+          "contextAfter": [
+            "    def run(self, job_id, *, cancelled=lambda: False, progress=None, source_guard=None):",
+            "        self._check_open()",
+            "        from ..audio import AudioCancelled, AudioError, Track, MusicSpec"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "before_blob": "8dcece0364823f8d2514ced6cd50455ffc8d4cf6",
+      "after_blob": "16e5d0de8543351f3a0d0987b3780b0b7edc7012",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 63,
+          "newLine": 63,
+          "contextBefore": [
+            "    render.add_argument('--output', type=Path, required=True, help='Existing parent folder; a new project subfolder is created')",
+            "    render.add_argument('--format', default='wav', choices=('wav','flac','mp3','ogg','opus','m4a','m4b','aiff','wma'))",
+            "    render.add_argument('--no-stems', action='store_true')"
+          ],
+          "removed": [],
+          "added": [
+            "    silence = operations.add_parser('inspect-silence',",
+            "        help='Measure warning-only long-silence intervals in an existing completed PCM master')",
+            "    silence.add_argument('job_id')",
+            "    silence.add_argument('--threshold-dbfs', type=float, required=True,",
+            "                         help='Explicit amplitude threshold from -192 through 0 dBFS; every channel must meet it')",
+            "    silence.add_argument('--minimum-seconds', type=float, required=True,",
+            "                         help='Positive minimum duration; rounded up to the exact frame grid')"
+          ],
+          "contextAfter": [
+            "    resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')",
+            "    resume.add_argument('job_id')",
+            "    args = parser.parse_args(arguments)"
+          ]
+        },
+        {
+          "oldLine": 68,
+          "newLine": 75,
+          "contextBefore": [
+            "    args = parser.parse_args(arguments)",
+            "    binding = service = None",
+            "    try:"
+          ],
+          "removed": [],
+          "added": [
+            "        if args.operation == 'inspect-silence':",
+            "            result = _inspect_silence_command(args)",
+            "            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))",
+            "            return 0"
+          ],
+          "contextAfter": [
+            "        from ..application import LibraryApp",
+            "        app = LibraryApp(data_directory(args.data_dir))",
+            "        if args.operation in ('render', 'resume', 'capabilities', 'publish-epub', 'publish-daisy'):"
+          ]
+        },
+        {
+          "oldLine": 132,
+          "newLine": 143,
+          "contextBefore": [
+            "        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))",
+            "        return 0",
+            "    except KeyboardInterrupt:"
+          ],
+          "removed": [
+            "        print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)"
+          ],
+          "added": [
+            "        if args.operation == 'inspect-silence':",
+            "            print('Silence inspection interrupted. The saved job and audio are preserved; rerun the inspection when ready.', file=sys.stderr)",
+            "        else:",
+            "            print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)"
+          ],
+          "contextAfter": [
+            "        return 130",
+            "    except (ValueError, OSError, RuntimeError) as exc:",
+            "        print('Audio Studio: ' + str(exc), file=sys.stderr)"
+          ]
+        },
+        {
+          "oldLine": 146,
+          "newLine": 160,
+          "contextBefore": [
+            "                binding.close()",
+            "",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "def _inspect_silence_command(args):",
+            "    \"\"\"Keep the selected runtime and process alive through actual native cleanup.\"\"\"",
+            "    from contextlib import ExitStack",
+            "    from ..application import LibraryApp",
+            "    from ..audio.cleanup import _pending_owners, retained_context",
+            "    from ..audio.local_runtime import open_local_audio_runtime",
+            "    from ..audio.silence import SilenceCriteria",
+            "",
+            "    criteria = SilenceCriteria(args.threshold_dbfs, args.minimum_seconds)",
+            "    app = LibraryApp(data_directory(args.data_dir))",
+            "    try:",
+            "        with retained_context(ExitStack()) as bindings:",
+            "            def bind_runtime(*, cancelled):",
+            "                bindings.enter_context(open_local_audio_runtime(app.root, strict=True,",
+            "                                                               cancelled=cancelled))",
+            "",
+            "            service = ProductionService(app.root / 'state' / 'studio',",
+            "                                        input_roots=args.input_root)",
+            "            try:",
+            "                return service.inspect_silence(args.job_id,",
+            "                    threshold_dbfs=criteria.threshold_dbfs,",
+            "                    minimum_seconds=criteria.minimum_seconds,",
+            "                    runtime_binding=bind_runtime,",
+            "                    progress=lambda message: print(message, file=sys.stderr, flush=True))",
+            "            finally:",
+            "                service.close()",
+            "    except BaseException as error:",
+            "        # A CLI must not end its interpreter while retained cleanup daemons",
+            "        # still own the decoder, source handle, staging, lock or broker lease.",
+            "        # Retry only the existing causal owners; no new owner or worker.",
+            "        owners = _pending_owners(error)",
+            "        interrupted = None",
+            "        while owners:",
+            "            try:",
+            "                waiting = tuple(owner for owner in owners",
+            "                                if not owner.quiescent_event.is_set())",
+            "                if not waiting:",
+            "                    break",
+            "                for owner in waiting:",
+            "                    owner.close()",
+            "                waiting[0].quiescent_event.wait(.25)",
+            "            except (KeyboardInterrupt, SystemExit) as signal:",
+            "                if interrupted is None:",
+            "                    interrupted = signal",
+            "        if interrupted is not None:",
+            "            raise interrupted from error",
+            "        raise",
+            "",
+            ""
+          ],
+          "contextAfter": [
+            "@installed_entrypoint",
+            "def assistant_main(argv=None):",
+            "    parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_local_runtime_cli.py",
+      "before_blob": "99c903cc9be1a27fe45c7f3bc628ca4b39c219c2",
+      "after_blob": "54a489426b69179c14eb26897c25bec5eafc5754",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 110,
+          "newLine": 110,
+          "contextBefore": [
+            "    assert calls == ['created']",
+            "    production.close.assert_called_once_with()",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "def test_silence_cli_requires_explicit_criteria_and_keeps_selected_runtime_through_inspection(tmp_path, monkeypatch, capsys):",
+            "    calls = []",
+            "    monkeypatch.setattr(application, 'LibraryApp', lambda root: SimpleNamespace(root=Path(root)))",
+            "    @contextmanager",
+            "    def binding(root, *, strict, cancelled):",
+            "        assert root == tmp_path and strict is True",
+            "        assert cancelled() is False",
+            "        calls.append('bound')",
+            "        try:",
+            "            yield object()",
+            "        finally:",
+            "            calls.append('released')",
+            "    service = create_autospec(cli.ProductionService, instance=True, spec_set=True)",
+            "    def inspect(identity, *, threshold_dbfs, minimum_seconds, progress, runtime_binding):",
+            "        assert identity == 'saved-job' and calls == []",
+            "        runtime_binding(cancelled=lambda: False)",
+            "        assert calls == ['bound']",
+            "        assert threshold_dbfs == -50 and minimum_seconds == 2",
+            "        progress('Measuring at or below the explicit threshold.')",
+            "        calls.append('inspected')",
+            "        return {'schema': 'carr-silence-inspection/1', 'status': 'complete',",
+            "                'intervals': [], 'interval_count': 0, 'omitted_count': 0}",
+            "    service.inspect_silence.side_effect = inspect",
+            "    service.close.side_effect = lambda: calls.append('producer-closed')",
+            "    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: service)",
+            "    monkeypatch.setattr(local_runtime, 'open_local_audio_runtime', binding)",
+            "    assert cli.main(['--data-dir', str(tmp_path), 'inspect-silence', 'saved-job',",
+            "                     '--threshold-dbfs', '-50', '--minimum-seconds', '2']) == 0",
+            "    assert calls == ['bound', 'inspected', 'producer-closed', 'released']",
+            "    service.submit.assert_not_called()",
+            "    service.run.assert_not_called()",
+            "    service.close.assert_called_once_with()",
+            "    assert '\"interval_count\": 0' in capsys.readouterr().out",
+            "",
+            "",
+            "@pytest.mark.parametrize('extra', [",
+            "    ['--threshold-dbfs', '-50'],",
+            "    ['--minimum-seconds', '2'],",
+            "])",
+            "def test_silence_cli_does_not_guess_missing_criteria(tmp_path, monkeypatch, extra):",
+            "    monkeypatch.setattr(application, 'LibraryApp', lambda *a: pytest.fail('Incomplete inspection created a library.'))",
+            "    with pytest.raises(SystemExit) as caught:",
+            "        cli.main(['--data-dir', str(tmp_path), 'inspect-silence', 'saved-job', *extra])",
+            "    assert caught.value.code == 2",
+            "",
+            "",
+            "def test_silence_cli_cancellation_does_not_offer_production_resume(tmp_path, monkeypatch, capsys):",
+            "    monkeypatch.setattr(application, 'LibraryApp', lambda root: SimpleNamespace(root=Path(root)))",
+            "    @contextmanager",
+            "    def binding(*args, **kwargs):",
+            "        yield object()",
+            "    service = create_autospec(cli.ProductionService, instance=True, spec_set=True)",
+            "    service.inspect_silence.side_effect = KeyboardInterrupt()",
+            "    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: service)",
+            "    monkeypatch.setattr(local_runtime, 'open_local_audio_runtime', binding)",
+            "    assert cli.main(['--data-dir', str(tmp_path), 'inspect-silence', 'saved-job',",
+            "                     '--threshold-dbfs', '-50', '--minimum-seconds', '2']) == 130",
+            "    text = capsys.readouterr().err",
+            "    assert 'Silence inspection interrupted' in text and 'preserved' in text",
+            "    assert 'Resume its saved job' not in text",
+            "    service.run.assert_not_called()",
+            "    service.close.assert_called_once_with()",
+            "",
+            "",
+            "@pytest.mark.parametrize('masked', [False, True], ids=['direct-pending', 'masked-pending'])",
+            "def test_silence_cli_waits_for_both_existing_owners_before_releasing_runtime(tmp_path, monkeypatch, masked):",
+            "    import threading",
+            "    import time",
+            "    from carr_library.audio.cleanup import AudioCleanupPending, CleanupOwner",
+            "    calls, entered, finished = [], threading.Event(), threading.Event()",
+            "    permits = [threading.Event(), threading.Event()]",
+            "    owners = [CleanupOwner(lambda index=index: permits[index].is_set()) for index in range(2)]",
+            "    first = AudioCleanupPending('First inspection owner.', cleanup_owner=owners[0])",
+            "    second = AudioCleanupPending('Second inspection owner.', cleanup_owner=owners[1])",
+            "    second.__cause__ = first",
+            "    failure = OSError('Masked inspection cleanup') if masked else second",
+            "    if masked:",
+            "        failure.__cause__ = second",
+            "    monkeypatch.setattr(application, 'LibraryApp', lambda root: SimpleNamespace(root=Path(root)))",
+            "    @contextmanager",
+            "    def binding(*args, **kwargs):",
+            "        calls.append('bound')",
+            "        try:",
+            "            yield object()",
+            "        finally:",
+            "            assert all(owner.quiescent for owner in owners)",
+            "            calls.append('released')",
+            "    service = create_autospec(cli.ProductionService, instance=True, spec_set=True)",
+            "    def inspect(*args, **kwargs):",
+            "        assert calls == []",
+            "        kwargs['runtime_binding'](cancelled=lambda: False)",
+            "        entered.set()",
+            "        raise failure",
+            "    service.inspect_silence.side_effect = inspect",
+            "    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: service)",
+            "    monkeypatch.setattr(local_runtime, 'open_local_audio_runtime', binding)",
+            "    result = []",
+            "    def run():",
+            "        try:",
+            "            result.append(cli.main(['--data-dir', str(tmp_path), 'inspect-silence', 'saved-job',",
+            "                '--threshold-dbfs', '-50', '--minimum-seconds', '2']))",
+            "        finally:",
+            "            finished.set()",
+            "    thread = threading.Thread(target=run)",
+            "    thread.start()",
+            "    try:",
+            "        assert entered.wait(5) and calls == ['bound']",
+            "        permits[0].set()",
+            "        owners[0].close()",
+            "        assert not finished.wait(.05) and calls == ['bound']",
+            "        permits[1].set()",
+            "        owners[1].close()",
+            "        thread.join(5)",
+            "        assert not thread.is_alive() and result == [1]",
+            "        assert calls == ['bound', 'released']",
+            "        service.run.assert_not_called()",
+            "        service.close.assert_called_once_with()",
+            "    finally:",
+            "        for permit in permits:",
+            "            permit.set()",
+            "        for owner in owners:",
+            "            owner.close()",
+            "        thread.join(5)",
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "before_blob": "7a23ee00fb1aea871085e76ec0641761f7a94c9f",
+      "after_blob": "0f2f3583e643e0f3bcb6c8a6fb4aec95944ab795",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 325,
+          "newLine": 325,
+          "contextBefore": [
+            "See [LOCAL_AUDIO_RUNTIME.md](LOCAL_AUDIO_RUNTIME.md) for the integrated runtime,",
+            "long-duration evidence and exact engine limitations.",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "## Inspect long silence in a completed Scene master",
+            "",
+            "Open the saved completed job in the existing Scene Studio and choose",
+            "**Inspect long silences...**. Enter an amplitude threshold in dBFS and a minimum",
+            "duration in seconds, then explicitly start the inspection. The initial values,",
+            "-50 dBFS and 2 seconds, are editable review criteria rather than a quality",
+            "standard. No playback starts automatically.",
+            "",
+            "The result describes frames whose absolute sample amplitude is **at or below**",
+            "the threshold in **every channel**. Opposite left/right samples do not cancel",
+            "each other for this measurement. A stereo frame with a louder sample in either",
+            "channel is outside the interval. Reports include the original master hash,",
+            "sample rate, channel count, exact half-open frame ranges",
+            "`[start_frame, end_frame)` and their corresponding seconds. A range ending at",
+            "the total frame count includes the last retained audio frame.",
+            "",
+            "The minimum duration is rounded up to whole frames using the exact shortest",
+            "decimal representation of the submitted finite number. For example,",
+            "0.0001251 seconds at 8,000 Hz requires two frames. The PCM samples are never",
+            "downquantized or resampled: RIFF/RF64 integer PCM is decoded to signed 32-bit",
+            "samples with the original rate and channel count. Floating-point, compressed",
+            "and unmeasurable input is refused by this inspection route.",
+            "",
+            "At most 4,096 matching intervals are retained in one report. The total match",
+            "count and omitted count remain explicit. An empty list means no interval met",
+            "these selected criteria. A match may be an intentional pause. This amplitude",
+            "measurement does not establish speech presence, intelligibility, word accuracy,",
+            "clipping, normalized loudness or human listening quality.",
+            "",
+            "The same operation is available from the existing CLI. From an installed",
+            "application or the project environment, use its explicitly selected local",
+            "audio runtime:",
+            "",
+            "```text",
+            "python -m carr_library.studio.cli --data-dir LIBRARY inspect-silence JOB_ID --threshold-dbfs -50 --minimum-seconds 2",
+            "```",
+            "",
+            "Both criteria are required on the CLI. It emits a bounded JSON report to",
+            "standard output; phase messages go to standard error. The operation verifies",
+            "the current completed master and its canonical artifact receipts before and",
+            "after measurement. It holds the existing render lock and shared CPU, memory",
+            "and staging reservation, and keeps checking cancellation and the total runtime",
+            "budget through decoding, scanning and final hashes.",
+            "",
+            "Inspection writes no project, node, saved job, completion receipt or published",
+            "audio. Cancel leaves the saved job and original audio intact. A restored job",
+            "must first receive a new explicitly reviewed output. A source-bound Book job",
+            "requires its original source authority; the general Scene inspection entry",
+            "does not recreate that authority from a historical receipt. Corrupt or changed",
+            "artifacts are refused rather than reported as inspected audio.",
+            ""
+          ]
+        }
+      ]
+    }
+  ]
+}

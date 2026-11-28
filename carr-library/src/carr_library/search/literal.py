@@ -8,6 +8,8 @@ FTS syntax, stemming, cross-page stitching, or generated quotation.
 from array import array
 from bisect import bisect_right
 from hashlib import sha256
+from dataclasses import dataclass
+import json
 import re
 import sqlite3
 from time import monotonic
@@ -156,8 +158,45 @@ def _spans(folded, starts, ends, needle, check=lambda: None):
         yield starts[i], ends[j]
 
 
+@dataclass(frozen=True)
+class LiteralPage:
+    hits: tuple
+    snapshot: str
+    after: tuple | None
+
+
 def search(db, workspace, query, *, mode='phrase', edition_ids=None,
            limit=50, offset=0, timeout=5.0, cancelled=lambda: False):
+    return _search(db, workspace, query, mode=mode, edition_ids=edition_ids,
+                   limit=limit, offset=offset, timeout=timeout, cancelled=cancelled)
+
+
+def search_page(db, workspace, query, *, mode='phrase', edition_ids=None,
+                limit=50, timeout=5.0, cancelled=lambda: False, after=None,
+                expected_snapshot=None, scope_key='', result_mode=None):
+    """Source-verified keyset continuation; the limit is per returned page."""
+    if result_mode not in (None, 'short', 'thematic'):
+        raise ValueError('Invalid search presentation.')
+    if type(scope_key) is not str or len(scope_key) > 128:
+        raise ValueError('Invalid search scope identity.')
+    if after is not None:
+        if (type(after) is not tuple or len(after) != 5
+                or type(after[0]) is not str or not after[0]
+                or any(type(value) is not int for value in after[1:])
+                or after[1] < 0 or after[2] < 0
+                or not 0 <= after[3] < after[4]
+                or type(expected_snapshot) is not str
+                or not re.fullmatch('[0-9a-f]{64}', expected_snapshot)):
+            raise ValueError('Invalid search continuation position.')
+    elif expected_snapshot is not None:
+        raise ValueError('A source snapshot requires a continuation position.')
+    return _search(db, workspace, query, mode=mode, edition_ids=edition_ids,
+        limit=limit, offset=0, timeout=timeout, cancelled=cancelled,
+        page=(after, expected_snapshot, scope_key, result_mode))
+
+
+def _search(db, workspace, query, *, mode='phrase', edition_ids=None,
+            limit=50, offset=0, timeout=5.0, cancelled=lambda: False, page=None):
     """One active workspace only; edition_ids is the catalog-resolved filter.
 
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
@@ -183,6 +222,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid search budget')
     q = _fold(query).strip()
     if not q:
+        if page is not None:
+            raise ValueError('Enter a query before starting paged search.')
         return []
     if mode == 'word' and ' ' in q:
         raise ValueError('word mode requires one term')
@@ -221,19 +262,38 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                 raise ValueError('invalid edition filter')
             ids.append(item)
         check()
-        if not ids:
+        if not ids and page is None:
             return []
-        where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
-        params.extend(ids)
+        if ids:
+            where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
+            params.extend(ids)
+        else:
+            where += ' AND 0'
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
            'verified,raw,digest FROM active_page WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
     index = sqlite3.connect(':memory:')
     rows, result = [], []
+    keys = []
+    snapshot = sha256()
+    if page is not None:
+        snapshot.update(json.dumps((workspace, query, mode, limit, page[2], page[3],
+            None if edition_ids is None else tuple(ids)), ensure_ascii=True).encode('ascii'))
     size = seen = 0
+
+    def finished():
+        if page is None:
+            return result
+        return LiteralPage(tuple(result[:limit]), snapshot.hexdigest(),
+                           keys[limit - 1] if len(result) > limit else None)
     try:
         index.set_progress_handler(lambda: int(stopped()), 1000)
         index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
+        if page is not None and page[3] is not None:
+            # Coordinates only, bounded by the existing complete scope budget.
+            # Replaying a page reconstructs deduplication before its cursor, so
+            # identical expanded excerpts cannot reappear across boundaries.
+            index.execute('CREATE TABLE presented(start INTEGER,end INTEGER,PRIMARY KEY(start,end)) WITHOUT ROWID')
         for row in db.execute(sql, params):
             check()
             if row[1] != workspace:
@@ -246,8 +306,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             if sha256(raw.encode('utf-8')).hexdigest() != row[10]:
                 raise ValueError('raw page digest mismatch')
             rows.append(tuple(row))
+            if page is not None:
+                snapshot.update(json.dumps(tuple(row[:9]) + (row[10],),
+                    ensure_ascii=True, separators=(',', ':')).encode('ascii') + b'\n')
             index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
         check()
+        if page is not None and page[1] is not None and snapshot.hexdigest() != page[1]:
+            raise ValueError('Search sources or catalog filters changed. Start a new search.')
         # Trigram cannot match strings shorter than three code points. Fall back
         # to the scoped row list, then verify all literal needles against raw.
         candidate = next((n for n in needles if len(n) >= 3), None)
@@ -260,6 +325,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         for rowid in hits:
             check()
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
+            if page is not None and page[3] is not None:
+                index.execute('DELETE FROM presented')
             folded, starts, ends = _mapped(raw, check)
             check()
             if advanced is not None:
@@ -276,20 +343,33 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                     seen += 1
                     continue
                 start, end = spans[0]
-                result.append(dict(workspace_id=ws, edition_id=edition, revision_id=revision,
+                hit = dict(workspace_id=ws, edition_id=edition, revision_id=revision,
                     asset_sha256=asset, page_id=page_id, segment_index=ordinal if physical is None else None,
                     locator_kind='logical_segment' if physical is None else 'physical_page',
                     physical_index=physical, printed_label=printed if physical is not None and verified else None,
                     printed_label_verified=bool(physical is not None and verified),
                     raw_text_sha256=digest, start=start, end=end, raw_quote=raw[start:end],
-                    match_spans=spans, score=1.0))
+                    match_spans=spans, score=1.0)
                 if advanced is not None:
-                    result[-1]['reason'] = match.reason
-                if len(result) == limit:
+                    hit['reason'] = match.reason
+                key = (edition, ordinal, page_id, start, end)
+                if page is not None:
+                    if page[3] is not None:
+                        from .presentation import presentation_span
+                        left, right = presentation_span(raw, hit, query, page[3], check=check)
+                        changed = index.execute('INSERT OR IGNORE INTO presented VALUES(?,?)',
+                                                (left, right)).rowcount
+                        if not changed:
+                            continue
+                    if page[0] is not None and key <= page[0]:
+                        continue
+                result.append(hit)
+                keys.append(key)
+                if len(result) == limit + (1 if page is not None else 0):
                     check()
-                    return result
+                    return finished()
         check()
-        return result
+        return finished()
     except sqlite3.OperationalError as exc:
         if stopped():
             raise TimeoutError('literal search cancelled or timed out') from exc

@@ -1,0 +1,26 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "run_id": 46103182980,
+  "job_id": 140850017229,
+  "decoded_log_utf8_sha256": "823bfb62805c525d633843fb06fc72bba24d9da26e9c6821f57825c3433d7405",
+  "provenance": "Complete connector-returned decoded log retained unchanged; hashes apply to UTF-8 encoded decoded text, not original GitHub transport bytes. Verdict rows retain one-based source line numbers.",
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 7004,
+      "sha256": "7e0c775987a5a80a8902e13475ed78524225d38a8f23429e7229ee885b010c37"
+    },
+    {
+      "path": "source-module-verdicts.json",
+      "utf8_bytes": 4056,
+      "sha256": "273014b042930b528ee8f6fee17de1a9ee27e8dfe0254be35b9b9ab5a64b59dc"
+    },
+    {
+      "path": "completed-job.decoded.log",
+      "utf8_bytes": 94168,
+      "sha256": "823bfb62805c525d633843fb06fc72bba24d9da26e9c6821f57825c3433d7405"
+    }
+  ],
+  "uploaded_artifacts": false
+}

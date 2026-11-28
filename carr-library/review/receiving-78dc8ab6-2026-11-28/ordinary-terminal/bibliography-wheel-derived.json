@@ -1,0 +1,9 @@
+{
+  "payload_files": 490,
+  "project_name": "universal-research-library",
+  "project_version": "0.2.0.dev2",
+  "required_runtime_files": 395,
+  "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "wheel_sha256": "9b5c28e5238800557926c11f9a85f3f2c33425b307d5db766631fc48e9e057e8"
+}

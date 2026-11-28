@@ -17,7 +17,7 @@ from carr_library import application
 from carr_library.application import LibraryApp
 from carr_library.research import export_file
 from carr_library.research.export_file import write_binary_export, write_export
-from carr_library.ui.export_destination import confirm_export_destination
+from carr_library.ui.export_destination import start_export, completion_message
 
 
 FORMATS = [(5, 'docx', '.docx'), (6, 'html', '.html')]
@@ -49,10 +49,13 @@ def harness(research, monkeypatch):
     def create(destination, index, *, cancel_dialog=False):
         h = SimpleNamespace(library=research.app, active=(research.workspace, research.topic),
                             cancel_event=Event(), reports=[], jobs=[], dialogs=[],
-                            after_render=lambda: None, after_dialog=lambda: None)
+                            after_render=lambda: None)
         h.report = h.reports.append
         h._topic = Mock(side_effect=lambda: h.active)
-        h.run_job = lambda *args: h.jobs.append(args)
+        def queue_job(*args):
+            h.cancel_event.clear()  # Match the actual dispatcher between phases.
+            h.jobs.append(args)
+        h.run_job = queue_job
         wx = SimpleNamespace(ID_OK=100, ID_CANCEL=101, YES=102, NO=103,
                              FD_SAVE=1, FD_OVERWRITE_PROMPT=2,
                              YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16)
@@ -77,7 +80,6 @@ def harness(research, monkeypatch):
 
             def Destroy(self):
                 self.destroyed = True
-                h.after_dialog()
 
         wx.FileDialog = FileDialog
         h.wx = wx
@@ -98,20 +100,23 @@ def harness(research, monkeypatch):
                       if isinstance(node, ast.FunctionDef) and node.name == 'export_topic')
         namespace = {'Path': Path, 'wx': wx, 'write_export': write_export,
                      'write_binary_export': write_binary_export,
-                     'confirm_export_destination': confirm_export_destination,
-                     'export_completion': export_file.export_completion}
+                     'start_export': start_export, 'completion_message': completion_message}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
         h.invoke = lambda: namespace['export_topic'](h, None)
 
-        def run():
-            assert len(h.jobs) == 1
-            _title, operation, done, failed = h.jobs.pop()
-            try:
-                result = operation()
-            except Exception as error:
-                failed(error)
-            else:
-                done(result)
+        def run(*, one=False):
+            assert h.jobs
+            while h.jobs:
+                _title, operation, done, failed = h.jobs.pop(0)
+                try:
+                    result = operation()
+                    done(result)
+                except Exception as error:
+                    if failed is None:
+                        raise
+                    failed(error)
+                if one:
+                    break
 
         h.run = run
         return h
@@ -121,28 +126,6 @@ def harness(research, monkeypatch):
 def payload_bytes(format):
     value = PAYLOADS[format]
     return value if isinstance(value, bytes) else value.encode('utf-8')
-
-
-@pytest.mark.parametrize('index,format,suffix', FORMATS)
-@pytest.mark.parametrize('when', ['queued', 'rendering'])
-@pytest.mark.parametrize('existing', [False, True])
-def test_chosen_destination_cannot_replace_a_newer_file(
-        harness, tmp_path, index, format, suffix, when, existing):
-    target = tmp_path / ('selected' + suffix)
-    if existing:
-        target.write_bytes(b'Explicitly selected previous export.')
-    h = harness(target, index)
-    h.invoke()
-    assert len(h.jobs) == 1
-    newer = b'Independent work saved after choosing the destination.'
-    if when == 'queued':
-        target.write_bytes(newer)
-    else:
-        h.after_render = lambda: target.write_bytes(newer)
-    h.run()
-    assert target.read_bytes() == newer
-    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
-    assert not list(tmp_path.glob('.research-export-*'))
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
@@ -178,6 +161,8 @@ def test_appended_existing_destination_is_confirmed_before_work(
     h = harness(requested, index)
     h.wx.MessageBox.return_value = h.wx.YES if allow else h.wx.NO
     h.invoke()
+    h.wx.MessageBox.assert_not_called()
+    h.run(one=True)  # Capture finishes before the UI can ask for approval.
     h.wx.MessageBox.assert_called_once()
     message, caption, style, parent = h.wx.MessageBox.call_args.args
     assert target.name in message and caption == 'Replace export' and parent is h
@@ -230,44 +215,14 @@ def test_invalid_filter_index_does_not_select_another_format(harness, tmp_path, 
 def test_existing_uppercase_suffix_is_kept_and_confirmation_is_bound_to_it(
         harness, tmp_path, index, format, suffix):
     target = tmp_path / ('Existing' + suffix.upper())
-    target.write_bytes(b'Explicit replacement confirmation applies to this exact path.')
+    target.write_bytes(b'Native file dialog accepted replacement of this exact path.')
     h = harness(target, index)
     h.invoke()
+    h.wx.MessageBox.assert_not_called()
+    h.run(one=True)
     h.wx.MessageBox.assert_called_once()
     h.run()
     assert target.read_bytes() == payload_bytes(format)
-
-
-@pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_file_appearing_when_picker_closes_requires_explicit_confirmation(
-        harness, tmp_path, index, format, suffix):
-    target = tmp_path / ('selected' + suffix)
-    newer = b'Independent work saved while the picker closes.'
-    h = harness(target, index)
-    h.after_dialog = lambda: target.write_bytes(newer)
-    h.wx.MessageBox.return_value = h.wx.NO
-    h.invoke()
-    h.wx.MessageBox.assert_called_once()
-    assert not h.jobs and not h.reports
-    assert target.read_bytes() == newer
-    h.backend.assert_not_called()
-
-
-@pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_file_changed_during_explicit_confirmation_is_preserved(
-        harness, tmp_path, index, format, suffix):
-    target = tmp_path / ('selected' + suffix)
-    target.write_bytes(b'Original selected export.')
-    newer = b'Independent work saved during replacement confirmation.'
-    h = harness(target, index)
-    def confirm(*args):
-        target.write_bytes(newer)
-        return h.wx.YES
-    h.wx.MessageBox.side_effect = confirm
-    h.invoke()
-    h.run()
-    assert target.read_bytes() == newer
-    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
@@ -351,6 +306,8 @@ def test_new_document_cannot_be_written_inside_private_library(
     original = research.original.read_bytes()
     h = harness(target, index)
     h.invoke()
+    assert len(h.jobs) == 1  # Private-path admission also runs in the worker.
+    h.run()
     assert not h.jobs
     assert not target.exists()
     assert research.app.database.read_bytes() == database
@@ -388,3 +345,46 @@ def test_destination_changed_during_render_preserves_independent_work(
         assert target.read_bytes() == independent
     assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('change', ['cancel', 'close', 'topic'])
+def test_native_confirmation_cannot_clear_late_cancel_or_close_before_export(
+        harness, research, tmp_path, change):
+    target = tmp_path / 'approved.html'
+    target.write_bytes(b'Previous document')
+    h = harness(target, 6)
+    def confirm(*args):
+        if change == 'cancel':
+            h.cancel_event.set()
+        elif change == 'close':
+            h._closing = True
+        else:
+            h.active = (research.workspace, research.other_topic)
+        return h.wx.YES
+    h.wx.MessageBox.side_effect = confirm
+    h.invoke()
+    h.wx.MessageBox.assert_not_called()
+    h.run()
+    h.wx.MessageBox.assert_called_once()
+    h.backend.assert_not_called()
+    assert target.read_bytes() == b'Previous document'
+    assert not h.jobs and not list(tmp_path.glob('.research-export-*'))
+    if change == 'cancel':
+        assert h.cancel_event.is_set()  # No second run_job cleared the request.
+    if change == 'close':
+        assert h.reports == []
+
+
+def test_export_handler_reports_completed_publication_cleanup_notice(harness, tmp_path, monkeypatch):
+    from dataclasses import replace
+    target = tmp_path / 'new.html'
+    h = harness(target, 6)
+    original = export_file._write_payload
+    def publish(*args, **kwargs):
+        receipt = original(*args, **kwargs)
+        return replace(receipt, cleanup_warning='The file is saved; staging cleanup remains pending.')
+    monkeypatch.setattr(export_file, '_write_payload', publish)
+    h.invoke()
+    h.run()
+    assert target.read_bytes() == payload_bytes('html')
+    assert len(h.reports) == 1 and 'staging cleanup remains pending' in h.reports[0]

@@ -1,0 +1,287 @@
+{
+  "source_artifact": 15236066233,
+  "reported_summaries": [
+    {
+      "path": "bundle-assistant-domains.json",
+      "bytes": 6391,
+      "sha256": "f7b1f595a1d846ae4c76657e31756c3864c40e92ac4989c712ad2c02baf9e9aa",
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 23
+    },
+    {
+      "path": "bundle-audio-metadata.json",
+      "bytes": 3885,
+      "sha256": "2f19b60d58dee2a3a457e299133e6ef7bc26110ec2c6366e76fea7f2a376e28e"
+    },
+    {
+      "path": "bundle-automatic-ocr.json",
+      "bytes": 2379,
+      "sha256": "b4ef8d89fa40c8bdc5627ed4b36709e5a6993947acb86f1f73a1be6e83e9eda6",
+      "errors": [],
+      "check_count": 26
+    },
+    {
+      "path": "bundle-book-audio.json",
+      "bytes": 5761,
+      "sha256": "396c312d350100bcabe4b43194440d28dc9af48af1576c0896657c135c307523",
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 72
+    },
+    {
+      "path": "bundle-clipboard-reader.json",
+      "bytes": 2286,
+      "sha256": "46fa020916e4aeb3e28ed12fd63ceac7e0cea49b06464fec2d736b16fc6aa269",
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "installed": true,
+      "check_count": 9
+    },
+    {
+      "path": "bundle-conversion-batch.json",
+      "bytes": 7780,
+      "sha256": "3bec76e66916859a85db29b61228dfd81f42b0e3d243edd0016b8b8536d1df3b",
+      "check_count": 147
+    },
+    {
+      "path": "bundle-draft-timer.json",
+      "bytes": 1435,
+      "sha256": "a9f9a637f711d0fa12190273589333610078842b08c9709460a9eb476754476f",
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 4
+    },
+    {
+      "path": "bundle-incremental-backup.json",
+      "bytes": 1905,
+      "sha256": "1a61ca2e7ca1d1ea990ff1e8fb5ca46483bdcbfc66c4215ac66152365b18bb08",
+      "status": "PASS",
+      "check_count": 31
+    },
+    {
+      "path": "bundle-portable-sync.json",
+      "bytes": 5615,
+      "sha256": "48ab0e54769ba91c63156b30a92f4f12d82ce27f1e059220a2b4fee69e45ad58",
+      "status": "PASS",
+      "phase": "completed",
+      "check_count": 52
+    },
+    {
+      "path": "bundle-protected-voice.json",
+      "bytes": 5503,
+      "sha256": "aea6e954f7d8f31292042445f256ea7f6fe28e5a6e715e55afa40ad0a956722a",
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "installed": true,
+      "check_count": 48
+    },
+    {
+      "path": "bundle-reader-appearance.json",
+      "bytes": 3997,
+      "sha256": "00f6d2813dff8e864bdc2817d0507a7b8a34ab66fe95f3ca4e521cf058a723c5",
+      "status": "PASS",
+      "check_count": 65
+    },
+    {
+      "path": "bundle-reader-controls.json",
+      "bytes": 6691,
+      "sha256": "6a8c0f34fcaa47ccd847125f0b6c6b39c3e430ce0a4ecf4227a0769055855c65",
+      "status": "PASS",
+      "check_count": 108
+    },
+    {
+      "path": "bundle-reader-keymap.json",
+      "bytes": 3491,
+      "sha256": "1f90185117282c601bd6efa2b181712642820adb203f0d09175cd6478ca3469e",
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 35
+    },
+    {
+      "path": "bundle-reader-output.json",
+      "bytes": 3544,
+      "sha256": "374573dfd50d191a6dddc6f7fa17b74a4beb54e3fda5993d6f00e42b1bbf1376",
+      "status": "PASS",
+      "check_count": 47
+    },
+    {
+      "path": "bundle-reader-player.json",
+      "bytes": 5195,
+      "sha256": "d5144df925f3371219e124959f6be5312000f703a5c627fea4d6dcd45cfb3562",
+      "status": "FAILED",
+      "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 766, in main\n    _run(options, report)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 663, in _run\n    tools = {name: Path(getattr(options, name) or resolve_active_audio_tool(name)).resolve(strict=True)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 663, in <dictcomp>\n    tools = {name: Path(getattr(options, name) or resolve_active_audio_tool(name)).resolve(strict=True)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\runtime\\Lib\\pathlib.py\", line 871, in __new__\n    self = cls._from_parts(args)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\runtime\\Lib\\pathlib.py\", line 509, in _from_parts\n    drv, root, parts = self._parse_args(args)\n                       ^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\runtime\\Lib\\pathlib.py\", line 493, in _parse_args\n    a = os.fspath(a)\n        ^^^^^^^^^^^^\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+      "check_count": 12
+    },
+    {
+      "path": "bundle-reading-preparation.json",
+      "bytes": 4780,
+      "sha256": "a0311ed99830efa9e657213e7c15d3ccde4bde4c0c61cc85ddbbf119a6aa9dc1",
+      "errors": [],
+      "check_count": 55
+    },
+    {
+      "path": "bundle-reading-tabs.json",
+      "bytes": 4731,
+      "sha256": "4ae61d2917a2ab25c938aca2420ba592324746387181b489ebd5a410d0cfd803",
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 47
+    },
+    {
+      "path": "bundle-reading-tools.json",
+      "bytes": 6379,
+      "sha256": "d781a6072ac143472066197cba2e95ca8671954eed61e22f3a4022f344bb442b",
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 61
+    },
+    {
+      "path": "bundle-recording-controls.json",
+      "bytes": 4320,
+      "sha256": "de97437fc6ed4de9d87d72313ca6a766ffaaec10f9233f593eda94889648b195",
+      "status": "PASS",
+      "check_count": 65
+    },
+    {
+      "path": "bundle-save-all-recovery.json",
+      "bytes": 3766,
+      "sha256": "202b9d46030f1e5a8ef9d100b740d7f06c430668be6f31646484ccbddebd6fe5",
+      "status": "PASS"
+    },
+    {
+      "path": "bundle-search-pagination.json",
+      "bytes": 2954,
+      "sha256": "94df1de9d03a64970984e376f0cc45ac7e188a92cfa67e9fa93b61165d9813dc",
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "installed": true,
+      "check_count": 18
+    },
+    {
+      "path": "bundle-source-pagination.json",
+      "bytes": 3594,
+      "sha256": "786b8cc41c57071a3967392bc5361366ef1f222636edd9468a7959819249f4ad",
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "installed": true,
+      "check_count": 16
+    },
+    {
+      "path": "bundle-spelling.json",
+      "bytes": 2931,
+      "sha256": "6fd3b862ad1405ce72a6a4a2859c7de8bc028e76932895db2474a107c36abfc1",
+      "check_count": 7
+    },
+    {
+      "path": "bundle-streamed-import.json",
+      "bytes": 4142,
+      "sha256": "df4fa9e7798ff1d3338e53ec7efeba5205f617d0929c116e0e4e869551cdf12e",
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "installed": true,
+      "check_count": 9
+    },
+    {
+      "path": "bundle-voice-preferences.json",
+      "bytes": 3116,
+      "sha256": "2cc18e988d5dc9dc2c047d1b2a1b7b9ac7c4e11859e8fd730838e6aef3bb2157",
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+      "installed": true,
+      "check_count": 41
+    },
+    {
+      "path": "bundle-voice-reference.json",
+      "bytes": 3602,
+      "sha256": "ab5be57fd4829ad4621fcbc649639fccb1f893233025f6aa699a69d8d38ab800",
+      "status": "PASS",
+      "check_count": 20
+    },
+    {
+      "path": "bundle-word-apa.json",
+      "bytes": 4408,
+      "sha256": "1df6bc185954054353237b43049ea1752c634b327267499ae520783154d28d96",
+      "status": "PASS",
+      "phase": "direct native destruction revokes queued inspection and disposes its exact owner",
+      "check_count": 35
+    },
+    {
+      "path": "bundle-word-chicago-notes.json",
+      "bytes": 4408,
+      "sha256": "1df6bc185954054353237b43049ea1752c634b327267499ae520783154d28d96",
+      "status": "PASS",
+      "phase": "direct native destruction revokes queued inspection and disposes its exact owner",
+      "check_count": 35
+    },
+    {
+      "path": "core-bundle-self-test.json",
+      "bytes": 272,
+      "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+      "status": "PASS",
+      "check_count": 9
+    },
+    {
+      "path": "full-bundle-audio-effects.json",
+      "bytes": 656,
+      "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+      "status": "PASS",
+      "check_count": 11
+    },
+    {
+      "path": "full-bundle-audio-studio.json",
+      "bytes": 561,
+      "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+      "status": "PASS",
+      "check_count": 10
+    },
+    {
+      "path": "full-bundle-build.json",
+      "bytes": 1641,
+      "sha256": "273ac8d901a6d892fc6c6b3dd5ced0369b8fb6c9036036038f379884839e4940"
+    },
+    {
+      "path": "full-bundle-firewall.json",
+      "bytes": 1063,
+      "sha256": "321702d73057e88bbb1ca89b5c33044aea054790d6f9eed1760b7b23fbac287a",
+      "status": "PASS",
+      "phase": "installation, native desktop, multilingual inference and scanned-source research"
+    },
+    {
+      "path": "full-bundle-native-runtime.json",
+      "bytes": 637,
+      "sha256": "217c47f66f5a051ffcb4bbd28e407199b41d2d33a219f98a68e00c4cd220956e"
+    },
+    {
+      "path": "full-bundle-voice-settings.json",
+      "bytes": 279,
+      "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+      "status": "PASS",
+      "check_count": 2
+    },
+    {
+      "path": "offline-bundle-daisy-schema.json",
+      "bytes": 6058,
+      "sha256": "4cdf69c2e0f78ba7d9a92e33c2e3e941c6c403fc9c6ba437a46df3fd69fa884e",
+      "status": "PASS"
+    },
+    {
+      "path": "offline-bundle-epubcheck.json",
+      "bytes": 3398,
+      "sha256": "1cda44bafc9ffb33fd0c7638ab0321d613f2c441345f19aefa2841ffd335979f",
+      "status": "PASS"
+    },
+    {
+      "path": "offline-bundle-ocr-catalogue.json",
+      "bytes": 199,
+      "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+      "status": "PASS"
+    }
+  ]
+}

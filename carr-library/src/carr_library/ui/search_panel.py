@@ -45,7 +45,7 @@ class SearchPanel(wx.Panel):
             button.Bind(wx.EVT_BUTTON, handler)
             buttons.Add(button, 0, wx.ALL, 3)
         layout.Add(buttons, 0, wx.EXPAND)
-        # MSW excludes single-line read-only text controls from Tab navigation.
+        # Native Windows excludes single-line read-only text from Tab traversal.
         self.status = add('Search status', wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE))
         self.status.SetMinSize((-1, 56))
         self.go.Bind(wx.EVT_BUTTON, self.on_search)

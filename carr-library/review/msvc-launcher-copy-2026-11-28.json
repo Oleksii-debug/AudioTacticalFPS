@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "cause": "The actual MSVC /O1 /Oi object references memcpy from acquire_managed_lease; /NODEFAULTLIB intentionally excludes the C runtime. The new plain parent-path loop is the only copied span in that function.",
+  "observed": {
+    "run_id": 46088683360,
+    "job_id": 140804191177,
+    "conclusion": "failure",
+    "traceback": [
+      "2026-11-28T00:42:01.9012865Z launcher.obj : error LNK2019: unresolved external symbol memcpy referenced in function acquire_managed_lease",
+      "2026-11-28T00:42:01.9014256Z D:\\a\\_temp\\carr-native-launcher-private\\ResearchLibrary.exe : fatal error LNK1120: 1 unresolved externals",
+      "2026-11-28T00:42:02.0367997Z Launcher linking failed: 1120",
+      "2026-11-28T00:42:02.0369455Z At D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\native-launcher\\build_msvc.ps1:28 char:32",
+      "2026-11-28T00:42:02.0370470Z + ... ASTEXITCODE -ne 0) { throw \"Launcher linking failed: $LASTEXITCODE\" }",
+      "2026-11-28T00:42:02.0371121Z +                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "2026-11-28T00:42:02.0371717Z     + CategoryInfo          : OperationStopped: (Launcher linking failed: 1120:String) [], RuntimeException",
+      "2026-11-28T00:42:02.0372260Z     + FullyQualifiedErrorId : Launcher linking failed: 1120",
+      "2026-11-28T00:42:02.0372554Z  "
+    ],
+    "log_sha256": "d54c2e4bf9a479005c64478401efce6c73e007a4192076866de2544d76ef756b",
+    "native_execution": "NOT_RUN: native launcher linking failed"
+  },
+  "changes": [
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.c",
+      "before_blob": "bf8ae5b02f222ef00a36508870812f009c3fe845",
+      "after_sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+      "hunks": [
+        {
+          "before": "static int acquire_managed_lease(void) {\n    size_t length = rl_len(root), i;",
+          "after": "static int acquire_managed_lease(void) {\n    size_t length = rl_len(root), i;\n    volatile wchar_t *copied_parent = managed_parent;"
+        },
+        {
+          "before": "    for (length = 0; length < i; ++length) managed_parent[length] = root[length];",
+          "after": "    /* Preserve the explicit stores: this launcher deliberately has no CRT.\n       MSVC otherwise lowers this copy to an unresolved memcpy call. */\n    for (length = 0; length < i; ++length) copied_parent[length] = root[length];"
+        }
+      ]
+    }
+  ],
+  "reused_boundary": "The same existing launcher uses a volatile byte pointer to preserve explicit structure zeroing in run_child without a C-runtime helper. This change applies that pattern only to managed_parent's copied UTF-16 characters.",
+  "preserved": [
+    "Same source span, CAP checks and null terminator",
+    "Same managed marker/path checks, CreateFileW sharing and lease lifetime",
+    "Same launcher entrypoint and shared/installed behavior",
+    "Unchanged MSVC and Zig build scripts, compiler/linker flags and native acceptance",
+    "No memcpy implementation, runtime library or DLL dependency introduced"
+  ],
+  "required_verification": [
+    "Existing MSVC compile/link, committed PE inspector and native launcher probe",
+    "Existing pinned Zig compile/link and native launcher checks",
+    "Existing actual standard installation live native launcher lease assertion"
+  ],
+  "execution": "NOT_RUN",
+  "inverse": "EXACT",
+  "no_ref_changes": true
+}

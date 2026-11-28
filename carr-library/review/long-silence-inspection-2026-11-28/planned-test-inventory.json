@@ -1,0 +1,75 @@
+{
+  "schema": "carr-source-test-inventory/1",
+  "status": "PLANNED_NOT_RUN",
+  "modules": [
+    {
+      "path": "tests/audio/test_silence_inspection.py",
+      "planned_cases": 41,
+      "functions": [
+        "test_actual_integer_pcm_keeps_exact_frames_channels_and_source",
+        "test_lowest_integer_bits_are_not_downquantized_into_silence",
+        "test_exact_decimal_minimum_ceil_and_trailing_frame_interval",
+        "test_no_matching_interval_is_only_the_selected_measurement",
+        "test_zero_dbfs_includes_both_signed_full_scale_limits",
+        "test_interval_retention_is_bounded_but_total_count_includes_omitted",
+        "test_invalid_explicit_criteria_refuse_before_source_or_native_access",
+        "test_actual_decoded_missing_extra_or_misaligned_bytes_refuse_report",
+        "test_total_deadline_still_applies_after_real_decoder_exit",
+        "test_cancellation_inside_python_scan_follows_actual_decode",
+        "test_source_write_during_actual_decode_is_refused_or_detected",
+        "test_decoder_staging_budget_refuses_before_ffmpeg",
+        "test_actual_owned_child_keeps_decoded_stage_and_verified_source_until_quiet",
+        "test_non_integer_or_unmeasurable_wav_never_reaches_integer_decoder",
+        "test_actual_pcm_scan_crosses_real_block_boundaries"
+      ],
+      "requires": [
+        "actual ffmpeg",
+        "actual ffprobe"
+      ],
+      "notes": "39 original candidate cases plus two adapted donor real cross-block cases; no fake decoder."
+    },
+    {
+      "path": "tests/studio/test_silence_inspection.py",
+      "planned_cases": 19,
+      "functions": [
+        "test_actual_completed_master_is_measured_under_one_lease_without_state_or_cache_changes",
+        "test_inert_or_invalid_job_refuses_before_any_external_or_runtime_access",
+        "test_source_bound_job_without_its_original_guard_refuses_before_external_reads",
+        "test_tampered_master_is_rejected_before_decoder_and_keeps_failed_source",
+        "test_saved_job_change_after_actual_measurement_refuses_the_report",
+        "test_after_final_artifact_hash_source_write_cannot_be_accepted",
+        "test_cancellation_after_real_scan_cannot_report_completion_or_change_receipts",
+        "test_two_actual_native_families_retain_job_lock_stage_source_and_shared_lease",
+        "test_runtime_construction_waits_for_actual_shared_admission",
+        "test_injected_runtime_cannot_exceed_the_already_admitted_budget",
+        "test_pcm_only_runtime_preserves_selected_settings_and_never_opens_unused_music_assets"
+      ],
+      "requires": [
+        "actual ffmpeg",
+        "actual ffprobe"
+      ],
+      "notes": "Actual completed master, real shared broker and retained NativeLock, real two-family ownership in both release orders; typed refusals and PCM-only runtime under admission."
+    },
+    {
+      "path": "tests/audio/test_local_runtime_cli.py",
+      "existing_cases": 9,
+      "added_cases": 6,
+      "planned_cases": 15,
+      "functions": [
+        "test_scene_data_inspection_does_not_require_selected_audio",
+        "test_scene_resume_binds_and_releases_the_actual_execution_lifetime",
+        "test_transcript_inspection_and_export_survive_unavailable_audio",
+        "test_transcription_run_holds_selected_runtime_until_worker_returns",
+        "test_assistant_preview_does_not_activate_media_or_inspect_a_runtime",
+        "test_silence_cli_requires_explicit_criteria_and_keeps_selected_runtime_through_inspection",
+        "test_silence_cli_does_not_guess_missing_criteria",
+        "test_silence_cli_cancellation_does_not_offer_production_resume",
+        "test_silence_cli_waits_for_both_existing_owners_before_releasing_runtime"
+      ],
+      "old_prefix_exact": true,
+      "notes": "All existing bytes retained; explicit criteria, under-lease strict binding callback, original close order, direct/masked two-owner synchronous CLI drain."
+    }
+  ],
+  "new_cases": 66,
+  "execution": "NOT_RUN; no host or CI execution was performed by this component."
+}

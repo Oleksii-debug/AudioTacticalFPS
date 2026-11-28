@@ -1,0 +1,14 @@
+2026-11-28T02:36:03.2253753Z   ref: 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:11.3829022Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 5d19dde77aca6a257ee601c1bc49b8504c342cee^{object}
+2026-11-28T02:36:11.3829429Z 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:11.4101754Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:11.7886225Z Note: switching to '5d19dde77aca6a257ee601c1bc49b8504c342cee'.
+2026-11-28T02:36:11.8638984Z 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:13.5697896Z if ($sourceCommit -cne '5d19dde77aca6a257ee601c1bc49b8504c342cee') { throw 'Checkout differs from the exact event head.' }
+2026-11-28T02:36:53.9561097Z {"payload_files": 490, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee", "source_tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a", "wheel_sha256": "735928e7f4479de988e228a316aeedbdffb8c1e648f3a2aedaa27435128626f0"}
+2026-11-28T02:39:07.8556382Z INSTALLED_CASES_PASS 483
+2026-11-28T02:39:09.4953141Z NATIVE_VOICE_OPTION_CHECKS_PASS 80
+2026-11-28T02:39:09.5619033Z   name: carr-reader-voice-controls-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1
+2026-11-28T02:39:10.0426296Z Uploading artifact: carr-reader-voice-controls-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1.zip
+2026-11-28T02:39:10.8842088Z Artifact carr-reader-voice-controls-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1 successfully finalized. Artifact ID 15244821381
+2026-11-28T02:39:10.8843278Z Artifact carr-reader-voice-controls-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1 has been successfully uploaded! Final size is 34932 bytes. Artifact ID is 15244821381

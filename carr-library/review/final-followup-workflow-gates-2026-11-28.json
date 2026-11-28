@@ -1,0 +1,314 @@
+{
+  "schema": "carr-followup-workflow-review/1",
+  "base_head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "source_status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "tree": "e85b62701271850f1ebad4d8132e3b76a990abad",
+  "audit": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "diffLines": [],
+      "arrays": [
+        {
+          "before": 445,
+          "after": 445,
+          "duplicates": [],
+          "removed": [],
+          "added": []
+        }
+      ],
+      "unchangedTimeouts": true
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "diffLines": [
+        {
+          "op": "+",
+          "n": 92,
+          "x": "          python -I -B -X utf8 -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/test_delivery_contract.py tests/test_delivery_service.py tests/test_delivery_cli.py tests/speech/test_player_controls.py tests/audio/test_voice_packages.py tests/ui/test_reference_voice_controls.py tests/assistant/test_library_translation.py tests/ui/test_translation_selection.py tests/ui/test_library_translation_dialog.py tests/storage/test_state_json_reader.py tests/transcription/test_control_reads.py tests/assistant/test_state_io.py tests/ui/test_save_actions.py tests/storage/test_evidence_drafts.py tests/ui/test_save_all.py tests/ui/test_assistant_voice_preview.py tests/audio_acceptance/test_primary_publication_budget.py tests/assistant/test_transcription_workflow.py tests/speech/test_runtime_settings_restore.py tests/conversion/test_conversion.py tests/conversion/test_conversion_ownership.py tests/ui/test_document_conversion_admission.py tests/speech/test_voice_preferences.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/ui/test_reader_playback.py tests/speech/test_synthesis_admission.py tests/speech/test_progress_speech.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/ui/test_export_confirmation.py tests/reader/test_export_approval_budget.py tests/ui/test_save_all_access.py tests/ui/test_reader_keymap_context.py tests/ui/test_scope_labels.py tests/language_qualification/test_inventory_cleanup.py tests/ui/test_evidence_draft_recovery.py tests/storage/test_translation_runtime_recovery.py tests/audio/test_local_runtime_cli.py tests/audio/test_local_runtime_setup.py tests/ui/test_audio_runtime_setup.py tests/audio/test_audio_process.py tests/audio/test_process_deadline.py tests/audio/test_capture_access_diagnostic.py tests/audio/test_publication_fsync.py tests/audio/test_recording_probe.py tests/audio/test_recording.py tests/audio/test_recording_process.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_monitor.py tests/audio/test_recording_monitor_capture.py tests/ui/test_recording_dialog.py tests/audio/test_playback.py --junitxml=ci-v3-results/installed-shared-services.xml 2>&1 | Tee-Object 'ci-v3-results/installed-shared-services.txt'"
+        },
+        {
+          "op": "-",
+          "n": 92,
+          "x": "          python -I -B -X utf8 -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/test_delivery_contract.py tests/test_delivery_service.py tests/test_delivery_cli.py tests/speech/test_player_controls.py tests/audio/test_voice_packages.py tests/ui/test_reference_voice_controls.py tests/assistant/test_library_translation.py tests/ui/test_translation_selection.py tests/ui/test_library_translation_dialog.py tests/storage/test_state_json_reader.py tests/transcription/test_control_reads.py tests/assistant/test_state_io.py tests/ui/test_save_actions.py tests/storage/test_evidence_drafts.py tests/ui/test_save_all.py tests/ui/test_assistant_voice_preview.py tests/audio_acceptance/test_primary_publication_budget.py tests/assistant/test_transcription_workflow.py tests/speech/test_runtime_settings_restore.py tests/conversion/test_conversion.py tests/conversion/test_conversion_ownership.py tests/ui/test_document_conversion_admission.py tests/speech/test_voice_preferences.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/speech/test_synthesis_admission.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/ui/test_export_confirmation.py tests/reader/test_export_approval_budget.py tests/ui/test_save_all_access.py tests/ui/test_reader_keymap_context.py tests/ui/test_scope_labels.py tests/language_qualification/test_inventory_cleanup.py tests/ui/test_evidence_draft_recovery.py tests/storage/test_translation_runtime_recovery.py tests/audio/test_local_runtime_cli.py tests/audio/test_local_runtime_setup.py tests/ui/test_audio_runtime_setup.py tests/audio/test_audio_process.py tests/audio/test_process_deadline.py tests/audio/test_capture_access_diagnostic.py tests/audio/test_publication_fsync.py tests/audio/test_recording_probe.py tests/audio/test_recording.py tests/audio/test_recording_process.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_monitor.py tests/audio/test_recording_monitor_capture.py tests/ui/test_recording_dialog.py tests/audio/test_playback.py --junitxml=ci-v3-results/installed-shared-services.xml 2>&1 | Tee-Object 'ci-v3-results/installed-shared-services.txt'"
+        },
+        {
+          "op": "+",
+          "n": 94,
+          "x": "          python -I -B -X utf8 -c \"import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/installed-shared-services.xml').iter('testcase')); required=['test_recording_probe','test_recording','test_recording_process','test_recording_windows_process','test_recording_dialog','test_playback','test_audio_process','test_process_deadline','test_capture_access_diagnostic','test_publication_fsync','test_local_runtime_cli','test_local_runtime_setup','test_audio_runtime_setup','test_translation_runtime_recovery','test_standard_installer','test_managed_launch_boundary','test_delivery_contract','test_delivery_service','test_delivery_cli','test_player_controls','test_voice_packages','test_reference_voice_controls','test_library_translation','test_translation_selection','test_library_translation_dialog','test_state_json_reader','test_save_actions','test_evidence_drafts','test_save_all','test_assistant_voice_preview','test_primary_publication_budget','test_transcription_workflow','test_runtime_settings_restore','test_conversion','test_conversion_ownership','test_document_conversion_admission','test_voice_preferences','test_voice_preferences_dialog','test_reader_synthesis','test_reader_playback','test_synthesis_admission','test_progress_speech','test_reader_synthesis_backup','test_control_reads','test_voice_preferences_backup','test_export_confirmation','test_export_approval_budget','test_save_all_access','test_reader_keymap_context','test_scope_labels','test_inventory_cleanup','test_evidence_draft_recovery']; assert cases and all(any(name in c.get('classname','').split('.') for c in cases) for name in required); assert not any(c.find(t) is not None for c in cases for t in ('error','failure','skipped')); print(json.dumps(dict(status='PASS',passed=len(cases),failed=0,skipped=0,nvda='NOT_RUN')))\" | Tee-Object 'ci-v3-results/installed-shared-services.json'"
+        },
+        {
+          "op": "-",
+          "n": 94,
+          "x": "          python -I -B -X utf8 -c \"import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/installed-shared-services.xml').iter('testcase')); required=['test_recording_probe','test_recording','test_recording_process','test_recording_windows_process','test_recording_dialog','test_playback','test_audio_process','test_process_deadline','test_capture_access_diagnostic','test_publication_fsync','test_local_runtime_cli','test_local_runtime_setup','test_audio_runtime_setup','test_translation_runtime_recovery','test_standard_installer','test_managed_launch_boundary','test_delivery_contract','test_delivery_service','test_delivery_cli','test_player_controls','test_voice_packages','test_reference_voice_controls','test_library_translation','test_translation_selection','test_library_translation_dialog','test_state_json_reader','test_save_actions','test_evidence_drafts','test_save_all','test_assistant_voice_preview','test_primary_publication_budget','test_transcription_workflow','test_runtime_settings_restore','test_conversion','test_conversion_ownership','test_document_conversion_admission','test_voice_preferences','test_voice_preferences_dialog','test_reader_synthesis','test_synthesis_admission','test_reader_synthesis_backup','test_control_reads','test_voice_preferences_backup','test_export_confirmation','test_export_approval_budget','test_save_all_access','test_reader_keymap_context','test_scope_labels','test_inventory_cleanup','test_evidence_draft_recovery']; assert cases and all(any(name in c.get('classname','').split('.') for c in cases) for name in required); assert not any(c.find(t) is not None for c in cases for t in ('error','failure','skipped')); print(json.dumps(dict(status='PASS',passed=len(cases),failed=0,skipped=0,nvda='NOT_RUN')))\" | Tee-Object 'ci-v3-results/installed-shared-services.json'"
+        },
+        {
+          "op": "+",
+          "n": 352,
+          "x": "          python -c $strictTests -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/audio_acceptance/test_primary_publication_budget.py tests/academic_integration tests/conversion tests/ui/test_document_conversion_admission.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/ui/test_reader_playback.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/language_qualification tests/ui/test_ebook_audio_initialization.py tests/ui/test_ebook_dialog.py tests/reader/test_ebook_audio.py tests/reader/test_ebook_audio_lifecycle.py tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_state_json_reader.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/storage/test_canonical_backup_compat.py tests/extract/test_language_manager.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_worker_interpreter_ownership.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_direct_import_pending_backup.py tests/storage/test_state_recovery_case_aliases.py tests/storage/test_import_registration_migration.py tests/ui/test_recording_dialog.py tests/storage/test_recording_backup.py tests/operations tests/transcription tests/transcription_windows tests/operations_windows tests/ui/test_operations_policy.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_transcription_dialog.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_atomic_state_publication.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/ui/test_worker_lifetime.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/ui/test_reading_tools.py tests/ui/test_reader_output.py tests/ui/test_reader_spelling.py tests/ui/test_reader_presentation.py tests/reader/test_export_reconciliation.py tests/storage/test_import_publication_backup.py tests/storage/test_transcription_composite_backup.py tests/reader/test_export_change_time.py tests/ui/test_voice_reference.py tests/ui/test_word_citations.py tests/ui/test_assistant_domain_routes.py tests/sync tests/ui/test_portable_sync.py tests/citations/test_streamed_text_attestation.py tests/e2e/test_source_file.py tests/e2e/test_streamed_import_cli.py tests/e2e/test_streamed_source_import.py tests/ingest/test_streamed_admission.py tests/ingest/test_streamed_ingest.py tests/ingest/test_streamed_text.py tests/reader/test_streamed_source_view.py tests/storage/test_streamed_source_backup.py tests/ui/test_source_launch.py tests/ui/test_source_open_handler.py tests/ui/test_streamed_import.py tests/ui/test_protected_voice_packages.py tests/search/test_source_pagination.py tests/search/test_source_page_benchmark.py tests/search/test_federated_pagination.py tests/e2e/test_search_pagination.py tests/ui/test_search_pagination.py tests/ui/test_federated_search.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'"
+        },
+        {
+          "op": "-",
+          "n": 352,
+          "x": "          python -c $strictTests -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/audio_acceptance/test_primary_publication_budget.py tests/academic_integration tests/conversion tests/ui/test_document_conversion_admission.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/language_qualification tests/ui/test_ebook_audio_initialization.py tests/ui/test_ebook_dialog.py tests/reader/test_ebook_audio.py tests/reader/test_ebook_audio_lifecycle.py tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_state_json_reader.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/storage/test_canonical_backup_compat.py tests/extract/test_language_manager.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_worker_interpreter_ownership.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_direct_import_pending_backup.py tests/storage/test_state_recovery_case_aliases.py tests/storage/test_import_registration_migration.py tests/ui/test_recording_dialog.py tests/storage/test_recording_backup.py tests/operations tests/transcription tests/transcription_windows tests/operations_windows tests/ui/test_operations_policy.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_transcription_dialog.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_atomic_state_publication.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/ui/test_worker_lifetime.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/ui/test_reading_tools.py tests/ui/test_reader_output.py tests/ui/test_reader_spelling.py tests/ui/test_reader_presentation.py tests/reader/test_export_reconciliation.py tests/storage/test_import_publication_backup.py tests/storage/test_transcription_composite_backup.py tests/reader/test_export_change_time.py tests/ui/test_voice_reference.py tests/ui/test_word_citations.py tests/ui/test_assistant_domain_routes.py tests/sync tests/ui/test_portable_sync.py tests/citations/test_streamed_text_attestation.py tests/e2e/test_source_file.py tests/e2e/test_streamed_import_cli.py tests/e2e/test_streamed_source_import.py tests/ingest/test_streamed_admission.py tests/ingest/test_streamed_ingest.py tests/ingest/test_streamed_text.py tests/reader/test_streamed_source_view.py tests/storage/test_streamed_source_backup.py tests/ui/test_source_launch.py tests/ui/test_source_open_handler.py tests/ui/test_streamed_import.py tests/ui/test_protected_voice_packages.py tests/search/test_source_pagination.py tests/search/test_source_page_benchmark.py tests/search/test_federated_pagination.py tests/e2e/test_search_pagination.py tests/ui/test_search_pagination.py tests/ui/test_federated_search.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'"
+        }
+      ],
+      "arrays": [],
+      "unchangedTimeouts": true
+    },
+    {
+      "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+      "diffLines": [
+        {
+          "op": "+",
+          "n": 187,
+          "x": "          suites = [\"tests/ui/test_reader_synthesis.py\",\"tests/ui/test_progress_voice_actions.py\",\"tests/ui/test_progress_job_review.py\",\"tests/speech/test_synthesis_admission.py\",\"tests/ui/test_reader_playback.py\",\"tests/speech/test_progress_speech.py\",\"tests/ui/test_operation_progress.py\",\"tests/ui/test_progress_media_quiet.py\",\"tests/ui/test_studio_progress_isolation.py\",\"tests/speech/test_registered_studio_voices.py\",\"tests/audio/test_model_voices.py\",\"tests/storage/test_reader_synthesis_backup.py\",\"tests/speech/test_session.py\",\"tests/speech/test_reading_tabs.py\",\"tests/ui/test_reader_tabs.py\",\"tests/storage/test_reading_tabs_backup.py\",\"tests/ui/test_save_all_access.py\",\"tests/speech/test_source.py\",\"tests/speech/test_voice_preferences.py\",\"tests/ui/test_voice_preferences_dialog.py\",\"tests/storage/test_voice_preferences_backup.py\"]"
+        },
+        {
+          "op": "-",
+          "n": 187,
+          "x": "          suites = [\"tests/ui/test_reader_synthesis.py\",\"tests/ui/test_progress_voice_actions.py\",\"tests/ui/test_progress_job_review.py\",\"tests/speech/test_synthesis_admission.py\",\"tests/speech/test_registered_studio_voices.py\",\"tests/audio/test_model_voices.py\",\"tests/storage/test_reader_synthesis_backup.py\",\"tests/speech/test_session.py\",\"tests/speech/test_reading_tabs.py\",\"tests/ui/test_reader_tabs.py\",\"tests/storage/test_reading_tabs_backup.py\",\"tests/ui/test_save_all_access.py\",\"tests/speech/test_source.py\",\"tests/speech/test_voice_preferences.py\",\"tests/ui/test_voice_preferences_dialog.py\",\"tests/storage/test_voice_preferences_backup.py\"]"
+        },
+        {
+          "op": "+",
+          "n": 210,
+          "x": "            'tests/ui/test_reader_playback.py',"
+        },
+        {
+          "op": "+",
+          "n": 211,
+          "x": "            'tests/speech/test_progress_speech.py',"
+        },
+        {
+          "op": "+",
+          "n": 212,
+          "x": "            'tests/ui/test_operation_progress.py',"
+        },
+        {
+          "op": "+",
+          "n": 213,
+          "x": "            'tests/ui/test_progress_media_quiet.py',"
+        },
+        {
+          "op": "+",
+          "n": 214,
+          "x": "            'tests/ui/test_studio_progress_isolation.py',"
+        },
+        {
+          "op": "+",
+          "n": 240,
+          "x": "            'tests/ui/test_reader_playback.py',"
+        },
+        {
+          "op": "+",
+          "n": 241,
+          "x": "            'tests/speech/test_progress_speech.py',"
+        },
+        {
+          "op": "+",
+          "n": 242,
+          "x": "            'tests/ui/test_operation_progress.py',"
+        },
+        {
+          "op": "+",
+          "n": 243,
+          "x": "            'tests/ui/test_progress_media_quiet.py',"
+        },
+        {
+          "op": "+",
+          "n": 244,
+          "x": "            'tests/ui/test_studio_progress_isolation.py',"
+        }
+      ],
+      "arrays": [
+        {
+          "before": 16,
+          "after": 21,
+          "duplicates": [],
+          "removed": [],
+          "added": [
+            "tests/ui/test_reader_playback.py",
+            "tests/speech/test_progress_speech.py",
+            "tests/ui/test_operation_progress.py",
+            "tests/ui/test_progress_media_quiet.py",
+            "tests/ui/test_studio_progress_isolation.py"
+          ]
+        },
+        {
+          "before": 16,
+          "after": 21,
+          "duplicates": [],
+          "removed": [],
+          "added": [
+            "tests/ui/test_reader_playback.py",
+            "tests/speech/test_progress_speech.py",
+            "tests/ui/test_operation_progress.py",
+            "tests/ui/test_progress_media_quiet.py",
+            "tests/ui/test_studio_progress_isolation.py"
+          ]
+        }
+      ],
+      "unchangedTimeouts": true
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "diffLines": [
+        {
+          "op": "+",
+          "n": 135,
+          "x": "            'tests/academic_integration/test_formatting.py',"
+        },
+        {
+          "op": "+",
+          "n": 175,
+          "x": "            'tests/ui/test_reader_playback.py',"
+        },
+        {
+          "op": "+",
+          "n": 176,
+          "x": "            'tests/speech/test_progress_speech.py',"
+        },
+        {
+          "op": "+",
+          "n": 177,
+          "x": "            'tests/ui/test_operation_progress.py',"
+        },
+        {
+          "op": "+",
+          "n": 178,
+          "x": "            'tests/ui/test_progress_media_quiet.py',"
+        },
+        {
+          "op": "+",
+          "n": 179,
+          "x": "            'tests/ui/test_studio_progress_isolation.py',"
+        },
+        {
+          "op": "+",
+          "n": 225,
+          "x": "            'tests/academic_integration/test_formatting.py',"
+        },
+        {
+          "op": "+",
+          "n": 265,
+          "x": "            'tests/ui/test_reader_playback.py',"
+        },
+        {
+          "op": "+",
+          "n": 266,
+          "x": "            'tests/speech/test_progress_speech.py',"
+        },
+        {
+          "op": "+",
+          "n": 267,
+          "x": "            'tests/ui/test_operation_progress.py',"
+        },
+        {
+          "op": "+",
+          "n": 268,
+          "x": "            'tests/ui/test_progress_media_quiet.py',"
+        },
+        {
+          "op": "+",
+          "n": 269,
+          "x": "            'tests/ui/test_studio_progress_isolation.py',"
+        }
+      ],
+      "arrays": [
+        {
+          "before": 74,
+          "after": 80,
+          "duplicates": [],
+          "removed": [],
+          "added": [
+            "tests/academic_integration/test_formatting.py",
+            "tests/ui/test_reader_playback.py",
+            "tests/speech/test_progress_speech.py",
+            "tests/ui/test_operation_progress.py",
+            "tests/ui/test_progress_media_quiet.py",
+            "tests/ui/test_studio_progress_isolation.py"
+          ]
+        },
+        {
+          "before": 74,
+          "after": 80,
+          "duplicates": [],
+          "removed": [],
+          "added": [
+            "tests/academic_integration/test_formatting.py",
+            "tests/ui/test_reader_playback.py",
+            "tests/speech/test_progress_speech.py",
+            "tests/ui/test_operation_progress.py",
+            "tests/ui/test_progress_media_quiet.py",
+            "tests/ui/test_studio_progress_isolation.py"
+          ]
+        }
+      ],
+      "unchangedTimeouts": true
+    },
+    {
+      "path": ".github/workflows/carr-reconciliation-checks.yml",
+      "diffLines": [
+        {
+          "op": "+",
+          "n": 67,
+          "x": "        # Exact 5d19 was still passing tests at the five-minute"
+        },
+        {
+          "op": "+",
+          "n": 68,
+          "x": "        # aggregate cutoff. Keep all test/product/native deadlines unchanged."
+        },
+        {
+          "op": "+",
+          "n": 69,
+          "x": "        timeout-minutes: 10"
+        },
+        {
+          "op": "-",
+          "n": 67,
+          "x": "        timeout-minutes: 5"
+        },
+        {
+          "op": "+",
+          "n": 75,
+          "x": "        # Exact 5d19 was still passing tests at the five-minute"
+        },
+        {
+          "op": "+",
+          "n": 76,
+          "x": "        # aggregate cutoff. Keep all test/product/native deadlines unchanged."
+        },
+        {
+          "op": "+",
+          "n": 77,
+          "x": "        timeout-minutes: 10"
+        },
+        {
+          "op": "-",
+          "n": 73,
+          "x": "        timeout-minutes: 5"
+        }
+      ],
+      "arrays": [],
+      "unchangedTimeouts": null
+    }
+  ],
+  "main_workflow": "Byte-identical to5d19; no endpoint branch, input/output identity, privacy or default-device change.",
+  "canonical_exception": "Only documented whole-selection CI5→10minute capacity;20minutejob andindividual/native/product/test limitsunchanged.",
+  "dependency_policy": "No pins or acquisition policies changed. Existing QuickJS dependency is already in both selected platform locks; the same formatting module is added to component verification.",
+  "origin_verdict_policy": "No installed-origin, full Python inventory, failure, skip or required-classname check removed.",
+  "peer": {
+    "agent": "/root/voice_reading",
+    "verdict": "CLEAR",
+    "compared_head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "tree": "e85b62701271850f1ebad4d8132e3b76a990abad",
+    "findings": [
+      "Component both arrays74→80unique; unchangedextraPOSIX gives81Linux; no removed/duplicate selector.",
+      "Reader inventory and both arrays16→21unique, identical.",
+      "V3 installed63→65selectors withmatchingrequiredclassnames; fullsourceaddsreader_playbackonly.",
+      "quickjs-ng==0.18.0.2 andexistingFFmpeg/Flite prerequisites verified inexactsource.",
+      "Exact checkout/wheel/moduleisolation,no-skipchecks,nativecalls/outputguards andallbudgets retainedexceptdocumentedcanonicalaggregate5→10;job20unchanged."
+    ]
+  }
+}

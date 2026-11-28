@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "scope": "Completed GitHub Actions job log; no private assets or original artifact-member claims.",
+  "run_id": 46081225448,
+  "head_sha": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+  "job_id": 140780410646,
+  "mode": "installed",
+  "platform": "ubuntu-24.04",
+  "python": "3.11.18",
+  "conclusion": "success",
+  "started_at": "2026-11-27T23:43:56Z",
+  "completed_at": "2026-11-27T23:48:39Z",
+  "decoded_log_sha256": "927834dad7ab554bc285eec1e352a8c5075e6a60d14519265c95c24879fe0d5a",
+  "decoded_log_characters": 142585,
+  "passed": 1850,
+  "failed": 0,
+  "skipped": 0,
+  "subtests_passed": 12,
+  "strict_suites": null,
+  "proof_lines": [
+    "{\"status\": \"PASS\", \"module_origin\": \"/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library\", \"python_modules\": 377, \"source_inventory_sha256\": \"3bd6e879c598dff3c2ddac95a06c17b5f64160d6206a4bda7856fbd071ee2b50\"}",
+    "1850 passed, 12 subtests passed in 197.82s (0:03:17)",
+    "INSTALLED_CASES_PASS 1850"
+  ],
+  "execution_qualification": "This exact mode and head only; no Windows/full aggregate qualification."
+}

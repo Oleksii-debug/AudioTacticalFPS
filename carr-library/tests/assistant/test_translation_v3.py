@@ -1,4 +1,8 @@
-"""Actual shared gateway/jobs with synthetic Google REST responses, never live API."""
+"""Canonical147 v3 cases adapted to the single pinned gateway and source-aware CLI.
+
+Only HTTPTransport.request is replaced; actual validation, credentials contracts,
+usage ledger and source/job/restore logic run. No live API or quality claim.
+"""
 from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -17,10 +21,10 @@ import pytest
 from carr_library.assistant.profiles import (
     ProviderProfile, ProfileStore, google_oauth_credential, google_oauth_token, save_google_token,
 )
-from carr_library.assistant.providers import Authorization, Gateway, ProviderError
+from carr_library.assistant.providers import Authorization, Gateway, ProviderError, HTTPTransport, HTTPResult
 from carr_library.assistant.state import read_json
 from carr_library.assistant.translation import TranslationService, translation_approval
-from carr_library.assistant import translation_cli
+from carr_library import translation_cli
 from carr_library.application import LibraryApp
 from carr_library.ui import translation_dialog as ui
 from carr_library.speech.reading import ReadingDocument
@@ -104,7 +108,20 @@ def transport(monkeypatch):
 
         def close(self):
             state['closed'] += 1
-    monkeypatch.setattr(http.client, 'HTTPSConnection', Connection)
+    def request(self, profile, route, body, headers, *, method='POST', **kwargs):
+        # Preserve the actual shared gateway, request validation, ledger, OAuth
+        # handling and response decoder. Only the network transport is synthetic.
+        connection = Connection('translation.googleapis.com', 443,
+                                context=ssl.create_default_context())
+        try:
+            connection.request(method, route, body, headers)
+            response = connection.getresponse()
+            return HTTPResult(response.getheader('Content-Type'),
+                              response.read(kwargs.get('maximum_bytes', 1024 * 1024) + 1),
+                              response.status)
+        finally:
+            connection.close()
+    monkeypatch.setattr(HTTPTransport, 'request', request)
     return state
 
 
@@ -333,209 +350,225 @@ def test_saved_request_cannot_silently_expand_original_approval(tmp_path, transp
     assert len(transport['calls']) == 1
 
 
-def test_cli_requires_exact_review_then_uses_existing_jobs_and_gateway(tmp_path, transport, monkeypatch, capsys):
+
+
+def test_cli_facade_uses_the_existing_source_aware_implementation():
+    from carr_library.assistant import translation_cli as compatibility
+    assert compatibility.main is translation_cli.main
+
+
+def test_cli_binds_glossary_and_keeps_all_existing_remote_approval_gates(tmp_path, transport, monkeypatch, capsys):
     app = LibraryApp(tmp_path / 'library')
-    ProfileStore(app.root / 'state' / 'providers').save(profile())
+    p = profile()
+    ProfileStore(app.root / 'state/providers').save(p)
     vault = Vault()
-    monkeypatch.setattr(translation_cli, 'Gateway', lambda directory, **kwargs: Gateway(directory, vault=vault, **kwargs))
+    approved_gateways = []
+    def approved_gateway(directory, **kwargs):
+        approved_gateways.append((directory, kwargs))
+        return Gateway(directory, vault=vault, **kwargs)
+    monkeypatch.setattr(translation_cli, 'Gateway', approved_gateway)
     base = ['--data-dir', str(app.root)]
     assert translation_cli.main(base + ['profiles']) == 0
-    profiles = json.loads(capsys.readouterr().out)
+    profiles = json.loads(capsys.readouterr().out)['profiles']
     assert profiles[0]['adapter'] == 'google-translation-v3' and 'credential_ref' not in profiles[0]
     assert not transport['calls']
-    assert translation_cli.main(base + ['languages', '--profile', profile().id]) == 0
-    assert json.loads(capsys.readouterr().out) == [] and not transport['calls']
-    assert translation_cli.main(base + ['languages', '--profile', profile().id, '--approve-remote']) == 0
-    assert json.loads(capsys.readouterr().out)[2]['target'] is False
-    original = tmp_path / 'selected.txt'; original.write_text('Exact reviewed source.', encoding='utf-8')
-    args = ['--profile', profile().id, '--input', str(original), '--source', 'en', '--target', 'uk',
-            '--budget', '1', '--glossary', GLOSSARY]
+    assert translation_cli.main(base + ['languages', '--profile', p.id, '--cached']) == 0
+    assert json.loads(capsys.readouterr().out)['languages'] == [] and not transport['calls']
+    assert translation_cli.main(base + ['languages', '--profile', p.id]) == 1
+    assert '--allow-remote' in capsys.readouterr().err and not transport['calls']
+    assert translation_cli.main(base + ['languages', '--profile', p.id, '--allow-remote']) == 0
+    assert json.loads(capsys.readouterr().out)['languages'][2]['target'] is False
+    original = tmp_path / 'selected.txt'
+    original.write_bytes(b'Exact reviewed source.\r\nKeep this original.')
+    args = ['--profile', p.id, '--text-file', str(original), '--source', 'en',
+            '--target', 'uk', '--budget', '1', '--glossary', GLOSSARY]
     assert translation_cli.main(base + ['preview'] + args) == 0
     review = json.loads(capsys.readouterr().out)
     assert review['glossary'] == GLOSSARY and review['endpoint'] == ENDPOINT
-    submit_args = base + ['submit'] + args + ['--review-sha256', review['review_sha256']]
+    submit_args = base + ['submit'] + args + ['--approve-preview', review['approval_sha256']]
     assert translation_cli.main(submit_args) == 1
-    assert 'Explicitly approve' in capsys.readouterr().err
-    assert translation_cli.main(submit_args + ['--approve-remote']) == 0
-    submitted = json.loads(capsys.readouterr().out)
-    assert len(transport['calls']) == 1 and submitted['status'] == 'queued'
-    previous = signal.getsignal(signal.SIGINT)
-    assert translation_cli.main(base + ['resume', submitted['id']]) == 0
-    assert signal.getsignal(signal.SIGINT) is previous
+    assert '--allow-remote' in capsys.readouterr().err
+    assert translation_cli.main(submit_args + ['--allow-remote']) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['status'] == 'complete'
+    assert translation_cli.main(base + ['inspect', '--job', result['id']]) == 0
+    inspected = json.loads(capsys.readouterr().out)
+    assert inspected['glossary'] == GLOSSARY and inspected['provider_adapter'] == p.adapter
+    approval = inspected['resume_approval_sha256']
+    before = (len(transport['calls']), len(vault.calls), len(approved_gateways))
+    assert translation_cli.main(base + ['resume', '--job', result['id'],
+                                         '--approve-job', approval]) == 1
+    assert '--allow-remote' in capsys.readouterr().err
+    wrong_approval = ('0' if approval[0] != '0' else '1') + approval[1:]
+    assert translation_cli.main(base + ['resume', '--job', result['id'], '--allow-remote',
+                                         '--approve-job', wrong_approval]) == 1
+    assert 'Inspect and explicitly approve the exact saved job' in capsys.readouterr().err
+    # Each denied route stops before remote-mode construction, credentials and HTTP.
+    assert (len(transport['calls']), len(vault.calls), len(approved_gateways)) == before
+    assert translation_cli.main(base + ['inspect', '--job', result['id']]) == 0
+    assert json.loads(capsys.readouterr().out)['resume_approval_sha256'] == approval
+    assert (len(transport['calls']), len(vault.calls), len(approved_gateways)) == before
+    assert translation_cli.main(base + ['resume', '--job', result['id'], '--allow-remote',
+                                         '--approve-job', approval]) == 0
     assert json.loads(capsys.readouterr().out)['status'] == 'complete'
+    assert len(approved_gateways) == before[2] + 1
+    assert len(vault.calls) == before[1]
+    assert len(transport['calls']) == before[0]  # Accepted work is never billed again.
     destination = tmp_path / 'cli export'
-    assert translation_cli.main(base + ['export', submitted['id'], '--output', str(destination)]) == 0
+    assert translation_cli.main(base + ['export', '--job', result['id'], '--output', str(destination)]) == 0
     assert json.loads(capsys.readouterr().out)['status'] == 'complete'
-    assert (destination / 'original.txt').read_text() == original.read_text()
-    before = len(transport['calls'])
-    assert translation_cli.main(base + ['jobs']) == 0
-    saved = json.loads(capsys.readouterr().out)
-    assert saved[0]['glossary'] == GLOSSARY and 'source_text' not in saved[0]
-    assert len(transport['calls']) == before
+    assert (destination / 'original.txt').read_bytes() == original.read_bytes()
 
 
 @pytest.mark.parametrize('mutation', ['text', 'glossary', 'target', 'budget', 'profile'])
-def test_cli_rejects_stale_preview_before_job_publication(tmp_path, transport, monkeypatch, capsys, mutation):
+def test_cli_rejects_changed_v3_preview_before_submission(tmp_path, transport, monkeypatch, capsys, mutation):
     app = LibraryApp(tmp_path / 'library')
-    p = profile(); store = ProfileStore(app.root / 'state' / 'providers'); store.save(p)
+    p = profile()
+    store = ProfileStore(app.root / 'state/providers')
+    store.save(p)
     vault = Vault()
-    monkeypatch.setattr(translation_cli, 'Gateway', lambda directory, **kwargs: Gateway(directory, vault=vault, **kwargs))
+    monkeypatch.setattr(translation_cli, 'Gateway',
+                        lambda directory, **kwargs: Gateway(directory, vault=vault, **kwargs))
     base = ['--data-dir', str(app.root)]
-    translation_cli.main(base + ['languages', '--profile', p.id, '--approve-remote']); capsys.readouterr()
-    source = tmp_path / 'source.txt'; source.write_text('Original source', encoding='utf-8')
-    args = ['--profile', p.id, '--input', str(source), '--source', 'en', '--target', 'uk', '--budget', '1', '--glossary', GLOSSARY]
+    assert translation_cli.main(base + ['languages', '--profile', p.id, '--allow-remote']) == 0
+    capsys.readouterr()
+    original = tmp_path / 'source.txt'
+    original.write_text('Original source', encoding='utf-8')
+    args = ['--profile', p.id, '--text-file', str(original), '--source', 'en',
+            '--target', 'uk', '--budget', '1', '--glossary', GLOSSARY]
     assert translation_cli.main(base + ['preview'] + args) == 0
     review = json.loads(capsys.readouterr().out)
     if mutation == 'text':
-        source.write_text('Changed source', encoding='utf-8')
+        original.write_text('Changed source', encoding='utf-8')
     elif mutation == 'profile':
         store.save(replace(p, name='Changed selected account'))
     else:
-        option = '--' + mutation
-        args[args.index(option) + 1] = {'glossary': GLOSSARY + '-other', 'target': 'fr', 'budget': '2'}[mutation]
-    assert translation_cli.main(base + ['submit'] + args + ['--approve-remote', '--review-sha256', review['review_sha256']]) == 1
-    assert 'current preview hash' in capsys.readouterr().err
-    assert not TranslationService(app.root / 'state' / 'translation').list()
+        args[args.index('--' + mutation) + 1] = {
+            'glossary': GLOSSARY + '-other', 'target': 'fr', 'budget': '2'}[mutation]
+    assert translation_cli.main(base + ['submit'] + args +
+        ['--allow-remote', '--approve-preview', review['approval_sha256']]) == 1
+    assert 'exact current preview digest' in capsys.readouterr().err
+    assert not TranslationService(app.root / 'state/translation').list()
     assert len(transport['calls']) == 1
 
 
 def test_stale_account_editor_cannot_replace_newer_credential(tmp_path):
-    p = profile(); store = ProfileStore(tmp_path / 'profiles'); store.save(p)
-    vault = Vault(); before = dict(vault.records)
+    p = profile()
+    store = ProfileStore(tmp_path / 'profiles')
+    store.save(p)
+    vault = Vault()
+    before = dict(vault.records)
     store.save(replace(p, endpoint=ENDPOINT.replace('123456789', '234567890')))
     with pytest.raises(ValueError, match='account changed'):
         save_google_token(store, vault, p, TOKEN + '_NEW', time() + 300, current=p)
     assert vault.records == before and not vault.calls
 
 
-@pytest.fixture
-def translation_handlers(tmp_path, transport, monkeypatch):
-    """Actual handler closures; widget/scheduler stand-ins are not native proof."""
-    state = {'widgets': [], 'queue': [], 'approvals': [], 'scenario': None}
-    class Widget:
-        def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
-            self.value, self.name, self.label, self.choices = value, '', label, choices
-            self.enabled, self.selection, self.bindings, self.focused = True, -1, {}, False
-            state['widgets'].append(self)
-        def SetName(self, name): self.name = name
-        def SetSelection(self, value): self.selection = value
-        def GetSelection(self): return self.selection
-        def GetValue(self): return self.value
-        def ChangeValue(self, value): self.value = value
-        def Enable(self, value=True): self.enabled = value
-        def Disable(self): self.enabled = False
-        def SetFocus(self): self.focused = True
-        def Bind(self, event, callback): self.bindings[event] = callback
-        def SetSizer(self, sizer): pass
-        def EndModal(self, result): pass
-        def Destroy(self): pass
-        def ShowModal(self):
-            state['scenario']()
-            return 1
-    class Sizer:
-        def __init__(self, *args, **kwargs): pass
-        def Add(self, *args, **kwargs): pass
-    wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate((
-        'DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'ALL', 'EXPAND',
-        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE'))})
-    for name in ('Dialog', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
-        setattr(wx, name, Widget)
-    wx.BoxSizer = Sizer
-    wx.CallAfter = lambda callback, *args: callback(*args)
-    def approve(message, *args):
-        state['approvals'].append(message)
-        return wx.YES
-    wx.MessageBox = approve
-    monkeypatch.setitem(sys.modules, 'wx', wx)
-    app = LibraryApp(tmp_path / 'library')
-    p = profile(); ProfileStore(app.root / 'state' / 'providers').save(p)
+def _linked(tmp_path, transport):
+    from carr_library.assistant.library_translation import LibrarySelection, capture_library_sources
+    app = LibraryApp(tmp_path / 'linked-library')
+    workspace = app.create_workspace('Advanced source identity')
+    original = 'Literal original.\r\nУкраїнський текст &amp;.\fSecond retained position.'
+    book = app.add_text(workspace, 'Advanced original', original)
     vault = Vault()
-    monkeypatch.setattr(ui, 'Gateway', lambda directory, **kwargs: Gateway(directory, vault=vault, **kwargs))
-    frame = SimpleNamespace(library=app, working=False, _closing=False, cancel_event=__import__('threading').Event())
-    def run_job(title, callback, done, failed):
-        state['queue'].append((callback, done, failed))
-        return True
-    frame.run_job = run_job
-    def find(name): return next(widget for widget in state['widgets'] if widget.name == name)
-    def press(name): find(name).bindings[wx.EVT_BUTTON](None)
-    def complete():
-        callback, done, failed = state['queue'].pop(0)
-        try: result = callback()
-        except Exception as error: failed(error)
-        else: done(result)
-    def scenario(callback):
-        state['scenario'] = callback
-        ui.show_translation(frame)
-    return SimpleNamespace(state=state, frame=frame, find=find, press=press, complete=complete, scenario=scenario,
-                           service=TranslationService(app.root / 'state' / 'translation'), p=p, vault=vault)
+    service = TranslationService(app.root / 'state/translation', library=app, workspace=workspace,
+        gateway=Gateway(app.root / 'state/translation/provider', vault=vault, mode='APPROVED_REMOTE'))
+    p = profile()
+    ProfileStore(app.root / 'state/providers').save(p)
+    approval = Authorization('linked_languages', 'linked_languages', ((p.id, p.endpoint),),
+                            ('translation.languages',), ('user-instruction',), '0', 1, time() + 60)
+    service.refresh_languages(p, authorization=approval)
+    selected = capture_library_sources(app, workspace, (LibrarySelection(book['edition']),))
+    return app, workspace, book, original, selected, service, p, vault
 
 
-def prepare_handler(e):
-    e.find('Source language code; auto detects').ChangeValue('en')
-    e.find('Target language code').ChangeValue('uk')
-    e.find('Advanced v3 glossary resource; blank for none').ChangeValue(GLOSSARY)
-    e.find('Selected text; originals remain unchanged').ChangeValue('Handler reviewed original.')
-    e.find('Maximum approved budget in USD; no default price').ChangeValue('1')
-    e.press('Fetch languages'); e.complete()
+def test_v3_source_bound_chunks_keep_decoded_ledger_identity_and_offline_restoration(tmp_path, transport):
+    from carr_library.assistant.models import canonical
+    from carr_library.assistant.providers import translation_receipt_sha256
+    from carr_library.library_backup import create_backup, restore_backup
+    app, workspace, book, original, selected, service, p, vault = _linked(tmp_path, transport)
+    approval, cost = translation_approval(p, selected.text, 'en', 'uk', '1',
+                                         source_binding=selected.binding, glossary=GLOSSARY)
+    identity = service.submit(p, selected.text, 'en', 'uk', authorization=approval,
+        per_call_cost=cost, source_binding=selected.binding, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.get(identity)
+    assert job['source_binding'] == selected.binding and job['execution_origin']
+    usage = service.gateway.ledger.get(approval.id)['operations']
+    for index, receipt in enumerate(job['receipts']):
+        expected = translation_receipt_sha256(receipt['text'], receipt['detected_source'])
+        assert receipt['decoded_translation_sha256'] == expected
+        assert usage[identity + '_' + str(index)]['usage']['decoded_translation_sha256'] == expected
+        assert receipt['reported_model'] == PARENT + '/models/general/nmt'
+        assert receipt['glossary_config'] == {'glossary': GLOSSARY, 'ignoreCase': False}
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = TranslationService(restored_root / 'state/translation',
+        library=LibraryApp(restored_root), workspace=workspace)
+    recovered = restored.get(identity)
+    assert recovered['receipts'] == job['receipts']
+    assert recovered['source_binding'] == selected.binding and recovered['glossary'] == GLOSSARY
+    assert recovered['profile']['credential_ref'] is None and recovered['profile']['enabled'] is False
+    assert recovered['original_profile_sha256'] == sha256(canonical(job['profile']).encode()).hexdigest()
+    assert recovered['restore_requires_review'] is True
+    before = len(transport['calls']), len(vault.calls)
+    with pytest.raises(PermissionError, match='Restored translation'):
+        restored.resume(identity)
+    export = tmp_path / 'restored-export'
+    restored.export(identity, export)
+    assert (export / 'original.txt').read_bytes() == selected.text.encode('utf-8')
+    assert (len(transport['calls']), len(vault.calls)) == before
+    assert app.assets.resolve(book['asset']).read_bytes() == original.encode('utf-8')
 
 
-def test_actual_native_handlers_queue_reviewed_glossary_and_focus_readable_completion(translation_handlers, transport):
-    e = translation_handlers
-    def scenario():
-        prepare_handler(e)
-        assert GLOSSARY not in e.state['approvals'][0]  # Discovery sends no glossary or text.
-        e.press('Preview')
-        assert GLOSSARY in e.find('Preview, supported languages and job status').value
-        e.press('Translate / resume')
-        assert len(transport['calls']) == 1 and len(e.state['queue']) == 1
-        assert not e.find('Advanced v3 glossary resource; blank for none').enabled
-        assert GLOSSARY in e.state['approvals'][-1] and ENDPOINT in e.state['approvals'][-1]
-        e.complete()
-        job, = e.service.list()
-        assert job['status'] == 'complete' and job['glossary'] == GLOSSARY
-        assert e.find('Preview, supported languages and job status').focused
-        assert e.find('Selected text; originals remain unchanged').value == 'Handler reviewed original.'
-    e.scenario(scenario)
+def test_v3_rehashed_chunk_text_still_fails_independent_decoded_ledger_binding(tmp_path, transport):
+    app, workspace, book, original, selected, service, p, vault = _linked(tmp_path, transport)
+    approval, cost = translation_approval(p, selected.text, 'en', 'uk', '1',
+                                         source_binding=selected.binding, glossary=GLOSSARY)
+    identity = service.submit(p, selected.text, 'en', 'uk', authorization=approval,
+        per_call_cost=cost, source_binding=selected.binding, glossary=GLOSSARY)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    row = job['receipts'][0]
+    row['text'] = 'Forged decoded translation'
+    row['translation_sha256'] = sha256(row['text'].encode()).hexdigest()
+    from carr_library.assistant.providers import translation_receipt_sha256
+    row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
+    service.jobs.save(job)
+    before = len(transport['calls'])
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, tmp_path / 'must-not-publish')
+    assert not (tmp_path / 'must-not-publish').exists()
+    assert len(transport['calls']) == before
 
 
-@pytest.mark.parametrize('field,value', [
-    ('Advanced v3 glossary resource; blank for none', GLOSSARY + '-changed'),
-    ('Selected text; originals remain unchanged', 'Changed after preview'),
-    ('Target language code', 'en'), ('Maximum approved budget in USD; no default price', '2'),
-    ('Optional price per million characters in USD; your current contract rate', '999'),
-])
-def test_actual_handlers_reject_changed_review_without_call(translation_handlers, transport, field, value):
-    e = translation_handlers
-    def scenario():
-        prepare_handler(e); e.press('Preview')
-        e.find(field).ChangeValue(value); e.press('Translate / resume')
-        assert 'Preview this exact' in e.find('Preview, supported languages and job status').value
-        assert not e.state['queue'] and not e.service.list()
-        assert len(transport['calls']) == 1
-    e.scenario(scenario)
-
-
-def test_handler_close_before_queued_request_preserves_paused_job_without_transmission(translation_handlers, transport):
-    e = translation_handlers
-    def scenario():
-        prepare_handler(e); e.press('Preview'); e.press('Translate / resume'); e.press('Close')
-        e.complete()
-        job, = e.service.list()
-        assert job['status'] == 'paused' and not job['receipts']
-        assert len(transport['calls']) == 1
-    e.scenario(scenario)
-
-
-def test_handler_root_change_before_worker_does_not_send_old_library_text(translation_handlers, transport, tmp_path):
-    e = translation_handlers
-    def scenario():
-        prepare_handler(e); e.press('Preview'); e.press('Translate / resume')
-        e.frame.library = LibraryApp(tmp_path / 'different library')
-        e.complete()
-        assert 'library changed' in e.find('Preview, supported languages and job status').value
-        job, = e.service.list()
-        assert job['status'] == 'queued' and not job['receipts']
-        assert len(transport['calls']) == 1
-        e.press('Translate / resume')
-        assert not e.state['queue'] and len(e.service.list()) == 1
-    e.scenario(scenario)
+@pytest.mark.parametrize('mutation', ['model', 'glossary', 'source', 'direction'])
+def test_v3_pure_backup_validators_bind_model_glossary_source_and_language_flags(tmp_path, transport, mutation):
+    from copy import deepcopy
+    from carr_library.assistant.models import canonical
+    from carr_library import backup_producers
+    app, workspace, book, original, selected, service, p, vault = _linked(tmp_path, transport)
+    approval, cost = translation_approval(p, selected.text, 'en', 'uk', '1',
+                                         source_binding=selected.binding, glossary=GLOSSARY)
+    identity = service.submit(p, selected.text, 'en', 'uk', authorization=approval,
+        per_call_cost=cost, source_binding=selected.binding, glossary=GLOSSARY)
+    service.resume(identity)
+    job = service.get(identity)
+    languages = read_json(service._languages_path(p))
+    backup_producers._translation_job(deepcopy(job), identity)
+    backup_producers._translation_languages(deepcopy(languages), p.id)
+    if mutation == 'model':
+        job['receipts'][0]['reported_model'] = PARENT + '/models/other'
+    elif mutation == 'glossary':
+        job['receipts'][0]['glossary_config']['ignoreCase'] = 0
+    elif mutation == 'source':
+        job['source_binding']['sha256'] = '0' * 64
+    else:
+        languages['languages'][0]['source'] = 'true'
+        languages['languages_sha256'] = sha256(canonical(languages['languages']).encode()).hexdigest()
+    with pytest.raises((ValueError, PermissionError)):
+        if mutation == 'direction':
+            backup_producers._translation_languages(languages, p.id)
+        else:
+            backup_producers._translation_job(job, identity)

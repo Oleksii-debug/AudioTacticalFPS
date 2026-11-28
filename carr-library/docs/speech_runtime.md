@@ -34,7 +34,7 @@ contains only entries actually enumerated by installed engines.
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
 | Local JSON helper | Explicit opt-in, executable SHA256, configurable catalog budget, JSON v1 enumerate/render contract | Contract boundary implemented; no claim of a particular vendor implementation |
 | SAPI 4 | No available verified Windows 11 32-bit engine contract | Unavailable; no simulated voice or promised obsolete-driver compatibility |
-| dordiai-voices | Exact-name integration remains dependent on its actual private/local contract | Not claimed; a reviewed bridge may implement the JSON contract below |
+| dordiai-voices | Studio registration supports the reviewed local JSONL PCM bridge with explicit model/engine manifests; the reader uses the same registered adapter | Protocol, manifest and output-budget boundaries are tested separately; actual model inference and listening acceptance remain unverified |
 
 Piper support follows the inspected upstream CLI at
 `OHF-Voice/piper1-gpl` revision `6aacdbc98eda4b1cb81d960bef7c7fae710b13fd`.
@@ -42,6 +42,47 @@ Its GPL engine and each voice's separate terms still apply. No engine, voice,
 model, DLL or binary is copied into this source package. Installed Flite and
 FFmpeg retain their own build/license requirements. The private-use profile
 does not change these obligations.
+
+### One configured catalog for Studio and the reader
+
+The application obtains its reader registry through `runtime_settings.voice_registry`.
+When Studio voice registrations exist, the reader uses those exact registered
+voices together with explicitly configured scene Piper/helper registrations.
+When no Studio registration file exists, the canonical native discovery path
+remains available. An invalid, changed or restored registration does not trigger
+silent discovery of replacement voices.
+
+Voice IDs are preserved exactly. Previously saved scenes or reading copies whose
+assigned ID is absent require an explicit selection from the current catalog;
+the application does not guess a corresponding voice. Declared supported
+languages and possible candidate languages remain separate metadata. The
+reader's default language is the first declared supported language, not a
+claim that a candidate has been qualified.
+
+The shared adapter preserves the reader's integer rate and percentage-volume
+contract. Non-SAPI registered engines map rate `r` to relative rate `2**(r/10)`;
+volume maps from 0–100 to 0–1. Registered SAPI voices accept native rates only
+from -5 through 5, using `2**(r/5)` to match the underlying adapter's actual
+native rate. Requests outside that range fail. Flite rate changes are labeled
+time stretching, not a native voice control. Nondefault pitch and punctuation
+are rejected when the registered engine cannot implement them.
+
+Caller timeout and byte ceilings reach the actual voice worker and post-exit
+PCM validation. Existing stricter per-segment limits still apply; this adapter
+does not remove them to satisfy a larger requested allowance.
+
+Restoring `state/audio/engines.json` sets
+`restore_requires_revalidation: true` without changing the external paths or
+voice declarations. Activation rejects this marker before external asset
+access. Open **Audio Studio → Scene voice and music engines**, review the visible
+state and choose **Review and revalidate local registrations**. Current
+executable/model hashes and enabled helper catalogs are checked in a background
+worker before the marker can clear. Disabled helpers are not launched.
+
+Cancel and Close request cancellation and do not wait on the GUI thread.
+Validation failure or cancellation before publication preserves the old
+settings. Cancellation after a completed atomic save does not undo that save;
+successful completion reloads the exact stored document into the dialog.
 
 ### Native Windows COM dependency and offline startup
 
@@ -137,6 +178,45 @@ silently inherit a different original. Explicit exports are new files; a saved
 project can be updated only if its previous digest still matches. Original
 source paths, symlinks, reparse points, hard-linked outputs and accidental
 overwrites are rejected.
+
+## A/B repeat and sleep timer
+
+The existing reader exposes native named controls for **Mark A**, **Mark B**,
+**Set A/B times**, **Enable A/B repeat**, **Clear A/B**, **Sleep timer**, and a
+focusable status query. Use ordinary Tab, Space and Enter; existing F6/F7/F8 and
+save shortcuts retain their meaning. These controls refer to the currently
+opened PCM recording, not quotation ranges or text offsets.
+
+Points must satisfy `0 <= A < B <= measured audio duration`. Setting points
+does not enable repeat. Windows MCI receives a native `to` endpoint, rounded
+inward to its millisecond resolution; shorter intervals are rejected. The
+existing ffplay fallback uses its native duration limit. Repeat waits for actual
+transport completion and passes through the shared progress quiet boundary
+before restarting. It never restarts a user-paused recording.
+
+The sleep dialog accepts minutes, with zero meaning Off. Its monotonic deadline
+starts at that explicit action and continues while playback is paused. The
+100 ms GUI timer checks expiry when the event loop is responsive; it is not a
+hard-real-time guarantee during a blocked UI or suspended process. Expiry
+clears timer and repeat, releases output, and retains a resumable paused position
+when playback was active. F7 resumes explicitly without rearming either control.
+
+New audio, Stop/F8, cancellation, changed library/source scope, and Close disarm
+these controls and invalidate queued repeat callbacks. A failed device stop
+still disarms automatic actions and reports uncertainty. Points and deadlines
+are session-only: canonical project/recovery formats remain unchanged, and
+reopening a draft never starts a timer or audio.
+
+Portable boundaries are checked by
+[tests/speech/test_player_controls.py](../tests/speech/test_player_controls.py).
+The installed Windows gate,
+[scripts/windows_reader_controls_smoke.py](../scripts/windows_reader_controls_smoke.py),
+uses an explicitly synthetic PCM fixture, actual WinMM and native keys. It does
+not establish voice inference, human listening or NVDA acceptance.
+
+The finite [28-workflow checklist](READING_WORKFLOW_ACCEPTANCE.md) maps requested
+reading/synthesis behavior to existing producers, gates and concrete limits.
+Device selection, legacy engines and presentation gaps remain visible there.
 
 ## Worker and playback boundaries
 

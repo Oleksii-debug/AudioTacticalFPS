@@ -132,8 +132,27 @@ WHEN EXISTS(SELECT 1 FROM import_publication WHERE revision=NEW.revision)
 BEGIN SELECT RAISE(ABORT,'import publication already exists'); END;
 '''
 SCHEMA_V5 = SCHEMA_V4.replace('PRAGMA user_version=4;', '') + IMPORT_PUBLICATION_SCHEMA + '\nPRAGMA user_version=5;\n'
-CURRENT_SCHEMA_VERSION = 5
-SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4, 5: SCHEMA_V5}
+IMPORT_REGISTRATION_SCHEMA = '''
+CREATE TABLE import_registration(
+ revision TEXT NOT NULL REFERENCES sealed(revision),
+ request_id TEXT NOT NULL CHECK(typeof(request_id)='text' AND instr(request_id,char(0))=0 AND length(request_id)=32 AND request_id NOT GLOB '*[^0-9a-f]*'),
+ attempt TEXT NOT NULL CHECK(typeof(attempt)='text' AND instr(attempt,char(0))=0 AND length(attempt)=32 AND attempt NOT GLOB '*[^0-9a-f]*'),
+ sha256 TEXT NOT NULL CHECK(typeof(sha256)='text' AND instr(sha256,char(0))=0 AND length(sha256)=64 AND sha256 NOT GLOB '*[^0-9a-f]*'),
+ changed INTEGER NOT NULL CHECK(changed IN (0,1)),
+ PRIMARY KEY(request_id,attempt)
+);
+CREATE TRIGGER import_registration_no_update BEFORE UPDATE ON import_registration
+BEGIN SELECT RAISE(ABORT,'immutable import registration'); END;
+CREATE TRIGGER import_registration_no_delete BEFORE DELETE ON import_registration
+BEGIN SELECT RAISE(ABORT,'immutable import registration'); END;
+CREATE TRIGGER import_registration_no_replace BEFORE INSERT ON import_registration
+WHEN EXISTS(SELECT 1 FROM import_registration
+            WHERE request_id=NEW.request_id AND attempt=NEW.attempt)
+BEGIN SELECT RAISE(ABORT,'import registration already exists'); END;
+'''
+SCHEMA_V6 = SCHEMA_V5.replace('PRAGMA user_version=5;', '') + IMPORT_REGISTRATION_SCHEMA + '\nPRAGMA user_version=6;\n'
+CURRENT_SCHEMA_VERSION = 6
+SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4, 5: SCHEMA_V5, 6: SCHEMA_V6}
 
 
 def _schema_signature(db):
@@ -142,7 +161,7 @@ def _schema_signature(db):
         'SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name'))
 
 
-@lru_cache(maxsize=5)
+@lru_cache(maxsize=6)
 def _expected_signature(version):
     with closing(sqlite3.connect(':memory:')) as reference:
         reference.executescript(SCHEMAS[version])
@@ -185,15 +204,16 @@ class Storage:
                         if sqlite3.complete_statement(sql):
                             self.db.execute(sql)
                             sql = ''
-                elif (version in (3, 4) and schema_version in (4, 5)
+                elif (version in (3, 4, 5) and schema_version in (4, 5, 6)
                         and version < schema_version):
                     # Validate each exact released layout and its data before
                     # extending it. The existing transaction rolls back the
-                    # entire upgrade, including a chained V3 -> V4 -> V5.
+                    # entire upgrade, including a chained V3 -> V4 -> V5 -> V6.
                     while version < schema_version:
                         self.schema_version = version
                         self._check()
-                        migration = ACADEMIC_SCHEMA if version == 3 else IMPORT_PUBLICATION_SCHEMA
+                        migration = {3: ACADEMIC_SCHEMA, 4: IMPORT_PUBLICATION_SCHEMA,
+                                     5: IMPORT_REGISTRATION_SCHEMA}[version]
                         sql = ''
                         for line in migration.splitlines():
                             sql += line + '\n'
@@ -325,10 +345,31 @@ class Storage:
             except ValueError as exc:
                 raise sqlite3.IntegrityError('invalid verified printed label') from exc
 
+    def _check_import_receipts(self):
+        # Released V5 DDL is frozen. SQLite length/GLOB can stop at NUL, so
+        # validate complete persisted strings without rewriting that schema.
+        tables = ('import_publication',)
+        if self.schema_version >= 6:
+            tables += ('import_registration',)
+        for table in tables:
+            columns = 'request_id,attempt,sha256'
+            if table == 'import_registration':
+                columns += ',changed'
+            for row in self.db.execute(f'SELECT {columns} FROM {table}'):
+                if any(type(value) is not str or len(value) != size
+                       or any(character not in '0123456789abcdef' for character in value)
+                       for value, size in zip(row[:3], (32, 32, 64))):
+                    raise ValueError('invalid import publication or registration receipt')
+                if (table == 'import_registration' and
+                        (type(row[3]) is not int or row[3] not in (0, 1))):
+                    raise ValueError('invalid import registration change flag')
+
     def _check(self):
         self._check_schema()
         if self.db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or self.db.execute('PRAGMA foreign_key_check').fetchone():
             raise ValueError('database integrity failure')
+        if self.schema_version >= 5:
+            self._check_import_receipts()
         # Atomic publication never leaves a committed unsealed or empty revision.
         if self.db.execute("""
             SELECT 1 FROM revision r

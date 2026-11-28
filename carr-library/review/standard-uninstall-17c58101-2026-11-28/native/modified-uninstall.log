@@ -1,0 +1,50 @@
+﻿2026-11-28 00:47:19.941   Log opened. (Time zone: UTC+00:00)
+2026-11-28 00:47:19.941   Setup version: Inno Setup version 6.7.4
+2026-11-28 00:47:19.941   Original Uninstall EXE: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\unins000.exe
+2026-11-28 00:47:19.941   Uninstall DAT: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\unins000.dat
+2026-11-28 00:47:19.941   Current Uninstall EXE: C:\Users\RUNNER~1\AppData\Local\Temp\is-MOLUSGCUEZ-uninstall.tmp\_unins.tmp
+2026-11-28 00:47:19.941   Uninstall command line: /SECONDPHASE="D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\unins000.exe" /FIRSTPHASEWND=$B0202 /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG=D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-standard-installation-results\native\modified-uninstall.log
+2026-11-28 00:47:19.941   Windows version: 10.0.20348
+2026-11-28 00:47:19.941   Windows architecture: x64 (64-bit)
+2026-11-28 00:47:19.941   Machine types supported by system: x86 x64
+2026-11-28 00:47:19.941   User privileges: Administrative
+2026-11-28 00:47:19.952   Administrative install mode: No
+2026-11-28 00:47:19.952   Install mode root key: HKEY_CURRENT_USER
+2026-11-28 00:47:19.952   RedirectionGuard status for current process: Enabled in enforcing mode
+2026-11-28 00:47:19.952   Cleaning up any residual temporary files from previous Uninstall runs.
+2026-11-28 00:47:19.952   Cleanup finished (1 directories found, 1 directories checked, 0 files deleted).
+2026-11-28 00:47:19.952   Created protected temporary directory: C:\Users\RUNNER~1\AppData\Local\Temp\is-UII74QVQVZ.tmp
+2026-11-28 00:47:19.952   -- DLL function import --
+2026-11-28 00:47:19.952   Function and DLL name: CreateFileW@kernel32.dll
+2026-11-28 00:47:19.952   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 00:47:19.952   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 00:47:19.952   -- DLL function import --
+2026-11-28 00:47:19.952   Function and DLL name: CloseHandle@kernel32.dll
+2026-11-28 00:47:19.952   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 00:47:19.952   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 00:47:19.952   -- DLL function import --
+2026-11-28 00:47:19.952   Function and DLL name: GetCurrentProcessId@kernel32.dll
+2026-11-28 00:47:19.952   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 00:47:19.952   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 00:47:19.952   -- DLL function import --
+2026-11-28 00:47:19.952   Function and DLL name: GetCurrentProcess@kernel32.dll
+2026-11-28 00:47:19.952   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 00:47:19.952   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 00:47:19.952   -- DLL function import --
+2026-11-28 00:47:19.952   Function and DLL name: OpenProcess@kernel32.dll
+2026-11-28 00:47:19.952   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 00:47:19.952   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 00:47:19.952   -- DLL function import --
+2026-11-28 00:47:19.952   Function and DLL name: DuplicateHandle@kernel32.dll
+2026-11-28 00:47:19.957   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 00:47:19.957   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 00:47:27.357   {"operation": "check", "status": "PASS"}
+2026-11-28 00:47:35.194   Resonance setup: Program files were changed or unowned files were added. Run Repair to retain them before uninstalling.
+2026-11-28 00:47:35.194   Resonance maintenance did not complete: uninstall, code 1
+2026-11-28 00:47:35.194   CurUninstallStepChanged raised an exception (fatal).
+2026-11-28 00:47:35.194   Exception message:
+2026-11-28 00:47:35.194   Defaulting to OK for suppressed message box (OK):
+                          Runtime error (at 46:422):
+                          
+                          Program files changed or a job is still using them. Remaining files were retained. Repair with the original setup before trying again.
+2026-11-28 00:47:36.321   Log closed.

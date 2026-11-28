@@ -1,0 +1,125 @@
+"""Mock only the Windows drive API; never claim an actual network-device test."""
+import ctypes
+import os
+from pathlib import Path
+from types import SimpleNamespace
+import wave
+
+import pytest
+
+from carr_library.audio import render, voices, voice_manifest
+from carr_library.audio.voice_settings import VoiceSettingsStore
+from carr_library.audio.playback import LocalPlayer
+
+
+@pytest.fixture
+def drive(monkeypatch):
+    class DriveType:
+        value = 4
+        calls = []
+        def __call__(self, anchor):
+            self.calls.append(anchor)
+            return self.value
+    function = DriveType()
+    # Replacing this module's os reference avoids changing pathlib or pytest's
+    # host platform. The exercised Win32 function boundary remains explicit.
+    monkeypatch.setattr(render, 'os', SimpleNamespace(name='nt', PathLike=os.PathLike,
+                                                    fspath=os.fspath, path=os.path))
+    monkeypatch.setattr(ctypes, 'windll', SimpleNamespace(kernel32=SimpleNamespace(
+        GetDriveTypeW=function)), raising=False)
+    return function
+
+
+def source(tmp_path):
+    path = tmp_path / 'original.wav'
+    with wave.open(str(path), 'wb') as stream:
+        stream.setparams((1, 2, 24000, 24, 'NONE', 'uncompressed'))
+        stream.writeframes(b'\x00\x00' * 24)
+    return path
+
+
+def test_mapped_volume_is_rejected_before_source_or_destination_metadata(tmp_path, drive, monkeypatch):
+    original = source(tmp_path)
+    before = original.read_bytes()
+    untouched = tmp_path / 'keep.wav'
+    untouched.write_bytes(b'Existing user output')
+    def forbidden(*args, **kwargs):
+        pytest.fail('A mapped audio path was accessed before volume rejection.')
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'lstat', forbidden)
+        for operation in (lambda: render.local_file(original),
+                          lambda: render.output_path(tmp_path / 'new.wav'),
+                          lambda: render.output_path(untouched),
+                          lambda: voices._local_path(original)):
+            with pytest.raises(ValueError, match='Mapped network'):
+                operation()
+    assert original.read_bytes() == before and untouched.read_bytes() == b'Existing user output'
+    assert not (tmp_path / 'new.wav').exists()
+    assert drive.argtypes == (ctypes.c_wchar_p,) and drive.restype is ctypes.c_uint
+    assert drive.calls == [tmp_path.anchor] * 4
+
+
+def test_conversion_synthesis_and_preview_stop_before_tools_or_output_mutation(tmp_path, drive, monkeypatch):
+    original = source(tmp_path)
+    before = original.read_bytes()
+    def forbidden(*args, **kwargs):
+        pytest.fail('Rejected mapped paths must not reach engines or native devices.')
+    monkeypatch.setattr(render, 'run_process', forbidden)
+    monkeypatch.setattr(voices.VoiceRegistry, 'list_voices', forbidden)
+    registry = voices.VoiceRegistry.__new__(voices.VoiceRegistry)
+    player = LocalPlayer(_api=SimpleNamespace(device_count=forbidden, send=forbidden))
+    for operation in (
+        lambda: render.convert_audio(original, tmp_path / 'converted.wav'),
+        lambda: registry.synthesize('Original words.', tmp_path / 'spoken.wav', voice_id='unreached'),
+        lambda: player.open(original),
+    ):
+        with pytest.raises(ValueError, match='Mapped network'):
+            operation()
+    assert original.read_bytes() == before
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['original.wav']
+
+
+def test_fixed_drive_preserves_existing_local_path_checks(tmp_path, drive):
+    drive.value = 3  # DRIVE_FIXED; remaining regular-file/no-clobber checks still apply.
+    original = source(tmp_path)
+    assert render.local_file(original) == original.resolve()
+    assert voices._local_path(original) == original.absolute()
+    assert render.output_path(tmp_path / 'new.wav') == tmp_path / 'new.wav'
+    with pytest.raises(FileExistsError):
+        render.output_path(original)
+    assert voice_manifest.local_path(original) == original.resolve()
+    assert voices._executable(str(original), 'espeak-ng') == original.resolve()
+
+
+def test_voice_registration_manifests_and_explicit_executables_reject_mapped_drives_before_metadata(tmp_path, drive, monkeypatch):
+    drive.value = 3
+    store = VoiceSettingsStore(tmp_path / 'library')
+    executable, manifest = tmp_path / 'inert-program.exe', tmp_path / 'manifest.json'
+    executable.write_bytes(b'INERT BOUNDARY FIXTURE, NEVER EXECUTED')
+    manifest.write_text('{}', encoding='utf-8')
+    config = {'include_sapi': False, 'ffmpeg': False, 'espeak_ng': str(executable)}
+    drive.value = 4
+    drive.calls.clear()
+    def forbidden(*args, **kwargs):
+        pytest.fail('Mapped voice assets reached file metadata or process execution before volume rejection.')
+    operations = (
+        lambda: voice_manifest.local_path(manifest),
+        lambda: voice_manifest.local_path(tmp_path / 'new.wav', must_exist=False),
+        lambda: voices.load_voice_config(manifest),
+        lambda: voices.VoiceRegistry(config),
+        lambda: voices.VoiceRegistry({**config, 'espeak_ng': False, 'dordiai_manifest': str(manifest)}),
+        lambda: voices.VoiceRegistry({**config, 'espeak_ng': False,
+                                     'piper': {'executable': str(executable), 'manifest': str(manifest)}}),
+        lambda: store.register(config, expected_revision=0),
+    )
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'lstat', forbidden)
+        patch.setattr(Path, 'stat', forbidden)
+        patch.setattr('subprocess.Popen', forbidden)
+        for operation in operations:
+            with pytest.raises(ValueError, match='Mapped network'):
+                operation()
+    assert drive.calls == [tmp_path.anchor] * len(operations)
+    assert not store.path.exists()
+    assert executable.read_bytes() == b'INERT BOUNDARY FIXTURE, NEVER EXECUTED'
+    assert manifest.read_text(encoding='utf-8') == '{}'

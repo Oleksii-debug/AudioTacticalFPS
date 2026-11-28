@@ -1,0 +1,243 @@
+{
+  "schema": "carr-source-review/1",
+  "title": "Reader cooperative heavy-synthesis admission and cancellable identity validation",
+  "base_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "base_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "source_test_help_tree": "022284efbe8fe353ceafbe15884d659a33c7f267",
+  "execution": "NOT_RUN",
+  "scope": {
+    "entrypoints": [
+      "Existing reader Read",
+      "Existing reader Save WAV"
+    ],
+    "routing": "Exact trusted provider object and registered route; displayed engine/voice labels confer no exemption.",
+    "basic": "Exact built-in NativeSapi/Sapi/Flite/Espeak providers and exact canonical registered native routes do not take a heavy reservation.",
+    "heavy": "Piper, local helpers, model routes and trusted extensions reuse the existing ResourceBroker and current speech registry.",
+    "declaration": "Complete configured CPU/RAM policy allowances, plus 2 * max_output_bytes + 16 MiB protocol scratch on the selected output volume.",
+    "limits": "Cooperative policy only; no measured consumption, hard CPU/RAM enforcement, invented GPU device/budget, model inference, language quality or NVDA qualification.",
+    "identity": "Bounded provider/route/file metadata before waiting; all full fingerprint work inside the admitted lease; actual provider and fresh current-reader source/voice/settings checked again after waiting.",
+    "owner_handoff": "Existing wx.CallAfter and reader worker; one request-local revocation token, finite owner-thread handshake, no additional executor, timer or supervisor.",
+    "cancellation": "Existing F8 signal reaches canonical identity hashes, model validators, version children, Piper owned process, PCM validation and final output hash. Legacy opaque identity callbacks remain before/after cooperative checks with their existing signatures.",
+    "retention": "Existing retained_context preserves the resource lease for all causal native cleanup owners. The exact outer reader TemporaryDirectory is retained until those same owners are quiet. File-only release callbacks never use wx."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/synthesis_admission.py",
+      "before": null,
+      "after": "f07e080f072ea13d3a9bd46c2dc46d30accd7726",
+      "sha256": "a66bc1659bf3d1d8e2cf71693f166bfb87fddf57cc75be342e3b4fc727778af5",
+      "bytes": 12794
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "before": "8760f3b119047124e4ead3596b5d0f6530e76992",
+      "after": "3257f7a4e8d077081fe6276f5ce5fcd30f89168a",
+      "sha256": "670f4ae40abaf14b95c8a5ce24bb640163436466cc0718b82d82195774293257",
+      "bytes": 71735
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "before": "3cf7730fe552c6318bdeeaf2a08eb344ca058014",
+      "after": "32e04064f9a527ba75b43d242cbc9c4fe9dcb245",
+      "sha256": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd",
+      "bytes": 34240
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/studio_voice_adapter.py",
+      "before": "58d14946c5510cf87d59ea88223635e65a8456fd",
+      "after": "4d416af450d91390b9cce59e7eac7a0e68905456",
+      "sha256": "8fafd0749a5661cb284c92b9d8c9cb30a9fa5219971abac9a24ab579431904c6",
+      "bytes": 6865
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voices.py",
+      "before": "fe1f8dabf679ffaec822eb0c609fb5d870a1d135",
+      "after": "d8d145d25022e605a7b1f5d6362d49df267fec05",
+      "sha256": "68f0b5f68394f50c92db610e898469aa73f59c8231affb44c788989d15c59ce3",
+      "bytes": 33587
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/model_voices.py",
+      "before": "beefdc5bbb6163a416c923a22d85fb513d200c9b",
+      "after": "9cfeb8ec4b95ac65ed22437617e1d27596316e6b",
+      "sha256": "b3feecba08d652469b6ebc3c02c23387e5e0655f0a19e1d04af188c48edfbb0b",
+      "bytes": 31180
+    },
+    {
+      "path": "carr-library/tests/speech/test_synthesis_admission.py",
+      "before": null,
+      "after": "e1ca8bc9415264441ce4060b417c13f7cd21d088",
+      "sha256": "ed431ef260cd414f20b5664f0f1b0fb3dc859be630ea049bb62913e8665190c2",
+      "bytes": 29962
+    },
+    {
+      "path": "carr-library/tests/speech/test_registered_studio_voices.py",
+      "before": "b256ca6cf3e356cc71eeb15ee33e39d22ba215bc",
+      "after": "dbf9a33e636dee63ac1102e99a6c417c13be1fcd",
+      "sha256": "1ebe6492854b6a78cc9884fc7f96a698a746eeaf8a31794e6f2e23bf367bd510",
+      "bytes": 10954
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_synthesis.py",
+      "before": "9d40c808f0b51d32e12c11bd24ca2a62f9f47f3c",
+      "after": "abcc257c033517e4908fabae7a625be5920b4362",
+      "sha256": "bc6811cf98b2361f7b1aade1674800dada15d1a75c381d8c998507fa4d8138cb",
+      "bytes": 32753
+    },
+    {
+      "path": "carr-library/tests/audio/test_model_voices.py",
+      "before": "f79c41f48f97a0dbb2c03c944b0607cb3713a793",
+      "after": "076571868dfd52684dba1af9018f3dcff905e547",
+      "sha256": "ecc222391e2ff885d451020251283c4be5537fce3ba211bf1f949f3616aa2973",
+      "bytes": 18848
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "before": "428aef05b05e30632b8f2a2d88adbf1eec40fe91",
+      "after": "2e755b77bab0c21bff759bc6e248ece79bac878a",
+      "sha256": "da654037501a3ec04ec2f28426f749187249fa85715b84a05889c0e7e11f1780",
+      "bytes": 32556
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "before": "e35bb08ea2528b60915a38c9f2aa1a974ecb97d2",
+      "after": "78ba78972c23f805cddd7db0a38e09a2ef80d62e",
+      "sha256": "44718f9ca52a748777c19f99d4c6959f26fe3f96ab75039fb3c3dd9997aeba16",
+      "bytes": 23150
+    },
+    {
+      "path": "carr-library/scripts/windows_reader_navigation_smoke.py",
+      "before": "93459a0632f63b3f7a17aa3d0585e9120df55b8b",
+      "after": "9596d851f03f4550eeee4573ab031ffff06691ae",
+      "sha256": "78bd53f676b2bf63443498745bffad62a0436dc83d81dc993381c12b918b3add",
+      "bytes": 23800
+    },
+    {
+      "path": "carr-library/docs/runtime_resources.md",
+      "before": "f8ed0a83882fe54d61f07485eaa4fc3ce4cd83f0",
+      "after": "24081fcf765fc06ea3a01af1d1a57423dadf1ad6",
+      "sha256": "4a2b13abf99c0555c3a777301d09eea9a130e5abd305885a15756709edbd501d",
+      "bytes": 15619
+    }
+  ],
+  "preservation": {
+    "ui": {
+      "exact_inverse": true,
+      "hunks": 9
+    },
+    "runtime": {
+      "exact_inverse": true,
+      "hunks": 18
+    },
+    "studio-adapter": {
+      "exact_inverse": true,
+      "hunks": 7
+    },
+    "audio-voices": {
+      "exact_inverse": true,
+      "hunks": 18
+    },
+    "model-voices": {
+      "exact_inverse": true,
+      "hunks": 6
+    },
+    "progress-voice-tests": {
+      "exact_inverse": true,
+      "hunks": 1,
+      "original_assertions": 97,
+      "final_assertions": 97
+    },
+    "progress-job-tests": {
+      "exact_inverse": true,
+      "hunks": 1,
+      "original_assertions": 55,
+      "final_assertions": 55
+    },
+    "native": {
+      "exact_inverse": true,
+      "hunks": 2
+    },
+    "docs": {
+      "exact_inverse": true,
+      "hunks": 1,
+      "preimage": "f8ed0a83882fe54d61f07485eaa4fc3ce4cd83f0"
+    },
+    "ui-tests": {
+      "start": 24127,
+      "exactInverse": true,
+      "originalAssertions": 90
+    },
+    "registered-tests": {
+      "old_exact_prefix": true,
+      "original_assertions": 24
+    },
+    "model-tests": {
+      "old_exact_prefix": true,
+      "original_assertions": 39
+    }
+  },
+  "additions": {
+    "new_strict_admission_cases": 29,
+    "registered_studio_cases": 5,
+    "reader_ui_cases": 15,
+    "model_identity_cancellation_cases": 8,
+    "total_new_planned_cases": 57,
+    "counting": "Static parameterized-source count, not executed collection or PASS evidence.",
+    "old_tests": "Registered Studio and model test source are exact old prefixes. Seventeen faithful reader fixture edits inverse-recover the entire original test file; all 90 original assertions remain. Each progress fixture has only its new empty synthesis_requests binding, retaining all 97/55 assertions.",
+    "native_probe": "Only the synthetic provider's exact identity callback and new helper module provenance entry are added to the existing scoped-navigation probe. All previous native events, assertions and deadlines are retained."
+  },
+  "selectors": [
+    "tests/speech/test_synthesis_admission.py",
+    "tests/speech/test_registered_studio_voices.py",
+    "tests/ui/test_reader_synthesis.py",
+    "tests/audio/test_model_voices.py",
+    "tests/ui/test_progress_voice_actions.py",
+    "tests/ui/test_progress_job_review.py"
+  ],
+  "prerequisites": {
+    "new_admission": "Current Python and already installed application dependencies; actual purpose-written child processes and PCM, no model assets.",
+    "registered_studio": "Actual FFmpeg with Flite slt, as already required by this existing module.",
+    "model_voices": "Portable stdlib Python protocol children and synthetic manifest bytes; explicitly disabled FFmpeg/eSpeak/SAPI discovery, no weights.",
+    "all_modified_test_modules": "No skip/skipif/xfail directive added or present.",
+    "native": "Existing windows_reader_navigation_smoke.py source/installed CLI and native audio prerequisites unchanged."
+  },
+  "help": {
+    "path": "carr-library/docs/runtime_resources.md",
+    "accepted_concurrent_preimage": "f8ed0a83882fe54d61f07485eaa4fc3ce4cd83f0",
+    "policy": "One additive Reader Read and Save WAV section; retains the accepted Operation details section byte-for-byte.",
+    "hunk": {
+      "preimage": "f8ed0a83882fe54d61f07485eaa4fc3ce4cd83f0",
+      "before": "## Shared operation view\n",
+      "after": "## Reader Read and Save WAV\n\nThe reader uses the same local resource policy for **Read** and **Save WAV**\nwhen the selected provider is Piper, a local helper or another heavy adapter.\nThe decision follows the actual registered provider and route. A voice's\ndisplay name, language or engine label cannot grant a basic-voice exemption.\nThe built-in SAPI, Flite and eSpeak reading routes remain available while\nheavy work holds these reservations, subject to their own existing engine and\nplayback checks. Studio production keeps its existing admission.\n\nThe reader shows **Preparing local speech. F8 cancels.** while it waits for\nresources and checks the captured request. **Rendering locally** appears only\nafter admission and the current reader has confirmed the same source, voice\nand native voice options. If you close the reader, change libraries or cancel,\na queued confirmation cannot revive that request. A changed source or runtime\nrequires a fresh request; no replacement voice is selected.\n\nFor a heavy route the reader conservatively reserves the complete configured\nCPU and RAM allowances. It also reserves space on the selected output's volume\nfor the combined WAV and a current utterance, plus bounded protocol scratch.\nThese are cooperative policy allowances, not measurements or operating-system\nCPU/RAM limits. A positive saved RAM allowance is required. This reader\nintegration declares no GPU device or GPU memory reservation and does not\nqualify GPU inference.\n\nF8 is checked while waiting, during supported asset verification and by the\nexisting native runner. Known model/hash adapters receive the cancellation\nsignal; a trusted legacy identity callback without that interface can only be\nchecked before and after it returns. Cancellation does not revoke resources\nfrom a process that has not confirmed shutdown. The reservation and exact\ntemporary audio remain retained until every causal native cleanup owner is\nquiet, including when the reader window has already closed.\n\n## Shared operation view\n"
+    }
+  },
+  "fixture_hunks": {
+    "progress_voice": {
+      "before": "        unregister_save=Mock(), detach_reader=Mock())\n",
+      "after": "        unregister_save=Mock(), detach_reader=Mock(), synthesis_requests=[])\n"
+    },
+    "progress_job": {
+      "before": "    env['dialog_destroyed'] = False\n",
+      "after": "    env['synthesis_requests'] = []\n    env['dialog_destroyed'] = False\n"
+    },
+    "native": [
+      {
+        "before": "        'carr_library.keybindings', 'carr_library.speech.runtime', 'carr_library.speech.player'))",
+        "after": "        'carr_library.keybindings', 'carr_library.speech.runtime', 'carr_library.speech.player',\n        'carr_library.speech.synthesis_admission'))"
+      },
+      {
+        "before": "        def render(self, text, voice, destination, settings, cancelled):\n",
+        "after": "        def fingerprint(self, voice_id):\n            if voice_id != 'fixture:scoped-pcm':\n                raise ValueError('Unknown synthetic fixture voice.')\n            return sha256(Path(__file__).read_bytes()).hexdigest()\n        def render(self, text, voice, destination, settings, cancelled):\n"
+      }
+    ]
+  },
+  "review": {
+    "exact_blob_and_tree_readback": true,
+    "parent": "Reviewed production and tests, including the final PCM cancellation and closed-marker requests.",
+    "audio_render": "Independent 022284 token/legacy/real-owned-test/old-assertion readback CLEAR; no execution.",
+    "locate_project": "Independent final 022284 PCM-token/real-frame/ready-marker readback and the remaining 91df owner-thread/UI/two-owner lifetime tests CLEAR. No concrete blocker; no execution.",
+    "host_execution": "Unavailable; no local Python test execution claimed.",
+    "branch_or_workflow_mutations": false,
+    "base_qualification_transfer": false
+  }
+}

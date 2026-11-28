@@ -21,7 +21,9 @@ The owner-supplied transcription implementation is [under reviewed integration](
 
 The standalone Windows x64 candidate includes Python, dependencies and the
 verified local multilingual MiniLM model. Extract its complete folder, run
-`Install.cmd`, then `ResearchLibrary.cmd`. No Python installation or internet
+`Install.cmd`, then `ResearchLibrary.exe`. The CMD launcher remains available.
+The native entry is an unsigned private candidate; no signed-release claim is
+made. No Python installation or internet
 connection is needed for that bundle. `CheckInstallation.cmd` exercises a
 temporary synthetic library without touching personal research.
 
@@ -43,13 +45,21 @@ instructions.
   Keep bibliographic descriptions separate from verified source quotations.
 - Plan reading with status, priority, progress, rating, tags and personal notes;
   search and filter the reference catalog within the selected library.
-- Preview and import RIS or CSL JSON bibliographies, inspect possible duplicate
+- Preview and import RIS, BibTeX or CSL JSON bibliographies, inspect possible duplicate
   references, and export RIS, BibTeX, CSL JSON, CSV or plain text. Personal notes
   are excluded from bibliography exports unless explicitly requested.
+- Format references through the installed local CSL processor, with seven
+  bundled styles or an explicitly loaded custom style, and export TXT, HTML or
+  DOCX. This is a static export, not a live Word integration. See
+  [citation styles and BibTeX](docs/V3_BIBLIOGRAPHY.md).
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
 - Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
   changes atomically, isolate native parsers and resume interrupted imports.
+- Import the documented static text subsets of HTML, Markdown, EML, FB2, FB3,
+  ODT, ODS, ODP, PPTX and XLSX through the same isolated pipeline. Preserve exact
+  original bytes and unverified logical segments; see
+  [supported document formats](docs/DOCUMENT_FORMATS_V3.md).
 - Read EPUB books by their declared section order, with keyboard chapter
   selection, previous/next navigation and separate authored image descriptions.
 - Navigate embedded EPUB contents and headings, find exact text within a chapter,
@@ -71,6 +81,14 @@ instructions.
   resume the last opened page, keep named bookmarks, navigate back/forward,
   and hear exact location information through native text controls. See
   [the reading desk guide](docs/READING_DESK.md).
+- Edit and speak a separate reading copy with reviewed find/replace,
+  pronunciation rules, installed-dictionary spelling and reader appearance.
+  The active reading editor's Ctrl+Z/Ctrl+Y share the Undo/Redo history.
+  Save favorites, exact-language voice defaults and named rate/volume profiles;
+  explicit Use rechecks the current voice and does not start speech. See
+  [voice preferences](docs/VOICE_PREFERENCES.md) and the
+  [finite reading checklist](docs/READING_WORKFLOW_ACCEPTANCE.md) for the
+  implemented scope and the native checks still awaiting successful execution.
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
   Back up completed libraries with original files and checksums; restore into a
   new folder without overwriting the existing library.
@@ -82,6 +100,17 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+- Create persistent local audio projects, assign actually installed voices,
+  preserve original source text while editing pronunciation, and resume saved
+  production jobs. Export the mix, chapters, subtitles and role stems. Configure
+  optional local voice and music engines explicitly; MusicGen inference is
+  unavailable on Windows in this candidate. Use typed controls to apply local
+  audio effects and verify the resulting file without replacing its source.
+- Review a scoped local assistant plan before executing supported library and
+  production actions. API profiles are optional and credentials remain in the
+  operating-system vault. Full-state backups preserve reading positions,
+  project drafts and production state; restored external engine registrations
+  require revalidation. See [the Ukrainian start guide](docs/START_UK.txt).
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated

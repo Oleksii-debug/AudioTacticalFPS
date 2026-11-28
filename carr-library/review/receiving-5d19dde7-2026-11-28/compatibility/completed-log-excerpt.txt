@@ -1,0 +1,40 @@
+Completed exact-head job; timestamps and ANSI removed from the decoded log. This is not original artifact-member bytes.
+PASS: tests/audio/test_playback.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_evidence_drafts.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_save_all.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+.PASS: tests/ui/test_evidence_draft_recovery.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0
+PASS: tests/speech/test_progress_speech.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_recording_backup.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_composite_backup.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_canonical_backup_compat.py: junit_passed=68, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_save_all_access.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+. [ 79%]
+PASS: tests/ui/test_progress_job_review.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_save_actions.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+.PASS: tests/ui/test_reader_keymap_context.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_command_palette.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+.PASS: tests/ui/test_keyboard_export.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+tests\ui\test_keyboard_rename.py .PASS: tests/storage/test_v3_state_backup.py: junit_passed=43, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_keyboard_rename.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+....PASS: tests/ui/test_keyboard_settings.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+PASS: tests/speech/test_reading.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_scope_labels.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+PASS: tests/language_qualification/test_inventory_cleanup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+PASS: tests/speech/test_runtime_settings_restore.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_export_confirmation.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0
+PASS: tests/reader/test_export_approval_budget.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+PASS: tests/e2e/test_export_destination.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+.PASS: tests/ui/test_academic_actions.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_catalog_tools_dialog.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0
+tests\ui\probe_catalog_insights_actions.py .................................... [ 79%]
+PASS: tests/ui/test_academic_export_handler.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+PASS: tests/reader/test_file_export.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+PASS: tests/reader/test_binary_file_export.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+PASS: tests/reader/test_export_no_clobber.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+PASS: tests/reader/test_export_publication_boundary.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0
+PASS: tests/reader/test_finish_export_formats.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/probe_catalog_insights_actions.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0
+##[error]The action 'Require integrated canonical source contracts' has timed out after 5 minutes.
+........................................................................ [ 79%]
+##[error]The action 'Require the same contracts from the installed application' has timed out after 5 minutes.

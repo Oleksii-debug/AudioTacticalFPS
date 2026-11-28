@@ -1,0 +1,32 @@
+Completed job140835230792 / exact head5d19dde77aca6a257ee601c1bc49b8504c342cee. Timestamp/ANSI-stripped decoded log excerpt; not raw artifact bytes.
+PASS: tests/assistant/test_transcription_workflow.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_supplied_worker_bridge.py: junit_passed=91, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_transcription_recovery.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_import_publication_backup.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+PASS: tests/ui/test_progress_job_review.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_protocol_routing.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_owned_admission.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_protocol_fixture.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_runtime_inventory.py: junit_passed=172, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_asr_additional_profile.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_state_json_reader.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_control_reads.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_admission_boundaries.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0
+PASS: tests/transcription/test_restore.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0
+PASS: tests/e2e/test_transcription_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_transcription_composite_backup.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0
+PASS: tests/operations/test_resources.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0
+PASS: tests/operations/test_facade.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0
+PASS: tests/operations/test_transcription_views.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+PASS: tests/e2e/test_operations_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+PASS: tests/storage/test_atomic_state_publication.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+PASS: tests/audio/test_audio_process.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+PASS: tests/audio/test_process_deadline.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+Required suites complete: 26; passed=26; failed=0
+PASS: tests/transcription_windows/test_protocol_fixture_handles.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0
+PASS: tests/operations_windows/test_native_lock_release.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0
+Required suites complete: 2; passed=2; failed=0
+{"status": "PASS", "checks": ["actual named wx controls", "shared background operation", "actual named folder action", "background folder intake", "relative source and exclusion count", "actual isolated child protocol", "six verified formats", "separate edit revision", "original unchanged"], "folder_picker_interaction": "NOT_RUN", "folder_picker_answer": "controlled synthetic directory", "whisper_acoustic_inference": "NOT_RUN", "manual_NVDA": "NOT_RUN"}

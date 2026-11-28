@@ -1,0 +1,140 @@
+{
+  "schema": "resonance-reader-voice-mode-evidence/1",
+  "source_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+  "run_id": 46085999538,
+  "job_id": 140795581889,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085999538/job/140795581889",
+  "runner": "ubuntu-24.04",
+  "mode": "installed",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T00:21:52Z",
+  "completed_at": "2026-11-28T00:22:43Z",
+  "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+  "wxpython": null,
+  "installed_contracts": {
+    "required_modules": 11,
+    "passed": 301,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 7.09,
+    "strict_junit_pass": 301,
+    "wall_step_seconds": 8
+  },
+  "complete_package_identity": {
+    "python_modules": 379,
+    "status": "PASS",
+    "receipt_file": "linux-installed-package-identity.json",
+    "wheel": {
+      "payload_files": 489,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 394,
+      "source_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+      "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+      "wheel_sha256": "acdbce03ad0bfa160f71c5db6c7deb78a51d9a9d0e0c60f401ca5ef0c1732ead"
+    }
+  },
+  "native": {
+    "status": "NOT_APPLICABLE",
+    "reason": "The existing workflow runs native wx widgets only on Windows; Linux contract selection contains no skipped cases."
+  },
+  "decoded_job_log_utf8": {
+    "sha256": "8ee2166e1806349d2db6d4d8ab9205518d451ed538ddbeab56b341eb51f339ff",
+    "bytes": 257050,
+    "scope": "Exact decoded job log, not original artifact bytes."
+  },
+  "artifact_from_completed_log": {
+    "id": 15240080478,
+    "bytes": 27317,
+    "reported_sha256": "40d2b11389a1d3747306d4f7ac472e61e1b5629ac17666b52aa0a553cfa505a5",
+    "original_artifact_independently_downloaded": false
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require source reader synthesis state and backup contracts",
+      "number": 7,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "number": 8,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require actual Windows voice option widgets in this mode",
+      "number": 9,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Preserve public synthetic receipts and exact source evidence",
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "number": 19,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "number": 20,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "number": 21,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "limits": {
+    "native_aggregate_pass": false,
+    "human_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "successor_results_transferred": false
+  }
+}

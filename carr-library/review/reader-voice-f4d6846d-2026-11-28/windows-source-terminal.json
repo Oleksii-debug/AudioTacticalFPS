@@ -1,0 +1,304 @@
+{
+  "schema": "resonance-reader-voice-mode-evidence/1",
+  "source_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+  "run_id": 46085999538,
+  "job_id": 140795582179,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085999538/job/140795582179",
+  "runner": "windows-2022",
+  "mode": "source",
+  "status": "completed",
+  "conclusion": "failure",
+  "started_at": "2026-11-28T00:22:44Z",
+  "completed_at": "2026-11-28T00:25:07Z",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "wxpython": "4.2.4",
+  "source_contracts": {
+    "required_modules": 11,
+    "passed": 301,
+    "failed": 0,
+    "skipped": 0,
+    "strict_junit_pass": 301,
+    "module_verdicts": [
+      {
+        "path": "tests/ui/test_reader_synthesis.py",
+        "passed": 38,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/speech/test_session.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/speech/test_reading_tabs.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_reader_synthesis_backup.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/ui/test_reader_tabs.py",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/ui/test_save_all_access.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/speech/test_source.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_reading_tabs_backup.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/speech/test_voice_preferences.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/ui/test_voice_preferences_dialog.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_voice_preferences_backup.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "wall_step_seconds": 68
+  },
+  "complete_package_identity": {
+    "python_modules": 379,
+    "status": "PASS",
+    "receipt_file": "windows-source-package-identity.json",
+    "wheel": {
+      "payload_files": 489,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 394,
+      "source_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+      "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+      "wheel_sha256": "8131369ddbb7bb678413f0c0f853e0fc9867d4b11cdb792e3c0e428e95981ee7"
+    }
+  },
+  "native": {
+    "status": "FAILED",
+    "passed_checks_before_failure": 78,
+    "checks": [
+      "opening preferences is silent and does not write",
+      "native control: Add or remove favorite",
+      "native Space down",
+      "native Space up",
+      "native favorite persists",
+      "native control: Save default for language",
+      "native Space down",
+      "native Space up",
+      "native exact-language default persists",
+      "native control: Voice profile name",
+      "native control: Profile synthesis rate, minus ten to ten",
+      "native control: Profile volume, zero to one hundred",
+      "native control: Save voice profile",
+      "native Space down",
+      "native Space up",
+      "native control: Saved voice profiles",
+      "native control: Use voice profile",
+      "native Space down",
+      "native Space up",
+      "native profile applies exact declared controls",
+      "native control: Use voice profile",
+      "native Space down",
+      "native Space up",
+      "native control: Voice preference status",
+      "fresh inventory refuses a removed voice without substitution",
+      "native control: Save default for language",
+      "native Space down",
+      "native Space up",
+      "native control: Voice preference status",
+      "changed library refuses native save",
+      "native control: Use voice profile",
+      "native Space down",
+      "native Space up",
+      "review is pending before close",
+      "native control: Close voice preferences",
+      "native Space down",
+      "native Space up",
+      "closed modal has no pending worker callback",
+      "close suppresses the queued selection",
+      "fresh review stays off the GUI thread",
+      "every fresh registry closes while the reader registry remains borrowed",
+      "native synthesis options own the current modal",
+      "native control: Use native voice pitch",
+      "native Space down",
+      "native Space up",
+      "native control: Read punctuation aloud",
+      "native Space down",
+      "native Space up",
+      "native control: Cancel native voice options",
+      "native Space down",
+      "native Space up",
+      "native Cancel retains default synthesis options",
+      "native synthesis options own the current modal",
+      "native control: Use native voice pitch",
+      "native Space down",
+      "native Space up",
+      "native control: Read punctuation aloud",
+      "native Space down",
+      "native Space up",
+      "native control: Apply native voice options",
+      "native Space down",
+      "native Space up",
+      "native Apply captures pitch and punctuation without automatic synthesis",
+      "native-selected settings reach the actual registry on the existing worker",
+      "native options survive passive exact draft recovery",
+      "incompatible current voice preserves and gates the requested settings",
+      "unsupported native request refuses without fallback or worker entry",
+      "native synthesis options own the current modal",
+      "unsupported native controls and Apply are disabled",
+      "native control: Reset native voice options",
+      "native Space down",
+      "native Space up",
+      "explicit native default reset makes Apply available",
+      "native control: Apply native voice options",
+      "native Space down",
+      "native Space up",
+      "native reset retains rate and volume without starting another render",
+      "native synthesis options own the current modal"
+    ],
+    "error": "AttributeError: 'App' object has no attribute 'ProcessIdle'",
+    "location": "scripts/windows_voice_preferences_smoke.py::destroyed_after_idle",
+    "probe_blob": "522ff49d2fe930f97d6b152b38bb273fcedae184",
+    "effect": "The intended idle processing raised before the retained owner-destruction predicate could be evaluated. No native aggregate PASS is inferred.",
+    "trace_file": "windows-source-native-failure.txt",
+    "same_checks_as_root_windows_installed": true
+  },
+  "decoded_job_log_utf8": {
+    "sha256": "c3c028ac1b3fdd14bfaa8a2d6759b6028f3bf87c36e26632fe0c7ccd218c30fb",
+    "bytes": 273381,
+    "scope": "Exact decoded job log, not original artifact bytes."
+  },
+  "artifact_from_completed_log": {
+    "id": 15239543425,
+    "bytes": 25612,
+    "reported_sha256": "93de1541fd342c4cffab5c2773aed3423485ff3d617fabfbe4feb53a71d2dbc6",
+    "original_artifact_independently_downloaded": false
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require source reader synthesis state and backup contracts",
+      "number": 7,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "number": 8,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Require actual Windows voice option widgets in this mode",
+      "number": 9,
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "name": "Preserve public synthetic receipts and exact source evidence",
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "number": 19,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "number": 20,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "number": 21,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "limits": {
+    "native_aggregate_pass": false,
+    "human_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "successor_results_transferred": false
+  }
+}

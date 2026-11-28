@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "checks": [
+    "unicode-spaces-fixed-argv-offline-optional-runtimes",
+    "read-only-ready-probe",
+    "fixed-installation-check",
+    "child-exit-status-propagated",
+    "extra-arguments-rejected",
+    "incomplete-state-preserved-without-reinstall",
+    "missing-runtime-does-not-search-path",
+    "fresh-package-reuses-fixed-offline-installer",
+    "research-data-sentinel-preserved"
+  ],
+  "check_count": 9,
+  "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+  "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+  "native_launcher_execution_verified": true,
+  "actual_python_installation_verified": false,
+  "nvda_verified": false,
+  "authenticode_verified": false
+}

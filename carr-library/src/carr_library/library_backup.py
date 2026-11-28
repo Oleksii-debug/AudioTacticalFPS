@@ -1,16 +1,16 @@
 """Complete local research-library backups using the canonical SQLite snapshot.
 
-Backups include all workspaces, saved research, registered original files and
-explicitly validated reader/editor/settings sidecars. Unknown application state
-is refused, never silently discarded. The canonical pending-import producer
-preserves journals, requests, batch/review identities and required original bytes.
-Restore rebinds locations without executing or automatically resuming a job.
+Backups include all workspaces, saved research and registered original files.
+Version 4 includes resumable import journals and their pinned unpublished sources.
+Version 5 composes that state with the earlier typed reading/studio sidecars.
+Independently published version 3 shapes remain strictly distinguishable.
+Canonical root-relative v3/v4 and v5 reading-state envelopes are accepted by
+an additive read-only adapter; new backups keep the composite format 5 writer.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
-Format 4 unifies registered sidecars. Exact legacy formats 1/2 and the three
-previous format-3 layouts are read without rewriting the source backup.
-Database snapshots require an exact supported V3, V4 or V5 schema. Older databases
-are restored unchanged; opening the library performs the checked current-schema upgrade.
+Legacy version 1 backups and version 2 backups are accepted only for an exact
+supported V3, V4, V5 or V6 schema. Older snapshots restore unchanged; opening
+the restored library performs the checked upgrade to the current schema.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing
@@ -24,15 +24,16 @@ from tempfile import TemporaryDirectory
 
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
-from .ingest.catalog_asset_copy import catalog_inventory, _checked_path, verify_catalog_assets
+from .ingest.catalog_asset_copy import copy_catalog_assets, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
+from .ingest.streamed_text import MAX_BYTES as STREAMED_TEXT_MAX_BYTES
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
 from .durable_state import local_path
 from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
-from . import backup_sidecars, pending_backup
+from . import backup_sidecars, backup_compat, recording_backup
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -79,51 +80,20 @@ def _sync_directory(path):
             os.close(fd)
 
 
-def _check_budget(total, maximum):
-    if maximum is not None and total > maximum:
-        raise RestoreError('complete backup exceeds the requested byte budget')
-
-
-def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cancelled=lambda: False):
-    """Use the canonical catalog validator, with bounded cancellable file copying."""
-    limits = dict(include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=max(1, max_bytes))
-    entries = catalog_inventory(db, **limits)
-    _check_budget(sum(entry.size for entry in entries), max_bytes)
-    destination.mkdir(mode=0o700)
-    for entry in entries:
-        backup_sidecars._check_cancelled(cancelled)
-        path = _checked_path(source, entry)
-        count, digest = 0, sha256()
-        with path.open('rb') as incoming, (destination / entry.filename).open('xb') as output:
-            while block := incoming.read(min(1024 * 1024, entry.size + 1 - count)):
-                backup_sidecars._check_cancelled(cancelled)
-                count += len(block)
-                if count > entry.size:
-                    raise RestoreError('original file grew during backup')
-                output.write(block)
-                digest.update(block)
-            output.flush()
-            os.fsync(output.fileno())
-        if count != entry.size or digest.hexdigest() != entry.digest:
-            raise RestoreError('original file changed during backup')
-    backup_sidecars._check_cancelled(cancelled)
-    return verify_catalog_assets(db, RetainedAssets(destination), **limits)
-
-
-def create_backup(app, destination, *, include_generated=False, max_bytes=None, cancelled=lambda: False):
+def create_backup(app, destination, *, include_generated=False, cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
     """
-    backup_sidecars._check_cancelled(cancelled)
-    if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 1):
-        raise RestoreError('backup byte budget must be a positive integer')
-    if type(include_generated) is not bool:
-        raise RestoreError('Generated-audio inclusion must be an explicit boolean.')
+    if type(include_generated) is not bool or not callable(cancelled):
+        raise ValueError('Invalid backup options.')
+    if cancelled():
+        raise InterruptedError('Backup cancelled.')
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root):
+    with (exclusive_writer(app.root), backup_sidecars.state_locks(app.root),
+          recording_backup.snapshot_guard(app.root, cancelled=cancelled)):
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
@@ -135,39 +105,61 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
-            _check_budget(size, max_bytes)
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
-                asset_budget = MAX_ASSET_BYTES if max_bytes is None else min(MAX_ASSET_BYTES, max_bytes - size)
-                entries = _copy_originals(snapshot_storage.db, app.assets, stage / ORIGINALS,
-                                          max_bytes=asset_budget, cancelled=cancelled)
+                entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
+                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                    cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-                total = size + sum(entry.size for entry in entries)
-                pending = None
-                if any(os.path.lexists(app.root / name) for name in
-                       ('imports.sqlite', 'import-requests', 'import-batches')):
-                    pending = pending_backup.snapshot_pending(app, stage / 'pending',
-                        max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
-                        cancelled=cancelled)
-                    total += sum(entry['size_bytes'] for entry in pending['files'])
-                state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_transcription.MAX_INPUT_BYTES
-                    + (backup_sidecars.backup_generated.MAX_BYTES
-                    if include_generated else 0)) if max_bytes is None else max_bytes - total
-                sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
-                    max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
-            manifest = dict(version=4, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
+                # The canonical pending producer is the sole owner of imports
+                # in a new composite backup. Legacy sidecar-v3 remains readable.
+                sidecars = backup_sidecars.snapshot(app, stage, {entry.digest for entry in entries},
+                    db=snapshot_storage.db, include_pending=False,
+                    include_generated=include_generated, cancelled=cancelled)
+            manifest = dict(version=2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
-                assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
-            if pending is not None:
-                manifest['pending'] = pending
-            backup_sidecars.normalize_manifest(manifest)
+                assets=_asset_manifest(entries))
+            state_root = app.root / 'state'
+            # lexists suppresses access errors, which could omit all user work.
+            # Only genuine absence is optional; disappearance after this probe fails.
+            try:
+                state_root.lstat()
+            except FileNotFoundError:
+                pass
+            else:
+                from .state_backup import snapshot_state
+                from .state_recovery import validate_state_documents
+                (stage / 'state').mkdir()
+                state = snapshot_state(state_root, stage / 'state',
+                                       include_generated=include_generated, cancelled=cancelled,
+                                       missing_ok=False)
+                from .studio.backup_inputs import snapshot_inputs
+                state = snapshot_inputs(stage / 'state', state, source_state_root=state_root,
+                                        cancelled=cancelled)
+                validate_state_documents(stage / 'state', state, cancelled=cancelled)
+                from .studio.book_backup import validate_database_snapshot
+                validate_database_snapshot(snapshot, stage / 'state', state, cancelled=cancelled)
+                manifest.update(version=3, state=state, generated_audio_included=include_generated)
+            from .pending_backup import pending_roots, snapshot_pending
+            roots = pending_roots(app.root)
+            if roots:
+                manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending',
+                    cancelled=cancelled, expected_roots=roots))
+                if 'state' not in manifest:
+                    (stage / 'state').mkdir()
+                    manifest.update(state=[], generated_audio_included=include_generated)
+            if sidecars is not None:
+                if 'state' not in manifest:
+                    (stage / 'state').mkdir()
+                    manifest.update(state=[], generated_audio_included=include_generated)
+                manifest.update(version=5, sidecars=sidecars)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
                 raise RestoreError('manifest size limit')
-            _check_budget(total + sum(entry['size_bytes'] for entry in sidecars) + len(raw), max_bytes)
             _sync_file(stage / MANIFEST, raw)
-            backup_sidecars._check_cancelled(cancelled)
+            if cancelled():
+                raise InterruptedError('Backup cancelled.')
             # mkdir provides exclusive no-replace ownership of the destination.
             # The final manifest is the completion marker; no partial bundle is
             # silently overwritten or presented as a successful backup.
@@ -175,28 +167,33 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
             (destination / ORIGINALS).mkdir(mode=0o700)
             os.link(snapshot, destination / DATABASE)
             for entry in entries:
+                if cancelled():
+                    raise InterruptedError('Backup cancelled before publication.')
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-            backup_sidecars.publish(stage, destination, sidecars, sync_directory=_sync_directory)
-            if pending is not None:
-                (destination / 'pending').mkdir(mode=0o700)
-                backup_sidecars.publish(stage, destination,
-                    [dict(entry, filename='pending/' + entry['filename']) for entry in pending['files']],
-                    sync_directory=_sync_directory)
-                _sync_directory(destination / 'pending')
+            if 'state' in manifest:
+                from .state_backup import publish_state
+                publish_state(stage / 'state', destination / 'state', cancelled=cancelled)
+                if 'pending' in manifest:
+                    publish_state(stage / 'pending', destination / 'pending', cancelled=cancelled)
+            if sidecars is not None:
+                backup_sidecars.publish(stage, destination, sidecars, backup=True, cancelled=cancelled)
             _sync_directory(destination / ORIGINALS)
+            if cancelled():
+                raise InterruptedError('Backup cancelled before publication. The incomplete folder has no manifest.')
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    if not {DATABASE, ORIGINALS, MANIFEST} <= {path.name for path in directory.iterdir()}:
-        raise RestoreError('incomplete backup or unexpected files')
-    size = _plain(directory / MANIFEST).st_size
+    try:
+        size = _plain(directory / MANIFEST).st_size
+    except FileNotFoundError as exc:
+        raise RestoreError('incomplete backup or missing manifest') from exc
     if not 0 < size <= MAX_MANIFEST:
         raise RestoreError('manifest size limit')
     with (directory / MANIFEST).open('rb') as stream:
@@ -210,10 +207,66 @@ def _read_manifest(directory, expected_manifest_sha256):
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
             or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
-    inventory = backup_sidecars.normalize_manifest(manifest)
-    backup_sidecars.check_namespace(directory, inventory)
-    if (manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
+    version = manifest['version']
+    flat = backup_compat.is_flat_manifest(manifest)
+    if flat:
+        # The independent manifest digest was already checked. Its exact
+        # envelope determines the interpretation; never coerce list/dict
+        # sidecars or rewrite a signed input into this host's writer format.
+        inventory = backup_compat.normalize_manifest(manifest)
+        backup_compat.check_namespace(directory, inventory, cancelled=cancelled)
+        fields = set(manifest)  # Exact allowed shape was checked by the adapter.
+        legacy_sidecars = False
+    else:
+        required_files = {DATABASE, ORIGINALS, MANIFEST}
+        allowed = required_files | {'state', 'pending', backup_sidecars.DIRECTORY}
+        actual_files = set()
+        for path in directory.iterdir():
+            if cancelled():
+                raise InterruptedError('Restore cancelled during manifest inventory.')
+            if path.name not in allowed or path.name in actual_files:
+                raise RestoreError('incomplete backup or unexpected files')
+            actual_files.add(path.name)
+        if not required_files <= actual_files:
+            raise RestoreError('incomplete backup or unexpected files')
+        legacy_sidecars = version == 3 and 'sidecars' in manifest
+        fields = {'version','kind','schema_version','database','assets'}
+        if version >= 2:
+            fields.add('schema_fingerprint')
+        if version >= 3 and not legacy_sidecars:
+            from .state_backup import validate_state
+            fields.update(('state', 'generated_audio_included'))
+            if type(manifest.get('generated_audio_included')) is not bool or 'state' not in actual_files:
+                raise RestoreError('incomplete application state backup')
+            validate_state(manifest.get('state'))
+            if not manifest['generated_audio_included']:
+                from . import backup_transcription
+                if any(backup_transcription.is_cache_file('state/' + entry['filename'])
+                       for entry in manifest['state']):
+                    raise RestoreError('Transcription cache requires explicit manifest inclusion.')
+            required_files.add('state')
+        elif 'state' in actual_files:
+            raise RestoreError('unexpected state in legacy backup')
+        if version == 4 or (version == 5 and 'pending' in manifest):
+            from .pending_backup import validate_pending
+            fields.add('pending')
+            if 'pending' not in actual_files:
+                raise RestoreError('missing pending import backup')
+            validate_pending(manifest.get('pending'))
+            required_files.add('pending')
+        elif 'pending' in actual_files:
+            raise RestoreError('unexpected pending imports in legacy backup')
+        if legacy_sidecars or version == 5:
+            fields.add('sidecars')
+            required_files.add(backup_sidecars.DIRECTORY)
+            sidecars = backup_sidecars.validate_manifest(manifest.get('sidecars'))
+            if version == 5 and any(backup_sidecars.pending_path(row['path']) for row in sidecars['files']):
+                raise RestoreError('composite pending imports must have one canonical producer')
+        if actual_files != required_files:
+            raise RestoreError('incomplete backup or unexpected components')
+    if (set(manifest) != fields
+            or manifest['kind'] != 'carr-library'
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5, 6)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:
@@ -235,7 +288,7 @@ def _read_manifest(directory, expected_manifest_sha256):
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
                 or not isinstance(asset['mime'], str) or asset['mime'] not in SUFFIXES
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
-                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= MAX_BYTES):
+                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= (STREAMED_TEXT_MAX_BYTES if asset['mime'] == 'text/plain' else MAX_BYTES)):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')
@@ -244,6 +297,11 @@ def _read_manifest(directory, expected_manifest_sha256):
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    if legacy_sidecars:
+        pending = {Path(row['path']).name for row in sidecars['files']
+                   if row['path'].startswith('pending-originals/')}
+        if pending.intersection(filenames):
+            raise RestoreError('pending originals duplicate registered assets')
     return manifest
 
 
@@ -255,7 +313,8 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
     digest = sha256()
     with source.open('rb') as incoming, target.open('xb') as output:
         while block := incoming.read(min(1024 * 1024, manifest['size_bytes'] + 1 - count)):
-            backup_sidecars._check_cancelled(cancelled)
+            if cancelled():
+                raise InterruptedError('Restore cancelled.')
             count += len(block)
             if count > manifest['size_bytes']:
                 raise RestoreError('database grew during restore')
@@ -276,9 +335,15 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=None, cancelled=lambda: False):
-    """Authenticate the common backup format using only a private database copy."""
-    inventory = backup_sidecars.normalize_manifest(manifest)
+def _verify_contents(source, stage, manifest, *, destination=None, cancelled=lambda: False):
+    """Use the existing complete restore verifier in one unpublished private stage.
+
+    A destination is supplied only by actual restoration. Plain verification
+    checks current typed state without assigning a projected editable revision.
+    Both routes retain the same database, original, sidecar and pending proofs.
+    """
+    flat = (backup_compat.normalize_manifest(manifest)
+            if backup_compat.is_flat_manifest(manifest) else None)
     _plain(source / ORIGINALS, directory=True)
     snapshot = stage / DATABASE
     _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
@@ -286,79 +351,134 @@ def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=
         storage.check()
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
-            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+            cancelled=cancelled)
         if _asset_manifest(entries) != manifest['assets']:
             raise RestoreError('asset manifest disagrees with the database')
-        if copy_originals:
-            _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
-        backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
-    pending_entries = []
-    if inventory.pending is not None:
-        recovered = pending_backup.restore_pending(source / 'pending', stage,
-            stage if new_root is None else new_root, inventory.pending, cancelled=cancelled)
-        pending_entries.extend(dict(filename=entry['filename']) for entry in inventory.pending['files']
-                               if not entry['filename'].startswith('originals/'))
-        pending_entries.extend(dict(filename='originals/' + entry['filename']) for entry in recovered['assets'])
-    backup_sidecars._check_cancelled(cancelled)
-    return inventory, entries, pending_entries
+        copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+            cancelled=cancelled)
+        sidecars = None
+        if flat is not None:
+            flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled,
+                                         destination=destination)
+        elif 'sidecars' in manifest:
+            sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
+                stage, manifest['sidecars'], destination if destination is not None else stage,
+                db=storage.db, cancelled=cancelled)
+    pending = {'assets': [], 'paths': []}
+    if flat is None and 'state' in manifest:
+        from .state_backup import restore_state
+        from .state_recovery import prepare_restored_state, validate_state_documents
+        restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
+        if destination is None:
+            validate_state_documents(stage / 'state', manifest['state'], cancelled=cancelled)
+        else:
+            prepare_restored_state(stage / 'state', manifest['state'], cancelled=cancelled,
+                                   destination_state_root=destination / 'state')
+        from .studio.book_backup import validate_database_snapshot
+        validate_database_snapshot(snapshot, stage / 'state', manifest['state'], cancelled=cancelled)
+    pending_manifest = flat.pending if flat is not None else manifest.get('pending')
+    if pending_manifest is not None:
+        from .pending_backup import restore_pending
+        pending = restore_pending(source / 'pending', stage,
+                                  destination if destination is not None else stage, pending_manifest,
+                                  cancelled=cancelled)
+    if cancelled():
+        raise InterruptedError('Restore cancelled before publication.')
+    return entries, pending, flat, sidecars
 
 
-def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
-    """Authenticate all backup bytes and source bindings without changing it.
+def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False,
+                  temporary_parent=None):
+    """Verify all complete-backup bytes and source bindings without publishing.
 
-    Library workflow recovery and restore use the same checked common-format
-    adapters. SQLite validation opens only a private temporary database; no
-    source file or completed backup is opened writable.
+    Source backups remain read-only. SQLite and typed producers see only their
+    existing checked private copy. No restore destination, engine or queue is
+    activated; full formats 1–5 and their checked schema versions are retained.
     """
-    backup_sidecars._check_cancelled(cancelled)
+    if not callable(cancelled):
+        raise ValueError('Invalid backup verification cancellation callback.')
+    if cancelled():
+        raise InterruptedError('Backup verification cancelled.')
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
-    manifest = _read_manifest(source, expected_manifest_sha256)
-    with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
-        _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    if temporary_parent is not None:
+        temporary_parent = local_path(temporary_parent, exists=True)
+        _plain(temporary_parent, directory=True)
+    with TemporaryDirectory(prefix='.carr-library-verify-', dir=temporary_parent) as temporary:
+        _verify_contents(source, Path(temporary), manifest, cancelled=cancelled)
+    if cancelled():
+        raise InterruptedError('Backup verification cancelled.')
     return manifest
 
 
-def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
+def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False,
+                   _final_destination=None):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
     opened writable. A failed/terminated publication retains .restore-incomplete;
     the application must reject such a root instead of opening partial data.
     """
-    backup_sidecars._check_cancelled(cancelled)
+    if not callable(cancelled):
+        raise ValueError('Invalid restore cancellation callback.')
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
+    # Validate the original lexical path before resolving it, otherwise an
+    # ancestor symlink/junction would be hidden from the component verifiers.
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    # Internal portable restore can prepare privately, then atomically rename
+    # the complete directory. Only typed path projection uses the final root;
+    # all byte publication below still targets the owned preparation directory.
+    projected = destination
+    if _final_destination is not None:
+        projected = _destination(_final_destination, source)
+        if projected == destination or projected.is_relative_to(destination) or destination.is_relative_to(projected):
+            raise RestoreError('final restore projection must be a separate new directory')
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        inventory, entries, pending_entries = _verify_contents(source, stage, manifest,
-            copy_originals=True, new_root=destination, cancelled=cancelled)
-        backup_sidecars._check_cancelled(cancelled)
-        restored_sidecars = inventory.entries
-        if (stage / 'state' / 'transcription').exists():
-            # Authenticate the canonical backup first, then revoke only staged
-            # external execution trust before publishing the restored directory.
-            from .backup_transcription import prepare_restored_inventory
-            restored_sidecars = prepare_restored_inventory(
-                stage, destination, restored_sidecars, cancelled=cancelled)
-        backup_sidecars._check_cancelled(cancelled)
+        entries, pending, flat, sidecars = _verify_contents(
+            source, stage, manifest, destination=projected, cancelled=cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
         (destination / ORIGINALS).mkdir(mode=0o700)
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
+            if cancelled():
+                raise InterruptedError('Restore cancelled during publication.')
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-        backup_sidecars.publish(stage, destination, restored_sidecars, sync_directory=_sync_directory)
-        backup_sidecars.publish(stage, destination, pending_entries, sync_directory=_sync_directory)
+        for entry in pending['assets']:
+            os.link(stage / ORIGINALS / entry['filename'], destination / ORIGINALS / entry['filename'])
+        if flat is None and 'state' in manifest:
+            from .state_backup import publish_state
+            publish_state(stage / 'state', destination / 'state', cancelled=cancelled)
+        for name in pending['paths']:
+            if cancelled():
+                raise InterruptedError('Restore cancelled during pending publication.')
+            if (stage / name).is_dir():
+                from .state_backup import publish_state
+                publish_state(stage / name, destination / name, cancelled=cancelled)
+            else:
+                os.link(stage / name, destination / name)
+        if flat is not None:
+            backup_compat.publish(stage, destination, flat, sync_directory=_sync_directory,
+                                  cancelled=cancelled)
+        if sidecars is not None:
+            backup_sidecars.publish(stage, destination, sidecars, backup=False, cancelled=cancelled)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
+    if cancelled():
+        raise InterruptedError('Restore cancelled before completion; the incomplete destination is not usable.')
     (destination / INCOMPLETE).unlink()
     _sync_directory(destination)
     _sync_directory(destination.parent)

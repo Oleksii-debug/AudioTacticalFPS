@@ -1,0 +1,547 @@
+________ test_early_eof_waits_for_actual_exit_before_freezing_deadline ________
+
+observed = namespace(children=[<WindowsJobProcess: returncode: 1 args: ['D:\\a\\_temp\\carr-windows-python\...>], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A1456CB90>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_early_eof_waits_for_actua0')
+
+    def test_early_eof_waits_for_actual_exit_before_freezing_deadline(observed, monkeypatch, tmp_path):
+        observed.wait_before_return = False
+        entered = threading.Event()
+    
+        def wait_hook(child, actual_wait, timeout):
+            entered.set()
+            return actual_wait(timeout=timeout)
+    
+        tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+        ready, release, code = gated_code(tmp_path, early_eof=True)
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            calls.append(threading.get_ident())
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert entered.wait(10)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'exit only after an actual reader wait started')
+                join_readers(tracked)
+                observed.offset += 6.0
+            return False
+    
+>       result = run(code, cancelled=review)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\audio\test_process_deadline.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audio\test_process_deadline.py:49: in run
+    return process.run_process([sys.executable, '-I', '-B', '-c', code],
+src\carr_library\audio\process.py:541: in run_process
+    check()
+src\carr_library\audio\process.py:477: in check
+    if cancelled():
+       ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def review():
+        if not observed.children:
+            return False
+        calls.append(threading.get_ident())
+        if len(calls) == 1:
+            wait_for_file(ready)
+>           assert entered.wait(10)
+E           assert False
+E            +  where False = wait(10)
+E            +    where wait = <threading.Event at 0x19a1456cad0: unset>.wait
+
+tests\audio\test_process_deadline.py:330: AssertionError
+_______ test_closed_diagnostic_pipes_do_not_stop_a_live_child_deadline ________
+
+observed = namespace(children=[<WindowsJobProcess: returncode: 1 args: ['D:\\a\\_temp\\carr-windows-python\...>], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A14456310>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_closed_diagnostic_pipes_d0')
+
+    def test_closed_diagnostic_pipes_do_not_stop_a_live_child_deadline(
+            observed, monkeypatch, tmp_path):
+        observed.wait_before_return = False
+        entered = threading.Event()
+    
+        def wait_hook(child, actual_wait, timeout):
+            entered.set()
+            return actual_wait(timeout=timeout)
+    
+        tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+        ready, release, code = gated_code(tmp_path, early_eof=True)
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            calls.append(threading.get_ident())
+            wait_for_file(ready)
+            assert entered.wait(10)
+            assert observed.children[0].poll() is None
+            observed.offset += 6.0
+            return False
+    
+        with pytest.raises(process.AudioError, match='time allowance'):
+>           run(code, cancelled=review)
+
+tests\audio\test_process_deadline.py:367: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audio\test_process_deadline.py:49: in run
+    return process.run_process([sys.executable, '-I', '-B', '-c', code],
+src\carr_library\audio\process.py:541: in run_process
+    check()
+src\carr_library\audio\process.py:477: in check
+    if cancelled():
+       ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def review():
+        if not observed.children:
+            return False
+        calls.append(threading.get_ident())
+        wait_for_file(ready)
+>       assert entered.wait(10)
+E       assert False
+E        +  where False = wait(10)
+E        +    where wait = <threading.Event at 0x19a14456750: unset>.wait
+
+tests\audio\test_process_deadline.py:361: AssertionError
+________ test_timely_reader_exit_preserves_fresh_caller_guards[cancel] ________
+
+observed = namespace(children=[], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A1422D250>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_timely_reader_exit_preser0')
+failure = 'cancel'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+    def test_timely_reader_exit_preserves_fresh_caller_guards(
+            observed, monkeypatch, tmp_path, failure):
+        observed.wait_before_return = False
+        tracked = tracked_readers(monkeypatch, observed)
+        ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+        reviewed = tmp_path / 'reviewed-runtime'
+        reviewed.write_bytes(b'exact reviewed content')
+        approved = sha256(reviewed.read_bytes()).hexdigest()
+        output = tmp_path / 'worker-output'
+        output.write_bytes(b'accepted-size')
+        caller = threading.get_ident()
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            assert threading.get_ident() == caller
+            calls.append(caller)
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'complete before parent final checks')
+                join_readers(tracked)
+                observed.offset += 6.0
+                if failure == 'identity':
+                    reviewed.write_bytes(b'changed after the child actually exited')
+                if failure == 'staging':
+                    output.write_bytes(b'x' * 2048)
+            if sha256(reviewed.read_bytes()).hexdigest() != approved:
+                raise ValueError('reviewed runtime identity changed')
+            return failure == 'cancel'
+    
+        error, message = {
+            'cancel': (process.AudioCancelled, 'cancelled'),
+            'identity': (ValueError, 'runtime identity changed'),
+            'diagnostic': (process.AudioError, 'diagnostic'),
+            'staging': (process.AudioError, 'disk budget'),
+        }[failure]
+        with pytest.raises(error, match=message):
+>           run(code, cancelled=review, watch=(output,),
+                budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+
+tests\audio\test_process_deadline.py:457: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audio\test_process_deadline.py:50: in run
+    owned_tree=True, budget=process.AudioBudget(timeout=5, reserve_disk_bytes=0,
+<string>:11: in __init__
+    ???
+src\carr_library\audio\models.py:69: in __post_init__
+    integer(self.max_output_bytes, 'Output budget', 4096, 2**63 - 1)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 1024, label = 'Output budget', minimum = 4096
+maximum = 9223372036854775807
+
+    def integer(value, label, minimum, maximum):
+        if type(value) is not int or not minimum <= value <= maximum:
+>           raise ValueError(f'{label} must be an integer from {minimum} to {maximum}.')
+E           ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+
+src\carr_library\audio\models.py:46: ValueError
+_______ test_timely_reader_exit_preserves_fresh_caller_guards[identity] _______
+
+observed = namespace(children=[], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A143D5590>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_timely_reader_exit_preser1')
+failure = 'identity'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+    def test_timely_reader_exit_preserves_fresh_caller_guards(
+            observed, monkeypatch, tmp_path, failure):
+        observed.wait_before_return = False
+        tracked = tracked_readers(monkeypatch, observed)
+        ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+        reviewed = tmp_path / 'reviewed-runtime'
+        reviewed.write_bytes(b'exact reviewed content')
+        approved = sha256(reviewed.read_bytes()).hexdigest()
+        output = tmp_path / 'worker-output'
+        output.write_bytes(b'accepted-size')
+        caller = threading.get_ident()
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            assert threading.get_ident() == caller
+            calls.append(caller)
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'complete before parent final checks')
+                join_readers(tracked)
+                observed.offset += 6.0
+                if failure == 'identity':
+                    reviewed.write_bytes(b'changed after the child actually exited')
+                if failure == 'staging':
+                    output.write_bytes(b'x' * 2048)
+            if sha256(reviewed.read_bytes()).hexdigest() != approved:
+                raise ValueError('reviewed runtime identity changed')
+            return failure == 'cancel'
+    
+        error, message = {
+            'cancel': (process.AudioCancelled, 'cancelled'),
+            'identity': (ValueError, 'runtime identity changed'),
+            'diagnostic': (process.AudioError, 'diagnostic'),
+            'staging': (process.AudioError, 'disk budget'),
+        }[failure]
+        with pytest.raises(error, match=message):
+>           run(code, cancelled=review, watch=(output,),
+                budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+
+tests\audio\test_process_deadline.py:457: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audio\test_process_deadline.py:50: in run
+    owned_tree=True, budget=process.AudioBudget(timeout=5, reserve_disk_bytes=0,
+<string>:11: in __init__
+    ???
+src\carr_library\audio\models.py:69: in __post_init__
+    integer(self.max_output_bytes, 'Output budget', 4096, 2**63 - 1)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 1024, label = 'Output budget', minimum = 4096
+maximum = 9223372036854775807
+
+    def integer(value, label, minimum, maximum):
+        if type(value) is not int or not minimum <= value <= maximum:
+>           raise ValueError(f'{label} must be an integer from {minimum} to {maximum}.')
+E           ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+
+src\carr_library\audio\models.py:46: ValueError
+
+During handling of the above exception, another exception occurred:
+
+observed = namespace(children=[], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A143D5590>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_timely_reader_exit_preser1')
+failure = 'identity'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+    def test_timely_reader_exit_preserves_fresh_caller_guards(
+            observed, monkeypatch, tmp_path, failure):
+        observed.wait_before_return = False
+        tracked = tracked_readers(monkeypatch, observed)
+        ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+        reviewed = tmp_path / 'reviewed-runtime'
+        reviewed.write_bytes(b'exact reviewed content')
+        approved = sha256(reviewed.read_bytes()).hexdigest()
+        output = tmp_path / 'worker-output'
+        output.write_bytes(b'accepted-size')
+        caller = threading.get_ident()
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            assert threading.get_ident() == caller
+            calls.append(caller)
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'complete before parent final checks')
+                join_readers(tracked)
+                observed.offset += 6.0
+                if failure == 'identity':
+                    reviewed.write_bytes(b'changed after the child actually exited')
+                if failure == 'staging':
+                    output.write_bytes(b'x' * 2048)
+            if sha256(reviewed.read_bytes()).hexdigest() != approved:
+                raise ValueError('reviewed runtime identity changed')
+            return failure == 'cancel'
+    
+        error, message = {
+            'cancel': (process.AudioCancelled, 'cancelled'),
+            'identity': (ValueError, 'runtime identity changed'),
+            'diagnostic': (process.AudioError, 'diagnostic'),
+            'staging': (process.AudioError, 'disk budget'),
+        }[failure]
+>       with pytest.raises(error, match=message):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'runtime identity changed'
+E         Actual message: 'Output budget must be an integer from 4096 to 9223372036854775807.'
+
+tests\audio\test_process_deadline.py:456: AssertionError
+______ test_timely_reader_exit_preserves_fresh_caller_guards[diagnostic] ______
+
+observed = namespace(children=[], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A14446410>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_timely_reader_exit_preser2')
+failure = 'diagnostic'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+    def test_timely_reader_exit_preserves_fresh_caller_guards(
+            observed, monkeypatch, tmp_path, failure):
+        observed.wait_before_return = False
+        tracked = tracked_readers(monkeypatch, observed)
+        ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+        reviewed = tmp_path / 'reviewed-runtime'
+        reviewed.write_bytes(b'exact reviewed content')
+        approved = sha256(reviewed.read_bytes()).hexdigest()
+        output = tmp_path / 'worker-output'
+        output.write_bytes(b'accepted-size')
+        caller = threading.get_ident()
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            assert threading.get_ident() == caller
+            calls.append(caller)
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'complete before parent final checks')
+                join_readers(tracked)
+                observed.offset += 6.0
+                if failure == 'identity':
+                    reviewed.write_bytes(b'changed after the child actually exited')
+                if failure == 'staging':
+                    output.write_bytes(b'x' * 2048)
+            if sha256(reviewed.read_bytes()).hexdigest() != approved:
+                raise ValueError('reviewed runtime identity changed')
+            return failure == 'cancel'
+    
+        error, message = {
+            'cancel': (process.AudioCancelled, 'cancelled'),
+            'identity': (ValueError, 'runtime identity changed'),
+            'diagnostic': (process.AudioError, 'diagnostic'),
+            'staging': (process.AudioError, 'disk budget'),
+        }[failure]
+        with pytest.raises(error, match=message):
+>           run(code, cancelled=review, watch=(output,),
+                budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+
+tests\audio\test_process_deadline.py:457: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audio\test_process_deadline.py:50: in run
+    owned_tree=True, budget=process.AudioBudget(timeout=5, reserve_disk_bytes=0,
+<string>:11: in __init__
+    ???
+src\carr_library\audio\models.py:69: in __post_init__
+    integer(self.max_output_bytes, 'Output budget', 4096, 2**63 - 1)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 1024, label = 'Output budget', minimum = 4096
+maximum = 9223372036854775807
+
+    def integer(value, label, minimum, maximum):
+        if type(value) is not int or not minimum <= value <= maximum:
+>           raise ValueError(f'{label} must be an integer from {minimum} to {maximum}.')
+E           ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+
+src\carr_library\audio\models.py:46: ValueError
+_______ test_timely_reader_exit_preserves_fresh_caller_guards[staging] ________
+
+observed = namespace(children=[], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A14537AD0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_timely_reader_exit_preser3')
+failure = 'staging'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+    def test_timely_reader_exit_preserves_fresh_caller_guards(
+            observed, monkeypatch, tmp_path, failure):
+        observed.wait_before_return = False
+        tracked = tracked_readers(monkeypatch, observed)
+        ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+        reviewed = tmp_path / 'reviewed-runtime'
+        reviewed.write_bytes(b'exact reviewed content')
+        approved = sha256(reviewed.read_bytes()).hexdigest()
+        output = tmp_path / 'worker-output'
+        output.write_bytes(b'accepted-size')
+        caller = threading.get_ident()
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            assert threading.get_ident() == caller
+            calls.append(caller)
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'complete before parent final checks')
+                join_readers(tracked)
+                observed.offset += 6.0
+                if failure == 'identity':
+                    reviewed.write_bytes(b'changed after the child actually exited')
+                if failure == 'staging':
+                    output.write_bytes(b'x' * 2048)
+            if sha256(reviewed.read_bytes()).hexdigest() != approved:
+                raise ValueError('reviewed runtime identity changed')
+            return failure == 'cancel'
+    
+        error, message = {
+            'cancel': (process.AudioCancelled, 'cancelled'),
+            'identity': (ValueError, 'runtime identity changed'),
+            'diagnostic': (process.AudioError, 'diagnostic'),
+            'staging': (process.AudioError, 'disk budget'),
+        }[failure]
+        with pytest.raises(error, match=message):
+>           run(code, cancelled=review, watch=(output,),
+                budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+
+tests\audio\test_process_deadline.py:457: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audio\test_process_deadline.py:50: in run
+    owned_tree=True, budget=process.AudioBudget(timeout=5, reserve_disk_bytes=0,
+<string>:11: in __init__
+    ???
+src\carr_library\audio\models.py:69: in __post_init__
+    integer(self.max_output_bytes, 'Output budget', 4096, 2**63 - 1)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 1024, label = 'Output budget', minimum = 4096
+maximum = 9223372036854775807
+
+    def integer(value, label, minimum, maximum):
+        if type(value) is not int or not minimum <= value <= maximum:
+>           raise ValueError(f'{label} must be an integer from {minimum} to {maximum}.')
+E           ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+
+src\carr_library\audio\models.py:46: ValueError
+_ test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handle _
+
+observed = namespace(children=[<WindowsJobProcess: returncode: None args: ['D:\\a\\_temp\\carr-windows-pyth...>], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A144FA110>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_native_cleanup_waits_for_0')
+
+    def test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handle(
+            observed, monkeypatch, tmp_path):
+        observed.wait_before_return = False
+        entered, release_wait = threading.Event(), threading.Event()
+        cleanup_started, cleanup_handoff = threading.Event(), threading.Event()
+        runner = None
+        trace, failures, native_stops = [], [], []
+        actual_stop, actual_lock, actual_event = process._stop_owned, threading.Lock, threading.Event
+    
+        def wait_hook(child, actual_wait, timeout):
+            trace.append('eof wait entered')
+            entered.set()
+            assert release_wait.wait(10)
+            try:
+                return actual_wait(timeout=timeout)
+            finally:
+                trace.append('eof wait returned')
+    
+        tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+    
+        def event():
+            value = actual_event()
+            actual_set = value.set
+    
+            def set_event():
+                actual_set()
+                if threading.current_thread() is runner and entered.is_set():
+                    cleanup_started.set()
+    
+            value.set = set_event
+            return value
+    
+        class ObservedLock:
+            def __init__(self):
+                self.lock = actual_lock()
+    
+            def __enter__(self):
+                if (threading.current_thread() is runner and cleanup_started.is_set()
+                        and entered.is_set() and not release_wait.is_set()):
+                    # Observe the real lock acquisition attempt; do not fabricate
+                    # acquisition, release, process status, or a successful wait.
+                    cleanup_handoff.set()
+                self.lock.acquire()
+                return self
+    
+            def __exit__(self, *_):
+                self.lock.release()
+    
+        monkeypatch.setattr(process.threading, 'Event', event)
+        monkeypatch.setattr(process.threading, 'Lock', ObservedLock)
+    
+        def stop(child):
+            assert release_wait.is_set()
+            assert trace[-1] == 'eof wait returned'
+            native_stops.append(child.pid)
+            trace.append('native cleanup')
+            return actual_stop(child)
+    
+        monkeypatch.setattr(process, '_stop_owned', stop)
+        _, _, code = gated_code(tmp_path, early_eof=True)
+    
+        def cancel():
+            if not observed.children:
+                return False
+            assert entered.wait(10)
+            return True
+    
+        def execute():
+            try:
+                run(code, cancelled=cancel)
+            except BaseException as error:
+                failures.append(error)
+    
+        runner = threading.Thread(target=execute, name='actual-audio-caller')
+        try:
+            runner.start()
+>           assert entered.wait(10) and cleanup_handoff.wait(10)
+E           assert (False)
+E            +  where False = wait(10)
+E            +    where wait = <threading.Event at 0x19a144fab10: unset>.wait
+
+tests\audio\test_process_deadline.py:677: AssertionError
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-2p3jsji_\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/audio/test_process_deadline.py::test_early_eof_waits_for_actual_exit_before_freezing_deadline - assert False
+ +  where False = wait(10)
+ +    where wait = <threading.Event at 0x19a1456cad0: unset>.wait
+FAILED tests/audio/test_process_deadline.py::test_closed_diagnostic_pipes_do_not_stop_a_live_child_deadline - assert False
+ +  where False = wait(10)
+ +    where wait = <threading.Event at 0x19a14456750: unset>.wait
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[cancel] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[identity] - AssertionError: Regex pattern did not match.
+  Expected regex: 'runtime identity changed'
+  Actual message: 'Output budget must be an integer from 4096 to 9223372036854775807.'
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[diagnostic] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[staging] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+FAILED tests/audio/test_process_deadline.py::test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handle - assert (False)
+ +  where False = wait(10)
+ +    where wait = <threading.Event at 0x19a144fab10: unset>.wait
+======================== 7 failed, 14 passed in 39.45s ========================
+FAIL: tests/audio/test_process_deadline.py: junit_passed=14, failed=7, skipped=0, pytest_exit=1

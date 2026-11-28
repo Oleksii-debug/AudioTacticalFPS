@@ -543,10 +543,17 @@ class AcademicLibrary:
             entries.append((index, _validate(dict(entry.fields))))
         existing = self._duplicate_index()
         imported, skipped, duplicates = [], [], set()
+        remaining = MAX_DUPLICATE_PREVIEW_SLOTS
         self.db.execute('SAVEPOINT academic_import')
         try:
             for index, values in entries:
-                matches = {identity for key in _duplicate_keys(values) for identity in existing[key]}
+                keys = _duplicate_keys(values)
+                cost = sum(len(existing[key]) for key in keys)
+                if cost > remaining:
+                    raise ValueError('Too many duplicate matches to import safely. '
+                                     'Refine the reference batch or library.')
+                remaining -= cost
+                matches = {identity for key in keys for identity in existing[key]}
                 duplicates.update(matches)
                 if matches and skip_duplicates:
                     skipped.append(index)

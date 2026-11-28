@@ -83,7 +83,8 @@ writer(sys.argv[1], payload.encode() if sys.argv[3] == '1' else payload,
 
 
 @pytest.mark.parametrize('binary', [False, True])
-def test_competing_file_at_actual_publication_is_preserved(tmp_path, monkeypatch, binary):
+@pytest.mark.parametrize('explicit_policy', [False, True])
+def test_competing_file_at_actual_publication_is_preserved(tmp_path, monkeypatch, binary, explicit_policy):
     target = tmp_path / 'result'
     private = tmp_path / 'private'
     private.mkdir()
@@ -98,6 +99,87 @@ def test_competing_file_at_actual_publication_is_preserved(tmp_path, monkeypatch
     writer = export_file.write_binary_export if binary else export_file.write_export
     with pytest.raises(FileExistsError):
         writer(target, b'new' if binary else 'new', private_root=private,
-               require_absent=True)
+               **({'require_absent': True} if explicit_policy else {}))
     assert target.read_bytes() == b'Independent work'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('binary', [False, True])
+@pytest.mark.parametrize('when', ['after_approval', 'after_staging'])
+def test_equal_metadata_content_change_requires_fresh_approval(tmp_path, monkeypatch, binary, when):
+    target = tmp_path / 'result'
+    private = tmp_path / 'private'
+    private.mkdir()
+    target.write_bytes(b'Owner version A')
+    original_info = target.stat()
+    original_state = export_file._file_state(original_info)
+    state = export_file._file_state
+
+    def frozen_visible_metadata(info):
+        # This models Windows metadata equivalence explicitly. The destination
+        # remains the same real ordinary file and receives different real bytes.
+        if (info.st_dev, info.st_ino) == (original_info.st_dev, original_info.st_ino):
+            return original_state
+        return state(info)
+
+    monkeypatch.setattr(export_file, '_file_state', frozen_visible_metadata)
+    approval = export_file.capture_export_destination(target, private_root=private)
+
+    def change_existing_file():
+        target.write_bytes(b'Owner version B')
+        os.utime(target, ns=(original_info.st_atime_ns, original_info.st_mtime_ns))
+        assert target.stat().st_size == original_info.st_size
+        assert export_file._file_state(target.stat()) == original_state
+
+    if when == 'after_approval':
+        change_existing_file()
+    else:
+        sync = os.fsync
+        def change_after_real_staging(fd):
+            sync(fd)
+            change_existing_file()
+        monkeypatch.setattr(os, 'fsync', change_after_real_staging)
+    writer = export_file.write_binary_export if binary else export_file.write_export
+    with pytest.raises(ValueError, match='destination changed'):
+        writer(target, b'new' if binary else 'new', private_root=private, approval=approval)
+    assert target.read_bytes() == b'Owner version B'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_cancel_during_existing_content_snapshot_preserves_file(tmp_path):
+    target = tmp_path / 'result'
+    original = b'A' * (3 * 1024 * 1024)
+    target.write_bytes(original)
+    checks = 0
+
+    def cancel_during_snapshot():
+        nonlocal checks
+        checks += 1
+        return checks >= 3
+
+    with pytest.raises(TimeoutError, match='destination was not changed'):
+        export_file.write_export(target, 'new', private_root=tmp_path / 'private',
+                                 cancelled=cancel_during_snapshot)
+    assert checks == 3
+    assert target.read_bytes() == original
+    assert not list(tmp_path.glob('.research-export-*'))
+
+@pytest.mark.parametrize('binary', [False, True])
+def test_create_only_export_rejects_occupied_file_before_reading_its_contents(tmp_path, monkeypatch, binary):
+    from carr_library.research import export_file
+    library = tmp_path / 'private-library'
+    library.mkdir()
+    target = tmp_path / 'occupied-export'
+    original = b'Existing user bytes must not be read or replaced by create-only export.'
+    target.write_bytes(original)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Create-only export must reject an occupied destination before hashing it.')
+
+    monkeypatch.setattr(export_file, '_content_state', forbidden)
+    writer = export_file.write_binary_export if binary else export_file.write_export
+    payload = b'New diagnostics' if binary else 'New diagnostics'
+    with pytest.raises(FileExistsError):
+        writer(target, payload, private_root=library, require_absent=True)
+    assert target.read_bytes() == original
     assert not list(tmp_path.glob('.research-export-*'))

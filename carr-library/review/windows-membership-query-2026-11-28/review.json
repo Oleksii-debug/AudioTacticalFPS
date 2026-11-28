@@ -1,0 +1,85 @@
+{
+  "schema": "carr-windows-membership-query-review/1",
+  "source_base": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "observed_failure": {
+    "run_id": 46089080509,
+    "job_id": 140805512135,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46089080509/job/140805512135",
+    "immutable_evidence_tree": "b3c59aa93bd356a45fb0fa9ce10ac287e591c91b",
+    "trace_blob": "420c2747cc84838b16388f5528fc3c73c2c16b94",
+    "phase": "Publication runtime capability query: actual ffmpeg -hide_banner -muxers cleanup, before the publication observer.",
+    "exception": "The Windows audio job exceeds its bounded membership inventory.",
+    "actual_assigned": "UNKNOWN",
+    "actual_listed": "UNKNOWN",
+    "actual_returned_length": "UNKNOWN",
+    "historical_cause": "UNKNOWN; the old condition combined unequal counts and an over-cap count, without reporting either value."
+  },
+  "production_changes": [
+    "Capture the native class-3 query return length and fixed numeric diagnostic fields. Read native error state immediately and only when the API fails.",
+    "Requery only a successful partial result with 0 <= listed < assigned <=4096, before termination and inside the same existing five-second admission deadline.",
+    "Each requery re-enters the existing notifications/accounting path. No PID from an incomplete list is used as authority or shutdown proof.",
+    "Record the last observed query on a latched admission error without logging PIDs, filesystem paths, or process arguments."
+  ],
+  "preserved": [
+    "4096 process identity allowance and the original five-second cleanup deadline.",
+    "API failures, reversed/over-cap counts, invalid complete PID lists, membership failures and deadline exhaustion remain fatal.",
+    "Only a complete inventory can proceed to the original stable lifetime count, retained-handle validation, post-termination fence, exact lifetime coverage and per-handle exit waits.",
+    "No clearing of _admission_failure; no rebasing or new class-3 query after termination.",
+    "The original launch-before-resume ownership, kill-on-close, completion port, native leader/member close, and audio/process EOF observer code are unchanged.",
+    "All old test function bodies/assertions are preserved. Only two fixture hunks implement the newly requested native DWORD ReturnLength output; accounting queries still require a null output pointer.",
+    "The existing native process probe and its watchdog/assertions are unchanged."
+  ],
+  "tests": {
+    "path": "carr-library/tests/audio/test_recording_windows_process.py",
+    "additive_cases": 17,
+    "new_test_functions": 7,
+    "original_function_bodies": "EXACT",
+    "old_fixture_inverse": "EXACT",
+    "scenarios": [
+      "Partial list followed by complete list: no early PID adoption or termination; exact member wait/close preserved.",
+      "Permanently partial list exhausts the same five-second deadline and retains the exact latched error/handles on retry.",
+      "Six reversed or over-cap count pairs fail before opening any PID and never retry.",
+      "Three invalid complete PID lists remain denied after an earlier partial reply.",
+      "Coverage, lifetime fence and IsProcessInJob rejection remain authoritative after a complete retry.",
+      "Native errors 5 and 234 remain fatal; error capture precedes termination and records exact returned length.",
+      "Successful queries record ReturnLength without reading a stale LastError."
+    ],
+    "execution": "NOT_RUN"
+  },
+  "source_hunks": 4,
+  "portable_fixture_hunks": 2,
+  "exact_readback": "PASS",
+  "whole_source_inverse": "EXACT",
+  "peer_review": {
+    "reviewer": "locate_project",
+    "result": "CLEAR",
+    "scope": "Exact production changes, native pointer fixture, and 17 additive modeled cases; source-only."
+  },
+  "references": [
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_process_id_list",
+      "relevance": "Defines the required and returned identifier counts and documents incomplete output; does not establish the cause of this historical failure."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-queryinformationjobobject",
+      "relevance": "Defines optional DWORD return length, nonzero success, and GetLastError only after failure."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information",
+      "relevance": "Distinguishes lifetime process count from active accounting; existing proof requirements remain unchanged."
+    }
+  ],
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/audio/windows_process.py",
+      "before": "12b249c548c211333d783877a7ef0c08f2dd2ed1",
+      "after": "32c38bdf6b0a343644e86437fe00bf9b5a84da63"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_windows_process.py",
+      "before": "c656f32f9d39abd496e0af5d3616d5b63e9f6c75",
+      "after": "e7a4d438f5ba33a94ee9b9f28bea419fc33de668"
+    }
+  ],
+  "qualification": "Source-reviewed candidate only. No claim that the observed failure was caused by a transient race; no native, release, installer, audio-quality or model qualification."
+}

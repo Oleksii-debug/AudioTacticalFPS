@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "platform": "win32",
+  "manual_nvda": "NOT_RUN",
+  "phase": "complete",
+  "elapsed_seconds": 7.109,
+  "checks": [
+    "Both actual draft timers initially target their own DesktopFrame",
+    "Child destruction preserved actual live 3000 ms timer delivery",
+    "Close and direct Destroy stopped their native draft and active progress timers",
+    "MainLoop remained usable without new ticks beyond the original timer period"
+  ],
+  "failures": [],
+  "actual_timer_events": {
+    "Close": 1,
+    "Destroy": 1
+  },
+  "actual_progress_timer_events": {
+    "Close": 12,
+    "Destroy": 12
+  },
+  "destroyed": {
+    "Close": true,
+    "Destroy": true
+  },
+  "owner_ids": {
+    "Close": -31993,
+    "Destroy": -31867
+  },
+  "owner_destroy_events": {
+    "Close": 1,
+    "Destroy": 1
+  },
+  "original_wrapper_deleted_on_destroy": {
+    "Close": true,
+    "Destroy": true
+  },
+  "installed_save_actions": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\save_actions.py",
+  "installed_save_actions_sha256": "566ba56dffd3602450384bcf45da1216c69c926e7ce3af5caef604f9fc41a747",
+  "installed_operation_progress": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\operation_progress.py",
+  "installed_operation_progress_sha256": "72dac9bbabdc345689d785c8eba640894298e78597170320d146d4bc767dc0ce"
+}

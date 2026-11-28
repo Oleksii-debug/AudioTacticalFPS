@@ -6,6 +6,7 @@ credential store. Recognition cache is optional; accepted receipts and the
 retained source audio are always part of the ordinary backup.
 """
 from hashlib import sha256
+from itertools import chain
 import json
 from pathlib import PurePosixPath
 import re
@@ -15,6 +16,7 @@ from .ingest.restore import RestoreError
 from .transcription.models import (AUDIO_EXTENSIONS, DEFAULT_SETTINGS, FORMATS,
                                    encoded_outputs, fingerprint, settings,
                                    validated_result)
+from .transcription.runtime import MAX_RUNTIME_FILES
 
 PREFIX = 'state/transcription/'
 MAX_INPUT_BYTES = 64 * 1024**3
@@ -93,7 +95,7 @@ def _bool(value):
 
 def _relative(value):
     # Same portable path rules as the archive, without resolving external data.
-    from .backup_sidecars import portable_name
+    from .backup_compat import portable_name
     portable_name(value)
 
 
@@ -140,12 +142,30 @@ def _settings(value, *, worker=False, partial=False):
             raise ValueError('Unsupported worker translation target.')
 
 
+def _additional_packages(core, additional):
+    """Validate the outer admission inventory without widening worker checkpoints."""
+    if (type(additional) is not dict or not additional
+            or len(additional) > MAX_RUNTIME_FILES or _PACKAGES.intersection(additional)):
+        raise ValueError('Invalid additional transcription distribution inventory.')
+    total = 0
+    for name, entry in chain(core.items(), additional.items()):
+        if type(name) is not str or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name):
+            raise ValueError('Invalid additional transcription distribution name.')
+        fields(entry, {'version', 'file_count', 'installed_files_sha256'})
+        text(entry['version'], 1024)
+        number(entry['file_count'], 1, 65536, integer=True)
+        digest(entry['installed_files_sha256'])
+        total += entry['file_count']
+        if total > MAX_RUNTIME_FILES:
+            raise ValueError('Excessive transcription runtime file inventory.')
+
+
 def _profile(value, identity):
     fields(value, {'schema', 'protocol', 'python_executable', 'python_resolved', 'python_identity',
         'python_configuration', 'runtime_distributions', 'runtime_auxiliary', 'runtime_capability',
         'worker_path', 'worker_identity', 'model_directory', 'model_name', 'model_files', 'model_bytes',
         'model_content_fingerprint', 'fingerprint', 'id', 'name', 'trusted', 'qualification',
-        'registered', 'restored'}, {'python_support'})
+        'registered', 'restored'}, {'python_support', 'runtime_additional_distributions'})
     if (value['schema'] != 'resonance-transcription-runtime/1' or value['protocol'] != 'local-file-job/1'
             or value['id'] != identity or identity != value['fingerprint'][:32]
             or value['qualification'] != 'unqualified'
@@ -161,6 +181,8 @@ def _profile(value, identity):
     if not {'model.bin', 'config.json', 'tokenizer.json'} <= value['model_files'].keys():
         raise ValueError('Incomplete reviewed model declaration.')
     _packages(value['runtime_distributions'])
+    if 'runtime_additional_distributions' in value:
+        _additional_packages(value['runtime_distributions'], value['runtime_additional_distributions'])
     for name in ('trusted', 'restored'):
         _bool(value[name])
     for name in ('name', 'model_name'):
@@ -364,7 +386,7 @@ def _worker_meta(value):
 
 def validate(name, raw):
     """Validate one declared file; return JSON only for collection checks."""
-    from .backup_sidecars import _json
+    from .backup_compat import _json
     if not limit(name) or is_input(name):
         raise ValueError('Unsupported transcription metadata path.')
     if not name.endswith('.json'):
@@ -538,30 +560,115 @@ def validate_collection(entries, records):
                 exact(name[:-len('.cache.json')] + suffix, checkpoint[kind])
 
 
+def namespace(name):
+    """Only the separately tagged flat store; workspace receipt jobs are disjoint."""
+    folded = name.casefold()
+    return folded.startswith((PREFIX + 'profiles/', PREFIX + 'jobs/'))
+
+
+def optional_cache_directories(entries):
+    """Finite empty recomputable cache paths belonging to declared jobs/workspaces."""
+    workspaces = set()
+    for entry in entries:
+        name = entry['filename']
+        match = JOB.fullmatch(name)
+        if match and match[2] == 'job':
+            workspaces.add(PREFIX + 'jobs/' + match[1] + '/worker')
+        match = WORKER.fullmatch(name)
+        if match:
+            workspaces.add(PREFIX + 'jobs/' + match[1] + '/' + match[2])
+    return {directory for root in workspaces
+            for directory in (root, root + '/logs', root + '/logs/cache')}
+
+
+def validate_state(root, entries, *, cancelled=lambda: False, restored=False):
+    """Bind the copied native state to its manifest; revoke only this protocol.
+
+    The state snapshot/restore layer has already streamed all manifest bytes.
+    This adapter rechecks bounded metadata and its references to those exact
+    retained inputs/results, without opening any original runtime or model.
+    """
+    from .backup_compat import _check_cancelled, read_regular
+    from .durable_state import atomic_json, encode
+    selected, records = [], {}
+    for entry in entries:
+        _check_cancelled(cancelled)
+        name = 'state/' + entry['filename']
+        if not namespace(name):
+            continue
+        maximum = limit(name)
+        if name != name.casefold() or maximum is None:
+            raise RestoreError('Unsupported or ambiguous local-file transcription state path.')
+        size = entry['size_bytes']
+        if (type(size) is not int or size < 0 or size > maximum
+                or size == 0 and not allows_empty(name)):
+            raise RestoreError('Invalid local-file transcription state size.')
+        item = {**entry, 'filename': name}
+        selected.append(item)
+        if not is_input(name):
+            raw = read_regular(root / entry['filename'], maximum, allow_empty=allows_empty(name))
+            if len(raw) != size or sha256(raw).hexdigest() != entry['sha256']:
+                raise RestoreError('Copied transcription metadata differs from its manifest.')
+            value = validate(name, raw)
+            if value is not None:
+                records[name] = value
+    validate_collection(selected, records)
+    if not restored or not selected:
+        return list(entries)
+    original = {entry['filename']: dict(entry) for entry in entries}
+    changed = {}
+    for name, value in records.items():
+        _check_cancelled(cancelled)
+        if PROFILE.fullmatch(name):
+            changed[name] = {**value, 'trusted': False, 'restored': True}
+        elif (match := JOB.fullmatch(name)) and match[2] == 'job':
+            from .transcription.service import ACTIVE
+            value = dict(value)
+            if value['status'] in ACTIVE or value['status'] in ('pending', 'preparing', 'interrupted'):
+                value['status'] = 'interrupted'
+            value.update(restored=True, recovery_review_required=True)
+            if value['status'] != 'complete':
+                value['error'] = 'Restored job: review and register the local runtime/model before resuming.'
+            changed[name] = value
+            changed[PREFIX + 'jobs/' + match[1] + '/control.json'] = {'action': 'run'}
+    for entry in selected:
+        _check_cancelled(cancelled)
+        name = entry['filename']
+        if (match := WORKER.fullmatch(name)) and match[3] in _CONTROL:
+            # Delete only previously manifest-verified launch state. Retained
+            # sources, historical receipts/logs and useful cache stay intact.
+            (root / name[len('state/'):]).unlink()
+            original.pop(name[len('state/'):])
+    for name, value in changed.items():
+        _check_cancelled(cancelled)
+        relative = name[len('state/'):]
+        target = root / relative
+        raw = encode(value)
+        atomic_json(target, value, replace=relative in original)
+        original[relative] = {'filename': relative, 'size_bytes': len(raw),
+                              'sha256': sha256(raw).hexdigest()}
+    result = sorted(original.values(), key=lambda row: row['filename'])
+    # Recheck the transformed private copy, not authority on the former host.
+    validate_state(root, result, cancelled=cancelled)
+    _check_cancelled(cancelled)
+    return result
+
+
 def prepare_restored_inventory(stage, destination, entries, *, cancelled):
-    """Revoke trust only after source-manifest verification, before publication."""
-    from . import backup_sidecars
-    from .transcription.service import prepare_restored_state
-    backup_sidecars._check_cancelled(cancelled)
-    prepare_restored_state(stage / 'state', destination, cancelled=cancelled)
-    output, records = [], {}
-    names = {entry['filename'] for entry in entries}
-    names.update(path.relative_to(stage).as_posix()
-                 for path in (stage / PREFIX).glob('jobs/*/control.json'))
-    original = {entry['filename']: entry for entry in entries}
-    for name in sorted(names):
-        backup_sidecars._check_cancelled(cancelled)
-        if not name.startswith(PREFIX):
-            output.append(original[name])
-        elif (stage / name).exists():
-            if is_input(name):
-                output.append(original[name])  # Already copied and byte-verified.
-            else:
-                raw = backup_sidecars.read_regular(stage / name, limit(name), allow_empty=allows_empty(name))
-                value = validate(name, raw)
-                if value is not None:
-                    records[name] = value
-                output.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
-    validate_collection(output, records)
-    backup_sidecars._check_cancelled(cancelled)
-    return tuple(output)
+    """Accepted flat-adapter API, composed with this host's typed revocation.
+
+    Call only after the enclosing inventory streamed and verified every source.
+    The destination does not retarget historical external path declarations.
+    """
+    from .state_recovery import prepare_restored_state
+    from .backup_compat import _check_cancelled
+    _check_cancelled(cancelled)
+    state = [{**row, 'filename': row['filename'][len('state/'):]}
+             for row in entries if row['filename'].startswith('state/')]
+    if not state:
+        return tuple(entries)
+    state = prepare_restored_state(stage / 'state', state, cancelled=cancelled)
+    result = [row for row in entries if not row['filename'].startswith('state/')]
+    result.extend({**row, 'filename': 'state/' + row['filename']} for row in state)
+    _check_cancelled(cancelled)
+    return tuple(sorted(result, key=lambda row: row['filename']))

@@ -1,0 +1,685 @@
+name: Resonance read-only capture access diagnosis
+
+# An isolated test-first experiment, not the application's recurring CI or
+# installer. This branch is created once for the 2026-11-27 evaluation.
+on:
+  push:
+    branches: [carr/ci-endpoint-evaluation-20261127]
+    paths:
+      - .github/workflows/carr-capture-format-diagnostic.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-capture-format-diagnostic-20261127
+  cancel-in-progress: false
+
+jobs:
+  endpoint-evaluation:
+    name: Exact reviewed input / native DirectShow format diagnosis
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact evaluation commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact application source and pinned desktop dependencies
+        id: install_runtime
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-endpoint-evaluation-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start existing audio services without changing startup policy
+        timeout-minutes: 2
+        run: |
+          $evidence = @()
+          foreach ($serviceName in @('AudioEndpointBuilder', 'Audiosrv')) {
+            $service = Get-Service -Name $serviceName -ErrorAction Stop
+            $before = $service.Status.ToString()
+            try {
+              if ($service.Status -eq 'Stopped') {
+                $service.Start()
+              } elseif ($service.Status -notin @('Running', 'StartPending')) {
+                throw "Unsupported service state: $serviceName $before"
+              }
+              $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
+            } finally {
+              $service.Refresh()
+              $evidence += @{ name=$serviceName; before=$before; after=$service.Status.ToString(); start_type=$service.StartType.ToString() }
+              $service.Dispose()
+              @{ services=$evidence; startup_policy_changed=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-results/audio-services.json'
+            }
+          }
+
+      - name: Verify only JSON serialization in separate PowerShell 5.1 and 7 processes
+        timeout-minutes: 2
+        run: |
+          $legacy = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell/v1.0/powershell.exe'
+          $modern = Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
+          & $legacy -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps51.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $modern -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps7.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Evaluate the exact signed driver under normal Windows policy
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/ci_audio_endpoint.py --receipt ci-results/endpoint-evaluation.json 2>&1 | Tee-Object 'ci-results/endpoint-evaluation.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the unchanged pinned audio runtime
+        timeout-minutes: 10
+        run: |
+          $audioRuntime = Join-Path $env:RUNNER_TEMP 'carr-audio-format-runtime'
+          & $env:CARR_PYTHON -I -B packaging/prepare_windows_audio.py --download --output $audioRuntime | Tee-Object 'ci-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audioRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Prepare exact native read-only format inspection
+        run: |
+          $nativeProbe = @'
+          """Disposable CI diagnosis of one exact already-reviewed DirectShow input.
+          
+          Read the selected moniker's documented WaveInID rather than parsing an opaque
+          endpoint ID or guessing from a shortened WinMM display name. No capture buffers,
+          recording start, default-device changes, policy changes or fallback are used.
+          """
+          import ctypes as C
+          from ctypes import wintypes as W
+          import json
+          import os
+          import sys
+          from comtypes import GUID
+          from comtypes.automation import VARIANT
+          
+          if os.name != 'nt' or os.environ.get('GITHUB_REF') != 'refs/heads/carr/ci-endpoint-evaluation-20261127':
+              raise RuntimeError('Exact disposable endpoint evaluation only.')
+          selected, friendly = sys.argv[1:]
+          if friendly != 'CABLE Output (VB-Audio Virtual Cable)' or not selected.startswith('@device_cm_'):
+              raise ValueError('The exact selected reviewed input is required.')
+          
+          P, HR = C.c_void_p, C.c_long
+          ole = C.OleDLL('ole32')
+          ole.CoInitializeEx.argtypes = [P, W.DWORD]
+          ole.CoInitializeEx.restype = HR
+          ole.CoUninitialize.argtypes = []
+          ole.CoUninitialize.restype = None
+          ole.CoCreateInstance.argtypes = [C.POINTER(GUID), P, W.DWORD, C.POINTER(GUID), C.POINTER(P)]
+          ole.CoCreateInstance.restype = HR
+          ole.CreateBindCtx.argtypes = [W.DWORD, C.POINTER(P)]
+          ole.CreateBindCtx.restype = HR
+          ole.CoTaskMemFree.argtypes = [P]
+          ole.CoTaskMemFree.restype = None
+          oleaut = C.OleDLL('oleaut32')
+          oleaut.VariantClear.argtypes = [C.POINTER(VARIANT)]
+          oleaut.VariantClear.restype = HR
+          
+          def method(pointer, offset, args=(), result=HR):
+              table = C.cast(pointer, C.POINTER(C.POINTER(P))).contents
+              return C.WINFUNCTYPE(result, P, *args)(table[offset])
+          
+          def release(pointer):
+              if pointer:
+                  method(pointer, 2, result=W.ULONG)(pointer)
+          
+          def ok(code, label):
+              if code < 0:
+                  raise OSError(f'{label}: HRESULT 0x{code & 0xffffffff:08x}')
+              return code
+          
+          def query(pointer, identity):
+              result = P()
+              guid = GUID(identity)
+              ok(method(pointer, 0, (C.POINTER(GUID), C.POINTER(P)))(pointer, C.byref(guid), C.byref(result)), 'QueryInterface')
+              return result
+          
+          def property_value(bag, name):
+              value = VARIANT()
+              try:
+                  ok(method(bag, 3, (W.LPCWSTR, C.POINTER(VARIANT), P))(bag, name, C.byref(value), None), 'IPropertyBag.Read ' + name)
+                  return value.value
+              finally:
+                  oleaut.VariantClear(C.byref(value))
+          
+          class WaveFormat(C.Structure):
+              _pack_ = 1
+              _fields_ = [('tag', W.WORD), ('channels', W.WORD), ('rate', W.DWORD),
+                          ('average', W.DWORD), ('alignment', W.WORD),
+                          ('bits', W.WORD), ('extra', W.WORD)]
+          
+          class MediaType(C.Structure):
+              _fields_ = [('major', GUID), ('subtype', GUID), ('fixed', W.BOOL),
+                          ('temporal', W.BOOL), ('sample_size', W.ULONG), ('format_type', GUID),
+                          ('unknown', P), ('format_size', W.ULONG), ('format', P)]
+          
+          def free_type(pointer):
+              if pointer:
+                  value = C.cast(pointer, C.POINTER(MediaType)).contents
+                  release(value.unknown)
+                  if value.format:
+                      ole.CoTaskMemFree(value.format)
+                  ole.CoTaskMemFree(pointer)
+          
+          def describe_type(pointer):
+              value = C.cast(pointer, C.POINTER(MediaType)).contents
+              result = {'format_type': str(value.format_type), 'format_size': int(value.format_size)}
+              if str(value.format_type).lower() == '{05589f81-c356-11ce-bf01-00aa0055595a}' and 16 <= value.format_size <= 65536 and value.format:
+                  raw = C.string_at(value.format, min(value.format_size, C.sizeof(WaveFormat)))
+                  raw = raw + b'\x00' * (C.sizeof(WaveFormat) - len(raw))
+                  wave = WaveFormat.from_buffer_copy(raw)
+                  result.update(tag=int(wave.tag), channels=int(wave.channels),
+                                bits=int(wave.bits), rate=int(wave.rate), extra=int(wave.extra))
+              return result
+          
+
+          def inspect_wasapi(winmm, wave_id, report):
+              # Primary ABI: Microsoft win32metadata mmdeviceapi.h, Audioclient.h,
+              # mmddk.h, and the documented legacy waveform endpoint-ID bridge.
+              # Open the exact same capture endpoint without Start/GetBuffer.
+              result = {'scope': 'exact selected native input only',
+                        'capture_started': False, 'buffers_requested': False,
+                        'shared_mode': True, 'property_changes': False,
+                        'device_fallback': False, 'calls': []}
+              report['wasapi'] = result
+              winmm.waveInMessage.argtypes = [P, W.UINT, C.c_size_t, C.c_size_t]
+              winmm.waveInMessage.restype = W.UINT
+
+              def mm_id(label):
+                  size = C.c_size_t(0)
+                  code = int(winmm.waveInMessage(P(wave_id), 0x0800 + 18,
+                                                C.addressof(size), 0))
+                  result['calls'].append({'operation': label + '.size',
+                                          'mmresult': code})
+                  if code:
+                      return None
+                  if not 2 <= size.value <= 16384 or size.value % 2:
+                      raise RuntimeError('Exact native endpoint ID exceeds its bound.')
+                  buffer = C.create_unicode_buffer(size.value // 2)
+                  code = int(winmm.waveInMessage(P(wave_id), 0x0800 + 17,
+                                                C.addressof(buffer), size.value))
+                  result['calls'].append({'operation': label + '.value',
+                                          'mmresult': code})
+                  if code:
+                      return None
+                  value = C.string_at(C.addressof(buffer), size.value).decode('utf-16le')
+                  if not value.endswith('\x00') or not value[:-1] or '\x00' in value[:-1]:
+                      raise RuntimeError('Exact native endpoint ID is not bounded terminated text.')
+                  return value[:-1]
+
+              def observed(label, code):
+                  result['calls'].append({'operation': label,
+                                          'hresult': f'0x{code & 0xffffffff:08x}'})
+                  return code >= 0
+
+              mm_enum, device, endpoint, client, mix = (P() for _ in range(5))
+              try:
+                  endpoint_id = mm_id('waveIn.endpoint.before')
+                  if endpoint_id is None:
+                      return
+                  result['endpoint_id'] = endpoint_id
+                  # GetDevice consumes this opaque ID; never parse its contents
+                  # and never choose an endpoint by name, role, or default.
+                  clsid = GUID('{BCDE0395-E52F-467C-8E3D-C4579291692E}')
+                  iid = GUID('{A95664D2-9614-4F35-A746-DE8DB63617E6}')
+                  create = C.WinDLL('ole32', winmode=0x00000800).CoCreateInstance
+                  create.argtypes = [C.POINTER(GUID), P, W.DWORD,
+                                     C.POINTER(GUID), C.POINTER(P)]
+                  create.restype = HR
+                  code = create(C.byref(clsid), None, 1, C.byref(iid), C.byref(mm_enum))
+                  if not observed('CoCreateInstance.IMMDeviceEnumerator', code):
+                      return
+                  if not mm_enum:
+                      raise RuntimeError('The native endpoint enumerator is absent.')
+                  code = method(mm_enum, 5, (W.LPCWSTR, C.POINTER(P)))(
+                      mm_enum, endpoint_id, C.byref(device))
+                  if not observed('IMMDeviceEnumerator.GetDevice', code):
+                      return
+                  if not device:
+                      raise RuntimeError('The selected native endpoint is absent.')
+                  state = W.DWORD()
+                  code = method(device, 6, (C.POINTER(W.DWORD),))(device, C.byref(state))
+                  if not observed('IMMDevice.GetState.before', code):
+                      return
+                  result['state_before'] = int(state.value)
+                  endpoint_iid = GUID('{1BE09788-6894-4089-8586-9A2A6C265AC5}')
+                  code = method(device, 0, (C.POINTER(GUID), C.POINTER(P)))(
+                      device, C.byref(endpoint_iid), C.byref(endpoint))
+                  if not observed('QueryInterface.IMMEndpoint', code):
+                      return
+                  if not endpoint:
+                      raise RuntimeError('The native endpoint data-flow interface is absent.')
+                  flow = C.c_int(-1)
+                  code = method(endpoint, 3, (C.POINTER(C.c_int),))(endpoint, C.byref(flow))
+                  if not observed('IMMEndpoint.GetDataFlow', code):
+                      return
+                  result['data_flow'] = int(flow.value)
+                  if flow.value != 1:
+                      raise RuntimeError('The exact selected endpoint is not a capture endpoint.')
+                  if state.value != 1:
+                      result['not_initialized'] = 'Selected capture endpoint is not active.'
+                      return
+                  client_iid = GUID('{1CB9AD4C-DBFA-4C32-B178-C2F568A703B2}')
+                  code = method(device, 3, (C.POINTER(GUID), W.DWORD, P, C.POINTER(P)))(
+                      device, C.byref(client_iid), 1, None, C.byref(client))
+                  if not observed('IMMDevice.Activate.IAudioClient', code):
+                      return
+                  if not client:
+                      raise RuntimeError('The exact selected audio client is absent.')
+                  default_period, minimum_period = C.c_longlong(), C.c_longlong()
+                  code = method(client, 9, (C.POINTER(C.c_longlong), C.POINTER(C.c_longlong)))(
+                      client, C.byref(default_period), C.byref(minimum_period))
+                  if observed('IAudioClient.GetDevicePeriod', code):
+                      result['device_period_100ns'] = {'default': default_period.value,
+                                                      'minimum': minimum_period.value}
+                  code = method(client, 8, (C.POINTER(P),))(client, C.byref(mix))
+                  if not observed('IAudioClient.GetMixFormat', code):
+                      return
+                  if not mix or C.sizeof(WaveFormat) != 18:
+                      raise RuntimeError('Native mix format or WAVEFORMATEX ABI is unavailable.')
+                  wave = C.cast(mix, C.POINTER(WaveFormat)).contents
+                  if (not 1 <= wave.channels <= 64 or not 1 <= wave.rate <= 768000
+                          or not 1 <= wave.bits <= 64 or not 0 <= wave.extra <= 65518
+                          or not 1 <= wave.alignment <= 65535
+                          or not 1 <= wave.average <= 0xffffffff):
+                      raise RuntimeError('Native mix format exceeds its diagnostic bound.')
+                  result['mix_format'] = {'tag': int(wave.tag), 'channels': int(wave.channels),
+                      'rate': int(wave.rate), 'bits': int(wave.bits),
+                      'block_align': int(wave.alignment), 'average_bytes_per_second': int(wave.average),
+                      'extra_bytes': int(wave.extra)}
+                  # No forced PCM format, exclusive mode, session settings,
+                  # event callback, capture service, or sample buffer request.
+                  if mm_id('waveIn.endpoint.pre_initialize') != endpoint_id:
+                      raise RuntimeError('Selected native endpoint changed before initialization.')
+                  code = method(client, 3,
+                      (C.c_int, W.DWORD, C.c_longlong, C.c_longlong, P, C.POINTER(GUID)))(
+                      client, 0, 0, 0, 0, mix, None)
+                  result['stream_initialized'] = observed('IAudioClient.Initialize.shared', code)
+                  code = method(device, 6, (C.POINTER(W.DWORD),))(device, C.byref(state))
+                  if observed('IMMDevice.GetState.after', code):
+                      result['state_after'] = int(state.value)
+                  result['endpoint_unchanged'] = mm_id('waveIn.endpoint.after') == endpoint_id
+                  if not result['endpoint_unchanged']:
+                      raise RuntimeError('Selected native endpoint changed during initialization.')
+              finally:
+                  # Releasing an initialized-but-never-started client closes
+                  # the stream. GetMixFormat storage is independently owned.
+                  for pointer in (client, endpoint, device, mm_enum):
+                      release(pointer)
+                  if mix:
+                      ole.CoTaskMemFree(mix)
+
+          report = {'status': 'DIAGNOSED', 'scope': 'selected moniker only; no recording started',
+                    'physical_microphone': 'NOT_RUN', 'policy_changes': False, 'fallback': False}
+          enumerator = monikers = context = chosen = capture_filter = pins = P()
+          initialized = False
+          try:
+              # comtypes initialized this thread already; an additional balanced STA entry.
+              ok(ole.CoInitializeEx(None, 2), 'CoInitializeEx')
+              initialized = True
+              enumerator, monikers, context, chosen, capture_filter, pins = (P() for _ in range(6))
+              clsid = GUID('{62BE5D10-60EB-11D0-BD3B-00A0C911CE86}')
+              enum_iid = GUID('{29840822-5B84-11D0-BD3B-00A0C911CE86}')
+              category = GUID('{33D9A762-90C8-11D0-BD43-00A0C911CE86}')
+              ok(ole.CoCreateInstance(C.byref(clsid), None, 1, C.byref(enum_iid), C.byref(enumerator)), 'Create system enumerator')
+              ok(ole.CreateBindCtx(0, C.byref(context)), 'CreateBindCtx')
+              code = method(enumerator, 3, (C.POINTER(GUID), C.POINTER(P), W.DWORD))(enumerator, C.byref(category), C.byref(monikers), 0)
+              if code != 0 or not monikers:
+                  raise RuntimeError('Audio moniker inventory is absent.')
+              matches = 0
+              for _ in range(64):
+                  moniker, name_pointer = P(), P()
+                  fetched = W.ULONG()
+                  code = method(monikers, 3, (W.ULONG, C.POINTER(P), C.POINTER(W.ULONG)))(monikers, 1, C.byref(moniker), C.byref(fetched))
+                  if code == 1:
+                      break
+                  ok(code, 'IEnumMoniker.Next')
+                  if fetched.value != 1 or not moniker:
+                      raise RuntimeError('Invalid moniker enumeration.')
+                  try:
+                      ok(method(moniker, 20, (P, P, C.POINTER(P)))(moniker, context, None, C.byref(name_pointer)), 'GetDisplayName')
+                      display = C.wstring_at(name_pointer)
+                      if display.replace(':', '_') == selected:
+                          matches += 1
+                          if chosen:
+                              raise RuntimeError('Selected moniker is ambiguous.')
+                          chosen, moniker = moniker, P()
+                  finally:
+                      if name_pointer:
+                          ole.CoTaskMemFree(name_pointer)
+                      release(moniker)
+              else:
+                  raise RuntimeError('Audio moniker inventory exceeds its bound.')
+              if matches != 1:
+                  raise RuntimeError('Selected moniker changed before native inspection.')
+              bag = P()
+              bag_iid = GUID('{55272A00-42CB-11CE-8135-00AA004BB851}')
+              ok(method(chosen, 9, (P, P, C.POINTER(GUID), C.POINTER(P)))(chosen, context, None, C.byref(bag_iid), C.byref(bag)), 'BindToStorage')
+              try:
+                  if property_value(bag, 'FriendlyName') != friendly:
+                      raise RuntimeError('Selected moniker display identity changed.')
+                  wave_id = property_value(bag, 'WaveInID')
+                  if type(wave_id) is not int or not 0 <= wave_id < 64:
+                      raise RuntimeError('Moniker does not supply a bounded native WaveInID.')
+                  report['wave_in_id'] = wave_id
+              finally:
+                  release(bag)
+              winmm = C.WinDLL('winmm')
+              winmm.waveInGetNumDevs.argtypes = []
+              winmm.waveInGetNumDevs.restype = W.UINT
+              if not wave_id < winmm.waveInGetNumDevs() <= 64:
+                  raise RuntimeError('Native input inventory changed.')
+              winmm.waveInOpen.argtypes = [C.POINTER(P), W.UINT, C.POINTER(WaveFormat), C.c_size_t, C.c_size_t, W.DWORD]
+              winmm.waveInOpen.restype = W.UINT
+              winmm.waveInClose.argtypes = [P]
+              winmm.waveInClose.restype = W.UINT
+              winmm.waveInGetErrorTextW.argtypes = [W.UINT, W.LPWSTR, W.UINT]
+              winmm.waveInGetErrorTextW.restype = W.UINT
+              def explanation(code):
+                  text = C.create_unicode_buffer(512)
+                  result = winmm.waveInGetErrorTextW(code, text, len(text))
+                  return text.value if result == 0 else 'No driver error text.'
+              report['wave_in_trials'] = []
+              for rate in (44100, 48000):
+                  for channels in (1, 2):
+                      wave = WaveFormat(1, channels, rate, rate * channels * 2, channels * 2, 16, 0)
+                      for flags in (1, 9, 0):
+                          handle = P()
+                          result = int(winmm.waveInOpen(C.byref(handle), wave_id, C.byref(wave), 0, 0, flags))
+                          row = {'rate': rate, 'channels': channels, 'bits': 16,
+                                 'operation': 'open-without-buffers' if flags == 0 else 'query',
+                                 'direct': bool(flags & 8), 'result': result, 'error': explanation(result)}
+                          report['wave_in_trials'].append(row)
+                          if handle:
+                              closed = int(winmm.waveInClose(handle))
+                              row['close_result'] = closed
+                              if closed:
+                                  raise RuntimeError('Exact native input handle did not close.')
+              inspect_wasapi(winmm, wave_id, report)
+              filter_iid = GUID('{56A86895-0AD4-11CE-B03A-0020AF0BA770}')
+              ok(method(chosen, 8, (P, P, C.POINTER(GUID), C.POINTER(P)))(chosen, context, None, C.byref(filter_iid), C.byref(capture_filter)), 'BindToObject capture filter')
+              ok(method(capture_filter, 10, (C.POINTER(P),))(capture_filter, C.byref(pins)), 'IBaseFilter.EnumPins')
+              report['directshow_formats'] = []
+              for _ in range(32):
+                  pin = P()
+                  fetched = W.ULONG()
+                  code = method(pins, 3, (W.ULONG, C.POINTER(P), C.POINTER(W.ULONG)))(pins, 1, C.byref(pin), C.byref(fetched))
+                  if code == 1:
+                      break
+                  ok(code, 'IEnumPins.Next')
+                  if fetched.value != 1 or not pin:
+                      raise RuntimeError('Invalid native pin enumeration.')
+                  config = P()
+                  try:
+                      direction = C.c_int()
+                      ok(method(pin, 9, (C.POINTER(C.c_int),))(pin, C.byref(direction)), 'QueryDirection')
+                      if direction.value != 1:
+                          continue
+                      config = query(pin, '{C6E13340-30AC-11D0-A18C-00A0C9118956}')
+                      count, size = C.c_int(), C.c_int()
+                      ok(method(config, 5, (C.POINTER(C.c_int), C.POINTER(C.c_int)))(config, C.byref(count), C.byref(size)), 'GetNumberOfCapabilities')
+                      if not 0 < count.value <= 256 or not 0 < size.value <= 65536:
+                          raise RuntimeError('Capture format inventory exceeds its bound.')
+                      buffer = C.create_string_buffer(size.value)
+                      default = P()
+                      code = method(config, 4, (C.POINTER(P),))(config, C.byref(default))
+                      row = {'kind': 'current', 'get_result': f'0x{code & 0xffffffff:08x}'}
+                      try:
+                          if code == 0 and default:
+                              row.update(describe_type(default))
+                              set_code = method(config, 3, (P,))(config, default)
+                              row['set_result'] = f'0x{set_code & 0xffffffff:08x}'
+                      finally:
+                          free_type(default)
+                      report['directshow_formats'].append(row)
+                      for index in range(count.value):
+                          media = P()
+                          code = method(config, 6, (C.c_int, C.POINTER(P), P))(config, index, C.byref(media), buffer)
+                          try:
+                              if code != 0 or not media:
+                                  continue
+                              fields = describe_type(media)
+                              if fields.get('rate') in (44100, 48000) and fields.get('bits') == 16 and fields.get('channels') in (1, 2):
+                                  set_code = method(config, 3, (P,))(config, media)
+                                  report['directshow_formats'].append(dict(fields, kind='advertised',
+                                      index=index, set_result=f'0x{set_code & 0xffffffff:08x}'))
+                          finally:
+                              free_type(media)
+                  finally:
+                      release(config)
+                      release(pin)
+              else:
+                  raise RuntimeError('Capture pin inventory exceeds its bound.')
+          except BaseException as exc:
+              report['status'] = 'FAILED'
+              report['error'] = type(exc).__name__ + ': ' + str(exc)
+              raise
+          finally:
+              for pointer in (pins, capture_filter, chosen, context, monikers, enumerator):
+                  release(pointer)
+              if initialized:
+                  ole.CoUninitialize()
+              print(json.dumps(report, ensure_ascii=False), flush=True)
+          '@
+          $nativePath = Join-Path $env:RUNNER_TEMP 'carr-native-input-diagnostic.py'
+          $nativeProbe | Set-Content -LiteralPath $nativePath -Encoding utf8
+          "CARR_INPUT_DIAGNOSTIC=$nativePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Inspect only the exact reviewed capture device and its advertised formats
+        timeout-minutes: 3
+        run: |
+          $probe = @'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import sys
+          from tempfile import TemporaryDirectory
+          import traceback
+          from carr_library.audio.models import AudioBudget
+          from carr_library.audio.process import run_process
+          from carr_library.audio.recording import RecordingService
+          from carr_library.native_runtime import activate_bundled_runtime
+          
+          if os.name != 'nt' or os.environ.get('GITHUB_REF') != 'refs/heads/carr/ci-endpoint-evaluation-20261127':
+              raise RuntimeError('This diagnosis is limited to the existing reviewed disposable Windows evaluation.')
+          ffmpeg = Path(os.environ['CARR_AUDIO_RUNTIME']) / 'bin' / 'ffmpeg.exe'
+          report_path = Path('ci-results/capture-format-diagnostic.json')
+          report = {'schema': 'carr-ci-capture-format-diagnostic/1', 'status': 'FAILED',
+                    'source_commit': os.environ['GITHUB_SHA'], 'device_fallback': False,
+                    'physical_microphone': 'NOT_RUN', 'human_listening': 'NOT_RUN',
+                    'input_format_changes': 'diagnostic invocations only; application unchanged',
+                    'ffmpeg_sha256': hashlib.sha256(ffmpeg.read_bytes()).hexdigest(),
+                    'trials': []}
+          budget = AudioBudget(timeout=18, max_output_bytes=1024*1024, max_log_bytes=256*1024,
+                               max_alloc_bytes=64*1024*1024, threads=1)
+          native = activate_bundled_runtime()
+          try:
+              with TemporaryDirectory(prefix='carr-capture-format-') as temporary:
+                  library = Path(temporary) / 'library'
+                  library.mkdir()
+                  service = RecordingService(library, ffmpeg=str(ffmpeg))
+                  devices = service.devices()
+                  selected = [device for device in devices if device.name == 'CABLE Output (VB-Audio Virtual Cable)']
+                  if len(selected) != 1:
+                      raise RuntimeError('Exact reviewed virtual input is unavailable or ambiguous.')
+                  device = selected[0]
+                  from carr_library.speech import output_devices as outputs
+                  api = outputs._native()
+                  count = int(api.waveOutGetNumDevs())
+                  if not 0 <= count <= 64:
+                      raise RuntimeError('Output inventory exceeds the reviewed bound.')
+                  report['native_outputs'] = []
+                  for index in range(count):
+                      item = outputs._device(api, index, lambda: False)
+                      report['native_outputs'].append({'index': item.index, 'name': item.name,
+                                                      'interface_sha256': item.identity})
+                  report['selected_device'] = {'id': device.id, 'name': device.name, 'alternative': device.alternative}
+                  native_result = run_process([sys.executable, '-I', '-B',
+                      str(Path(os.environ['CARR_INPUT_DIAGNOSTIC']).resolve(strict=True)),
+                      device.alternative, device.name], budget=budget, owned_tree=True, allow_failure=True)
+                  report['native_format_diagnosis'] = {'exit_code': native_result.returncode,
+                      'stdout': native_result.stdout.decode('utf-8', errors='replace'),
+                      'stderr': native_result.stderr.decode('utf-8', errors='replace')}
+                  def invoke(name, options, *, listing=False):
+                      args = [str(ffmpeg), '-hide_banner', '-nostdin', '-loglevel', 'debug',
+                              '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1']
+                      args += options + ['-f', 'dshow', '-i', 'audio=' + device.alternative]
+                      if not listing:
+                          args += ['-map', '0:a:0', '-vn', '-t', '1', '-f', 'null', '-']
+                      try:
+                          result = run_process(args, budget=budget, owned_tree=True, allow_failure=True)
+                          row = {'name': name, 'input_options': options, 'exit_code': result.returncode,
+                                 'stdout': result.stdout.decode('utf-8', errors='replace'),
+                                 'stderr': result.stderr.decode('utf-8', errors='replace')}
+                          report['trials'].append(row)
+                          return row
+                      finally:
+                          report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+                  capabilities = invoke('list-exact-device-options', ['-list_options', 'true'], listing=True)
+                  formats = {(int(ch), int(bits), int(rate)) for ch, bits, rate in
+                             re.findall(r'ch=\s*(\d+), bits=\s*(\d+), rate=\s*(\d+)', capabilities['stderr'])}
+                  report['advertised_formats'] = [list(item) for item in sorted(formats)]
+                  invoke('current-default-format', ['-rtbufsize', '16M'])
+                  for channels in (2, 1):
+                      if (channels, 16, 48000) in formats:
+                          invoke('advertised-pcm16-48000-' + str(channels),
+                                 ['-rtbufsize', '16M', '-sample_rate', '48000',
+                                  '-sample_size', '16', '-channels', str(channels)])
+                  report['status'] = 'DIAGNOSED'
+          except BaseException:
+              report['error'] = traceback.format_exc()
+              raise
+          finally:
+              if native is not None:
+                  native.close()
+              report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+              print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
+          '@
+          $path = Join-Path $env:RUNNER_TEMP 'carr-capture-format-diagnostic.py'
+          $probe | Set-Content -LiteralPath $path -Encoding utf8
+          & $env:CARR_PYTHON -I -B $path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Read fixed microphone consent, policy and runner session diagnostics
+        if: always()
+        timeout-minutes: 2
+        run: |
+          $probe = @'
+          """Read fixed Windows capture-access settings; never change consent or policy."""
+          import ctypes
+          from ctypes import wintypes
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import sys
+          import winreg
+          
+          if sys.platform != 'win32' or os.environ.get('GITHUB_ACTIONS') != 'true':
+              raise RuntimeError('This read-only diagnosis requires the disposable Windows CI runner.')
+          
+          report = {
+              'status': 'DIAGNOSED', 'registry_writes': False, 'consent_changes': False,
+              'device_access_attempt': False, 'physical_microphone': 'NOT_RUN',
+              'windows': tuple(sys.getwindowsversion()), 'settings': [],
+          }
+          def read_value(label, hive, key, value):
+              result = {'label': label, 'key': key, 'value_name': value}
+              try:
+                  with winreg.OpenKey(hive, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
+                      data, kind = winreg.QueryValueEx(handle, value)
+                  result['registry_type'] = kind
+                  if type(data) is int and 0 <= data <= 0xffffffff:
+                      result['value'] = data
+                  elif isinstance(data, str) and data in ('Allow', 'Deny', 'Prompt', 'UserInControl'):
+                      result['value'] = data
+                  else:
+                      result['value'] = 'OTHER_REDACTED'
+              except FileNotFoundError:
+                  result['state'] = 'NOT_CONFIGURED_AT_THIS_KEY'
+              except OSError as exc:
+                  result['state'] = 'READ_FAILED'
+                  result['winerror'] = exc.winerror
+              report['settings'].append(result)
+          
+          consent = r'SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone'
+          for label, hive in (('current-user', winreg.HKEY_CURRENT_USER), ('machine', winreg.HKEY_LOCAL_MACHINE)):
+              read_value(label, hive, consent, 'Value')
+              read_value(label + '-desktop', hive, consent + r'\NonPackaged', 'Value')
+          policy = r'SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
+          for name in ('LetAppsAccessMicrophone', 'LetDesktopAppsAccessMicrophone',
+                       'LetAppsAccessMicrophone_ForceAllowUnsigned', 'LetAppsAccessMicrophone_ForceDenyUnsigned'):
+              read_value('machine-policy', winreg.HKEY_LOCAL_MACHINE, policy, name)
+          terminal = r'SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+          for name in ('fDisableAudioCapture', 'fDisableAudio'):
+              read_value('remote-session-policy', winreg.HKEY_LOCAL_MACHINE, terminal, name)
+          
+          kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+          query = kernel.ProcessIdToSessionId
+          query.argtypes = (wintypes.DWORD, ctypes.POINTER(wintypes.DWORD))
+          query.restype = wintypes.BOOL
+          session = wintypes.DWORD()
+          if query(os.getpid(), ctypes.byref(session)):
+              report['process_session_id'] = session.value
+          else:
+              report['session_query_error'] = ctypes.get_last_error()
+          name = os.environ.get('SESSIONNAME', '')
+          report['session_name'] = name if re.fullmatch(r'Console|Services|RDP-Tcp#\d{1,8}', name) else 'UNSET_OR_OTHER'
+          report['sources'] = [
+              'https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-activateaudiointerfaceasync',
+              'https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-privacy',
+          ]
+          path = Path('ci-results/capture-access-settings.json')
+          path.write_text(json.dumps(report, ensure_ascii=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(report, ensure_ascii=True, indent=2), flush=True)
+          '@
+          $path = Join-Path $env:RUNNER_TEMP 'carr-capture-access-readonly.py'
+          $probe | Set-Content -LiteralPath $path -Encoding utf8
+          & $env:CARR_PYTHON -I -B $path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain only bounded synthetic text evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-capture-format-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/*.json
+          if-no-files-found: error
+          retention-days: 7

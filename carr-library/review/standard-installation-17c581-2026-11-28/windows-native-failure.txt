@@ -1,0 +1,10 @@
+2026-11-28T00:48:43.3960158Z Traceback (most recent call last):
+2026-11-28T00:48:43.3984619Z   File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_standard_installer_smoke.py", line 400, in <module>
+2026-11-28T00:48:43.4003223Z     main()
+2026-11-28T00:48:43.4009532Z   File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_standard_installer_smoke.py", line 395, in main
+2026-11-28T00:48:43.4014796Z     print(json.dumps(probe(args.setup.absolute(), args.build_evidence.absolute(),
+2026-11-28T00:48:43.4019935Z                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T00:48:43.4025520Z   File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_standard_installer_smoke.py", line 361, in probe
+2026-11-28T00:48:43.4030855Z     raise RuntimeError('Normal uninstall left program files or registration.')
+2026-11-28T00:48:43.4038014Z RuntimeError: Normal uninstall left program files or registration.
+2026-11-28T00:48:43.4227609Z ##[error]Process completed with exit code 1.

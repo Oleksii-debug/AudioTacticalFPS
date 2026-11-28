@@ -3,7 +3,7 @@
 These are process/resource boundaries, not a sandbox for an untrusted voice DLL.
 Only explicitly installed local engines are executed; no model is downloaded.
 """
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from hashlib import sha256
 import math
 import os
@@ -96,11 +96,14 @@ def system_powershell(path, *, architecture=None):
     return local_file(candidate, _allow_hardlinks=True)
 
 
-def digest(path):
+def digest(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     h = sha256()
     with open(path, 'rb') as source:
         for block in iter(lambda: source.read(1024 * 1024), b''):
+            check_cancelled(cancelled)
             h.update(block)
+    check_cancelled(cancelled)
     return h.hexdigest()
 
 
@@ -125,7 +128,8 @@ def new_output(destination, *, cancelled=lambda: False):
     if os.path.lexists(target):
         raise FileExistsError('The output already exists. Choose a new filename.')
     parent_identity = (target.parent.stat().st_dev, target.parent.stat().st_ino)
-    with TemporaryDirectory(prefix='.speech-', dir=target.parent) as temporary:
+    from ..audio.cleanup import retained_temporary_directory
+    with retained_temporary_directory(prefix='.speech-', dir=target.parent) as temporary:
         staged = Path(temporary) / 'output.wav'
         yield staged
         check_cancelled(cancelled)
@@ -169,9 +173,11 @@ def stop_process(process):
 
 def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
                 timeout=120, output_file=None, max_output=256 * 1024 * 1024,
-                allow_failure=False):
+                allow_failure=False, owned_tree=False):
     """Execute a fixed argv and bounded private input; never invoke a shell."""
     check_cancelled(cancelled)
+    if type(owned_tree) is not bool:
+        raise ValueError('Speech process ownership must be explicit.')
     if not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError('A positive finite worker timeout is required.')
     if type(max_output) is not int or max_output < 1:
@@ -186,14 +192,24 @@ def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
     options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
                 | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)} if os.name == 'nt'
                else {'start_new_session': True})
-    with TemporaryFile() as incoming, TemporaryFile() as outgoing, TemporaryFile() as errors:
+    from ..audio.cleanup import retained_context
+    with (retained_context(TemporaryFile()) as incoming,
+          retained_context(TemporaryFile()) as outgoing,
+          retained_context(TemporaryFile()) as errors):
         if input_bytes:
             incoming.write(input_bytes)
             incoming.seek(0)
-        process = subprocess.Popen([os.fspath(arg) for arg in args], cwd=cwd, env=environment,
-                                   stdin=incoming, stdout=outgoing, stderr=errors, shell=False, **options)
-        started = time.monotonic()
-        try:
+        with ExitStack() as lifetime:
+            arguments = [os.fspath(arg) for arg in args]
+            if owned_tree:
+                from ..audio.process import owned_process
+                process = lifetime.enter_context(owned_process(arguments, cwd=cwd, env=environment,
+                    stdin=incoming, stdout=outgoing, stderr=errors, shell=False))
+            else:
+                process = subprocess.Popen(arguments, cwd=cwd, env=environment,
+                    stdin=incoming, stdout=outgoing, stderr=errors, shell=False, **options)
+                lifetime.callback(stop_process, process)
+            started = time.monotonic()
             while process.poll() is None:
                 check_cancelled(cancelled)
                 if time.monotonic() - started > timeout:
@@ -209,8 +225,6 @@ def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
                 # Native diagnostics can contain source passages or credentials.
                 raise RuntimeError(f'The local speech engine failed (exit {process.returncode}).')
             return reply, diagnostic, process.returncode
-        finally:
-            stop_process(process)
 
 
 def _check_sizes(outgoing, errors, output_file, max_output):

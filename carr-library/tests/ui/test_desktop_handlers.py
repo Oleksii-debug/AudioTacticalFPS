@@ -46,9 +46,9 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
-               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
@@ -96,6 +96,8 @@ def panel(classes):
     value.collection_ids = [None]
     value.filters = {}
     value.grid,value.details,value.status = Mock(),Mock(),Mock()
+    value.previous_page, value.next_page = Mock(), Mock()
+    value._reset_pages()
     value._load_context,value._refresh_details = Mock(),Mock()
     value.verified_copy_service = Mock(return_value=hit.quote)
     value.selected = lambda: hit
@@ -125,34 +127,41 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions',
-        'install_academic_comparison_actions', 'install_library_assistant_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
-    new_installers = []
-    for module, installer in [('speech_dialog', 'install_speech_actions'),
-                              ('transcription_dialog', 'install_transcription_actions'),
-                              ('operations_dialog', 'install_operations_actions'),
-                              ('studio_dialog', 'install_studio_actions'),
-                              ('assistant_dialog', 'install_assistant_actions'),
-                              ('save_actions', 'install_save_actions'),
-                              ('document_conversion', 'install_conversion_actions'),
-                              ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions')]:
+    additional = []
+    for module, installer in (
+            ('academic_tools', 'install_source_comparison_actions'),
+            ('audio_studio', 'install_audio_studio'),
+            ('audio_playback', 'install_audio_playback'),
+            ('book_audio_dialog', 'install_book_audio_actions'),
+            ('audio_runtime_setup', 'install_audio_runtime_setup'),
+            ('audio_effects', 'install_audio_effects'),
+            ('local_assistant', 'install_local_assistant'),
+            ('provider_settings', 'install_provider_settings'),
+            ('speech_dialog', 'install_speech_actions'),
+            ('clipboard_reader', 'install_clipboard_reader'),
+            ('language_matrix', 'install_language_actions'),
+            ('translation_dialog', 'install_translation_actions'),
+            ('document_conversion', 'install_conversion_actions'),
+            ('citation_formatting', 'install_citation_actions'),
+            ('word_citations', 'install_word_actions'),
+            ('portable_sync', 'install_portable_sync_actions'),
+            ('operation_progress', 'install_operation_progress'),
+            ('transcription_dialog', 'install_transcription_actions'),
+            ('operations_dialog', 'install_operations_actions'),
+            ('command_palette', 'install_command_palette'),
+            ('diagnostics_dialog', 'install_diagnostics'),
+            ('backup_incremental_dialog', 'install_incremental_backup_actions'),
+            ('desktop_integration', 'install_desktop_integration'),
+            ('delivery_dialog', 'install_delivery_actions')):
         callback = Mock()
-        new_installers.append(callback)
+        additional.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
                             SimpleNamespace(**{installer: callback}))
-    keyboard = Mock()
-    register_command = Mock()
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
-                        SimpleNamespace(install_keyboard_settings=keyboard,
-                                        register_menu_command=register_command))
-    progress = Mock()
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.progress_panel',
-                        SimpleNamespace(install_progress_panel=progress))
 
     value._menus()
 
@@ -161,14 +170,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'Import Center: files, folders and queues' in labels
-    registered_frame, registered_spec, registered_item = register_command.call_args.args
-    assert registered_frame is value
-    assert registered_spec.command_id == 'research.advanced_query'
-    assert registered_spec.default_shortcut == 'Ctrl+Alt+Q'
-    assert registered_item.title.startswith('Build advanced query')
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress):
+    for installer in (*installers.values(), ebook, *additional):
         installer.assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
@@ -176,7 +180,6 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Library, Import Center' in guide
     assert 'Ctrl+Shift+B opens Import Center' not in guide
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
-    assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
 
 
@@ -458,13 +461,13 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     monkeypatch.setitem(sys.modules,'wx',wx)
     chooser = Mock(wraps=ocr_options.choose_ocr_config)
     monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
-    selected = Config(languages=languages, model_profile=profile)
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent: selected)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     file_dialog = Mock()
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
+    selected = Config(languages=languages, model_profile=profile)
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=selected))
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
@@ -483,6 +486,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -494,7 +498,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
@@ -612,39 +616,125 @@ def test_no_pending_review_starts_no_approval(classes):
     assert 'no page awaiting review' in f.report.call_args.args[0]
 
 
-def test_failed_open_retains_current_library_and_draft(classes,tmp_path):
+@pytest.fixture
+def local_audio_binding(monkeypatch):
+    binding = SimpleNamespace(notice='', close=Mock(), activate=Mock())
+    binding.activate.return_value = binding
+    prepare = Mock(return_value=binding)
+    monkeypatch.setitem(sys.modules, 'carr_library.audio.local_runtime',
+                        SimpleNamespace(prepare_local_audio_runtime=prepare))
+    return prepare, binding
+
+
+def test_failed_open_retains_current_library_and_draft(classes, tmp_path, local_audio_binding):
     f = frame(classes)
     old = SimpleNamespace(semantic_ranker=None)
-    f.library = old
+    f.library, f.run_job = old, Mock()
     f._confirm = Mock(return_value=True)
     f._drop = Mock()
     f.remember_data_dir = Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
     classes[0]['LibraryApp'].side_effect = ValueError('corrupt library')
-    with pytest.raises(ValueError,match='corrupt'):
-        f._open_data_root(tmp_path)
+    assert f._open_data_root(tmp_path)
+    classes[0]['LibraryApp'].assert_not_called()
+    worker = f.run_job.call_args.args[1]
+    with pytest.raises(ValueError, match='corrupt'):
+        worker(Mock())
     assert f.library is old
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+    local_audio_binding[0].assert_not_called()
+
+
+def test_folder_switch_remembers_only_valid_opened_library(classes, tmp_path, local_audio_binding):
+    prepare, binding = local_audio_binding
+    f = frame(classes)
+    old = f.library = SimpleNamespace(semantic_ranker=None)
+    previous = f.audio_runtime_binding = Mock()
+    f.run_job = Mock()
+    f._confirm = Mock(return_value=True)
+    f._drop, f.refresh_scopes = Mock(), Mock()
+    f.scopes = []
+    f.remember_data_dir = Mock()
+    f.keyboard_settings, f.operation_progress = Mock(), Mock()
+    (tmp_path / 'library.sqlite').write_bytes(b'fixture')
+    candidate = SimpleNamespace(root=tmp_path, list_scopes=Mock(return_value=()))
+    classes[0]['LibraryApp'].return_value = candidate
+    assert f._open_data_root(tmp_path)
+    assert f.library is old
+    classes[0]['LibraryApp'].assert_not_called()
+    prepare.assert_not_called()
+    worker, done = f.run_job.call_args.args[1:3]
+    progress = Mock()
+    result = worker(progress)
+    assert f.library is old
+    f.remember_data_dir.assert_not_called()
+    prepare.assert_called_once()
+    assert prepare.call_args.args == (tmp_path,)
+    assert prepare.call_args.kwargs['cancelled'] == f.cancel_event.is_set
+    prepare.call_args.kwargs['progress']('Verifying audio inventory', 1, 3)
+    progress.assert_called_once_with(1, 3, 'Verifying audio inventory')
+    binding.activate.assert_not_called()
+    done(result)
+    assert f.library is candidate and f.audio_runtime_binding is binding
+    binding.activate.assert_called_once_with(previous=previous, strict=False)
+    f.remember_data_dir.assert_called_once_with(tmp_path)
+    f._drop.assert_called_once()
+    f.keyboard_settings.reload.assert_called_once_with()
+    f.operation_progress.reload_preferences.assert_called_once_with()
+
+
+@pytest.mark.parametrize('reason', ['cancelled', 'changed', 'closing'])
+def test_prepared_folder_binding_is_discarded_when_completion_loses_scope(
+        classes, tmp_path, local_audio_binding, reason):
+    prepare, binding = local_audio_binding
+    f = frame(classes)
+    original = f.library = SimpleNamespace(semantic_ranker=None)
+    previous = f.audio_runtime_binding = Mock()
+    f.run_job, f._confirm, f._drop = Mock(), Mock(return_value=True), Mock()
+    f.remember_data_dir = Mock()
+    (tmp_path / 'library.sqlite').write_bytes(b'fixture')
+    classes[0]['LibraryApp'].return_value = SimpleNamespace(root=tmp_path)
+    assert f._open_data_root(tmp_path)
+    worker, done = f.run_job.call_args.args[1:3]
+    result = worker(Mock())
+    if reason == 'cancelled':
+        f.cancel_event.set()
+    elif reason == 'changed':
+        f.library = SimpleNamespace(semantic_ranker=None)
+    else:
+        f._closing = True
+    current = f.library
+    with pytest.raises((InterruptedError, ValueError)):
+        done(result)
+    assert f.library is current and f.audio_runtime_binding is previous
+    binding.close.assert_called_once_with()
+    binding.activate.assert_not_called()
+    previous.close.assert_not_called()
     f._drop.assert_not_called()
     f.remember_data_dir.assert_not_called()
 
 
-def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
+def test_folder_binding_is_closed_when_scope_changes_on_the_worker(
+        classes, tmp_path, local_audio_binding):
+    prepare, binding = local_audio_binding
     f = frame(classes)
     f.library = SimpleNamespace(semantic_ranker=None)
-    f._confirm = Mock(return_value=True)
-    f._drop,f.refresh_scopes = Mock(),Mock()
-    f.scopes = []
+    f.run_job, f._confirm, f._drop = Mock(), Mock(return_value=True), Mock()
     f.remember_data_dir = Mock()
-    f.keyboard_commands, f.progress_panel = Mock(), Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
-    candidate = SimpleNamespace(root=tmp_path,list_scopes=Mock(return_value=()))
-    classes[0]['LibraryApp'].return_value = candidate
+    classes[0]['LibraryApp'].return_value = SimpleNamespace(root=tmp_path)
+    def change_scope(*args, **kwargs):
+        f.library = SimpleNamespace(semantic_ranker=None)
+        return binding
+    prepare.side_effect = change_scope
     assert f._open_data_root(tmp_path)
-    assert f.library is candidate
-    f.remember_data_dir.assert_called_once_with(tmp_path)
-    f._drop.assert_called_once()
-    f.keyboard_commands.change_root.assert_called_once_with(tmp_path)
-    f.progress_panel.change_root.assert_called_once_with(tmp_path)
+    with pytest.raises(ValueError, match='current library changed'):
+        f.run_job.call_args.args[1](Mock())
+    binding.close.assert_called_once_with()
+    binding.activate.assert_not_called()
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
 
 
 def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
@@ -818,42 +908,65 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
     chooser.return_value.Destroy.assert_called_once()
 
-@pytest.mark.parametrize('names', [
-    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
-    ('Research  methods', 'Research methods'), ('Clinical\u00a0study', 'Clinical study'),
-    ('Research', 'research'), ('Fußnote', 'FUSSNOTE'),
-])
-def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(classes, tmp_path, names):
-    import unicodedata
 
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Topic choices')
-    with app.topic_transaction(workspace) as service:
-        for number, name in enumerate(names, 1):
-            service.create(f'topic-{number}', name)
-    topics = tuple(app.topics(workspace))
-    assert tuple(topic.name for topic in topics) == names
-    app.add_text(workspace, 'Original source', 'Exact historical railway passage.')
-    source, = app.search(workspace, 'railway passage')
-    hit = Hit(source.workspace, source.ref, source.revision, source.title, source.author,
-              source.edition, source.page, source.quote, source.citation)
-    p = panel(classes)
-    p.frame.library = p.bound_library = app
-    p.frame.active = workspace, None
-    p.bound_workspace = workspace
-    p.model.set_workspace(workspace)
-    p.selected = lambda: hit
-    chooser = classes[0]['wx'].SingleChoiceDialog
-    chooser.return_value.GetSelection.return_value = 1
+def test_folder_activation_failure_preserves_prior_library_binding_and_preferences(
+        classes, tmp_path, local_audio_binding):
+    prepare, binding = local_audio_binding
+    f = frame(classes)
+    original = f.library = SimpleNamespace(semantic_ranker=None)
+    previous = f.audio_runtime_binding = Mock()
+    f.run_job, f._confirm, f._drop = Mock(), Mock(return_value=True), Mock()
+    f.remember_data_dir = Mock()
+    (tmp_path / 'library.sqlite').write_bytes(b'fixture')
+    classes[0]['LibraryApp'].return_value = SimpleNamespace(root=tmp_path)
+    binding.activate.side_effect = ValueError('The verified pack changed before activation.')
+    assert f._open_data_root(tmp_path)
+    worker, done = f.run_job.call_args.args[1:3]
+    result = worker(Mock())
+    with pytest.raises(ValueError, match='pack changed'):
+        done(result)
+    assert f.library is original and f.audio_runtime_binding is previous
+    binding.close.assert_called_once_with()
+    previous.close.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+    f._drop.assert_not_called()
 
-    p.save_selected(None)
-    labels = chooser.call_args.args[3]
-    assert len({' '.join(unicodedata.normalize('NFC', label).split()).casefold()
-                for label in labels}) == 2
-    assert all(label.startswith(topic.name) and f'topic {topic.id}' in label
-               for label, topic in zip(labels, topics))
-    saved = p.frame.run_job.call_args.args[1]()
-    assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
-    assert app.evidence(workspace, topics[0].id) == ()
-    assert tuple(app.topics(workspace)) == topics
-    chooser.return_value.Destroy.assert_called_once()
+
+@pytest.mark.parametrize('worker_finished_first', [False, True])
+def test_forced_close_discards_prepared_result_through_real_dispatcher_once(
+        classes, worker_finished_first):
+    f = frame(classes)
+    future = Future()
+    f.executor.submit.return_value = future
+    done, dispose = Mock(), Mock()
+    resource = object()
+    f.run_job('Prepare resource', lambda: resource, done, discard=dispose)
+    if worker_finished_first:
+        future.set_result(resource)
+        assert len(classes[1]) == 1
+    event = close_event(False)
+    f.on_close(event)
+    assert f._closing and event.skipped
+    if not worker_finished_first:
+        future.set_result(resource)
+    for callback in classes[1]:
+        callback()
+    dispose.assert_called_once_with(resource)
+    done.assert_not_called()
+    f.book.Enable.assert_not_called()
+    f.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    assert getattr(f, '_pending_job_discard', None) is None
+
+
+def test_normal_completion_transfers_prepared_resource_without_discard(classes):
+    f = frame(classes)
+    future = Future()
+    f.executor.submit.return_value = future
+    done, dispose = Mock(), Mock()
+    resource = object()
+    f.run_job('Prepare resource', lambda: resource, done, discard=dispose)
+    future.set_result(resource)
+    classes[1].pop(0)()
+    done.assert_called_once_with(resource)
+    dispose.assert_not_called()
+    assert getattr(f, '_pending_job_discard', None) is None

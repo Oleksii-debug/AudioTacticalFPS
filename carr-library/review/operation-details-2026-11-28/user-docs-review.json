@@ -1,0 +1,65 @@
+{
+  "schema": "carr-source-review/1",
+  "baseline": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "source_dependency": "8df703c1479211bfc2082df0da5a61d25950189a",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "path": "carr-library/docs/runtime_resources.md",
+  "preimage": "1535d48a97fa7fd4148b1eeeb5d5746b36221236",
+  "sha256": "9c9e9f8abfc72afdde58ddaebeaf98d62fe2d3a575ebe7e7ff730c85a6f65838",
+  "inverse_exact": true,
+  "scope": "One additive user-facing section using exact existing menu and controls; no current verification, resource measurement or restored authority claim.",
+  "hunks": [
+    {
+      "oldLine": 188,
+      "newLine": 188,
+      "contextBefore": [
+        "corpus job index. No capability is inferred from a format name or a stored",
+        "completed status alone.",
+        ""
+      ],
+      "removed": [],
+      "added": [
+        "### Read a saved Studio operation",
+        "",
+        "Open **Tools → Tasks and resources...**, choose **Refresh**, then select a row",
+        "in **Saved platform operations**. **Operation details and resource status**",
+        "shows labelled, read-only lines from that saved snapshot. Refresh again when",
+        "you need newer progress.",
+        "",
+        "The existing operation ID, workspace, status, update time, progress and",
+        "available controls remain visible. Studio rows can also show:",
+        "",
+        "| Detail | Meaning |",
+        "| --- | --- |",
+        "| **Current canonical handler** | The reader used by this application to interpret the saved Studio job. It does not identify the engine or model used for an earlier render. |",
+        "| **Saved operation-plan SHA-256** | The recorded identity of the job's selected project fingerprint, output format and stems choice. |",
+        "| **Separate settings SHA-256** and **Selected engine or model adapter** | **Unknown; not recorded** when the checkpoint has no separate declaration. An old record does not acquire new identity evidence by being opened. |",
+        "| **Declared CPU slots**, memory, GPU and disk reservations | Saved resource allowances and estimates. They are not measurements of actual consumption or a promise that work can be admitted now. Paths and device identifiers are omitted. |",
+        "| **Recorded completed artifact identities** | Recorded SHA-256 digests and byte sizes for a job whose saved status is complete. The view shows at most 64 identities, with the full count and an explicit omitted count. |",
+        "",
+        "Selecting a row does not open or hash its output files. An artifact digest can",
+        "therefore remain visible after the file has been removed or changed. Return to",
+        "the original Studio workflow when you need its current output verification;",
+        "the task view does not confirm that a recorded file still exists.",
+        "",
+        "**Unknown; not recorded** and **Unavailable in this saved checkpoint** preserve",
+        "missing historical information. A malformed canonical record becomes an",
+        "**attention** row without action controls. Its private error body is not shown.",
+        "",
+        "A restored job can show **Saved restore marker requires a new output: Yes**.",
+        "Review and choose a new output through Studio before running it. Viewing the",
+        "record, or seeing its previous completion status, does not renew permission to",
+        "use the former destination. **Pause selected** and **Cancel selected** request",
+        "the existing owner's controls; the displayed status changes only when that",
+        "owner records its response.",
+        ""
+      ],
+      "contextAfter": [
+        "## Evidence and remaining native checks",
+        "",
+        "`tests/operations` runs real spawned-process contention and abrupt exit,"
+      ]
+    }
+  ]
+}

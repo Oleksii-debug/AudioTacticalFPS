@@ -301,12 +301,12 @@ def test_tampered_processor_is_rejected_before_execution(tmp_path, monkeypatch):
 
 
 def test_all_pinned_resources_and_license_notices_match_manifest():
-    manifest = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text())
+    manifest = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text(encoding='utf-8'))
     for relative, expected in manifest['sha256'].items():
         assert sha256((csl._ROOT / relative).read_bytes()).hexdigest() == expected
     assert manifest['processor']['package_version'] == '2.4.63'
     assert manifest['processor']['reported_engine_version'] == '1.4.61'
-    cpal = (csl._ROOT / '_vendor_citeproc/CPAL').read_text()
+    cpal = (csl._ROOT / '_vendor_citeproc/CPAL').read_text(encoding='utf-8')
     assert 'Attribution Copyright Notice: (c) Frank Bennett' in cpal
     assert 'citeproc-js implements the Citation Style Language' in cpal
     assert 'Attribution URL: https://citationstyles.org/' in cpal

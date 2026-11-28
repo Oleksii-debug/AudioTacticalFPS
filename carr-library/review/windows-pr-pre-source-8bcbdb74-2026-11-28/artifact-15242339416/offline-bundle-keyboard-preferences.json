@@ -1,0 +1,20 @@
+PASS: productivity loads from the installed wheel
+PASS: real Windows wx runtime
+PASS: File is the first Alt menu
+PASS: Options and Reading remain accessible
+PASS: main Save exposes Ctrl+S
+PASS: native File Save dispatches
+PASS: File Save commits the selected evidence note
+PASS: remap fixture is unused in the actual native command inventory
+PASS: shortcut change updates native menu
+PASS: shortcut persists after reopening preferences
+PASS: collision fixture belongs to another native command: Ctrl+Alt+S
+PASS: conflicting key leaves native menu unchanged: Ctrl+Alt+S
+PASS: conflicting key leaves saved preferences unchanged: Ctrl+Alt+S
+PASS: collision fixture belongs to another native command: Ctrl+I
+PASS: conflicting key leaves native menu unchanged: Ctrl+I
+PASS: conflicting key leaves saved preferences unchanged: Ctrl+I
+PASS: source bytes and authenticated citation remain unchanged
+PASS: complete backup restores page resume and bookmark
+PASS: complete backup restores keyboard preferences
+{"status": "PASS", "checks": ["productivity loads from the installed wheel", "real Windows wx runtime", "File is the first Alt menu", "Options and Reading remain accessible", "main Save exposes Ctrl+S", "native File Save dispatches", "File Save commits the selected evidence note", "remap fixture is unused in the actual native command inventory", "shortcut change updates native menu", "shortcut persists after reopening preferences", "collision fixture belongs to another native command: Ctrl+Alt+S", "conflicting key leaves native menu unchanged: Ctrl+Alt+S", "conflicting key leaves saved preferences unchanged: Ctrl+Alt+S", "collision fixture belongs to another native command: Ctrl+I", "conflicting key leaves native menu unchanged: Ctrl+I", "conflicting key leaves saved preferences unchanged: Ctrl+I", "source bytes and authenticated citation remain unchanged", "complete backup restores page resume and bookmark", "complete backup restores keyboard preferences"], "count": 19, "nvda": "NOT_RUN"}

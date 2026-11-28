@@ -52,9 +52,9 @@ def test_default_creation_does_not_clobber_at_publication(publication, monkeypat
     previous = b'Independent work'
     original = e._destination
     count = 0
-    def race(*args):
+    def race(*args, **kwargs):
         nonlocal count
-        state = original(*args)
+        state = original(*args, **kwargs)
         count += 1
         if count == 2:
             target.write_bytes(previous)

@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "scope": "Existing audio worker exit observation and required reader completion",
+  "base_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "base_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+  "source_test_tree": "a6df889f4a3e5d8ebe9ecb02b5763a51d8543e50",
+  "execution": "NOT_RUN",
+  "changed": [
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "before": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+      "after": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c"
+    },
+    {
+      "path": "carr-library/tests/audio/test_process_deadline.py",
+      "before": "700a8937e7aeaadb85cea3f31042371ad5ade2a2",
+      "after": "9f8a4e0e9231492794e381b100666e779fd312fe"
+    }
+  ],
+  "unchanged_boundaries": [
+    {
+      "path": "carr-library/src/carr_library/transcription/service.py",
+      "sha": "9466a1df497d747aa1a1cc5f8e498af17fb30d20"
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "sha": "31537c518245cca6450dc68510c5046f216d6dca"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "sha": "30c9249546e12582f0781d433fba8dbb750ddcb8"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "sha": "72a1455c794143caf7c54dde9e787564d9624336"
+    },
+    {
+      "path": "carr-library/tests/audio/test_audio_process.py",
+      "sha": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_process.py",
+      "sha": "6d3d202676f5895abd328ff4a43a2797899fe9d6"
+    },
+    {
+      "path": "carr-library/tests/audio/test_legacy_owned_process.py",
+      "sha": "7c92cd3c2e51513a7ef53b22b2b1f56f4d380d06"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/windows_process.py",
+      "sha": "12b249c548c211333d783877a7ef0c08f2dd2ed1"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/cleanup.py",
+      "sha": "139d382383083301b21f38da3301ed36e590fbb6"
+    }
+  ],
+  "observed_evidence": {
+    "tree": "05b8a52099772a084e4d6fb6bd06dda974a0dbca",
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46081225448",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46081225448/job/140780410372",
+    "head": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+    "source_modules": {
+      "total": 56,
+      "passed": 54,
+      "failed": 2
+    },
+    "source_cases": {
+      "passed": 1833,
+      "failed": 14,
+      "skipped": 0
+    },
+    "failed_modules": [
+      "tests/transcription/test_service.py",
+      "tests/transcription/test_admission_boundaries.py"
+    ],
+    "worker_budget_seconds": 5,
+    "resume": {
+      "started": 29.625,
+      "last_observed_running": 29.734,
+      "callback_started": 29.859,
+      "callback_ended": 38.062,
+      "first_observed_exit": 38.234,
+      "returncode": 0,
+      "observed_worker_interval_seconds": 8.609,
+      "control_reads": 1446,
+      "control_inclusive_seconds": 18.589,
+      "profile_reads": 5,
+      "profile_inclusive_seconds": 19.39
+    },
+    "independent_runtime_inspection_seconds": 0.312,
+    "limitations": [
+      "The trace did not measure the child's actual exit time. It proves delayed positive observation, not a timely actual exit.",
+      "Control/profile timings are inclusive and overlap; they must not be added.",
+      "These are predecessor failures. This unexecuted candidate does not reclassify them as passing."
+    ]
+  },
+  "implementation": [
+    "Reuse only the two existing diagnostic reader threads after actual EOF. Each repeated wait uses the original process wrapper and at most min(0.05 seconds, remaining original worker budget).",
+    "Capture monotonic time only after a positive exact-process poll or wait; keep the earliest actual observation under a small timestamp lock. EOF, callback entry, and wait entry never supply an exit time.",
+    "Keep every caller-side cancellation/profile/content/progress/staging check fresh and on the original caller thread. The execution budget and ProcessResult total elapsed semantics remain unchanged.",
+    "Set stop_observers before cleanup. Recheck that stop flag under the same wait_lock which covers the EOF wait and native cleanup, preventing Windows leader-handle closure during an in-flight observer.",
+    "Keep required reader joins and stream closes inside the existing CleanupOwner attempt, before quiescence or retained staging release. Memoize native shutdown only after _stop_owned returns True, so reader/close retries cannot re-signal a reaped group or retired Job.",
+    "Preserve the unowned process error path without introducing a new ownership or retry system."
+  ],
+  "test_plan": {
+    "collection": "NOT_RUN; counts are static parameterization counts",
+    "existing_cases": 8,
+    "new_cases": 13,
+    "total_cases": 21,
+    "new_matrix": [
+      {
+        "cases": 2,
+        "scenario": "Actual EOF reader observes timely exit code 0 or explicitly permitted code 7 while caller validation remains active; later +6 clock offset does not erase the positive observation."
+      },
+      {
+        "cases": 1,
+        "scenario": "Early EOF followed by a later actual exit requires repeated real process waits."
+      },
+      {
+        "cases": 1,
+        "scenario": "Early closed pipes with a still-live child cannot stop the original deadline."
+      },
+      {
+        "cases": 1,
+        "scenario": "A descendant retains both pipes after leader exit; late EOF cannot backdate the previously unobserved exit."
+      },
+      {
+        "cases": 4,
+        "scenario": "After a timely reader observation, fresh caller cancellation, changed reviewed bytes, diagnostic overflow, and staging overflow still reject."
+      },
+      {
+        "cases": 1,
+        "scenario": "A real wait followed by an injected wait error is rejected through the diagnostic error contract."
+      },
+      {
+        "cases": 1,
+        "scenario": "A real reader thread still awaiting completion retains the temporary stage after native family shutdown; retries do not stop the native family again."
+      },
+      {
+        "cases": 1,
+        "scenario": "A failed real-pipe close retains the stage and retries before quiescence, without another native stop."
+      },
+      {
+        "cases": 1,
+        "scenario": "An actual EOF wait holds the handoff lock; cancellation cannot enter native cleanup until that same wait returns. Real process, threads, locks, and owned cleanup remain active."
+      }
+    ],
+    "existing_fixture_adjustment": {
+      "name": "test_exit_during_callback_is_not_backdated_when_first_observation_is_late",
+      "reason": "An independent EOF reader can legitimately observe exit before the old fixture's clock jump. Move the same +6 jump before releasing the real child, so every possible positive observation is genuinely late. Preserve the original 5-second budget, error predicate, release/returncode assertions, and real child.",
+      "hunk": {
+        "before": "        release.write_bytes(b'explicit fixture release')\n        assert child.wait(timeout=10) == 0\n        # The runner did not observe an exit before entering this callback.\n        # It cannot infer that completion preceded its deadline from a later\n        # returncode, even when the callback itself waited for the real child.\n        observed.offset += 6.0\n",
+        "after": "        # Advance before releasing the real child: every possible positive\n        # observation, including an EOF reader, is now genuinely late.\n        observed.offset += 6.0\n        release.write_bytes(b'explicit fixture release')\n        assert child.wait(timeout=10) == 0\n"
+      }
+    },
+    "review_corrections": [
+      "The handoff test restores its strict _stop_owned observer after joining the runner, before the existing observed fixture repeats idempotent cleanup.",
+      "Children which deliberately close both diagnostic descriptors use os._exit for their explicit exit, avoiding unrelated interpreter stdio-flush behavior."
+    ],
+    "required_followup": [
+      "Run the existing audio process, deadline, recording process, native owner, cleanup, and legacy-owned-process suites in source and installed modes.",
+      "Run the unchanged original ASR service and admission suites with their existing five-second worker budgets, including Windows source under the observed concurrent load.",
+      "Inspect exact completed outcomes; do not infer a Windows fix from static review or a passing predecessor installed lane."
+    ]
+  },
+  "preservation": {
+    "source_hunks": [
+      {
+        "before": "    ProcessResult.elapsed still includes that validation and pipe collection.\n",
+        "after": "    ProcessResult.elapsed still includes that validation and pipe collection.\n    Existing diagnostic readers may observe the same leader after EOF while\n    the caller validates a checkpoint. EOF itself never proves process exit;\n    native family shutdown and reader completion remain required cleanup.\n"
+      },
+      {
+        "before": "    overflow = threading.Event()\n    buffers = {'stdout': bytearray(), 'stderr': bytearray()}\n",
+        "after": "    overflow = threading.Event()\n    stop_observers = threading.Event()\n    exit_lock = threading.Lock()\n    wait_lock = threading.Lock()\n    buffers = {'stdout': bytearray(), 'stderr': bytearray()}\n"
+      },
+      {
+        "before": "    reader_failures = []\n\n    def read_pipe(pipe, name):\n",
+        "after": "    reader_failures = []\n\n    def record_exit():\n        nonlocal observed_exit_at\n        # Capture only after an exact-process poll/wait positively returned.\n        # Never infer this time from EOF, a callback, or the start of a wait.\n        observed = time.monotonic()\n        with exit_lock:\n            if observed_exit_at is None or observed < observed_exit_at:\n                observed_exit_at = observed\n\n    def exit_time():\n        with exit_lock:\n            return observed_exit_at\n\n    def observe_eof_exit():\n        while not stop_observers.is_set():\n            # The same lock hands an in-flight bounded wait to native cleanup.\n            # In particular, a Windows Job may close the leader handle there.\n            # Caller validation never holds or waits for this observation lock.\n            with wait_lock:\n                if stop_observers.is_set() or exit_time() is not None:\n                    return\n                remaining = budget.timeout - (time.monotonic() - started)\n                if remaining <= 0:\n                    return\n                try:\n                    code = process.wait(timeout=min(.05, remaining))\n                except subprocess.TimeoutExpired:\n                    continue\n                if code is None:\n                    raise AudioError('Audio worker exit observation returned no status.')\n                record_exit()\n                return\n\n    def read_pipe(pipe, name):\n"
+      },
+      {
+        "before": "                if not data:\n                    break\n                if name == 'stdout' and progress is not None:\n",
+        "after": "                if not data:\n                    observe_eof_exit()\n                    break\n                if name == 'stdout' and progress is not None:\n"
+      },
+      {
+        "before": "        except Exception as exc:\n            reader_failures.append(exc)\n        finally:\n            pipe.close()\n",
+        "after": "        except Exception as exc:\n            reader_failures.append(exc)\n        finally:\n            try:\n                pipe.close()\n            except Exception as exc:\n                reader_failures.append(exc)\n"
+      },
+      {
+        "before": "        nonlocal last_progress, stopped_at, observed_exit_at\n        # A cancellation callback may also verify a completed checkpoint. Take\n        # positive process evidence before that work, never backdate an exit\n        # first observed after the allowance or during a slow callback.\n        if observed_exit_at is None and process.poll() is not None:\n            observed_exit_at = time.monotonic()\n",
+        "after": "        nonlocal last_progress, stopped_at\n        # A cancellation callback may also verify a completed checkpoint. Take\n        # positive process evidence before that work, never backdate an exit\n        # first observed after the allowance or during a slow callback.\n        if exit_time() is None and process.poll() is not None:\n            record_exit()\n"
+      },
+      {
+        "before": "        worker_until = time.monotonic() if observed_exit_at is None else observed_exit_at\n",
+        "after": "        worker_until = exit_time()\n        if worker_until is None:\n            worker_until = time.monotonic()\n"
+      },
+      {
+        "before": "            try:\n                process.wait(timeout=.05)\n            except subprocess.TimeoutExpired:\n                pass\n",
+        "after": "            try:\n                if process.wait(timeout=.05) is not None:\n                    record_exit()\n            except subprocess.TimeoutExpired:\n                pass\n"
+      },
+      {
+        "before": "    finally:\n        def cleanup_process():\n            if owned_tree:\n                return _stop_owned(process)\n            _terminate(process)\n            return True\n\n        def release_streams():\n            if process.stdin is not None:\n                try:\n                    process.stdin.close()\n                except OSError:\n                    pass\n            for thread in threads:\n                if thread.ident is not None:\n                    thread.join(timeout=2)\n            # A started reader closes its own pipe; allocation/start failures\n            # leave the other streams owned by this cleanup, including retries.\n            for pipe in (process.stdout, process.stderr):\n                if pipe is not None and pipe not in started_pipes:\n                    pipe.close()\n\n        try:\n            cleanup_process()\n        except Exception as exc:\n            if not owned_tree:\n                release_streams()\n                raise\n            from .cleanup import pending_cleanup\n            raise pending_cleanup(cleanup_process,\n                message='Audio process cleanup is still pending; capture remains reserved.',\n                callbacks=(release_streams,)) from exc\n        release_streams()\n",
+        "after": "    finally:\n        stop_observers.set()\n        stopped = False\n\n        def release_streams():\n            close_error = None\n            if process.stdin is not None:\n                try:\n                    process.stdin.close()\n                except OSError as exc:\n                    if owned_tree:\n                        close_error = exc\n            for thread in threads:\n                if thread.ident is not None:\n                    thread.join(timeout=2)\n            if any(thread.ident is not None and thread.is_alive() for thread in threads):\n                raise AudioError('Audio worker diagnostic readers have not confirmed shutdown.')\n            # Join first: a started reader owns its pipe until its thread ends.\n            # Retry a failed owned close as well as allocation/start failures.\n            for pipe in (process.stdout, process.stderr):\n                if pipe is not None and (owned_tree or pipe not in started_pipes):\n                    try:\n                        pipe.close()\n                    except Exception as exc:\n                        if close_error is None:\n                            close_error = exc\n            if close_error is not None:\n                raise close_error\n\n        def cleanup_process():\n            nonlocal stopped\n            with wait_lock:\n                if not stopped:\n                    if owned_tree:\n                        if _stop_owned(process) is not True:\n                            raise RuntimeError('The owned audio process has not confirmed shutdown.')\n                    else:\n                        _terminate(process)\n                    stopped = True\n            # Required I/O completion precedes CleanupOwner quiescence. It is\n            # not a notification which could fail after staging is released.\n            release_streams()\n            return True\n\n        try:\n            cleanup_process()\n        except Exception as exc:\n            if not owned_tree:\n                release_streams()\n                raise\n            from .cleanup import pending_cleanup\n            raise pending_cleanup(cleanup_process,\n                message='Audio process cleanup is still pending; capture remains reserved.') from exc\n"
+      }
+    ],
+    "source_inverse": "All nine replacement hunks reverse exactly to afbccf32; every function before/after run_process is byte-identical.",
+    "tests_inverse": "Removing only the additive suffix and reversing the one clock-before-release hunk reproduces 700a8937 exactly.",
+    "workflow_changes": 0,
+    "ref_changes": 0,
+    "new_production_threads": 0,
+    "new_services_or_stores": 0
+  },
+  "peer_review": {
+    "root": "Production77e85 and test scope reviewed; concrete test teardown finding corrected in9f8a4e0e.",
+    "locate_project": "Final a6df889f/9f8a4e0e plus production77e85 bounded source/API/lifetime review clear; no execution claim."
+  },
+  "primary_sources": [
+    "https://github.com/python/cpython/blob/v3.11.9/Lib/subprocess.py",
+    "https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject",
+    "https://man7.org/linux/man-pages/man2/waitpid.2.html"
+  ]
+}

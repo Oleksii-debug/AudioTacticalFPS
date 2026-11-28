@@ -1,0 +1,28 @@
+{
+  "checks": 69,
+  "custom_style_file_choice": "controlled path only",
+  "installed_modules": {
+    "carr_library.citations.bibliography_workbench": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+    "carr_library.citations.csl": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+    "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+    "carr_library.ui.academic_library_dialog": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+    "carr_library.ui.citation_styles_dialog": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"
+  },
+  "installer": "NOT_RUN",
+  "manual_keyboard": "NOT_RUN",
+  "native_clipboard": "PASS",
+  "native_custom_style": "PASS",
+  "native_file_pickers": "NOT_RUN",
+  "native_keyboard": "PASS",
+  "nvda": "NOT_RUN",
+  "platform": "Windows-10-10.0.20348-SP0",
+  "python": "3.11.9",
+  "result": "PASS",
+  "service_exports": [
+    "text",
+    "html",
+    "docx"
+  ],
+  "style": "harvard",
+  "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+}

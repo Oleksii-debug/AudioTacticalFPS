@@ -1,0 +1,43 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "scope": "bibliography",
+  "provenance": "Completed GitHub job metadata and the connector-returned complete decoded log strings. Original artifact member bytes are not claimed.",
+  "transformations": {
+    "complete_log": "Retained unchanged, including BOM/timestamps/ANSI/line endings; hash is over decoded string re-encoded UTF-8.",
+    "json": "Only timestamp framing is removed from each emitted JSON; one LF is appended.",
+    "verdicts": "Parsed completed harness rows retain original one-based line numbers."
+  },
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 7548,
+      "sha256": "d88b4c81c992b9f5c046d55c12ba1311a431e7e23b12871d45dc9e18fc815fbe"
+    },
+    {
+      "path": "source-module-verdicts.json",
+      "utf8_bytes": 4276,
+      "sha256": "aca43addf7b04ffa4636934969e8aaf1b3be38e157a0a94dc24e7ffd3d34487a"
+    },
+    {
+      "path": "source-wheel.log-extracted.json",
+      "utf8_bytes": 337,
+      "sha256": "fe1f7559471b5adc334b047bf5ae5c6d0446654a151c2a88e086d865792f743c"
+    },
+    {
+      "path": "installed-native.log-extracted.json",
+      "utf8_bytes": 1015,
+      "sha256": "d73a2078c6dbfed4f8c786fac5aa55a7cb97bc54a85dbbd347a0053deb7d40f0"
+    },
+    {
+      "path": "runtime.log-extracted.json",
+      "utf8_bytes": 200,
+      "sha256": "53ac1897a73827ee7655fc863d0cf21242c3b00d8d3071a36fcf8c2c68c04bf7"
+    },
+    {
+      "path": "completed-job.decoded.log",
+      "utf8_bytes": 139803,
+      "sha256": "43a532432453ae2435894b0bea5b8eb74c4b8b073acb4f81a881b3e92b8e8502"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+2026-11-28T01:41:57.2540382Z REQUIRED_CASE_FAILURE tests/e2e/test_import_worker_publication.py::test_stopped_child_before_commit_never_reports_completion[timeout-pdf] [call]
+2026-11-28T01:41:57.2542159Z tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_stopped_child_before_comm4')
+2026-11-28T01:41:57.2544909Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002E266D0ACD0>
+2026-11-28T01:41:57.2546489Z request = <FixtureRequest for <Function test_stopped_child_before_commit_never_reports_completion[timeout-pdf]>>
+2026-11-28T01:41:57.2550100Z kind = 'pdf', termination = 'timeout'
+2026-11-28T01:41:57.2550511Z 
+2026-11-28T01:41:57.2550803Z     @pytest.mark.parametrize('kind', ('pdf', 'docx'))
+2026-11-28T01:41:57.2551603Z     @pytest.mark.parametrize('termination', ('cancel', 'crash', 'timeout'))
+2026-11-28T01:41:57.2552787Z     def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypatch, request, kind, termination):
+2026-11-28T01:41:57.2553800Z         app = LibraryApp(tmp_path / 'private')
+2026-11-28T01:41:57.2554486Z         workspace = app.create_workspace('Rollback')
+2026-11-28T01:41:57.2555110Z         source = _source(tmp_path, kind)
+2026-11-28T01:41:57.2555629Z         original = source.read_bytes()
+2026-11-28T01:41:57.2556164Z         marker = tmp_path / 'before-commit'
+2026-11-28T01:41:57.2557077Z         children = _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+2026-11-28T01:41:57.2558117Z                             arm_timeout=termination == 'timeout', request=request)
+2026-11-28T01:41:57.2559051Z >       result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
+2026-11-28T01:41:57.2559994Z             cancelled=lambda: termination == 'cancel' and marker.exists(),
+2026-11-28T01:41:57.2560801Z             timeout=3.0 if termination == 'timeout' else 15.0)
+2026-11-28T01:41:57.2561235Z 
+2026-11-28T01:41:57.2561502Z tests\e2e\test_import_worker_publication.py:280: 
+2026-11-28T01:41:57.2562180Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T01:41:57.2562875Z src\carr_library\ingest\worker.py:874: in run_request
+2026-11-28T01:41:57.2563595Z     return _run_request(root, workspace, source, metadata, config,
+2026-11-28T01:41:57.2564328Z src\carr_library\ingest\worker.py:945: in _run_request
+2026-11-28T01:41:57.2564929Z     return execute(stopped)
+2026-11-28T01:41:57.2565351Z            ^^^^^^^^^^^^^^^^
+2026-11-28T01:41:57.2565866Z src\carr_library\ingest\worker.py:912: in execute
+2026-11-28T01:41:57.2566547Z     result = _invoke(message, timeout=timeout, cancelled=stopped)
+2026-11-28T01:41:57.2567192Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T01:41:57.2567784Z src\carr_library\ingest\worker.py:1003: in _invoke
+2026-11-28T01:41:57.2568626Z     process = subprocess.Popen([executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+2026-11-28T01:41:57.2569549Z tests\e2e\test_import_worker_publication.py:169: in launch
+2026-11-28T01:41:57.2570188Z     pid = _wait_for_barrier(process, marker)
+2026-11-28T01:41:57.2570700Z           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T01:41:57.2571380Z tests\e2e\test_import_worker_publication.py:51: in _wait_for_barrier
+2026-11-28T01:41:57.2572064Z     raw = marker.read_bytes()
+2026-11-28T01:41:57.2572498Z           ^^^^^^^^^^^^^^^^^^^
+2026-11-28T01:41:57.2573167Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\pathlib.py:1050: in read_bytes
+2026-11-28T01:41:57.2573924Z     with self.open(mode='rb') as f:
+2026-11-28T01:41:57.2574395Z          ^^^^^^^^^^^^^^^^^^^^
+2026-11-28T01:41:57.2574979Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T01:41:57.2575453Z 
+2026-11-28T01:41:57.2576242Z self = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_stopped_child_before_comm4/before-commit')
+2026-11-28T01:41:57.2577615Z mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+2026-11-28T01:41:57.2578127Z 
+2026-11-28T01:41:57.2578390Z     def open(self, mode='r', buffering=-1, encoding=None,
+2026-11-28T01:41:57.2578993Z              errors=None, newline=None):
+2026-11-28T01:41:57.2579467Z         """
+2026-11-28T01:41:57.2579963Z         Open the file pointed by this path and return a file object, as
+2026-11-28T01:41:57.2580642Z         the built-in open() function does.
+2026-11-28T01:41:57.2581123Z         """
+2026-11-28T01:41:57.2581693Z         if "b" not in mode:
+2026-11-28T01:41:57.2583403Z             encoding = io.text_encoding(encoding)
+2026-11-28T01:41:57.2584295Z >       return io.open(self, mode, buffering, encoding, errors, newline)
+2026-11-28T01:41:57.2585016Z                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T01:41:57.2586396Z E       PermissionError: [Errno 13] Permission denied: 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\pytest-of-runneradmin\\pytest-3\\test_stopped_child_before_comm4\\before-commit'
+2026-11-28T01:41:57.2587597Z 
+2026-11-28T01:41:57.2587989Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\pathlib.py:1044: PermissionError

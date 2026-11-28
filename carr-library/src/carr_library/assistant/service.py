@@ -12,7 +12,8 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 from .models import JobReport, Plan, Scope, canonical, local_path, text
 from .planner import preview
 from .state import JobStore, now, regular
-from .backup_receipt import capture_backup_receipt, verify_backup_receipt
+from . import local_tools, player_tools, book_tools
+from ..audio.cleanup import _pending_owners, retained_context
 
 
 _KEYS = {
@@ -25,13 +26,20 @@ _KEYS = {
     'library.extract': ({'edition', 'name'}, set()),
     'library.backup': ({'name'}, set()),
     'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems'}),
-    'audio.transcribe': ({'path', 'name'},
-                         {'language', 'vad_filter', 'beam_size', 'condition_on_previous_text'}),
+    'audio.transcribe': ({'path', 'name'}, {'model', 'model_revision', 'language',
+        'vad_filter', 'beam_size', 'condition_on_previous_text', 'word_timestamps'}),
 }
 
 
 def _check_arguments(step):
-    required, optional = _KEYS[step.tool]
+    for tools in (local_tools, player_tools, book_tools):
+        if step.tool in tools.RULES:
+            return tools.check_arguments(step)
+    if step.tool == 'audio.transcribe':
+        from .transcription import arguments
+        arguments(step.arguments)
+        return
+    required, optional = _KEYS['audio.produce' if step.tool == 'audio.render' else step.tool]
     if set(step.arguments) - required - optional or not required <= set(step.arguments):
         raise ValueError(f'Invalid arguments for {step.tool}.')
     for key, value in step.arguments.items():
@@ -43,25 +51,54 @@ def _check_arguments(step):
                 raise ValueError('Choose one or more available voice identities.')
             for voice in value:
                 text(voice, 'voice identity', maximum=4096)
-        elif key in ('stems', 'vad_filter', 'condition_on_previous_text'):
+        elif key == 'stems':
             if type(value) is not bool:
-                raise ValueError('The selected switch must be true or false.')
-        elif key == 'beam_size':
-            if type(value) is not int or not 1 <= value <= 10:
-                raise ValueError('Transcription beam size must be an integer from 1 to 10.')
+                raise ValueError('The stems option must be true or false.')
         elif key == 'limit':
             if type(value) is not int or not 1 <= value <= (500 if step.tool == 'library.catalog' else 100):
                 raise ValueError('Invalid result page size.')
         else:
             text(value, key, maximum=4 * 1024 * 1024 if key == 'text' else 32768)
-    if step.tool == 'audio.produce' and (('text' in step.arguments) == ('script' in step.arguments)):
+    if step.tool in ('audio.produce', 'audio.render') and (('text' in step.arguments) == ('script' in step.arguments)):
         raise ValueError('Provide either script text or a structured audio script.')
     if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
         raise ValueError('Unsupported search mode.')
-    if step.tool == 'audio.transcribe':
-        from ..integrations.supplied_transcription import recognition_settings
-        recognition_settings({key: value for key, value in step.arguments.items()
-                              if key not in ('path', 'name')}, '<configured-local-model>')
+
+
+def _review_restored_plan(value):
+    """Validate historical permissions without reopening paths from another host.
+
+    The returned plan has no filesystem grants and is used only for checkpoint
+    validation. Execution rejects the restore marker before reaching this path.
+    The approved hash is calculated from the unchanged historical document.
+    """
+    if type(value) is not dict or set(value) != {'schema', 'scope', 'steps', 'summary'}:
+        raise ValueError('Invalid restored assistant plan.')
+    scope = value['scope']
+    if type(scope) is not dict or set(scope) != set(Scope.__dataclass_fields__):
+        raise ValueError('Invalid restored assistant scope.')
+    roots = scope['input_roots']
+    if type(roots) is not list or len(roots) > 1000000:
+        raise ValueError('Invalid restored assistant input paths.')
+    for path in roots:
+        text(path, 'historical input path', maximum=32768)
+    if scope['output_root'] is not None:
+        text(scope['output_root'], 'historical output path', maximum=32768)
+    inert_scope = {**scope, 'input_roots': [], 'output_root': None}
+    plan = Plan.from_dict({**value, 'scope': inert_scope})
+    return plan, sha256(canonical(value).encode('utf-8')).hexdigest()
+
+
+def _file_identity(path, *, maximum, cancelled=lambda: False):
+    # Reuse the canonical bounded descriptor/path reader. A growing file can
+    # consume at most this ceiling plus one detection byte, never an unbounded
+    # read after a producer has already committed its receipt.
+    from ..audio.conversion_batch import _identity
+    from ..audio.models import AudioCancelled
+    try:
+        return _identity(path, maximum=maximum, cancelled=cancelled)
+    except AudioCancelled as error:
+        raise InterruptedError('Assistant artifact verification was stopped.') from error
 
 
 def _hash_file(path, cancelled=lambda: False):
@@ -86,14 +123,24 @@ def _plain(value):
     return value
 
 
+def _observe(callback, *values):
+    if callback is not None:
+        try:
+            callback(*values)
+        except Exception:
+            pass  # Optional observation cannot reverse a durable tool result.
+
+
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None, transcription=None):
+    def __init__(self, app, *, state_dir=None, production=None, player=None):
         self.app = app
         self.store = JobStore(state_dir or (app.root / 'state' / 'assistant'))
         if not self.store.directory.is_relative_to(app.root):
             raise ValueError('Assistant state must remain inside this application data directory.')
         self.production = production
-        self.transcription = transcription
+        if player is not None and (not isinstance(player, player_tools.LivePlayerBridge) or player.app is not app):
+            raise TypeError('Player commands need this application’s current qualified native reader bridge.')
+        self.player = player
 
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
@@ -143,7 +190,8 @@ class AssistantService:
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.transcribe') and not workspace:
+            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
+                    'audio.render', 'voice.list', 'audio.effects', 'audio.inspect', 'audio.convert') and not workspace:
                 raise PermissionError('Choose a library before this operation.')
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
@@ -155,23 +203,24 @@ class AssistantService:
                     raise FileExistsError('The selected output already exists; choose another name.')
             if step.tool == 'library.backup' and not plan.scope.allow_full_backup:
                 raise PermissionError('Complete backup includes all libraries; enable that explicit permission first.')
-            if step.tool == 'audio.produce':
+            if step.tool == 'audio.transcribe':
+                from .transcription import preflight
+                if workspace == '<new>':
+                    raise ValueError('Create the library first, then review a transcription plan for it.')
+                preflight(self.app, plan.scope, step.arguments, workspace)
+            if step.tool in local_tools.RULES:
+                local_tools.validate_scope(step, plan.scope, self.app)
+            if step.tool in player_tools.RULES and self.player is None:
+                raise PermissionError('Open this assistant from the current qualified reading window for player actions.')
+            if step.tool in book_tools.RULES:
+                if workspace == '<new>':
+                    raise ValueError('Select an existing library and saved Book plan before reviewing this operation.')
+                book_tools.validate_scope(step, plan.scope, self.app, self.production)
+            if step.tool in ('audio.produce', 'audio.render'):
                 if plan.scope.output_root is None:
                     raise PermissionError('Choose the audio output directory.')
                 if self.production is None:
                     raise RuntimeError('The audio production runtime is not configured.')
-            if step.tool == 'audio.transcribe':
-                from ..integrations.supplied_transcription import AUDIO_EXTENSIONS, SuppliedTranscriptionAdapter
-                source = plan.scope.input(step.arguments['path'])
-                if not source.is_file() or source.suffix.lower() not in AUDIO_EXTENSIONS:
-                    raise ValueError('Choose a supported local audio file for transcription.')
-                target = plan.scope.output(step.arguments['name'])
-                if target.exists():
-                    raise FileExistsError('The transcript output directory already exists.')
-                if not target.parent.is_dir():
-                    raise ValueError('Choose an existing parent directory for transcript exports.')
-                if not isinstance(self.transcription, SuppliedTranscriptionAdapter):
-                    raise RuntimeError('Configure and verify the supplied transcription worker before submitting this plan.')
         return plan
 
     def submit(self, plan):
@@ -185,12 +234,21 @@ class AssistantService:
         self.store.save(record)
         return identity
 
-    def _load(self, identity):
+    def _load(self, identity, *, allow_restored=False, review_only=False):
         record = self.store.load(identity)
-        plan = Plan.from_dict(record['plan'])
-        if record.get('data_dir') != str(self.app.root):
+        restored = record.get('restore_requires_review', False)
+        if type(restored) is not bool:
+            raise ValueError('The assistant restore-review marker is invalid.')
+        if restored and not allow_restored:
+            raise PermissionError('Restored assistant jobs require a fresh review and submission before execution.')
+        if review_only or (restored and allow_restored):
+            plan, approved_digest = _review_restored_plan(record['plan'])
+        else:
+            plan = Plan.from_dict(record['plan'])
+            approved_digest = plan.digest
+        if record.get('data_dir') != str(self.app.root) and not (restored and allow_restored):
             raise PermissionError('This job belongs to another data directory; review and submit its plan again.')
-        if record.get('plan_sha256') != plan.digest or len(record.get('steps', [])) != len(plan.steps):
+        if record.get('plan_sha256') != approved_digest or len(record.get('steps', [])) != len(plan.steps):
             raise ValueError('The approved assistant plan has changed.')
         if record.get('status') not in ('queued', 'running', 'paused', 'cancelled', 'complete', 'attention', 'failed'):
             raise ValueError('Invalid assistant job status.')
@@ -207,6 +265,15 @@ class AssistantService:
                 raise ValueError('Invalid assistant step checkpoint.')
         return record, plan
 
+    def review_saved_plan(self, identity):
+        """Read a typed historical recipe without activating its filesystem grants.
+
+        The returned plan has no input or output paths. Its original document
+        and digest remain in the independent record for review; execution still
+        goes through submit/resume with the normal live permission checks.
+        """
+        return self._load(identity, allow_restored=True, review_only=True)
+
     @staticmethod
     def _report(record):
         done = sum(s['status'] == 'complete' for s in record['steps'])
@@ -215,7 +282,7 @@ class AssistantService:
                          record.get('message', ''))
 
     def get(self, identity):
-        record, _ = self._load(identity)
+        record, _ = self._load(identity, allow_restored=True)
         return self._report(record)
 
     def jobs(self):
@@ -241,15 +308,29 @@ class AssistantService:
         records = []
         total = 0
         for item in raw:
-            value = item.get('path') if isinstance(item, dict) else item
+            expected = None
+            if isinstance(item, dict):
+                if (set(item) != {'path', 'size', 'sha256'}
+                        or type(item['size']) is not int or item['size'] < 0
+                        or type(item['sha256']) is not str
+                        or re.fullmatch('[0-9a-f]{64}', item['sha256']) is None):
+                    raise ValueError('Tool artifact receipt is invalid.')
+                expected = item
+            value = expected['path'] if expected is not None else item
             path = local_path(value)
             if scope.output_root is None or not path.is_relative_to(local_path(scope.output_root)):
                 raise PermissionError('A tool returned an artifact outside the selected output folder.')
             size = regular(path).st_size
+            if expected is not None and size != expected['size']:
+                raise ValueError('A produced artifact changed from its declared receipt; output was retained.')
             total += size
             if total > scope.max_bytes:
                 raise ValueError('Produced artifacts exceed the approved byte budget.')
-            records.append({'path': str(path), 'size': size, 'sha256': _hash_file(path, cancelled)})
+            identity = _file_identity(path, maximum=size, cancelled=cancelled)
+            if identity['size_bytes'] != size or (expected is not None
+                    and identity['sha256'] != expected['sha256']):
+                raise ValueError('A produced artifact changed from its declared receipt; output was retained.')
+            records.append({'path': str(path), 'size': size, 'sha256': identity['sha256']})
         return records
 
     def _verify_completed(self, result, scope, cancelled):
@@ -259,17 +340,9 @@ class AssistantService:
         current = self._artifacts(result, scope, cancelled)
         if current != before:
             raise ValueError('A completed artifact changed; the job was not silently re-rendered.')
-        if 'manifest_sha256' in result and 'directory' in result:
-            directory = local_path(result['directory'])
-            if scope.output_root is None or not directory.is_relative_to(local_path(scope.output_root)):
-                raise PermissionError('Backup is outside the selected output folder.')
-            if 'backup_receipt' not in result:
-                raise ValueError('This older backup result needs full verification before reuse.')
-            verify_backup_receipt(directory, result['backup_receipt'],
-                max_bytes=scope.max_bytes, max_files=scope.max_files, cancelled=cancelled)
 
     def run(self, identity, *, cancelled=lambda: False, progress=None):
-        with self.store.lock(identity):
+        with retained_context(self.store.lock(identity)):
             record, plan = self._load(identity)
             started = monotonic()
             def stopped():
@@ -288,18 +361,53 @@ class AssistantService:
                         with self.app.read(record['workspace']):
                             pass
                     if checkpoint['status'] == 'complete':
+                        if step.tool in player_tools.RULES:
+                            if self.player is None:
+                                raise PermissionError('The prior native reader owner is unavailable; its action was not replayed.')
+                            self.player.verify_completed(plan.scope, step, checkpoint['result'], stopped)
+                        if step.tool in local_tools.RULES:
+                            local_tools.verify_result(self.app, record['workspace'], plan.scope, step,
+                                                      checkpoint['result'], stopped)
+                        if step.tool in book_tools.RULES:
+                            book_tools.verify_result(self.app, record['workspace'], plan.scope, step,
+                                checkpoint['intent'], checkpoint['result'], self.production, stopped)
+                        if step.tool == 'audio.transcribe':
+                            from .transcription import verify_completed
+                            verify_completed(self.app, record['workspace'], step.arguments, plan.scope,
+                                             checkpoint['intent'], checkpoint['result'], stopped)
                         self._verify_completed(checkpoint['result'], plan.scope, stopped)
                         continue
                     checkpoint['status'] = 'running'
                     checkpoint['message'] = ''
                     persist()
-                    if progress:
-                        progress(index, len(plan.steps), step.tool)
+                    _observe(progress, index, len(plan.steps), step.tool)
                     result = self._execute(step, plan.scope, record, checkpoint, persist, stopped, progress, index)
                     result = _plain(result)
                     if not isinstance(result, dict):
                         raise RuntimeError('Tool returned an invalid result.')
-                    result['artifacts'] = self._artifacts(result, plan.scope, stopped)
+                    if step.tool == 'audio.transcribe':
+                        from .transcription import finalize_result
+                        # This branch is reached only after the shared export
+                        # writer committed, or its exact receipt was recovered.
+                        # A late stop cannot reverse that durable result.
+                        result['artifacts'] = finalize_result(self.app, record['workspace'], step.arguments,
+                                                              plan.scope, checkpoint['intent'], result)
+                    else:
+                        committed = ((step.tool in local_tools.PUBLICATION_TOOLS
+                                      and checkpoint['intent'].get('publication_committed') is True)
+                                     or (step.tool in book_tools.PUBLICATION_TOOLS
+                                         and checkpoint['intent'].get('book_completed') is True)
+                                     or (step.tool == 'player.control'
+                                         and checkpoint['intent'].get('player_dispatch_complete') is True))
+                        if step.tool in (local_tools.RULES | player_tools.RULES | book_tools.RULES) and not committed and stopped():
+                            raise InterruptedError('Local assistant operation stopped before result acceptance.')
+                        if committed and record['workspace'] is not None:
+                            with self.app.read(record['workspace']):
+                                pass
+                        if committed and step.tool in local_tools.RULES:
+                            local_tools.verify_result(self.app, record['workspace'], plan.scope, step,
+                                                      result, lambda: False)
+                        result['artifacts'] = self._artifacts(result, plan.scope, (lambda: False) if committed else stopped)
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
                     persist()
@@ -309,6 +417,9 @@ class AssistantService:
                 command = self.store.control(identity)
                 record['status'] = 'cancelled' if command == 'cancel' else 'paused'
                 record['message'] = str(exc)
+                if _pending_owners(exc):
+                    persist()
+                    raise
             except Exception as exc:
                 record['status'] = 'attention' if isinstance(exc, (FileExistsError, PermissionError)) else 'failed'
                 # No credentials enter local tools or exceptions; remote adapters redact separately.
@@ -317,9 +428,11 @@ class AssistantService:
                     if checkpoint['status'] == 'running':
                         checkpoint['status'] = 'failed'
                         checkpoint['message'] = record['message']
+                if _pending_owners(exc):
+                    persist()
+                    raise
             persist()
-            if progress:
-                progress(sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
+            _observe(progress, sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
             return self._report(record)
 
     def _input_files(self, path, scope, cancelled):
@@ -356,6 +469,20 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        def domain_progress(*values):
+            message = (str(values[2]) + '; ' + str(values[0]) + '/' + str(values[1])
+                       if len(values) == 3 else str(values[0]) if values else step.tool)
+            _observe(progress, index, len(record['steps']), message)
+        if step.tool in local_tools.RULES:
+            return local_tools.execute(self.app, workspace, scope, step, intent, persist,
+                                       cancelled, domain_progress, record['id'] + ':' + str(index))
+        if step.tool in book_tools.RULES:
+            return book_tools.execute(self.app, workspace, scope, step, intent, persist,
+                                      cancelled, domain_progress, self.production)
+        if step.tool in player_tools.RULES:
+            if self.player is None:
+                raise PermissionError('The current native reader owner is unavailable.')
+            return self.player.execute(scope, step, intent, persist, cancelled)
         if step.tool == 'library.create':
             from ..application import _name
             from ..catalog.membership import _metadata
@@ -459,32 +586,29 @@ class AssistantService:
             target = scope.output(args['name'])
             if target.exists():
                 raise FileExistsError('Backup output already exists. Review its manifest before submitting a new backup.')
-            checksum = self.app.backup(target, max_bytes=scope.max_bytes, cancelled=cancelled)
-            receipt = capture_backup_receipt(target, checksum, max_bytes=scope.max_bytes,
-                max_files=scope.max_files, cancelled=cancelled)
-            return {'directory': str(target), 'manifest_sha256': checksum, 'backup_receipt': receipt.to_dict(),
+            checksum = self.app.backup(target)
+            return {'directory': str(target), 'manifest_sha256': checksum,
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}
-        if step.tool == 'audio.produce':
+        if step.tool == 'audio.transcribe':
+            from .transcription import execute
+            def transcription_progress(done, total, phase):
+                if progress:
+                    progress(index, len(record['steps']), f'{phase}; {done}/{total} files')
+            return execute(self.app, workspace, args, scope, intent, persist,
+                           cancelled, transcription_progress)
+        if step.tool in ('audio.produce', 'audio.render'):
             if self.production is None:
                 raise RuntimeError('Audio production is unavailable.')
             settings = dict(args)
             settings['operation_id'] = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
             def production_progress(message):
-                if progress:
-                    progress(index, len(record['steps']), message)
+                _observe(progress, index, len(record['steps']), message)
             result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
             if not isinstance(result, dict) or not result.get('artifacts'):
                 raise RuntimeError('Audio production did not return completed audio artifacts.')
+            if result.get('status', 'complete') != 'complete':
+                if result.get('status') in ('paused', 'cancelled') or cancelled():
+                    raise InterruptedError('Audio production stopped; its partial outputs remain owned by the existing production job.')
+                raise RuntimeError('Audio production is incomplete; review its existing job before resuming.')
             return result
-        if step.tool == 'audio.transcribe':
-            if self.transcription is None:
-                raise RuntimeError('The reviewed supplied transcription installation is unavailable.')
-            def transcription_progress(message):
-                if progress:
-                    progress(index, len(record['steps']), message)
-            return self.transcription.transcribe(scope.input(args['path']), scope.output(args['name']),
-                options={key: value for key, value in args.items() if key not in ('path', 'name')},
-                intent=intent, persist=persist, state_dir=self.store.directory,
-                max_bytes=scope.max_bytes, max_seconds=scope.max_seconds,
-                cancelled=cancelled, progress=transcription_progress)
         raise ValueError('Unknown assistant tool.')

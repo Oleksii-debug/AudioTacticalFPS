@@ -1,0 +1,390 @@
+{
+  "events": [
+    {
+      "ended": 4.109000000000037,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "first-run",
+      "started": 0.09400000000005093
+    },
+    {
+      "ended": 4.156000000000063,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "first-run",
+      "started": 4.1400000000001
+    },
+    {
+      "ended": 8.094000000000051,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "first-run",
+      "started": 4.344000000000051
+    },
+    {
+      "ended": 8.125,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "first-run",
+      "started": 8.109000000000037
+    },
+    {
+      "ended": 8.125,
+      "error": null,
+      "name": "process_start",
+      "phase": "first-run",
+      "started": 8.125
+    },
+    {
+      "ended": 12.656000000000063,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "first-run",
+      "started": 8.812000000000012
+    },
+    {
+      "ended": 12.687000000000012,
+      "error": null,
+      "name": "_publish_result",
+      "phase": "first-run",
+      "started": 8.594000000000051
+    },
+    {
+      "ended": 16.547000000000025,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "first-run",
+      "started": 12.719000000000051
+    },
+    {
+      "ended": 16.547000000000025,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "first-run",
+      "started": 8.3900000000001
+    },
+    {
+      "ended": 16.734000000000037,
+      "error": "AudioError",
+      "name": "run_process",
+      "phase": "first-run",
+      "started": 8.094000000000051
+    },
+    {
+      "ended": 20.6400000000001,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "first-run",
+      "started": 16.7650000000001
+    },
+    {
+      "ended": 20.781000000000063,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "first-run",
+      "started": 20.6400000000001
+    },
+    {
+      "ended": 21.109000000000037,
+      "error": null,
+      "name": "inspect_runtime",
+      "phase": "register-replacement",
+      "started": 20.797000000000025
+    },
+    {
+      "ended": 25.531000000000063,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "resume",
+      "started": 21.562000000000012
+    },
+    {
+      "ended": 25.578000000000088,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "resume",
+      "started": 25.562000000000012
+    },
+    {
+      "ended": 29.609000000000037,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "resume",
+      "started": 25.75
+    },
+    {
+      "ended": 29.625,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "resume",
+      "started": 29.625
+    },
+    {
+      "ended": 29.625,
+      "error": null,
+      "name": "process_start",
+      "phase": "resume",
+      "started": 29.625
+    },
+    {
+      "ended": 34.172000000000025,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "resume",
+      "started": 30.34400000000005
+    },
+    {
+      "ended": 34.20300000000009,
+      "error": null,
+      "name": "_publish_result",
+      "phase": "resume",
+      "started": 30.109000000000037
+    },
+    {
+      "ended": 38.06200000000001,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "resume",
+      "started": 34.23400000000004
+    },
+    {
+      "ended": 38.06200000000001,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "resume",
+      "started": 29.8900000000001
+    },
+    {
+      "ended": 38.2650000000001,
+      "error": "AudioError",
+      "name": "run_process",
+      "phase": "resume",
+      "started": 29.609000000000037
+    },
+    {
+      "ended": 42.18700000000001,
+      "error": null,
+      "name": "_verify_profile",
+      "phase": "resume",
+      "started": 38.28100000000006
+    },
+    {
+      "ended": 42.23400000000004,
+      "error": null,
+      "name": "_admit_results",
+      "phase": "resume",
+      "started": 42.18700000000001
+    }
+  ],
+  "platform": "win32",
+  "process_failures": [
+    {
+      "caught": 16.734000000000037,
+      "error": "AudioError",
+      "original_check": {
+        "observed_exit_at": 16.71900000000005,
+        "started": 8.125,
+        "worker_until": 16.71900000000005
+      },
+      "phase": "first-run"
+    },
+    {
+      "caught": 38.2650000000001,
+      "error": "AudioError",
+      "original_check": {
+        "observed_exit_at": 38.23400000000004,
+        "started": 29.625,
+        "worker_until": 38.23400000000004
+      },
+      "phase": "resume"
+    }
+  ],
+  "process_timeout": 5,
+  "processes": [
+    {
+      "first_completed_wait": {
+        "ended": 16.71900000000005,
+        "returncode": 3,
+        "started": 16.71900000000005
+      },
+      "first_exit_poll": {
+        "ended": 16.71900000000005,
+        "returncode": 3,
+        "started": 16.71900000000005
+      },
+      "last_running_poll": {
+        "ended": 8.234000000000037,
+        "started": 8.234000000000037
+      },
+      "owned_tree": true,
+      "phase": "first-run",
+      "poll_calls": 6,
+      "returned": 8.125,
+      "started": 8.125,
+      "wait_calls": 3,
+      "wait_timeouts": 1
+    },
+    {
+      "first_completed_wait": {
+        "ended": 38.23400000000004,
+        "returncode": 0,
+        "started": 38.23400000000004
+      },
+      "first_exit_poll": {
+        "ended": 38.23400000000004,
+        "returncode": 0,
+        "started": 38.23400000000004
+      },
+      "last_running_poll": {
+        "ended": 29.734000000000037,
+        "started": 29.734000000000037
+      },
+      "owned_tree": true,
+      "phase": "resume",
+      "poll_calls": 6,
+      "returned": 29.625,
+      "started": 29.625,
+      "wait_calls": 3,
+      "wait_timeouts": 1
+    }
+  ],
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "timings": {
+    "first-run:_admit_results": {
+      "calls": 4,
+      "first_started": 4.1400000000001,
+      "last_ended": 20.781000000000063,
+      "maximum_ended": 16.547000000000025,
+      "maximum_seconds": 8.156999999999925,
+      "maximum_started": 8.3900000000001,
+      "seconds": 8.329999999999814
+    },
+    "first-run:_control": {
+      "calls": 1442,
+      "first_started": 0.09400000000005093,
+      "last_ended": 20.797000000000025,
+      "maximum_ended": 0.5940000000000509,
+      "maximum_seconds": 0.03200000000003911,
+      "maximum_started": 0.5620000000000118,
+      "seconds": 18.634000000000356
+    },
+    "first-run:_publish_result": {
+      "calls": 1,
+      "first_started": 8.594000000000051,
+      "last_ended": 12.687000000000012,
+      "maximum_ended": 12.687000000000012,
+      "maximum_seconds": 4.092999999999961,
+      "maximum_started": 8.594000000000051,
+      "seconds": 4.092999999999961
+    },
+    "first-run:_verify_profile": {
+      "calls": 5,
+      "first_started": 0.09400000000005093,
+      "last_ended": 20.6400000000001,
+      "maximum_ended": 4.109000000000037,
+      "maximum_seconds": 4.014999999999986,
+      "maximum_started": 0.09400000000005093,
+      "seconds": 19.312000000000012
+    },
+    "first-run:process_callback": {
+      "calls": 18,
+      "first_started": 8.094000000000051,
+      "last_ended": 16.734000000000037,
+      "maximum_ended": 16.547000000000025,
+      "maximum_seconds": 8.187999999999988,
+      "maximum_started": 8.359000000000037,
+      "seconds": 8.577999999999975
+    },
+    "first-run:process_start": {
+      "calls": 1,
+      "first_started": 8.125,
+      "last_ended": 8.125,
+      "maximum_ended": 8.125,
+      "maximum_seconds": 0,
+      "maximum_started": 8.125,
+      "seconds": 0
+    },
+    "first-run:run_process": {
+      "calls": 1,
+      "first_started": 8.094000000000051,
+      "last_ended": 16.734000000000037,
+      "maximum_ended": 16.734000000000037,
+      "maximum_seconds": 8.639999999999986,
+      "maximum_started": 8.094000000000051,
+      "seconds": 8.639999999999986
+    },
+    "register-replacement:inspect_runtime": {
+      "calls": 1,
+      "first_started": 20.797000000000025,
+      "last_ended": 21.109000000000037,
+      "maximum_ended": 21.109000000000037,
+      "maximum_seconds": 0.3120000000000118,
+      "maximum_started": 20.797000000000025,
+      "seconds": 0.3120000000000118
+    },
+    "resume:_admit_results": {
+      "calls": 4,
+      "first_started": 25.562000000000012,
+      "last_ended": 42.23400000000004,
+      "maximum_ended": 38.06200000000001,
+      "maximum_seconds": 8.171999999999912,
+      "maximum_started": 29.8900000000001,
+      "seconds": 8.235000000000014
+    },
+    "resume:_control": {
+      "calls": 1446,
+      "first_started": 21.562000000000012,
+      "last_ended": 42.25,
+      "maximum_ended": 40.65600000000006,
+      "maximum_seconds": 0.031000000000062755,
+      "maximum_started": 40.625,
+      "seconds": 18.58900000000017
+    },
+    "resume:_publish_result": {
+      "calls": 1,
+      "first_started": 30.109000000000037,
+      "last_ended": 34.20300000000009,
+      "maximum_ended": 34.20300000000009,
+      "maximum_seconds": 4.094000000000051,
+      "maximum_started": 30.109000000000037,
+      "seconds": 4.094000000000051
+    },
+    "resume:_verify_profile": {
+      "calls": 5,
+      "first_started": 21.562000000000012,
+      "last_ended": 42.18700000000001,
+      "maximum_ended": 25.531000000000063,
+      "maximum_seconds": 3.969000000000051,
+      "maximum_started": 21.562000000000012,
+      "seconds": 19.389999999999986
+    },
+    "resume:process_callback": {
+      "calls": 18,
+      "first_started": 29.609000000000037,
+      "last_ended": 38.2650000000001,
+      "maximum_ended": 38.06200000000001,
+      "maximum_seconds": 8.202999999999975,
+      "maximum_started": 29.859000000000037,
+      "seconds": 8.57899999999995
+    },
+    "resume:process_start": {
+      "calls": 1,
+      "first_started": 29.625,
+      "last_ended": 29.625,
+      "maximum_ended": 29.625,
+      "maximum_seconds": 0,
+      "maximum_started": 29.625,
+      "seconds": 0
+    },
+    "resume:run_process": {
+      "calls": 1,
+      "first_started": 29.609000000000037,
+      "last_ended": 38.2650000000001,
+      "maximum_ended": 38.2650000000001,
+      "maximum_seconds": 8.656000000000063,
+      "maximum_started": 29.609000000000037,
+      "seconds": 8.656000000000063
+    }
+  },
+  "timings_are_inclusive": true
+}

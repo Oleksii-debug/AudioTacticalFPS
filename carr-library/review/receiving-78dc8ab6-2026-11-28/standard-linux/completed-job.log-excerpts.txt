@@ -1,0 +1,145 @@
+===== DECODED JOB LOG LINES 1098-1100 =====
+2026-11-28T03:16:54.7288528Z [command]/usr/bin/git log -1 --format=%H
+2026-11-28T03:16:54.7329494Z 78dc8ab6838e964bc115418c47c4ec3ef4226a91
+2026-11-28T03:16:54.7342453Z ##[group]Removing auth
+
+===== DECODED JOB LOG LINES 1355-1355 =====
+2026-11-28T03:17:15.1280156Z {"payload_files": 490, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91", "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c", "wheel_sha256": "66a922300398c3e18d4bd6b1a43ffb354745f7ed50d78baf353ed279349362ef"}
+
+===== DECODED JOB LOG LINES 1475-1590 =====
+2026-11-28T03:17:18.7517109Z 
+2026-11-28T03:17:19.4314852Z tests/packaging/test_standard_installer.py ............................... [ 19%]
+2026-11-28T03:17:20.9519227Z ...................................................... [ 51%]
+2026-11-28T03:17:21.8657264Z .......................... [ 67%]
+2026-11-28T03:17:22.6511438Z .................................................                                                  [100%]
+2026-11-28T03:17:22.6512478Z 
+2026-11-28T03:17:22.6515593Z ------------- generated xml file: /tmp/carr-ci-bp3ru020/junit.xml --------------
+2026-11-28T03:17:22.6516355Z ============================== 47 passed in 4.14s ==============================
+2026-11-28T03:17:22.7397584Z ....PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:22.8068507Z ...............                         [100%]
+2026-11-28T03:17:22.8069287Z 
+2026-11-28T03:17:22.8071540Z ------------- generated xml file: /tmp/carr-ci-ny75tvnq/junit.xml --------------
+2026-11-28T03:17:22.8072732Z ============================= 149 passed in 4.30s ==============================
+2026-11-28T03:17:22.9238529Z ============================= test session starts ==============================
+2026-11-28T03:17:22.9258424Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:22.9259787Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:22.9261093Z configfile: pyproject.toml
+2026-11-28T03:17:22.9415860Z PASS: tests/packaging/test_standard_installer.py: junit_passed=149, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:22.9811513Z collected 37 items
+2026-11-28T03:17:22.9813620Z 
+2026-11-28T03:17:23.0506407Z tests/packaging/test_native_checks.py .................................. [ 91%]
+2026-11-28T03:17:23.0575946Z ...                                                                      [100%]
+2026-11-28T03:17:23.0576997Z 
+2026-11-28T03:17:23.0588600Z ------------- generated xml file: /tmp/carr-ci-nmhvzv13/junit.xml --------------
+2026-11-28T03:17:23.0609242Z ============================== 37 passed in 0.13s ==============================
+2026-11-28T03:17:23.1292498Z PASS: tests/packaging/test_native_checks.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:23.2472265Z ============================= test session starts ==============================
+2026-11-28T03:17:23.2493190Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:23.2494815Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:23.2503966Z configfile: pyproject.toml
+2026-11-28T03:17:23.2946383Z ============================= test session starts ==============================
+2026-11-28T03:17:23.2950530Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:23.2962722Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:23.2986195Z configfile: pyproject.toml
+2026-11-28T03:17:23.3447635Z collected 16 items
+2026-11-28T03:17:23.3457766Z 
+2026-11-28T03:17:23.3516963Z tests/packaging/test_windows_bundle.py .collected 24 items
+2026-11-28T03:17:23.3528073Z 
+2026-11-28T03:17:23.5152243Z tests/packaging/test_windows_launcher_bundle.py .................                  [100%]
+2026-11-28T03:17:23.5153582Z 
+2026-11-28T03:17:23.5158100Z ------------- generated xml file: /tmp/carr-ci-bv_n4vu_/junit.xml --------------
+2026-11-28T03:17:23.5159230Z ============================== 16 passed in 0.27s ==============================
+2026-11-28T03:17:23.5990472Z .PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:23.7581732Z ....============================= test session starts ==============================
+2026-11-28T03:17:23.7609031Z .platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:23.7610560Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:23.7611944Z configfile: pyproject.toml
+2026-11-28T03:17:23.7906267Z .collected 12 items
+2026-11-28T03:17:23.7937107Z 
+2026-11-28T03:17:24.2964273Z tests/packaging/test_install_bytecode.py ................. [100%]
+2026-11-28T03:17:24.2965213Z 
+2026-11-28T03:17:24.2966670Z ------------- generated xml file: /tmp/carr-ci-tywd7e04/junit.xml --------------
+2026-11-28T03:17:24.3006739Z ============================== 24 passed in 1.01s ==============================
+2026-11-28T03:17:24.3558315Z PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:24.6146206Z .============================= test session starts ==============================
+2026-11-28T03:17:24.6167876Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:24.6170309Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:24.6171720Z configfile: pyproject.toml
+2026-11-28T03:17:24.7083913Z .collected 3 items
+2026-11-28T03:17:24.7086142Z 
+2026-11-28T03:17:24.9065562Z tests/packaging/test_worker_bytecode.py ...                              [100%]
+2026-11-28T03:17:24.9066616Z 
+2026-11-28T03:17:24.9077482Z ------------- generated xml file: /tmp/carr-ci-2o9d91hb/junit.xml --------------
+2026-11-28T03:17:24.9078317Z ============================== 3 passed in 0.29s ===============================
+2026-11-28T03:17:24.9728100Z PASS: tests/packaging/test_worker_bytecode.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:25.1303399Z ============================= test session starts ==============================
+2026-11-28T03:17:25.1323980Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:25.1325258Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:25.1326722Z configfile: pyproject.toml
+2026-11-28T03:17:25.1719640Z collected 25 items
+2026-11-28T03:17:25.1727409Z 
+2026-11-28T03:17:26.1508941Z tests/packaging/test_source_wheel.py .........................           [100%]
+2026-11-28T03:17:26.1509735Z 
+2026-11-28T03:17:26.1510258Z ------------- generated xml file: /tmp/carr-ci-n0h97160/junit.xml --------------
+2026-11-28T03:17:26.1511350Z ============================== 25 passed in 1.02s ==============================
+2026-11-28T03:17:26.2408531Z PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:26.4820414Z ============================= test session starts ==============================
+2026-11-28T03:17:26.4850459Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:26.4854059Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:26.4856133Z configfile: pyproject.toml
+2026-11-28T03:17:26.5332885Z collected 16 items
+2026-11-28T03:17:26.5342528Z 
+2026-11-28T03:17:26.6146702Z tests/packaging/test_native_runtime.py ................                  [100%]
+2026-11-28T03:17:26.6147641Z 
+2026-11-28T03:17:26.6168569Z ------------- generated xml file: /tmp/carr-ci-s939_yem/junit.xml --------------
+2026-11-28T03:17:26.6169626Z ============================== 16 passed in 0.13s ==============================
+2026-11-28T03:17:26.6789460Z PASS: tests/packaging/test_native_runtime.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:26.8319446Z ============================= test session starts ==============================
+2026-11-28T03:17:26.8340238Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:26.8341667Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:26.8342884Z configfile: pyproject.toml
+2026-11-28T03:17:26.9656313Z collected 9 items
+2026-11-28T03:17:26.9667391Z 
+2026-11-28T03:17:27.0884186Z tests/audio/test_local_runtime_cli.py .........                          [100%]
+2026-11-28T03:17:27.0897833Z 
+2026-11-28T03:17:27.0899303Z ------------- generated xml file: /tmp/carr-ci-osolnf0b/junit.xml --------------
+2026-11-28T03:17:27.0900031Z ============================== 9 passed in 0.26s ===============================
+2026-11-28T03:17:27.1956111Z PASS: tests/audio/test_local_runtime_cli.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:27.3478980Z ============================= test session starts ==============================
+2026-11-28T03:17:27.3500337Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:17:27.3518690Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T03:17:27.3519695Z configfile: pyproject.toml
+2026-11-28T03:17:27.5145295Z collected 7 items
+2026-11-28T03:17:27.5157368Z 
+2026-11-28T03:17:27.7797461Z tests/test_delivery_cli.py .......                                       [100%]
+2026-11-28T03:17:27.7798108Z 
+2026-11-28T03:17:27.7798472Z ------------- generated xml file: /tmp/carr-ci-p7qco0wp/junit.xml --------------
+2026-11-28T03:17:27.7799155Z ============================== 7 passed in 0.43s ===============================
+2026-11-28T03:17:27.8613166Z PASS: tests/test_delivery_cli.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:28.6828207Z ........                    [100%]
+2026-11-28T03:17:28.6833806Z 
+2026-11-28T03:17:28.6834500Z ------------- generated xml file: /tmp/carr-ci-2uw0rj92/junit.xml --------------
+2026-11-28T03:17:28.6835916Z ============================== 12 passed in 4.92s ==============================
+2026-11-28T03:17:28.7259394Z PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:17:28.7282841Z Required suites complete: 11; passed=11; failed=0
+2026-11-28T03:17:28.8217498Z ##[group]Run $suites = @(
+
+===== DECODED JOB LOG LINES 1647-1649 =====
+2026-11-28T03:17:44.4149350Z .......                                                                  [100%]
+2026-11-28T03:17:44.4150711Z 345 passed, 22 subtests passed in 15.13s
+2026-11-28T03:17:44.4967583Z INSTALLED_CASES_PASS 345
+
+===== DECODED JOB LOG LINES 1686-1698 =====
+2026-11-28T03:17:44.7550484Z Artifact name is valid!
+2026-11-28T03:17:44.7550963Z Root directory input is valid!
+2026-11-28T03:17:44.9617500Z Uploading artifact: carr-standard-installation-ubuntu-24.04-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1.zip
+2026-11-28T03:17:44.9680513Z Beginning upload of artifact content to blob storage
+2026-11-28T03:17:45.0853058Z Uploaded bytes 29424
+2026-11-28T03:17:45.1012795Z Finished uploading artifact content to blob storage!
+2026-11-28T03:17:45.1014623Z SHA256 digest of uploaded artifact is 3dfd7c81a9ffc34cfe2b6cc3abbc6c1efc0a87ba85d5ac8562a19feb526a794a
+2026-11-28T03:17:45.1017105Z Finalizing artifact upload
+2026-11-28T03:17:45.4448268Z Artifact carr-standard-installation-ubuntu-24.04-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1 successfully finalized. Artifact ID 15245741646
+2026-11-28T03:17:45.4452868Z Artifact carr-standard-installation-ubuntu-24.04-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1 has been successfully uploaded! Final size is 29424 bytes. Artifact ID is 15245741646
+2026-11-28T03:17:45.4456341Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101830099/artifacts/15245741646
+2026-11-28T03:17:45.4676067Z Post job cleanup.
+2026-11-28T03:17:45.6093944Z Post job cleanup.

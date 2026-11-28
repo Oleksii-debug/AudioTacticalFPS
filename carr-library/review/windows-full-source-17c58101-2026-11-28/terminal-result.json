@@ -1,0 +1,67 @@
+{
+  "schema": "carr-terminal-ci-evidence/1",
+  "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run": 46088683366,
+  "job": 140804190798,
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "event": "push",
+  "job_conclusion": "failure",
+  "recorded_at": "2026-11-28 02:00:27 UTC",
+  "source_aggregate": {
+    "completed": true,
+    "timed_out": false,
+    "suites": 444,
+    "passing_suites": 442,
+    "failing_suites": 2,
+    "passed_cases": 11290,
+    "failed_cases": 8,
+    "skipped_cases": 0,
+    "inventory": "source-inventory.json"
+  },
+  "failed_source_modules": [
+    {
+      "status": "FAIL",
+      "path": "tests/audio/test_capture_access_diagnostic.py",
+      "passed": 54,
+      "failed": 1,
+      "skipped": 0,
+      "exit": 1,
+      "line": 10962
+    },
+    {
+      "status": "FAIL",
+      "path": "tests/audio/test_process_deadline.py",
+      "passed": 14,
+      "failed": 7,
+      "skipped": 0,
+      "exit": 1,
+      "line": 11585
+    }
+  ],
+  "old17_only": true,
+  "qualification_limits": [
+    "These results belong only to17c581; no passing result is transferred to8bcb or later source.",
+    "The full installed bundle, standard setup and retained bundle loopback steps were skipped after the known old MSVC compile failure.",
+    "The current selected-input capture refusal remains a separate failed native step; exact endpoint/consent diagnostics are preserved by root.",
+    "Three early-EOF readiness failures are retained without a cause claim. Their source is unchanged in8bcb, whose separately reported bridge21/21 results do not erase this failure.",
+    "No deadlines, production code or assertions changed while collecting evidence."
+  ],
+  "source_failure_reconciliation": {
+    "capture": "Missing explicit replace=True in a deliberate receipt-mutation test; current8b fixture already corrected.",
+    "deadline_budget": "Four failures were the known test-only max_output_bytes1024 below actual4096 minimum; current8b uses4096 and8192 oversized result.",
+    "deadline_readiness": "Three entered.wait(10) failures are not explained by that budget delta; exact full failure section retained.",
+    "thread_warning_scan": "No PytestUnhandledThreadException/Exception in thread/warnings summary/unraisable/ResourceWarning occurrence in the completed tool log."
+  },
+  "final_artifact": {
+    "id": 15242983235,
+    "size_bytes": 212308,
+    "sha256": "f866b84f3602fd265352d2ab8f56eab734bee9684d02b8839f0260f580ffbabd",
+    "name": "carr-windows-17c581015fc1ca6f3294f4cce1fe894f33a843cd-1"
+  },
+  "retrieval": {
+    "method": "Completed GitHub job log tool; never requested while running.",
+    "decoded_log_chars": 1372454,
+    "decoded_log_sha256": "3fe75557aeaa5bb22294d9bbdc9f06d884e76bd8ccc9765a188f633a7a28be67",
+    "text_normalization": "Retained excerpts remove timestamp prefixes, ANSI and CR; original decoded whole-log hash is recorded. Excerpts are not claimed byte-identical ZIP members."
+  }
+}

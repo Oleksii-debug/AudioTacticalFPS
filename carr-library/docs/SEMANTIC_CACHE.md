@@ -23,7 +23,7 @@ database snapshot, verifies the original source, and checks complete tokenizer
 coverage. Cache membership cannot add a result to the caller's candidate list.
 
 The implementation uses only the existing Python/SQLite runtime. It introduces
-no dependency, research-database migration, downloadable asset, or external request.
+no dependency, database migration, downloadable asset, or external request.
 See the upstream [SQLite transaction documentation](https://www.sqlite.org/lang_transaction.html)
 and [page-count budget](https://www.sqlite.org/pragma.html#pragma_max_page_count).
 
@@ -36,14 +36,6 @@ continues in batches of 16 texts. The SQLite memory cache is bounded to 2 MiB,
 memory mapping is disabled, and there is no growing WAL. A small rollback
 journal can exist during a write, so the file budget is not a promise that the
 whole directory occupies exactly that many bytes at every instant.
-
-Schema v2 uses a rowid table and a 16 KiB SQLite record-allocation limit. This
-bounds native SQLite memory as well as Python memory when a stored record is
-malformed. A batch containing an oversized row is divided only on SQLite's
-size-limit error, so valid neighboring records still work. V2 files use
-`embeddings-v2-<model>.sqlite`; earlier derived caches are ignored and left
-untouched. Normal inference repopulates the v2 cache. Historical v1 files can
-therefore occupy additional disk space until the disposable cache is cleared.
 
 Recently used records are retained when the entry or file budget is reached.
 An oversized incoming batch keeps its most recent portion. Each publication is
@@ -69,16 +61,12 @@ then requires a reopened search to succeed with the embedding engine forbidden
 from running. It revokes collection membership and checks fresh access again.
 
 The recorded [scale evidence](evidence/semantic-cache-scale.json) uses real
-SQLite files and deterministic synthetic vectors from the recorded pre-v2
-implementation. All 1,000, 10,000, and 50,000
+SQLite files and deterministic synthetic vectors. All 1,000, 10,000, and 50,000
 records survived reopening and were returned exactly. At 50,000 records the
 file occupied 239,153,152 bytes; measured child peak RSS was 37,478,400 bytes.
 The measurements describe storage behavior on the recorded Linux host, with
 the operating system page cache in use. They do not measure neural inference,
-search quality, cold-disk speed, schema-v2 storage capacity, or a 50,000-source
-end-to-end search. The schema-v2 regressions separately measure actual child
-process peak RSS for 4 MiB and 64 MiB corrupt vector/checksum records, retaining
-a valid neighboring hit without materializing the large payload.
+search quality, cold-disk speed, or a 50,000-source end-to-end search.
 
 The current semantic source-window and search-result budgets remain separate
 constraints. This feature removes repeated embedding work; it does not by

@@ -13,11 +13,19 @@ from carr_library.ui import assistant_dialog
 
 
 class Widget:
+    next_id = 20000
     def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
+        self.id = Widget.next_id
+        Widget.next_id += 1
         self.value, self.label, self.choices = value, label, list(choices)
         self.enabled, self.selection, self.name = True, -1, ''
         self.bindings, self.focused = {}, False
+    def GetId(self):
+        assert not getattr(self, 'destroyed', False), 'accessed an invalid native wrapper'
+        return self.id
     def SetName(self, value): self.name = value
+    def SetMaxLength(self, value): self.max_length = value
+    def SetEscapeId(self, value): self.escape_id = value
     def GetName(self): return self.name
     def GetValue(self): return self.value
     def SetValue(self, value): self.value = value
@@ -76,7 +84,7 @@ def native_handlers(tmp_path, monkeypatch):
     monkeypatch.setattr(assistant_dialog, 'ThreadPoolExecutor', lambda **kwargs: executor)
     constants = ('DEFAULT_DIALOG_STYLE','RESIZE_BORDER','VERTICAL','HORIZONTAL','LEFT','TOP',
         'ALL','EXPAND','TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_TEXT','EVT_CHOICE',
-        'EVT_CHECKBOX','EVT_CLOSE','ID_OK','ID_CLOSE')
+        'EVT_CHECKBOX','EVT_CLOSE','ID_OK','ID_CLOSE','ID_CANCEL','ID_ANY','EVT_WINDOW_DESTROY')
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate(constants)})
     for name in ('Dialog','StaticText','TextCtrl','Button','Choice'):
         setattr(wx, name, Widget)
@@ -255,3 +263,24 @@ def test_assistant_close_cancels_then_closes_production_after_pending_work(nativ
     assert not closed  # Cleanup waits behind the actual pending proposal.
     e.executor.complete(); e.drain()
     assert len(closed) == 1 and not e.executor.pending
+
+
+def test_direct_destroy_uses_native_identity_and_rejects_late_proposal(native_handlers):
+    e = native_handlers
+    select_model(e)
+    e.handlers['preview']()
+    owner_id = e.dialog.GetId()
+    callback = e.dialog.bindings[e.wx.EVT_WINDOW_DESTROY]
+    before = e.controls['review'].GetValue()
+    e.dialog.Destroy()
+    skipped = []
+    event = SimpleNamespace(GetId=lambda: owner_id, GetEventObject=lambda: object(),
+                            Skip=lambda: skipped.append(True))
+    callback(event)
+    assert skipped == [True] and len(e.executor.pending) == 2
+    e.executor.complete()
+    e.drain()
+    assert not e.calls and e.controls['review'].GetValue() == before
+    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
+    e.executor.complete()
+    assert not e.executor.pending

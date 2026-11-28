@@ -95,3 +95,73 @@ def test_bound_reading_draft_retains_exact_lineage_through_complete_backup(tmp_p
     assert recovered.document.undo()
     assert not recovered.document.source_span(first['end'], second['start']).exact
     assert recovered.document.source_anchor['quotation_authority'] is False
+
+
+LEGACY_FIELDS = {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}
+
+
+def test_legacy_seven_key_record_keeps_default_requests_and_canonical_bytes(tmp_path):
+    store = ReaderDraftStore(tmp_path)
+    state = ReaderResume(ReadingDocument('Immutable legacy original'), 'missing:legacy', -1, 61, 2, 3.5)
+    store.save(state)
+    original = store.path.read_bytes()
+    assert set(json.loads(original)) == LEGACY_FIELDS
+    loaded = store.load()
+    assert (loaded.pitch, loaded.punctuation) == (None, False)
+    assert (loaded.voice_id, loaded.rate, loaded.volume, loaded.cursor, loaded.audio_seconds) == (
+        'missing:legacy', -1, 61, 2, 3.5)
+    store.save(loaded)
+    assert store.path.read_bytes() == original
+
+
+@pytest.mark.parametrize('pitch,punctuation,extra', [
+    (0, False, {'pitch'}), (99, False, {'pitch'}),
+    (None, True, {'punctuation'}), (37, True, {'pitch', 'punctuation'}),
+])
+def test_optional_native_settings_roundtrip_without_changing_document_or_cas(tmp_path, pitch, punctuation, extra):
+    from dataclasses import replace
+    store = ReaderDraftStore(tmp_path)
+    document = ReadingDocument('Original! Незмінний оригінал.')
+    document.replace(0, 8, 'Reading')
+    state = ReaderResume(document, 'unavailable:voice', 3, 62, 2, 1.25,
+                         pitch=pitch, punctuation=punctuation)
+    token = store.save_with_token(state, expected_token=None)
+    raw = store.path.read_bytes()
+    assert set(json.loads(raw)) == LEGACY_FIELDS | extra
+    restored, actual_token = ReaderDraftStore(tmp_path).load_with_token()
+    assert actual_token == token and (restored.pitch, restored.punctuation) == (pitch, punctuation)
+    assert restored.document.to_dict() == document.to_dict()
+    assert (restored.voice_id, restored.rate, restored.volume) == ('unavailable:voice', 3, 62)
+    default = replace(restored, pitch=None, punctuation=False)
+    next_token = store.save_with_token(default, expected_token=token)
+    assert next_token != token and set(json.loads(store.path.read_bytes())) == LEGACY_FIELDS
+    with pytest.raises(ValueError, match='Another window'):
+        store.save_with_token(restored, expected_token=token)
+    assert store.load().pitch is None and store.load().punctuation is False
+    assert document.source_text == 'Original! Незмінний оригінал.'
+
+
+@pytest.mark.parametrize('updates', [
+    {'pitch': True}, {'pitch': -1}, {'pitch': 100}, {'pitch': 20.5}, {'pitch': '20'},
+    {'punctuation': 1}, {'punctuation': None}, {'punctuation': 'false'},
+    {'playback_pitch': 3}, {'activate': True},
+])
+def test_optional_settings_decoder_rejects_malformed_or_unknown_fields_without_rewriting(tmp_path, updates):
+    store = ReaderDraftStore(tmp_path)
+    store.save(ReaderResume(ReadingDocument('Retained original'), pitch=21, punctuation=True))
+    before = store.path.read_bytes()
+    value = json.loads(before)
+    value.update(updates)
+    with pytest.raises(ValueError):
+        ReaderDraftStore.decode(value)
+    assert store.path.read_bytes() == before
+
+
+def test_explicit_optional_defaults_decode_and_resave_as_legacy_shape(tmp_path):
+    store = ReaderDraftStore(tmp_path)
+    store.save(ReaderResume(ReadingDocument('Legacy-compatible defaults')))
+    value = json.loads(store.path.read_bytes())
+    value.update(pitch=None, punctuation=False)
+    restored = ReaderDraftStore.decode(value)
+    store.save(restored)
+    assert set(json.loads(store.path.read_bytes())) == LEGACY_FIELDS

@@ -20,6 +20,7 @@ class AssetEntry:
     digest: str
     mime: str
     size: int
+    profile: object = None
 
     @property
     def filename(self):
@@ -57,40 +58,45 @@ def catalog_inventory(db, *, include_all_workspaces=False,
     total = 0
     for digest, mime, size in rows:
         if (not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
-                or mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_BYTES):
+                or mime not in SUFFIXES or type(size) is not int or size < 1):
             raise RetentionError('invalid or unsupported catalog asset manifest')
+        from .streamed_text import catalog_profile
+        profile = catalog_profile(db, digest, mime, size)
         total += size
         if total > max_bytes:
             raise RetentionError('asset byte limit exceeded')
-        entries.append(AssetEntry(digest, mime, size))
+        entries.append(AssetEntry(digest, mime, size, profile))
     return tuple(entries)
 
 
-def _checked_path(store, entry):
-    path = store.resolve(entry.digest)  # existing hash, file type and link checks
+def _checked_path(store, entry, cancelled=lambda: False):
+    path = (store.resolve(entry.digest) if entry.profile is None else
+            store.resolve(entry.digest, profile=entry.profile, cancelled=cancelled))
     if path.name != entry.filename or path.stat().st_size != entry.size:
         raise RetentionError('retained asset disagrees with catalog MIME or size')
     return path
 
 
-def verify_catalog_assets(db, store, **limits):
+def verify_catalog_assets(db, store, *, cancelled=lambda: False, **limits):
     """Verify exact copied namespace and return catalog-derived manifest entries."""
     entries = catalog_inventory(db, **limits)
     if {p.name for p in store.root.iterdir()} != {e.filename for e in entries}:
         raise RetentionError('unexpected or incomplete catalog asset namespace')
     for entry in entries:
-        _checked_path(store, entry)
+        if cancelled():
+            raise InterruptedError('Original asset verification cancelled.')
+        _checked_path(store, entry, cancelled)
     return entries
 
 
-def copy_catalog_assets(db, source, destination, **limits):
+def copy_catalog_assets(db, source, destination, *, cancelled=lambda: False, **limits):
     """Copy originals with existing retention API; never overwrite.
 
     Partial output on failure remains explicitly incomplete until independently
     verified. A future outer manifest must bind the DB bytes and these entries.
     """
     entries = catalog_inventory(db, **limits)
-    paths = [_checked_path(source, entry) for entry in entries]
+    paths = [_checked_path(source, entry, cancelled) for entry in entries]
     destination = Path(destination)
     if os.path.lexists(destination):
         raise FileExistsError(destination)
@@ -100,9 +106,15 @@ def copy_catalog_assets(db, source, destination, **limits):
     destination.mkdir(mode=0o700)
     target = RetainedAssets(destination)
     for entry, path in zip(entries, paths):
+        if cancelled():
+            raise InterruptedError('Original asset copy cancelled.')
+        if entry.profile is not None:
+            target.retain_file(path, entry.mime, entry.digest, entry.size,
+                               profile=entry.profile, cancelled=cancelled)
+            continue
         with path.open('rb') as stream:
             data = stream.read(entry.size + 1)
         if len(data) != entry.size:
             raise RetentionError('retained asset size changed')
         target.retain(data, entry.mime, entry.digest)
-    return verify_catalog_assets(db, target, **limits)
+    return verify_catalog_assets(db, target, cancelled=cancelled, **limits)

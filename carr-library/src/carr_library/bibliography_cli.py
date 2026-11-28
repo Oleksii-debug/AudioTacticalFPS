@@ -1,12 +1,11 @@
 """Headless import and CSL formatting for the same private academic library."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
 import sqlite3
 import sys
-
-from .research.export_file import capture_export_destination
 
 
 def _controller(args):
@@ -17,6 +16,7 @@ def _controller(args):
     return AcademicController(LibraryApp(args.data_dir), args.workspace)
 
 
+@installed_entrypoint
 def main(argv=None):
     from .citations.bibliography_workbench import (
         BibliographyWorkbench, EXPORT_FORMATS, LOCALES, NAME_MODES, load_style_file,
@@ -76,22 +76,17 @@ def main(argv=None):
             raise ValueError('HTML and Word export require an explicit --output file.')
         if args.output is not None and (args.output.exists() or args.output.is_symlink()) and not args.overwrite:
             raise ValueError('The output exists. Choose another path or explicitly use --overwrite.')
-        approval = (capture_export_destination(args.output, private_root=controller.library.root)
-                    if args.output is not None else None)
         workbench = BibliographyWorkbench(controller)
         style = load_style_file(args.style_file) if args.style_file is not None else args.style
         preview = workbench.preview(identity=args.reference, style=style,
                                      locale=args.locale, name_mode=args.names)
         if args.output is not None:
-            receipt = workbench.export(preview, args.output, format=args.format,
-                                       require_absent=not args.overwrite, approval=approval,
-                                       return_receipt=True)
-            warnings = (*preview.warnings, *((receipt.cleanup_warning,) if receipt.cleanup_warning else ()))
+            workbench.export(preview, args.output, format=args.format, require_absent=not args.overwrite)
             print(json.dumps({'result': 'SAVED', 'output': str(args.output),
                               'style': preview.result.style.id,
                               'style_sha256': preview.result.style_sha256,
                               'custom_style': preview.result.custom_style,
-                              'references': len(preview.result.entries), 'warnings': warnings},
+                              'references': len(preview.result.entries), 'warnings': preview.warnings},
                              ensure_ascii=False, indent=2))
         else:
             print(workbench.copy_text(preview), end='')

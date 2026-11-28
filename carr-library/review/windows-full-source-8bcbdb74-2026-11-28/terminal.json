@@ -1,0 +1,164 @@
+{
+  "schema": "carr-ci-terminal-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "run": 46093366008,
+  "job": 140819158582,
+  "event": "pull_request",
+  "branch": "carr/v3-integrated-final-dbbb-20261126",
+  "attempt": 1,
+  "conclusion": "failure",
+  "run_started_at": "2026-11-28T01:29:37Z",
+  "run_updated_at": "2026-11-28T02:54:33Z",
+  "source_aggregate": {
+    "status": "FAIL",
+    "suites": 444,
+    "passed_suites": 442,
+    "failed_suites": 2,
+    "passed_cases": 11316,
+    "failed_cases": 4,
+    "skipped_cases": 0,
+    "tests_modules": 443,
+    "bootstrap_modules": 1,
+    "summary": "Required suites complete: 444; passed=442; failed=2",
+    "start_log_timestamp": "2026-11-28T01:47:18.6509702Z",
+    "end_log_timestamp": "2026-11-28T02:54:26.3822966Z",
+    "completion": "Normal completed aggregate; no source timeout/cancellation marker."
+  },
+  "failed_source_modules": [
+    {
+      "status": "FAIL",
+      "path": "tests/audio/test_process_deadline.py",
+      "passed": 18,
+      "failed": 3,
+      "skipped": 0,
+      "exit": 1,
+      "line": 11212
+    },
+    {
+      "status": "FAIL",
+      "path": "tests/academic_integration/test_formatting.py",
+      "passed": 31,
+      "failed": 1,
+      "skipped": 0,
+      "exit": 1,
+      "line": 13779
+    }
+  ],
+  "reconciliation": [
+    {
+      "path": "tests/audio/test_process_deadline.py",
+      "failures": 3,
+      "kind": "Known early-EOF fixture follows active Windows venv redirector; direct-stdio fixture correction is already on5d19, not tested by this8b run.",
+      "failed_tests": [
+        "test_early_eof_waits_for_actual_exit_before_freezing_deadline",
+        "test_closed_diagnostic_pipes_do_not_stop_a_live_child_deadline",
+        "test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handle"
+      ]
+    },
+    {
+      "path": "tests/academic_integration/test_formatting.py",
+      "failures": 1,
+      "failed_tests": [
+        "test_actual_engine_timeout_is_bounded"
+      ],
+      "kind": "New observed cleanup failure",
+      "observation": "The expected .1s CitationError is raised, then TemporaryDirectory cleanup raises WinError32 on error.txt.",
+      "source_blob": "1efe0803a14101797d203f80b384b87e7bbd4fec",
+      "test_blob": "08bb9228fa52781a39b203549fdaed51f5288c55",
+      "source_finding": "Windows launches raw Popen, kills/waits only the leader, closes streams and removes staging; the failed log does not identify the remaining native process handle holder.",
+      "cause_limit": "Venv redirector/descendant inheritance is a source-supported explanation, not a measured PID/handle attribution in this log."
+    }
+  ],
+  "installed_and_bundle": {
+    "aggregate": "FAIL",
+    "failure": "Native reader-controls real playback reports0 wave output devices, format_query_result2 and MCI326.",
+    "native_prior_results": "Core selftest9, offline EPUB49, EPUBCheck/DAISY validators, Studio10, effects11, delivery lifecycle2 and voice settings23 have individual PASS receipts; each retains its own scope.",
+    "full_bundle_pytest": {
+      "declared_selectors": 350,
+      "declared_unique_modules": 345,
+      "status": "NOT_RUN",
+      "reason": "The step exits at the native reader failure before the later installed pytest invocation."
+    },
+    "standard_installation_step": "SKIPPED after failed fullbundle; separate8b focused actual installation qualification is not transferred into this job.",
+    "endpoint_selected_capture": "NOT_RUN on pull_request event; guarded provisioning/capture remain confined to the authorized endpoint push branch."
+  },
+  "failed_steps": [
+    {
+      "name": "Start existing Windows audio services and record actual endpoint capability",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 5
+    },
+    {
+      "name": "Verify actual installed Windows SAPI speech and native preview",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 23
+    },
+    {
+      "name": "Exercise native reader, translation, voice setup and delivery lifecycle",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 53
+    },
+    {
+      "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 66
+    },
+    {
+      "name": "Run required workflows against the complete pinned runtime",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 70
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15244413718,
+      "name": "carr-windows-eb06e01bb45393336b7a09b461995768f15a68c9-1",
+      "size_in_bytes": 208504,
+      "digest": "sha256:11ecc8d6f832dd5eb4bae8edbbf70ea44d4d195062ef0af540371a98a05672e4",
+      "created_at": "2026-11-28T02:54:27Z",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    },
+    {
+      "id": 15242339416,
+      "name": "carr-windows-pre-source-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+      "size_in_bytes": 181346,
+      "digest": "sha256:924dde88988090e7f7137c2c54a94fde232197c252da4eb17a8c5bd6f6fabe63",
+      "created_at": "2026-11-28T01:47:18Z",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    },
+    {
+      "id": 15241719856,
+      "name": "carr-windows-audio-endpoint-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+      "size_in_bytes": 1002,
+      "digest": "sha256:d87984ddd5f310e380140a529e583c18c3497f7a3e028bfeac6e03e879bff6ff",
+      "created_at": "2026-11-28T01:30:25Z",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    },
+    {
+      "id": 15241364593,
+      "name": "carr-windows-recording-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+      "size_in_bytes": 8812,
+      "digest": "sha256:4fc5f4e0715711664983b0a74085c9a31cfa971fb4446e691cb0ab3c10b57359",
+      "created_at": "2026-11-28T01:33:21Z",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    }
+  ],
+  "final_artifact_name_note": "The final artifact uses the pull-request event merge SHA eb06e01bb45393336b7a09b461995768f15a68c9 in its name; GitHub workflow_run.head_sha and explicit checkout are8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e. Artifact ZIP has not been downloaded in this review.",
+  "retrieval": {
+    "kind": "Completed GitHub job log plus run/jobs/artifact metadata",
+    "decoded_log_sha256": "3f9034208b3fb431497250c18a25774127ec87523b044e792f7b49e85605ada4",
+    "normalization": "Evidence excerpts remove timestamp prefix, ANSI color and CR; this is not an archived-member byte claim.",
+    "thread_warning_matches": []
+  },
+  "limits": [
+    "No counts or failures attributed to5d19 or a later candidate.",
+    "No new execution occurred in this source/evidence review.",
+    "No physical capture, audible quality, NVDA, aggregate bundle or release qualification is implied."
+  ]
+}

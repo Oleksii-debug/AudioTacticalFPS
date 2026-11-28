@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
 from carr_library.application import LibraryApp
 from carr_library.citations.anchors import format_citation
 from carr_library.evidence_drafts import EvidenceDrafts
@@ -49,7 +50,7 @@ def recovery(tmp_path):
                          MessageBox=Mock(return_value=1), SingleChoiceDialog=Mock(return_value=chooser),
                          CallAfter=queued.append)
     env = dict(wx=wx, replace=replace, format_citation=format_citation)
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    source = Path(carr_library.__file__).resolve().parent / 'ui'
     for name in ('evidence_panel.py', 'desktop_evidence_panel.py'):
         tree = ast.parse((source / name).read_text(encoding='utf-8'))
         nodes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
@@ -76,6 +77,7 @@ def recovery(tmp_path):
     panel._recovery_seen = set()
     panel._recovery_loading = panel._recovery_disposed = panel._recovery_discarded = False
     panel._recovery_error = ''
+    panel._recovery_owner_id = 4017
     panel._recovery_timer = SimpleNamespace(IsRunning=lambda: False, StartOnce=Mock(), Stop=Mock())
     panel._review_recovery_copy = Mock()
     return panel, app, chooser, wx, queued
@@ -253,7 +255,7 @@ def test_panel_destruction_flushes_cached_pending_text_without_reading_controls(
     panel._recovery_edited(SimpleNamespace(Skip=Mock()))
     assert panel._recovery_store.get(*first.key).text == 'First edit'
     panel.note.GetValue = Mock(side_effect=RuntimeError('Native control already destroyed'))
-    panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
+    panel._recovery_destroy(SimpleNamespace(GetId=lambda: panel._recovery_owner_id, Skip=Mock()))
     assert panel._recovery_store.get(*first.key).text == 'Last edit before destruction'
     assert panel._recovery_disposed
 
@@ -262,7 +264,7 @@ def test_explicit_discard_does_not_recreate_draft_during_destruction(recovery):
     panel, _, _, _, _ = recovery
     draft = checkpoint(panel, 'Intentionally discarded')
     assert panel.discard_recovery()
-    panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
+    panel._recovery_destroy(SimpleNamespace(GetId=lambda: panel._recovery_owner_id, Skip=Mock()))
     assert panel._recovery_store.get(*draft.key) is None
 
 
@@ -277,7 +279,7 @@ def test_corrupt_recovery_storage_reports_error_and_keeps_editor(recovery):
 
 def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel, _, _, wx, _ = recovery
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/workspace_shell.py'
+    source = Path(carr_library.__file__).resolve().parent / 'ui/workspace_shell.py'
     tree = ast.parse(source.read_text(encoding='utf-8'))
     method = next(node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == '_confirm')
     env = dict(wx=wx)
@@ -291,3 +293,27 @@ def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel._recovery_store.discard = Mock(side_effect=OSError('Disk unavailable'))
     assert not env['_confirm'](frame)
     assert panel.note.GetValue() == 'Keep unless explicitly discarded'
+
+
+def test_child_or_repeated_destroy_does_not_touch_native_owner_or_stop_timer_twice(recovery):
+    panel, _, _, _, _ = recovery
+    first = checkpoint(panel, 'Initial checkpoint')
+    panel.note.SetValue('Final cached note')
+    panel._recovery_edited(SimpleNamespace(Skip=Mock()))
+    panel.GetId = Mock(side_effect=RuntimeError('Original SIP wrapper is invalid'))
+    panel.note.GetValue = Mock(side_effect=RuntimeError('Child control is destroyed'))
+    child = SimpleNamespace(GetId=lambda: panel._recovery_owner_id + 1, Skip=Mock())
+    panel._recovery_destroy(child)
+    assert not panel._recovery_disposed
+    panel._recovery_timer.Stop.assert_not_called()
+    assert panel._recovery_store.get(*first.key).text == 'Initial checkpoint'
+    owner = SimpleNamespace(GetId=lambda: panel._recovery_owner_id,
+                            GetEventObject=Mock(side_effect=AssertionError('Do not query replacement proxy')),
+                            Skip=Mock())
+    panel._recovery_destroy(owner)
+    panel._recovery_destroy(owner)
+    panel._recovery_timer.Stop.assert_called_once_with()
+    assert panel._recovery_store.get(*first.key).text == 'Final cached note'
+    panel.GetId.assert_not_called()
+    owner.GetEventObject.assert_not_called()
+    assert owner.Skip.call_count == 2

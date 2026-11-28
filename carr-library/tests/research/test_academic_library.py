@@ -154,6 +154,85 @@ def test_sparse_metadata_never_creates_title_only_duplicate_groups(library):
     assert library.duplicates() == ()
 
 
+@pytest.mark.parametrize('operation', ['preview', 'duplicates', 'export'])
+def test_reference_payload_limit_precedes_materialization(db, library, monkeypatch, operation):
+    for title in ('First reference', 'Second reference'):
+        library.create(title=title, notes='Ж' * 10000)
+    before = db.total_changes
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000)
+    def unexpected_decoder(_row):
+        pytest.fail('Oversized reference payload must be rejected before decoding full rows.')
+    monkeypatch.setattr(academic, '_row_reference', unexpected_decoder)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        if operation == 'preview':
+            library.import_preview(b'[{"title":"New reference"}]', format='csl-json')
+        else:
+            getattr(library, operation)()
+    assert db.total_changes == before
+    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2
+
+
+def test_reference_count_limit_precedes_materialization(library, monkeypatch):
+    library.create(title='First')
+    library.create(title='Second')
+    monkeypatch.setattr(academic, 'MAX_REFERENCES', 1)
+    def unexpected_decoder(_row):
+        pytest.fail('Reference count must be checked before full row materialization.')
+    monkeypatch.setattr(academic, '_row_reference', unexpected_decoder)
+    with pytest.raises(ValueError, match='at most'):
+        library.duplicates()
+
+
+def test_reference_payload_preflight_is_scoped_and_accepts_exact_boundary(db, library, monkeypatch):
+    active = library.create(title='Keep', notes='Ж' * 10)
+    archived = library.create(title='Archived', notes='Ж' * 10000)
+    library.archive(archived.id)
+    AcademicLibrary(db, 'second').create(title='Foreign', notes='Ж' * 10000)
+    raw = db.execute(f'SELECT {academic._SELECT} FROM academic_reference WHERE id=?',
+                     (active.id,)).fetchone()
+    # SQLite stores numbers as their text representation for the byte preflight.
+    size = sum(len(str(value).encode('utf-8')) for value in raw if value is not None)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', size)
+    assert library._all() == (active,)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library._all(include_archived=True)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', size - 1)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library._all()
+
+
+def test_duplicate_preview_budget_rejects_before_suggestion_allocation(db, library, monkeypatch):
+    for title in ('Existing one', 'Existing two'):
+        library.create(title=title, doi='10.1234/same')
+    data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/SAME'}
+                       for number in range(10)]).encode()
+    before = db.total_changes
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 11)
+    def unexpected_entry(*_args):
+        pytest.fail('The duplicate budget must be checked before constructing an entry.')
+    monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)
+    with pytest.raises(ValueError, match='Too many duplicate matches'):
+        library.import_preview(data, format='csl-json')
+    assert db.total_changes == before
+    assert len(library.list()) == 2
+
+
+def test_duplicate_preview_budget_preserves_overlapping_identifier_matches(library, monkeypatch):
+    existing = [library.create(title='Same title', authors=('Author',), year='2020',
+                               doi='10.1234/same', isbn='0306406152') for _ in range(2)]
+    data = json.dumps([{'type': 'book', 'title': 'Same title', 'author': [{'literal': 'Author'}],
+        'issued': {'date-parts': [[2020]]}, 'DOI': '10.1234/SAME', 'ISBN': '0306406152'}] * 2).encode()
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 24)
+    preview = library.import_preview(data, format='csl-json')
+    assert [entry.duplicate_ids for entry in preview.entries] == [
+        tuple(sorted(row.id for row in existing))] * 2
+    assert [entry.duplicate_indices for entry in preview.entries] == [(1,), (0,)]
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 23)
+    with pytest.raises(ValueError, match='Too many duplicate matches'):
+        library.import_preview(data, format='csl-json')
+    assert len(library.list()) == 2
+
+
 def test_archived_workspace_checks_keep_references_but_deny_access(db, library):
     row = library.create(title='Keep me', notes='Retained')
     library.archive(row.id)
@@ -267,6 +346,75 @@ def test_import_count_and_byte_limits_are_explicit(library, monkeypatch):
     monkeypatch.setattr(academic, 'MAX_IMPORT_RECORDS', 1)
     with pytest.raises(ValueError, match='2,000'):
         library.import_preview(b'[{"title":"One"},{"title":"Two"}]', format='csl-json')
+
+
+def test_duplicate_preview_fanout_is_rejected_before_amplification(db, library, monkeypatch):
+    existing = tuple(library.create(title=f'Existing {n}', doi='10.1234/shared') for n in range(20))
+    data = json.dumps([{'title': f'Incoming {n}', 'DOI': '10.1234/shared'}
+                       for n in range(20)]).encode()
+    before = db.total_changes
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 100)
+    with pytest.raises(ValueError, match='Too many duplicate matches'):
+        library.import_preview(data, 'csl-json')
+    assert db.total_changes == before
+    assert {row.id for row in library.list()} == {row.id for row in existing}
+
+
+def test_duplicate_preview_preserves_sorted_union_of_overlapping_keys(library, monkeypatch):
+    one = library.create(title='One', doi='10.1234/a', isbn='0306406152')
+    two = library.create(title='Two', doi='10.1234/a', isbn='9780306406157')
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 20)
+    preview = library.import_preview(json.dumps([
+        {'title': 'Incoming', 'DOI': '10.1234/a', 'ISBN': '0306406152'},
+        {'title': 'Incoming two', 'DOI': '10.1234/a'}]).encode(), 'csl-json')
+    assert [entry.duplicate_ids for entry in preview.entries] == [tuple(sorted((one.id, two.id)))] * 2
+    assert [entry.duplicate_indices for entry in preview.entries] == [(1,), (0,)]
+
+
+def test_duplicate_lookup_streams_validated_records_and_excludes_other_scopes(db, library, monkeypatch):
+    one = library.create(title='One', doi='10.1234/a', notes='Private note. ' * 4000)
+    two = library.create(title='Two', doi='10.1234/a', abstract='Long abstract. ' * 4000)
+    AcademicLibrary(db, 'second').create(title='Excluded' * 100, authors=('Large author' * 100,),
+                                        doi='10.1234/a')
+    archived = library.create(title='Archived' * 100, authors=('Old author' * 100,), doi='10.1234/a')
+    library.archive(archived.id)
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_METADATA_BYTES', 256000)
+    # Full source validation includes notes/search caches. It streams each row
+    # instead of retaining the complete records in a materialized _all tuple.
+    monkeypatch.setattr(library, '_all', lambda **kwargs: pytest.fail('Duplicate lookup must stream validated rows.'))
+    groups = library.duplicates()
+    assert groups[0].reference_ids == tuple(sorted((one.id, two.id)))
+    preview = library.import_preview(b'[{"title":"New","DOI":"10.1234/a"}]', 'csl-json')
+    assert preview.entries[0].duplicate_ids == tuple(sorted((one.id, two.id)))
+    assert library.get(one.id).notes.startswith('Private note.')
+
+
+def test_duplicate_projection_has_utf8_byte_preflight(db, library, monkeypatch):
+    library.create(title='Книга', authors=('Автор' * 30,), doi='10.1234/a')
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_METADATA_BYTES', 180)
+    before = db.total_changes
+    with pytest.raises(ValueError, match='duplicate-check limit'):
+        library.import_preview(b'[{"title":"New"}]', 'csl-json')
+    assert db.total_changes == before
+
+
+def test_export_preflight_bounds_full_records_before_python_materialization(library, monkeypatch):
+    library.create(title='Keep', notes='N' * 2000)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 1000)
+    monkeypatch.setattr(academic, '_row_reference', lambda row: pytest.fail('Preflight must reject before decoding rows'))
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library.export()
+
+
+def test_duplicate_recheck_budget_rolls_back_all_selected_imports(db, library, monkeypatch):
+    original = library.create(title='Keep', doi='10.1234/shared')
+    preview = library.import_preview(b'[{"title":"First","DOI":"10.1234/shared"},'
+        b'{"title":"Second","DOI":"10.1234/shared"}]', 'csl-json')
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 1)
+    with pytest.raises(ValueError, match='Too many duplicate matches to import'):
+        library.import_selected(preview, (0, 1))
+    assert db.in_transaction
+    assert library.list() == (original,)
 
 
 def test_ris_retains_ordered_names_metadata_multiline_and_explicit_ignored_fields(library):
@@ -403,263 +551,6 @@ def test_ris_full_publication_title_precedes_journal_abbreviation_with_warning(l
     preview = library.import_preview(data)
     assert preview.entries[0].fields['container_title'] == 'Journal of Library Studies'
     assert any('J. Libr. Stud.' in warning for warning in preview.entries[0].warnings)
-
-
-@pytest.mark.parametrize('operation', ['preview', 'duplicates', 'export', 'selected_import'])
-def test_reference_scan_byte_budget_rejects_before_decoding(db, library, monkeypatch, operation):
-    preview = library.import_preview(b'[{"title":"Incoming"}]', format='csl-json')
-    for number in range(2):
-        library.create(title=f'Reference {number}', notes='Ж' * 10000)
-    before = db.total_changes
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000, raising=False)
-    original = academic._row_reference
-    decoded = []
-
-    def decode(row):
-        decoded.append(row)
-        return original(row)
-
-    monkeypatch.setattr(academic, '_row_reference', decode)
-    with pytest.raises(ValueError, match='metadata exceeds'):
-        if operation == 'preview':
-            library.import_preview(b'TY  - BOOK\nTI  - Incoming\nER  -\n')
-        elif operation == 'duplicates':
-            library.duplicates()
-        elif operation == 'export':
-            library.export()
-        else:
-            library.import_selected(preview, (0,))
-    assert decoded == []
-    assert db.total_changes == before
-    assert db.in_transaction
-    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2
-
-
-def test_reference_scan_count_budget_rejects_before_decoding(db, library, monkeypatch):
-    for number in range(3):
-        library.create(title=f'Reference {number}')
-    monkeypatch.setattr(academic, 'MAX_REFERENCES', 2)
-    original = academic._row_reference
-    decoded = []
-
-    def decode(row):
-        decoded.append(row)
-        return original(row)
-
-    monkeypatch.setattr(academic, '_row_reference', decode)
-    with pytest.raises(ValueError, match='references per library'):
-        library.duplicates()
-    assert decoded == []
-    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 3
-
-
-def test_reference_scan_budget_excludes_foreign_and_archived_data(db, library, monkeypatch):
-    active = library.create(title='Selected', doi='10.1234/selected')
-    library.create(title='Archived', archived=True, notes='Ж' * 10000, doi='10.1234/selected')
-    AcademicLibrary(db, 'second').create(title='Foreign', notes='Ж' * 10000, doi='10.1234/selected')
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096, raising=False)
-    assert library._all() == (active,)
-    preview = library.import_preview(b'[{"title":"Incoming","DOI":"10.1234/selected"}]',
-                                     format='csl-json')
-    assert preview.entries[0].duplicate_ids == (active.id,)
-    assert library.duplicates() == ()
-    assert [row['id'] for row in json.loads(library.export(format='csl-json'))] == [active.id]
-    with pytest.raises(ValueError, match='metadata exceeds'):
-        library._all(include_archived=True)
-
-
-def test_reference_scan_counts_stored_utf8_bytes_with_an_inclusive_boundary(db, library, monkeypatch):
-    row = library.create(title='Дослідження 📚', notes='Ж' * 200, authors=('Šimko, Ján',))
-    stored = db.execute(f'SELECT {academic._SELECT} FROM academic_reference').fetchone()
-    payload_size = sum(len(str(value).encode('utf-8')) for value in stored if value is not None)
-    character_count = sum(len(str(value)) for value in stored if value is not None)
-    assert character_count < payload_size
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', payload_size, raising=False)
-    assert library._all() == (row,)
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', payload_size - 1)
-    with pytest.raises(ValueError, match='metadata exceeds'):
-        library._all()
-    assert library.get(row.id) == row
-
-
-def test_reference_scan_count_boundary_and_empty_library(library, monkeypatch):
-    monkeypatch.setattr(academic, 'MAX_REFERENCES', 2)
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 0, raising=False)
-    assert library._all() == ()
-    assert library.duplicates() == ()
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096)
-    one = library.create(title='One')
-    two = library.create(title='Two')
-    assert library._all() == tuple(sorted((one, two), key=lambda row: row.id))
-
-
-def test_reference_scan_keeps_full_stored_metadata_validation(db, library, monkeypatch):
-    row = library.create(title='Authentic')
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096, raising=False)
-    db.execute('UPDATE academic_reference SET search_text=? WHERE id=?', ('changed', row.id))
-    with pytest.raises(ValueError, match='metadata or search index has changed'):
-        library.duplicates()
-
-
-def test_duplicate_preview_budget_rejects_fanout_without_mutating_references(db, library, monkeypatch):
-    for number in range(3):
-        library.create(title=f'Existing {number}', doi='10.1234/shared')
-    data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}
-                       for number in range(3)]).encode()
-    before = db.total_changes
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 10, raising=False)
-    with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(data, format='csl-json')
-    assert db.total_changes == before
-    assert db.in_transaction
-    assert len(library.list()) == 3
-
-
-def test_duplicate_preview_budget_preserves_sorted_deduplicated_matches(db, library, monkeypatch):
-    shared = dict(title='Common title', authors=('Author',), year='2020',
-                  doi='10.1234/shared', isbn='0306406152')
-    first = library.create(**shared)
-    second = library.create(**shared)
-    AcademicLibrary(db, 'second').create(**shared)
-    library.create(**shared, archived=True)
-    data = json.dumps([{'type': 'book', 'title': 'Common title', 'author': [{'literal': 'Author'}],
-                       'issued': {'date-parts': [[2020]]}, 'DOI': '10.1234/shared',
-                       'ISBN': '9780306406157'}] * 2).encode()
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 24, raising=False)
-    preview = library.import_preview(data, format='csl-json')
-    for index, entry in enumerate(preview.entries):
-        assert entry.duplicate_ids == tuple(sorted((first.id, second.id)))
-        assert entry.duplicate_indices == (1 - index,)
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 23)
-    with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(data, format='csl-json')
-
-
-@pytest.mark.parametrize('format', ['ris', 'csl-json', 'bibtex'])
-@pytest.mark.parametrize('slots', [4, 5])
-def test_duplicate_preview_budget_rejects_before_constructing_the_first_entry(library, monkeypatch,
-                                                                           format, slots):
-    for number in range(3):
-        library.create(title=f'Existing {number}', doi='10.1234/shared')
-    if format == 'ris':
-        data = ''.join(f'TY  - BOOK\nTI  - Incoming {number}\nDO  - 10.1234/shared\nER  -\n'
-                       for number in range(2)).encode()
-    elif format == 'bibtex':
-        data = ''.join(f'@book{{incoming{number},title={{Incoming {number}}},doi={{10.1234/shared}}}}'
-                       for number in range(2)).encode()
-    else:
-        data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}
-                           for number in range(2)]).encode()
-    # Each row costs five slots. Even when the first row fits exactly, the
-    # complete preflight must reject the later excess before creating any row.
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', slots, raising=False)
-
-    def unexpected_entry(*args, **kwargs):
-        pytest.fail('An oversized duplicate result was materialized before the guard.')
-
-    monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)
-    with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(data, format=format)
-
-
-def test_duplicate_preview_accepts_maximum_nonduplicate_batch(library):
-    data = json.dumps([{'title': f'Incoming {number}', 'DOI': f'10.1234/{number}'}
-                       for number in range(academic.MAX_IMPORT_RECORDS)]).encode()
-    preview = library.import_preview(data, format='csl-json')
-    assert len(preview.entries) == academic.MAX_IMPORT_RECORDS
-    assert all(entry.duplicate_ids == entry.duplicate_indices == () for entry in preview.entries)
-    assert library.list() == ()
-
-
-def test_duplicate_preview_default_budget_handles_many_matching_references(db, library):
-    for number in range(2000):
-        library.create(title=f'Existing {number}', doi='10.1234/shared')
-    data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}
-                       for number in range(2000)]).encode()
-    before = db.total_changes
-    with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(data, format='csl-json')
-    assert db.total_changes == before
-    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2000
-
-
-@pytest.mark.parametrize('operation', ['preview', 'duplicates', 'export'])
-def test_reference_payload_limit_precedes_materialization(db, library, monkeypatch, operation):
-    for title in ('First reference', 'Second reference'):
-        library.create(title=title, notes='Ж' * 10000)
-    before = db.total_changes
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000)
-    def unexpected_decoder(_row):
-        pytest.fail('Oversized reference payload must be rejected before decoding full rows.')
-    monkeypatch.setattr(academic, '_row_reference', unexpected_decoder)
-    with pytest.raises(ValueError, match='metadata exceeds'):
-        if operation == 'preview':
-            library.import_preview(b'[{"title":"New reference"}]', format='csl-json')
-        else:
-            getattr(library, operation)()
-    assert db.total_changes == before
-    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2
-
-
-def test_reference_count_limit_precedes_materialization(library, monkeypatch):
-    library.create(title='First')
-    library.create(title='Second')
-    monkeypatch.setattr(academic, 'MAX_REFERENCES', 1)
-    def unexpected_decoder(_row):
-        pytest.fail('Reference count must be checked before full row materialization.')
-    monkeypatch.setattr(academic, '_row_reference', unexpected_decoder)
-    with pytest.raises(ValueError, match='at most'):
-        library.duplicates()
-
-
-def test_reference_payload_preflight_is_scoped_and_accepts_exact_boundary(db, library, monkeypatch):
-    active = library.create(title='Keep', notes='Ж' * 10)
-    archived = library.create(title='Archived', notes='Ж' * 10000)
-    library.archive(archived.id)
-    AcademicLibrary(db, 'second').create(title='Foreign', notes='Ж' * 10000)
-    raw = db.execute(f'SELECT {academic._SELECT} FROM academic_reference WHERE id=?',
-                     (active.id,)).fetchone()
-    # SQLite stores numbers as their text representation for the byte preflight.
-    size = sum(len(str(value).encode('utf-8')) for value in raw if value is not None)
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', size)
-    assert library._all() == (active,)
-    with pytest.raises(ValueError, match='metadata exceeds'):
-        library._all(include_archived=True)
-    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', size - 1)
-    with pytest.raises(ValueError, match='metadata exceeds'):
-        library._all()
-
-
-def test_duplicate_preview_budget_rejects_before_suggestion_allocation(db, library, monkeypatch):
-    for title in ('Existing one', 'Existing two'):
-        library.create(title=title, doi='10.1234/same')
-    data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/SAME'}
-                       for number in range(10)]).encode()
-    before = db.total_changes
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 11)
-    def unexpected_entry(*_args):
-        pytest.fail('The duplicate budget must be checked before constructing an entry.')
-    monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)
-    with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(data, format='csl-json')
-    assert db.total_changes == before
-    assert len(library.list()) == 2
-
-
-def test_duplicate_preview_budget_preserves_overlapping_identifier_matches(library, monkeypatch):
-    existing = [library.create(title='Same title', authors=('Author',), year='2020',
-                               doi='10.1234/same', isbn='0306406152') for _ in range(2)]
-    data = json.dumps([{'type': 'book', 'title': 'Same title', 'author': [{'literal': 'Author'}],
-        'issued': {'date-parts': [[2020]]}, 'DOI': '10.1234/SAME', 'ISBN': '0306406152'}] * 2).encode()
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 24)
-    preview = library.import_preview(data, format='csl-json')
-    assert [entry.duplicate_ids for entry in preview.entries] == [
-        tuple(sorted(row.id for row in existing))] * 2
-    assert [entry.duplicate_indices for entry in preview.entries] == [(1,), (0,)]
-    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 23)
-    with pytest.raises(ValueError, match='Too many duplicate matches'):
-        library.import_preview(data, format='csl-json')
-    assert len(library.list()) == 2
 
 
 @pytest.mark.parametrize('format', ['ris', 'csl-json'])

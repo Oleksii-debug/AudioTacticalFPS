@@ -1,0 +1,122 @@
+{
+  "schema": "carr-source-review/1",
+  "created_utc": "2026-11-28",
+  "base_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "code_tree": "ed6f844042112ab0542c26cd69fb1d96fd0061ea",
+  "title": "V3-03 existing reader Seek: seconds and measured percentage",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "requirement": {
+    "spec_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "item": "V3-03",
+    "scope": "Explicit percentage seek within the currently rendered recording, using the existing reader dialog, player and quiet-admission route."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "preimage": "3257f7a4e8d077081fe6276f5ce5fcd30f89168a",
+      "blob": "1cb8d68b81161d9b37f90da26a9f174bd57d2261",
+      "inverse_verified": true,
+      "sha256": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_playback.py",
+      "preimage": "3c159974b3bae878ec1c4ad8d030217c1793bdf5",
+      "blob": "b002f8ef0997b613f04a1e015b4700300f455b8e",
+      "inverse_verified": true,
+      "sha256": "2a0bd3103045a3a3d8088bec9b2594faa50dc8b07e111121866748ce7db24173"
+    },
+    {
+      "path": "carr-library/scripts/windows_reader_navigation_smoke.py",
+      "preimage": "9596d851f03f4550eeee4573ab031ffff06691ae",
+      "blob": "e03cbfb8f6b94662a0c5ef7aed7cbdf97b8e01f4",
+      "inverse_verified": true,
+      "sha256": "61a80c5f284b31f04f9041ac383588a5fe9b9b713d1be82dfb9aa8ac1ef5ecaa"
+    }
+  ],
+  "implementation": [
+    "The existing Seek dialog accepts finite seconds or a terminal percentage sign; percentages are bounded to 0..100 and mapped to captured original PCM duration.",
+    "Before opening the modal, capture the exact last_audio object, ReadingAudio binding, reading-document object and signature, playback generation, WavePlayer session generation, original path and measured duration.",
+    "Revalidate source/library/lifetime and all captured identities after modal return and again inside the existing quiet-admitted action. Hidden/closing/destroyed owners, busy or cancelled work, changed source, replacement recording and same-text replacement tabs cannot reuse the old request.",
+    "WavePlayer.seek remains unchanged: existing paused behavior, PCM identity checks, A/B range policy, native ownership and explicit stopped-playback policy are retained."
+  ],
+  "unchanged_contracts": {
+    "player_blob": "a36bc5e38d25490965b9f124af37d557a8a1dd68",
+    "reading_audio_blob": "1b338ee9d92a9d530211db64cef4b9a07a46b168",
+    "transport_worker_registry_and_output_selection": "UNCHANGED",
+    "project_and_restore_schemas": "UNCHANGED",
+    "source_quotation_authority": "UNCHANGED",
+    "native_watchdog_seconds": 150,
+    "all_prior_native_assertions": "UNCHANGED",
+    "refs_workflows_readiness_and_finite_inventory_docs": "NOT_MODIFIED"
+  },
+  "portable_tests": {
+    "path": "carr-library/tests/ui/test_reader_playback.py",
+    "prior_blob": "3c159974b3bae878ec1c4ad8d030217c1793bdf5",
+    "prior_characters": 35198,
+    "prior_bytes": 35234,
+    "prior_named_test_functions": 38,
+    "prior_source": "EXACT_PREFIX",
+    "added_named_test_functions": 9,
+    "added_parameterized_cases": 52,
+    "new_total_named_test_functions": 47,
+    "coverage": [
+      "Actual imported speech_dialog callback bodies and mutable closure state; actual ReadingDocument, ReadingAudio, PCM headers and WavePlayer. Only widgets and native MCI protocol are modeled.",
+      "0%,25%,50%,100%,fractional percentages and legacy seconds; paused seeks do not start a device.",
+      "Quiet admission keeps its existing hold/release semantics before a playing seek.",
+      "Malformed, negative, nonfinite, over-duration, over-100% and bounded-input failures before admission.",
+      "Missing or mismatched recording/binding/duration refuses modal opening.",
+      "Eleven independent freshness changes during both modal and quiet wait: Stop followed by clearing cancellation, direct player Stop, new recording, equal binding replacement, identical-text different tab, reading edit, source revocation, library replacement, duration change, hidden Close, and actual owner-ID destruction.",
+      "Actual PCM replacement after quiet wait still triggers the unchanged player identity refusal.",
+      "Existing A/B restriction, cancelled modal and pre-modal source revocation remain enforced."
+    ],
+    "fixture_peer_correction": "The modeled progress controller is identity-hashable, matching real OperationProgress and the unchanged dict.fromkeys deduplication in play_when_quiet.",
+    "execution": "NOT_RUN"
+  },
+  "native_tests": {
+    "path": "carr-library/scripts/windows_reader_navigation_smoke.py",
+    "prior_blob": "9596d851f03f4550eeee4573ab031ffff06691ae",
+    "new_check_executions_planned": 11,
+    "coverage": "The actual source-bound reader renders purpose-written two-second PCM, pauses explicitly, types 50%,100%,0.25 into its existing native TextEntryDialog, and checks the same player/session/path/duration/output identity/document with no extra narration during seek.",
+    "scope": "Current source and installed native reader lanes on an explicitly supplied output identity. No default endpoint fallback. The existing standalone reader-player probe is not claimed to exercise this dialog.",
+    "speech_quality": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "execution": "NOT_RUN"
+  },
+  "selection": {
+    "portable_required": "Add tests/ui/test_reader_playback.py to both source and installed component arrays; the 5d19 component workflow currently has zero occurrences.",
+    "native_existing": "Retain existing source/installed windows_reader_navigation_smoke.py invocations in the exact-output ordinary workflow.",
+    "new_dependencies": []
+  },
+  "primary_api_sources": [
+    {
+      "repository": "wxWidgets/Phoenix",
+      "ref": "wxPython-4.2.4",
+      "path": "unittests/test_uiaction.py",
+      "blob": "1186453c7fe9a30bb06755f958657ecfbfc3ef13",
+      "evidence": "test_uiactionKeyboardText uses UIActionSimulator.Text(bytes)."
+    },
+    {
+      "repository": "wxWidgets/Phoenix",
+      "ref": "wxPython-4.2.4",
+      "path": "etg/uiaction.py",
+      "blob": "04b97fc0e7422e42780e36fba9067db01a198995",
+      "evidence": "No signature-specific override for Text."
+    },
+    {
+      "repository": "wxWidgets/wxWidgets",
+      "ref": "v3.2.8.1",
+      "path": "src/generic/textdlgg.cpp",
+      "blob": "f064f7e7a532b361734f923041bdbec907263777",
+      "evidence": "The generic TextEntryDialog creates one direct child TextCtrl; native test does not assume an unavailable GetTextCtrl method."
+    }
+  ],
+  "verification": {
+    "all_three_full_blob_readbacks": "EXACT",
+    "all_three_inverse_diffs": "EXACT_PREIMAGES_RECOVERED",
+    "old_test_prefix": "EXACT",
+    "peer_review": "voice_reading independently reviewed source, corrected 52-case fixture and final native extension; CLEAR. Parent reviewed the source delta; CLEAR.",
+    "host_execution": "UNAVAILABLE",
+    "runtime_and_native_acceptance": "NOT_RUN"
+  }
+}

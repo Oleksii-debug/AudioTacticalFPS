@@ -6,7 +6,7 @@ These checks do not claim native Windows or NVDA acceptance.
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, get_ident
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, call
+from unittest.mock import Mock
 import sys
 import unicodedata
 
@@ -15,7 +15,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.ui.federated_search import (
     NativeSearchCenter, SearchCenter, SearchOptions, default_libraries,
-    install_federated_search_actions, _topic_labels, result_label,
+    install_federated_search_actions, _topic_labels,
 )
 
 
@@ -28,6 +28,7 @@ class View:
         self.verified = self.selected = self.busy = False
         self.copied, self.focus = [], None
         self.busy_history = []
+        self.next_available = False
 
     def clear_results(self):
         self.labels, self.details, self.index = (), '', -1
@@ -48,6 +49,9 @@ class View:
     def set_busy(self, busy):
         self.busy = busy
         self.busy_history.append(busy)
+
+    def set_next_page(self, available):
+        self.next_available = bool(available)
 
     def report(self, text, *, focus=False):
         self.messages.append(text)
@@ -182,6 +186,78 @@ def test_filters_group_labels_limit_and_source_details(center):
     assert center.two in center.view.details and 'Original context.' in center.view.details
     assert 'Current Library: 0' in center.view.messages[-1]
     assert 'Up to 1 results per library' in center.view.messages[-1]
+
+
+@pytest.mark.parametrize('names', [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
+    ('Same', 'Same', 'Same (library w; topic 0)'), ('Same', 'Same'), ('Unique', 'Distinct')])
+@pytest.mark.parametrize('reverse', [False, True])
+def test_federated_topic_labels_distinguish_equivalent_and_generated_names(names, reverse):
+    rows = [SimpleNamespace(id=str(i), name=name, parent=None) for i, name in enumerate(names)]
+    if reverse:
+        rows.reverse()
+    labels = _topic_labels(rows, 'w')
+    key = lambda text: ' '.join(unicodedata.normalize('NFC', text).split())
+    assert len(labels) == len(rows) == len(set(map(key, labels)))
+    assert all(label.startswith(row.name) for row, label in zip(rows, labels))
+
+
+def test_federated_topic_label_keeps_nested_paths_and_rejects_cycles():
+    rows = [SimpleNamespace(id='root', name='Research', parent=None),
+            SimpleNamespace(id='child', name='Sources', parent='root')]
+    assert _topic_labels(rows, 'w') == ('Research', 'Research / Sources')
+    rows[0].parent = 'child'
+    with pytest.raises(ValueError, match='hierarchy'):
+        _topic_labels(rows, 'w')
+
+
+@pytest.mark.parametrize('reverse', [False, True])
+def test_real_service_distinguishes_same_title_edition_library_and_routes_actions(center, reverse):
+    app = center.app
+    app.rename_workspace(center.one, 'Café')
+    app.rename_workspace(center.two, 'Cafe\u0301')
+    empty = app.create_workspace('Café')
+    app.add_text(center.one, 'Identical title', 'Uniquequery source one.',
+                 authors=('Same Author',), edition='First')
+    app.add_text(center.two, 'Identical title', 'Uniquequery source two.',
+                 authors=('Same Author',), edition='Second')
+    workspaces = (center.one, empty, center.two)
+    if reverse:
+        workspaces = tuple(reversed(workspaces))
+    center.controller.search(SearchOptions(workspaces, 'Uniquequery'))
+    rows = center.controller.rows
+    assert len(rows) == 2
+    assert [hit.workspace for hit in rows] == [w for w in workspaces if w != empty]
+    status = center.view.messages[-1]
+    for workspace in workspaces:
+        assert f'library {workspace};' in status
+    assert f'library {empty}; library only): 0' in status
+    for i, hit in enumerate(rows):
+        label = center.view.labels[i]
+        assert label.startswith(f'{i + 1}. ')
+        assert f'library {hit.workspace};' in label
+        assert hit.result.edition in label
+        center.view.select(i)
+        center.controller.selection_changed()
+        center.controller.copy('citation')
+        assert center.view.copied[-1] == hit.result.citation
+        center.dialogs.choice = 0
+        center.controller.save()
+        destination = app.topics(hit.workspace)[0].id
+        assert app.evidence(hit.workspace, destination)[-1].anchor.identity.workspace == hit.workspace
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
+
+
+def test_result_labels_include_unknown_edition_and_distinguish_same_page_hits(center):
+    # Both imported sources expose the same title, unknown edition and logical
+    # page label. Ordinals keep the two actionable rows distinguishable.
+    center.app.add_text(center.one, 'Repeated phrase', 'Uniquequery first source.')
+    center.app.add_text(center.one, 'Repeated phrase', 'Uniquequery second source.')
+    center.controller.search(SearchOptions((center.one,), 'Uniquequery'))
+    assert len(center.controller.rows) == 2
+    assert len(set(center.view.labels)) == 2
+    assert all('Unknown edition' in label for label in center.view.labels)
 
 
 def test_copy_context_and_save_route_to_result_library_without_touching_notebook(center):
@@ -398,12 +474,15 @@ def test_forced_window_destruction_never_hides_or_destroys_deleted_controls(cent
     native.window = Mock()
     native.controller = center.controller
     native._window_alive = True
+    native._window_id = 91
     native._deferred_destroy = False
     center.view.finish_disposal = native.finish_disposal
     center.frame.deferred = True
     search(center)
     event = Mock()
-    event.GetEventObject.return_value = native.window
+    event.GetId.return_value = 91
+    event.GetEventObject.side_effect = AssertionError('Do not resolve a dying native wrapper')
+    native.window.GetId.side_effect = AssertionError('The native owner is already deleted')
     native.window.ShowModal.side_effect = lambda: native._destroyed(event)
     native.window.Hide.side_effect = AssertionError('The native window was already deleted')
     native.window.Destroy.side_effect = AssertionError('The native window was already deleted')
@@ -419,6 +498,8 @@ def test_forced_window_destruction_never_hides_or_destroys_deleted_controls(cent
     native.window.Hide.assert_not_called()
     native.window.Destroy.assert_not_called()
     native.window.EndModal.assert_not_called()
+    event.GetEventObject.assert_not_called()
+    native.window.GetId.assert_not_called()
 
 
 def test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_search(monkeypatch):
@@ -465,147 +546,6 @@ def test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_searc
     press('Ctrl+Alt+F', center_event)
     center_called.assert_called_once_with(center_event)
     notebook_called.assert_called_once()
-
-
-def spoken_key(label):
-    return ' '.join(unicodedata.normalize('NFC', label).split())
-
-
-@pytest.mark.parametrize('names', [
-    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
-    ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
-    ('Same', 'Same', 'Same (library w; topic 0)'), ('Unique', 'Distinct'),
-])
-@pytest.mark.parametrize('reverse', [False, True])
-def test_topic_choices_distinguish_equivalent_spoken_names_without_reordering(names, reverse):
-    topics = [SimpleNamespace(id=str(index), name=name, parent=None)
-              for index, name in enumerate(names)]
-    if reverse:
-        topics.reverse()
-    labels = _topic_labels(topics, 'w')
-    assert len(labels) == len(topics) == len(set(map(spoken_key, labels)))
-    assert all(label.startswith(topic.name) for topic, label in zip(topics, labels))
-
-
-def test_topic_choice_paths_preserve_hierarchy_and_reject_cycles():
-    topics = [SimpleNamespace(id='root', name='Parent', parent=None),
-              SimpleNamespace(id='first', name='Café', parent='root'),
-              SimpleNamespace(id='second', name='Cafe\u0301', parent='root')]
-    labels = _topic_labels(topics, 'w')
-    assert labels[0] == 'Parent'
-    assert all(label.startswith('Parent / ') for label in labels[1:])
-    assert len(set(map(spoken_key, labels))) == 3
-    topics[0].parent = 'second'
-    with pytest.raises(ValueError, match='hierarchy changed'):
-        _topic_labels(topics, 'w')
-
-
-def test_equivalent_topic_labels_save_to_each_original_destination(center):
-    topics = tuple(center.app.create_topic(center.two, name, parent=center.root)
-                   for name in ('Café', 'Cafe\u0301'))
-    search(center)
-    hit = source_hit(center)
-    for destination in topics:
-        current = center.app.topics(center.two)
-        center.dialogs.choice = next(index for index, row in enumerate(current)
-                                     if row.id == destination)
-        center.controller.save()
-        choices = center.dialogs.choices[-1][2]
-        assert len(set(map(spoken_key, choices))) == len(current)
-        assert destination in choices[center.dialogs.choice]
-        saved, = center.app.evidence(center.two, destination)
-        assert saved.anchor.identity.workspace == center.two
-        assert saved.anchor.identity.edition_id == hit.result.edition_id
-        assert saved.anchor.quote == hit.result.quote
-    assert center.app.evidence(center.two, center.destination) == ()
-    assert center.app.evidence(center.one, center.local_topic) == ()
-
-
-@pytest.mark.parametrize('names', [
-    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
-    ('Research  methods', 'Research methods'),
-    ('Same', 'Same', 'Same (library library-0; library only)'),
-])
-@pytest.mark.parametrize('reverse', [False, True])
-def test_native_checklist_preserves_checked_library_identity_with_distinct_labels(center, monkeypatch, names, reverse):
-    wx = MagicMock()
-    monkeypatch.setitem(sys.modules, 'wx', wx)
-    rows = [SimpleNamespace(id=f'library-{index}', name=name)
-            for index, name in enumerate(names)]
-    if reverse:
-        rows.reverse()
-    center.frame.active = ('library-1', None)
-    native = NativeSearchCenter(center.frame, rows)
-    choices = wx.CheckListBox.call_args.kwargs['choices']
-    assert len(choices) == len(rows) == len(set(map(spoken_key, choices)))
-    assert all(label.startswith(row.name) for row, label in zip(rows, choices))
-    assert native.libraries_control.Check.call_args_list == [
-        call(index, row.id == 'library-1') for index, row in enumerate(rows)]
-    native.controller.search = Mock()
-    native.libraries_control.IsChecked.side_effect = lambda index: rows[index].id == 'library-1'
-    for control in (native.retrieval, native.presentation, native.limit):
-        control.GetSelection.return_value = 0
-    native.query.GetValue.return_value = 'history'
-    for control in native.filters.values():
-        control.GetValue.return_value = ''
-    native._search()
-    options, = native.controller.search.call_args.args
-    assert options.workspaces == ('library-1',)
-
-
-@pytest.mark.parametrize('names', [('Same', 'Same'), ('Café', 'Cafe\u0301'),
-                                  ('Research  library', 'Research library')])
-@pytest.mark.parametrize('reverse', [False, True])
-def test_identical_library_names_remain_distinct_in_results_counts_and_source_actions(center, names, reverse):
-    for workspace, name, edition in zip((center.one, center.two), names, ('First edition', 'Second edition')):
-        center.app.rename_workspace(workspace, name)
-        center.app.add_text(workspace, 'Shared title', 'Distinctive source quotation.',
-                            authors=('Shared Author',), edition=edition)
-    selected = (center.two, center.one) if reverse else (center.one, center.two)
-    center.controller.search(SearchOptions(selected, 'Distinctive source quotation'))
-    rows = center.controller.rows
-    assert tuple(hit.workspace for hit in rows) == selected
-    assert len(center.view.labels) == len(set(map(spoken_key, center.view.labels))) == 2
-    for number, (hit, label) in enumerate(zip(rows, center.view.labels), 1):
-        assert label.startswith(f'{number}. ')
-        assert hit.workspace in label and hit.result.edition in label
-        assert hit.workspace in center.view.messages[-1]
-    # Copy and save must still use the original result identity, never the
-    # formatted display label or the position in a separate sorted list.
-    for index, hit in enumerate(rows):
-        center.view.select(index)
-        center.controller.selection_changed()
-        center.controller.copy('citation')
-        assert center.view.copied[-1] == hit.result.citation
-        center.dialogs.choice = 0
-        center.controller.save()
-        topic = center.app.topics(hit.workspace)[0]
-        saved, = center.app.evidence(hit.workspace, topic.id)
-        assert saved.anchor.identity.workspace == hit.workspace
-        assert saved.anchor.identity.edition_id == hit.result.edition_id
-    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
-
-
-def test_result_labels_include_unknown_edition_and_number_repeated_same_page_hits(center):
-    center.app.add_text(center.one, 'Unknown edition source',
-        'needle near the beginning. ' + 'Middle content. ' * 80 + 'needle near the end.')
-    center.controller.search(SearchOptions((center.one,), 'needle', mode='word'))
-    assert len(center.controller.rows) == 2
-    assert len(set(center.view.labels)) == 2
-    for index, (hit, label) in enumerate(zip(center.controller.rows, center.view.labels), 1):
-        assert label.startswith(f'{index}. ') and 'Unknown edition' in label
-        assert hit.result.page in label and 'Verified source' in label
-    hit = center.controller.rows[0]
-    assert 'Unknown edition' in result_label(hit)
-
-
-from unittest.mock import Mock
-
-
-from carr_library.ui.federated_search import (
-    NativeSearchCenter, SearchCenter, SearchOptions, default_libraries,
-    install_federated_search_actions, _topic_labels,
-)
 
 
 COLLIDING_NAMES = [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
@@ -717,3 +657,125 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
     assert 'Unknown edition' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.messages[-1]
+
+
+def test_paged_center_visits_25_explicit_libraries_on_same_worker_without_switching_notebook(center):
+    selected = [center.one, center.two]
+    for number in range(23):
+        workspace = center.app.create_workspace(f'Additional selected library {number}')
+        center.app.add_text(workspace, f'Book {number}', 'Railway history.')
+        selected.append(workspace)
+    options = SearchOptions(tuple(selected), 'Railway history')
+    with pytest.raises(ValueError, match='20'):
+        options.validate()  # The original one-shot API remains bounded.
+    assert options.validate(paged=True) is options
+    center.controller.search_page(options)
+    first = center.controller.rows
+    assert len(first) == 20 and center.view.next_available
+    assert center.controller.service.current.workspaces == tuple(selected[:20])
+    assert '25 explicitly selected libraries' in center.view.messages[-1]
+    center.controller.next_page()
+    assert len(center.controller.rows) == 5 and not center.view.next_available
+    assert center.controller.service.current.workspaces == tuple(selected[20:])
+    with pytest.raises(ValueError, match='latest'):
+        center.controller.service.copy(first[0], 'quote')
+    center.controller.copy('quote')
+    assert center.view.copied[-1] == center.controller.rows[0].result.quote
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
+    assert all(identity != get_ident() for identity in center.frame.worker_threads)
+    center.frame.refresh_scopes.assert_not_called()
+    center.frame._open_workspace.assert_not_called()
+
+
+def test_empty_ranked_page_keeps_next_action_and_source_verification(center):
+    center.app.add_text(center.one, 'Rank window', 'Unrelated source.\fRailway history.')
+    options = SearchOptions((center.one,), 'Railway history', mode='thematic',
+                            title='Rank window', limit_per_library=1)
+    center.controller.search_page(options)
+    assert center.controller.rows == () and center.view.next_available
+    assert 'More source windows remain' in center.view.messages[-1]
+    center.controller.next_page()
+    assert len(center.controller.rows) == 1 and not center.view.next_available
+    center.controller.copy('quote')
+    assert center.view.copied[-1] == center.controller.rows[0].result.quote
+    assert center.controller.rows[0].result.verified
+
+
+def test_changing_options_discards_paged_cursor_without_dispatching_old_next(center):
+    center.app.add_text(center.one, 'Repeated', 'Railway.\fRailway.')
+    options = SearchOptions((center.one,), 'Railway', title='Repeated', limit_per_library=1)
+    center.controller.search_page(options)
+    assert center.controller.next_cursor and center.view.next_available
+    count = len(center.frame.jobs)
+    center.controller.options_changed()
+    assert center.controller.next_cursor is None and center.controller.page_options is None
+    assert not center.view.next_available and center.controller.service.current is None
+    center.controller.next_page()
+    assert len(center.frame.jobs) == count and center.controller.rows == ()
+
+
+@pytest.mark.parametrize('change', ['active', 'cancel', 'dispose'])
+def test_late_paged_completion_does_not_publish_next_token_or_touch_closed_view(center, change):
+    center.app.add_text(center.one, 'Repeated', 'Railway.\fRailway.')
+    options = SearchOptions((center.one,), 'Railway', title='Repeated', limit_per_library=1)
+    center.controller.search_page(options)
+    assert center.controller.next_cursor
+    center.frame.deferred = True
+    center.controller.next_page()
+    if change == 'active':
+        center.frame.active = (center.two, center.destination)
+    elif change == 'cancel':
+        center.controller.cancel()
+    else:
+        center.controller.dispose()
+    before = center.view.messages[:]
+    center.frame.finish()
+    assert center.controller.rows == () and center.controller.next_cursor is None
+    assert not center.view.next_available and not center.controller.running
+    if change == 'dispose':
+        assert center.view.messages == before
+
+
+def test_child_destroy_does_not_revoke_search_owner_or_current_page(center):
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.window = Mock()
+    native._window_id, native._window_alive, native._deferred_destroy = 91, True, False
+    native.controller = center.controller
+    center.controller.search_page(SearchOptions((center.one,), 'Railway'))
+    rows = center.controller.rows
+    event = SimpleNamespace(GetId=lambda: 92, GetEventObject=Mock(side_effect=AssertionError('No wrapper access')),
+                            Skip=Mock())
+    native._destroyed(event)
+    assert native._window_alive and center.controller.alive and center.controller.rows is rows
+    event.Skip.assert_called_once_with()
+    event.GetEventObject.assert_not_called()
+
+
+@pytest.mark.parametrize('close_parent', [False, True])
+def test_search_action_restores_focus_only_while_captured_parent_is_live(center, monkeypatch, close_parent):
+    from carr_library.ui.federated_search import FederatedSearchActions
+    handlers, focused = [], Mock(side_effect=RuntimeError('Previous native focus was destroyed'))
+    center.frame.GetId = lambda: 41
+    center.frame.Bind = lambda event, handler: handlers.append(handler)
+    center.frame.Unbind = Mock(return_value=True)
+    center.frame.status = SimpleNamespace(SetFocus=Mock(side_effect=AssertionError('No fallback to deleted status')))
+    center.frame.report = Mock(side_effect=AssertionError('A destroyed parent cannot report'))
+    wx = SimpleNamespace(EVT_WINDOW_DESTROY=object(),
+                         Window=SimpleNamespace(FindFocus=lambda: SimpleNamespace(SetFocus=focused)))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    def show():
+        if close_parent:
+            handlers[0](SimpleNamespace(GetId=lambda: 41, Skip=Mock()))
+            raise RuntimeError('The native parent was destroyed')
+    monkeypatch.setattr('carr_library.ui.federated_search.NativeSearchCenter',
+                        lambda *args: SimpleNamespace(show=show))
+    FederatedSearchActions(center.frame).open()
+    center.frame.report.assert_not_called()
+    center.frame.status.SetFocus.assert_not_called()
+    if close_parent:
+        focused.assert_not_called()
+        center.frame.Unbind.assert_not_called()
+    else:
+        focused.assert_called_once_with()
+        center.frame.Unbind.assert_called_once()

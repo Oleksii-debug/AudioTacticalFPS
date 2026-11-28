@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "source_head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "source_run": 46098474617,
+  "source_job": 140835230479,
+  "source_run_terminal": false,
+  "artifact": {
+    "id": 15246270861,
+    "name": "carr-windows-pre-source-5d19dde77aca6a257ee601c1bc49b8504c342cee-1",
+    "bytes": 323873,
+    "sha256": "439f806508f05a9a49a233add106b8749cc4b4fe79b94ab1d5498d7b73ade388",
+    "created_at": "2026-11-28T03:20:00Z",
+    "updated_at": "2026-11-28T03:20:00Z",
+    "run": 46098474617,
+    "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "mode": "bundle"
+  },
+  "helpers": [
+    {
+      "head": "5dc9f2f6d10c812dab7eb745a8a09166c17b70c1",
+      "run": 46102761649,
+      "job": 140848699971,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "head": "f782780ced11ff7e86cf4b4585de60cb0cc99598",
+      "run": 46103586351,
+      "job": 140851259639,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "provenance": {
+    "archive_digest": "Guarded helper verified immutable ZIP byte count and SHA-256 before reading members.",
+    "original_members": "Base64 parts decoded; exact bytes/hash and UTF-8 roundtrip independently verified before storing raw/ files. Original line endings retained.",
+    "derived_json": "Extracted from the exact original console transcript; not claimed as separate original JSON members.",
+    "long_logs": "Other long member text was only a bounded excerpt and is not stored as complete raw evidence.",
+    "no_application_execution_by_helpers": true,
+    "no_private_assets_read": true
+  },
+  "results": {
+    "full_bundle": {
+      "status": "FAIL",
+      "collected": 9001,
+      "actual_testcases_completed": 1340,
+      "passed": 1339,
+      "failed": 1,
+      "internal_error_records": 1,
+      "skipped": 0,
+      "junit_records": 1341,
+      "collected_cases_not_executed": 7661,
+      "failure": "tests.speech.test_voice_preferences::test_reload_persists_exact_ids_profiles_and_external_declarations uses locale-default path.read_text() on the application's UTF-8 Ukrainian profile JSON; CP1252 raises UnicodeDecodeError. Application save/load comparison immediately preceding it passed.",
+      "internal_error": "ImmediateFailures diagnostic observer print raises CP1252 UnicodeEncodeError while printing report.longrepr, interrupting the remaining tests.",
+      "disposition": "Explicit UTF-8 test I/O and escaped observer display corrections are reviewed separately; successor execution remains required."
+    },
+    "installed_clip": {
+      "status": "PASS",
+      "checks": 158,
+      "completed_repeats": 2,
+      "output_index": 1,
+      "output_identity": "18e1d66b3491d5ee77c6722559d7b9c41fc584e1ba609d366490890ab6feed7d",
+      "same_original_preview_and_project": true,
+      "disable_and_stop": "PASS",
+      "physical_output_device": "NOT_RUN",
+      "acoustic_listening": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "bundle_clip": {
+      "status": "PASS",
+      "checks": 120,
+      "loop_preview": "NOT_RUN",
+      "reason": "No exact reviewed output endpoint supplied in that separate invocation."
+    }
+  },
+  "no_success_transferred_to_other_heads": true,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/full-bundle-workflows.txt",
+      "sha256": "9ad60d294dfed08e354082c5a99708721fd19900763c4b1d160192c29c2b2578",
+      "bytes": 13652
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/installed-scene-clip-editor.txt",
+      "sha256": "d5e1c01637a957e68f7ffa6eaaa52923af3d7637992511c047fc98c85b7d9061",
+      "bytes": 16016
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/bundle-scene-clip-editor.txt",
+      "sha256": "d0c01d0bf5496f1e463d5715bec1bcb68808e257f9ad2e8e7ae40ab4007537fc",
+      "bytes": 10315
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/full-bundle-workflows.xml",
+      "sha256": "16fabea1e9ec1e9bfc3a0e2b403fa01c6e3861e429a58deb3846885fe9ccc675",
+      "bytes": 210449
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/artifact-inventory.json",
+      "sha256": "5e1d2f7ba0b71898ad7228a3ba43901293f9549a612262b721112b53a90a3458",
+      "bytes": 31203
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/member-inventory.json",
+      "sha256": "16c5e60134b17194aab9431b9e33ddaba9ba10a81545c7286066013b2a960039",
+      "bytes": 41051
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/installed-clip-derived.json",
+      "sha256": "2e5752c5a5506b014a81e07dc86203857cddcebdd6756fe52e4fcc4ede266b09",
+      "bytes": 9275
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/bundle-clip-derived.json",
+      "sha256": "29068b33bd2346b3a01db15115f811c8a98364a4145001ec18cc25342942c9ed",
+      "bytes": 5844
+    }
+  ]
+}

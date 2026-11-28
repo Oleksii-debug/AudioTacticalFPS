@@ -1,0 +1,14 @@
+{
+  "prior_windows_installed_job": 140709243113,
+  "prior_50000_setup": "incomplete at the original 600-second child resource bound",
+  "prior_50000_windows_queries": "NOT_RUN",
+  "prior_commit": "8cb61be3dfd9be2447737dafacb428d850be774d",
+  "prior_windows_source_job": 140709243181,
+  "build_seconds": 1200,
+  "performance_acceptance": "NOT_ASSESSED",
+  "followup": "new create-only corpus and output; original trial is not resumed or reclassified",
+  "application_baseline": "ae25ef5e585b2926a0ed3fcf7e45debd7d2b2acb",
+  "public_search_seconds": 60,
+  "prior_run": 46059259121,
+  "query_child_seconds": 600
+}

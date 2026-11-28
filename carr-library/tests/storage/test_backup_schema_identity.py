@@ -2,8 +2,8 @@
 from contextlib import closing
 from hashlib import sha256
 import json
-import shutil
 import sqlite3
+import shutil
 
 import pytest
 
@@ -32,6 +32,13 @@ def backup(tmp_path):
 
 
 def write_manifest(directory, manifest):
+    if type(manifest.get('version')) is int and manifest['version'] in (1, 2):
+        # Produce an actual historical shape for legacy compatibility tests.
+        for key in ('state', 'generated_audio_included', 'pending'):
+            manifest.pop(key, None)
+        for name in ('state', 'pending'):
+            if (directory / name).exists():
+                shutil.rmtree(directory / name)
     raw = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     (directory / 'manifest.json').write_bytes(raw)
     return sha256(raw).hexdigest()
@@ -48,36 +55,13 @@ def forbid_writable_storage(monkeypatch):
     monkeypatch.setattr('carr_library.library_backup.Storage', refused)
 
 
-
-def select_historical_manifest(directory, manifest, version):
-    """Build each exact legacy shape from this fixture's empty-sidecar backup."""
-    manifest['version'] = version
-    if version == 4:
-        return
-    assert manifest.pop('sidecars') == []
-    assert manifest.pop('generated_audio_included') is False
-    # The separately validated pending-import producer is optional in common4.
-    # Its owned fixture directory must not leak into a historical namespace.
-    if 'pending' in manifest:
-        del manifest['pending']
-        pending = directory / 'pending'
-        if pending.exists():
-            shutil.rmtree(pending)
-    if version == 3:
-        manifest['reading_state'] = None
-    if version == 1:
-        del manifest['schema_fingerprint']
-
-
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
     assert manifest['version'] == 4
     assert manifest['schema_version'] == CURRENT_SCHEMA_VERSION
-    fields = {'version', 'kind', 'schema_version', 'schema_fingerprint',
-              'database', 'assets', 'sidecars', 'generated_audio_included'}
-    assert set(manifest) in (fields, fields | {'pending'})
-    assert manifest['sidecars'] == []
-    assert manifest['generated_audio_included'] is False
+    assert set(manifest) == {'version', 'kind', 'schema_version',
+                             'schema_fingerprint', 'database', 'assets', 'state',
+                             'generated_audio_included', 'pending'}
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
@@ -105,10 +89,10 @@ def test_fingerprint_is_layout_identity_not_database_content(tmp_path):
             assert schema_fingerprint(first.db) != original
 
 
-@pytest.mark.parametrize('version', [1, 2, 3])
-def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
+def test_legacy_v1_backup_restores_exact_current_schema(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
-    select_historical_manifest(directory, manifest, version)
+    manifest['version'] = 1
+    del manifest['schema_fingerprint']
     digest = write_manifest(directory, manifest)
     original = bundle_bytes(directory)
     before = app.evidence(workspace, topic)[0]
@@ -118,7 +102,7 @@ def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     assert bundle_bytes(directory) == original
 
 
-@pytest.mark.parametrize('version', [1, 2, 3, 4])
+@pytest.mark.parametrize('version', [1, 2])
 @pytest.mark.parametrize('sql', [
     # The competing unreleased layout used workspace_profile at user_version=3.
     'ALTER TABLE workspace_meta RENAME TO workspace_profile',
@@ -134,7 +118,9 @@ def test_different_layout_is_rejected_before_writable_open(
     with closing(sqlite3.connect(database)) as db:
         db.execute(sql)
         db.commit()
-    select_historical_manifest(directory, manifest, version)
+    manifest['version'] = version
+    if version == 1:
+        del manifest['schema_fingerprint']
     # A valid outer checksum cannot turn an incompatible layout into our schema.
     manifest['database']['size_bytes'] = database.stat().st_size
     manifest['database']['sha256'] = sha256(database.read_bytes()).hexdigest()

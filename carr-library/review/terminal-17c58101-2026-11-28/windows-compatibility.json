@@ -1,0 +1,580 @@
+{
+  "schema": "carr-ci-terminal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run_id": 46088683400,
+  "job_id": 140804190867,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46088683400/job/140804190867",
+  "scope": "Canonical compatibility: separate source and installed contracts plus native source/installed UI checks",
+  "platform": "windows-2022",
+  "python": "3.11.9",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T00:39:33Z",
+  "completed_at": "2026-11-28T00:49:00Z",
+  "log": {
+    "provenance": "Completed GitHub job log decoded by connector; SHA256 covers those exact decoded UTF-8 text bytes, not an original ZIP member.",
+    "sha256": "6c890aefa9d87661f94bd4c223810bada28fed7554cfbf49f025ca1135cf9fee",
+    "characters": 146148
+  },
+  "source": {
+    "modules": {
+      "total": 39,
+      "passed": 39,
+      "failed": 0
+    },
+    "cases": {
+      "passed": 1166,
+      "failed": 0,
+      "skipped": 0
+    },
+    "module_verdicts": [
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_playback.py",
+        "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_evidence_drafts.py",
+        "detail": "junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_save_all.py",
+        "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_evidence_draft_recovery.py",
+        "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/speech/test_progress_speech.py",
+        "detail": "junit_passed=33, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_recording_backup.py",
+        "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_composite_backup.py",
+        "detail": "junit_passed=26, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_canonical_backup_compat.py",
+        "detail": "junit_passed=68, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_save_all_access.py",
+        "detail": "junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_progress_job_review.py",
+        "detail": "junit_passed=45, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_save_actions.py",
+        "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_reader_keymap_context.py",
+        "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_command_palette.py",
+        "detail": "junit_passed=37, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_v3_state_backup.py",
+        "detail": "junit_passed=43, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_keyboard_export.py",
+        "detail": "junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_keyboard_rename.py",
+        "detail": "junit_passed=7, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_keyboard_settings.py",
+        "detail": "junit_passed=63, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/speech/test_reading.py",
+        "detail": "junit_passed=49, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_scope_labels.py",
+        "detail": "junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/language_qualification/test_inventory_cleanup.py",
+        "detail": "junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/speech/test_runtime_settings_restore.py",
+        "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_export_confirmation.py",
+        "detail": "junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/reader/test_export_approval_budget.py",
+        "detail": "junit_passed=7, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/e2e/test_export_destination.py",
+        "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_academic_actions.py",
+        "detail": "junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/packaging/test_source_wheel.py",
+        "detail": "junit_passed=25, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_catalog_tools_dialog.py",
+        "detail": "junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_academic_export_handler.py",
+        "detail": "junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/reader/test_file_export.py",
+        "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/reader/test_binary_file_export.py",
+        "detail": "junit_passed=35, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/reader/test_export_no_clobber.py",
+        "detail": "junit_passed=35, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/probe_catalog_insights_actions.py",
+        "detail": "junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/reader/test_export_publication_boundary.py",
+        "detail": "junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/reader/test_finish_export_formats.py",
+        "detail": "junit_passed=17, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_transcription_workflow.py",
+        "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_workflows.py",
+        "detail": "junit_passed=26, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_workflow_access.py",
+        "detail": "junit_passed=25, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_assistant_voice_preview.py",
+        "detail": "junit_passed=17, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/transcription/test_supplied_worker_bridge.py",
+        "detail": "junit_passed=91, failed=0, skipped=0, pytest_exit=0"
+      }
+    ]
+  },
+  "installed": {
+    "cases": {
+      "passed": 1166,
+      "failed": 0,
+      "skipped": 0,
+      "subtests_passed": 7,
+      "duration_seconds": 280.58
+    },
+    "receipt": {
+      "status": "PASS",
+      "passed": 1166,
+      "failed": 0,
+      "skipped": 0,
+      "expected_failures": [],
+      "native_sapi": "required by existing speech case",
+      "human_nvda": "NOT_RUN"
+    }
+  },
+  "native_steps": [
+    {
+      "number": 7,
+      "name": "Require native source Save All and recovery",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Require native source Reader keyboard dispatch",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Require native installed Save All and recovery",
+      "conclusion": "success"
+    },
+    {
+      "number": 10,
+      "name": "Require native installed Reader keyboard dispatch",
+      "conclusion": "success"
+    },
+    {
+      "number": 11,
+      "name": "Require native source asynchronous catalog exports",
+      "conclusion": "success"
+    },
+    {
+      "number": 12,
+      "name": "Require native installed asynchronous catalog exports",
+      "conclusion": "success"
+    },
+    {
+      "number": 13,
+      "name": "Require native installed asynchronous voice preview",
+      "conclusion": "success"
+    }
+  ],
+  "native_json_reports_from_completed_log": [
+    {
+      "audio_quality": "NOT_RUN",
+      "check_names": [
+        "native evidence asynchronously loads its authorized source",
+        "note is a named native editable text control",
+        "recovery is available as a named native button",
+        "native text event publishes its first recovery checkpoint",
+        "destroy flushes pending native edit to the actual sidecar",
+        "recovery checkpoint does not commit research note",
+        "keyboard recovery restores exact text into reopened native editor",
+        "recovery returns keyboard focus to the note",
+        "restored draft remains unsaved until explicit Save",
+        "Save note receives actual keyboard focus",
+        "native Space key activates Save note",
+        "native save commits note and removes its recovery copy",
+        "actual integrated Studio exposes Save All and cancellation",
+        "native keyboard focus reaches Save all open drafts",
+        "native Space activates Save all open drafts",
+        "Save All waits for actual note completion on its native owner",
+        "real note transaction committed before its deferred UI acknowledgement",
+        "Save All completes both actual participants",
+        "native Studio participant wrote a real validated project",
+        "newer native note is retained and overall success is withheld",
+        "newer note checkpoint matches the newly committed baseline",
+        "native keyboard focus reaches Save all open drafts",
+        "native Space activates Save all open drafts",
+        "second request reaches a committed note before the next participant",
+        "native keyboard focus reaches Cancel Save All",
+        "native Space activates Cancel Save All",
+        "actual modal Cancel signals the shared request",
+        "cancelled Save All releases its request",
+        "late cancellation preserves the committed note and unsaved next project",
+        "native keyboard focus reaches Save project",
+        "native Space activates Save project",
+        "a separate explicit native Save commits the remaining Studio draft",
+        "native keyboard focus reaches Close",
+        "native Space activates Close",
+        "closing Studio unregisters only its own Save All participant",
+        "native Studio Save All assertions completed",
+        "reader voice discovery finishes before its explicit Save All",
+        "native keyboard focus reaches Save all open drafts",
+        "native Space activates Save all open drafts",
+        "native reader participant writes actual reading recovery state",
+        "reader Save All preserves immutable original text",
+        "reader shares the same owner coordinator",
+        "native keyboard focus reaches Close",
+        "native Space activates Close",
+        "closing reader unregisters its participant and keeps the saved file",
+        "no native background or keyboard error occurred"
+      ],
+      "checks": 46,
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.evidence_drafts": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\evidence_drafts.py",
+        "carr_library.ui.audio_studio": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\audio_studio.py",
+        "carr_library.ui.desktop_evidence_panel": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_evidence_panel.py",
+        "carr_library.ui.save_actions": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\save_actions.py",
+        "carr_library.ui.speech_dialog": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_dialog.py"
+      },
+      "platform": "Windows",
+      "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "audio_quality": "NOT_RUN",
+      "check_names": [
+        "recovery code is loaded from the installed package",
+        "native evidence asynchronously loads its authorized source",
+        "note is a named native editable text control",
+        "recovery is available as a named native button",
+        "native text event publishes its first recovery checkpoint",
+        "destroy flushes pending native edit to the actual sidecar",
+        "recovery checkpoint does not commit research note",
+        "keyboard recovery restores exact text into reopened native editor",
+        "recovery returns keyboard focus to the note",
+        "restored draft remains unsaved until explicit Save",
+        "Save note receives actual keyboard focus",
+        "native Space key activates Save note",
+        "native save commits note and removes its recovery copy",
+        "actual integrated Studio exposes Save All and cancellation",
+        "native keyboard focus reaches Save all open drafts",
+        "native Space activates Save all open drafts",
+        "Save All waits for actual note completion on its native owner",
+        "real note transaction committed before its deferred UI acknowledgement",
+        "Save All completes both actual participants",
+        "native Studio participant wrote a real validated project",
+        "newer native note is retained and overall success is withheld",
+        "newer note checkpoint matches the newly committed baseline",
+        "native keyboard focus reaches Save all open drafts",
+        "native Space activates Save all open drafts",
+        "second request reaches a committed note before the next participant",
+        "native keyboard focus reaches Cancel Save All",
+        "native Space activates Cancel Save All",
+        "actual modal Cancel signals the shared request",
+        "cancelled Save All releases its request",
+        "late cancellation preserves the committed note and unsaved next project",
+        "native keyboard focus reaches Save project",
+        "native Space activates Save project",
+        "a separate explicit native Save commits the remaining Studio draft",
+        "native keyboard focus reaches Close",
+        "native Space activates Close",
+        "closing Studio unregisters only its own Save All participant",
+        "native Studio Save All assertions completed",
+        "reader voice discovery finishes before its explicit Save All",
+        "native keyboard focus reaches Save all open drafts",
+        "native Space activates Save all open drafts",
+        "native reader participant writes actual reading recovery state",
+        "reader Save All preserves immutable original text",
+        "reader shares the same owner coordinator",
+        "native keyboard focus reaches Close",
+        "native Space activates Close",
+        "closing reader unregisters its participant and keeps the saved file",
+        "no native background or keyboard error occurred"
+      ],
+      "checks": 47,
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+        "carr_library.ui.audio_studio": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\audio_studio.py",
+        "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py",
+        "carr_library.ui.save_actions": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\save_actions.py",
+        "carr_library.ui.speech_dialog": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py"
+      },
+      "platform": "Windows",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "checks": 52,
+      "file_chooser_interaction": "NOT_RUN; synthetic destination supplied",
+      "module_origins": {
+        "carr_library": {
+          "checkout_sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a",
+          "matches_checkout": true,
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        },
+        "carr_library.application": {
+          "checkout_sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e",
+          "matches_checkout": true,
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py",
+          "sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e"
+        },
+        "carr_library.research.export_file": {
+          "checkout_sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391",
+          "matches_checkout": true,
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\research\\export_file.py",
+          "sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391"
+        },
+        "carr_library.ui.catalog_tools_dialog": {
+          "checkout_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+          "matches_checkout": true,
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\catalog_tools_dialog.py",
+          "sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e"
+        },
+        "carr_library.ui.desktop_app": {
+          "checkout_sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10",
+          "matches_checkout": true,
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+          "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+        },
+        "carr_library.ui.export_destination": {
+          "checkout_sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73",
+          "matches_checkout": true,
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\export_destination.py",
+          "sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73"
+        }
+      },
+      "native_platform": "Windows",
+      "nvda": "NOT_RUN",
+      "purelib": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages",
+      "result": "PASS",
+      "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+      "source_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+      "sqlite": "3.45.1",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "checks": 52,
+      "file_chooser_interaction": "NOT_RUN; synthetic destination supplied",
+      "module_origins": {
+        "carr_library": {
+          "checkout_sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a",
+          "matches_checkout": true,
+          "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        },
+        "carr_library.application": {
+          "checkout_sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e",
+          "matches_checkout": true,
+          "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\application.py",
+          "sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e"
+        },
+        "carr_library.research.export_file": {
+          "checkout_sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391",
+          "matches_checkout": true,
+          "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+          "sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391"
+        },
+        "carr_library.ui.catalog_tools_dialog": {
+          "checkout_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+          "matches_checkout": true,
+          "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\catalog_tools_dialog.py",
+          "sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e"
+        },
+        "carr_library.ui.desktop_app": {
+          "checkout_sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10",
+          "matches_checkout": true,
+          "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+        },
+        "carr_library.ui.export_destination": {
+          "checkout_sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73",
+          "matches_checkout": true,
+          "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\export_destination.py",
+          "sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73"
+        }
+      },
+      "native_platform": "Windows",
+      "nvda": "NOT_RUN",
+      "purelib": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages",
+      "result": "PASS",
+      "source_override": null,
+      "source_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+      "sqlite": "3.45.1",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "status": "PASS",
+      "count": 44,
+      "checks": [
+        "diagnostics loads from the installed wheel",
+        "native Windows wx is active",
+        "named workflow has a native Escape close binding",
+        "named workflow controls are native and accessible",
+        "native button handler: Reuse saved workflow",
+        "reuse clears old filesystem and full-backup grants",
+        "reuse alone cannot run a plan",
+        "reuse preserves the original saved job",
+        "native button handler: Preview plan",
+        "preview binds typed steps to the newly selected library",
+        "native button handler: Save named workflow",
+        "native Save creates exactly one new pending typed job",
+        "saving runs no operation and uses only the fresh scope",
+        "native button handler: Run / resume",
+        "explicit native Run executes both typed steps in the chosen library",
+        "completed reuse leaves the original job unchanged",
+        "native button handler: Close",
+        "native named workflow completed without a second job store",
+        "native button handler: Preview plan",
+        "voice inventory runs outside the native GUI thread",
+        "native preview stays cancellable before voice review finishes",
+        "the installed voice chooser contains actual local voices",
+        "native preview retains the selected actual voice ID",
+        "native voice preview starts no production or persisted job",
+        "native button handler: Close",
+        "native preview closes its owned registry once after worker completion",
+        "closed or cancelled native preview leaves no authority or output",
+        "native button handler: Preview plan",
+        "voice inventory runs outside the native GUI thread",
+        "native preview stays cancellable before voice review finishes",
+        "native button handler: Pause",
+        "native button handler: Close",
+        "native Close returns while voice inventory is still held",
+        "native preview closes its owned registry once after worker completion",
+        "closed or cancelled native preview leaves no authority or output",
+        "diagnostics is installed in the shared native command inventory",
+        "diagnostics preview is native read-only text with an accessible name",
+        "actual synthetic installation check passed without model or NVDA claims",
+        "private workspace names and paths are absent",
+        "Tab reaches the native diagnostics status",
+        "the reviewed report is exported exactly",
+        "an existing diagnostics export is preserved",
+        "native diagnostics has an Escape close binding",
+        "real diagnostics runs off the native GUI thread"
+      ],
+      "nvda": "NOT_RUN",
+      "manual_keyboard": "NOT_RUN"
+    }
+  ],
+  "reader_keymap_phase_evidence": {
+    "source_complete": true,
+    "installed_complete": true,
+    "note": "Both exact native Reader keymap commands emit their final complete phase and exit successfully; report member bytes and check counts are not inferred."
+  },
+  "artifact_from_completed_upload_log": {
+    "id": 15239964148,
+    "name": "carr-canonical-compatibility-17c581015fc1ca6f3294f4cce1fe894f33a843cd-1",
+    "size_bytes": 39198,
+    "sha256": "2996ae606a2f71e234c245f0df445c243542685f7b8fd9dd9e99dfebc0382054",
+    "member_bytes_decoded": false
+  },
+  "qualification": "PASS only for this exact compatibility gate. Source and installed case totals are separate executions. Native check counts are assertions, not independent tests. Manual NVDA, audio quality, real file-picker interaction and final release qualification remain unclaimed."
+}

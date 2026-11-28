@@ -111,6 +111,19 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+@pytest.mark.parametrize('flag', [False, True])
+def test_existing_optional_audio_manifest_flag_does_not_block_native_checks(tmp_path, monkeypatch, flag):
+    # This checks the builder's manifest contract; actual audio execution has a
+    # separate installed-runtime probe and is not asserted by these imports.
+    manifest = bundle(tmp_path)
+    manifest['bundled_audio'] = flag
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+    assert events[1] == ('activate_bundled_runtime', str(tmp_path))
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []
@@ -150,7 +163,8 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'integer_audio_flag', 'null_audio_flag',
+    'unreviewed_launcher_flag',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +186,14 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio'] = 'false'
+    elif change == 'integer_audio_flag':
+        manifest['bundled_audio'] = 1
+    elif change == 'null_audio_flag':
+        manifest['bundled_audio'] = None
+    elif change == 'unreviewed_launcher_flag':
+        manifest['bundled_launcher'] = True
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]
@@ -184,3 +206,36 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
     assert report['status'] == 'FAIL'
     assert report['failed_component'] == 'installation manifest'
     assert not events
+
+
+def test_private_refresh_provenance_preserves_native_checks(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest.update(bundled_audio=True, bundled_citation_runtime=False,
+                    use_scope='private-personal-installation',
+                    parent_source_commit='c' * 40, parent_manifest_sha256='d' * 64)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    controlled_imports(monkeypatch, [])
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+
+
+@pytest.mark.parametrize(('key', 'value'), [
+    ('parent_source_commit', True), ('parent_manifest_sha256', 'invalid'),
+    ('use_scope', 'public-release'), ('bundled_citation_runtime', 1)])
+def test_private_refresh_provenance_is_strict_before_native_import(tmp_path, monkeypatch, key, value):
+    manifest = bundle(tmp_path)
+    manifest.update(bundled_citation_runtime=False, use_scope='private-personal-installation',
+                    parent_source_commit='c' * 40, parent_manifest_sha256='d' * 64)
+    manifest[key] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'FAIL'
+    assert events == []
+
+
+def test_partial_refresh_provenance_is_rejected(tmp_path):
+    manifest = bundle(tmp_path)
+    manifest['parent_source_commit'] = 'c' * 40
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    with pytest.raises(ValueError, match='refresh provenance'):
+        native_checks._manifest(tmp_path)

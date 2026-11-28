@@ -1,0 +1,183 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "provenance": {
+    "kind": "completed job metadata and decoded job-log text",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "run_id": 46101830099,
+    "run_attempt": 1,
+    "job_id": 140845779219,
+    "branch": "carr/standard-installation-evaluation-20261128",
+    "workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "workflow_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101830099/job/140845779219",
+    "decoded_log_utf8_sha256": "39daaddee55507059f658e6dc92740daa529d19a2e803c0aac0686087334b2a2",
+    "decoded_log_characters": 274759,
+    "original_artifact_members_downloaded": false
+  },
+  "terminal": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T03:16:48Z",
+    "completed_at": "2026-11-28T03:17:47Z"
+  },
+  "source": {
+    "status": "PASS",
+    "modules": 11,
+    "passed": 345,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "all_suite_exits_zero": true,
+    "module_verdicts_file": "source-suite-verdicts.json"
+  },
+  "installed": {
+    "status": "PASS",
+    "passed": 345,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "subtests_passed": 22,
+    "seconds": 15.13,
+    "strict_xml": "INSTALLED_CASES_PASS 345"
+  },
+  "source_binding": {
+    "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+    "python_modules": 380,
+    "inventory_rows_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "inventory_hash_encoding": "UTF-8 JSON.stringify(python_files), no trailing LF",
+    "module_origin": "/home/runner/work/_temp/carr-standard-installation-python/lib/python3.11/site-packages/carr_library",
+    "source_package": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library",
+    "wheel_sha256": "66a922300398c3e18d4bd6b1a43ffb354745f7ed50d78baf353ed279349362ef",
+    "python_path_inventory_matches_exact_commit_tree": true,
+    "source_wheel_full_verifier": "PASS"
+  },
+  "native_windows_lifecycle": {
+    "status": "NOT_APPLICABLE",
+    "reason": "This is the Linux source/installed contract lane. Actual Windows native lifecycle is recorded separately."
+  },
+  "uploaded_artifact": {
+    "id": 15245741646,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NTc0MTY0Ng==",
+    "name": "carr-standard-installation-ubuntu-24.04-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+    "size_in_bytes": 29424,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245741646",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245741646/zip",
+    "expired": false,
+    "digest": "sha256:3dfd7c81a9ffc34cfe2b6cc3abbc6c1efc0a87ba85d5ac8562a19feb526a794a",
+    "created_at": "2026-11-28T03:17:45Z",
+    "updated_at": "2026-11-28T03:17:45Z",
+    "expires_at": "2026-12-05T03:17:44Z",
+    "workflow_run": {
+      "id": 46101830099,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+    }
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T03:16:49Z",
+      "completed_at": "2026-11-28T03:16:50Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T03:16:50Z",
+      "completed_at": "2026-11-28T03:16:51Z"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T03:16:51Z",
+      "completed_at": "2026-11-28T03:16:54Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T03:16:54Z",
+      "completed_at": "2026-11-28T03:16:55Z"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T03:16:55Z",
+      "completed_at": "2026-11-28T03:17:17Z"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T03:17:17Z",
+      "completed_at": "2026-11-28T03:17:17Z"
+    },
+    {
+      "name": "Require source standard installation and existing launcher contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T03:17:17Z",
+      "completed_at": "2026-11-28T03:17:28Z"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T03:17:28Z",
+      "completed_at": "2026-11-28T03:17:44Z"
+    },
+    {
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 9,
+      "started_at": "2026-11-28T03:17:44Z",
+      "completed_at": "2026-11-28T03:17:44Z"
+    },
+    {
+      "name": "Build one exact current core bundle and its standard setup",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 10,
+      "started_at": "2026-11-28T03:17:44Z",
+      "completed_at": "2026-11-28T03:17:44Z"
+    },
+    {
+      "name": "Require actual native standard Install Repair and Uninstall",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-28T03:17:44Z",
+      "completed_at": "2026-11-28T03:17:44Z"
+    },
+    {
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T03:17:44Z",
+      "completed_at": "2026-11-28T03:17:45Z"
+    }
+  ],
+  "limits": [
+    "These are exact78dc8ab6838e964bc115418c47c4ec3ef4226a91 receiving results, not transferred5d results.",
+    "The artifact ZIP hash/size are GitHub metadata and matching upload text; original ZIP/member bytes were not downloaded.",
+    "Portable contract success does not claim Windows native lifecycle, signing, NVDA, unprivileged-account or final release qualification."
+  ]
+}

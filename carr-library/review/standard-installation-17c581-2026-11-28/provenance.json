@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "status": "PASS_FOR_PORTABLE_CONTRACTS_ONLY",
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run_id": 46088685885,
+  "job_id": 140804199309,
+  "run_attempt": 1,
+  "platform": "ubuntu-24.04",
+  "job_conclusion": "success",
+  "workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+  "workflow_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+  "completed_job_log": {
+    "sha256_of_decoded_utf8": "caa4d1aae3ec4a58db60c94a68e06881cc3c577ef9ee4a405cadee81762bc64c",
+    "characters": 271604
+  },
+  "extraction": "The JSON files preserve complete stdout JSON payloads from the completed job log, with one trailing newline. linux-contracts.txt preserves the exact timestamped source verdicts and installed pytest summary. These are not asserted to be byte-identical ZIP members.",
+  "source": {
+    "suite_count": 11,
+    "passed": 340,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "suites": [
+      {
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 144,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_native_checks.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_windows_bundle.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_windows_launcher_bundle.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_worker_bytecode.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_native_runtime.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/audio/test_local_runtime_cli.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/test_delivery_cli.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_install_bytecode.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "passed": 340,
+    "subtests_passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 11.16
+  },
+  "native_standard_install_repair_uninstall": "NOT_RUN on Linux; Windows job remains separate",
+  "whole_python_identity": {
+    "files": 379,
+    "status": "PASS",
+    "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+    "source_wheel_installed": "Exact complete namespace and bytes verified by the unchanged workflow"
+  },
+  "source_wheel": {
+    "payload_files": 489,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 394,
+    "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "source_tree": "f0f24e27326e4eac0d9658c69e3b68039b837368",
+    "wheel_sha256": "9bc19031210a229971ddba073e6ba319976bb6fda3f2de47c5c52b1b9a0ebd9f"
+  },
+  "artifact": {
+    "id": 15239988326,
+    "bytes": 29223,
+    "sha256": "3f530e814aaacb73c14bbd4fb34476c11b33cead68b6730dc9075f9703b80c5a",
+    "digest_source": "GitHub artifact metadata; archive not downloaded in this extraction"
+  },
+  "files": [
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-dependencies.json",
+      "sha256": "d1360b7d71de2a273cd90816584961beb12729d684572bdd184943354d31e136"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-source-wheel.json",
+      "sha256": "ef2c463f55d7a45fabe1e23f29d14c77a796456037132df695c8c8200708d213"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-python-identity.json",
+      "sha256": "d05011a6f96ad5708b88f764011f23b0c1830f3fb8f5ec1ca733ba05d15440eb"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-contracts.txt",
+      "sha256": "6b4867f3657ca25c4327319bdcaf4a276513c2a9dc1999e91982bd1abe5ae15a"
+    }
+  ],
+  "qualification_limits": [
+    "No Windows Install/Repair/Uninstall claim",
+    "No physical recording, listening, model-quality, NVDA or signing qualification",
+    "No new code execution was performed by the extraction"
+  ]
+}

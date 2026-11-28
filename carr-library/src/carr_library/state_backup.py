@@ -9,11 +9,14 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
 
 MAX_STATE_FILES = 100_000
+# Every discovered entry counts, including excluded caches and temporary names.
+MAX_STATE_SCAN_ENTRIES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
 
 
@@ -44,30 +47,62 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _walk_error(error):
+    # os.walk silently suppresses directory enumeration errors by default.
+    # An unreadable subtree is not evidence that it contains no user state.
+    raise error
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, missing_ok=True):
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
-    if not os.path.lexists(root):
+    try:
+        root.lstat()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)
     def inventory():
-        found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False):
+        found, pending, scanned = {}, [root], 1
+        if scanned > MAX_STATE_SCAN_ENTRIES:
+            raise ValueError('Application state scan exceeds its entry budget.')
+        while pending:
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
-            for name in dirs:
-                regular(Path(directory) / name, directory=True)
-            dirs[:] = [name for name in dirs if _include((Path(directory) / name).relative_to(root), include_generated)]
-            for name in sorted(files):
-                source = Path(directory) / name
-                relative = source.relative_to(root)
-                if _include(relative, include_generated):
-                    found[relative] = _stamp(regular(source))
-                    if len(found) > MAX_STATE_FILES:
-                        raise ValueError('Application state exceeds the file budget.')
+            directory = pending.pop()
+            regular(directory, directory=True)
+            with os.scandir(directory) as children:
+                for child in children:
+                    if cancelled():
+                        raise InterruptedError('Backup cancelled.')
+                    scanned += 1
+                    if scanned > MAX_STATE_SCAN_ENTRIES:
+                        raise ValueError('Application state scan exceeds its entry budget.')
+                    source = directory / child.name
+                    relative = source.relative_to(root)
+                    info = source.lstat()
+                    is_directory = stat.S_ISDIR(info.st_mode)
+                    if is_directory:
+                        regular(source, directory=True)
+                    elif stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                        # Excluded names do not permit following a directory link.
+                        regular(source)
+                    if not _include(relative, include_generated):
+                        continue
+                    if is_directory:
+                        pending.append(source)
+                    else:
+                        found[relative] = _stamp(regular(source))
+                        if len(found) > MAX_STATE_FILES:
+                            raise ValueError('Application state exceeds the file budget.')
+            if cancelled():
+                raise InterruptedError('Backup cancelled.')
+        if cancelled():
+            raise InterruptedError('Backup cancelled.')
         return found
     before_inventory = inventory()
     entries, total = [], 0
@@ -105,37 +140,36 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # A Windows creation timestamp is not a write counter, and last-write
-    # timestamps may be coarse or restored. Check copied content again before
-    # accepting the complete snapshot, without buffering whole state files.
+    # File metadata is not a content identity: on Windows an equal-size write
+    # can retain the observed timestamps. Recheck every copied source against
+    # its manifest hash before the caller can publish this snapshot.
     for entry in entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
-        source = local_path(root / relative, root=root, exists=True)
-        expected = before_inventory[relative]
-        digest, count = sha256(), 0
-        if _stamp(regular(source)) != expected:
+        source = root / relative
+        expected_stamp = before_inventory[relative]
+        if _stamp(regular(source)) != expected_stamp:
             raise ValueError('Application state changed during backup; retry after saving.')
-        with source.open('rb') as stream:
-            if _stamp(os.fstat(stream.fileno())) != expected:
+        digest, count = sha256(), 0
+        with source.open('rb') as read:
+            if _stamp(os.fstat(read.fileno())) != expected_stamp:
                 raise ValueError('Application state changed during backup; retry after saving.')
-            while block := stream.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
                 if cancelled():
                     raise InterruptedError('Backup cancelled.')
                 count += len(block)
                 if count > entry['size_bytes']:
-                    raise ValueError('Application state changed during backup; retry after saving.')
+                    raise ValueError('Application state grew during backup; retry after saving.')
                 digest.update(block)
-            if _stamp(os.fstat(stream.fileno())) != expected:
+            if _stamp(os.fstat(read.fileno())) != expected_stamp:
                 raise ValueError('Application state changed during backup; retry after saving.')
         if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
-                or _stamp(regular(source)) != expected):
+                or _stamp(regular(source)) != expected_stamp):
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # A snapshot must pass the same portable manifest checks as a restore.
-    # Keep this after content revalidation and before publication.
+    # Validate portable names after the final content reread, before publication.
     validate_state(entries)
     return sorted(entries, key=lambda entry: entry['filename'])
 
@@ -174,23 +208,55 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, cancelled=lambda: False):
     validate_state(entries)
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
     source = local_path(source, exists=True)
     regular(source, directory=True)
-    found = []
-    for directory, dirs, files in os.walk(source, followlinks=False):
-        for name in dirs:
-            regular(Path(directory) / name, directory=True)
-        for name in files:
-            path = Path(directory) / name
-            regular(path)
-            found.append(path.relative_to(source).as_posix())
-    if set(found) != {item['filename'] for item in entries}:
+    missing = {item['filename'] for item in entries}
+    # Released native manifests list files, not empty directories. Reserve the
+    # declared namespace first, then bound additional directory discovery without
+    # lowering the existing accepted file capacity or silently omitting a subtree.
+    declared_directories = {str(parent) for name in missing
+                            for parent in PurePosixPath(name).parents if str(parent) != '.'}
+    scan_limit = 1 + len(missing) + len(declared_directories) + MAX_STATE_SCAN_ENTRIES
+    pending, scanned = [source], 1
+    while pending:
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
+        directory = pending.pop()
+        regular(directory, directory=True)
+        with os.scandir(directory) as children:
+            for entry in children:
+                if cancelled():
+                    raise InterruptedError('Restore cancelled.')
+                scanned += 1
+                if scanned > scan_limit:
+                    raise ValueError('Application state restore scan exceeds its entry budget.')
+                path = directory / entry.name
+                if entry.is_dir(follow_symlinks=False):
+                    regular(path, directory=True)
+                    pending.append(path)
+                else:
+                    # Reject an undeclared name before opening or inspecting its
+                    # file bytes; do not consume the rest of an unknown listing.
+                    relative = path.relative_to(source).as_posix()
+                    if relative not in missing:
+                        raise ValueError('Backup has missing or unlisted application state.')
+                    regular(path)
+                    missing.remove(relative)
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
+    if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         incoming = local_path(source / item['filename'], root=source, exists=True)
         if regular(incoming).st_size != item['size_bytes']:
             raise ValueError('Application state size mismatch.')
@@ -199,6 +265,8 @@ def restore_state(source, target, entries):
         digest, size = sha256(), 0
         with incoming.open('rb') as read, destination.open('xb') as write:
             while block := read.read(1024 * 1024):
+                if cancelled():
+                    raise InterruptedError('Restore cancelled.')
                 size += len(block)
                 if size > item['size_bytes']:
                     raise ValueError('Application state changed during restore.')
@@ -211,10 +279,12 @@ def restore_state(source, target, entries):
     sync_directory(target)
 
 
-def publish_state(source, target):
+def publish_state(source, target, *, cancelled=lambda: False):
     target = Path(target)
     target.mkdir(mode=0o700)
     for path in sorted(Path(source).rglob('*')):
+        if cancelled():
+            raise InterruptedError('Application state publication cancelled.')
         relative = path.relative_to(source)
         if path.is_dir():
             (target / relative).mkdir(exist_ok=True)

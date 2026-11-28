@@ -14,7 +14,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import stat
 
-from ..research.export_file import capture_export_destination, write_binary_export, write_export
+from ..research.export_file import write_binary_export, write_export
 
 
 NAME_MODES = (('literal', 'Keep author names exactly as entered'),
@@ -198,12 +198,7 @@ class BibliographyWorkbench:
         raise ValueError('Choose bibliography or citation examples to copy.')
 
     def export(self, preview, destination, *, format='text', cancelled=lambda: False,
-               require_absent=False, approval=None, return_receipt=False):
-        """Export exact content, optionally returning its publication receipt."""
-        if type(return_receipt) is not bool:
-            raise ValueError('The export receipt option must be boolean.')
-        if approval is None:
-            approval = capture_export_destination(destination, private_root=self.controller.library.root)
+               require_absent=False, approval=None):
         snapshot = self.check(preview)
         if cancelled():
             raise TimeoutError('Bibliography export cancelled; no output was changed.')
@@ -231,9 +226,9 @@ class BibliographyWorkbench:
             self.check(preview)
             return False
 
-        receipt = writer(destination, content, private_root=self.controller.library.root,
-                         cancelled=cancelled_or_changed, require_absent=require_absent, approval=approval)
-        return receipt if return_receipt else content
+        writer(destination, content, private_root=self.controller.library.root,
+               cancelled=cancelled_or_changed, require_absent=require_absent, approval=approval)
+        return content
 
 
 class _InlineMarkup(HTMLParser):

@@ -1,0 +1,379 @@
+{
+  "schema": "carr-component-terminal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "run_id": 46092679183,
+  "platform": "ubuntu-24.04",
+  "python": "3.11.18",
+  "workflow_blob": "e2978d77cd62ef2502901e7799b471d1378ff7e3",
+  "pyproject_blob": "5e73dcc7fb68ea22fd7bbd2c65c4eb783badde6a",
+  "installed_inventory": {
+    "python_modules": 379,
+    "source_inventory_sha256": "39685e57792958e663c12f0aecbf5a8962a636003edb4808cd16916562741ed9",
+    "origin": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library"
+  },
+  "source_delta_since_17": [
+    {
+      "path": "carr-library/src/carr_library/audio/windows_process.py",
+      "previous": "12b249c548c211333d783877a7ef0c08f2dd2ed1",
+      "current": "32c38bdf6b0a343644e86437fe00bf9b5a84da63"
+    }
+  ],
+  "failure_groups": [],
+  "qualification": "PASS for this completed Linux component mode only. Other operating-system modes and ordinary aggregate/native release gates remain separate. The component selector list does not include test_recording_windows_process.py, so the seventeen new modeled Windows membership cases require their separate gate.",
+  "job_id": 140816964555,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46092679183/job/140816964555",
+  "mode": "source",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T01:21:21Z",
+  "completed_at": "2026-11-28T01:25:31Z",
+  "log": {
+    "provenance": "Completed GitHub job log decoded by connector; digest covers exact decoded UTF-8 text, not an original ZIP member.",
+    "sha256": "40432440456b76a152add46e9981d08ca5dd2eede452b2587167fbb2f1e02a6e",
+    "characters": 200234
+  },
+  "wheel_from_build_log": {
+    "filename": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+    "size_bytes": 2588189,
+    "sha256": "0f0e9dcc699f877ffce1f5233cc6d33df9478848b6b866751e04b8d608c2d4bd",
+    "distribution": "universal-research-library",
+    "version": "0.2.0.dev2"
+  },
+  "cases": {
+    "passed": 2191,
+    "failed": 0,
+    "skipped": 0
+  },
+  "artifact_from_completed_upload_log": {
+    "id": 15241168913,
+    "size_bytes": 4372,
+    "sha256": "33c4d3eaf7c3180bc34983f00787a7d0c2d4d35c930451b9c509b09db6567f37",
+    "name": "carr-component-followup-ubuntu-24.04-source-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+    "member_bytes_decoded": false
+  },
+  "module_totals": {
+    "required": 63,
+    "passed": 63,
+    "failed": 0
+  },
+  "module_verdicts": [
+    {
+      "status": "PASS",
+      "suite": "tests/assistant/test_state_io.py",
+      "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_archive_portability.py",
+      "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_intake_portability.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_epub_metadata.py",
+      "detail": "junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_registration.py",
+      "detail": "junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/assistant/test_local_planning.py",
+      "detail": "junit_passed=94, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_ocr_language_regions.py",
+      "detail": "junit_passed=12, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_ocr_evidence_fidelity.py",
+      "detail": "junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_page_ocr.py",
+      "detail": "junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_automatic_ocr_native.py",
+      "detail": "junit_passed=7, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production_cancellation_outcomes.py",
+      "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production_hardening.py",
+      "detail": "junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production.py",
+      "detail": "junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_production_operation_backup.py",
+      "detail": "junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_studio_output_settings.py",
+      "detail": "junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_studio_draft_backup.py",
+      "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_scan_bounds.py",
+      "detail": "junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_state_backup_portability.py",
+      "detail": "junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_v3_state_backup.py",
+      "detail": "junit_passed=43, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_sidecars.py",
+      "detail": "junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_canonical_backup_compat.py",
+      "detail": "junit_passed=68, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_runtime_inventory.py",
+      "detail": "junit_passed=172, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_runtime_admission.py",
+      "detail": "junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_audio.py",
+      "detail": "junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_admission_boundaries.py",
+      "detail": "junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_asr_additional_profile.py",
+      "detail": "junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_service.py",
+      "detail": "junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_windows_bundle.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_standard_installer.py",
+      "detail": "junit_passed=149, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_transcription_backup.py",
+      "detail": "junit_passed=143, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/operations/test_resources.py",
+      "detail": "junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_book_plan_bindings.py",
+      "detail": "junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_managed_launch_boundary.py",
+      "detail": "junit_passed=47, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_book_audio_dialog.py",
+      "detail": "junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_python_helper_backup.py",
+      "detail": "junit_passed=26, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_runtime_settings_restore.py",
+      "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_engine_settings_review.py",
+      "detail": "junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_cleanup_contexts.py",
+      "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_audio_process.py",
+      "detail": "junit_passed=12, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_python_helper.py",
+      "detail": "junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_capture_access_diagnostic.py",
+      "detail": "junit_passed=55, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_ebook_audio_initialization.py",
+      "detail": "junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_ebook_dialog.py",
+      "detail": "junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_process_deadline.py",
+      "detail": "junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_ebook_audio_lifecycle.py",
+      "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_wave_output.py",
+      "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_player_controls.py",
+      "detail": "junit_passed=87, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_player_transport.py",
+      "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_output_devices.py",
+      "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_listening.py",
+      "detail": "junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_playlist.py",
+      "detail": "junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_source_page_benchmark.py",
+      "detail": "junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_ebook_audio.py",
+      "detail": "junit_passed=55, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_windows_launcher_bundle.py",
+      "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_reader_synthesis.py",
+      "detail": "junit_passed=38, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_federated_labels.py",
+      "detail": "junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_state_json_reader.py",
+      "detail": "junit_passed=63, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_control_reads.py",
+      "detail": "junit_passed=33, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_reader_synthesis_backup.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_daisy_publishing.py",
+      "detail": "junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_publishing.py",
+      "detail": "junit_passed=49, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage_posix/test_state_backup_names.py",
+      "detail": "junit_passed=3, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_measured_audio.py",
+      "detail": "junit_passed=30, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "test_origin": "Existing ci_check source policy uses the checked-out src tree; the installed wheel inventory is independently verified before this source lane."
+}

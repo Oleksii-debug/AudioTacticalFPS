@@ -1,0 +1,601 @@
+{
+  "schema": "resonance-composed-source-review/1",
+  "composed_at_utc": "2026-11-28T00:03:32Z",
+  "parent_commit": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+  "parent_tree": "cb2b4842a8c2b9199d2a4543894469ffd4d803cd",
+  "canonical": {
+    "branch": "carr-library",
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "last_checked_at_utc": "2026-11-27T23:52:54Z",
+    "agents_blob": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "issue_1_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "application_source": {
+    "tree": "6eb25e939ca7ebbbb4f8378fa50a8708a9101a1a",
+    "python_files": 379,
+    "source_reuse": "Current canonical package/layout and contracts retained; no alternate application composition transplanted."
+  },
+  "contributions": [
+    {
+      "name": "gates",
+      "tree": "f94d13802c4bb642a9160cdf22e325f8c9f57d82"
+    },
+    {
+      "name": "guides",
+      "tree": "a8dd3bfc2181191e8013a9beb633ab0c2698e0c5"
+    },
+    {
+      "name": "book",
+      "tree": "5a74bb55c556afc5420ac92d0eb92f611c0a26d7"
+    },
+    {
+      "name": "voice_idle",
+      "tree": "8a7d3918b347d7937ba50e80da626d47b83f96fa"
+    },
+    {
+      "name": "voice_arguments",
+      "tree": "c07e18a5d23898b7594d4149b5cc923b3f1aa4e9"
+    },
+    {
+      "name": "standard_final_support",
+      "tree": "48743253ec05d8edf264fda87e54f2c006f2d8c2"
+    },
+    {
+      "name": "entrypoints",
+      "tree": "c1351ba24b4d9865c2c9bf8b46d07227490886b8"
+    },
+    {
+      "name": "resource_lock",
+      "tree": "c5a71dadd4c4e93ac3c2c2c38424dd50c6d4d910"
+    },
+    {
+      "name": "sealed_failure",
+      "tree": "6cd54f011118d6c136c193edf5484d245965651a"
+    },
+    {
+      "name": "native_launchers",
+      "tree": "707dd766b13e74fa832370781a3f3ae015e87336"
+    },
+    {
+      "name": "component_cancelled",
+      "tree": "eaecfe4e6c83eeba7aefdf821df4e8762d5c7c69"
+    },
+    {
+      "name": "ordinary_final",
+      "tree": "34ab2b569602c93db2cc8aa2ee44478a00bb5c1e"
+    },
+    {
+      "name": "standard_production",
+      "tree": "d37cb699cbce0fd3df2294fb09c456351e6cf265"
+    },
+    {
+      "name": "component_301_linux",
+      "tree": "2088d42ac7cfb560358c34f4ca45e678dbb7e479"
+    },
+    {
+      "name": "component_301_windows",
+      "tree": "05b8a52099772a084e4d6fb6bd06dda974a0dbca"
+    },
+    {
+      "name": "voice_301_results",
+      "tree": "d33457acac44742d4e6c2f4cbf26a1cb1fece1dd"
+    },
+    {
+      "name": "standard_manifest_final",
+      "tree": "6382f3059e3cd2f83180a08e4f9ddf670ceaaeac"
+    }
+  ],
+  "documentation_tree": "d35722602a134d01cc0a506fa4aa33fbb3d7b788",
+  "paths": [
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before": "e6da75ba88f2d65a985c980ece5f6a53953da954",
+      "after": "ea663a4572a06b7118bbb9acdf2b043d6a3e74a4",
+      "contribution": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-platform-reconcile-dbbb.yml",
+      "before": "d0696ca8b73c4fe16e16634e573aef7ba7935a8c",
+      "after": "6eac1873aa83489d990b02f55e69adef7de8efaa",
+      "contribution": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+      "before": "fbc0887a87b98e90c791edd5c2120513ae543388",
+      "after": "be4078b9a2e4a8fa03c60a7be9368cf2c4d28aa8",
+      "contribution": "voice_arguments"
+    },
+    {
+      "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+      "before": null,
+      "after": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+      "contribution": "standard_final_support"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "6ae7cce5ce084731e7f0dda25c436010b553fd0a",
+      "after": "d06d7eedd02da552328914724668b34ef8fe0ce1",
+      "contribution": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "83f30a998d47224971e8757d1f6edf7d675c320b",
+      "after": "83e463f7d05e357346755541d9bbefa0c92ff40c",
+      "contribution": "gates"
+    },
+    {
+      "path": "carr-library/docs/INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md",
+      "before": "fae02cba1f9dd0d9cfe51c51221114f5019743c5",
+      "after": "38c36d7d89bf632ac53694a1731a3e0453e21368",
+      "contribution": "documentation"
+    },
+    {
+      "path": "carr-library/docs/READING_WORKFLOW_ACCEPTANCE.md",
+      "before": "f32fabdb6fa3f1c72923058c0e0569277a7df15c",
+      "after": "215357666b29f7ab66884f253ab1950332df77c9",
+      "contribution": "documentation"
+    },
+    {
+      "path": "carr-library/docs/REUSE_DECISIONS_V2.md",
+      "before": "4cba37d240db10bb1a58dcc1a4bddec64e601dd3",
+      "after": "9712a2d7916e7a7bfec93e0c012a44dbe472e871",
+      "contribution": "documentation"
+    },
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "before": "552afaaeca3a21cd042f041cb770814118e5ccb5",
+      "after": "51d291347f4c67a653270ac13f4c221303dc22e1",
+      "contribution": "guides"
+    },
+    {
+      "path": "carr-library/docs/START_V3_UK.txt",
+      "before": "e37d6714d970854757479d4057ede2ab2a122ec7",
+      "after": "248900a685787aaac5adc596b2b5ef17242966ae",
+      "contribution": "guides"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "6d900e1c3e486c144b4fa98dd7e98fb186a50943",
+      "after": "69c4b28c6fea6b9fea2b291a5efb537c7e9a8169",
+      "contribution": "documentation"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.c",
+      "before": "20b7968c48b74d191e28f29a1149e39106749b33",
+      "after": "bf8ae5b02f222ef00a36508870812f009c3fe845",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "before": null,
+      "after": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/maintenance.py",
+      "before": null,
+      "after": "0139f2ce5e7024908ab2d0fea0bd65edcdd1a63c",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/prepare_inno.ps1",
+      "before": null,
+      "after": "8222437089386c87599299d45bf4ea2ce84f2db9",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/README.md",
+      "before": null,
+      "after": "16ea4f19ae6bba759902a0f4fdffef528302c927",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "before": null,
+      "after": "9723721a2f5e7bf3963ee40f441bbf8a0940736a",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/toolchain.lock.json",
+      "before": null,
+      "after": "5092ad9c032b5b497f00b841295263a997534f9c",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/review/component-followup-301c32da-linux-2026-11-27/linux-installed-terminal.json",
+      "before": null,
+      "after": "4194de9ab48dda76d284b93e4b499ca6d36ac69e",
+      "contribution": "component_301_linux"
+    },
+    {
+      "path": "carr-library/review/component-followup-301c32da-linux-2026-11-27/linux-source-terminal.json",
+      "before": null,
+      "after": "e0c20ff335b28af7630ba578ad2a5c37a5f60601",
+      "contribution": "component_301_linux"
+    },
+    {
+      "path": "carr-library/review/component-followup-301c32da-windows-2026-11-27/asr-rebind-diagnostic.json",
+      "before": null,
+      "after": "34f7bb67e111f745b05b15cd82f015374b9b707c",
+      "contribution": "component_301_windows"
+    },
+    {
+      "path": "carr-library/review/component-followup-301c32da-windows-2026-11-27/asr-rebind-trace.txt",
+      "before": null,
+      "after": "c8759c1f81871312865bf3064a7a7194969488bd",
+      "contribution": "component_301_windows"
+    },
+    {
+      "path": "carr-library/review/component-followup-301c32da-windows-2026-11-27/windows-source-terminal.json",
+      "before": null,
+      "after": "0178f09227ffb07c8b187f903157203a75b52d98",
+      "contribution": "component_301_windows"
+    },
+    {
+      "path": "carr-library/review/component-followup-68777f9f-windows-2026-11-27/windows-installed-terminal.json",
+      "before": null,
+      "after": "601030fd2e6d47c7f0106892ba65815d1149611a",
+      "contribution": "component_cancelled"
+    },
+    {
+      "path": "carr-library/review/component-followup-68777f9f-windows-2026-11-27/windows-source-terminal.json",
+      "before": null,
+      "after": "2f767c8d87eeb94e66161aef78a8cec08d4a3639",
+      "contribution": "component_cancelled"
+    },
+    {
+      "path": "carr-library/review/native-launcher-68777f9f-2026-11-27/msvc-probe.json",
+      "before": null,
+      "after": "feb0456fb4a36f239229864b9f078d220f67f4a1",
+      "contribution": "native_launchers"
+    },
+    {
+      "path": "carr-library/review/native-launcher-68777f9f-2026-11-27/zig-probe.json",
+      "before": null,
+      "after": "d4a78280873e8e62e27acd4d000bdf4c6485c48f",
+      "contribution": "native_launchers"
+    },
+    {
+      "path": "carr-library/review/reader-voice-controls-301c32da-2026-11-28.json",
+      "before": null,
+      "after": "d2b8aec857a16b2670e50aedbeac47842d0baf4e",
+      "contribution": "voice_301_results",
+      "original_review_path": "agent-review/reader-voice-controls-301-results.json"
+    },
+    {
+      "path": "carr-library/review/standard-installer-focused-workflow-2026-11-28.json",
+      "before": null,
+      "after": "78b3e9763e628044c475ae43139f3957b0beb7ae",
+      "contribution": "standard_final_support"
+    },
+    {
+      "path": "carr-library/review/standard-installer-native-adaptation-2026-11-27.json",
+      "before": null,
+      "after": "b9afb05de4bdf8a742e9f21cb4dfb86d3c3447d5",
+      "contribution": "standard_final_support"
+    },
+    {
+      "path": "carr-library/review/standard-installer-source-adoption-2026-11-28.json",
+      "before": null,
+      "after": "c907acf6f304824ba1115d05440ed7ca18ae747d",
+      "contribution": "standard_manifest_final",
+      "original_review_path": "agent-review/standard-installation-301.json"
+    },
+    {
+      "path": "carr-library/review/standard-installer-upstream-2026-11-28.json",
+      "before": null,
+      "after": "8acb390891978eb3fe886ea9435bbc65b0b47409",
+      "contribution": "documentation"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/audio-endpoint.json",
+      "before": null,
+      "after": "cdc215beb042a6338e717b02a66b99d3bef55011",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/audio-services.json",
+      "before": null,
+      "after": "51f88a23a6cbf3ec0db55dfd40dab4285c59c7c1",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/bundle-checkpoints.json",
+      "before": null,
+      "after": "e3f5b4b74f1630692a09675c4abb9d334f8c73e8",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/bundle-reader-player.json",
+      "before": null,
+      "after": "85f028acc58ba8e0cd6a52638c9f702d3f08890d",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/endpoint-evaluation.json",
+      "before": null,
+      "after": "a90d54f538f4621b956047ebe964d8ae7d4720ac",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/native-recording-device.json",
+      "before": null,
+      "after": "556622b09d7657f435c79220c1948ab8374be5b2",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/provenance.json",
+      "before": null,
+      "after": "620556f5105c325e6288b173ebdca15a46cb8abf",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/README.md",
+      "before": null,
+      "after": "f3a67927a240e0ca4ab72a4fd1b815e7c0f264cc",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-bundle-capture-2026-11-27/recording-checkpoints.json",
+      "before": null,
+      "after": "5d9503a2a7a018eb3ba82ad4d2c272dba867ff2f",
+      "contribution": "sealed_failure"
+    },
+    {
+      "path": "carr-library/review/windows-687-final-2026-11-28/v3-source-checkpoint.json",
+      "before": null,
+      "after": "056a6802194d4e07ecb3bffa7e2ee921566c065c",
+      "contribution": "ordinary_final"
+    },
+    {
+      "path": "carr-library/review/windows-687-final-2026-11-28/windows-source-checkpoint.json",
+      "before": null,
+      "after": "c1b2efc8113acd69deb42b088d818dd0c8b4b620",
+      "contribution": "ordinary_final"
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "before": null,
+      "after": "9d595e91c994a7d7b208bdaeb83af08541236dc5",
+      "contribution": "standard_final_support"
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "before": "442ec6d119f2d18e04f17e771058469c73d4d058",
+      "after": "522ff49d2fe930f97d6b152b38bb273fcedae184",
+      "contribution": "voice_idle"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "before": "cec5a1e539dcd88cd1d3f4f2f696f186662f6f22",
+      "after": "ac572b69e3feceeeea5d2f26913f01ec6729275e",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_incremental_cli.py",
+      "before": "67997192e9bbe0c1f91110161b8d27ad8932665f",
+      "after": "176b48d7af97728f4bf53ba815c4b33e59d09718",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/bibliography_cli.py",
+      "before": "06126fae6915f00a429a7743ee134420d4902088",
+      "after": "59245a2c58ec2dac1e323ba61108b74ce4d7653f",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/delivery_cli.py",
+      "before": "d4d8b21cc5ac47782f510112641735e56319000c",
+      "after": "0c91d677e501ae6c8caa0954a3809f46298e63f8",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+      "before": "9cf184d758c2185aa31eb91d38ae1ab073191b20",
+      "after": "bfc0f0cb8aaf141065be6b00524ad19d0d2672ff",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/installation_lease.py",
+      "before": null,
+      "after": "f85b72eaa0aea0ff9d3b741ef44377e08f653da8",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/src/carr_library/managed_installation.py",
+      "before": null,
+      "after": "d34f3f0c60c9d53f040c2988e927dd58d3af573a",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "before": "65e3ffaf4ca858a6d3bdf0a425d6650e77d09ce9",
+      "after": "1c614fc92b1f7c1e9b5ea55c962f1860ca69b716",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations_cli.py",
+      "before": "b03cf6a4668e88757193b7a8e94fe6c5557124ea",
+      "after": "6531ac247f87172dc5af6883c4045b6a3b76ac2d",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "before": "3f61053ae936082c0e05ebfd23a2cebfdf344e45",
+      "after": "a139ca57a00b293f7b009aaabf31962232a2ed0b",
+      "contribution": "resource_lock"
+    },
+    {
+      "path": "carr-library/src/carr_library/streamed_import_cli.py",
+      "before": "bb562a89fe2b9d9c049ee02872451917bc39a7c5",
+      "after": "8d3853f8d5b6ebb31013dd2ceb7d9fc6383e0cab",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "before": "487c408962fc9fc0eaaa78302d7a2c0b3e66e57e",
+      "after": "ed6345eec0c549b099c641066b6d7384556ff51a",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "before": "8e7233dc18bd289c4b9d7d5c4af2706dc8c87214",
+      "after": "8dcece0364823f8d2514ced6cd50455ffc8d4cf6",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/cli.py",
+      "before": "3aebd9ef970c324765db9d860d8df037135f69ed",
+      "after": "89deab207042148875f87d1d4555f95a98522c3c",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription_cli.py",
+      "before": "92c0cc1954908de19735dfaf9602c5e33ec7174b",
+      "after": "32a600a525e3f730d39f7e85c9e14bff3351bca0",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/translation_cli.py",
+      "before": "b6134256d53d8a0c10ffe0204c6ac9fa508bd04b",
+      "after": "31d381adfcb9b59c7cbb841be8b33e3b5cb08a5d",
+      "contribution": "entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "before": "1bb43f48ed40f5cbcf40f9c528bc46566228328c",
+      "after": "86b184a46e35c2b76be7f2a36d4c435d8e0157dc",
+      "contribution": "book"
+    },
+    {
+      "path": "carr-library/tests/operations/test_resources.py",
+      "before": "315e25daa3246340dc38eb3ea42948bac1fd5d16",
+      "after": "32a9747544bc423294adbdda81c606024f4e1f6f",
+      "contribution": "resource_lock"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_managed_launch_boundary.py",
+      "before": null,
+      "after": "819e3fcec6c0ca3376a836a159ef3721c501dfcf",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before": null,
+      "after": "2c99632da01db65a9a452a913148c0138638e688",
+      "contribution": "standard_production"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_book_plan_bindings.py",
+      "before": "1b2015703a21af4621b26dfa7ec350945f9524e7",
+      "after": "e61c96f17a0e807bbb6f5190f8a5bf76e3b55490",
+      "contribution": "book"
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_audio_dialog.py",
+      "before": "314a4285449d5c0f3125e6e9cd3e99409a4fea52",
+      "after": "8c8cc3e0bf0147f842e3698f8b6e2b601fd2f435",
+      "contribution": "book"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_synthesis.py",
+      "before": "23e300c6c2fa526180055473bcb91b48fb994151",
+      "after": "9d40c808f0b51d32e12c11bd24ca2a62f9f47f3c",
+      "contribution": "voice_idle"
+    }
+  ],
+  "review_file": "carr-library/review/standard-installer-book-reader-composition-2026-11-28.json",
+  "expected_total_changed_paths_including_this_review": 70,
+  "expected_deleted_paths": 0,
+  "integration": {
+    "standard_installer": {
+      "status": "INTEGRATED_NOT_RUN",
+      "donor_commit": "fd0cca2405f33c813c4cf43c9661edf1f2e93a55",
+      "portable_cases_planned": 177,
+      "standard_cases_planned": 130,
+      "launch_cases_planned": 47,
+      "new_production_paths": 8,
+      "new_test_paths": 2,
+      "entrypoint_functions": 14,
+      "existing_entrypoint_python_files": 13,
+      "offline_installer_unchanged": true,
+      "source_wheel_verifier_unchanged": true,
+      "dependency_locks_unchanged": true,
+      "source_bound_copied_application_helpers": 6,
+      "application_display_publisher": "Sceneria Innovative Technologies",
+      "publisher_signature": "NOT_CONFIGURED",
+      "native_lifecycle": "NOT_RUN",
+      "update_authority_added": false
+    },
+    "bootstrap": {
+      "primary": "Only its existing --self-test opt-in",
+      "native_checks": "Only its own --bundle-root plus exact absolute/plain current managed app directory, no parent traversal or additional arguments",
+      "states": "Existing preparing/updating or complete without readiness; ordinary ready calls retain the shared lease",
+      "ownership": "Existing synchronous maintenance owner retains the actual process family; ordinary managed entrypoints wait for all causal/registered owners before process exit."
+    },
+    "resource_lock": {
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "new_cases": 26,
+      "existing_test_prefix_preserved": true,
+      "behavior": "Recreated entries after final absence observation repeat all strict guards; no cached absence, unchecked hard-link replacement or relaxed non-ENOENT failure."
+    },
+    "book": {
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "observed_failed_cases": 5,
+      "production_change": "Full bounded selected title is displayed beside the exact83-character-bounded destination; render names and full job identity remain unchanged.",
+      "fixture_change": "Changed jobs receive their independently valid operation digest, then the original Book relation refuses them; journal and plan bytes remain checked."
+    },
+    "voice_probe": {
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "production_changed": false,
+      "repair": "Real native idle processes deferred Destroy before the existing event predicate; unchanged 5s pump/90s watchdog. Installed PowerShell invocation retains an actual one-element array.",
+      "new_case": "Queued handlers stay revoked between modal return and native destruction."
+    },
+    "sealed_reader_probe": {
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "repair": "Both hash-bound tool paths are resolved within the existing AudioRuntimeHandle and explicitly passed to the sealed reader probe.",
+      "recording_device_guards_unchanged": true
+    },
+    "gate_policy": {
+      "existing_selectors_removed": 0,
+      "existing_product_deadlines_relaxed": 0,
+      "existing_failure_skip_xfail_predicates_retained": true,
+      "full_windows_job_minutes_before": 232,
+      "full_windows_job_minutes_after": 252,
+      "reason": "Add one 20-minute native standard installer phase; previous source/installed/native per-stage limits unchanged.",
+      "public_binary_uploads_added": false,
+      "release_wheel_success_guard_retained": true
+    }
+  },
+  "execution_at_composition": {
+    "receiving_tree": "NOT_RUN",
+    "evidence_from_301": {
+      "voice_four_mode_suites": "300 passed independently in every Linux/Windows source/installed selection; native source/installed failed separately",
+      "linux_components": "1850 passed each mode;12 installed subtests",
+      "windows_component_source": "1833 passed14 failed0skipped, only two ASR modules",
+      "windows_component_installed": "IN_PROGRESS_AT_CHECKPOINT"
+    },
+    "evidence_from_687": {
+      "complete_windows_source": "10850 passed5failed0skipped;435/437modulesPASS",
+      "v3_source": "6070passed14failed0skipped",
+      "full_windows_aggregate": "FAILED",
+      "component_windows": "CANCELLED_WITH_INCOMPLETE_TOTALS",
+      "native_launchers": "9checksPASS eachcompiler"
+    }
+  },
+  "active_remaining_work": [
+    "Resolve observed Windows ASR deadline failures without caching control state or weakening identity guards/budgets.",
+    "Read-only exact selected-device capture diagnostics are being prepared; current historical receipts do not establish consent/WASAPI/MME cause.",
+    "Execute this standard installer and every receiving source/native gate; do not transfer predecessor PASS.",
+    "Complete final same-head aggregate/workflow gates, actual private engine/model/language/interop and Windows11/NVDA/rights acceptance."
+  ],
+  "release": {
+    "eligible_wheel": false,
+    "installer_binary_delivered": false,
+    "whole_platform_done": false,
+    "private_assets_committed": false,
+    "main_branch_changed": false
+  }
+}

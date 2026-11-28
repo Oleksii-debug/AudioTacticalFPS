@@ -1,0 +1,24 @@
+2026-11-28T01:22:18.1448705Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:18.1456411Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:23.3326199Z PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:22:23.6638263Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:24.0158347Z PASS: tests/packaging/test_native_checks.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:22:24.2730214Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:25.5035318Z .PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:22:25.7619703Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:52.4826921Z PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:22:54.1609415Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:57.7061225Z PASS: tests/packaging/test_standard_installer.py: junit_passed=149, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:22:58.4660656Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:22:58.9964985Z PASS: tests/packaging/test_worker_bytecode.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:22:59.2315639Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:23:03.6626469Z PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:23:04.0737005Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:23:04.5475934Z .PASS: tests/packaging/test_native_runtime.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:23:04.7937703Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:23:05.1914151Z PASS: tests/audio/test_local_runtime_cli.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:23:05.4392402Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T01:23:07.0595092Z PASS: tests/test_delivery_cli.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:23:15.3600389Z PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+2026-11-28T01:23:15.5863254Z Required suites complete: 11; passed=11; failed=0
+2026-11-28T01:24:21.6555533Z 345 passed, 22 subtests passed in 65.45s (0:01:05)

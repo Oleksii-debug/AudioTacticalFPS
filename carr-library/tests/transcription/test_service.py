@@ -234,21 +234,146 @@ def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, mo
     assert list(archived.glob('*/logs/cache/**/*.cache.json'))
 
 
-def test_rebind_preserves_accepted_artifact_and_its_original_profile(setup, tmp_path):
+def test_rebind_preserves_accepted_artifact_and_its_original_profile(setup, tmp_path, monkeypatch):
+    # Failure-only, bounded observations. Every wrapper delegates exactly once;
+    # no additional process poll, filesystem read, retry or deadline adjustment.
+    from collections import deque
+    import sys
+    from carr_library.audio import process as process_module
+
     service, runtime, profile, audio = setup
+    epoch = time.monotonic()
+    phase = 'first-run'
+    events = deque(maxlen=64)
+    timings, processes, process_failures = {}, [], []
+    diagnostic = {'python': sys.version, 'platform': sys.platform,
+                  'process_timeout': service.budget.timeout,
+                  'timings_are_inclusive': True, 'timings': timings,
+                  'processes': processes, 'process_failures': process_failures}
+
+    def stamp():
+        return time.monotonic() - epoch
+
+    def observe(name, function, *, event=True):
+        def observed(*args, **kwargs):
+            began, selected_phase, error = stamp(), phase, None
+            try:
+                return function(*args, **kwargs)
+            except BaseException as exc:
+                error = type(exc).__name__
+                raise
+            finally:
+                ended = stamp()
+                key = selected_phase + ':' + name
+                row = timings.setdefault(key, {'calls': 0, 'seconds': 0.0,
+                    'maximum_seconds': 0.0, 'first_started': began, 'last_ended': ended})
+                row['calls'] += 1
+                row['seconds'] += ended - began
+                if ended - began >= row['maximum_seconds']:
+                    row['maximum_seconds'] = ended - began
+                    row['maximum_started'], row['maximum_ended'] = began, ended
+                row['last_ended'] = ended
+                if event:
+                    events.append({'phase': selected_phase, 'name': name,
+                                   'started': began, 'ended': ended, 'error': error})
+        return observed
+
+    for name in ('inspect_runtime', '_verify_profile', '_admit_results', '_publish_result'):
+        monkeypatch.setattr(service, name, observe(name, getattr(service, name)))
+    monkeypatch.setattr(service, '_control', observe('_control', service._control, event=False))
+
+    original_start = process_module._start_process
+
+    def start_process(*args, **kwargs):
+        began = stamp()
+        process = original_start(*args, **kwargs)
+        row = {'phase': phase, 'started': began, 'returned': stamp(),
+               'owned_tree': kwargs.get('owned_tree', False),
+               'poll_calls': 0, 'wait_calls': 0, 'wait_timeouts': 0,
+               'last_running_poll': None, 'first_exit_poll': None,
+               'first_completed_wait': None}
+        if len(processes) < 8:
+            processes.append(row)
+        original_poll, original_wait = process.poll, process.wait
+
+        def poll(*args, **kwargs):
+            observed_at = stamp()
+            row['poll_calls'] += 1
+            result = original_poll(*args, **kwargs)
+            if result is None:
+                row['last_running_poll'] = {'started': observed_at, 'ended': stamp()}
+            elif row['first_exit_poll'] is None:
+                row['first_exit_poll'] = {'started': observed_at, 'ended': stamp(), 'returncode': result}
+            return result
+
+        def wait(*args, **kwargs):
+            observed_at = stamp()
+            row['wait_calls'] += 1
+            try:
+                result = original_wait(*args, **kwargs)
+            except process_module.subprocess.TimeoutExpired:
+                row['wait_timeouts'] += 1
+                raise
+            if row['first_completed_wait'] is None:
+                row['first_completed_wait'] = {'started': observed_at, 'ended': stamp(), 'returncode': result}
+            return result
+
+        monkeypatch.setattr(process, 'poll', poll)
+        monkeypatch.setattr(process, 'wait', wait)
+        return process
+
+    monkeypatch.setattr(process_module, '_start_process', observe('process_start', start_process))
+    original_run = module.run_process
+
+    def run_process(*args, **kwargs):
+        delegate = dict(kwargs)
+        delegate['cancelled'] = observe('process_callback', delegate['cancelled'], event=False)
+        try:
+            return original_run(*args, **delegate)
+        except BaseException as exc:
+            # Read the original failing check's captured numbers after its
+            # existing cleanup. Never issue another poll or infer an exit time.
+            failure = {'phase': phase, 'error': type(exc).__name__, 'caught': stamp()}
+            tb, visited = exc.__traceback__, 0
+            while tb is not None and visited < 32:
+                if tb.tb_frame.f_code.co_name == 'check':
+                    values = tb.tb_frame.f_locals
+                    captured = {}
+                    for key in ('started', 'observed_exit_at', 'worker_until'):
+                        value = values.get(key)
+                        if type(value) in (int, float):
+                            captured[key] = value - epoch
+                        elif value is None:
+                            captured[key] = None
+                    failure['original_check'] = captured
+                    break
+                tb, visited = tb.tb_next, visited + 1
+            if len(process_failures) < 8:
+                process_failures.append(failure)
+            raise
+
+    monkeypatch.setattr(module, 'run_process', observe('run_process', run_process))
+
+    def failure_message(error):
+        return str(error) + '\nBounded ASR phase diagnostic: ' + json.dumps(
+            {**diagnostic, 'events': list(events)}, ensure_ascii=True, sort_keys=True)
+
     second = tmp_path / 'second.wav'
     second.write_bytes(b'Second retained synthetic input.')
     runtime.options.write_text(json.dumps({'fail_after': 1}), encoding='utf-8')
     created = service.create_job(profile['id'], [audio, second])
     partial = service.run(created['id'])
-    assert partial['status'] == 'partial' and partial['done'] == 1
+    assert partial['status'] == 'partial' and partial['done'] == 1, failure_message(partial['error'])
     accepted = dict(partial['results'][0])
     (runtime.python.parent / 'vcruntime-synthetic.dll').write_bytes(b'New reviewed support identity; never loaded.')
+    phase = 'register-replacement'
     changed = register(service, runtime)
     runtime.options.write_text('{}', encoding='utf-8')
+    phase = 'rebind'
     service.rebind_runtime(created['id'], changed['id'])
+    phase = 'resume'
     complete = service.resume(created['id'])
-    assert complete['status'] == 'complete', complete['error']
+    assert complete['status'] == 'complete', failure_message(complete['error'])
     assert complete['results'][0] == accepted
     assert service.read_transcript(created['id'], accepted['source_id'])['provenance']['profile_fingerprint'] == profile['fingerprint']
     assert service.read_transcript(created['id'], complete['results'][1]['source_id'])['provenance']['profile_fingerprint'] == changed['fingerprint']

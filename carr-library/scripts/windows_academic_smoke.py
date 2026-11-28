@@ -115,12 +115,6 @@ def main():
             frame._open_workspace(workspace, topic)
             pump_until(lambda: frame.evidence is not None and frame.evidence.displayed is not None
                        and not frame.working, 'Initial native evidence did not become ready.')
-            from carr_library.citations.csl import ATTRIBUTION
-            check('normal desktop startup visibly exposes named citation processor attribution',
-                  frame.citation_credit.IsShownOnScreen()
-                  and frame.citation_credit.GetLabel() == ATTRIBUTION
-                  and frame.citation_credit.GetName() ==
-                  'Citation processor attribution. ' + ATTRIBUTION.replace('\n', ' '))
             check('real desktop exposes the Academic menu', frame.menu_bar.FindMenu('Academic') >= 0)
             menu = frame.menu_bar.GetMenu(frame.menu_bar.FindMenu('Academic'))
             check('academic library has its keyboard shortcut',

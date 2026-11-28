@@ -22,6 +22,7 @@ class DesktopEvidencePanel(EvidencePanel):
         self._recovery_discarded = False
         self._recovery_error = ''
         self._recovery_timer = wx.Timer(self)
+        self._recovery_owner_id = self.GetId()
         self.Bind(wx.EVT_TIMER, self._flush_recovery, self._recovery_timer)
         self.Bind(wx.EVT_WINDOW_DESTROY, self._recovery_destroy)
         self.note.Bind(wx.EVT_TEXT, self._recovery_edited)
@@ -118,14 +119,22 @@ class DesktopEvidencePanel(EvidencePanel):
         return True
 
     def _recovery_destroy(self, event):
-        if event.GetEventObject() is self:
-            self._recovery_timer.Stop()
-            # No access to already destroyed child controls: EVT_TEXT captured
-            # the exact pending note. Preserve it even after scope revocation;
-            # recovery still needs fresh authorization before it is displayed.
-            self._flush_recovery(final=True)
-            self._recovery_disposed = True
-        event.Skip()
+        try:
+            if (not self._recovery_disposed
+                    and event.GetId() == self._recovery_owner_id):
+                # SIP may already have invalidated this original panel wrapper.
+                # Match its captured native ID; never query the dying panel or
+                # compare a replacement proxy returned by GetEventObject().
+                self._recovery_disposed = True
+                try:
+                    self._recovery_timer.Stop()
+                finally:
+                    # EVT_TEXT retained the exact pending text before child
+                    # destruction. This final flush uses only Python state and
+                    # the store, even after the original scope was revoked.
+                    self._flush_recovery(final=True)
+        finally:
+            event.Skip()
 
     def _show(self, row, editable):
         if getattr(self, '_recovery_store', None) is None:

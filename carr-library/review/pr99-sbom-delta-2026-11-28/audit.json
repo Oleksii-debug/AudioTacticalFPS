@@ -1,0 +1,258 @@
+{
+  "schema": "carr-pr-reuse-audit/1",
+  "date_utc": "2026-11-28",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": {
+    "pr": 99,
+    "from": "89c07e451540e4caac6a36cd6142fcdd274264b1",
+    "to": "9bf41c9245ed5ca3503680b4ddd24bf44b9b4ca6",
+    "tree": "d16b89388f6548944d04e95a36dd201551a7747b",
+    "comparison_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/compare/89c07e451540e4caac6a36cd6142fcdd274264b1...9bf41c9245ed5ca3503680b4ddd24bf44b9b4ca6",
+    "ahead_by": 1,
+    "commit_count": 1,
+    "changed_file_count": 2
+  },
+  "current": {
+    "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+    "tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+    "files": [
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "git_blob": "5d3b8169b61e6bcfad35057827ef929037a3466e",
+        "sha256": "c4b83dcaa167b25fda103dcbfbd82ca3755497b0095c173da2c83bf1b358ec9a"
+      },
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "git_blob": "ea14a607d755761d782404944513a1473f6956a5",
+        "sha256": "af6d500f62497f9da7750fb99716e47dac2d20561d49a738cdb627594bf9c724"
+      },
+      {
+        "path": "carr-library/packaging/windows-semantic-cp311.lock",
+        "git_blob": "f18510ef6eb4f9a79fd6be5f8ad6bf88f627e63a",
+        "sha256": "912a6ca187e164d2837892d78296801d20be625c7f38395e195eb8cc46bd69ca"
+      },
+      {
+        "path": "carr-library/packaging/windows-semantic-sbom.cdx.json",
+        "git_blob": "cbf07eb34027f5f12c051c6ca0d6b2e994ccc733",
+        "sha256": "503077411885df965dc50a6fa4199d928b93f8949045b370968c512f6ce30547"
+      }
+    ]
+  },
+  "delta": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "git_blob": "9bfe4285c9dd1db798cda358632cc294fd1e87b3",
+      "status": "modified",
+      "additions": 23,
+      "deletions": 3,
+      "sha256": "a16a10a68c5ab0848c221a54c6b5b24f5bd453bfe94c61a812f94d47a5a093e0"
+    },
+    {
+      "path": "carr-library/docs/acceptance/FULL_BUNDLE_SBOM_GUARD_20261128.md",
+      "git_blob": "7a91c58b6d0e14097987b8db36769f2ce43b60fe",
+      "status": "added",
+      "additions": 63,
+      "deletions": 0,
+      "sha256": "42abd52e2d94d441feda7b8e5f12d25482cbf0406eba3a1aa8279e09bfd07406"
+    }
+  ],
+  "findings": [
+    {
+      "subject": "Donor correction",
+      "result": "The single new commit changes only its existing Windows workflow and an acceptance note. The workflow explicitly selects a separate spelling wheel. It now derives the expected SBOM digest through that donor builder's spellcheck_snapshot/spellcheck_sbom_bytes functions, requiring the original 53-component lock/SBOM plus the selected spelling component. Its later installed verifier compares the captured derived digest to the sealed file and manifest."
+    },
+    {
+      "subject": "Current receiving composition",
+      "result": "The current semantic lock and CycloneDX 1.5 SBOM each contain 55 components. Canonicalized name/version sets match exactly, with no duplicate lock names. Current build_bundle captures sbom_bytes once, validates that exact inventory against read_lock, and writes the same captured bytes to runtime-sbom.cdx.json. It has no spellcheck_snapshot/spellcheck_sbom_bytes API and no --spellcheck-wheel option."
+    },
+    {
+      "subject": "Current receiving workflow",
+      "result": "The full-bundle build command does not select an optional spelling wheel. Its SHA256 guard compares the source SBOM digest to the actual sealed file and manifest entry for BOTH the base and native-supplemented bundle. It does not need the donor's extended-SBOM digest. The proposed loop/reader-selector main workflow 4265fb retains this same build command and guard."
+    },
+    {
+      "subject": "Pending feature overlays",
+      "result": "The frozen facade and Studio-loop overlays and the inspected reader-admission HOLD contain no builder, dependency-lock, SBOM or donor-workflow replacement. The main wiring changes touch only the new reader selector and the exact reviewed Studio-loop endpoint pair. Reader-admission's later cancellation-token successor is not claimed reviewed here; its owner confirms it is confined to the same runtime/PCM-validation scope."
+    },
+    {
+      "subject": "Execution boundaries",
+      "result": "This audit performs source and inventory comparison only. The donor acceptance note reports a failure on its own 89c07e head and labels its new workflow NOT_RUN; those results are not transferred to the receiving head. Current 8b full-main execution remains independently tracked and no aggregate, sealed-bundle or native qualification is added by this audit."
+    }
+  ],
+  "pending_workflow": {
+    "tree": "9829512036cf0945c30d7d8b3d18d265ea138cbe",
+    "path": ".github/workflows/carr-windows.yml",
+    "git_blob": "4265fb9912cfea14a2deda24d216c62c72078396",
+    "sha256": "b25dbbd14287416edf0f222413011d9d4b74d23329311c204fcbcaef4c4227b7",
+    "optional_spelling_wheel_selected": false,
+    "source_sbom_digest_guard_unchanged": true
+  },
+  "pending_overlays": [
+    {
+      "name": "Operation details",
+      "tree": "8df703c1479211bfc2082df0da5a61d25950189a",
+      "state": "SOURCE_REVIEWED_NOT_RUN",
+      "paths": [
+        {
+          "path": "carr-library/review/operation-details-2026-11-28/exact-hunks.json",
+          "git_blob": "4dd6a485476c583a664d5b826b3298bceafd5194"
+        },
+        {
+          "path": "carr-library/review/operation-details-2026-11-28/source-review.json",
+          "git_blob": "dc1b3ab3a0aea220ac552edfb7d9d7da572ad623"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations/facade.py",
+          "git_blob": "11161cbbd79ebbf8b65e5488c98132c33d430ea2"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+          "git_blob": "f06f338f72ffd8168f2b7567298849cc7acee6c4"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_operations_cli.py",
+          "git_blob": "cf6656cb0cf92066a7f302d6e36b8e91dcf952b6"
+        },
+        {
+          "path": "carr-library/tests/operations/test_facade.py",
+          "git_blob": "49e24ed03ddb80f961067d9c223f2e3d7cc3e584"
+        },
+        {
+          "path": "carr-library/tests/operations/test_production_admission.py",
+          "git_blob": "5b6df7601fb03dff3b5112bdca2ce20c5a71c37d"
+        },
+        {
+          "path": "carr-library/tests/storage/test_production_operation_backup.py",
+          "git_blob": "f04bf802efbdcda87eb5d7c524fcd5e42da9efd1"
+        },
+        {
+          "path": "carr-library/tests/ui/test_operations_policy.py",
+          "git_blob": "d3eb95df78f54b5ceffd5bc034ec730b9e444333"
+        }
+      ],
+      "changed_donor_path_overlap": []
+    },
+    {
+      "name": "Studio loop preview",
+      "tree": "5144d3c2dd92f49f325fce57cd474fbd35f279dc",
+      "state": "SOURCE_REVIEWED_NOT_RUN",
+      "paths": [
+        {
+          "path": "carr-library/docs/START_UK.txt",
+          "git_blob": "e6ec98bf64ed807d09067310aabbda6a2d37b86f"
+        },
+        {
+          "path": "carr-library/docs/audio_engine.md",
+          "git_blob": "7a23ee00fb1aea871085e76ec0641761f7a94c9f"
+        },
+        {
+          "path": "carr-library/review/studio-loop-preview-2026-11-28/exact-hunks.json",
+          "git_blob": "f8ac6c3d9a0c47a3cfcf4fd494e66390d58f3b9c"
+        },
+        {
+          "path": "carr-library/review/studio-loop-preview-2026-11-28/source-review.json",
+          "git_blob": "869397a0197ee5c5f1d8a23d9c80828ded47e183"
+        },
+        {
+          "path": "carr-library/review/studio-loop-preview-2026-11-28/user-help-hunks.json",
+          "git_blob": "5371581c961e541e2a893bcdc2e4b85e7e6cba21"
+        },
+        {
+          "path": "carr-library/scripts/windows_clip_editor_smoke.py",
+          "git_blob": "6218e786234a589181ade5eda2d258216ab02d9d"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/studio_clips.py",
+          "git_blob": "220deb97a7914b8d54de7912ebd3206d479bb794"
+        },
+        {
+          "path": "carr-library/tests/studio/test_clip_dialog.py",
+          "git_blob": "7bc9ed69c4c6777eb3254dd9d0b75994075c3465"
+        }
+      ],
+      "changed_donor_path_overlap": []
+    },
+    {
+      "name": "Reader synthesis admission",
+      "tree": "91dfbae65381f268a9a80e3be142f7969e6d4616",
+      "state": "HOLD_NOT_RUN",
+      "paths": [
+        {
+          "path": "carr-library/docs/runtime_resources.md",
+          "git_blob": "24081fcf765fc06ea3a01af1d1a57423dadf1ad6"
+        },
+        {
+          "path": "carr-library/scripts/windows_reader_navigation_smoke.py",
+          "git_blob": "9596d851f03f4550eeee4573ab031ffff06691ae"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/model_voices.py",
+          "git_blob": "9cfeb8ec4b95ac65ed22437617e1d27596316e6b"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/voices.py",
+          "git_blob": "d8d145d25022e605a7b1f5d6362d49df267fec05"
+        },
+        {
+          "path": "carr-library/src/carr_library/speech/runtime.py",
+          "git_blob": "45f486d32574434d6319d994d547d22e079c0a1d"
+        },
+        {
+          "path": "carr-library/src/carr_library/speech/studio_voice_adapter.py",
+          "git_blob": "4d416af450d91390b9cce59e7eac7a0e68905456"
+        },
+        {
+          "path": "carr-library/src/carr_library/speech/synthesis_admission.py",
+          "git_blob": "f07e080f072ea13d3a9bd46c2dc46d30accd7726"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+          "git_blob": "3257f7a4e8d077081fe6276f5ce5fcd30f89168a"
+        },
+        {
+          "path": "carr-library/tests/audio/test_model_voices.py",
+          "git_blob": "076571868dfd52684dba1af9018f3dcff905e547"
+        },
+        {
+          "path": "carr-library/tests/speech/test_registered_studio_voices.py",
+          "git_blob": "dbf9a33e636dee63ac1102e99a6c417c13be1fcd"
+        },
+        {
+          "path": "carr-library/tests/speech/test_synthesis_admission.py",
+          "git_blob": "3c494a5a0223a7020040d8d577276f21bf1dd723"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_job_review.py",
+          "git_blob": "78ba78972c23f805cddd7db0a38e09a2ef80d62e"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+          "git_blob": "2e755b77bab0c21bff759bc6e248ece79bac878a"
+        },
+        {
+          "path": "carr-library/tests/ui/test_reader_synthesis.py",
+          "git_blob": "abcc257c033517e4908fabae7a625be5920b4362"
+        }
+      ],
+      "changed_donor_path_overlap": []
+    }
+  ],
+  "decision": {
+    "action": "NO_ADOPTION",
+    "reason": "The new delta repairs a donor-only optional-component composition that the receiving builder and workflows do not use. Copying its 53-component assertion or absent helper calls would break the current 55-component pipeline. No reusable application, process, installer, source-authority, cleanup or pending-feature correction is present in this two-file delta.",
+    "future_condition": "If a separately reviewed optional component is later introduced before sealing, derive and verify its SBOM through that reviewed producer contract instead of assuming unchanged base bytes. This audit does not authorize that new component or architecture."
+  },
+  "mutations": {
+    "application": [],
+    "workflow": [],
+    "refs": [],
+    "tests": [],
+    "evidence_only": true
+  },
+  "limits": [
+    "No host execution, test run or new CI dispatch.",
+    "No output-device, capture consent, policy, runtime profile or dependency changes.",
+    "No inspection/adoption beyond the stated new PR99 delta and its current receiving seams."
+  ]
+}

@@ -191,9 +191,9 @@ def provider_status(provider, *, family: str) -> IntegrationStatus:
 
 
 class EntitlementBoundary:
-    """Optional future integration point, not an independent license verifier.
+    """Optional private integration boundary, not an independent license verifier.
 
-    Existing application entrypoints do not use this preparation-only boundary.
+    The host lifecycle exposes this boundary through native and CLI controls.
     Inject only an explicitly qualified private adapter through private assembly;
     there is no module-name loader, entry-point discovery or permissive fallback.
     """

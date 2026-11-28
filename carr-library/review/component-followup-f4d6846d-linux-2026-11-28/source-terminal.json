@@ -1,0 +1,356 @@
+{
+  "schema": "carr-component-terminal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "run_id": 46085997194,
+  "job_id": 140795574215,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085997194/job/140795574215",
+  "mode": "source",
+  "platform": "ubuntu-24.04",
+  "python": "3.11.18",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T00:09:51Z",
+  "completed_at": "2026-11-28T00:13:05Z",
+  "log": {
+    "provenance": "Completed GitHub job log decoded by connector; SHA256 covers those exact decoded UTF-8 text bytes, not an original ZIP member.",
+    "sha256": "603758be77c4a19a5934883bfadaef0445d96e3a9ee8709dcb720fa475691006",
+    "characters": 198343
+  },
+  "collection": {
+    "modules": 62,
+    "modules_passed": 62,
+    "modules_failed": 0,
+    "passed": 2104,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed_inventory_checked_before_source_lane": {
+    "python_modules": 379,
+    "source_inventory_sha256": "b5ba1d2322fc23a0d0758086313d09a7959eb35f1da509b25fb96b7a2805a7ef"
+  },
+  "module_verdicts": [
+    {
+      "status": "PASS",
+      "suite": "tests/assistant/test_state_io.py",
+      "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_archive_portability.py",
+      "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_intake_portability.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_epub_metadata.py",
+      "detail": "junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/assistant/test_local_planning.py",
+      "detail": "junit_passed=94, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_registration.py",
+      "detail": "junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_ocr_language_regions.py",
+      "detail": "junit_passed=12, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_ocr_evidence_fidelity.py",
+      "detail": "junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_page_ocr.py",
+      "detail": "junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_automatic_ocr_native.py",
+      "detail": "junit_passed=7, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production_cancellation_outcomes.py",
+      "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production_hardening.py",
+      "detail": "junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production.py",
+      "detail": "junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_production_operation_backup.py",
+      "detail": "junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_studio_output_settings.py",
+      "detail": "junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_studio_draft_backup.py",
+      "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_scan_bounds.py",
+      "detail": "junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_state_backup_portability.py",
+      "detail": "junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_v3_state_backup.py",
+      "detail": "junit_passed=43, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_sidecars.py",
+      "detail": "junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_canonical_backup_compat.py",
+      "detail": "junit_passed=68, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_runtime_inventory.py",
+      "detail": "junit_passed=172, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_runtime_admission.py",
+      "detail": "junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_audio.py",
+      "detail": "junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_admission_boundaries.py",
+      "detail": "junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_asr_additional_profile.py",
+      "detail": "junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_service.py",
+      "detail": "junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_windows_bundle.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_standard_installer.py",
+      "detail": "junit_passed=130, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_managed_launch_boundary.py",
+      "detail": "junit_passed=47, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_transcription_backup.py",
+      "detail": "junit_passed=143, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/operations/test_resources.py",
+      "detail": "junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_book_plan_bindings.py",
+      "detail": "junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_book_audio_dialog.py",
+      "detail": "junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_python_helper_backup.py",
+      "detail": "junit_passed=26, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_runtime_settings_restore.py",
+      "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_engine_settings_review.py",
+      "detail": "junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_cleanup_contexts.py",
+      "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_audio_process.py",
+      "detail": "junit_passed=12, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_process_deadline.py",
+      "detail": "junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_python_helper.py",
+      "detail": "junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_ebook_dialog.py",
+      "detail": "junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_ebook_audio_initialization.py",
+      "detail": "junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_ebook_audio_lifecycle.py",
+      "detail": "junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_wave_output.py",
+      "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_player_controls.py",
+      "detail": "junit_passed=87, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_player_transport.py",
+      "detail": "junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_output_devices.py",
+      "detail": "junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_listening.py",
+      "detail": "junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_playlist.py",
+      "detail": "junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_source_page_benchmark.py",
+      "detail": "junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_windows_launcher_bundle.py",
+      "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_federated_labels.py",
+      "detail": "junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_ebook_audio.py",
+      "detail": "junit_passed=55, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_reader_synthesis.py",
+      "detail": "junit_passed=38, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_state_json_reader.py",
+      "detail": "junit_passed=63, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/transcription/test_control_reads.py",
+      "detail": "junit_passed=33, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_reader_synthesis_backup.py",
+      "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_daisy_publishing.py",
+      "detail": "junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_publishing.py",
+      "detail": "junit_passed=49, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage_posix/test_state_backup_names.py",
+      "detail": "junit_passed=3, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_measured_audio.py",
+      "detail": "junit_passed=30, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "boundaries": [
+    "This receipt qualifies only the exact completed Linux source job.",
+    "The other three component modes and standard Windows native setup are separate gates.",
+    "No final release, signed installer, sealed bundle, model quality, audible listening, or NVDA acceptance is claimed."
+  ],
+  "artifact_from_completed_upload_log": {
+    "id": 15239805055,
+    "name": "carr-component-followup-ubuntu-24.04-source-f4d6846d037c079438f96c85bbebfe0f979dd25b-1",
+    "size_bytes": 4335,
+    "sha256": "c8ebf7e10f783ce84a8a4f44eff47a7d644b07a0ef4951f6bbf94f80f1a5c44a",
+    "member_bytes_decoded": false
+  }
+}

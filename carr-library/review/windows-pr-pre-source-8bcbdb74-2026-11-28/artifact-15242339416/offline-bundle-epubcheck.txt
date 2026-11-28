@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "epub_specification": "3.3",
+  "validator_version": "5.3.0",
+  "validator_archive_sha256": "6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5",
+  "publisher_module_sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
+  "audio_binaries": {
+    "ffmpeg": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffmpeg.exe",
+    "ffprobe": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffprobe.exe"
+  },
+  "audio_sha256": {
+    "ffmpeg": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+    "ffprobe": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+  },
+  "publications": [
+    {
+      "file": "narrated-from-wav.epub",
+      "sha256": "2c989b87edd6f2f32064d4494b333cab759d73795a37f488df8ae321607fce22",
+      "checker_version": "5.3.0",
+      "exit_code": 0,
+      "counts": {
+        "nFatal": 0,
+        "nError": 0,
+        "nWarning": 0,
+        "nUsage": 0
+      },
+      "expected_valid": true,
+      "messages": []
+    },
+    {
+      "file": "reused-job-mp3.epub",
+      "sha256": "2ec2077e4aab83d26258955ad0ce01998b5ba2e5567339dc0c8c9cafa57de86f",
+      "checker_version": "5.3.0",
+      "exit_code": 0,
+      "counts": {
+        "nFatal": 0,
+        "nError": 0,
+        "nWarning": 0,
+        "nUsage": 0
+      },
+      "expected_valid": true,
+      "messages": []
+    },
+    {
+      "file": "audio-only.epub",
+      "sha256": "e9bd4690082845ab73820a306cae3d468cd227dff57ba76e8386927361182547",
+      "checker_version": "5.3.0",
+      "exit_code": 0,
+      "counts": {
+        "nFatal": 0,
+        "nError": 0,
+        "nWarning": 0,
+        "nUsage": 0
+      },
+      "expected_valid": true,
+      "messages": []
+    },
+    {
+      "file": "primary-reading-copy.epub",
+      "sha256": "8e1bc028f7cac6bdf5beb21d0e28cde959ec72352e54f985de777d19397ee37a",
+      "checker_version": "5.3.0",
+      "exit_code": 0,
+      "counts": {
+        "nFatal": 0,
+        "nError": 0,
+        "nWarning": 0,
+        "nUsage": 0
+      },
+      "expected_valid": true,
+      "messages": []
+    }
+  ],
+  "deliberately_invalid_rejected": {
+    "file": "deliberately-invalid.epub",
+    "sha256": "694b8b745e012da79c9a1dded21fb61e00716c7aac6e15200d1cd4e38af2782f",
+    "checker_version": "5.3.0",
+    "exit_code": 1,
+    "counts": {
+      "nFatal": 0,
+      "nError": 1,
+      "nWarning": 0,
+      "nUsage": 0
+    },
+    "expected_valid": false,
+    "messages": [
+      {
+        "ID": "PKG-007",
+        "severity": "ERROR",
+        "message": "Mimetype file should only contain the string \"application/epub+zip\" and should not be compressed.",
+        "additionalLocations": 0,
+        "locations": [
+          {
+            "url": {
+              "hierarchical": true,
+              "opaque": false
+            },
+            "path": "/C:/Users/runneradmin/AppData/Local/Temp/resonance-epubcheck-x287j9r2/deliberately-invalid.epub",
+            "line": -1,
+            "column": -1,
+            "context": null
+          }
+        ],
+        "suggestion": null
+      }
+    ]
+  },
+  "audio_fixture": "Synthetic PCM tones through actual FFmpeg",
+  "reader_interoperability": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "wcag_conformance": "NOT_CLAIMED"
+}

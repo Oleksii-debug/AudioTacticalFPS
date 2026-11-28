@@ -1,0 +1,45 @@
+{
+  "schema": "carr-extracted-log-evidence-files/1",
+  "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "run_id": 46075231974,
+  "job_id": 140761298828,
+  "hash_scope": "Exact UTF-8 bytes written in this evidence directory, excluding manifest.json; not original ZIP-member hashes.",
+  "files": {
+    "source-reader-player.stdout.json": {
+      "bytes": 12406,
+      "sha256": "9e9cfc3d846cd2d1524e43ee18bf019ed6627b2410885d1f52cb1b0274102a4c"
+    },
+    "installed-reader-player.stdout.json": {
+      "bytes": 12347,
+      "sha256": "88a1460b72a492c8e8ed10f8381441b1c17116828d89f052517fd4ba4b164d4b"
+    },
+    "wheel-provenance.stdout.json": {
+      "bytes": 337,
+      "sha256": "802c27ee0398bae35c33e9163214eccb744fafca377fbdaa6942f91f41d5b65d"
+    },
+    "python-source-installed-inventory.stdout.json": {
+      "bytes": 54696,
+      "sha256": "347f17e3e5d65fa5a535bf65b7a4fb440614f084ddccca380370eb422c2f0e88"
+    },
+    "source-epub-daisy.phases.log": {
+      "bytes": 6263,
+      "sha256": "dbd064254390c6f27c5dda70e7bf43eec9098c52bc009b1335cb5feb8914c260"
+    },
+    "installed-epub-daisy.phases.log": {
+      "bytes": 6263,
+      "sha256": "4f32e8023c096575f521e3e8fd7b3dd63972c584a5857b6ff641d626cd3a65e0"
+    },
+    "job-and-artifact.json": {
+      "bytes": 5977,
+      "sha256": "7974c96943bfaf7205b98e79d4e0ec2f78c6bb3ebe72200f47c08bffc69a4c58"
+    },
+    "qualification.json": {
+      "bytes": 3819,
+      "sha256": "e0f2b44b9381ccbd015e7325f6e3234ed1b18eb20c9e69a3306df9bd538c1803"
+    },
+    "README.md": {
+      "bytes": 2944,
+      "sha256": "bb64c7c8647aa506711372e32f10875a21d88a18785e93479b1a6829177211f0"
+    }
+  }
+}

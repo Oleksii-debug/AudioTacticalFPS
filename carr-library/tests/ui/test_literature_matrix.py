@@ -54,3 +54,4 @@ def test_missing_tag_after_refresh_does_not_silently_expand_to_all_themes():
     assert names[names.index('Removed theme')] == 'Removed theme'
     assert labels[names.index('Removed theme')] == 'Tag: Removed theme (no current matches)'
     assert labels[0] != labels[names.index('All themes')]
+

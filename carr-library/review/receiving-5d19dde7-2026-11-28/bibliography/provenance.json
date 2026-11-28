@@ -1,0 +1,378 @@
+{
+  "schema": "carr-decoded-ci-log-provenance/1",
+  "retrieved_utc_date": "2026-11-28",
+  "run": {
+    "id": 46098474659,
+    "name": "CARR bibliography and import acceptance",
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "head_branch": "carr/ci-endpoint-evaluation-20261127",
+    "path": ".github/workflows/carr-bibliography.yml",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-11-28T02:31:12Z",
+    "updated_at": "2026-11-28T02:44:00Z",
+    "run_started_at": "2026-11-28T02:31:12Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474659"
+  },
+  "job": {
+    "id": 140835230462,
+    "run_id": 46098474659,
+    "run_attempt": 1,
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "name": "Windows x64 / CPython 3.11 / installed bibliography",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T02:36:11Z",
+    "completed_at": "2026-11-28T02:43:59Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474659/job/140835230462",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-28T02:36:11Z",
+        "completed_at": "2026-11-28T02:36:12Z"
+      },
+      {
+        "name": "Preserve the exact committed source bytes",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-28T02:36:12Z",
+        "completed_at": "2026-11-28T02:36:13Z"
+      },
+      {
+        "name": "Check out the exact event commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-28T02:36:13Z",
+        "completed_at": "2026-11-28T02:36:20Z"
+      },
+      {
+        "name": "Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-28T02:36:20Z",
+        "completed_at": "2026-11-28T02:36:20Z"
+      },
+      {
+        "name": "Build, verify and install the actual application wheel",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-28T02:36:20Z",
+        "completed_at": "2026-11-28T02:37:11Z"
+      },
+      {
+        "name": "Exercise installed native BibTeX and citation controls",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-28T02:37:11Z",
+        "completed_at": "2026-11-28T02:37:16Z"
+      },
+      {
+        "name": "Run strict bibliography, replay and export acceptance",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-28T02:37:16Z",
+        "completed_at": "2026-11-28T02:43:55Z"
+      },
+      {
+        "name": "Retain text acceptance evidence only",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-28T02:43:55Z",
+        "completed_at": "2026-11-28T02:43:56Z"
+      },
+      {
+        "name": "Post Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15,
+        "started_at": "2026-11-28T02:43:56Z",
+        "completed_at": "2026-11-28T02:43:56Z"
+      },
+      {
+        "name": "Post Check out the exact event commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16,
+        "started_at": "2026-11-28T02:43:56Z",
+        "completed_at": "2026-11-28T02:43:58Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-28T02:43:58Z",
+        "completed_at": "2026-11-28T02:43:58Z"
+      }
+    ]
+  },
+  "artifact_api_metadata": {
+    "id": 15244223454,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NDIyMzQ1NA==",
+    "name": "bibliography-windows-5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "size_in_bytes": 6659,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244223454",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244223454/zip",
+    "expired": false,
+    "digest": "sha256:df28b5555c943ff6194e609aa717ed39a7ca3e85b316f45aa6ea9824d81eb303",
+    "created_at": "2026-11-28T02:43:56Z",
+    "updated_at": "2026-11-28T02:43:56Z",
+    "expires_at": "2026-12-05T02:43:55Z",
+    "workflow_run": {
+      "id": 46098474659,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee"
+    }
+  },
+  "log_tool": "github_fetch_workflow_job_logs",
+  "log_requested_only_after_terminal": true,
+  "decoded_log": {
+    "line_ranges": [
+      [
+        361,
+        361
+      ],
+      [
+        366,
+        366
+      ],
+      [
+        389,
+        395
+      ],
+      [
+        398,
+        399
+      ],
+      [
+        402,
+        402
+      ],
+      [
+        404,
+        405
+      ],
+      [
+        407,
+        407
+      ],
+      [
+        409,
+        410
+      ],
+      [
+        413,
+        417
+      ],
+      [
+        420,
+        421
+      ],
+      [
+        424,
+        425
+      ],
+      [
+        428,
+        430
+      ],
+      [
+        435,
+        435
+      ],
+      [
+        438,
+        452
+      ],
+      [
+        455,
+        457
+      ],
+      [
+        460,
+        465
+      ],
+      [
+        468,
+        470
+      ],
+      [
+        475,
+        476
+      ],
+      [
+        479,
+        482
+      ],
+      [
+        485,
+        488
+      ],
+      [
+        492,
+        496
+      ],
+      [
+        561,
+        561
+      ],
+      [
+        573,
+        573
+      ],
+      [
+        584,
+        584
+      ],
+      [
+        596,
+        596
+      ],
+      [
+        609,
+        609
+      ],
+      [
+        620,
+        620
+      ],
+      [
+        631,
+        631
+      ],
+      [
+        642,
+        642
+      ],
+      [
+        654,
+        654
+      ],
+      [
+        666,
+        666
+      ],
+      [
+        678,
+        678
+      ],
+      [
+        690,
+        690
+      ],
+      [
+        702,
+        702
+      ],
+      [
+        713,
+        713
+      ],
+      [
+        725,
+        725
+      ],
+      [
+        736,
+        736
+      ],
+      [
+        747,
+        747
+      ],
+      [
+        759,
+        759
+      ],
+      [
+        770,
+        770
+      ],
+      [
+        782,
+        782
+      ],
+      [
+        794,
+        794
+      ],
+      [
+        806,
+        806
+      ],
+      [
+        817,
+        817
+      ],
+      [
+        829,
+        829
+      ],
+      [
+        841,
+        841
+      ],
+      [
+        852,
+        852
+      ],
+      [
+        863,
+        863
+      ],
+      [
+        874,
+        874
+      ],
+      [
+        885,
+        886
+      ],
+      [
+        922,
+        922
+      ],
+      [
+        924,
+        926
+      ]
+    ],
+    "original_decoded_log_characters": 139836,
+    "original_decoded_log_sha256": "446942c280a9e6bdffadd86660553f596e43bfcbd7950afe397e837210ae1a0c",
+    "selected_lines": 106,
+    "selected_log_sha256": "2c7c19361f7bc208f3ef0ac5d743f14bd4972fa39abebc3a0a8fd8cc14277192"
+  },
+  "extraction": {
+    "kind": "Decoded terminal job-log output, not downloaded artifact bytes",
+    "selected_log_lines": "Non-contiguous exact timestamped lines in original order, joined with CRLF; omitted line ranges are explicit.",
+    "json_files": "Timestamp prefixes removed, multi-line JSON joined with LF, one trailing LF added. Setup output also removes the adjacent compiler prefix recorded below.",
+    "files": [
+      {
+        "file": "native-result.log-extracted.json",
+        "first_line": 496,
+        "last_line": 496
+      },
+      {
+        "file": "wheel-source-proof.log-extracted.json",
+        "first_line": 361,
+        "last_line": 361
+      }
+    ]
+  },
+  "artifact_identity_check": "The API artifact ID/name/size/run/head/digest agree with the upload messages in the completed job log. Artifact ZIP bytes and individual original member hashes were not downloaded or recomputed.",
+  "retention_note": "These evidence files are bounded public CI text and synthetic native observations; no setup executable, runtime bundle, model, private reference audio, account secret or artifact payload was copied."
+}

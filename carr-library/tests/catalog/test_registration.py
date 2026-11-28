@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from dataclasses import replace
@@ -32,7 +33,7 @@ class RegistrationTests(unittest.TestCase):
         register_batch(self.cat, (self.r,))
         register_batch(self.cat, (replace(self.r, collections=('c', 'd')),))
         self.db.commit()
-        with sqlite3.connect(self.path) as other:
+        with closing(sqlite3.connect(self.path)) as other:
             self.assertEqual(other.execute('SELECT count(*) FROM catalog_asset').fetchone()[0], 1)
             self.assertEqual(other.execute('SELECT count(*) FROM catalog_edition').fetchone()[0], 1)
             self.assertEqual(other.execute('SELECT count(*) FROM catalog_membership').fetchone()[0], 2)
@@ -96,7 +97,7 @@ class RegistrationTests(unittest.TestCase):
         with self.assertRaisesRegex(sqlite3.IntegrityError, 'original rejection'):
             register_batch(self.cat, (bad,))
         self.assertFalse(self.db.in_transaction)
-        with sqlite3.connect(self.path) as other:
+        with closing(sqlite3.connect(self.path)) as other:
             for table in ('catalog_work', 'catalog_author', 'catalog_edition', 'catalog_asset', 'catalog_membership'):
                 self.assertEqual(other.execute('SELECT count(*) FROM ' + table).fetchone()[0], 0)
         self.db.execute('BEGIN IMMEDIATE')

@@ -1,0 +1,193 @@
+{
+  "run": 46093366005,
+  "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "summaries": [
+    {
+      "line": 804,
+      "text": "1805 passed in 418.74s (0:06:58)"
+    },
+    {
+      "line": 927,
+      "text": "632 passed in 423.13s (0:07:03)"
+    },
+    {
+      "line": 1749,
+      "text": "============================= 33 passed in 1.03s =============================="
+    },
+    {
+      "line": 1761,
+      "text": "============================= 24 passed in 20.24s ============================="
+    },
+    {
+      "line": 1773,
+      "text": "============================= 55 passed in 0.63s =============================="
+    },
+    {
+      "line": 1784,
+      "text": "============================== 7 passed in 0.20s =============================="
+    },
+    {
+      "line": 1796,
+      "text": "============================= 45 passed in 0.82s =============================="
+    },
+    {
+      "line": 1807,
+      "text": "============================= 19 passed in 0.45s =============================="
+    },
+    {
+      "line": 1818,
+      "text": "============================= 28 passed in 1.30s =============================="
+    },
+    {
+      "line": 1830,
+      "text": "============================= 38 passed in 1.11s =============================="
+    },
+    {
+      "line": 1841,
+      "text": "============================= 11 passed in 4.14s =============================="
+    },
+    {
+      "line": 1852,
+      "text": "============================== 1 passed in 0.69s =============================="
+    },
+    {
+      "line": 1883,
+      "text": "============================= 58 passed in 15.85s ============================="
+    },
+    {
+      "line": 1914,
+      "text": "============================= 94 passed in 2.64s =============================="
+    },
+    {
+      "line": 1925,
+      "text": "============================= 16 passed in 2.14s =============================="
+    },
+    {
+      "line": 2023,
+      "text": "12 passed in 8.61s"
+    },
+    {
+      "line": 2152,
+      "text": "6564 passed in 4885.84s (1:21:25)"
+    }
+  ],
+  "strict_module_verdicts": [
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_progress_speech.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1750
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1762
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_operation_progress.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1774
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_numeric_limits.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1785
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1797
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_studio_progress_isolation.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1808
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_media_quiet.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1819
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1831
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_import_progress.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1842
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_progress_preferences_backup.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1853
+    },
+    {
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_v3.py",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1884
+    },
+    {
+      "status": "PASS",
+      "path": "tests/assistant/test_local_planning.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1915
+    },
+    {
+      "status": "PASS",
+      "path": "tests/assistant/test_planning_handlers.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1926
+    }
+  ]
+}

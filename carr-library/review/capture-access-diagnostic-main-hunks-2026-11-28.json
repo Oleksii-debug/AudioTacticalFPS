@@ -1,0 +1,25 @@
+{
+  "schema": "carr-exact-source-hunks/1",
+  "path": ".github/workflows/carr-windows.yml",
+  "preimage_blob": "83e463f7d05e357346755541d9bbefa0c92ff40c",
+  "execution": "NOT_RUN",
+  "hunks": [
+    {
+      "before": "      - name: Require measured capture from the explicitly reviewed virtual input\n",
+      "after": "      - name: Require measured capture from the explicitly reviewed virtual input\n        id: selected_capture\n"
+    },
+    {
+      "before": "      - name: Preserve initial native playback and recording diagnostics\n",
+      "after": "      - name: Diagnose only the failed explicitly selected capture input\n        if: ${{ !cancelled() && steps.selected_capture.outcome == 'failure' && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && github.event_name == 'push' && github.repository == 'Oleksii-debug/AudioTacticalFPS' && github.ref == 'refs/heads/carr/ci-endpoint-evaluation-20261127' }}\n        timeout-minutes: 2\n        run: |\n          $ffmpeg = Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe'\n          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_capture_access_diagnostic.py --ffmpeg $ffmpeg --capture-report 'ci-results/native-recording-device.json' --report 'ci-results/recording-access-diagnostic.json' 2>&1 | Tee-Object 'ci-results/recording-access-diagnostic.txt'\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - name: Preserve initial native playback and recording diagnostics\n"
+    }
+  ],
+  "new_selector": "tests/audio/test_capture_access_diagnostic.py",
+  "planned_cases": 55,
+  "preserve": {
+    "existing_capture_lines": true,
+    "existing_capture_timeout_minutes": 3,
+    "original_failure_remains": true,
+    "early_upload_existing_recording_glob": true,
+    "no_workflow_file_in_overlay": true
+  }
+}

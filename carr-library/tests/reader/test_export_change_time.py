@@ -296,7 +296,7 @@ def test_windows_creation_time_model_requires_native_change_time(tmp_path, monke
     windows_os = SimpleNamespace(**vars(os))
     windows_os.name = 'nt'
     monkeypatch.setattr(export_file, 'os', windows_os)
-    changes = iter((100, 200))
+    changes = iter((100, 100, 200))
     monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: next(changes), raising=False)
     approval = export_file.capture_export_destination(target, private_root=private)
     replacement = b'Modified independent work'
@@ -306,4 +306,79 @@ def test_windows_creation_time_model_requires_native_change_time(tmp_path, monke
         writer(target, b'new export' if binary else 'new export',
                private_root=private, approval=approval)
     assert target.read_bytes() == replacement
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('binary', [False, True])
+def test_windows_change_time_rejects_same_bytes_restored_after_approval(tmp_path, monkeypatch, binary):
+    """A content ABA is visible only in native metadata in this Windows model."""
+    target, private = tmp_path / 'selected', tmp_path / 'private'
+    original = b'Original independent work'
+    target.write_bytes(original)
+    creation_time = target.stat().st_ctime_ns
+    file_state = export_file._file_state
+    monkeypatch.setattr(export_file, '_file_state',
+        lambda info: (*file_state(info)[:-1], creation_time))
+    windows_os = SimpleNamespace(**vars(os))
+    windows_os.name = 'nt'
+    monkeypatch.setattr(export_file, 'os', windows_os)
+    change_time = [123456789]
+    monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: change_time[0])
+    approval = export_file.capture_export_destination(target, private_root=private)
+    rewrite_preserving_mtime(target, b'Modified independent work')
+    rewrite_preserving_mtime(target, original)
+    change_time[0] += 1
+    assert target.read_bytes() == original
+    observed = export_file.capture_export_destination(target, private_root=private)
+    assert observed.state[:-2] == approval.state[:-2]
+    assert observed.state[-1] == approval.state[-1]
+    assert observed.state[-2] != approval.state[-2]
+    writer = export_file.write_binary_export if binary else export_file.write_export
+    with pytest.raises(ValueError, match='destination changed'):
+        writer(target, b'new export' if binary else 'new export',
+               private_root=private, approval=approval)
+    assert target.read_bytes() == original
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('phase', ['capture', 'before_stage', 'before_commit'])
+def test_native_change_time_rechecks_an_actual_byte_aba_during_hashing(
+        tmp_path, monkeypatch, phase):
+    target, private = tmp_path / 'selected', tmp_path / 'private'
+    original = b'Original independent work'
+    target.write_bytes(original)
+    creation_time = target.stat().st_ctime_ns
+    actual_state = export_file._file_state
+    monkeypatch.setattr(export_file, '_file_state',
+        lambda info: (*actual_state(info)[:-1], creation_time))
+    windows_os = SimpleNamespace(**vars(os))
+    windows_os.name = 'nt'
+    monkeypatch.setattr(export_file, 'os', windows_os)
+    change_time = [123456789]
+    monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: change_time[0])
+    approval = (None if phase == 'capture' else
+                export_file.capture_export_destination(target, private_root=private))
+    actual_read = os.read
+    reads = [0]
+    trigger = 2 if phase == 'before_commit' else 1
+
+    def edit_and_restore_after_read(descriptor, length):
+        block = actual_read(descriptor, length)
+        if block:
+            reads[0] += 1
+            if reads[0] == trigger:
+                rewrite_preserving_mtime(target, b'Modified independent work')
+                rewrite_preserving_mtime(target, original)
+                change_time[0] += 1
+        return block
+
+    windows_os.read = edit_and_restore_after_read
+    with pytest.raises(ValueError, match='destination changed'):
+        if phase == 'capture':
+            export_file.capture_export_destination(target, private_root=private)
+        else:
+            export_file.write_binary_export(target, b'new export',
+                private_root=private, approval=approval)
+    assert reads[0] == trigger
+    assert target.read_bytes() == original
     assert not list(tmp_path.glob('.research-export-*'))

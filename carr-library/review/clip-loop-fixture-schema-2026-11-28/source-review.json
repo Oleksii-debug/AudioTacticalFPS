@@ -1,0 +1,61 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a"
+  },
+  "observed": {
+    "run_id": 46098479318,
+    "job_id": 140835247197,
+    "platform": "Linux",
+    "mode": "source",
+    "module": "tests/studio/test_clip_dialog.py",
+    "passed": 30,
+    "setup_errors": 24,
+    "summary": "30 passed, 24 errors in 2.01s",
+    "failure": "loop_preview creates schema1 by default with Cue.duration=.25; Project.__post_init__ rejects edited clip timing before test body."
+  },
+  "change": {
+    "path": "carr-library/tests/studio/test_clip_dialog.py",
+    "before": "7bc9ed69c4c6777eb3254dd9d0b75994075c3465",
+    "after": "5f46d0924be44798f15f5076a4811e04eab97dc9",
+    "before_sha256": "411d63afc35f85008e069c2cbb3495190a7b908e7227863f74e526cad3904cb7",
+    "after_sha256": "c206d9abae54f34cb194ba04106525a0f2e5c534a9dcfd2ab8fd5759087ed8d3",
+    "description": "Pass schema=2 to the existing Project constructor in loop_preview.",
+    "hunks": 1,
+    "source_readback": "EXACT",
+    "inverse": "EXACT",
+    "assertion_lines_before": 189,
+    "assertion_lines_after": 189,
+    "assertion_lines_order_identical": true,
+    "test_functions": 41,
+    "planned_collected_cases": 54
+  },
+  "unchanged": {
+    "production": true,
+    "native_probe": true,
+    "test_assertions": true,
+    "test_budgets": true,
+    "workflow_gates": true
+  },
+  "native_fixture_review": {
+    "probe": "carr-library/scripts/windows_clip_editor_smoke.py",
+    "blob": "6218e786234a589181ade5eda2d258216ab02d9d",
+    "project_blob": "445fa047cbb92346c57b49118d695a0beae0eba6",
+    "clips_blob": "d0079aa32b9194a2720a86761645a09a99b7a190",
+    "finding": "The probe calls the actual ClipEditor.create, which explicitly writes schema2. Its edits preserve schema>=2, and the native loop runs after a checked schema3 effect update. No matching native-fixture mismatch was found."
+  },
+  "evidence": {
+    "file": "actual-linux-source-failure.txt",
+    "sha256": "22f597f00ae7dd4d6f3ca00ed9188bca1aee2f0fa1174eed3ef784fd472fdadb",
+    "kind": "Bounded exact excerpts from decoded completed job log; no raw artifact-byte claim."
+  },
+  "peer": {
+    "agent": "/root/voice_reading",
+    "verdict": "CLEAR",
+    "scope": "Exact inverse, all189 assertion lines, current Project schema requirement and actual ClipEditor.create. Source-only, NOT_RUN."
+  }
+}

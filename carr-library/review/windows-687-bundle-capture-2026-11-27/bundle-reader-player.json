@@ -1,0 +1,67 @@
+{
+  "status": "FAILED",
+  "checks": [
+    "exact imported playback module: carr_library.speech.player",
+    "exact imported playback module: carr_library.speech.output_devices",
+    "exact imported playback module: carr_library.speech._wave_output",
+    "exact imported playback module: carr_library.speech.listening",
+    "exact imported playback module: carr_library.speech.playlist",
+    "exact imported playback module: carr_library.ui.reader_playback",
+    "exact imported playback module: carr_library.ui.reader_transport",
+    "exact imported playback module: carr_library.ui.audio_playback",
+    "exact imported playback module: carr_library.ui.speech_dialog",
+    "exact imported playback module: carr_library.ui.desktop_app",
+    "actual Windows output inventory stays within its bound",
+    "required explicitly identified output exists"
+  ],
+  "count": 12,
+  "fixture": "purpose-written silent PCM",
+  "source_override": null,
+  "audible_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "voice_inference": "NOT_RUN",
+  "independent_deadline_seconds": 300,
+  "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 766, in main\n    _run(options, report)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 663, in _run\n    tools = {name: Path(getattr(options, name) or resolve_active_audio_tool(name)).resolve(strict=True)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 663, in <dictcomp>\n    tools = {name: Path(getattr(options, name) or resolve_active_audio_tool(name)).resolve(strict=True)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\runtime\\Lib\\pathlib.py\", line 871, in __new__\n    self = cls._from_parts(args)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\runtime\\Lib\\pathlib.py\", line 509, in _from_parts\n    drv, root, parts = self._parse_args(args)\n                       ^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\runtime\\Lib\\pathlib.py\", line 493, in _parse_args\n    a = os.fspath(a)\n        ^^^^^^^^^^^^\nTypeError: expected str, bytes or os.PathLike object, not NoneType\n",
+  "source_identity": {
+    "carr_library.speech.player": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py",
+      "sha256": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4"
+    },
+    "carr_library.speech.output_devices": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\output_devices.py",
+      "sha256": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5"
+    },
+    "carr_library.speech._wave_output": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\_wave_output.py",
+      "sha256": "190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664"
+    },
+    "carr_library.speech.listening": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\listening.py",
+      "sha256": "aad6fbeaf6385cd7f1bb2e10f18c0d40cf9dc1c5c866162836d924a8da49b6e9"
+    },
+    "carr_library.speech.playlist": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\playlist.py",
+      "sha256": "e1131ebaa7c05b6e2e89e14c5af1cb66819b90b7b751ca682e8e76a86c1c2885"
+    },
+    "carr_library.ui.reader_playback": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\reader_playback.py",
+      "sha256": "bf2e2ecee13795eff76e34d4c19bc3f25787efc5e1af6dd65a42283792f7c650"
+    },
+    "carr_library.ui.reader_transport": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\reader_transport.py",
+      "sha256": "045ba64d7bc5e0f84d2c3f3a734e630f11cbcf3b6108a067d662930cb14dd763"
+    },
+    "carr_library.ui.audio_playback": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\audio_playback.py",
+      "sha256": "8975228c2294daa9cbb0ec76ecf78f08427807704e4d37c6e89b4e426ac29db4"
+    },
+    "carr_library.ui.speech_dialog": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+      "sha256": "e39976740c67585ea35af1b1cd9ca2b5ed26c1b1caeef5487c1148ef72d59f05"
+    },
+    "carr_library.ui.desktop_app": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+      "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+    }
+  }
+}

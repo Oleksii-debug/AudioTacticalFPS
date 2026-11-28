@@ -1,0 +1,168 @@
+____________________ test_actual_engine_timeout_is_bounded ____________________
+
+payload = {'clusters': [], 'locale': 'en-US', 'locales': {'en-US': '<?xml version="1.0" encoding="utf-8"?>\n<locale xmlns="http:...': 'Doe', 'given': 'Jane'}], 'id': 'reference-5', 'issued': {'date-parts': [[2020]]}, 'page': '1-400', ...}, ...], ...}
+
+    def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[], bool] | None,
+             timeout: float) -> dict:
+        if cancelled and cancelled():
+            raise CitationCancelled('Citation formatting was cancelled.')
+        if type(timeout) not in (int, float) or not 0.1 <= timeout <= 60:
+            raise CitationError('The processor timeout must be between 0.1 and 60 seconds.')
+        processor = _processor_bytes()
+        raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+        if len(raw) > _MAX_BYTES:
+            raise CitationError('The combined CSL input exceeds its processing budget.')
+        env = {k: v for k, v in os.environ.items() if k in (
+            'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR',
+            'LANG', 'LC_ALL', 'HOME', 'USERPROFILE')}
+        with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:
+            directory = Path(directory)
+            env.update(TEMP=str(directory), TMP=str(directory), TMPDIR=str(directory))
+            if node_path is None:
+                from carr_library.citations import csl as shared_runtime
+                # Use the same bounded Context implementation as the existing CSL API.
+                source = _bounded_bytes(Path(shared_runtime.__file__), 256000, 'The installed QuickJS context')
+                bridge = _QUICKJS_BRIDGE.encode('utf-8')
+                source_hash, bridge_hash = sha256(source).hexdigest(), sha256(bridge).hexdigest()
+                (directory / 'context.py').write_bytes(source)
+                (directory / 'processor.js').write_bytes(processor)
+                (directory / 'bridge.js').write_bytes(bridge)
+                data = {**payload, 'style_xml': shared_runtime._xml_json(payload['style_xml']),
+                        'locales': {name: shared_runtime._xml_json(value) for name, value in payload['locales'].items()}}
+                raw = json.dumps(data, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+                if len(raw) > _MAX_BYTES:
+                    raise CitationError('The combined CSL input exceeds its processing budget.')
+                binary = Path(sys.executable) if sys.executable else None
+                if binary is None or not binary.is_absolute() or not binary.is_file():
+                    raise CitationError('The installed Python/QuickJS runtime is unavailable.')
+                # Keep the active venv interpreter spelling; resolving its symlink
+                # would select a different environment on POSIX.
+                command = [str(binary), '-I', '-B', '-c', _QUICKJS_WORKER,
+                           source_hash, sha256(processor).hexdigest(), bridge_hash, str(float(timeout))]
+                runtime = {'name': 'QuickJS', 'binding': 'quickjs-ng', 'source_sha256': source_hash,
+                           'bridge_sha256': bridge_hash, 'processor_sha256': sha256(processor).hexdigest(),
+                           'memory_bytes': 512 * 1024 * 1024, 'stack_bytes': 4 * 1024 * 1024}
+            else:
+                binary = _node_binary(node_path)
+                worker = _bounded_bytes(_ROOT / 'csl_worker.cjs', 65536, 'The installed Node compatibility worker')
+                (directory / 'csl_worker.cjs').write_bytes(worker)
+                (directory / 'vendor').mkdir()
+                (directory / 'vendor' / 'citeproc.js').write_bytes(processor)
+                (directory / 'UPSTREAM.json').write_text(json.dumps(_manifest(), allow_nan=False), encoding='utf-8')
+                command = [binary, '--max-old-space-size=256', '--disable-proto=throw',
+                           str(directory / 'csl_worker.cjs')]
+                runtime = {'name': 'Node.js', 'mode': 'explicit compatibility',
+                           'source_sha256': sha256(worker).hexdigest(),
+                           'processor_sha256': sha256(processor).hexdigest(),
+                           'executable_sha256': _executable_digest(binary)}
+            if cancelled and cancelled():
+                raise CitationCancelled('Citation formatting was cancelled.')
+            (directory / 'input.json').write_bytes(raw)
+            output_path, error_path = directory / 'output.json', directory / 'error.txt'
+            with (directory / 'input.json').open('rb') as source, output_path.open('wb') as output, error_path.open('wb') as errors:
+                try:
+                    process = subprocess.Popen(command, stdin=source, stdout=output, stderr=errors,
+                        cwd=directory, env=env, shell=False, start_new_session=os.name != 'nt',
+                        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
+                except OSError as exc:
+                    raise CitationError('The selected local citation runtime could not be started.') from exc
+                deadline = time.monotonic() + timeout
+                try:
+                    while process.poll() is None:
+                        if cancelled and cancelled():
+                            raise CitationCancelled('Citation formatting was cancelled.')
+                        if time.monotonic() > deadline:
+>                           raise CitationError('The local citation processor exceeded its time budget.')
+E                           carr_library.academic_integration.formatting.CitationError: The local citation processor exceeded its time budget.
+
+src\carr_library\academic_integration\formatting.py:661: CitationError
+
+During handling of the above exception, another exception occurred:
+
+path = 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-citations-fwq27doo'
+onerror = <function TemporaryDirectory._rmtree.<locals>.onerror at 0x000002741B411300>
+
+    def _rmtree_unsafe(path, onerror):
+        try:
+            with os.scandir(path) as scandir_it:
+                entries = list(scandir_it)
+        except OSError:
+            onerror(os.scandir, path, sys.exc_info())
+            entries = []
+        for entry in entries:
+            fullname = entry.path
+            if _rmtree_isdir(entry):
+                try:
+                    if entry.is_symlink():
+                        # This can only happen if someone replaces
+                        # a directory with a symlink after the call to
+                        # os.scandir or entry.is_dir above.
+                        raise OSError("Cannot call rmtree on a symbolic link")
+                except OSError:
+                    onerror(os.path.islink, fullname, sys.exc_info())
+                    continue
+                _rmtree_unsafe(fullname, onerror)
+            else:
+                try:
+>                   os.unlink(fullname)
+E                   PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-citations-fwq27doo\\error.txt'
+
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\shutil.py:632: PermissionError
+
+During handling of the above exception, another exception occurred:
+
+references = [{'author': [{'family': 'Doe', 'given': 'Jane'}], 'id': 'reference-0', 'issued': {'date-parts': [[2020]]}, 'page': '1-...family': 'Doe', 'given': 'Jane'}], 'id': 'reference-5', 'issued': {'date-parts': [[2020]]}, 'page': '1-400', ...}, ...]
+
+    def test_actual_engine_timeout_is_bounded(references):
+        references = [dict(references[0], id=f'reference-{index}', title=f'Source {index}')
+                      for index in range(1000)]
+        start = time.monotonic()
+        with pytest.raises(CitationError, match='time budget'):
+>           render_citations(references, timeout=0.1)
+
+tests\academic_integration\test_formatting.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\carr_library\academic_integration\formatting.py:715: in render_citations
+    result = _run(payload, node_path=node_path, cancelled=cancelled, timeout=timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\academic_integration\formatting.py:604: in _run
+    with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\tempfile.py:943: in __exit__
+    self.cleanup()
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\tempfile.py:947: in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\tempfile.py:929: in _rmtree
+    _shutil.rmtree(name, onerror=onerror)
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\shutil.py:787: in rmtree
+    return _rmtree_unsafe(path, onerror)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\shutil.py:634: in _rmtree_unsafe
+    onerror(os.unlink, fullname, sys.exc_info())
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+func = <built-in function unlink>
+path = 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-citations-fwq27doo\\error.txt'
+exc_info = (<class 'PermissionError'>, PermissionError(13, 'The process cannot access the file because it is being used by another process'), <traceback object at 0x000002741B802AC0>)
+
+    def onerror(func, path, exc_info):
+        if issubclass(exc_info[0], PermissionError):
+            if repeated and path == name:
+                if ignore_errors:
+                    return
+                raise
+    
+            try:
+                if path != name:
+                    _resetperms(_os.path.dirname(path))
+                _resetperms(path)
+    
+                try:
+>                   _os.unlink(path)
+E                   PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-citations-fwq27doo\\error.txt'
+
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\tempfile.py:893: PermissionError
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-noa46yzu\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/academic_integration/test_formatting.py::test_actual_engine_timeout_is_bounded - PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-citations-fwq27doo\\error.txt'
+================== 1 failed, 31 passed in 109.37s (0:01:49) ===================
+FAIL: tests/academic_integration/test_formatting.py: junit_passed=31, failed=1, skipped=0, pytest_exit=1

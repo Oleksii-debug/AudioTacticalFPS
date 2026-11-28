@@ -8,6 +8,7 @@ recognition check. No model session, network request or user document is used.
 from __future__ import annotations
 
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from importlib import import_module
 import json
 import os
@@ -51,21 +52,30 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'source_tree',
-                                          'bundled_native_runtime', 'bundled_audio_runtime'}
+            or value.keys() - required - {'source_commit', 'bundled_native_runtime', 'bundled_audio',
+                                                    'bundled_citation_runtime', 'use_scope',
+                                                    'parent_source_commit', 'parent_manifest_sha256'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    for field in ('bundled_native_runtime', 'bundled_audio_runtime'):
-        if field in value and type(value[field]) is not bool:
-            raise ValueError('The ' + field + ' installation flag must be a boolean.')
-    for field in ('source_commit', 'source_tree'):
-        if field in value and (not isinstance(value[field], str)
-                or not re.fullmatch('[0-9a-f]{40}', value[field])):
-            raise ValueError('Invalid installation ' + field + '.')
+    for flag in ('bundled_native_runtime', 'bundled_audio', 'bundled_citation_runtime'):
+        if flag in value and type(value[flag]) is not bool:
+            raise ValueError('The ' + flag + ' installation flag must be a boolean.')
+    if ('source_commit' in value and (not isinstance(value['source_commit'], str)
+            or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
+        raise ValueError('Invalid installation source commit.')
+    refresh = {'use_scope', 'parent_source_commit', 'parent_manifest_sha256'}
+    if refresh & value.keys():
+        if (not refresh <= value.keys() or 'source_commit' not in value
+                or value['use_scope'] != 'private-personal-installation'
+                or not isinstance(value['parent_source_commit'], str)
+                or not re.fullmatch('[0-9a-f]{40}', value['parent_source_commit'])
+                or not isinstance(value['parent_manifest_sha256'], str)
+                or not re.fullmatch('[0-9a-f]{64}', value['parent_manifest_sha256'])):
+            raise ValueError('Invalid private bundle refresh provenance.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):
@@ -146,6 +156,7 @@ def check_native_dependencies(bundle_root):
     return report
 
 
+@installed_entrypoint(allow_bootstrap_native_checks=True)
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-root', required=True, type=Path)

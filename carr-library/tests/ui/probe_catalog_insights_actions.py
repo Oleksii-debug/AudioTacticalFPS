@@ -16,6 +16,7 @@ from unittest.mock import Mock, patch
 
 from carr_library.application import LibraryApp
 from carr_library.ui import catalog_insights_actions as ui
+from carr_library.ui import export_destination
 
 
 class Control:
@@ -127,9 +128,9 @@ class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
         self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
         self.wx.MessageBox = Mock(return_value=self.wx.YES)
-        confirm = ui.confirm_export_destination
-        native = patch.object(ui, 'confirm_export_destination',
-            lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
+        confirm = export_destination.confirm_export_destination
+        native = patch.object(export_destination, 'confirm_export_destination',
+            lambda *args, wx_module=None, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
         native.start()
         self.addCleanup(native.stop)
         temporary = TemporaryDirectory(prefix='catalog-insights-actions-')
@@ -456,7 +457,11 @@ class CatalogInsightsActionsTests(unittest.TestCase):
             actions.export_matrix()
         self.assertEqual(len(synced_sizes), 1)
         self.assertGreater(synced_sizes[0], 0)
-        self.assertIs(write.call_args.kwargs['cancelled'].__self__, self.frame.cancel_event)
+        callback = write.call_args.kwargs['cancelled']
+        self.assertTrue(callback())
+        self.frame.cancel_event.clear()
+        self.assertFalse(callback())
+        self.frame.cancel_event.set()
         publish.assert_not_called()
         self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
         self.assertEqual(list(self.root.glob('.research-export-*')), [])
@@ -464,7 +469,10 @@ class CatalogInsightsActionsTests(unittest.TestCase):
 
     def test_completed_export_does_not_claim_new_scope_owns_it(self):
         other = self.clone_library()
-        self.frame.after_worker = lambda: setattr(self.frame, 'library', other)
+        # The first completion belongs to capture; change the selection only
+        # after the real publication worker has finished, as the case requires.
+        self.frame.after_worker = lambda: (setattr(self.frame, 'library', other)
+            if self.frame.jobs[-1] == 'Exporting source comparison matrix' else None)
         actions, _ = self.actions((0, 0))
         actions.export_matrix()
         self.assertTrue(self.destination.is_file())

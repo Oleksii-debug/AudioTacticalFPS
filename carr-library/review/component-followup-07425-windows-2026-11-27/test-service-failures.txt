@@ -1,0 +1,318 @@
+Completed source-mode pytest output, from the first test_service failure through its final verdict.
+Interleaving from the two-suite CI dispatcher is preserved; this is not a fresh test run.
+
+_________ test_actual_process_receipts_reading_and_subtitle_rollover __________
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000001C2DA8D2550>, namespace(root=WindowsPath('C...wsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_actual_process_receipts_r0/Оригінал.wav'))
+
+    def test_actual_process_receipts_reading_and_subtitle_rollover(setup):
+        service, runtime, profile, audio = setup
+        original = audio.read_bytes()
+        created = job(setup, settings={'output_srt': True, 'output_vtt': True})
+        events = []
+        result = service.run(created['id'], progress=events.append)
+>       assert result['status'] == 'complete', result['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_service.py:92: AssertionError
+________ test_isolated_worker_preserves_unicode_paths_and_diagnostics _________
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_isolated_worker_preserves0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001C2DA91CA90>
+
+    def test_isolated_worker_preserves_unicode_paths_and_diagnostics(tmp_path, monkeypatch):
+        runtime = make_runtime(tmp_path / 'Рушій з пробілами')
+        diagnostic = 'Українська діагностика — перевірено.'
+        runtime.options.write_text(json.dumps({'require_utf8': True, 'diagnostic': diagnostic},
+                                             ensure_ascii=False), encoding='utf-8')
+        service = TranscriptionService(tmp_path / 'Бібліотека/дані/state/transcription',
+                                      budget=AudioBudget(timeout=5, reserve_disk_bytes=0))
+        profile = register(service, runtime)
+        source = tmp_path / 'Розмова українською.wav'
+        source.write_bytes(b'Synthetic input identity; no acoustic inference.')
+        original_run, processes = module.run_process, []
+        def capture(argv, **kwargs):
+            result = original_run(argv, **kwargs)
+            processes.append((argv, result))
+            return result
+        monkeypatch.setattr(module, 'run_process', capture)
+        # -I intentionally ignores these; the command-line mode must prevail.
+        monkeypatch.setenv('PYTHONUTF8', '0')
+        monkeypatch.setenv('PYTHONIOENCODING', 'ascii')
+        result = service.run(service.create_job(profile['id'], [source])['id'])
+>       assert result['status'] == 'complete', result['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_service.py:130: AssertionError
+_____ test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint ______
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000001C2DAAE4310>, namespace(root=WindowsPath('C...wsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_changed_profile_does_not_0/Оригінал.wav'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001C2DAAE4A10>
+
+    def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, monkeypatch):
+        service, runtime, profile, audio = setup
+        created = job(setup, settings={'output_srt': True})
+        original = module.atomic_bytes
+        def failing(path, payload, **kw):
+            if Path(path).suffix == '.srt':
+                raise OSError('Synthetic export failure after recognition.')
+            return original(path, payload, **kw)
+        monkeypatch.setattr(module, 'atomic_bytes', failing)
+        failed = service.run(created['id'])
+        assert failed['status'] == 'failed' and not failed['results']
+        assert starts(runtime) == 1
+        # A support-file change need not change the worker's reported launcher or
+        # installed-distribution identity, as with a Windows base-runtime update.
+        (runtime.python.parent / 'vcruntime-synthetic.dll').write_bytes(b'New reviewed support identity; never loaded.')
+        changed = register(service, runtime)
+        assert changed['fingerprint'] != profile['fingerprint']
+        assert changed['python_identity'] == profile['python_identity']
+        assert changed['runtime_distributions'] == profile['runtime_distributions']
+        monkeypatch.setattr(module, 'atomic_bytes', original)
+        service.rebind_runtime(created['id'], changed['id'])
+        recovered = service.resume(created['id'])
+>       assert recovered['status'] == 'complete', recovered['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_service.py:230: AssertionError
+______ test_rebind_preserves_accepted_artifact_and_its_original_profile _______
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000001C2DAC63110>, namespace(root=WindowsPath('C...wsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_rebind_preserves_accepted0/Оригінал.wav'))
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_rebind_preserves_accepted0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001C2DAC62D10>
+
+    def test_rebind_preserves_accepted_artifact_and_its_original_profile(setup, tmp_path, monkeypatch):
+        # Failure-only, bounded observations. Every wrapper delegates exactly once;
+        # no additional process poll, filesystem read, retry or deadline adjustment.
+        from collections import deque
+        import sys
+        from carr_library.audio import process as process_module
+    
+        service, runtime, profile, audio = setup
+        epoch = time.monotonic()
+        phase = 'first-run'
+        events = deque(maxlen=64)
+        timings, processes, process_failures = {}, [], []
+        diagnostic = {'python': sys.version, 'platform': sys.platform,
+                      'process_timeout': service.budget.timeout,
+                      'timings_are_inclusive': True, 'timings': timings,
+                      'processes': processes, 'process_failures': process_failures}
+    
+        def stamp():
+            return time.monotonic() - epoch
+    
+        def observe(name, function, *, event=True):
+            def observed(*args, **kwargs):
+                began, selected_phase, error = stamp(), phase, None
+                try:
+                    return function(*args, **kwargs)
+                except BaseException as exc:
+                    error = type(exc).__name__
+                    raise
+                finally:
+                    ended = stamp()
+                    key = selected_phase + ':' + name
+                    row = timings.setdefault(key, {'calls': 0, 'seconds': 0.0,
+                        'maximum_seconds': 0.0, 'first_started': began, 'last_ended': ended})
+                    row['calls'] += 1
+                    row['seconds'] += ended - began
+                    if ended - began >= row['maximum_seconds']:
+                        row['maximum_seconds'] = ended - began
+                        row['maximum_started'], row['maximum_ended'] = began, ended
+                    row['last_ended'] = ended
+                    if event:
+                        events.append({'phase': selected_phase, 'name': name,
+                                       'started': began, 'ended': ended, 'error': error})
+            return observed
+    
+        for name in ('inspect_runtime', '_verify_profile', '_admit_results', '_publish_result'):
+            monkeypatch.setattr(service, name, observe(name, getattr(service, name)))
+        monkeypatch.setattr(service, '_control', observe('_control', service._control, event=False))
+    
+        original_start = process_module._start_process
+    
+        def start_process(*args, **kwargs):
+            began = stamp()
+            process = original_start(*args, **kwargs)
+            row = {'phase': phase, 'started': began, 'returned': stamp(),
+                   'owned_tree': kwargs.get('owned_tree', False),
+                   'poll_calls': 0, 'wait_calls': 0, 'wait_timeouts': 0,
+                   'last_running_poll': None, 'first_exit_poll': None,
+                   'first_completed_wait': None}
+            if len(processes) < 8:
+                processes.append(row)
+            original_poll, original_wait = process.poll, process.wait
+    
+            def poll(*args, **kwargs):
+                observed_at = stamp()
+                row['poll_calls'] += 1
+                result = original_poll(*args, **kwargs)
+                if result is None:
+                    row['last_running_poll'] = {'started': observed_at, 'ended': stamp()}
+                elif row['first_exit_poll'] is None:
+                    row['first_exit_poll'] = {'started': observed_at, 'ended': stamp(), 'returncode': result}
+                return result
+    
+            def wait(*args, **kwargs):
+                observed_at = stamp()
+                row['wait_calls'] += 1
+                try:
+                    result = original_wait(*args, **kwargs)
+                except process_module.subprocess.TimeoutExpired:
+                    row['wait_timeouts'] += 1
+                    raise
+                if row['first_completed_wait'] is None:
+                    row['first_completed_wait'] = {'started': observed_at, 'ended': stamp(), 'returncode': result}
+                return result
+    
+            monkeypatch.setattr(process, 'poll', poll)
+            monkeypatch.setattr(process, 'wait', wait)
+            return process
+    
+        monkeypatch.setattr(process_module, '_start_process', observe('process_start', start_process))
+        original_run = module.run_process
+    
+        def run_process(*args, **kwargs):
+            delegate = dict(kwargs)
+            delegate['cancelled'] = observe('process_callback', delegate['cancelled'], event=False)
+            try:
+                return original_run(*args, **delegate)
+            except BaseException as exc:
+                # Read the original failing check's captured numbers after its
+                # existing cleanup. Never issue another poll or infer an exit time.
+                failure = {'phase': phase, 'error': type(exc).__name__, 'caught': stamp()}
+                tb, visited = exc.__traceback__, 0
+                while tb is not None and visited < 32:
+                    if tb.tb_frame.f_code.co_name == 'check':
+                        values = tb.tb_frame.f_locals
+                        captured = {}
+                        for key in ('started', 'observed_exit_at', 'worker_until'):
+                            value = values.get(key)
+                            if type(value) in (int, float):
+                                captured[key] = value - epoch
+                            elif value is None:
+                                captured[key] = None
+                        failure['original_check'] = captured
+                        break
+                    tb, visited = tb.tb_next, visited + 1
+                if len(process_failures) < 8:
+                    process_failures.append(failure)
+                raise
+    
+        monkeypatch.setattr(module, 'run_process', observe('run_process', run_process))
+    
+        def failure_message(error):
+            return str(error) + '\nBounded ASR phase diagnostic: ' + json.dumps(
+                {**diagnostic, 'events': list(events)}, ensure_ascii=True, sort_keys=True)
+    
+        second = tmp_path / 'second.wav'
+        second.write_bytes(b'Second retained synthetic input.')
+        runtime.options.write_text(json.dumps({'fail_after': 1}), encoding='utf-8')
+        created = service.create_job(profile['id'], [audio, second])
+        partial = service.run(created['id'])
+        assert partial['status'] == 'partial' and partial['done'] == 1, failure_message(partial['error'])
+        accepted = dict(partial['results'][0])
+        (runtime.python.parent / 'vcruntime-synthetic.dll').write_bytes(b'New reviewed support identity; never loaded.')
+        phase = 'register-replacement'
+        changed = register(service, runtime)
+        runtime.options.write_text('{}', encoding='utf-8')
+        phase = 'rebind'
+        service.rebind_runtime(created['id'], changed['id'])
+        phase = 'resume'
+        complete = service.resume(created['id'])
+>       assert complete['status'] == 'complete', failure_message(complete['error'])
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E         Bounded ASR phase diagnostic: {"events": [{"ended": 2.4840000000000373, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 0.06200000000001182}, {"ended": 2.5149999999999864, "error": null, "name": "_admit_results", "phase": "first-run", "started": 2.5}, {"ended": 5.0779999999999745, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 2.6399999999999864}, {"ended": 5.093000000000075, "error": null, "name": "_admit_results", "phase": "first-run", "started": 5.093000000000075}, {"ended": 5.109000000000037, "error": null, "name": "process_start", "phase": "first-run", "started": 5.093000000000075}, {"ended": 8.077999999999975, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 5.639999999999986}, {"ended": 8.093000000000075, "error": null, "name": "_publish_result", "phase": "first-run", "started": 5.484000000000037}, {"ended": 10.562000000000012, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 8.109000000000037}, {"ended": 10.562000000000012, "error": null, "name": "_admit_results", "phase": "first-run", "started": 5.343000000000075}, {"ended": 10.609000000000037, "error": "AudioError", "name": "run_process", "phase": "first-run", "started": 5.0779999999999745}, {"ended": 12.984000000000037, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 10.639999999999986}, {"ended": 13.062000000000012, "error": null, "name": "_admit_results", "phase": "first-run", "started": 12.984000000000037}, {"ended": 13.297000000000025, "error": null, "name": "inspect_runtime", "phase": "register-replacement", "started": 13.093000000000075}, {"ended": 16.031000000000063, "error": null, "name": "_verify_profile", "phase": "resume", "started": 13.609000000000037}, {"ended": 16.062000000000012, "error": null, "name": "_admit_results", "phase": "resume", "started": 16.062000000000012}, {"ended": 18.593000000000075, "error": null, "name": "_verify_profile", "phase": "resume", "started": 16.187000000000012}, {"ended": 18.609000000000037, "error": null, "name": "_admit_results", "phase": "resume", "started": 18.609000000000037}, {"ended": 18.609000000000037, "error": null, "name": "process_start", "phase": "resume", "started": 18.609000000000037}, {"ended": 21.484000000000037, "error": null, "name": "_verify_profile", "phase": "resume", "started": 19.139999999999986}, {"ended": 21.5, "error": null, "name": "_publish_result", "phase": "resume", "started": 19.0}, {"ended": 23.922000000000025, "error": null, "name": "_verify_profile", "phase": "resume", "started": 21.514999999999986}, {"ended": 23.922000000000025, "error": null, "name": "_admit_results", "phase": "resume", "started": 18.859000000000037}, {"ended": 23.968000000000075, "error": "AudioError", "name": "run_process", "phase": "resume", "started": 18.593000000000075}, {"ended": 26.484000000000037, "error": null, "name": "_verify_profile", "phase": "resume", "started": 24.0}, {"ended": 26.514999999999986, "error": null, "name": "_admit_results", "phase": "resume", "started": 26.484000000000037}], "platform": "win32", "process_failures": [{"caught": 10.609000000000037, "error": "AudioError", "original_check": {"observed_exit_at": 10.593000000000075, "started": 5.109000000000037, "worker_until": 10.593000000000075}, "phase": "first-run"}, {"caught": 23.968000000000075, "error": "AudioError", "original_check": {"observed_exit_at": 23.952999999999975, "started": 18.609000000000037, "worker_until": 23.952999999999975}, "phase": "resume"}], "process_timeout": 5, "processes": [{"first_completed_wait": {"ended": 10.593000000000075, "returncode": 3, "started": 10.593000000000075}, "first_exit_poll": {"ended": 10.593000000000075, "returncode": 3, "started": 10.593000000000075}, "last_running_poll": {"ended": 5.187000000000012, "started": 5.187000000000012}, "owned_tree": true, "phase": "first-run", "poll_calls": 6, "returned": 5.109000000000037, "started": 5.093000000000075, "wait_calls": 3, "wait_timeouts": 1}, {"first_completed_wait": {"ended": 23.952999999999975, "returncode": 0, "started": 23.952999999999975}, "first_exit_poll": {"ended": 23.952999999999975, "returncode": 0, "started": 23.952999999999975}, "last_running_poll": {"ended": 18.702999999999975, "started": 18.702999999999975}, "owned_tree": true, "phase": "resume", "poll_calls": 6, "returned": 18.609000000000037, "started": 18.609000000000037, "wait_calls": 3, "wait_timeouts": 1}], "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "timings": {"first-run:_admit_results": {"calls": 4, "first_started": 2.5, "last_ended": 13.062000000000012, "maximum_ended": 10.562000000000012, "maximum_seconds": 5.218999999999937, "maximum_started": 5.343000000000075, "seconds": 5.311999999999898}, "first-run:_control": {"calls": 1442, "first_started": 0.06200000000001182, "last_ended": 13.077999999999975, "maximum_ended": 4.5, "maximum_seconds": 0.03199999999992542, "maximum_started": 4.468000000000075, "seconds": 11.676000000000272}, "first-run:_publish_result": {"calls": 1, "first_started": 5.484000000000037, "last_ended": 8.093000000000075, "maximum_ended": 8.093000000000075, "maximum_seconds": 2.6090000000000373, "maximum_started": 5.484000000000037, "seconds": 2.6090000000000373}, "first-run:_verify_profile": {"calls": 5, "first_started": 0.06200000000001182, "last_ended": 12.984000000000037, "maximum_ended": 10.562000000000012, "maximum_seconds": 2.4529999999999745, "maximum_started": 8.109000000000037, "seconds": 12.095000000000027}, "first-run:process_callback": {"calls": 18, "first_started": 5.0779999999999745, "last_ended": 10.609000000000037, "maximum_ended": 10.562000000000012, "maximum_seconds": 5.234000000000037, "maximum_started": 5.3279999999999745, "seconds": 5.453000000000088}, "first-run:process_start": {"calls": 1, "first_started": 5.093000000000075, "last_ended": 5.109000000000037, "maximum_ended": 5.109000000000037, "maximum_seconds": 0.01599999999996271, "maximum_started": 5.093000000000075, "seconds": 0.01599999999996271}, "first-run:run_process": {"calls": 1, "first_started": 5.0779999999999745, "last_ended": 10.609000000000037, "maximum_ended": 10.609000000000037, "maximum_seconds": 5.531000000000063, "maximum_started": 5.0779999999999745, "seconds": 5.531000000000063}, "register-replacement:inspect_runtime": {"calls": 1, "first_started": 13.093000000000075, "last_ended": 13.297000000000025, "maximum_ended": 13.297000000000025, "maximum_seconds": 0.2039999999999509, "maximum_started": 13.093000000000075, "seconds": 0.2039999999999509}, "resume:_admit_results": {"calls": 4, "first_started": 16.062000000000012, "last_ended": 26.514999999999986, "maximum_ended": 23.922000000000025, "maximum_seconds": 5.062999999999988, "maximum_started": 18.859000000000037, "seconds": 5.093999999999937}, "resume:_control": {"calls": 1446, "first_started": 13.609000000000037, "last_ended": 26.514999999999986, "maximum_ended": 17.031000000000063, "maximum_seconds": 0.031000000000062755, "maximum_started": 17.0, "seconds": 11.375999999999976}, "resume:_publish_result": {"calls": 1, "first_started": 19.0, "last_ended": 21.5, "maximum_ended": 21.5, "maximum_seconds": 2.5, "maximum_started": 19.0, "seconds": 2.5}, "resume:_verify_profile": {"calls": 5, "first_started": 13.609000000000037, "last_ended": 26.484000000000037, "maximum_ended": 26.484000000000037, "maximum_seconds": 2.4840000000000373, "maximum_started": 24.0, "seconds": 12.063000000000216}, "resume:process_callback": {"calls": 18, "first_started": 18.593000000000075, "last_ended": 23.968000000000075, "maximum_ended": 23.922000000000025, "maximum_seconds": 5.078999999999951, "maximum_started": 18.843000000000075, "seconds": 5.312000000000012}, "resume:process_start": {"calls": 1, "first_started": 18.609000000000037, "last_ended": 18.609000000000037, "maximum_ended": 18.609000000000037, "maximum_seconds": 0.0, "maximum_started": 18.609000000000037, "seconds": 0.0}, "resume:run_process": {"calls": 1, "first_started": 18.593000000000075, "last_ended": 23.968000000000075, "maximum_ended": 23.968000000000075, "maximum_seconds": 5.375, "maximum_started": 18.593000000000075, "seconds": 5.375}}, "timings_are_inclusive": true}
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_service.py:376: AssertionError
+_ test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust _
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000001C2DA8C2310>, namespace(root=WindowsPath('C...wsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_edit_is_versioned_derivat0/Оригінал.wav'))
+
+    def test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust(setup):
+        service, runtime, profile, audio = setup
+        created = job(setup)
+        result = service.run(created['id'])
+        source = result['sources'][0]['id']
+        original = service.read_transcript(created['id'], source)
+        edited = service.save_edit(created['id'], source, 'Відредагована похідна копія.')
+        register(service, runtime, trusted=False)
+>       assert service.acknowledge_interruption(created['id'], worker_stopped=True)['status'] == 'complete'
+E       AssertionError: assert 'paused' == 'complete'
+E         
+E         - complete
+E         + paused
+
+tests\transcription\test_service.py:412: AssertionError
+_________ test_unclean_runner_requires_explicit_review_before_resume __________
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000001C2DA8E57D0>, namespace(root=WindowsPath('C...wsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2ox70_9r/pytest/test_unclean_runner_requires_e0/Оригінал.wav'))
+
+    def test_unclean_runner_requires_explicit_review_before_resume(setup):
+        service, runtime, profile, audio = setup
+        created = job(setup)
+        path = service._job_root(created['id']) / 'job.json'
+        state = read_json(path)
+        state['status'] = 'running'
+        atomic_json(path, state, replace=True)
+        with pytest.raises(RuntimeError, match='prior runner'):
+            service.run(created['id'])
+        assert service.get_job(created['id'])['status'] == 'interrupted'
+        assert starts(runtime) == 0
+        service.acknowledge_interruption(created['id'], worker_stopped=True)
+>       assert service.resume(created['id'])['status'] == 'complete'
+E       AssertionError: assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_service.py:476: AssertionError
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-2ox70_9r\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/transcription/test_service.py::test_actual_process_receipts_reading_and_subtitle_rollover - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_service.py::test_isolated_worker_preserves_unicode_paths_and_diagnostics - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_service.py::test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_service.py::test_rebind_preserves_accepted_artifact_and_its_original_profile - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+  Bounded ASR phase diagnostic: {"events": [{"ended": 2.4840000000000373, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 0.06200000000001182}, {"ended": 2.5149999999999864, "error": null, "name": "_admit_results", "phase": "first-run", "started": 2.5}, {"ended": 5.0779999999999745, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 2.6399999999999864}, {"ended": 5.093000000000075, "error": null, "name": "_admit_results", "phase": "first-run", "started": 5.093000000000075}, {"ended": 5.109000000000037, "error": null, "name": "process_start", "phase": "first-run", "started": 5.093000000000075}, {"ended": 8.077999999999975, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 5.639999999999986}, {"ended": 8.093000000000075, "error": null, "name": "_publish_result", "phase": "first-run", "started": 5.484000000000037}, {"ended": 10.562000000000012, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 8.109000000000037}, {"ended": 10.562000000000012, "error": null, "name": "_admit_results", "phase": "first-run", "started": 5.343000000000075}, {"ended": 10.609000000000037, "error": "AudioError", "name": "run_process", "phase": "first-run", "started": 5.0779999999999745}, {"ended": 12.984000000000037, "error": null, "name": "_verify_profile", "phase": "first-run", "started": 10.639999999999986}, {"ended": 13.062000000000012, "error": null, "name": "_admit_results", "phase": "first-run", "started": 12.984000000000037}, {"ended": 13.297000000000025, "error": null, "name": "inspect_runtime", "phase": "register-replacement", "started": 13.093000000000075}, {"ended": 16.031000000000063, "error": null, "name": "_verify_profile", "phase": "resume", "started": 13.609000000000037}, {"ended": 16.062000000000012, "error": null, "name": "_admit_results", "phase": "resume", "started": 16.062000000000012}, {"ended": 18.593000000000075, "error": null, "name": "_verify_profile", "phase": "resume", "started": 16.187000000000012}, {"ended": 18.609000000000037, "error": null, "name": "_admit_results", "phase": "resume", "started": 18.609000000000037}, {"ended": 18.609000000000037, "error": null, "name": "process_start", "phase": "resume", "started": 18.609000000000037}, {"ended": 21.484000000000037, "error": null, "name": "_verify_profile", "phase": "resume", "started": 19.139999999999986}, {"ended": 21.5, "error": null, "name": "_publish_result", "phase": "resume", "started": 19.0}, {"ended": 23.922000000000025, "error": null, "name": "_verify_profile", "phase": "resume", "started": 21.514999999999986}, {"ended": 23.922000000000025, "error": null, "name": "_admit_results", "phase": "resume", "started": 18.859000000000037}, {"ended": 23.968000000000075, "error": "AudioError", "name": "run_process", "phase": "resume", "started": 18.593000000000075}, {"ended": 26.484000000000037, "error": null, "name": "_verify_profile", "phase": "resume", "started": 24.0}, {"ended": 26.514999999999986, "error": null, "name": "_admit_results", "phase": "resume", "started": 26.484000000000037}], "platform": "win32", "process_failures": [{"caught": 10.609000000000037, "error": "AudioError", "original_check": {"observed_exit_at": 10.593000000000075, "started": 5.109000000000037, "worker_until": 10.593000000000075}, "phase": "first-run"}, {"caught": 23.968000000000075, "error": "AudioError", "original_check": {"observed_exit_at": 23.952999999999975, "started": 18.609000000000037, "worker_until": 23.952999999999975}, "phase": "resume"}], "process_timeout": 5, "processes": [{"first_completed_wait": {"ended": 10.593000000000075, "returncode": 3, "started": 10.593000000000075}, "first_exit_poll": {"ended": 10.593000000000075, "returncode": 3, "started": 10.593000000000075}, "last_running_poll": {"ended": 5.187000000000012, "started": 5.187000000000012}, "owned_tree": true, "phase": "first-run", "poll_calls": 6, "returned": 5.109000000000037, "started": 5.093000000000075, "wait_calls": 3, "wait_timeouts": 1}, {"first_completed_wait": {"ended": 23.952999999999975, "returncode": 0, "started": 23.952999999999975}, "first_exit_poll": {"ended": 23.952999999999975, "returncode": 0, "started": 23.952999999999975}, "last_running_poll": {"ended": 18.702999999999975, "started": 18.702999999999975}, "owned_tree": true, "phase": "resume", "poll_calls": 6, "returned": 18.609000000000037, "started": 18.609000000000037, "wait_calls": 3, "wait_timeouts": 1}], "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "timings": {"first-run:_admit_results": {"calls": 4, "first_started": 2.5, "last_ended": 13.062000000000012, "maximum_ended": 10.562000000000012, "maximum_seconds": 5.218999999999937, "maximum_started": 5.343000000000075, "seconds": 5.311999999999898}, "first-run:_control": {"calls": 1442, "first_started": 0.06200000000001182, "last_ended": 13.077999999999975, "maximum_ended": 4.5, "maximum_seconds": 0.03199999999992542, "maximum_started": 4.468000000000075, "seconds": 11.676000000000272}, "first-run:_publish_result": {"calls": 1, "first_started": 5.484000000000037, "last_ended": 8.093000000000075, "maximum_ended": 8.093000000000075, "maximum_seconds": 2.6090000000000373, "maximum_started": 5.484000000000037, "seconds": 2.6090000000000373}, "first-run:_verify_profile": {"calls": 5, "first_started": 0.06200000000001182, "last_ended": 12.984000000000037, "maximum_ended": 10.562000000000012, "maximum_seconds": 2.4529999999999745, "maximum_started": 8.109000000000037, "seconds": 12.095000000000027}, "first-run:process_callback": {"calls": 18, "first_started": 5.0779999999999745, "last_ended": 10.609000000000037, "maximum_ended": 10.562000000000012, "maximum_seconds": 5.234000000000037, "maximum_started": 5.3279999999999745, "seconds": 5.453000000000088}, "first-run:process_start": {"calls": 1, "first_started": 5.093000000000075, "last_ended": 5.109000000000037, "maximum_ended": 5.109000000000037, "maximum_seconds": 0.01599999999996271, "maximum_started": 5.093000000000075, "seconds": 0.01599999999996271}, "first-run:run_process": {"calls": 1, "first_started": 5.0779999999999745, "last_ended": 10.609000000000037, "maximum_ended": 10.609000000000037, "maximum_seconds": 5.531000000000063, "maximum_started": 5.0779999999999745, "seconds": 5.531000000000063}, "register-replacement:inspect_runtime": {"calls": 1, "first_started": 13.093000000000075, "last_ended": 13.297000000000025, "maximum_ended": 13.297000000000025, "maximum_seconds": 0.2039999999999509, "maximum_started": 13.093000000000075, "seconds": 0.2039999999999509}, "resume:_admit_results": {"calls": 4, "first_started": 16.062000000000012, "last_ended": 26.514999999999986, "maximum_ended": 23.922000000000025, "maximum_seconds": 5.062999999999988, "maximum_started": 18.859000000000037, "seconds": 5.093999999999937}, "resume:_control": {"calls": 1446, "first_started": 13.609000000000037, "last_ended": 26.514999999999986, "maximum_ended": 17.031000000000063, "maximum_seconds": 0.031000000000062755, "maximum_started": 17.0, "seconds": 11.375999999999976}, "resume:_publish_result": {"calls": 1, "first_started": 19.0, "last_ended": 21.5, "maximum_ended": 21.5, "maximum_seconds": 2.5, "maximum_started": 19.0, "seconds": 2.5}, "resume:_verify_profile": {"calls": 5, "first_started": 13.609000000000037, "last_ended": 26.484000000000037, "maximum_ended": 26.484000000000037, "maximum_seconds": 2.4840000000000373, "maximum_started": 24.0, "seconds": 12.063000000000216}, "resume:process_callback": {"calls": 18, "first_started": 18.593000000000075, "last_ended": 23.968000000000075, "maximum_ended": 23.922000000000025, "maximum_seconds": 5.078999999999951, "maximum_started": 18.843000000000075, "seconds": 5.312000000000012}, "resume:process_start": {"calls": 1, "first_started": 18.609000000000037, "last_ended": 18.609000000000037, "maximum_ended": 18.609000000000037, "maximum_seconds": 0.0, "maximum_started": 18.609000000000037, "seconds": 0.0}, "resume:run_process": {"calls": 1, "first_started": 18.593000000000075, "last_ended": 23.968000000000075, "maximum_ended": 23.968000000000075, "maximum_seconds": 5.375, "maximum_started": 18.593000000000075, "seconds": 5.375}}, "timings_are_inclusive": true}
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_service.py::test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust - AssertionError: assert 'paused' == 'complete'
+  
+  - complete
+  + paused
+FAILED tests/transcription/test_service.py::test_unclean_runner_requires_explicit_review_before_resume - AssertionError: assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+================== 6 failed, 22 passed in 243.42s (0:04:03) ===================
+FAIL: tests/transcription/test_service.py: junit_passed=22, failed=6, skipped=0, pytest_exit=1

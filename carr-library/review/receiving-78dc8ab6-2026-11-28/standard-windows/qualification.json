@@ -1,0 +1,222 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "provenance": {
+    "kind": "completed job metadata and decoded job-log text",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "run_id": 46101830099,
+    "run_attempt": 1,
+    "job_id": 140845779437,
+    "branch": "carr/standard-installation-evaluation-20261128",
+    "workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "workflow_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101830099/job/140845779437",
+    "decoded_log_utf8_sha256": "69b6c0b3d6bbebcb42c3a68ea5195372ed6c1eb9bbfdd5daadba89d51096074c",
+    "decoded_log_characters": 315609,
+    "original_artifact_members_downloaded": false
+  },
+  "terminal": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T03:17:58Z",
+    "completed_at": "2026-11-28T03:25:17Z"
+  },
+  "source": {
+    "status": "PASS",
+    "modules": 11,
+    "passed": 345,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "all_suite_exits_zero": true,
+    "module_verdicts_file": "source-suite-verdicts.json"
+  },
+  "installed": {
+    "status": "PASS",
+    "passed": 345,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "subtests_passed": 22,
+    "seconds": 59.02,
+    "strict_xml": "INSTALLED_CASES_PASS 345"
+  },
+  "source_binding": {
+    "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+    "python_modules": 380,
+    "inventory_rows_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "inventory_hash_encoding": "UTF-8 JSON.stringify(python_files), no trailing LF",
+    "same_rows_as_linux": true,
+    "module_origin": "D:\\a\\_temp\\carr-standard-installation-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "wheel_sha256": "aa8e73d8da21f4136a75d2a3b3b6b5f0a8aabdf5702a2c4095a9eacf19c4b6c7",
+    "source_wheel_full_verifier": "PASS",
+    "private_core_bundle_source_wheel": {
+      "bundle_manifest_sha256": "4ca1b798cb936ec6f8e11123a6ca4118fae3c37f096f4461391fea96a99a1ef3",
+      "payload_files": 490,
+      "profile": "current-core-19-windows-pins",
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 395,
+      "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+      "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+      "wheel_sha256": "aa8e73d8da21f4136a75d2a3b3b6b5f0a8aabdf5702a2c4095a9eacf19c4b6c7"
+    }
+  },
+  "native_standard": {
+    "status": "PASS",
+    "assertion_count": 12,
+    "all_assertions_true": true,
+    "assertion_names": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "setup_sha256": "775391afe223ecf54180cf1312721c0a18b39dbce1fc7c7208dbbf2c000bbc0f",
+    "setup_bytes": 82413667,
+    "bundle_manifest_sha256": "4ca1b798cb936ec6f8e11123a6ca4118fae3c37f096f4461391fea96a99a1ef3",
+    "native_record_file": "native-standard.log-extracted.json",
+    "native_verdict_file": "native-verdict.log-extracted.json",
+    "setup_record_file": "setup-build.log-extracted.json",
+    "release_status": "unsigned-private-candidate",
+    "authenticode_verified": false,
+    "nvda_verified": false,
+    "unprivileged_account_qualification": "NOT_RUN",
+    "native_network_trace": "NOT_RUN"
+  },
+  "uploaded_artifact": {
+    "id": 15245514893,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NTUxNDg5Mw==",
+    "name": "carr-standard-installation-windows-2022-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+    "size_in_bytes": 139113,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245514893",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245514893/zip",
+    "expired": false,
+    "digest": "sha256:5e3fdb06ad87a6eae1278861afa34cf91cf21311e5338594a56d6fe338dba53d",
+    "created_at": "2026-11-28T03:25:11Z",
+    "updated_at": "2026-11-28T03:25:11Z",
+    "expires_at": "2026-12-05T03:25:10Z",
+    "workflow_run": {
+      "id": 46101830099,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+    }
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T03:17:59Z",
+      "completed_at": "2026-11-28T03:17:59Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T03:17:59Z",
+      "completed_at": "2026-11-28T03:18:00Z"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T03:18:00Z",
+      "completed_at": "2026-11-28T03:18:08Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T03:18:08Z",
+      "completed_at": "2026-11-28T03:18:09Z"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T03:18:09Z",
+      "completed_at": "2026-11-28T03:18:49Z"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T03:18:49Z",
+      "completed_at": "2026-11-28T03:18:50Z"
+    },
+    {
+      "name": "Require source standard installation and existing launcher contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T03:18:50Z",
+      "completed_at": "2026-11-28T03:19:34Z"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T03:19:34Z",
+      "completed_at": "2026-11-28T03:20:33Z"
+    },
+    {
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T03:20:33Z",
+      "completed_at": "2026-11-28T03:21:03Z"
+    },
+    {
+      "name": "Build one exact current core bundle and its standard setup",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T03:21:03Z",
+      "completed_at": "2026-11-28T03:22:55Z"
+    },
+    {
+      "name": "Require actual native standard Install Repair and Uninstall",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T03:22:55Z",
+      "completed_at": "2026-11-28T03:25:10Z"
+    },
+    {
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T03:25:10Z",
+      "completed_at": "2026-11-28T03:25:11Z"
+    }
+  ],
+  "limits": [
+    "Results apply only to78dc8ab6838e964bc115418c47c4ec3ef4226a91 and its exact tested setup; they are not inherited from5d or transferred to another commit.",
+    "The private setup is unsigned; Authenticode and NVDA are not verified, unprivileged-account and native-network-trace qualifications are NOT_RUN.",
+    "No setup binary, model, recording or private user data is included in these text receipts.",
+    "ZIP digest/size are matching GitHub metadata and upload-log observations; original ZIP/member bytes were not downloaded or rehashed."
+  ]
+}

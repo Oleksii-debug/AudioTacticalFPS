@@ -1,0 +1,80 @@
+{
+  "schema": "carr.source-review/1",
+  "date_utc": "2026-11-28",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "scope": "One existing e2e test module; fixture marker observation only. No production, workflow, branch, or deadline changes.",
+  "baseline": {
+    "commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+    "also_identical_at": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "path": "carr-library/tests/e2e/test_import_worker_publication.py",
+    "blob": "183472ece4d2681e1c8a073ac3aeab4f2f75c8cd",
+    "sha256": "9c72e8c24559219e5834792a5f889fd15bf90d37eb9a90812b6e5c15fcbb3f57"
+  },
+  "candidate": {
+    "blob": "063a1510a5125b3cf8918b66abd8c1747fb236c8",
+    "source_tree": "3f3c8b85c1e4b187eb8b990f317dc7aad08e2397",
+    "sha256": "46280f0b9faf41408e2d7cb1bf3cbeb911cfc1db9676b23b9e11b69d4e2c183e",
+    "readback": "EXACT"
+  },
+  "failure": {
+    "run_id": 46088683372,
+    "job_id": 140804190853,
+    "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "nodeid": "tests/e2e/test_import_worker_publication.py::test_stopped_child_before_commit_never_reports_completion[timeout-pdf]",
+    "trace_blob": "5e6e7db49eb8ecea5fd146b5005d1114e6adf121",
+    "trace_tree": "bb3edd7e2da191bc09ba2824d52d408f58dbdf2e",
+    "observation": "PermissionError [Errno 13] from pathlib.read_bytes -> io.open while the test observes its own before-commit marker. The traceback has no WinError value.",
+    "cause_limit": "The exact cause of the access denial is not established. This is not evidence of an import publication or process cleanup defect."
+  },
+  "source_basis": [
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Modules/_io/fileio.c",
+      "blob": "fee97f266f09d2618e36aee66d0bbfa108219eb3",
+      "observed": "The Windows FileIO open uses _wopen and raises failed opens through PyErr_SetFromErrnoWithFilenameObject."
+    },
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Python/errors.c",
+      "blob": "8e150c3d008b7ed25134fc586f9097fda5aa69a2",
+      "observed": "The errno/filename route constructs the exception from errno, message and filename, without supplying a native WinError."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/open-wopen?view=msvc-170",
+      "observed": "Microsoft documents EACCES for access and sharing denials, as well as directory opens. An EACCES observation alone therefore does not prove a temporary sharing conflict."
+    }
+  ],
+  "change": [
+    "Admit the additional errno-only EACCES form only on Windows and only when winerror is absent.",
+    "Retain explicit WinError 5/32/33 support and reject other error forms through the existing cleanup path.",
+    "Keep the original single startup deadline, child-exit check, atomic marker writer and exact PID acknowledgement."
+  ],
+  "preservation": {
+    "inverse_exact": true,
+    "old_named_tests": 17,
+    "old_assertion_lines": 98,
+    "original_test_bodies": "BYTE_IDENTICAL",
+    "original_3_and_15_second_budgets": "BYTE_IDENTICAL",
+    "production_stop": "UNCHANGED",
+    "atomic_writer": "BYTE_IDENTICAL"
+  },
+  "additive_tests": {
+    "cases": 9,
+    "named_tests": 2,
+    "method": "Actual Python child and atomic PID file; injected error observations only. Platform simulation replaces the test module's sys binding after native child/handle setup, not the real OS seen by pathlib or production cleanup.",
+    "coverage": [
+      "errno-only Windows EACCES",
+      "existing WinError 5, 32 and 33",
+      "non-Windows EACCES refusal",
+      "other errno and explicit unrelated WinError refusal",
+      "permanent access denial reaches the existing startup failure and reaps the actual child",
+      "already-exited child is refused despite the denied marker read",
+      "returned PID and marker bytes remain exact"
+    ]
+  },
+  "peer_review": {
+    "agent": "audio_render",
+    "result": "CLEAR",
+    "scope": "Exact inverse, actual child/handle/stop APIs, narrow error classification and unchanged assertions/deadlines.",
+    "execution": "NOT_RUN"
+  }
+}

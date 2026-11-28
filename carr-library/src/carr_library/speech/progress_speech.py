@@ -5,6 +5,7 @@ activation uses the same approved runtime configuration as Reader and Studio.
 The small temporary WAV belongs only to the notification and never enters a
 reading copy, production graph, cache or exported recording.
 """
+from contextlib import ExitStack
 import math
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,8 +13,11 @@ import threading
 import time
 
 from ..durable_state import local_path, regular
+from ..audio.cleanup import _pending_owners, retained_context
+from ..operations.models import ResourceCancelled
 from .player import WavePlayer
 from .runtime import SpeechSettings, VoiceRegistry
+from .synthesis_admission import ReaderSynthesisRequest
 
 _NOTICES = {
     'en': {'running': 'In progress', 'paused': 'Paused', 'resumed': 'Resumed',
@@ -29,46 +33,6 @@ _NOTICES = {
            'incomplete': 'Dokončenie nie je potvrdené', 'percent': 'percent',
            'unknown': 'Celkový rozsah práce zatiaľ nie je známy.'},
 }
-
-# The shared ProgressHub distinguishes a requested stop from acknowledgement,
-# and a missing observation from a failed operation. Neither means completion.
-for _language, _cancelling, _unavailable in (
-        ('en', 'Cancellation requested', 'Progress reporting is unavailable'),
-        ('uk', 'Надіслано запит на скасування', 'Повідомлення про прогрес недоступні'),
-        ('sk', 'Požiadavka na zrušenie', 'Hlásenie priebehu nie je dostupné')):
-    _NOTICES[_language].update(cancelling=_cancelling, unavailable=_unavailable)
-
-
-class SnapshotProgressSpeech:
-    """Adapt the selected local voice to ProgressFeedback's 0..100 contract."""
-    def __init__(self, provider):
-        self.provider = provider
-        self.library_root, self.label = provider.library_root, provider.label
-
-    @property
-    def quiescent(self):
-        return self.provider.quiescent
-
-    def format_progress(self, snapshot, *, kind):
-        from types import SimpleNamespace
-        event = SimpleNamespace(state=snapshot.state, percent=snapshot.percent,
-                                phase=' '.join(snapshot.phase.split())[:120])
-        return self.provider.notification_text(event, state='resumed' if kind == 'resumed' else None)
-
-    def speak_progress(self, text, *, volume, cancelled):
-        if type(volume) is not int or not 0 <= volume <= 100:
-            raise ValueError('Progress volume must be an integer from zero to one hundred.')
-        return self.provider.speak_progress(text, volume=volume / 100, cancelled=cancelled)
-
-    def copy_selection(self):
-        return SnapshotProgressSpeech(self.provider.copy_selection())
-
-    def close(self):
-        self.provider.close()
-
-
-def snapshot_speech_provider(provider):
-    return SnapshotProgressSpeech(provider) if isinstance(provider, LocalProgressSpeech) else provider
 
 
 class _OwnedProgressRegistry:
@@ -198,86 +162,100 @@ class LocalProgressSpeech:
             return False
         if not self._run_lock.acquire(blocking=False):
             return False
-        temporary = player = None
-        owned_call = False
-        try:
-            if self._registry_owner is not None:
-                owned_call = self._registry_owner.enter()
-                if not owned_call:
-                    return False
-            if not self.quiescent:
-                raise RuntimeError('The previous progress audio device has not confirmed silence.')
-            self._guard()
-            # No substitution if a configured voice was removed or disabled.
-            if self.registry.get(self.voice.id) != self.voice:
-                raise ValueError('The selected progress voice changed. Select it again.')
-            deadline = self._clock() + 30.0
+        lifetime = ExitStack()
+        lifetime.callback(self._run_lock.release)
+        # These contexts already belong to this notification. A pending native
+        # family retains the exact outer files, serialization and registry use
+        # until its existing cleanup owners confirm quiescence.
+        with retained_context(lifetime):
+            temporary = player = None
+            try:
+                if self._registry_owner is not None:
+                    if not self._registry_owner.enter():
+                        return False
+                    lifetime.callback(self._registry_owner.leave)
+                if not self.quiescent:
+                    raise RuntimeError('The previous progress audio device has not confirmed silence.')
+                self._guard()
+                # No substitution if a configured voice was removed or disabled.
+                if self.registry.get(self.voice.id) != self.voice:
+                    raise ValueError('The selected progress voice changed. Select it again.')
+                deadline = self._clock() + 30.0
 
-            def stopped():
-                return self._closed.is_set() or cancelled() or self._clock() >= deadline
+                def stopped():
+                    return self._closed.is_set() or cancelled() or self._clock() >= deadline
 
-            if stopped():
-                return False
-            player = self._player_factory()
-            if not player.available:
-                raise RuntimeError('Local progress playback is unavailable on this computer.')
-            temporary = TemporaryDirectory(prefix='carr-progress-voice-')
-            output = Path(temporary.name) / 'notification.wav'
-            result = self.registry.synthesize(text, self.voice.id, output,
-                settings=SpeechSettings(volume=round(volume * 100), timeout_seconds=20,
-                                        max_output_bytes=2 * 1024 * 1024),
-                cancelled=stopped)
-            if stopped():
-                return False
-            if (Path(result.path) != output or result.voice_id != self.voice.id
-                    or not 0 < result.duration_seconds <= 20
-                    or output.stat().st_size > 2 * 1024 * 1024):
-                raise ValueError('The progress voice exceeded its private notification budget.')
-            self._guard()
-            self._possibly_audible = True
-            if stopped():
-                self._possibly_audible = False
-                return False
-            player.play(output)
-            while True:
                 if stopped():
                     return False
-                state = player.state
-                if state == 'stopped':
-                    return True
-                if state != 'playing':
-                    raise RuntimeError('The progress playback device did not complete normally.')
-                time.sleep(.02)
-        except InterruptedError:
-            if self._closed.is_set() or cancelled():
-                return False
-            raise
-        finally:
-            try:
-                if player is not None:
-                    try:
-                        player.close()
-                        self._possibly_audible = False
-                    except (OSError, RuntimeError):
-                        try:
-                            quiet = player.state in ('stopped', 'paused', 'error')
-                        except (OSError, RuntimeError):
-                            quiet = False
-                        self._possibly_audible = not quiet
-                        if not quiet:
-                            # Retain the owned device and its file rather than
-                            # losing uncertain native playback on a failed close.
-                            self._retained = (player, temporary)
-                            temporary = None
-                        raise
+                player = self._player_factory()
+                if not player.available:
+                    raise RuntimeError('Local progress playback is unavailable on this computer.')
+                temporary = TemporaryDirectory(prefix='carr-progress-voice-')
+                output = Path(temporary.name) / 'notification.wav'
+
+                def verify(*, rendering):
+                    # Activation's guard reads saved settings only. This request
+                    # is created on the existing feedback worker, so its direct
+                    # owner check never accesses wx or another window's controls.
+                    self._guard()
+                    if self.registry.get(self.voice.id) != self.voice:
+                        raise ValueError('The selected progress voice changed. Select it again.')
+
+                request = ReaderSynthesisRequest(self.registry, self.voice,
+                    SpeechSettings(volume=round(volume * 100), timeout_seconds=20,
+                                   max_output_bytes=2 * 1024 * 1024),
+                    root=self.library_root, cancelled=stopped,
+                    dispatch=lambda callback: callback(), verify=verify)
+                result = request.run(text, output,
+                    admission_timeout=max(0.0, deadline - self._clock()))
+                if stopped():
+                    return False
+                if (Path(result.path) != output or result.voice_id != self.voice.id
+                        or not 0 < result.duration_seconds <= 20
+                        or output.stat().st_size > 2 * 1024 * 1024):
+                    raise ValueError('The progress voice exceeded its private notification budget.')
+                self._guard()
+                self._possibly_audible = True
+                if stopped():
+                    self._possibly_audible = False
+                    return False
+                player.play(output)
+                while True:
+                    if stopped():
+                        return False
+                    state = player.state
+                    if state == 'stopped':
+                        return True
+                    if state != 'playing':
+                        raise RuntimeError('The progress playback device did not complete normally.')
+                    time.sleep(.02)
+            except (InterruptedError, ResourceCancelled) as error:
+                if _pending_owners(error):
+                    raise
+                if self._closed.is_set() or cancelled():
+                    return False
+                raise
             finally:
                 try:
-                    if temporary is not None:
-                        temporary.cleanup()
+                    if player is not None:
+                        try:
+                            player.close()
+                            self._possibly_audible = False
+                        except (OSError, RuntimeError):
+                            try:
+                                quiet = player.state in ('stopped', 'paused', 'error')
+                            except (OSError, RuntimeError):
+                                quiet = False
+                            self._possibly_audible = not quiet
+                            if not quiet:
+                                # Retain the owned device and its file rather than
+                                # losing uncertain native playback on a failed close.
+                                self._retained = (player, temporary)
+                                temporary = None
+                            raise
                 finally:
-                    self._run_lock.release()
-                    if owned_call:
-                        self._registry_owner.leave()
+                    if temporary is not None:
+                        lifetime.callback(temporary.cleanup)
 
 
 def activate_progress_voice(library_root, voice_id, *, _registry_factory=None):

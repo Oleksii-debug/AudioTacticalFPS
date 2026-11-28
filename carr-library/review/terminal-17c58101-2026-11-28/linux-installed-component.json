@@ -1,0 +1,63 @@
+{
+  "schema": "carr-component-terminal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run_id": 46089080509,
+  "job_id": 140805511883,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46089080509/job/140805511883",
+  "mode": "installed",
+  "platform": "ubuntu-24.04",
+  "python": "3.11.18",
+  "status": "completed",
+  "conclusion": "failure",
+  "started_at": "2026-11-28T00:40:17Z",
+  "completed_at": "2026-11-28T00:45:11Z",
+  "log": {
+    "provenance": "Completed GitHub job log decoded by connector; SHA256 covers those exact decoded UTF-8 text bytes, not an original ZIP member.",
+    "sha256": "13e68b9beae5c094cc24b5e1caca53fd39d405992906b463921407fde26f2fa2",
+    "characters": 175490
+  },
+  "cases": {
+    "passed": 2181,
+    "failed": 5,
+    "skipped": 0,
+    "subtests_passed": 12,
+    "duration_seconds": 214.95
+  },
+  "module_totals_available": false,
+  "failures": [
+    "FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[cancel] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.",
+    "FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[identity] - AssertionError: Regex pattern did not match.",
+    "FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[diagnostic] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.",
+    "FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[staging] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.",
+    "FAILED tests/audio/test_capture_access_diagnostic.py::test_changed_original_receipt_is_refused_before_native_open - FileExistsError: /tmp/pytest-of-runner/pytest-0/test_changed_original_receipt_0/failed-capture.json"
+  ],
+  "groups": [
+    {
+      "cases": 4,
+      "family": "New process deadline fixture budget",
+      "evidence": "All four fresh-caller-guard cases reject AudioBudget(max_output_bytes=1024) before their child/guard assertion. The existing model minimum is 4096; fixture-only successor 79948bafb1a91a6c4ffc3cc70260fec6a1b3b33d is absent from this head."
+    },
+    {
+      "cases": 1,
+      "family": "Capture diagnostic receipt mutation fixture",
+      "evidence": "The deliberate receipt mutation calls create-only atomic_json without replace=True and raises FileExistsError before reaching the intended changed-receipt guard. Production diagnostic behavior is not exercised by this failed fixture setup."
+    }
+  ],
+  "new_fixture_trace": {
+    "path": "capture-receipt-mutation-failure.txt",
+    "sha256": "286146ea62f4856cb9a26e654a0bd206ae52b298293a17e4d226caa75168e8e1"
+  },
+  "installed_inventory": {
+    "python_modules": 379,
+    "source_inventory_sha256": "2a063d125cbb193747c27032df80fb6a38d5b4afeea76af2c2a54c831b91d487"
+  },
+  "artifact_from_completed_upload_log": {
+    "id": 15239958659,
+    "name": "carr-component-followup-ubuntu-24.04-installed-17c581015fc1ca6f3294f4cce1fe894f33a843cd-1",
+    "size_bytes": 41961,
+    "sha256": "3dd80d0268c5258194966538a42e6e3dc47a3978c99cedfaf55ef04f91e9448d",
+    "member_bytes_decoded": false
+  },
+  "qualification": "FAILED. These terminal results do not qualify the complete application, Windows native behavior, an installer or a final release."
+}

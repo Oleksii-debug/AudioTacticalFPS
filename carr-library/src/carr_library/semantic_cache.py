@@ -22,14 +22,12 @@ from .data_paths import guard_data_directory
 
 DIMENSIONS = 384
 MAX_BATCH = 512
-# Includes a full valid SQLite row, not just an individual field.
-_MAX_RECORD_BYTES = 16 * 1024
 _PACK = struct.Struct('<384d')
 _HEX = re.compile('[0-9a-f]{64}')
 _APPLICATION_ID = 0x43415245
 _SCHEMA = (
-    'CREATE TABLE embedding (identity TEXT PRIMARY KEY NOT NULL, vector BLOB NOT NULL, '
-    'checksum TEXT NOT NULL, touched INTEGER NOT NULL)',
+    'CREATE TABLE embedding (identity TEXT PRIMARY KEY, vector BLOB NOT NULL, '
+    'checksum TEXT NOT NULL, touched INTEGER NOT NULL) WITHOUT ROWID',
     'CREATE INDEX embedding_recent ON embedding(touched,identity)',
 )
 
@@ -108,24 +106,6 @@ def _next_touched(db):
     return max(time_ns(), previous + 1)
 
 
-def _bounded_rows(db, identities):
-    """Keep healthy neighbors when a corrupt record exceeds SQLite's limit."""
-    try:
-        return db.execute('SELECT identity,vector,checksum FROM embedding WHERE identity IN ('
-                          + ','.join('?' for _ in identities) + ') '
-                          "AND typeof(vector)='blob' AND length(vector)=? "
-                          "AND typeof(checksum)='text' AND length(checksum)=64",
-                          (*identities, _PACK.size)).fetchall()
-    except sqlite3.DataError as exc:
-        if getattr(exc, 'sqlite_errorcode', None) != sqlite3.SQLITE_TOOBIG:
-            raise
-        if len(identities) == 1:
-            return []
-        middle = len(identities) // 2
-        return (_bounded_rows(db, identities[:middle])
-                + _bounded_rows(db, identities[middle:]))
-
-
 class EmbeddingCache:
     """Independent SQLite transactions with finite disk, memory and lock budgets.
 
@@ -141,7 +121,7 @@ class EmbeddingCache:
         self.directory = guard_data_directory(directory, purpose='embedding cache')
         if '..' in self.directory.parts:
             raise ValueError('Embedding cache paths must not contain parent traversal.')
-        self.path = self.directory / ('embeddings-v2-' + self.model + '.sqlite')
+        self.path = self.directory / ('embeddings-' + self.model + '.sqlite')
         self.available = True
         self.last_error = ''
 
@@ -170,9 +150,6 @@ class EmbeddingCache:
         _regular(self.path, self.budget.max_bytes)
         db = sqlite3.connect(self.path, timeout=0, isolation_level=None)
         try:
-            # SQLite's length(TEXT) may read the entire value in native memory.
-            # Valid rows are below 4 KiB; reject corrupt record allocations too.
-            db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, _MAX_RECORD_BYTES)
             db.execute('PRAGMA trusted_schema=OFF')
             db.execute('PRAGMA temp_store=MEMORY')
             db.execute('PRAGMA cache_size=-2048')
@@ -191,12 +168,12 @@ class EmbeddingCache:
                     for statement in _SCHEMA:
                         db.execute(statement)
                     db.execute('PRAGMA application_id=' + str(_APPLICATION_ID))
-                    db.execute('PRAGMA user_version=2')
+                    db.execute('PRAGMA user_version=1')
                     db.commit()
                 except BaseException:
                     db.rollback()
                     raise
-            elif schema != _SCHEMA or app_id != _APPLICATION_ID or version != 2:
+            elif schema != _SCHEMA or app_id != _APPLICATION_ID or version != 1:
                 raise ValueError('Unrecognized embedding cache schema.')
             page_size = db.execute('PRAGMA page_size').fetchone()[0]
             maximum = self.budget.max_bytes // page_size
@@ -216,7 +193,8 @@ class EmbeddingCache:
         result = {}
         try:
             with self._open() as db:
-                rows = _bounded_rows(db, identities)
+                rows = db.execute('SELECT identity,vector,checksum FROM embedding WHERE identity IN ('
+                                  + ','.join('?' for _ in identities) + ')', identities)
                 for key, packed, checksum in rows:
                     if (not isinstance(packed, bytes) or len(packed) != _PACK.size
                             or sha256((self.model + key).encode('ascii') + packed).hexdigest() != checksum):

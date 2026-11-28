@@ -1,0 +1,4 @@
+{"source_pages": 50000, "phase": "build", "outcome": "measured", "worker_seconds": 699.3280000000004, "search_timeouts": 0}
+{"source_pages": 50000, "phase": "phrase", "outcome": "measured", "worker_seconds": 15.04699999999957, "search_timeouts": 0}
+{"source_pages": 50000, "phase": "thematic", "outcome": "measured", "worker_seconds": 14.42200000000048, "search_timeouts": 0}
+{"evidence": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\measurement-evidence\\experiment-windows50000\\source-pages.json", "outcome": "measured", "performance_acceptance": "NOT_ASSESSED"}

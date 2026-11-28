@@ -1,0 +1,29 @@
+2026-11-28T02:36:41.8248261Z   ref: 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:46.8987137Z [command]/usr/bin/git rev-parse --verify --quiet 5d19dde77aca6a257ee601c1bc49b8504c342cee^{object}
+2026-11-28T02:36:46.8987571Z 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:46.8991252Z [command]/usr/bin/git checkout --progress --force 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:46.9752616Z Note: switching to '5d19dde77aca6a257ee601c1bc49b8504c342cee'.
+2026-11-28T02:36:46.9834267Z 5d19dde77aca6a257ee601c1bc49b8504c342cee
+2026-11-28T02:36:47.4372885Z if ($sourceCommit -cne '5d19dde77aca6a257ee601c1bc49b8504c342cee') { throw 'Checkout differs from the exact event head.' }
+2026-11-28T02:37:07.7608745Z {"payload_files": 490, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee", "source_tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a", "wheel_sha256": "74dfb392e6c3ba69ed39b98070dde13b43dea4fb5e283c71b28b4a6e9208faec"}
+2026-11-28T02:37:46.2015244Z .PASS: tests/ui/test_progress_voice_actions.py: junit_passed=38, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:46.9692398Z PASS: tests/ui/test_progress_job_review.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:47.0029443Z PASS: tests/ui/test_reader_synthesis.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:48.6386499Z PASS: tests/speech/test_synthesis_admission.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:49.3570617Z PASS: tests/audio/test_model_voices.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:49.4284687Z PASS: tests/speech/test_registered_studio_voices.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:49.9943419Z .PASS: tests/speech/test_session.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:50.8135747Z PASS: tests/speech/test_reading_tabs.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:50.8264158Z PASS: tests/storage/test_reader_synthesis_backup.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:51.6316006Z ..PASS: tests/ui/test_reader_tabs.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:52.2006512Z ..PASS: tests/ui/test_save_all_access.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:52.7047402Z ..PASS: tests/storage/test_reading_tabs_backup.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:53.8693846Z PASS: tests/speech/test_source.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:53.9873035Z PASS: tests/speech/test_voice_preferences.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:54.2416476Z tests/storage/test_voice_preferences_backup.py PASS: tests/ui/test_voice_preferences_dialog.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:54.8560333Z PASS: tests/storage/test_voice_preferences_backup.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:37:54.8607664Z Required suites complete: 16; passed=16; failed=0
+2026-11-28T02:37:54.9213423Z   name: carr-reader-voice-controls-ubuntu-24.04-source-5d19dde77aca6a257ee601c1bc49b8504c342cee-1
+2026-11-28T02:37:55.4203995Z Uploading artifact: carr-reader-voice-controls-ubuntu-24.04-source-5d19dde77aca6a257ee601c1bc49b8504c342cee-1.zip
+2026-11-28T02:37:56.0364853Z Artifact carr-reader-voice-controls-ubuntu-24.04-source-5d19dde77aca6a257ee601c1bc49b8504c342cee-1 successfully finalized. Artifact ID 15244297318
+2026-11-28T02:37:56.0366330Z Artifact carr-reader-voice-controls-ubuntu-24.04-source-5d19dde77aca6a257ee601c1bc49b8504c342cee-1 has been successfully uploaded! Final size is 22643 bytes. Artifact ID is 15244297318

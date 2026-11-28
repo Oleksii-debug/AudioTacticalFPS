@@ -1,0 +1,38 @@
+{
+  "schema": "carr-ci-terminal-observation/1",
+  "head": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "run_id": 46075228427,
+  "job_id": 140761287029,
+  "job_name": "Updated components / windows-2022 / installed",
+  "mode": "Windows installed",
+  "conclusion": "cancelled",
+  "started_at": "2026-11-27T22:17:38Z",
+  "completed_at": "2026-11-27T23:37:38Z",
+  "elapsed_seconds": 4800,
+  "provenance": {
+    "kind": "completed-job decoded log and GitHub job metadata",
+    "decoded_utf8_sha256": "330b6c08f16750529f51776f0e8221daa13bf633d87230892af4495c85bc2269",
+    "decoded_characters": 2189768,
+    "original_artifact_member_bytes": false
+  },
+  "result": {
+    "final_case_totals": null,
+    "strict_installed_pass_receipt": false,
+    "terminal_pytest_summary": false,
+    "qualification": "NOT_ESTABLISHED",
+    "observed_error": "ValueError: the environment variable is longer than 32767 characters",
+    "location": "pytest setup/teardown assigning PYTEST_CURRENT_TEST for tests/catalog/test_epub_metadata.py::test_bad_xml",
+    "cause_observed": "The parameter ID includes the original over-limit XML bytes.",
+    "known_correction": {
+      "source_head": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+      "test_blob": "7b1dc2c59861612bbec77e8edca89187092a15f4",
+      "scope": "Only the oversized parameter receives the bounded explicit ID xml-over-limit; payload and assertions remain unchanged."
+    }
+  },
+  "limitations": [
+    "Cancellation and incomplete reporting are retained as observed; this is not an aggregate PASS.",
+    "No final case count is inferred from partial progress characters.",
+    "No running-job log was fetched.",
+    "No private model, runtime, user data, environment dump or executable is included."
+  ]
+}

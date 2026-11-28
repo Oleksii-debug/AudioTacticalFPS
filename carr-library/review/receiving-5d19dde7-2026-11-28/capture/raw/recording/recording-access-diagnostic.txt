@@ -1,0 +1,332 @@
+{
+  "schema": "carr-ci-capture-access-diagnostic/1",
+  "status": "DIAGNOSED",
+  "application_acceptance": "NOT_ASSESSED",
+  "capture_started": false,
+  "sample_buffers_requested": false,
+  "device_fallback": false,
+  "policy_changes": false,
+  "physical_microphone": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "executable": "D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+  "access_settings": {
+    "status": "DIAGNOSED",
+    "registry_writes": false,
+    "consent_changes": false,
+    "device_access_attempt": false,
+    "physical_microphone": "NOT_RUN",
+    "windows": [
+      10,
+      0,
+      20348,
+      2,
+      ""
+    ],
+    "settings": [
+      {
+        "label": "current-user",
+        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone",
+        "value_name": "Value",
+        "registry_type": 1,
+        "value": "Deny"
+      },
+      {
+        "label": "current-user-desktop",
+        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone\\NonPackaged",
+        "value_name": "Value",
+        "registry_type": 1,
+        "value": "Allow"
+      },
+      {
+        "label": "machine",
+        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone",
+        "value_name": "Value",
+        "registry_type": 1,
+        "value": "Allow"
+      },
+      {
+        "label": "machine-desktop",
+        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone\\NonPackaged",
+        "value_name": "Value",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      },
+      {
+        "label": "machine-policy",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+        "value_name": "LetAppsAccessMicrophone",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      },
+      {
+        "label": "machine-policy",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+        "value_name": "LetDesktopAppsAccessMicrophone",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      },
+      {
+        "label": "machine-policy",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+        "value_name": "LetAppsAccessMicrophone_ForceAllowUnsigned",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      },
+      {
+        "label": "machine-policy",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+        "value_name": "LetAppsAccessMicrophone_ForceDenyUnsigned",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      },
+      {
+        "label": "remote-session-policy",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+        "value_name": "fDisableAudioCapture",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      },
+      {
+        "label": "remote-session-policy",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+        "value_name": "fDisableAudio",
+        "state": "NOT_CONFIGURED_AT_THIS_KEY"
+      }
+    ],
+    "process_session_id": 2,
+    "session_name": "UNSET_OR_OTHER",
+    "sources": [
+      "https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-activateaudiointerfaceasync",
+      "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-privacy"
+    ]
+  },
+  "failed_capture": {
+    "sha256": "9e87b60c2979ee9ff5b908ded517a751c901e88c8427c880ad3b84f91907afaa",
+    "selected_device": {
+      "id": "16f894e0a8ead76c884b0ed2ff8177b13f9c4b09587887875dff4711fec755ad",
+      "name": "CABLE Output (VB-Audio Virtual Cable)"
+    },
+    "status": "FAILED"
+  },
+  "script_sha256": "62bccd95920b327937ffc0b9291b1ee6e609bd194d57524f3f1e8f2db6baa5f3",
+  "ffmpeg_sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+  "selected_device": {
+    "id": "16f894e0a8ead76c884b0ed2ff8177b13f9c4b09587887875dff4711fec755ad",
+    "name": "CABLE Output (VB-Audio Virtual Cable)",
+    "alternative": "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{3AD88171-BF7B-4F52-8B3E-1F835DA0D920}"
+  },
+  "native_child": {
+    "exit_code": 0,
+    "stderr": ""
+  },
+  "native_input_open": {
+    "status": "DIAGNOSED",
+    "scope": "selected moniker only; no recording started",
+    "selected_moniker": "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{3AD88171-BF7B-4F52-8B3E-1F835DA0D920}",
+    "selected_friendly_name": "CABLE Output (VB-Audio Virtual Cable)",
+    "physical_microphone": "NOT_RUN",
+    "policy_changes": false,
+    "fallback": false,
+    "wave_in_id": 0,
+    "wave_in_trials": [
+      {
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      },
+      {
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      },
+      {
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      },
+      {
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      }
+    ],
+    "wasapi": {
+      "scope": "exact selected native input only",
+      "capture_started": false,
+      "buffers_requested": false,
+      "shared_mode": true,
+      "property_changes": false,
+      "device_fallback": false,
+      "calls": [
+        {
+          "operation": "waveIn.endpoint.before.size",
+          "mmresult": 0
+        },
+        {
+          "operation": "waveIn.endpoint.before.value",
+          "mmresult": 0
+        },
+        {
+          "operation": "CoCreateInstance.IMMDeviceEnumerator",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMDeviceEnumerator.GetDevice",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMDevice.GetState.before",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "QueryInterface.IMMEndpoint",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMEndpoint.GetDataFlow",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMDevice.Activate.IAudioClient",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IAudioClient.GetDevicePeriod",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IAudioClient.GetMixFormat",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "waveIn.endpoint.pre_initialize.size",
+          "mmresult": 0
+        },
+        {
+          "operation": "waveIn.endpoint.pre_initialize.value",
+          "mmresult": 0
+        },
+        {
+          "operation": "IAudioClient.Initialize.shared",
+          "hresult": "0x80070005"
+        },
+        {
+          "operation": "IMMDevice.GetState.after",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "waveIn.endpoint.after.size",
+          "mmresult": 0
+        },
+        {
+          "operation": "waveIn.endpoint.after.value",
+          "mmresult": 0
+        }
+      ],
+      "endpoint_id": "{0.0.1.00000000}.{3ad88171-bf7b-4f52-8b3e-1f835da0d920}",
+      "state_before": 1,
+      "data_flow": 1,
+      "device_period_100ns": {
+        "default": 100000,
+        "minimum": 30000
+      },
+      "mix_format": {
+        "tag": 65534,
+        "channels": 2,
+        "rate": 48000,
+        "bits": 32,
+        "block_align": 8,
+        "average_bytes_per_second": 384000,
+        "extra_bytes": 22
+      },
+      "stream_initialized": false,
+      "state_after": 1,
+      "endpoint_unchanged": true
+    }
+  }
+}

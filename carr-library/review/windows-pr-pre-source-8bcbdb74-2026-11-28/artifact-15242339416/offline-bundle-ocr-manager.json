@@ -1,0 +1,82 @@
+PASS: installed wheel records carr_library/extract/model_catalog.py
+PASS: installed file is outside the source checkout: carr_library/extract/model_catalog.py
+PASS: installed wheel checksum and size match: carr_library/extract/model_catalog.py
+PASS: installed wheel records carr_library/extract/ocr_model_store.py
+PASS: installed file is outside the source checkout: carr_library/extract/ocr_model_store.py
+PASS: installed wheel checksum and size match: carr_library/extract/ocr_model_store.py
+PASS: installed wheel records carr_library/extract/managed_ocr.py
+PASS: installed file is outside the source checkout: carr_library/extract/managed_ocr.py
+PASS: installed wheel checksum and size match: carr_library/extract/managed_ocr.py
+PASS: installed wheel records carr_library/extract/ocr_model_catalog.py
+PASS: installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py
+PASS: installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py
+PASS: installed wheel records carr_library/extract/ocr-model-catalog.json
+PASS: installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json
+PASS: installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json
+PASS: installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE
+PASS: installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE
+PASS: installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE
+PASS: installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE
+PASS: installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE
+PASS: installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE
+PASS: installed wheel records carr_library/ui/ocr_model_manager.py
+PASS: installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py
+PASS: installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py
+PASS: installed wheel records carr_library/__main__.py
+PASS: installed file is outside the source checkout: carr_library/__main__.py
+PASS: installed wheel checksum and size match: carr_library/__main__.py
+PASS: catalogue and UI imports resolve to the verified installed wheel
+PASS: catalogue API fingerprints the installed JSON bytes
+PASS: fast catalogue contains language and script models
+PASS: fast license matches both its reviewed Git blob and wheel record
+PASS: best catalogue contains language and script models
+PASS: best license matches both its reviewed Git blob and wheel record
+PASS: fast installed CLI exits successfully without downloads
+PASS: fast installed CLI reads the exact catalogue and empty private store
+PASS: best installed CLI exits successfully without downloads
+PASS: best installed CLI reads the exact catalogue and empty private store
+PASS: catalogue and CLI inspection create no model or application files
+PASS: native wx platform matches the requested acceptance platform
+PASS: native model-manager controls expose readable accessibility names
+PASS: model profile and selectable list use native wx controls
+PASS: model details, estimates, source and status are read-only
+PASS: native model manager starts with the full Fast catalogue and no selection
+PASS: native event reaches Find OCR models by language, script or identifier
+PASS: native search readback preserves Ukrainian
+PASS: Ukrainian search resolves the native ukr row
+PASS: native event reaches OCR models; Space selects or clears a model
+PASS: native details read back the selected language and exact revision
+PASS: native event reaches OCR models; Space selects or clears a model
+PASS: native checklist selection updates the spoken-text summary
+PASS: native event reaches Find OCR models by language, script or identifier
+PASS: native search readback preserves Latin
+PASS: Latin search exposes the official script model
+PASS: filtering retains and discloses the hidden Ukrainian selection
+PASS: native event reaches button
+PASS: Select all shown checks actual visible native rows
+PASS: native event reaches OCR model profile
+PASS: Best profile has separate selections and its own exact revision
+PASS: native event reaches button
+PASS: native event reaches OCR model profile
+PASS: returning to Fast preserves all Fast selections and estimate
+PASS: native event reaches OCR model profile
+PASS: returning to Best preserves its independent selection
+PASS: native event reaches button
+PASS: Clear selection clears every Best selection
+PASS: native event reaches OCR model profile
+PASS: clearing Best leaves Fast selections unchanged
+PASS: native event reaches button
+PASS: native event reaches Find OCR models by language, script or identifier
+PASS: native search readback preserves no-model-matches-this-fixture
+PASS: an empty native search has readable recovery guidance
+PASS: native event reaches Find OCR models by language, script or identifier
+PASS: native search readback preserves Latin
+PASS: native search recovers without restoring cleared selections
+PASS: inspection has not started an installation or selected a source folder
+PASS: parent unsaved note is unchanged while the model dialog is open
+PASS: native event reaches button
+PASS: Close completes the actual native modal without installing models
+PASS: parent note and usable parent window survive dialog closure
+PASS: native model inspection creates no model or application files
+PASS: no Python network operation was attempted
+{"status": "PASS", "checks": 81, "cases": ["installed wheel records carr_library/extract/model_catalog.py", "installed file is outside the source checkout: carr_library/extract/model_catalog.py", "installed wheel checksum and size match: carr_library/extract/model_catalog.py", "installed wheel records carr_library/extract/ocr_model_store.py", "installed file is outside the source checkout: carr_library/extract/ocr_model_store.py", "installed wheel checksum and size match: carr_library/extract/ocr_model_store.py", "installed wheel records carr_library/extract/managed_ocr.py", "installed file is outside the source checkout: carr_library/extract/managed_ocr.py", "installed wheel checksum and size match: carr_library/extract/managed_ocr.py", "installed wheel records carr_library/extract/ocr_model_catalog.py", "installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py", "installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py", "installed wheel records carr_library/extract/ocr-model-catalog.json", "installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json", "installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json", "installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE", "installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE", "installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE", "installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE", "installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE", "installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE", "installed wheel records carr_library/ui/ocr_model_manager.py", "installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py", "installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py", "installed wheel records carr_library/__main__.py", "installed file is outside the source checkout: carr_library/__main__.py", "installed wheel checksum and size match: carr_library/__main__.py", "catalogue and UI imports resolve to the verified installed wheel", "catalogue API fingerprints the installed JSON bytes", "fast catalogue contains language and script models", "fast license matches both its reviewed Git blob and wheel record", "best catalogue contains language and script models", "best license matches both its reviewed Git blob and wheel record", "fast installed CLI exits successfully without downloads", "fast installed CLI reads the exact catalogue and empty private store", "best installed CLI exits successfully without downloads", "best installed CLI reads the exact catalogue and empty private store", "catalogue and CLI inspection create no model or application files", "native wx platform matches the requested acceptance platform", "native model-manager controls expose readable accessibility names", "model profile and selectable list use native wx controls", "model details, estimates, source and status are read-only", "native model manager starts with the full Fast catalogue and no selection", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves Ukrainian", "Ukrainian search resolves the native ukr row", "native event reaches OCR models; Space selects or clears a model", "native details read back the selected language and exact revision", "native event reaches OCR models; Space selects or clears a model", "native checklist selection updates the spoken-text summary", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves Latin", "Latin search exposes the official script model", "filtering retains and discloses the hidden Ukrainian selection", "native event reaches button", "Select all shown checks actual visible native rows", "native event reaches OCR model profile", "Best profile has separate selections and its own exact revision", "native event reaches button", "native event reaches OCR model profile", "returning to Fast preserves all Fast selections and estimate", "native event reaches OCR model profile", "returning to Best preserves its independent selection", "native event reaches button", "Clear selection clears every Best selection", "native event reaches OCR model profile", "clearing Best leaves Fast selections unchanged", "native event reaches button", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves no-model-matches-this-fixture", "an empty native search has readable recovery guidance", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves Latin", "native search recovers without restoring cleared selections", "inspection has not started an installation or selected a source folder", "parent unsaved note is unchanged while the model dialog is open", "native event reaches button", "Close completes the actual native modal without installing models", "parent note and usable parent window survive dialog closure", "native model inspection creates no model or application files", "no Python network operation was attempted"], "installed_file_sha256": {"carr_library/extract/model_catalog.py": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12", "carr_library/extract/ocr_model_store.py": "b08197865eb30d50124d8c23a9513af5892b91ac6e1134897e9af07f6f8919ba", "carr_library/extract/managed_ocr.py": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477", "carr_library/extract/ocr_model_catalog.py": "72733887aa0af5ca7ac078010a0f86465ce924b8085053c3f79139286c877cdb", "carr_library/extract/ocr-model-catalog.json": "1e55383fc79da1ce2d72ffca2dcd4b4fb24d69e29cd23425562cc20af7775e0b", "carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30", "carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9", "carr_library/ui/ocr_model_manager.py": "8e8b7f04f85ad3fa03fda546782a09882801525562c698b6e643fab70f13a4c1", "carr_library/__main__.py": "0ee9f946e6188eac0ec4efd5c1d5dcbef09706a06e1fa60d5a5fe7fb4e166a0a"}, "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8", "wx_platform": "__WXMSW__", "native_gui": "PASS", "windows_execution": "PASS", "manual_keyboard": "NOT_RUN", "nvda": "NOT_RUN", "models_installed": false, "models_downloaded": false, "network_guard": "Python socket operations denied"}

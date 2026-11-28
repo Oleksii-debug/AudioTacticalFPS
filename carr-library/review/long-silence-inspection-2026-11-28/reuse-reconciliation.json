@@ -1,0 +1,116 @@
+{
+  "schema": "carr-bounded-reuse-review/1",
+  "status": "RECONCILED_SOURCE_REVIEWED",
+  "execution_of_this_component": "NOT_RUN",
+  "first_preimplementation_review": {
+    "head": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "last_recheck_utc": "2026-11-28 04:23 UTC",
+    "finding": "Published code had peak/loudness inspection; PR body said long-silence component was being completed. Branch queries silence/quality/audio-qa/v3-20 did not reveal a published compatible inspector."
+  },
+  "final_recheck": {
+    "observed_utc": "2026-11-28 04:53 UTC",
+    "pr209_head": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+    "pr209_body_updated_at": "2026-11-28T04:47:50Z",
+    "pr210_head": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "application_blob_count_each": 425,
+    "all_application_blobs_equal": true
+  },
+  "donor_files": [
+    {
+      "path": "carr-library/src/carr_library/audio/ffmpeg.py",
+      "blob": "d076e29af23e845fdeafd750be14f83af5ab79b3",
+      "reviewed": "New measure_silence/_silence_criteria/_silence_minimum_frames and existing PCM16 RIFF/RF64 wav_info."
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/production.py",
+      "blob": "cb9b916cb1376a9f6a7f5c6e867c52744939e157",
+      "reviewed": "inspect_completed_silence, recorded context sweep, bounded formatter and retained donor readers."
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_cli.py",
+      "blob": "2a81e2a3ff2b0cca8cd2175ee1112d6bc13dc914",
+      "reviewed": "Explicit completion-manifest CLI and cancellation path."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "blob": "6abb5c173dfe3ceec79733b571f92fc620ca7568",
+      "reviewed": "Controller/current-plan binding, worker inspection, modal report, explicit Copy/Export lifecycle."
+    },
+    {
+      "path": "carr-library/tests/audio/test_production_integrity.py",
+      "blob": "df9a2ae107d686a9cb66ee8d97be00d65c83d44b",
+      "reviewed": "Actual mono/stereo block-crossing fixture and inspection negative controls."
+    }
+  ],
+  "decisions": [
+    {
+      "portion": "Production runtime/reader/service replacement",
+      "decision": "NOT_ADOPTED",
+      "reason": "Different canonical complete.json/run_key/timeline and audio.jobs reader contracts; donor scanner supports PCM16 only. Our selected current AudioRuntime extends all accepted integer widths to s32 without precision loss, retains the existing typed Studio/Book/Director guards and shared broker/absolute deadline. Importing a parallel donor service would duplicate those authorities."
+    },
+    {
+      "portion": "Pure interval semantics",
+      "decision": "RECONCILED",
+      "reason": "Both implementations use every-channel inclusive amplitude comparison, exact decimal-ceil minimum frames, maximal half-open ranges and complete omitted counts; these general semantics were already present in our reviewed source."
+    },
+    {
+      "portion": "Actual mono/stereo cross-block test",
+      "decision": "ADAPTED",
+      "donor_function": "test_silence_scanner_crosses_real_block_boundaries",
+      "receiving_function": "test_actual_pcm_scan_crosses_real_block_boundaries",
+      "receiving_blob": "257bd69857b82a34373910aa880f33b03feb2380",
+      "changes": "Use existing real AudioRuntime decode to s32; four decoded bytes/channel instead of two PCM16 bytes. Threshold -192 gives integer zero. Retain the same eight zero frames spanning the actual1MiB boundary, exact range/count and original hash; also verify full decoded hash. Two cases appended; preceding39 cases exact prefix."
+    },
+    {
+      "portion": "Donor GUI/CLI and Copy/Export",
+      "decision": "NOT_ADOPTED",
+      "reason": "Different current controller and module contracts. Our same existing Scene worker and CLI now delegate to the admitted service; source-bound Book and primary Director wrappers remain on existing owners. Extra report-export mutations are outside this approved warning-only slice."
+    },
+    {
+      "portion": "Recorded pause/line/music-overlap annotations",
+      "decision": "NOT_ADOPTED_IN_THIS_SLICE",
+      "reason": "Depend on donor timeline schema and are not acoustic proof. Our current canonical receipts/identity guards are verified; findings deliberately do not infer intended pauses or speech presence."
+    },
+    {
+      "portion": "Donor local_voice_helper sharing cleanup",
+      "decision": "NOT_ADOPTED",
+      "reason": "Separate helper architecture and failure; no corresponding receiving defect established by this reuse check. Existing receiving owned-process/retained-context rules remain."
+    }
+  ],
+  "observed_donor_scope": {
+    "run": 46107488747,
+    "job": 140863383870,
+    "head": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+    "job_conclusion": "failure",
+    "source": {
+      "passed": 272,
+      "failed": 2
+    },
+    "installed": {
+      "passed": 272,
+      "failed": 2
+    },
+    "failed_function": "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[deadline/cancel]",
+    "failure": "first_refusal.is_set() was False; both phases failed the real sharing-refusal assertion.",
+    "native_step": "SUCCESS",
+    "aggregate_emitted_native_checks": 29,
+    "native_receipt_limit": "The completed job and final aggregate record were read; its separate native JSON member was not independently downloaded by this review.",
+    "aggregate": "FAIL; no qualified complete source/installed counter receipt",
+    "successor": "PR210 changes fixture access-mask/comment and evidence;425 application blobs match e9. No PR210 execution claim.",
+    "log_sha256": "d4bf2bf747055d49e55a41af521f0d7fdbe3b96c9a0defda2e9e3e5332fc7cad",
+    "observed_summary_lines": [
+      "FAILED ..\\..\\..\\_temp\\carr-silence-inspection-46107488747-1\\batch-source-q1qleia5\\tests\\audio\\test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[deadline] - assert (False)",
+      "FAILED ..\\..\\..\\_temp\\carr-silence-inspection-46107488747-1\\batch-source-q1qleia5\\tests\\audio\\test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[cancel] - assert (False)",
+      "======================= 2 failed, 272 passed in 42.26s ========================",
+      "FAILED ..\\..\\..\\_temp\\carr-silence-inspection-46107488747-1\\batch-installed-4a2_id4m\\tests\\audio\\test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[deadline] - assert (False)",
+      "FAILED ..\\..\\..\\_temp\\carr-silence-inspection-46107488747-1\\batch-installed-4a2_id4m\\tests\\audio\\test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[cancel] - assert (False)",
+      "======================= 2 failed, 272 passed in 42.25s ========================"
+    ]
+  },
+  "guardrails": [
+    "No donor PASS transferred to receiving source.",
+    "No competing store/runner/broker or imported donor module added.",
+    "No model, private asset, endpoint, consent, security, workflow, timeout or acceptance gate changed."
+  ],
+  "second_review": "Locate independently read full donor df9a2ae and receiving257bd698, exact-prefix and real s32 block/hash adaptation CLEAR; source-only."
+}

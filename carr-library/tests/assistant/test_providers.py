@@ -17,7 +17,7 @@ from carr_library.assistant import (
 )
 from carr_library.assistant.credentials import validate_reference
 from carr_library.assistant.models import Scope, canonical
-from carr_library.assistant.providers import UsageLedger, _request
+from carr_library.assistant.providers import HTTPResult, HTTPTransport, UsageLedger, _request, validate_usage_ledger_document
 from carr_library.assistant.llm import propose_local_plan
 
 
@@ -39,8 +39,14 @@ def server():
                          'usage': {'prompt_tokens': 8, 'completion_tokens': 2, 'total_tokens': 10}}}
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
+            self.respond()
+
+        def do_GET(self):
+            self.respond()
+
+        def respond(self):
             data = self.rfile.read(int(self.headers.get('Content-Length', '0')))
-            requests.append((self.path, dict(self.headers), json.loads(data)))
+            requests.append((self.path, dict(self.headers), json.loads(data) if data else None))
             self.send_response(settings['status'])
             self.send_header('Content-Type', settings['type'])
             raw = settings['body'] if isinstance(settings['body'], bytes) else json.dumps(settings['body']).encode()
@@ -86,7 +92,7 @@ def test_local_only_denies_before_any_vault_or_connection(tmp_path, monkeypatch)
     vault = Vault()
     gateway = Gateway(tmp_path / 'providers', vault=vault)
     calls = []
-    monkeypatch.setattr(http.client, 'HTTPSConnection', lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(HTTPTransport, 'request', lambda *a, **k: calls.append(a))
     with pytest.raises(PermissionError, match='LOCAL ONLY'):
         gateway.request(remote(), 'llm.chat', PAYLOAD, task_id='project-one', data_class='selected-script')
     assert not vault.calls and not calls
@@ -295,18 +301,20 @@ def test_native_header_encoding_error_does_not_expose_secret(tmp_path, server):
 
 
 def test_authorized_remote_route_budget_and_unsafe_retry_with_local_mock(tmp_path, server, monkeypatch):
-    """Real local HTTP response, mocked TLS transport; no external API call."""
+    """Real local HTTP response through an explicit fixture transport; no paid call."""
     address, requests, settings = server
     from urllib.parse import urlsplit
     local = urlsplit(address)
     targets = []
-    def mock_tls(host, port, **options):
-        targets.append((host, port))
-        return http.client.HTTPConnection(local.hostname, local.port, timeout=options['timeout'])
-    monkeypatch.setattr(http.client, 'HTTPSConnection', mock_tls)
+    class LocalFixtureTransport(HTTPTransport):
+        def request(self, profile, path, payload, headers, **options):
+            authority = urlsplit(profile.endpoint)
+            targets.append((authority.hostname, authority.port))
+            selected = replace(profile, endpoint=address, local=True)
+            return super().request(selected, path, payload, headers, **options)
     profile = remote()
     approval = auth(profile, budget='0.50', max_calls=3)
-    gateway = Gateway(tmp_path, vault=Vault(), mode='APPROVED_REMOTE')
+    gateway = Gateway(tmp_path, vault=Vault(), mode='APPROVED_REMOTE', _transport=LocalFixtureTransport())
     result = gateway.request(profile, 'llm.chat', PAYLOAD, task_id='project-one', data_class='selected-script',
         authorization=approval, max_cost='0.20', operation_id='successful')
     assert result['text'] == 'Local response'
@@ -331,3 +339,78 @@ def test_authorized_remote_route_budget_and_unsafe_retry_with_local_mock(tmp_pat
         gateway.request(profile, 'llm.chat', PAYLOAD, task_id='project-one', data_class='selected-script',
             authorization=approval, max_cost='0.20', operation_id='over-budget')
     assert len(requests) == 2
+
+
+def test_shared_transport_body_free_get_uses_actual_loopback(server):
+    address, requests, _ = server
+    profile = ProviderProfile('local', 'Local fixture', 'openai-compatible', address,
+                              'local-model', local=True, enabled=True)
+    result = HTTPTransport().request(profile, '/v1/languages', None, {},
+        maximum_bytes=8192, timeout_seconds=2, method='GET')
+    assert result.status == 200 and result.content_type == 'application/json'
+    assert requests[0][0] == '/v1/languages' and requests[0][2] is None
+    with pytest.raises(ValueError, match='body-free GET'):
+        HTTPTransport().request(profile, '/v1/languages', b'forbidden', {},
+            maximum_bytes=8192, timeout_seconds=2, method='GET')
+    assert len(requests) == 1
+
+
+def test_remote_private_dns_rejected_before_socket_creation(monkeypatch):
+    import socket
+    from carr_library.assistant import providers
+    opened = []
+    monkeypatch.setattr(providers.socket, 'getaddrinfo', lambda *args, **kwargs:
+        [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('127.0.0.1', 443))])
+    monkeypatch.setattr(providers.socket, 'socket', lambda *args, **kwargs: opened.append(args))
+    with pytest.raises(ProviderError, match='disallowed network'):
+        HTTPTransport().request(remote(), '/v1/chat/completions', b'{}', {},
+            maximum_bytes=8192, timeout_seconds=2)
+    assert not opened
+
+
+def test_credential_namespaces_are_never_inferred():
+    reference = 'wincred:' + 'a' * 32
+    legacy = 'carr/provider/account_one/' + 'b' * 32
+    assert validate_reference(reference) == reference
+    assert validate_reference(legacy, 'account_one') == legacy
+    with pytest.raises(PermissionError):
+        validate_reference(reference, 'account_one')
+    with pytest.raises(ValueError):
+        validate_reference(legacy)
+    assert bool(WindowsCredentialVault.available) == WindowsCredentialVault.available()
+    vault = WindowsCredentialVault()
+    assert bool(vault.available) == vault.available()
+
+
+def test_restored_usage_blocks_before_credential_or_transport(tmp_path):
+    from carr_library.assistant.state import atomic_json
+    vault = Vault()
+    class ForbiddenTransport:
+        def request(self, *args, **kwargs):
+            pytest.fail('Restored authorization reached transport.')
+    gateway = Gateway(tmp_path, vault=vault, mode='APPROVED_REMOTE', _transport=ForbiddenTransport())
+    profile = remote()
+    approval = auth(profile)
+    gateway.ledger.reserve(approval, 'previous', 'a' * 64, Decimal('0.10'), profile, 'llm.chat')
+    history = gateway.ledger.get(approval.id)
+    history['restored'] = True
+    atomic_json(gateway.ledger._path(approval.id), history)
+    before = gateway.ledger._path(approval.id).read_bytes()
+    with pytest.raises(PermissionError, match='Restored provider usage'):
+        gateway.request(profile, 'llm.chat', PAYLOAD, task_id='project-one',
+            data_class='selected-script', authorization=approval, max_cost='0.10', operation_id='new')
+    assert not vault.calls
+    assert gateway.ledger.get(approval.id)['restored'] is True
+    assert gateway.ledger._path(approval.id).read_bytes() == before
+
+
+@pytest.mark.parametrize('change', [
+    {'restored': 1}, {'restored': 'false'}, {'secret': 'must-not-persist'},
+    {'authorization': 'wrong'}, {'currency': 'usd'}, {'operations': []},
+])
+def test_usage_schema_rejects_ambiguous_restore_and_unknown_fields(change):
+    value = {'schema': 'carr-provider-usage/1', 'authorization': 'a' * 64,
+             'currency': 'USD', 'operations': {}}
+    assert validate_usage_ledger_document(value) is value
+    with pytest.raises(ValueError):
+        validate_usage_ledger_document({**value, **change})

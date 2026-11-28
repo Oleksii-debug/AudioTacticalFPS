@@ -178,3 +178,73 @@ SHA256 code: 005b2944d8e3a61cc49a7c770a9faef0fbb4cc33399ec544a3b1b782c108acfd
 SHA256 tests: 92cd05adca41a0312eaf81a822f2e39d2a6e354577e34a2d2902a31b65ed632d
 Drive roundtrip byte hashes matched original tested files; GitHub readback matched uploaded UTF-8 code. Tests exercise persistent independent workspaces, multiple collections, topic tree and cycle rejection, Unicode, PDF and text import, physical/unknown printed page, source exact quote, note updates, export, cross-workspace rejection and reopening database.
 Limitations: prototype only. No GUI, scanned PDF OCR, full semantic ranking, verified printed page inference, source binary archival/revision migration, robust untrusted file sandbox, complete CRUD or backup/restore. FTS rank can be influenced by global corpus statistics despite result scope filtering; production isolation review needed. PDF extraction is native text only and trusted local input; not verified against scan images. No Windows/NVDA run, no real Carr corpus, no production release. Review candidates and integrate into owned module contracts instead of maintaining parallel production implementation.
+
+## Current finalization reuse — 2026-11-27
+
+The composite candidate preserves the current canonical architecture; the
+following are additive adoptions, with acceptance tied to its eventual exact
+commit rather than the earlier PR's status.
+
+| Existing implementation | Adoption | Evidence boundary |
+| --- | --- | --- |
+| PR100, d8db53a7ee288c7dff708d639d59b3b0ce612cef | Exact DOI/ISBN providers, existing scoped acquisition service and native review controls; preserve all original tests and source/import contracts | Synthetic response, subprocess, scope and backup tests; live provider execution remains separate |
+| PR112, 20e275e5112566cd07c3aa56459bd8634240bc3e | One measured EPUB media-overlay publisher; adapt both original production journals without changing their identities | Actual audio and EPUBCheck gates required on the composite; no word alignment, DAISY or NVDA implication |
+| PR152, 112935aa15952682a885b10c322b3b4016c6cc80 | Accessible palette controller and native controls adapted to the active KeyboardActions registry | Original handler, focus, remapped keys, disabled/stale commands and installed Windows checks |
+| PR151 reviewed CI runner | Independent strict suite verdicts with bounded concurrency and process-tree cleanup | Empty suites, skips, XFAIL, timeout and cleanup failure remain failing gates |
+| Existing bounded folder scanner and private supplied-worker bridge | Folder transcription uses the current queue, input-hash, worker receipt and cancellation contracts | Synthetic worker and native folder-picker execution; real ASR acoustic qualification remains separate |
+| Existing defusedxml 0.7.1 and FFmpeg runtime | Reject entity-bearing EPUB metadata and reuse verified audio conversion/playback | No additional production wheel or competing XML/audio engine |
+
+OpenAlex's current singleton/authentication documentation and Open Library's
+Books API documentation were checked for this adoption:
+https://help.openalex.org/api/get-single-entities/
+https://help.openalex.org/api/authentication/
+https://openlibrary.org/dev/docs/api/books
+The Open Library Books endpoint is documented as legacy. Its adapter is
+optional, exact-identifier and fail-closed; no silent endpoint migration or
+general search result is accepted as an edition match. The OpenAlex adapter
+uses only an explicit singleton request; it does not enroll an account or
+enable billing. Provider availability and changing rate policies remain
+external-service behavior.
+
+EPUBCheck 5.3.0 is pinned in packaging/epubcheck.json to its exact official
+release archive, source revision and BSD-3-Clause notices. It runs only during
+conformance acceptance and is excluded from the application dependency locks.
+
+## Standard Windows lifecycle adoption — 2026-11-28
+
+The bounded Install / Repair / Uninstall contribution reuses
+[PR99](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/99) at
+`fd0cca2405f33c813c4cf43c9661edf1f2e93a55`. It is adapted to the existing
+composed package, complete source-wheel verifier and actual
+`audio/process.py`, `audio/windows_process.py`, `audio/models.py` and
+`audio/cleanup.py`. The existing offline bootstrap, application/dependency
+locks, original Python archive, native DLL inventory, bundle seals and
+transfer producer remain the same authorities.
+
+| Adopted component | Exact origin and dependency boundary | Receiving acceptance |
+| --- | --- | --- |
+| Standard setup builder, fixed maintenance helper, native lease and Inno template | The four current process-helper files are copied byte-for-byte as one private helper package and checked against the exact source-bound application wheel. Public entrypoints use the same shared lease; existing cleanup owners must settle before the process can return or maintenance can replace files. | New source and installed filesystem/real-process contracts, plus one actual Windows Install / Repair / Uninstall gate. NOT_RUN at composition; donor tests are not the receiving verdict. |
+| Inno Setup 6.7.4, build-time compiler and original setup runtime | [Official release](https://github.com/jrsoftware/issrc/releases/tag/is-6_7_4), artifact `innosetup-6.7.4.exe`, 10,604,576 bytes, SHA-256 `a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c`. Official release metadata was reread and matches the existing donor pin. | `prepare_inno.ps1` additionally requires the expected valid publisher signature. This source review does not establish execution of that signature check or signing of the produced Resonance setup. |
+| Inno upstream notices | [Exact upstream license](https://github.com/jrsoftware/issrc/blob/is-6_7_4/license.txt), Git blob `ac4dfe9e6543a360c5422b6f1fb88075e8b6073d`, reread from upstream. Original copyright, attribution and binary notices remain required; the compiler/runtime is used unchanged. | Per-profile distribution review remains separate from a passing installation. No runtime/compiler/setup binary is committed or uploaded by these evaluation jobs. |
+
+The focused Windows profile uses all 19 current core dependency pins and
+their matching SBOM. Its Linux source/installed companion excludes only the
+two Windows-only packages and retains the other 17 versions. Neither profile
+adds a new application Python dependency. The complete Windows aggregate also
+runs the same native lifecycle against its already verified full CI bundle;
+creating this private test setup does not change the existing rejection of
+audio-bearing application transfers.
+
+The native probe reuses the existing owned-process boundary and waits for
+every causal cleanup owner before a retained log, installation lease or
+rollback context is released. It exercises real Inno, a real local Python
+bootstrap, Unicode paths, registered shortcuts, the standard native launcher,
+live-job exclusion, Repair, Uninstall, modified/foreign-file preservation and
+a populated external SQLite library. The source fixtures remain explicitly
+synthetic; they cannot qualify a native installer.
+
+The passive managed-upgrade identity record is data only. This adoption does
+not install a second update/entitlement authority or change the existing
+DeliveryService/provider contract. Signed A-to-B updates, publisher identity,
+private authority deployment, Windows 11/NVDA, a separate unprivileged account
+and native network tracing remain independent requirements.

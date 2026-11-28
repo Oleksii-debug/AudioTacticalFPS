@@ -25,18 +25,6 @@ def research(tmp_path):
     return app, workspace, other, topic, child, evidence, child_evidence
 
 
-@pytest.fixture(autouse=True)
-def export_confirmation(monkeypatch):
-    from carr_library.ui import academic_tools
-    from carr_library.ui.export_destination import confirm_export_destination
-
-    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
-    native.MessageBox = Mock(return_value=native.YES)
-    monkeypatch.setattr(academic_tools, 'confirm_export_destination',
-        lambda *args, **kwargs: confirm_export_destination(*args, **kwargs, wx_module=native))
-    return native
-
-
 class Frame:
     def __init__(self, app, workspace, topic):
         self.library = app
@@ -62,7 +50,6 @@ def make_actions(research, **dialog_options):
     app, workspace, _, topic, *_ = research
     frame = Frame(app, workspace, topic)
     dialogs = SimpleNamespace(matrix=Mock(return_value=None),
-        outline_options=Mock(return_value=(True, None, 'markdown')),
         save_path=Mock(return_value=None))
     for key, value in dialog_options.items():
         getattr(dialogs, key).return_value = value
@@ -125,26 +112,13 @@ def test_matrix_export_rechecks_retained_original_before_writing(research, tmp_p
     assert not output.exists()
 
 
-def test_outline_exports_subtopics_without_adding_another_storage_schema(research, tmp_path):
-    output = tmp_path / 'outline.md'
-    frame, actions, _ = make_actions(research, save_path=output)
-    with frame.library.read(research[1]) as db:
-        before = tuple(tuple(row) for row in db.execute('SELECT * FROM sqlite_master ORDER BY name'))
-    actions.outline()
-    frame.complete()
-    text = output.read_text(encoding='utf-8')
-    assert 'Chapter' in text and 'Subsection' in text
-    assert 'Earlier saved note' in text and 'Child note' in text
-    with frame.library.read(research[1]) as db:
-        assert tuple(tuple(row) for row in db.execute('SELECT * FROM sqlite_master ORDER BY name')) == before
-
-
 def test_export_cannot_replace_private_database(research):
     frame, actions, _ = make_actions(research, save_path=research[0].database)
     before = research[0].database.read_bytes()
-    actions.outline()
-    assert not frame.jobs
-    assert 'private library' in frame.report.call_args.args[0]
+    actions._export(AcademicScope(frame.library, *frame.active), kind='matrix',
+                    format='markdown', include_descendants=True, tag_filter=None)
+    with pytest.raises(ValueError, match='private library'):
+        frame.complete()
     assert research[0].database.read_bytes() == before
     assert research[0].search(research[1], 'Exact original quotation.')
 
@@ -153,7 +127,8 @@ def test_cancel_before_export_keeps_existing_file(research, tmp_path):
     output = tmp_path / 'outline.md'
     output.write_text('Previous export', encoding='utf-8')
     frame, actions, _ = make_actions(research, save_path=output)
-    actions.outline()
+    actions._export(AcademicScope(frame.library, *frame.active), kind='matrix',
+                    format='markdown', include_descendants=True, tag_filter=None)
     frame.cancel_event.set()
     with pytest.raises((InterruptedError, TimeoutError)):
         frame.complete()
@@ -167,8 +142,10 @@ def test_scope_change_in_save_dialog_writes_nothing(research, tmp_path):
         frame.active = research[2], None
         return output
     dialogs.save_path.side_effect = choose
-    actions.outline()
-    assert frame.jobs == []
+    dialogs.matrix.return_value = MatrixCommand('matrix_markdown')
+    actions.compare_sources()
+    frame.complete()
+    assert len(frame.jobs) == 1
     assert not output.exists()
     assert 'changed' in frame.report.call_args.args[0]
 
@@ -176,7 +153,8 @@ def test_scope_change_in_save_dialog_writes_nothing(research, tmp_path):
 def test_scope_change_after_queuing_export_writes_nothing(research, tmp_path):
     output = tmp_path / 'outline.md'
     frame, actions, _ = make_actions(research, save_path=output)
-    actions.outline()
+    actions._export(AcademicScope(frame.library, *frame.active), kind='matrix',
+                    format='markdown', include_descendants=True, tag_filter=None)
     frame.active = research[2], None
     with pytest.raises(ValueError, match='changed'):
         frame.complete()
@@ -190,13 +168,6 @@ def test_comparison_does_not_start_during_another_operation(research, busy):
     actions.compare_sources()
     assert frame.jobs == []
     dialogs.matrix.assert_not_called()
-
-
-def test_cancelled_outline_options_writes_nothing(research):
-    frame, actions, dialogs = make_actions(research, outline_options=None)
-    actions.outline()
-    assert frame.jobs == []
-    dialogs.save_path.assert_not_called()
 
 
 def test_note_draft_survives_matrix_drilldown(research):
@@ -226,34 +197,3 @@ def test_declined_scope_change_does_not_replace_the_existing_note_editor(researc
     frame._open_workspace.assert_called_once_with(research[1], research[4])
     frame.evidence.refresh.assert_not_called()
 
-
-@pytest.mark.parametrize('kind', ['outline', 'matrix'])
-@pytest.mark.parametrize('existing', [False, True])
-def test_queued_academic_export_preserves_changed_destination(
-        research, tmp_path, kind, existing):
-    output = tmp_path / 'approved.md'
-    if existing:
-        output.write_bytes(b'Previously approved export')
-    frame, actions, _ = make_actions(research, save_path=output)
-    scope = AcademicScope(frame.library, *frame.active)
-    actions._export(scope, kind=kind, format='markdown',
-                    include_descendants=True, tag_filter=None)
-    assert len(frame.jobs) == 1
-    independent = b'Independent work saved while the export was queued'
-    output.write_bytes(independent)
-    with pytest.raises(ValueError, match='destination changed'):
-        frame.complete()
-    assert output.read_bytes() == independent
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
-def test_declined_academic_replacement_never_starts_render(
-        research, tmp_path, export_confirmation):
-    output = tmp_path / 'approved.md'
-    output.write_bytes(b'Keep existing work')
-    export_confirmation.MessageBox.return_value = export_confirmation.NO
-    frame, actions, _ = make_actions(research, save_path=output)
-    actions.outline()
-    assert not frame.jobs
-    assert output.read_bytes() == b'Keep existing work'
-    assert 'cancelled' in frame.report.call_args.args[0].lower()

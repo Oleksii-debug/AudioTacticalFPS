@@ -105,8 +105,8 @@ def main():
             click(buttons['preview']); until(lambda: len(state['requests']) == 2)
             controls['instruction'].SetValue('Edited goal while local response is pending.')
             state['hold'].set(); until(buttons['preview'].IsEnabled)
-            check('edited instructions invalidate pending native proposal',
-                  not buttons['run'].IsEnabled() and 'discarded' in controls['review'].GetValue()
+            check('edited instructions cancel the pending native proposal',
+                  not buttons['run'].IsEnabled() and 'cancelled' in controls['review'].GetValue()
                   and app.workspaces() == () and dialog.assistant_service.jobs() == ())
 
             state['hold'] = None

@@ -1,5 +1,6 @@
 """Desktop launcher and installed-package diagnostic entrypoint."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -62,23 +63,39 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
-def main(argv=None):
+@installed_entrypoint(allow_bootstrap_self_test=True)
+def main(argv=None, *, delivery=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['delivery']:
+        from .delivery_cli import main as delivery_main
+        return delivery_main(arguments[1:], service=delivery)
+    if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
+        from .academic_integration.doi import _worker_main
+        return _worker_main(arguments[1:])
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
-    if arguments[:1] == ['translation']:
-        from .assistant.translation_cli import main as translation_main
+    if arguments and arguments[0] in ('translate', 'translation'):
+        from .translation_cli import main as translation_main
         return translation_main(arguments[1:])
-    if arguments and arguments[0] in ('studio', 'assistant'):
-        from .studio.cli import main as studio_main, assistant_main
-        return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
-    if arguments[:1] == ['transcription']:
+    if arguments and arguments[0] in ('transcribe', 'transcription'):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments[:1] == ['sync']:
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
+    if arguments[:1] == ['backup-incremental']:
+        from .backup_incremental_cli import main as backup_incremental_main
+        return backup_incremental_main(arguments[1:])
+    if arguments[:1] == ['import-text']:
+        from .streamed_import_cli import main as streamed_import_main
+        return streamed_import_main(arguments[1:])
     if arguments[:1] == ['operations']:
         from .operations_cli import main as operations_main
         return operations_main(arguments[1:])
+    if arguments and arguments[0] in ('studio', 'assistant'):
+        from .studio.cli import main as studio_main, assistant_main
+        return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
@@ -107,17 +124,17 @@ def main(argv=None):
     parser.add_argument('--ocr-model-search', default='',
                         help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
-    research.add_argument('--document-formats', action='store_true',
+    research.add_argument('--document-formats',action='store_true',
                           help='Print supported import formats and fidelity limits without opening a library')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
-    from .acquisition.cli import add_arguments, validate_arguments
-    add_arguments(parser, research)
+    from .acquisition.cli import add_arguments as add_acquisition_arguments, validate_arguments as validate_acquisition_arguments
+    add_acquisition_arguments(parser,research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
-                        help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+                        help='Library ID for search or identifier lookup; only search accepts multiple libraries')
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'advanced', 'thematic', 'semantic'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -127,13 +144,19 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    from .audio.cli import add_arguments as add_audio_arguments, requested as audio_requested
+    add_audio_arguments(parser)
     args = parser.parse_args(argv)
-    validate_arguments(parser, args)
+    validate_acquisition_arguments(parser, args)
+    identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore)):
-        parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
+    operations = (audio_requested(args), ocr_operation, args.document_formats,
+                  args.list_libraries, args.search is not None, identifier_lookup,
+                  args.self_test, args.backup is not None, args.restore is not None)
+    if sum(bool(value) for value in operations) > 1:
+        parser.error('Choose one operation: audio, OCR models, document formats, library search, '
+                     'DOI or ISBN lookup, self-test, backup, or restore.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -145,13 +168,12 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, or DOI lookup.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None and args.lookup_doi is None:
-        parser.error('--workspace is used with --search or --lookup-doi.')
-    native_handle = None
+    if args.workspaces and args.search is None and not identifier_lookup:
+        parser.error('--workspace is used with --search, --lookup-doi or --lookup-isbn.')
+    native_handle = local_audio_binding = None
+    frame = None
     try:
         if args.document_formats:
             from .extract.document_formats import supported_formats_text
@@ -205,6 +227,15 @@ def main(argv=None):
             except (OSError, ValueError) as exc:
                 location_notice = f'Could not read the last library location: {exc}. Use Library, Open existing library folder.'
                 args.data_dir = default
+        if audio_requested(args):
+            from .audio.cli import execute as execute_audio
+            media_operation = bool(args.music_sample or ((args.audio_output or args.studio_resume)
+                and not any((args.voices, args.studio_list, args.studio_jobs, args.studio_status))))
+            if media_operation:
+                from .audio.local_runtime import open_local_audio_runtime
+                with open_local_audio_runtime(args.data_dir, strict=True):
+                    return execute_audio(args, args.data_dir)
+            return execute_audio(args, args.data_dir)
         from .application import LibraryApp
         ranker = None
         model_notice = ''
@@ -218,9 +249,9 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
-        if args.lookup_doi is not None:
-            from .acquisition.cli import run
-            return run(app, args)
+        if identifier_lookup:
+            from .acquisition.cli import run as run_acquisition
+            return run_acquisition(app,args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0
@@ -243,6 +274,9 @@ def main(argv=None):
             checksum = app.backup(args.backup)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
+        from .audio.local_runtime import prepare_local_audio_runtime
+        local_audio_binding = prepare_local_audio_runtime(app.root).activate(strict=False)
+        app.semantic_notice = ' '.join(filter(None, (app.semantic_notice, local_audio_binding.notice)))
         try:
             import wx
         except ImportError as exc:
@@ -250,7 +284,9 @@ def main(argv=None):
         from .ui.desktop_app import DesktopFrame
         from .preferences import remember_directory
         desktop = wx.App(False)
-        frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        frame = DesktopFrame(app, remember_data_dir=remember_directory,
+                             audio_runtime_binding=local_audio_binding, **(
+            {'delivery': delivery} if delivery is not None else {}))
         frame.Show()
         desktop.MainLoop()
         return 0
@@ -258,6 +294,11 @@ def main(argv=None):
         print(f'Research Library: {exc}', file=sys.stderr)
         return 1
     finally:
+        active_binding = getattr(frame, 'audio_runtime_binding', None) if frame is not None else local_audio_binding
+        if active_binding is not None:
+            active_binding.close()
+        if local_audio_binding is not None and local_audio_binding is not active_binding:
+            local_audio_binding.close()
         if native_handle is not None:
             native_handle.close()
 

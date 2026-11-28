@@ -1,6 +1,9 @@
 """Bounded native-wx Library tools smoke on a synthetic local library.
 
-Run from carr-library: python tests/ui/native_catalog_tools_smoke.py --native
+Installed proof: python -I -B tests/ui/native_catalog_tools_smoke.py --native
+Source proof: python -I -B tests/ui/native_catalog_tools_smoke.py --native --source .
+The default imports the installed package and verifies exact module origins and
+bytes against the checkout when present; only --source changes the import path.
 Requires wxPython and an existing authorized desktop. Missing prerequisites
 produce NOT_RUN (77). Real widgets, native events, the desktop asynchronous job
 runner, SQLite application services and the checked file writer are exercised.
@@ -9,14 +12,17 @@ probe; native file-chooser interaction and NVDA are explicitly NOT_RUN.
 No screenshots, external file launches, real books or network access are used.
 """
 from argparse import ArgumentParser
+from contextlib import ExitStack
 import csv
 from hashlib import sha256
+from importlib import import_module
 import json
 import os
 from pathlib import Path
 import platform
 import sqlite3
 import sys
+import sysconfig
 from tempfile import TemporaryDirectory
 from time import monotonic
 from unittest.mock import patch
@@ -27,6 +33,66 @@ def not_run(reason):
     return 77
 
 
+def _product_binding(source):
+    """Bind this proof to installed bytes unless source use is explicit."""
+    checkout_src = Path(__file__).resolve().parents[2] / 'src'
+    override = source.resolve(strict=True) if source is not None else None
+    purelib = Path(sysconfig.get_path('purelib')).resolve(strict=True)
+    if override is not None:
+        selected_src = (override / 'src').resolve(strict=True)
+        if not selected_src.is_dir():
+            raise AssertionError('--source must contain a src directory')
+        sys.path.insert(0, str(selected_src))
+        expected_root = selected_src
+        reference_root = selected_src
+    else:
+        expected_root = purelib
+        reference_root = checkout_src.resolve()
+
+    # The four export-path modules must have the same provenance as the
+    # package and the actual SQLite service used by this native proof.
+    names = (
+        'carr_library',
+        'carr_library.application',
+        'carr_library.ui.desktop_app',
+        'carr_library.ui.catalog_tools_dialog',
+        'carr_library.ui.export_destination',
+        'carr_library.research.export_file',
+    )
+    modules, origins = {}, {}
+    for name in names:
+        module = import_module(name)
+        relative = (Path('carr_library/__init__.py') if name == 'carr_library'
+                    else Path(*name.split('.')).with_suffix('.py'))
+        origin = Path(module.__file__).resolve(strict=True)
+        expected = (expected_root / relative).resolve(strict=True)
+        if origin != expected or not origin.is_relative_to(expected_root):
+            raise AssertionError(
+                f'{name} is not from the selected product root: {origin}; expected {expected}')
+        if override is None and origin.is_relative_to(checkout_src.resolve()):
+            raise AssertionError(f'Installed proof imported checkout source: {name}: {origin}')
+        actual = origin.read_bytes()
+        entry = {'path': str(origin), 'sha256': sha256(actual).hexdigest()}
+        if reference_root.is_dir():
+            reference = (reference_root / relative).resolve(strict=True)
+            if not reference.is_relative_to(reference_root):
+                raise AssertionError(f'Checkout reference escapes its source root: {name}')
+            reference_bytes = reference.read_bytes()
+            entry['checkout_sha256'] = sha256(reference_bytes).hexdigest()
+            if actual != reference_bytes:
+                raise AssertionError(
+                    f'Imported module bytes differ from the selected checkout: {name}: {origin}')
+            entry['matches_checkout'] = True
+        else:
+            entry['matches_checkout'] = None
+        modules[name], origins[name] = module, entry
+    return modules, {
+        'source_override': str(override) if override is not None else None,
+        'purelib': str(purelib),
+        'module_origins': origins,
+    }
+
+
 def run_native(source, timeout):
     if sys.platform not in ('win32', 'darwin') and not (
             os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
@@ -35,10 +101,17 @@ def run_native(source, timeout):
         import wx
     except (ImportError, OSError) as exc:
         return not_run('Native wxPython is unavailable: ' + str(exc))
-    sys.path.insert(0, str(source / 'src'))
-    from carr_library.application import LibraryApp
-    from carr_library.ui.desktop_app import DesktopFrame
-    from carr_library.ui.catalog_tools_dialog import LibraryToolsDialog
+    try:
+        modules, binding = _product_binding(source)
+    except Exception as exc:
+        print(json.dumps({'result': 'FAIL', 'stage': 'product-binding', 'error': str(exc),
+                          'source_override': str(source) if source is not None else None,
+                          'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
+        return 1
+    LibraryApp = modules['carr_library.application'].LibraryApp
+    DesktopFrame = modules['carr_library.ui.desktop_app'].DesktopFrame
+    LibraryToolsDialog = modules['carr_library.ui.catalog_tools_dialog'].LibraryToolsDialog
+    print(json.dumps({'stage': 'product-binding', **binding}, sort_keys=True), flush=True)
 
     try:
         app = wx.App(False)
@@ -73,6 +146,8 @@ def run_native(source, timeout):
         original_bytes = library.assets.resolve(first['asset']).read_bytes()
         frame = dialog = None
         active_timer = None
+        export_guard = None
+        export_observation = None
         try:
             frame = DesktopFrame(library)
             frame._open_workspace(workspace)
@@ -96,6 +171,9 @@ def run_native(source, timeout):
                       control.GetEventHandler().ProcessEvent(event))
 
             def export(button, destination):
+                nonlocal export_guard, export_observation
+                if export_guard is not None:
+                    raise AssertionError('The preceding export has not completed its native confirmation.')
                 # No native chooser automation or external file launch is
                 # claimed. Destination and confirmation are controlled; all
                 # other widgets and handlers are real wx.
@@ -121,16 +199,31 @@ def run_native(source, timeout):
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
-                with patch.object(wx, 'FileDialog', SelectedDestination), patch.object(wx, 'MessageBox', confirm):
-                    command(button, wx.EVT_BUTTON)
-                check('one captured-destination confirmation', confirmations == [destination])
-                check('export started on the desktop worker', dialog.pending and frame.working)
+                # Keep both controlled native-dialog replacements alive until
+                # the background capture, UI confirmation and publication have
+                # completed. A short with-block would release them before the
+                # queued completion callback and could open a real unattended modal.
+                export_guard = ExitStack()
+                export_guard.enter_context(patch.object(wx, 'FileDialog', SelectedDestination))
+                export_guard.enter_context(patch.object(wx, 'MessageBox', confirm))
+                export_observation = (destination, confirmations)
+                command(button, wx.EVT_BUTTON)
+                check('destination capture started on the desktop worker', dialog.pending and frame.working)
+                check('confirmation waits for background capture', confirmations == [])
 
             def completed():
+                nonlocal export_guard, export_observation
                 if dialog.pending or frame.working:
                     return False
                 if 'not completed' in dialog.status.GetValue() or 'could not be started' in dialog.status.GetValue():
                     raise AssertionError(dialog.status.GetValue())
+                if export_observation is not None:
+                    destination, confirmations = export_observation
+                    check('one captured-destination confirmation', confirmations == [destination])
+                    check('capture and export completed with no outstanding worker', not dialog.pending and not frame.working)
+                    export_guard.close()
+                    export_guard = None
+                    export_observation = None
                 return True
 
             def stop(error):
@@ -216,14 +309,22 @@ def run_native(source, timeout):
                   result == wx.ID_CANCEL and dialog._closed and not frame.working)
             print(json.dumps({'result': 'PASS', 'checks': len(checks), 'wx': wx.version(),
                 'sqlite': sqlite3.sqlite_version, 'native_platform': platform.system(),
-                'source_sha256': sha256((source / 'src/carr_library/ui/catalog_tools_dialog.py').read_bytes()).hexdigest(),
+                'source_sha256': binding['module_origins']['carr_library.ui.catalog_tools_dialog']['sha256'],
+                **binding,
                 'file_chooser_interaction': 'NOT_RUN; synthetic destination supplied',
                 'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
         except Exception as exc:
             print(json.dumps({'result': 'FAIL', 'error': str(exc), 'checks_passed': len(checks),
-                              'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
+                              **binding, 'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
             return 1
         finally:
+            # Suppress late completions before releasing a remaining native
+            # dialog patch, including exceptions during either export phase.
+            if frame is not None:
+                frame._closing = True
+                frame.cancel_event.set()
+            if export_guard is not None:
+                export_guard.close()
             if active_timer is not None:
                 active_timer.Stop()
             if dialog is not None:
@@ -243,12 +344,13 @@ def run_native(source, timeout):
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--native', action='store_true', help='Run on the existing authorized native desktop.')
-    parser.add_argument('--source', type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument('--source', type=Path, default=None,
+                        help='Explicit source checkout override; omitted verifies the installed package.')
     parser.add_argument('--timeout', type=float, default=45.0, help='Native event-loop deadline, 5 to 90 seconds.')
     args = parser.parse_args()
     if not 5 <= args.timeout <= 90:
         parser.error('--timeout must be between 5 and 90 seconds')
-    return run_native(args.source.resolve(), args.timeout)
+    return run_native(args.source.resolve() if args.source is not None else None, args.timeout)
 
 
 if __name__ == '__main__':

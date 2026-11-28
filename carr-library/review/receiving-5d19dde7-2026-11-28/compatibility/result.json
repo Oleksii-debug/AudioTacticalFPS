@@ -1,0 +1,324 @@
+{
+  "schema": "carr-exact-incomplete-ci-observation/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098474779,
+  "job_id": 140835230725,
+  "conclusion": "failure",
+  "source": {
+    "status": "INCOMPLETE_CI_STEP_TIMEOUT",
+    "selected_modules": 39,
+    "completed_modules": 34,
+    "completed_passed_cases": 983,
+    "completed_failures": 0,
+    "completed_skips": 0,
+    "unfinished_modules": 5,
+    "rows": [
+      {
+        "selector": "tests/audio/test_playback.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/storage/test_evidence_drafts.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_save_all.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_evidence_draft_recovery.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/speech/test_progress_speech.py",
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/storage/test_recording_backup.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/storage/test_composite_backup.py",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/storage/test_canonical_backup_compat.py",
+        "passed": 68,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_save_all_access.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_progress_job_review.py",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_save_actions.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_reader_keymap_context.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_command_palette.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_keyboard_export.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/storage/test_v3_state_backup.py",
+        "passed": 43,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_keyboard_rename.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_keyboard_settings.py",
+        "passed": 63,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/speech/test_reading.py",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_scope_labels.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/language_qualification/test_inventory_cleanup.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/speech/test_runtime_settings_restore.py",
+        "passed": 44,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_export_confirmation.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/reader/test_export_approval_budget.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/e2e/test_export_destination.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_academic_actions.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_catalog_tools_dialog.py",
+        "passed": 46,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/test_academic_export_handler.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/reader/test_file_export.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/reader/test_binary_file_export.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/reader/test_export_no_clobber.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/reader/test_export_publication_boundary.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/reader/test_finish_export_formats.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "selector": "tests/ui/probe_catalog_insights_actions.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "status": "INCOMPLETE_CI_STEP_TIMEOUT",
+    "last_progress_percent": 79,
+    "final_case_count": null
+  },
+  "native_steps": [
+    {
+      "name": "Require native source Save All and recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T02:51:41Z",
+      "completed_at": "2026-11-28T02:51:44Z"
+    },
+    {
+      "name": "Require native source Reader keyboard dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T02:51:44Z",
+      "completed_at": "2026-11-28T02:51:52Z"
+    },
+    {
+      "name": "Require native installed Save All and recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T02:51:52Z",
+      "completed_at": "2026-11-28T02:51:54Z"
+    },
+    {
+      "name": "Require native installed Reader keyboard dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T02:51:54Z",
+      "completed_at": "2026-11-28T02:52:02Z"
+    },
+    {
+      "name": "Require native source asynchronous catalog exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T02:52:02Z",
+      "completed_at": "2026-11-28T02:52:04Z"
+    },
+    {
+      "name": "Require native installed asynchronous catalog exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T02:52:04Z",
+      "completed_at": "2026-11-28T02:52:07Z"
+    },
+    {
+      "name": "Require native installed asynchronous voice preview",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T02:52:07Z",
+      "completed_at": "2026-11-28T02:52:11Z"
+    }
+  ],
+  "decoded_log": {
+    "sha256": "a8d734abd3d4be5ff24ecd4edb954167a745a910e45b7994dced0d5fb9cdaf57",
+    "bytes": 141852
+  },
+  "interpretation": "Both whole-selection steps hit their existing five-minute CI limits. Partial passing cases and later native successes do not establish aggregate PASS."
+}

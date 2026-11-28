@@ -1,0 +1,104 @@
+================================== FAILURES ===================================
+______________ test_upstream_pins_licenses_and_all_asset_digests ______________
+
+    def test_upstream_pins_licenses_and_all_asset_digests():
+        root = formatting._ROOT
+        manifest = json.loads((root / 'UPSTREAM.json').read_text())
+        raw = (root / 'vendor/citeproc.js').read_bytes()
+        assert sha256(raw).hexdigest() == manifest['processor']['sha256']
+        assert manifest['processor']['chosen_license'] == 'CPAL-1.0'
+>       assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text()
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\academic_integration\test_formatting.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\pathlib.py:1059: in read_text
+    return f.read()
+           ^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <encodings.cp1252.IncrementalDecoder object at 0x000001FE89E0D810>
+input = b'Common Public Attribution License Version 1.0 (CPAL)\n\n1. \xe2\x80\x9cDefinitions\xe2\x80\x9d\n\n1.0.1 \xe2\x80\x9c... the CPAL as a work which combines Covered Code or portions thereof with code not governed by the terms of the CPAL.\n'
+final = True
+
+    def decode(self, input, final=False):
+>       return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d in position 73: character maps to <undefined>
+
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\encodings\cp1252.py:23: UnicodeDecodeError
+_ test_progress_model_reserves_actual_shared_resources_only_while_synthesizing _
+
+    def test_progress_model_reserves_actual_shared_resources_only_while_synthesizing():
+        from carr_library.speech.synthesis_admission import PROTOCOL_SCRATCH_BYTES
+        speech, provider, player = selected()
+        broker = ResourceBroker.for_app(speech.library_root)
+        observations = []
+        render = provider.render
+        def admitted(*args):
+            observations.append(broker.snapshot())
+            return render(*args)
+        provider.render = admitted
+        original_play = player.play
+        def play(path):
+            assert not broker.snapshot()['leases']
+            return original_play(path)
+        player.play = play
+        assert speech.speak_progress('A reserved local notification.', volume=.2, cancelled=lambda: False)
+        assert len(observations) == 1 and len(observations[0]['leases']) == 1
+        record = observations[0]['leases'][0]
+        output_parent = provider.calls[0][2].parent.parent
+        assert record['operation_id'].startswith('reader.synthesis.')
+>       assert record['request'] == ResourceRequest(
+            cpu_slots=broker.limits.cpu_slots, memory_bytes=broker.limits.memory_bytes,
+            disk_bytes=4 * 1024 * 1024 + PROTOCOL_SCRATCH_BYTES,
+            disk_path=output_parent).to_dict()
+E       AssertionError: assert {'additional_...20971520, ...} == {'additional_...20971520, ...}
+E         
+E         Omitting 7 identical items, use -vv to show
+E         Differing items:
+E         {'disk_path': 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi'} != {'disk_path': 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi'}
+E         
+E         Full diff:
+E           {
+E               'additional_disks': [],
+E               'cpu_slots': 3,
+E               'devices': [],
+E               'disk_bytes': 20971520,
+E         -     'disk_path': 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi',
+E         ?                              ^^^^^^^^
+E         +     'disk_path': 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi',
+E         ?                              ^^^^^^^^^^^
+E               'gpu_device': None,
+E               'gpu_memory_bytes': 0,
+E               'memory_bytes': 4294967296,
+E           }
+
+tests\speech\test_progress_speech.py:531: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/academic_integration/test_formatting.py::test_upstream_pins_licenses_and_all_asset_digests - UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d in position 73: character maps to <undefined>
+FAILED tests/speech/test_progress_speech.py::test_progress_model_reserves_actual_shared_resources_only_while_synthesizing - AssertionError: assert {'additional_...20971520, ...} == {'additional_...20971520, ...}
+  
+  Omitting 7 identical items, use -vv to show
+  Differing items:
+  {'disk_path': 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi'} != {'disk_path': 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi'}
+  
+  Full diff:
+    {
+        'additional_disks': [],
+        'cpu_slots': 3,
+        'devices': [],
+        'disk_bytes': 20971520,
+  -     'disk_path': 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi',
+  ?                              ^^^^^^^^
+  +     'disk_path': 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-progress-voice-ghaa5cbi',
+  ?                              ^^^^^^^^^^^
+        'gpu_device': None,
+        'gpu_memory_bytes': 0,
+        'memory_bytes': 4294967296,
+    }
+2 failed, 2888 passed, 12 subtests passed in 1608.13s (0:26:48)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+AssertionError
+##[error]Process completed with exit code 1.

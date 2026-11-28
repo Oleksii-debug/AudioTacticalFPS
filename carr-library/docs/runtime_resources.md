@@ -145,6 +145,53 @@ The admitted context surrounds native worker execution and cleanup. Completed
 node receipts and output verification are unchanged, so resource admission does
 not create a second production job or duplicate accepted audio on resume.
 
+## Reader Read and Save WAV
+
+The reader uses the same local resource policy for **Read** and **Save WAV**
+when the selected provider is Piper, a local helper or another heavy adapter.
+The decision follows the actual registered provider and route. A voice's
+display name, language or engine label cannot grant a basic-voice exemption.
+The built-in SAPI, Flite and eSpeak reading routes remain available while
+heavy work holds these reservations, subject to their own existing engine and
+playback checks. Studio production keeps its existing admission.
+
+The reader shows **Preparing local speech. F8 cancels.** while it waits for
+resources and checks the captured request. **Rendering locally** appears only
+after admission and the current reader has confirmed the same source, voice
+and native voice options. If you close the reader, change libraries or cancel,
+a queued confirmation cannot revive that request. A changed source or runtime
+requires a fresh request; no replacement voice is selected.
+
+For a heavy route the reader conservatively reserves the complete configured
+CPU and RAM allowances. It also reserves space on the selected output's volume
+for the combined WAV and a current utterance, plus bounded protocol scratch.
+These are cooperative policy allowances, not measurements or operating-system
+CPU/RAM limits. A positive saved RAM allowance is required. This reader
+integration declares no GPU device or GPU memory reservation and does not
+qualify GPU inference.
+
+F8 is checked while waiting, during supported asset verification and by the
+existing native runner. Known model/hash adapters receive the cancellation
+signal; a trusted legacy identity callback without that interface can only be
+checked before and after it returns. Cancellation does not revoke resources
+from a process that has not confirmed shutdown. The reservation and exact
+temporary audio remain retained until every causal native cleanup owner is
+quiet, including when the reader window has already closed.
+
+## Selected progress voice
+
+**Use voice for progress...** keeps the explicitly selected voice and the
+existing notification worker. A heavy selected provider now uses the same
+library resource policy as Read and Save WAV. Waiting shares the notification's
+existing 30-second deadline; synthesis retains its 20-second and 2 MiB limits.
+The built-in basic voice routes keep their existing admission behavior.
+
+Cancelling a queued notification prevents late playback. If its native process
+has not confirmed shutdown, the exact temporary audio, active registry use and
+notification serialization remain retained until every causal owner is quiet.
+A failed playback close still retains its uncertain player and audio. No other
+voice, output device or progress mode is selected automatically.
+
 ## Shared operation view
 
 ```python
@@ -184,6 +231,40 @@ The view returns at most its explicit `limit` in stable kind/ID order and scans
 at most 10,000 checkpoints. It is a bounded dashboard, not a replacement large
 corpus job index. No capability is inferred from a format name or a stored
 completed status alone.
+
+### Read a saved Studio operation
+
+Open **Tools → Tasks and resources...**, choose **Refresh**, then select a row
+in **Saved platform operations**. **Operation details and resource status**
+shows labelled, read-only lines from that saved snapshot. Refresh again when
+you need newer progress.
+
+The existing operation ID, workspace, status, update time, progress and
+available controls remain visible. Studio rows can also show:
+
+| Detail | Meaning |
+| --- | --- |
+| **Current canonical handler** | The reader used by this application to interpret the saved Studio job. It does not identify the engine or model used for an earlier render. |
+| **Saved operation-plan SHA-256** | The recorded identity of the job's selected project fingerprint, output format and stems choice. |
+| **Separate settings SHA-256** and **Selected engine or model adapter** | **Unknown; not recorded** when the checkpoint has no separate declaration. An old record does not acquire new identity evidence by being opened. |
+| **Declared CPU slots**, memory, GPU and disk reservations | Saved resource allowances and estimates. They are not measurements of actual consumption or a promise that work can be admitted now. Paths and device identifiers are omitted. |
+| **Recorded completed artifact identities** | Recorded SHA-256 digests and byte sizes for a job whose saved status is complete. The view shows at most 64 identities, with the full count and an explicit omitted count. |
+
+Selecting a row does not open or hash its output files. An artifact digest can
+therefore remain visible after the file has been removed or changed. Return to
+the original Studio workflow when you need its current output verification;
+the task view does not confirm that a recorded file still exists.
+
+**Unknown; not recorded** and **Unavailable in this saved checkpoint** preserve
+missing historical information. A malformed canonical record becomes an
+**attention** row without action controls. Its private error body is not shown.
+
+A restored job can show **Saved restore marker requires a new output: Yes**.
+Review and choose a new output through Studio before running it. Viewing the
+record, or seeing its previous completion status, does not renew permission to
+use the former destination. **Pause selected** and **Cancel selected** request
+the existing owner's controls; the displayed status changes only when that
+owner records its response.
 
 ## Evidence and remaining native checks
 

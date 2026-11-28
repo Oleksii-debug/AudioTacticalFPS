@@ -1,0 +1,124 @@
+=================================== FAILURES ===================================
+________ test_actual_spawned_process_crash_releases_without_pid_reaping ________
+
+broker = <carr_library.operations.broker.ResourceBroker object at 0x7f0b3ce2ae10>
+
+    def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
+        ctx = multiprocessing.get_context('spawn')
+        queue, stop = ctx.Queue(), ctx.Event()
+        process = ctx.Process(target=_hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
+                              kwargs={'crash': True})
+        process.start()
+        try:
+>           state, identity = queue.get(timeout=5)
+                              ^^^^^^^^^^^^^^^^^^^^
+
+tests/operations/test_resources.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <multiprocessing.queues.Queue object at 0x7f0b3ce575d0>, block = True
+timeout = 4.999994799999968
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/queues.py:114: Empty
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'tests'
+_________ test_actual_process_contention_has_no_overlapping_admission __________
+
+tmp_path = PosixPath('/tmp/pytest-of-runner/pytest-0/test_actual_process_contention0')
+
+    def test_actual_process_contention_has_no_overlapping_admission(tmp_path):
+        broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
+        ctx = multiprocessing.get_context('spawn')
+        queue, start = ctx.Queue(), ctx.Event()
+        workers = [ctx.Process(target=_contend, args=(broker.root, label, queue, start)) for label in ('one', 'two')]
+        for process in workers:
+            process.start()
+        try:
+            start.set()
+>           events = [queue.get(timeout=10) for _ in range(4)]
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/operations/test_resources.py:254: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/operations/test_resources.py:254: in <listcomp>
+    events = [queue.get(timeout=10) for _ in range(4)]
+              ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <multiprocessing.queues.Queue object at 0x7f0b3cdf6710>, block = True
+timeout = 9.999996547000023
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/queues.py:114: Empty
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/spawn.py", line 122, in spawn_main
+Traceback (most recent call last):
+    exitcode = _main(fd, parent_sentinel)
+  File "<string>", line 1, in <module>
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/spawn.py", line 122, in spawn_main
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+    exitcode = _main(fd, parent_sentinel)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'tests'
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/multiprocessing/spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'tests'
+=========================== short test summary info ============================
+FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty
+FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty
+2 failed, 2102 passed, 12 subtests passed in 222.35s (0:03:42)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+AssertionError
+

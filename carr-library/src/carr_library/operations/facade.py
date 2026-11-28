@@ -3,7 +3,8 @@
 Stored status is reported as stored status. Listing never resumes a worker,
 contacts a provider, loads a model, or upgrades a saved receipt to verified audio.
 """
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+from hashlib import sha256
 import math
 import os
 from pathlib import Path
@@ -15,17 +16,136 @@ from .models import ResourceStateError
 
 _JOB_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,159}')
 _STATES = {'pending', 'queued', 'preparing', 'running', 'pausing', 'cancelling',
-           'paused', 'cancelled', 'interrupted', 'partial', 'attention', 'failed', 'complete'}
-_TERMINAL = {'complete', 'cancelled'}
+           'paused', 'cancelled', 'interrupted', 'partial', 'attention', 'failed', 'complete',
+           'ready', 'completed', 'stopped'}
+_TERMINAL = {'complete', 'completed', 'cancelled'}
 _MAX_CHECKPOINT = 32 * 1024 * 1024
 _MAX_DISCOVERY = 10000
+_MAX_DETAIL_ARTIFACTS = 64
+_STUDIO_SUMMARY_FIELDS = {'schema', 'id', 'status', 'nodes', 'progress',
+                          'created', 'updated', 'error'}
+_UNKNOWN_DETAILS = ('Detailed metadata is unavailable for this checkpoint. '
+                    'Unknown values do not authorize execution or output reuse.')
 _LOCATIONS = {
     'studio': ('state/studio/jobs', '*/job.json'),
     'assistant': ('state/assistant', '*.json'),
     'import': ('import-batches', '*.json'),
     'translation': ('state/translation/jobs', '*.json'),
     'asr': ('state/transcription/jobs', '*/job.json'),
+    'asr-receipts': ('state/transcription', '*/jobs/*/job.json'),
 }
+
+
+def _receipt_paths(base):
+    """Bound every discovered scope/job entry, including empty unknown folders."""
+    inspected = 0
+    with os.scandir(base) as scopes:
+        for scope in scopes:
+            inspected += 1
+            if inspected > _MAX_DISCOVERY:
+                raise ResourceStateError('Receipt operation inventory exceeds its discovery limit.')
+            if not re.fullmatch(r'[0-9a-f]{64}', scope.name):
+                continue
+            directory = local_path(scope.path, root=base, exists=True)
+            regular(directory, directory=True)
+            jobs = directory / 'jobs'
+            try:
+                jobs.lstat()
+            except FileNotFoundError:
+                continue
+            regular(local_path(jobs, root=base, exists=True), directory=True)
+            with os.scandir(jobs) as children:
+                for child in children:
+                    inspected += 1
+                    if inspected > _MAX_DISCOVERY:
+                        raise ResourceStateError('Receipt operation inventory exceeds its discovery limit.')
+                    if not re.fullmatch(r'[0-9a-f]{32}', child.name):
+                        continue
+                    job = local_path(child.path, root=base, exists=True)
+                    regular(job, directory=True)
+                    yield job / 'job.json'
+
+
+@dataclass(frozen=True)
+class ResourcePlanView:
+    cpu_slots: int
+    memory_bytes: int
+    gpu_requested: bool
+    gpu_memory_bytes: int
+    disk_reservation_bytes: tuple
+    exclusive_device_count: int
+    source_count: int | None
+    estimated_duration_seconds: float | None
+
+
+@dataclass(frozen=True)
+class ArtifactIdentityView:
+    ordinal: int
+    sha256: str
+    size: int
+
+
+@dataclass(frozen=True)
+class OperationDetails:
+    handler_schema: str | None = None
+    adapter: str | None = None
+    operation_plan_sha256: str | None = None
+    settings_sha256: str | None = None
+    project_fingerprint: str | None = None
+    resource_plan: ResourcePlanView | None = None
+    completed_artifacts: tuple = ()
+    completed_artifact_count: int | None = None
+    omitted_artifact_count: int | None = None
+    restore_requires_new_output: bool | None = None
+    note: str = _UNKNOWN_DETAILS
+
+
+def _studio_details(data, checkpoint):
+    """Project typed stored declarations without opening their referenced paths."""
+    if type(data.get('schema')) is not int:
+        raise ResourceStateError('Invalid production checkpoint schema.')
+    # Historical dashboard-only summaries carry no canonical detail envelope.
+    # A partially present canonical envelope must not fall back to this case.
+    if set(data) <= _STUDIO_SUMMARY_FIELDS:
+        return OperationDetails()
+    from ..backup_producers import validate
+    from ..studio.render import ENGINE_SCHEMA
+    try:
+        validate(None, checkpoint, data)
+    except (ValueError, TypeError, KeyError, OverflowError, OSError):
+        raise ResourceStateError(
+            'Saved production details failed their canonical checks; open Studio to review.') from None
+
+    plan = data.get('resource_plan')
+    resources = None
+    if plan is not None:
+        request = plan['request']
+        disks = ((request['disk_bytes'],) if request['disk_path'] is not None else ())
+        disks += tuple(size for _, size in request['additional_disks'])
+        resources = ResourcePlanView(request['cpu_slots'], request['memory_bytes'],
+            request['gpu_device'] is not None, request['gpu_memory_bytes'], disks,
+            len(request['devices']), len(plan['source_sha256']) if 'source_sha256' in plan else None,
+            plan.get('estimated_duration'))
+    identities, count, omitted = (), None, None
+    if data['status'] == 'complete':
+        rows = data['artifacts']
+        count = len(rows)
+        identities = tuple(ArtifactIdentityView(index + 1, row['sha256'], row['size'])
+            for index, row in enumerate(rows[:_MAX_DETAIL_ARTIFACTS]))
+        omitted = count - len(identities)
+    note = ('The handler identifies the current canonical production reader. '
+            'Other details are stored declarations; artifact bytes and current assets were not checked. '
+            'Resource budgets are declarations, not measured use. '
+            'No selected backend identity or separate settings digest is recorded.')
+    if 'operation_sha256' not in data:
+        note += ' This historical record has no saved operation-plan digest.'
+    if data.get('restore_requires_new_output'):
+        note += ' Its restore marker requires review of a new output in Studio.'
+    return OperationDetails(handler_schema=ENGINE_SCHEMA,
+        operation_plan_sha256=data.get('operation_sha256'), project_fingerprint=data['fingerprint'],
+        resource_plan=resources, completed_artifacts=identities,
+        completed_artifact_count=count, omitted_artifact_count=omitted,
+        restore_requires_new_output=data.get('restore_requires_new_output'), note=note)
 
 
 @dataclass(frozen=True)
@@ -41,6 +161,7 @@ class OperationView:
     controls: tuple
     checkpoint: str
     live: bool | None = None
+    details: OperationDetails = field(default_factory=OperationDetails)
 
     @property
     def key(self):
@@ -58,6 +179,14 @@ class OperationFacade:
     def _path(self, kind, identity):
         if kind not in _LOCATIONS or not isinstance(identity, str) or not _JOB_ID.fullmatch(identity):
             raise ValueError('Choose a known operation and its existing job identity.')
+        if kind == 'asr' and not re.fullmatch(r'[0-9a-f]{32}', identity):
+            raise ValueError('Choose the exact local-file job identity.')
+        if kind == 'asr-receipts':
+            if not re.fullmatch(r'[0-9a-f]{64}\.[0-9a-f]{32}', identity):
+                raise ValueError('Choose the exact workspace-bound receipt operation identity.')
+            scope, job = identity.split('.')
+            return local_path(self.root / 'state/transcription' / scope / 'jobs' / job / 'job.json',
+                              root=self.root)
         directory, pattern = _LOCATIONS[kind]
         path = self.root / directory / (identity + '.json' if pattern == '*.json' else identity + '/job.json')
         return local_path(path, root=self.root)
@@ -83,7 +212,14 @@ class OperationFacade:
             raise ResourceStateError('Operation checkpoint is not an object.')
         expected = {'studio': 1, 'assistant': 'carr-assistant-job/1',
                     'translation': 'carr-assistant-job/1', 'asr': 'resonance-transcription-job/1'}
-        if kind == 'import':
+        if kind == 'asr-receipts':
+            from ..transcription_contract import validate_job_document
+            scope, job = identity.split('.')
+            validate_job_document(data, identity=job)
+            if sha256(data['workspace'].encode('utf-8')).hexdigest() != scope:
+                raise ResourceStateError('Receipt operation belongs to another workspace.')
+            self._authorize(data['workspace'])
+        elif kind == 'import':
             if data.get('version') != 1 or data.get('batch_id') != identity or data.get('data_dir') != str(self.root):
                 raise ResourceStateError('Import checkpoint identity or data directory changed.')
         elif data.get('schema') != expected[kind] or data.get('id') != identity:
@@ -93,15 +229,17 @@ class OperationFacade:
         if kind == 'translation' and data.get('kind') != 'translation/1':
             raise ResourceStateError('Unsupported translation checkpoint.')
         status = data.get('state') if kind == 'import' else data.get('status')
-        if status not in _STATES:
+        if not isinstance(status, str) or status not in _STATES:
             raise ResourceStateError('Unknown saved operation state; inspect its canonical service.')
-        workspace = data.get('workspace') if kind in ('assistant', 'import') else None
+        workspace = data.get('workspace') if kind in ('assistant', 'import', 'asr-receipts') else None
         if workspace is not None and (not isinstance(workspace, str) or not workspace or len(workspace) > 200):
             raise ResourceStateError('Invalid saved operation workspace.')
         completed = total = None
+        details = OperationDetails()
         if kind == 'studio':
             if not isinstance(data.get('nodes'), dict):
                 raise ResourceStateError('Invalid production checkpoint nodes.')
+            details = _studio_details(data, path.relative_to(self.root).as_posix())
             completed = len(data['nodes'])
             phase = 'Stored production checkpoint; accepted nodes'
         elif kind == 'assistant':
@@ -125,6 +263,9 @@ class OperationFacade:
             if type(total) is not int or sum(counts.values()) != total:
                 raise ResourceStateError('Import checkpoint counts differ from the recorded total.')
             phase = 'Stored import checkpoint; accepted or excluded files'
+        elif kind == 'asr-receipts':
+            completed, total = data['done'], len(data['sources'])
+            phase = 'Stored strict-receipt transcription checkpoint; verified input files'
         else:
             completed, total = data.get('done'), data.get('total')
             phase = 'Stored transcription checkpoint; completed input files'
@@ -140,7 +281,8 @@ class OperationFacade:
         if not isinstance(updated, str) or len(updated) > 128 or any(ord(char) < 32 for char in updated):
             raise ResourceStateError('Invalid operation update time.')
         return OperationView(kind, identity, workspace, status, completed, total, phase, updated,
-                             self._controls(kind, status), path.relative_to(self.root).as_posix())
+                             self._controls(kind, status), path.relative_to(self.root).as_posix(),
+                             details=details)
 
     def _live(self, values):
         if self.broker is None:
@@ -166,8 +308,14 @@ class OperationFacade:
                 continue
             local_path(base, root=self.root, exists=True)
             regular(base, directory=True)
-            for path in base.glob(pattern):
+            paths = _receipt_paths(base) if kind == 'asr-receipts' else base.glob(pattern)
+            for path in paths:
                 identity = path.stem if pattern == '*.json' else path.parent.name
+                if kind == 'asr-receipts':
+                    scope = path.parents[2].name
+                    if not re.fullmatch(r'[0-9a-f]{64}', scope):
+                        continue
+                    identity = scope + '.' + identity
                 # Control files and unrelated service settings are not jobs.
                 if pattern == '*.json' and not re.fullmatch(r'[0-9a-f]{32}', identity):
                     continue

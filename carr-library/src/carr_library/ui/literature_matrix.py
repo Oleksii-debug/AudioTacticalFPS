@@ -95,8 +95,9 @@ def make_matrix_dialog(parent, matrix, *, include_descendants=True, tag_filter=N
             self.tags.SetName('Filter source comparison by theme or tag')
             self.tags.SetSelection(self.tag_names.index(tag_filter) if tag_filter in self.tag_names else 0)
             layout.Add(self.tags, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-            self.summary = wx.TextCtrl(self, style=wx.TE_READONLY)
+            self.summary = wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE)
             self.summary.SetName('Source comparison summary')
+            self.summary.SetMinSize((-1, 56))
             layout.Add(self.summary, 0, wx.EXPAND | wx.ALL, 8)
             layout.Add(wx.StaticText(self, label='Sources and versions'), 0, wx.LEFT | wx.RIGHT, 8)
             self.sources = wx.ListBox(self, style=wx.LB_SINGLE)
@@ -123,7 +124,6 @@ def make_matrix_dialog(parent, matrix, *, include_descendants=True, tag_filter=N
             for label, action in (
                     ('Export comparison as &CSV', 'matrix_csv'),
                     ('Export comparison as &Markdown', 'matrix_markdown'),
-                    ('Export research &outline', 'outline'),
                     ('&Refresh comparison', 'refresh')):
                 button = wx.Button(self, label=label)
                 button.Bind(wx.EVT_BUTTON, lambda event, kind=action: self.finish(kind))

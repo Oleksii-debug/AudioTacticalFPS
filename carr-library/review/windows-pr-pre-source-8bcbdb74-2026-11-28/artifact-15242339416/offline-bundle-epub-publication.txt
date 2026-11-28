@@ -1,0 +1,121 @@
+PASS: publication UI comes from installed package
+PASS: real native Windows widgets
+PASS: exact bundled executable: ffmpeg
+PASS: sealed executable bytes: ffmpeg
+PASS: exact bundled executable: ffprobe
+PASS: sealed executable bytes: ffprobe
+PASS: actual FFmpeg produced a completed Studio fixture
+PASS: publication is available in the installed Studio menu
+PASS: real native main loop is active
+PASS: export controls have native accessible names
+PASS: native Space down: &Load jobs / receipts
+PASS: native Space up: &Load jobs / receipts
+PASS: completed job is listed without implicit selection
+PASS: native Space down: &Export EPUB3
+PASS: native Space up: &Export EPUB3
+PASS: native export completed with a durable receipt
+PASS: shared progress completes only after publication verification
+PASS: native completion focuses readable publication status
+PASS: exact script and measured line overlays are retained
+PASS: embedded audio is MP3 with an actual byte identity
+PASS: native Space down: &Verify receipt
+PASS: native Space up: &Verify receipt
+PASS: native explicit receipt verification succeeds
+PASS: native Space down: &Export EPUB3
+PASS: native Space up: &Export EPUB3
+PASS: native duplicate export cannot overwrite completed bytes
+PASS: native Space down: &Close
+PASS: native Space up: &Close
+PASS: native keyboard close completes
+PASS: synchronized reading is available in the same Studio menu
+PASS: native Space down: &Load verified publication
+PASS: native Space up: &Load verified publication
+PASS: native reader captured and decoded the exact publication
+PASS: loading the native synchronized reader never autoplays
+PASS: chapter and utterance choices have native accessible names
+PASS: native Space down: &Next interval
+PASS: native Space up: &Next interval
+PASS: native next interval preserves measured navigation without autoplay
+PASS: native Space down: Previous &interval
+PASS: native Space up: Previous &interval
+PASS: native previous interval returns to the original text
+PASS: native chapter End key down
+PASS: native chapter End key up
+PASS: chapter keyboard navigation retains exact original media interval
+PASS: native Space down: &Stop
+PASS: native Space up: &Stop
+PASS: native Space down: &Close
+PASS: native Space up: &Close
+PASS: reader close removes decoded private audio after confirmed stop
+{
+  "result": "PASS",
+  "checks": [
+    "publication UI comes from installed package",
+    "real native Windows widgets",
+    "exact bundled executable: ffmpeg",
+    "sealed executable bytes: ffmpeg",
+    "exact bundled executable: ffprobe",
+    "sealed executable bytes: ffprobe",
+    "actual FFmpeg produced a completed Studio fixture",
+    "publication is available in the installed Studio menu",
+    "real native main loop is active",
+    "export controls have native accessible names",
+    "native Space down: &Load jobs / receipts",
+    "native Space up: &Load jobs / receipts",
+    "completed job is listed without implicit selection",
+    "native Space down: &Export EPUB3",
+    "native Space up: &Export EPUB3",
+    "native export completed with a durable receipt",
+    "shared progress completes only after publication verification",
+    "native completion focuses readable publication status",
+    "exact script and measured line overlays are retained",
+    "embedded audio is MP3 with an actual byte identity",
+    "native Space down: &Verify receipt",
+    "native Space up: &Verify receipt",
+    "native explicit receipt verification succeeds",
+    "native Space down: &Export EPUB3",
+    "native Space up: &Export EPUB3",
+    "native duplicate export cannot overwrite completed bytes",
+    "native Space down: &Close",
+    "native Space up: &Close",
+    "native keyboard close completes",
+    "synchronized reading is available in the same Studio menu",
+    "native Space down: &Load verified publication",
+    "native Space up: &Load verified publication",
+    "native reader captured and decoded the exact publication",
+    "loading the native synchronized reader never autoplays",
+    "chapter and utterance choices have native accessible names",
+    "native Space down: &Next interval",
+    "native Space up: &Next interval",
+    "native next interval preserves measured navigation without autoplay",
+    "native Space down: Previous &interval",
+    "native Space up: Previous &interval",
+    "native previous interval returns to the original text",
+    "native chapter End key down",
+    "native chapter End key up",
+    "chapter keyboard navigation retains exact original media interval",
+    "native Space down: &Stop",
+    "native Space up: &Stop",
+    "native Space down: &Close",
+    "native Space up: &Close",
+    "reader close removes decoded private audio after confirmed stop"
+  ],
+  "audio": "Synthetic PCM tones through actual FFmpeg",
+  "audio_runtime": {
+    "ffmpeg": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffmpeg.exe",
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"
+    },
+    "ffprobe": {
+      "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffprobe.exe",
+      "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+    }
+  },
+  "native_keyboard": "PASS",
+  "synchronized_reader_navigation": "PASS",
+  "audio_device_playback": "NOT_RUN",
+  "epubcheck": "NOT_RUN",
+  "reader_interoperability": "NOT_RUN",
+  "manual_keyboard": "NOT_RUN",
+  "nvda": "NOT_RUN"
+}

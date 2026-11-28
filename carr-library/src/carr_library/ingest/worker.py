@@ -22,6 +22,7 @@ from uuid import uuid4
 
 from .pipeline import Ingest, canonical
 from ..extract.document_formats import MIME_SUFFIXES
+from ..extract.page_ocr import config_dict
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -46,6 +47,31 @@ def _path(root, request_id):
     return _directory(root) / (request_id + '.json')
 
 
+def request_profile(record):
+    """Pure versioned admission; historical requests keep their exact byte limit."""
+    version = record.get('version') if isinstance(record, dict) else None
+    if type(version) is not int or version not in (1, 2):
+        raise ValueError('Invalid import request source-profile version.')
+    if version == 1:
+        if 'source_profile' in record:
+            raise ValueError('A legacy import request cannot acquire a streamed source profile.')
+        return None
+    from .streamed_text import profile_from_value
+    return profile_from_value(record.get('source_profile'))
+
+
+def validate_request_admission(root, request_id, identity, attempt):
+    """Recheck the parent's frozen admission before source access or publication."""
+    if (not isinstance(identity, str) or re.fullmatch('[0-9a-f]{64}', identity) is None
+            or not isinstance(attempt, str) or re.fullmatch('[0-9a-f]{32}', attempt) is None):
+        raise ValueError('Invalid frozen import worker admission.')
+    record = load_request(root, request_id)
+    if (request_identity(record) != identity or record.get('attempt_id') != attempt
+            or record.get('attempt') != attempt):
+        raise ValueError('The import request or worker attempt changed after admission.')
+    return record
+
+
 def load_request(root, request_id):
     path = _path(root, request_id)
     info = path.lstat()
@@ -53,10 +79,12 @@ def load_request(root, request_id):
             or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError('Invalid import request file.')
     record = json.loads(path.read_text(encoding='utf-8'))
-    if (not isinstance(record, dict) or record.get('version') != 1
+    if (not isinstance(record, dict) or type(record.get('version')) is not int
+            or record['version'] not in (1, 2)
             or record.get('request_id') != request_id
             or record.get('data_dir') != str(Path(root).resolve())):
         raise ValueError('Import request identity changed.')
+    request_profile(record)
     return record
 
 
@@ -93,21 +121,175 @@ def record_progress(root, request_id, **changes):
     _store(root, request_id, record)
 
 
+def request_identity(record):
+    """Hash only immutable admission fields, never a claimed terminal result."""
+    keys = {'version', 'request_id', 'data_dir', 'workspace', 'source', 'metadata', 'config'}
+    if (not isinstance(record, dict) or not keys <= set(record)
+            or type(record['version']) is not int or record['version'] not in (1, 2)
+            or not isinstance(record['metadata'], dict) or set(record['metadata']) != FIELDS
+            or not isinstance(record['config'], dict)):
+        raise ValueError('Invalid persisted import request identity.')
+    profile = request_profile(record)
+    identity = {key: record[key] for key in keys}
+    if profile is not None:
+        identity['source_profile'] = profile.to_dict()
+    identity['expected_manifest'] = record.get('expected_manifest')
+    return sha256(canonical(identity).encode('utf-8')).hexdigest()
+
+
+def validate_publication_document(record):
+    """Validate optional request receipt fields without opening paths or a DB."""
+    if not isinstance(record, dict):
+        raise ValueError('Invalid persisted import request identity.')
+    attempt, intent = record.get('attempt_id'), record.get('publication')
+    if attempt is not None and (not isinstance(attempt, str)
+            or not re.fullmatch('[0-9a-f]{32}', attempt)):
+        raise ValueError('Invalid import worker attempt identity.')
+    canonical_attempt = record.get('attempt')
+    if canonical_attempt is not None and (not isinstance(canonical_attempt, str)
+            or not re.fullmatch('[0-9a-f]{32}', canonical_attempt)
+            or attempt is not None and canonical_attempt != attempt):
+        raise ValueError('Import publication attempt identities differ.')
+    if intent is None:
+        return None
+    keys = {'version', 'attempt_id', 'request_sha256', 'revision', 'config_sha256',
+            'page_count', 'pages_sha256', 'before', 'result', 'committed'}
+    if (not isinstance(intent, dict) or set(intent) != keys
+            or type(intent['version']) is not int or intent['version'] != 1
+            or type(intent['committed']) is not bool or attempt is None
+            or intent['attempt_id'] != attempt
+            or any(not isinstance(intent[key], str) or not re.fullmatch('[0-9a-f]{64}', intent[key])
+                   for key in ('request_sha256', 'revision', 'config_sha256', 'pages_sha256'))
+            or intent['request_sha256'] != request_identity(record)
+            or intent['revision'] != record.get('job')
+            or type(intent['page_count']) is not int or intent['page_count'] < 1):
+        raise ValueError('Import source or configuration changed; publication identity is invalid.')
+    before, result = intent['before'], intent['result']
+    metadata = record['metadata']
+    collections = metadata.get('collections')
+    if (not isinstance(collections, list) or len(collections) > 100
+            or any(not isinstance(value, str) or not value for value in collections)
+            or not isinstance(before, dict) or set(before) !=
+                {'revision_existed', 'active_revision', 'missing_memberships'}
+            or type(before['revision_existed']) is not bool
+            or (before['active_revision'] is not None and
+                (not isinstance(before['active_revision'], str) or not before['active_revision']
+                 or len(before['active_revision']) > 200))
+            or not isinstance(before['missing_memberships'], list)
+            or len(before['missing_memberships']) > 100
+            or any(not isinstance(value, str) for value in before['missing_memberships'])
+            or len(set(before['missing_memberships'])) != len(before['missing_memberships'])
+            or not set(before['missing_memberships']) <= set(collections)
+            or not isinstance(result, dict)
+            or not {'state', 'id', 'edition', 'completed', 'verified'} <= set(result)
+            or not set(result) <= {'state', 'id', 'edition', 'completed', 'verified',
+                'workspace', 'asset', 'total', 'error', 'format', 'warnings', 'message'}
+            or result.get('state') not in ('complete', 'superseded')
+            or result.get('id') != intent['revision']
+            or result.get('edition') != metadata['edition_id']
+            or type(result.get('completed')) is not int or result['completed'] != intent['page_count']
+            or type(result.get('verified')) is not bool
+            or ('total' in result and (type(result['total']) is not int or
+                                       result['total'] != intent['page_count']))
+            or result.get('error') is not None):
+        raise ValueError('Invalid request-bound publication pre-state or result.')
+    if len(canonical(intent).encode('utf-8')) > MAX_REQUEST:
+        raise ValueError('Import publication receipt exceeds its limit.')
+    return intent
+
+
+def publication_before(db, workspace, edition, revision, collections):
+    """Capture pre-state inside the existing catalog publication transaction."""
+    if not db.in_transaction:
+        raise ValueError('Import publication requires its existing transaction.')
+    active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
+                        (workspace, edition)).fetchone()
+    return dict(revision_existed=db.execute('SELECT 1 FROM revision WHERE id=?',
+                                            (revision,)).fetchone() is not None,
+                active_revision=active[0] if active else None,
+                missing_memberships=[collection for collection in dict.fromkeys(collections)
+                    if db.execute('SELECT 1 FROM catalog_membership WHERE workspace=? '
+                                  'AND collection=? AND edition=?',
+                                  (workspace, collection, edition)).fetchone() is None])
+
+
+def publication_pages(db, revision):
+    """Bound immutable page contents without copying source text to the request."""
+    digest, count = sha256(), 0
+    for count, row in enumerate(db.execute(
+            'SELECT ordinal,physical,printed,verified,raw,digest FROM page '
+            'WHERE revision=? ORDER BY ordinal', (revision,)), 1):
+        if (row[0] != count or not isinstance(row[4], str)
+                or sha256(row[4].encode('utf-8')).hexdigest() != row[5]):
+            raise ValueError('Import publication page integrity changed.')
+        digest.update((canonical([*row[:4], row[5]]) + '\n').encode('utf-8'))
+    if not count:
+        raise ValueError('Import publication has no source pages.')
+    return count, digest.hexdigest()
+
+
+def prepare_publication(root, request_id, db, revision, before, result):
+    """Persist request-bound intent before COMMIT; intent is never proof alone.
+
+    The parent verifies the sealed database, original bytes and registration
+    after the child has exited. This uses the existing private request and
+    journal and the canonical immutable transaction receipts; there is no
+    second extraction or publication pipeline.
+    """
+    if request_id is None:
+        return
+    request = load_request(root, request_id)
+    attempt = request.get('attempt_id')
+    if not isinstance(attempt, str) or not re.fullmatch('[0-9a-f]{32}', attempt):
+        raise ValueError('Import publication has no admitted worker attempt.')
+    if not db.in_transaction:
+        raise ValueError('Import publication requires its existing transaction.')
+    published = db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
+                           (revision,)).fetchone()
+    if (published is None or tuple(published[:3]) != (request['workspace'],
+            request['metadata']['edition_id'], request.get('asset_sha256'))
+            or request.get('job') != revision):
+        raise ValueError('Import publication differs from its admitted request.')
+    count, pages_digest = publication_pages(db, revision)
+    intent = dict(version=1, attempt_id=attempt, request_sha256=request_identity(request),
+                  revision=revision, config_sha256=sha256(published[3].encode('utf-8')).hexdigest(),
+                  page_count=count, pages_sha256=pages_digest, before=before,
+                  result=dict(result), committed=False)
+    record_progress(root, request_id, publication=intent)
+    record_publication_candidate(root, request_id, db, request['workspace'], revision)
+
+
+def confirm_publication(root, request_id):
+    """Acknowledge an already committed transaction, still subject to DB checks."""
+    if request_id is None:
+        return
+    request = load_request(root, request_id)
+    intent = request.get('publication')
+    if (not isinstance(intent, dict) or intent.get('attempt_id') != request.get('attempt_id')
+            or intent.get('request_sha256') != request_identity(request)):
+        raise ValueError('Import publication acknowledgment identity changed.')
+    record_progress(root, request_id, publication=dict(intent, committed=True))
+
+
 def _request_identity(record):
     """Stable request identity; progress and publication candidates are not authority."""
-    return {key: record.get(key) for key in (
+    value = {key: record.get(key) for key in (
         'version', 'request_id', 'data_dir', 'workspace', 'source',
         'metadata', 'config', 'expected_manifest')}
+    profile = request_profile(record)
+    if profile is not None:
+        value['source_profile'] = profile.to_dict()
+    return value
 
 
-def _publication_state(db, record, revision):
+def _publication_state(db, record, revision, *, allow_superseded=False):
     """Inspect this exact sealed revision and registration in the caller's snapshot.
 
     The digest includes original source identity, requested catalog metadata and
     every exact stored page. Read rows incrementally, without copying a large
     extracted document into the request file or a second in-memory collection.
     """
-    from ..application import LibraryApp
+    from ..application import LibraryApp, _metadata
     from ..catalog.membership import Catalog
 
     workspace, metadata = record['workspace'], record['metadata']
@@ -120,8 +302,8 @@ def _publication_state(db, record, revision):
                         (workspace, metadata['edition_id'])).fetchone()
     if (tuple(row[:3]) != (workspace, metadata['edition_id'], record.get('asset_sha256'))
             or not db.execute('SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()
-            or active is None or active[0] != revision):
-        raise ValueError('Import publication identity changed.')
+            or active is None or (active[0] != revision and not allow_superseded)):
+        raise ValueError('Import publication identity or active revision changed.')
     catalog = db.execute(
         'SELECT e.work,e.asset,a.mime,a.size,e.language,e.edition,e.volume,w.title '
         'FROM catalog_edition e JOIN catalog_asset a ON a.digest=e.asset '
@@ -131,8 +313,8 @@ def _publication_state(db, record, revision):
         raise ValueError('Import publication registration is missing.')
     manifest = dict(sha256=catalog[1], mime=catalog[2], size=catalog[3])
     if (tuple(catalog[:2]) != (metadata['work_id'], record.get('asset_sha256'))
-            or tuple(catalog[4:]) != (metadata['language'], metadata['edition'],
-                                      metadata['volume'], metadata['title'])
+            or tuple(catalog[4:]) != (_metadata(metadata['language']), _metadata(metadata['edition']),
+                                      _metadata(metadata['volume']), _metadata(metadata['title']) or Path(record['source']).stem)
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):
         raise ValueError('Import publication metadata changed.')
@@ -151,10 +333,17 @@ def _publication_state(db, record, revision):
     source = db.execute('SELECT author,title,volume,edition_label FROM source_metadata '
                         'WHERE workspace=? AND edition=? AND revision=?',
                         (workspace, metadata['edition_id'], revision)).fetchone()
-    if source is None or tuple(source) != (
-            '; '.join(authors) or None, metadata['title'] or 'Unknown title',
-            metadata['volume'], metadata['edition']):
+    if source is None or (not allow_superseded and tuple(source) != (
+            '; '.join(authors) or None, _metadata(metadata['title']) or Path(record['source']).stem,
+            _metadata(metadata['volume']), _metadata(metadata['edition']))):
         raise ValueError('Import publication source metadata changed.')
+    config = json.loads(row['config'])
+    profile = request_profile(record)
+    if profile is not None and config != profile.configuration():
+        raise ValueError('Streamed import publication configuration changed.')
+    if (not isinstance(config, dict)
+            or (config.get('kind') == 'physical_page' and config.get('config') != record['config'])):
+        raise ValueError('Import publication extraction settings changed.')
     digest = sha256(canonical([_request_identity(record), list(row), list(catalog),
                                list(source), authors]).encode('utf-8'))
     completed = 0
@@ -173,74 +362,235 @@ def _publication_state(db, record, revision):
     return dict(sha256=digest.hexdigest(), completed=completed, manifest=manifest)
 
 
-def record_publication_candidate(root, request_id, db, workspace, revision):
-    """Bind this attempt inside the existing publication transaction.
 
-    The sidecar is only a hint. The immutable database receipt commits with the
-    exact source; it distinguishes another request publishing the same
-    deterministic revision after this transaction rolls back.
+def validate_publication_candidate_document(record):
+    """Pure strict decoder for the accepted canonical V5 publication hint."""
+    from ..catalog.intake import MAX_BYTES
+    profile = (request_profile(record) if record.get('version', 1) != 1
+               or 'source_profile' in record else None)
+    attempt = record.get('attempt')
+    if 'attempt' in record and (not isinstance(attempt, str)
+            or not re.fullmatch('[0-9a-f]{32}', attempt)):
+        raise ValueError('Invalid import publication candidate attempt.')
+    if (attempt is not None and record.get('attempt_id') is not None
+            and attempt != record['attempt_id']):
+        raise ValueError('Import publication attempt identities differ.')
+    candidate = record.get('publication_candidate')
+    if candidate is None:
+        return None
+    if (not isinstance(candidate, dict)
+            or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
+            or attempt is None or candidate.get('attempt') != attempt
+            or any(not isinstance(candidate.get(key), str)
+                   or not re.fullmatch('[0-9a-f]{64}', candidate[key])
+                   for key in ('revision', 'sha256'))
+            or type(candidate.get('completed')) is not int or candidate['completed'] < 1):
+        raise ValueError('Invalid import publication candidate.')
+    manifest = candidate['manifest']
+    if (not isinstance(manifest, dict) or set(manifest) != {'sha256', 'mime', 'size'}
+            or not isinstance(manifest.get('sha256'), str)
+            or not re.fullmatch('[0-9a-f]{64}', manifest['sha256'])
+            or manifest.get('mime') not in MIME_SUFFIXES
+            or type(manifest.get('size')) is not int
+            or not 1 <= manifest['size'] <= (profile.maximum_bytes if profile else MAX_BYTES)
+            or profile is not None and manifest['mime'] != profile.mime
+            or manifest['sha256'] != record.get('asset_sha256')
+            or (record.get('expected_manifest') is not None
+                and manifest != record['expected_manifest'])
+            or (record.get('job') is not None and candidate['revision'] != record['job'])):
+        raise ValueError('Import publication candidate has a foreign source or journal identity.')
+    return candidate
+
+
+def _registration_digest(intent, candidate):
+    """Bind a replay transaction to exact immutable intent, never its later ack."""
+    return sha256(canonical({
+        'publication': {key: value for key, value in intent.items() if key != 'committed'},
+        'candidate': candidate,
+    }).encode('utf-8')).hexdigest()
+
+
+def record_publication_candidate(root, request_id, db, workspace, revision):
+    """Write ownership inside the existing source/registration transaction.
+
+    Canonical V5 keeps one immutable receipt for the original publication.
+    V6 separately attests later registration transactions, without replacing
+    that first owner or inventing ownership for migrated historical sources.
     """
     if request_id is None:
         return
     record = load_request(root, request_id)
     attempt = record.get('attempt')
-    if attempt is None:  # Legacy direct invocations have no supervising attempt.
-        return
+    if attempt is None:
+        return  # An unsupervised historical direct call has no worker owner.
     if (not isinstance(attempt, str) or not re.fullmatch('[0-9a-f]{32}', attempt)
             or not db.in_transaction or record['workspace'] != workspace):
         raise ValueError('Import publication attempt changed.')
-    state = _publication_state(db, record, revision)
+    intent = validate_publication_document(record)
+    state = _publication_state(db, record, revision,
+        allow_superseded=intent is not None and intent['result']['state'] == 'superseded')
     if state is None:
         raise ValueError('Import publication candidate is missing.')
-    db.execute('INSERT INTO import_publication(revision,request_id,attempt,sha256) '
-               'VALUES(?,?,?,?)', (revision, request_id, attempt, state['sha256']))
-    record_progress(root, request_id, publication_candidate=dict(
-        attempt=attempt, revision=revision, **state))
+    candidate = dict(attempt=attempt, revision=revision, **state)
+    if intent is not None and intent['before']['revision_existed']:
+        changed = bool(intent['before']['missing_memberships'])
+        db.execute('INSERT INTO import_registration(revision,request_id,attempt,sha256,changed) '
+                   'VALUES(?,?,?,?,?)', (revision, request_id, attempt,
+                    _registration_digest(intent, candidate), int(changed)))
+    else:
+        db.execute('INSERT INTO import_publication(revision,request_id,attempt,sha256) '
+                   'VALUES(?,?,?,?)', (revision, request_id, attempt, state['sha256']))
+    record_progress(root, request_id, publication_candidate=candidate)
 
 
-def _reconcile_publication(root, request_id, attempt):
-    """Recover only a fresh publication from this stopped child, without replay."""
-    record = load_request(root, request_id)
-    candidate = record.get('publication_candidate')
+def validate_committed_publication(db, record):
+    """Return an exactly owned committed candidate, or None for absent ownership.
+
+    A sidecar, matching source bytes, or another request's equal revision does
+    not establish that this worker committed. The same read snapshot verifies
+    the immutable SQLite receipt and the complete canonical source state.
+    """
+    candidate = validate_publication_candidate_document(record)
     if candidate is None:
         return None
-    if (record.get('attempt') != attempt or not isinstance(candidate, dict)
-            or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
-            or candidate.get('attempt') != attempt
-            or not isinstance(candidate.get('revision'), str)
-            or not re.fullmatch('[0-9a-f]{64}', candidate['revision'])
-            or not isinstance(candidate.get('sha256'), str)
-            or not re.fullmatch('[0-9a-f]{64}', candidate['sha256'])
-            or type(candidate.get('completed')) is not int or candidate['completed'] < 1
-            or not isinstance(candidate.get('manifest'), dict)):
-        raise ValueError('Import publication candidate changed.')
-    from ..application import LibraryApp
-    from ..citations.anchors import Identity
-
-    app = LibraryApp(root)
-    with app.read(record['workspace']) as db:
-        receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
-                             'WHERE revision=?', (candidate['revision'],)).fetchone()
+    intent = validate_publication_document(record)
+    request_id, attempt = record['request_id'], record['attempt']
+    replay = intent is not None and intent['before']['revision_existed']
+    if replay:
+        receipt = db.execute(
+            'SELECT revision,sha256,changed FROM import_registration WHERE request_id=? AND attempt=?',
+            (request_id, attempt)).fetchone()
+        if receipt is None:
+            return None
+        if (receipt['revision'] != candidate['revision']
+                or receipt['sha256'] != _registration_digest(intent, candidate)
+                or receipt['changed'] != int(bool(intent['before']['missing_memberships']))):
+            raise ValueError('Import registration receipt differs from its exact intent.')
+        if not receipt['changed'] and not intent['committed']:
+            return None  # A stopped no-op replay cannot claim a new business commit.
+    else:
+        receipt = db.execute(
+            'SELECT request_id,attempt,sha256 FROM import_publication WHERE revision=?',
+            (candidate['revision'],)).fetchone()
         if receipt is None or tuple(receipt[:2]) != (request_id, attempt):
-            # An intact equal revision may have been committed by a competitor
-            # after this child rolled back. Its receipt cannot complete us.
             return None
         if receipt['sha256'] != candidate['sha256']:
             raise ValueError('Import publication receipt differs from its candidate.')
-        state = _publication_state(db, record, candidate['revision'])
-        if state is None:  # The child died before its SQLite transaction committed.
+    state = _publication_state(db, record, candidate['revision'],
+        allow_superseded=replay and intent['result']['state'] == 'superseded')
+    if state is None:
+        return None
+    if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
+        raise ValueError('Committed import differs from its publication candidate.')
+    return candidate
+
+
+def reconcile_legacy_publication(app, record):
+    """Read an owned canonical V5 receipt without requiring a QA011 sidecar."""
+    from ..citations.anchors import Identity
+    if record.get('publication') is not None:
+        raise ValueError('Use the richer publication reconciler for this request.')
+    with app.read(record['workspace']) as db:
+        candidate = validate_committed_publication(db, record)
+        if candidate is None:
             return None
-        if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
-            raise ValueError('Committed import differs from its publication candidate.')
         identity = Identity(record['workspace'], record['metadata']['edition_id'],
-                            state['manifest']['sha256'], candidate['revision'])
+                            candidate['manifest']['sha256'], candidate['revision'])
         app._retained_source(db, record['workspace'], identity)
     return dict(state='complete', id=candidate['revision'], workspace=record['workspace'],
-                edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
-                completed=state['completed'], total=state['completed'], error=None,
-                verified=state['manifest']['mime'] == 'text/plain',
+                edition=record['metadata']['edition_id'], asset=candidate['manifest']['sha256'],
+                completed=candidate['completed'], total=candidate['completed'], error=None,
+                verified=candidate['manifest']['mime'] == 'text/plain',
                 publication_recovered=True,
                 message='Import completed before the worker stopped; the committed source was verified.')
+
+
+def _reconcile_publication(root, request_id, attempt):
+    """Compatibility entry point for an independently supervised V5 request."""
+    from ..application import LibraryApp
+    record = load_request(root, request_id)
+    if record.get('attempt') != attempt:
+        raise ValueError('Import publication attempt changed.')
+    return reconcile_legacy_publication(LibraryApp(root), record)
+
+
+def _verified_completed_result(app, record):
+    """Read a validated historical completion after restore revoked its attempt.
+
+    This never creates an ownership receipt or reports a newly stopped attempt
+    as committed. Exact retained bytes, settings, scope and current registration
+    are rechecked before returning the already completed historical result.
+    """
+    result = record.get('result')
+    if (record.get('state') != 'complete' or not isinstance(result, dict)
+            or 'attempt' in record or 'publication_candidate' in record):
+        return None
+    legacy_intent = validate_publication_document(record)
+    revision = record.get('job')
+    if (not isinstance(revision, str) or not re.fullmatch('[0-9a-f]{64}', revision)
+            or result.get('state') != 'complete' or result.get('id') != revision):
+        raise ValueError('Historical completed import identity changed.')
+    from ..citations.anchors import Identity
+    with app.read(record['workspace']) as db:
+        state = _publication_state(db, record, revision)
+        if state is None:
+            raise ValueError('Historical completed import is missing its sealed source.')
+        if legacy_intent is not None:
+            config = db.execute('SELECT config FROM revision WHERE id=?', (revision,)).fetchone()[0]
+            if (legacy_intent['config_sha256'] != sha256(config.encode('utf-8')).hexdigest()
+                    or publication_pages(db, revision) !=
+                       (legacy_intent['page_count'], legacy_intent['pages_sha256'])):
+                raise ValueError('Historical completed import receipt changed.')
+        if (type(result.get('completed')) is not int or result['completed'] != state['completed']
+                or type(result.get('verified')) is not bool
+                or result['verified'] != (state['manifest']['mime'] == 'text/plain')):
+            raise ValueError('Historical completed import result changed.')
+        for key, expected in (('workspace', record['workspace']),
+                              ('edition', record['metadata']['edition_id']),
+                              ('asset', state['manifest']['sha256']), ('total', state['completed'])):
+            if key in result and result[key] != expected:
+                raise ValueError('Historical completed import has a foreign result.')
+        app._retained_source(db, record['workspace'], Identity(record['workspace'],
+            record['metadata']['edition_id'], state['manifest']['sha256'], revision))
+    return dict(result)
+
+
+def _settle_request(root, request_id, identity, result=None):
+    """Resolve a fully stopped child under the same writer admission guard."""
+    from ..application import LibraryApp
+    from .writer_guard import exclusive_writer
+    app = LibraryApp(root)
+    with exclusive_writer(root, timeout=5):
+        request = load_request(root, request_id)
+        if request_identity(request) != identity:
+            raise ValueError('Import request identity changed while the worker ran.')
+        try:
+            committed = app._reconcile_import_publication(request)
+            if committed is None and result is None:
+                committed = _verified_completed_result(app, request)
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            committed = None
+            result = dict(state='failed', message=(
+                'The stopped import could not verify its publication. ' + str(exc))[:2000],
+                          worker_terminal_state=result.get('state') if result else None)
+        if committed is not None:
+            if result is None and isinstance(request.get('result'), dict):
+                # Reopening the completed request must retain why its original
+                # worker stopped, even though no new child was needed.
+                for key in ('worker_terminal_state', 'worker_message', 'publication_recovered'):
+                    if key in request['result']:
+                        committed[key] = request['result'][key]
+            if result is not None and result.get('state') not in ('complete', 'superseded'):
+                committed.update(worker_terminal_state=result.get('state'),
+                                 worker_message=result.get('message', ''), publication_recovered=True)
+            result = dict(committed, reconciled=True)
+        elif result is None:
+            return None
+        elif result.get('state') in ('complete', 'superseded'):
+            result = dict(state='failed', message='Import completion has no validated durable publication.')
+        result = dict(result, request_id=request_id, isolated=True)
+        record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
+        return result
 
 
 class RuntimeBoundIngest(Ingest):
@@ -459,7 +809,8 @@ def _stop(process):
         process.wait(timeout=2)
 
 
-def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
+def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None,
+                    source_profile=None):
     metadata = dict(metadata)
     if metadata.get('title') in (None, ''):
         metadata['title'] = Path(source).stem
@@ -467,7 +818,14 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     metadata['edition_id'] = metadata.get('edition_id') or uuid4().hex
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
-                  metadata=metadata, config=asdict(config), state='pending')
+                  metadata=metadata, config=config_dict(config), state='pending')
+    profile = None
+    if source_profile is not None:
+        from .streamed_text import profile_from_value
+        profile = profile_from_value(source_profile)
+        if Path(source).suffix.casefold() != profile.suffix:
+            raise ValueError('The selected source format differs from its explicit profile.')
+        record.update(version=2, source_profile=profile.to_dict())
     if expected_manifest is not None:
         from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
@@ -476,7 +834,8 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or not 0 < expected_manifest['size'] <= (profile.maximum_bytes if profile else MAX_BYTES)
+                or profile is not None and expected_manifest['mime'] != profile.mime):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -484,7 +843,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None):
+                    expected_manifest=None, source_profile=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
@@ -493,7 +852,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
-                                  request_id, expected_manifest)
+                                  request_id, expected_manifest, source_profile)
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:
@@ -507,211 +866,103 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None):
+                timeout=120.0, request_id=None, source_profile=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new)
-
-
-
-def _publication_watermark(app, workspace):
-    """Release the read snapshot before starting the native worker."""
-    with app.read(workspace) as db:
-        # Revision rows are append-only in the accepted schema. A scalar is
-        # bounded even after many metadata revisions of the same edition.
-        return db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
-
-
-def _published_after_stop(app, initial, watermark, *, revision=None):
-    """Independently verify the exact revision after its owned receipt is checked.
-
-    A stopped process may have committed before returning its stdout receipt.
-    Existing/replayed revisions are not proof that this invocation completed.
-    This read never resumes parsing, changes a journal, or approves quotations.
-    It supplements the transaction receipt; fresh row IDs alone do not prove
-    which process attempt committed an otherwise identical source.
-    """
-    from ..catalog.membership import _metadata
-    from ..extract.document_formats import FORMAT_BY_MIME
-
-    try:
-        request = load_request(app.root, initial['request_id'])
-        identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
-                    'metadata', 'config', 'expected_manifest')
-        if any(request.get(key) != initial.get(key) for key in identity):
-            return None
-        metadata = request['metadata']
-        digest = request.get('asset_sha256')
-        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
-                or not isinstance(metadata, dict) or set(metadata) != FIELDS):
-            return None
-        workspace, edition = request['workspace'], metadata['edition_id']
-        with app.read(workspace) as db:
-            rows = db.execute(
-                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size, '
-                'w.title,e.language,e.edition AS edition_label,e.volume '
-                'FROM revision r JOIN sealed s ON s.revision=r.id '
-                'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
-                'JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
-                'JOIN catalog_asset c ON c.digest=e.asset '
-                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
-                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? '
-                'AND (? IS NULL OR r.id=?) LIMIT 2',
-                (workspace, edition, digest, watermark, revision, revision)).fetchall()
-            if len(rows) != 1:
-                return None
-            row = rows[0]
-            if (row['work'] != metadata['work_id'] or row['active'] is None
-                    or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
-                    or not 0 < row['size'] <= 64 * 1024 * 1024
-                    or not isinstance(row['config'], str)
-                    or len(row['config'].encode('utf-8')) > 4 * 1024 * 1024):
-                return None
-            settings = json.loads(row['config'])
-            if (not isinstance(settings, dict) or canonical(settings) != row['config']
-                    or sha256(canonical([workspace, edition, digest, row['config']])
-                              .encode('utf-8')).hexdigest() != row['id']):
-                return None
-            mime = row['mime']
-            if mime == 'application/pdf':
-                if (request.get('job') != row['id']
-                        or settings.get('adapter') != 'page_ocr-v1'
-                        or settings.get('kind') != 'physical_page'
-                        or settings.get('config') != request['config']):
-                    return None
-            else:
-                adapter = ('strict-utf8-v1' if mime == 'text/plain' else
-                           'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
-                           'epub-spine-v1' if mime == 'application/epub+zip' else
-                           'ordered-document-v1')
-                if settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment':
-                    return None
-                if mime in FORMAT_BY_MIME and settings.get('format') != FORMAT_BY_MIME[mime].name:
-                    return None
-                if request.get('job') is not None and request['job'] != row['id']:
-                    return None
-            manifest = dict(sha256=digest, mime=mime, size=row['size'])
-            if request.get('expected_manifest') not in (None, manifest):
-                return None
-            original = app.assets.resolve(digest)
-            if original.suffix != MIME_SUFFIXES[mime] or original.stat().st_size != row['size']:
-                return None
-            title = _metadata(metadata['title']) or Path(request['source']).stem
-            authors = tuple(_metadata(value) for value in metadata['authors'])
-            # Citation display joins authors. Preserve their separate identities
-            # and all catalog fields before accepting a concurrent publication.
-            catalog_authors = tuple(author[0] for author in db.execute(
-                'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
-                (workspace, metadata['work_id'])))
-            if (row['title'] != title or catalog_authors != authors
-                    or (row['language'], row['edition_label'], row['volume']) != tuple(
-                        _metadata(metadata[field]) for field in ('language', 'edition', 'volume'))):
-                return None
-            source_metadata = db.execute(
-                'SELECT author,title,volume,edition_label FROM source_metadata '
-                'WHERE workspace=? AND edition=? AND revision=?',
-                (workspace, edition, row['id'])).fetchone()
-            expected = ('; '.join(authors) or None, title or 'Unknown title',
-                        _metadata(metadata['volume']), _metadata(metadata['edition']))
-            if source_metadata is None or tuple(source_metadata) != expected:
-                return None
-            for collection in metadata['collections']:
-                if not db.execute(
-                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
-                        (workspace, edition, collection)).fetchone():
-                    return None
-            count, text_bytes, nonempty = 0, 0, False
-            expected_text = (original.read_bytes().decode('utf-8-sig').split('\f')
-                             if mime == 'text/plain' else None)
-            for page in db.execute(
-                    'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
-                    'FROM page p LEFT JOIN indexed i ON i.id=p.id '
-                    'WHERE p.revision=? ORDER BY p.ordinal', (row['id'],)):
-                count += 1
-                raw = page['raw']
-                if not isinstance(raw, str) or '\x00' in raw:
-                    return None
-                encoded = raw.encode('utf-8')
-                text_bytes += len(encoded)
-                if (count > 10000 or text_bytes > 64 * 1024 * 1024
-                        or page['ordinal'] != count
-                        or page['digest'] != sha256(encoded).hexdigest()
-                        or page['printed'] is not None or page['verified'] != 0
-                        or page['physical'] != (count if mime == 'application/pdf' else None)
-                        or (row['active'] == row['id'] and page['indexed'] != raw)):
-                    return None
-                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
-                    return None
-                nonempty = nonempty or bool(raw.strip())
-            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
-                return None
-            return dict(state='complete' if row['active'] == row['id'] else 'superseded',
-                        workspace=workspace, edition=edition, id=row['id'], asset=digest,
-                        completed=count, total=count, verified=mime == 'text/plain',
-                        recovered_publication=True)
-    except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
-        # An absent, ambiguous or damaged binding grants no completion authority.
-        return None
+                            request_id=request_id, new=new, source_profile=source_profile)
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new):
+                 timeout, request_id, new, source_profile=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
     if new:
-        record = _request_record(root, workspace, source, metadata, config, request_id)
+        record = _request_record(root, workspace, source, metadata, config, request_id,
+                                 source_profile=source_profile)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
-        if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
-            return dict(record['result'], request_id=request_id, isolated=True)
-    from ..application import LibraryApp
-    app = LibraryApp(root)
-    watermark = _publication_watermark(app, workspace)
-    started = False
+    profile = request_profile(record)
+    if not new and source_profile is not None:
+        from .streamed_text import profile_from_value
+        if profile_from_value(source_profile) != profile:
+            raise ValueError('The resumed import must keep its original source profile.')
+    identity = request_identity(record)
+    if not cancelled() and (record.get('publication') is not None
+                            or record.get('publication_candidate') is not None
+                            or record.get('state') == 'complete'):
+        recovered = _settle_request(root, request_id, identity)
+        if recovered is not None:
+            return recovered
+    def execute(stopped):
+        attempt = uuid4().hex
+        record_progress(root, request_id, state='running', attempt_id=attempt, attempt=attempt,
+                        publication=None, publication_candidate=None)
+        message = {'data_dir': str(Path(root).resolve()), 'request_id': request_id,
+                   'timeout': timeout}
+        if profile is not None:
+            message.update(request_sha256=identity, attempt_id=attempt)
+        result = _invoke(message, timeout=timeout, cancelled=stopped)
+        # The unchanged supervisor has stopped/reaped its exact interpreter
+        # before publication reconciliation. A late stop cannot undo a commit.
+        return _settle_request(root, request_id, identity, result)
 
-    def worker_started():
-        nonlocal started
-        started = True
+    from ..catalog.intake import MAX_BYTES
+    from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
+    broker = ResourceBroker.for_app(root)
+    # Every isolated document parser shares admission with the other heavy
+    # operations. Legacy requests keep their existing 64 MiB source allowance;
+    # only an explicit streamed profile can increase it.
+    # This is declared capacity, not measured RSS or an OS memory sandbox.
+    maximum_bytes = profile.maximum_bytes if profile is not None else MAX_BYTES
+    request = ResourceRequest(cpu_slots=1, memory_bytes=512 * 1024**2,
+        disk_bytes=10 * maximum_bytes + 128 * 1024**2,
+        disk_path=Path(root).resolve())
+    try:
+        with broker.reserve(request, operation_id='document:' + request_id,
+                            cancelled=cancelled, timeout=60) as lease:
+            if request_identity(load_request(root, request_id)) != identity:
+                raise ValueError('The import request changed while waiting for shared resources.')
+            def stopped():
+                if lease.cancelled():
+                    return True
+                try:
+                    lease.checkpoint()
+                except ResourceCancelled:
+                    # Cancellation may arrive between these two checks. Keep
+                    # the supervisor's normal stop/reap/publication-reconcile
+                    # path instead of misclassifying a running child as a
+                    # cancellation that happened before resource admission.
+                    return True
+                return False
+            return execute(stopped)
+    except ResourceCancelled:
+        current = load_request(root, request_id)
+        if request_identity(current) != identity:
+            raise ValueError('The import request changed while waiting for shared resources.')
+        result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
+                      request_id=request_id, isolated=True)
+        stopped_state = dict(state='cancelled', result=result,
+                             publication=None, publication_candidate=None)
+        if any(current.get(key) is not None for key in
+               ('attempt', 'attempt_id', 'publication', 'publication_candidate')):
+            # No new child ran, but an earlier attempt must not remain an
+            # authority for this cancelled dispatch. Preserve committed catalog
+            # rows; explicit later recovery still verifies their actual receipt.
+            attempt = uuid4().hex
+            stopped_state.update(attempt=attempt, attempt_id=attempt)
+        record_progress(root, request_id, **stopped_state)
+        return result
 
-    attempt = uuid4().hex
-    record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
-    result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
-                     on_started=worker_started)
-    if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
-        try:
-            if _request_identity(load_request(root, request_id)) != _request_identity(record):
-                raise ValueError('Import request changed while its worker was running.')
-            committed = _reconcile_publication(root, request_id, attempt)
-            if committed is not None:
-                # The immutable receipt identifies the committing attempt; keep
-                # the existing format/config/catalog/index checks independently
-                # bound to that exact revision, never another matching row.
-                verified = _published_after_stop(app, record, watermark,
-                                                 revision=committed['id'])
-                if verified is None or verified['state'] != 'complete':
-                    raise ValueError('Import publication could not verify its source binding.')
-        except (KeyError, TypeError, ValueError, OSError, sqlite3.Error):
-            result = dict(state='failed', message=
-                          'The stopped import could not verify its publication. Review or resume this request.')
-        else:
-            if committed is not None:
-                result = dict(committed, recovered_publication=True,
-                              worker_state=result['state'])
-    result = dict(result, request_id=request_id, isolated=True)
-    record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
-    return result
 
-
-def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
+def _invoke(message, *, timeout, cancelled=lambda: False):
     """One process supervisor for import and render operations."""
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
@@ -736,12 +987,23 @@ def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
                     roots.append(str(package_root.parent))
                 bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
                              "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-                process = subprocess.Popen([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+                executable = sys.executable
+                environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
+                if (os.name == 'nt' and sys.prefix != sys.base_prefix
+                        and getattr(sys, '_base_executable', None)
+                        and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
+                    # CPython multiprocessing uses this pair on Windows: own
+                    # the interpreter, not the venv redirector, while retaining
+                    # the selected executable/prefix and its site-packages.
+                    # Waiting for a killed redirector alone can race the real
+                    # worker's release of its native writer-lock handle.
+                    environment.pop('PYTHONEXECUTABLE', None)
+                    environment['__PYVENV_LAUNCHER__'] = executable
+                    executable = sys._base_executable
+                process = subprocess.Popen([executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
                                            stdin=input_stream, stdout=output, stderr=errors,
-                                           env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
+                                           env=environment,
                                            **options)
-                if on_started is not None:
-                    on_started()
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled():
@@ -829,8 +1091,10 @@ def main():
             raise ValueError('Import worker request exceeded its limit.')
         message = json.loads(raw)
         import_keys = {'data_dir', 'request_id', 'timeout'}
+        streamed_keys = import_keys | {'request_sha256', 'attempt_id'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys):
+        direct_keys = {'action', 'source', 'sha256', 'mime', 'workspace', 'edition', 'timeout'}
+        if not isinstance(message, dict) or set(message) not in (import_keys, streamed_keys, render_keys, direct_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
@@ -841,6 +1105,15 @@ def main():
             raise PermissionError('Network access is disabled in the import worker.')
         socket.create_connection = socket.getaddrinfo = denied
         socket.socket.connect = socket.socket.connect_ex = denied
+        if set(message) == direct_keys:
+            if message['action'] != 'direct-identity' or not isinstance(message['source'], str):
+                raise ValueError('Invalid direct import verification request.')
+            from ..pending_backup import _direct_extraction_identity
+            with redirect_stdout(sys.stderr):
+                result = _direct_extraction_identity(message['source'], message['sha256'],
+                    message['mime'], message['workspace'], message['edition'])
+            print(canonical({'result': result}))
+            return 0
         if set(message) == render_keys:
             if message['action'] != 'render' or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')
@@ -857,6 +1130,14 @@ def main():
             print(canonical({'result': dict(renderer=renderer, fingerprint=fingerprint)}))
             return 0
         record = load_request(message['data_dir'], message['request_id'])
+        profile = request_profile(record)
+        if profile is not None:
+            if set(message) != streamed_keys:
+                raise ValueError('A streamed import requires its frozen supervising attempt.')
+            record = validate_request_admission(message['data_dir'], message['request_id'],
+                message['request_sha256'], message['attempt_id'])
+        elif set(message) != import_keys:
+            raise ValueError('A historical request cannot acquire streamed worker admission.')
         if (not isinstance(record.get('metadata'), dict) or set(record['metadata']) != FIELDS
                 or not isinstance(record.get('config'), dict)
                 or not isinstance(record.get('workspace'), str)
@@ -873,11 +1154,16 @@ def main():
             app = LibraryApp(message['data_dir'])
             source = record['source']
             if record.get('asset_sha256'):
-                source = app.assets.resolve(record['asset_sha256'])
+                source = (app.assets.resolve(record['asset_sha256']) if profile is None else
+                          app.assets.resolve(record['asset_sha256'], profile=profile))
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
-                                      _expected_manifest=record.get('expected_manifest'))
+                                      _expected_manifest=record.get('expected_manifest'),
+                                      **(dict(_source_profile=profile,
+                                              _request_sha256=message['request_sha256'],
+                                              _request_attempt=message['attempt_id'])
+                                         if profile is not None else {}))
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

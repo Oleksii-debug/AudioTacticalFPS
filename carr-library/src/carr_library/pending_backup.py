@@ -27,7 +27,9 @@ from .ingest.batch_scan import planned_snapshot
 from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
-from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
+from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS, request_profile
+from .ingest.streamed_text import (MAX_FRAGMENTS, profile_from_config, profile_from_value,
+                                   inspect_text, file_digest, verified_reader)
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 
 MAX_JOURNAL = 512 * 1024**2
@@ -41,7 +43,8 @@ _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
 _REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
-                     'attempt', 'publication_candidate', 'publication_watermark'}
+                     'attempt_id', 'publication', 'attempt', 'publication_candidate', 'publication_watermark',
+                     'source_profile'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -142,10 +145,10 @@ def _copy(source, target, entry, cancelled):
     target = local_path(target)
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     hashed, size = sha256(), 0
-    with source.open('rb') as read, target.open('xb') as write:
+    with verified_reader(source) as read, target.open('xb') as write:
         if _stamp(os.fstat(read.fileno())) != _stamp(before):
             raise ValueError('Pending import backup changed during read.')
-        while block := read.read(1024 * 1024):
+        while block := read.read(min(1024 * 1024, entry['size_bytes'] - size + 1)):
             _check(cancelled)
             size += len(block)
             if size > entry['size_bytes']:
@@ -164,10 +167,10 @@ def _copy(source, target, entry, cancelled):
 def _entry(path, name, cancelled):
     before = regular(path)
     hashed, size = sha256(), 0
-    with Path(path).open('rb') as stream:
+    with verified_reader(path) as stream:
         if _stamp(os.fstat(stream.fileno())) != _stamp(before):
             raise ValueError('Pending import file changed during hashing.')
-        while block := stream.read(1024 * 1024):
+        while block := stream.read(min(1024 * 1024, before.st_size - size + 1)):
             _check(cancelled)
             size += len(block)
             if size > before.st_size:
@@ -178,16 +181,19 @@ def _entry(path, name, cancelled):
     return {'filename': name, 'size_bytes': size, 'sha256': hashed.hexdigest()}
 
 
-def _manifest(value):
+def _manifest(value, profile=None):
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or not _hash(value['sha256']) or value['mime'] not in SUFFIXES
-            or type(value['size']) is not int or not 0 < value['size'] <= MAX_BYTES):
+            or type(value['size']) is not int
+            or not 0 < value['size'] <= (profile.maximum_bytes if profile else MAX_BYTES)
+            or profile is not None and value['mime'] != profile.mime):
         raise ValueError('Invalid pending source manifest.')
     return value
 
 
 def _config(value):
-    if not isinstance(value, dict) or set(value) != set(asdict(Config())):
+    fields = set(asdict(Config()))
+    if not isinstance(value, dict) or set(value) not in (fields, fields - {'automatic_languages'}):
         raise ValueError('Invalid pending extraction configuration.')
     if any(type(value[key]) is not int for key in ('dpi', 'timeout', 'max_pixels')):
         raise ValueError('Invalid pending extraction resource limits.')
@@ -205,7 +211,7 @@ def _catalog(path):
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
         version = db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (3, 4, 5) or schema_fingerprint(db) != expected_schema_fingerprint(version):
+        if version not in (3, 4, 5, 6) or schema_fingerprint(db) != expected_schema_fingerprint(version):
             raise ValueError('Pending imports require the canonical catalog schema.')
     except BaseException:
         db.close()
@@ -245,7 +251,7 @@ def _metadata(value, db, workspace):
         raise ValueError('Pending edition/work identity differs from the catalog.')
 
 
-def _result(value, workspace, edition, db, *, complete=False, asset=None):
+def _result(value, workspace, edition, db, *, complete=False):
     if value is None and not complete:
         return
     if not isinstance(value, dict) or len(canonical(value).encode('utf-8')) > MAX_REQUEST:
@@ -256,18 +262,17 @@ def _result(value, workspace, edition, db, *, complete=False, asset=None):
         revision = value.get('id')
         if value.get('state') != 'complete' or not _hash(revision):
             raise ValueError('Invalid complete import result.')
-        if not _hash(asset) or value.get('asset', asset) != asset:
-            raise ValueError('Complete import result source differs from its saved request.')
         if db.execute('SELECT 1 FROM revision JOIN sealed ON sealed.revision=revision.id '
-                      'WHERE revision.id=? AND workspace=? AND edition=? AND asset=?',
-                      (revision, workspace, edition, asset)).fetchone() is None:
-            raise ValueError('Import completion has no matching sealed source publication.')
+                      'WHERE revision.id=? AND workspace=? AND edition=?',
+                      (revision, workspace, edition)).fetchone() is None:
+            raise ValueError('Import completion has no matching sealed publication.')
 
 
 def _request(record, request_id, data_dir, db):
     if (not isinstance(record, dict) or not _REQUEST_REQUIRED <= set(record)
             or set(record) - _REQUEST_REQUIRED - _REQUEST_OPTIONAL
-            or type(record['version']) is not int or record['version'] != 1
+            or type(record['version']) is not int or record['version'] not in (1, 2)
+            or ('source_profile' in record) != (record['version'] == 2)
             or record['request_id'] != request_id or not _id(request_id)
             or record['data_dir'] != data_dir or record['state'] not in _REQUEST_STATES):
         raise ValueError('Invalid pending request schema or data-directory binding.')
@@ -275,8 +280,9 @@ def _request(record, request_id, data_dir, db):
     _workspace(db, record['workspace'])
     _metadata(record['metadata'], db, record['workspace'])
     _config(record['config'])
+    profile = request_profile(record)
     if 'expected_manifest' in record:
-        _manifest(record['expected_manifest'])
+        _manifest(record['expected_manifest'], profile)
     # Earlier requests may retain this scalar. It is accepted only for backup
     # compatibility; import completion is authorized solely by the DB receipt.
     boundary = record.get('publication_watermark')
@@ -288,24 +294,12 @@ def _request(record, request_id, data_dir, db):
     if ('asset_sha256' in record and 'expected_manifest' in record
             and record['asset_sha256'] != record['expected_manifest']['sha256']):
         raise ValueError('Pending request source identity changed.')
-    if 'attempt' in record and not _id(record['attempt']):
-        raise ValueError('Invalid pending import attempt identity.')
-    candidate = record.get('publication_candidate')
-    if candidate is not None:
-        if (not isinstance(candidate, dict)
-                or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
-                or not _id(candidate['attempt']) or candidate['attempt'] != record.get('attempt')
-                or not _hash(candidate['revision']) or not _hash(candidate['sha256'])
-                or type(candidate['completed']) is not int or candidate['completed'] < 1):
-            raise ValueError('Invalid pending import publication candidate.')
-        manifest = _manifest(candidate['manifest'])
-        if (manifest['sha256'] != record.get('asset_sha256')
-                or (record.get('expected_manifest') is not None
-                    and manifest != record['expected_manifest'])
-                or (record.get('job') is not None and candidate['revision'] != record['job'])):
-            raise ValueError('Pending publication candidate has a foreign source or journal identity.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
-            complete=record['state'] == 'complete', asset=record.get('asset_sha256'))
+            complete=record['state'] == 'complete')
+    from .ingest.worker import (validate_publication_document,
+                                validate_publication_candidate_document)
+    validate_publication_document(record)
+    validate_publication_candidate_document(record)
 
 
 def _batch(record, batch_id, data_dir, db):
@@ -347,9 +341,7 @@ def _batch(record, batch_id, data_dir, db):
         _metadata(dict(title=row['title'], authors=[], language=None, edition=None, volume=None,
                        collections=record['collections'], work_id=row['work_id'], edition_id=row['edition_id']),
                   db, record['workspace'])
-        _result(row['result'], record['workspace'], row['edition_id'], db,
-                complete=row['state'] == 'complete',
-                asset=row['manifest']['sha256'] if row['manifest'] is not None else None)
+        _result(row['result'], record['workspace'], row['edition_id'], db, complete=row['state'] == 'complete')
     for row in record['rows']:
         duplicate = row['duplicate_of']
         if duplicate is None:
@@ -405,17 +397,22 @@ def _journal(path, catalog, cancelled):
             row = dict(item)
             if (not _hash(row['id']) or not _hash(row['asset']) or not _text(row['edition'], 200)
                     or not _text(row['config'], 128_000) or type(row['count']) is not int
-                    or not 1 <= row['count'] <= 1000 or row['state'] not in _JOB_STATES
+                    or not 1 <= row['count'] <= MAX_FRAGMENTS or row['state'] not in _JOB_STATES
                     or (row['error'] is not None and not _text(row['error'], 4000, empty=True))):
                 raise ValueError('Invalid pending journal job.')
             _workspace(catalog, row['workspace'])
             settings = _decode(row['config'].encode('utf-8'), newline=False)
             if not isinstance(settings, dict) or settings.get('kind') not in ('logical_segment', 'physical_page'):
                 raise ValueError('Invalid pending journal extraction identity.')
+            profile = profile_from_config(settings)
             if settings['kind'] == 'logical_segment':
-                if settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
+                if profile is None and settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
                     raise ValueError('Unsupported pending text extraction identity.')
+                if profile is None and row['count'] > 1000:
+                    raise ValueError('Legacy pending text exceeds its segment limit.')
             else:
+                if profile is not None or row['count'] > 1000:
+                    raise ValueError('Pending PDF exceeds its existing page or format allowance.')
                 required = {'adapter', 'kind', 'config', 'pypdf', 'pdfium'}
                 if (set(settings) not in (required, required | {'runtime_identity'})
                         or settings['adapter'] != 'page_ocr-v1'
@@ -435,7 +432,12 @@ def _journal(path, catalog, cancelled):
                     row['workspace'], row['edition'], row['asset'], row['config']):
                 raise ValueError('Pending job differs from its published identity.')
             completed = 0
-            for completed, checkpoint in enumerate(db.execute('SELECT * FROM checkpoint WHERE job=? ORDER BY ordinal', (row['id'],)), 1):
+            from .ingest.streamed_ingest import MAX_RECORD_BYTES
+            payload_limit = MAX_RECORD_BYTES if profile is not None else MAX_PAYLOAD
+            for completed, checkpoint in enumerate(db.execute('SELECT job,ordinal,CASE WHEN length(CAST(payload AS BLOB))<=? '
+                    'THEN payload ELSE NULL END AS payload,digest FROM checkpoint WHERE job=? ORDER BY ordinal',
+                    (payload_limit, row['id'])), 1):
+                _check(cancelled)
                 _checkpoint(checkpoint, row, completed, settings['kind'])
                 if publication is not None:
                     payload = _decode(checkpoint['payload'].encode('utf-8'), newline=False)
@@ -477,12 +479,28 @@ def _checkpoint(checkpoint, job, ordinal, kind):
         raise ValueError('Pending checkpoint source or locator identity mismatch.')
 
 
+def _present(path):
+    """Only genuine absence is optional; permission and lookup errors fail closed."""
+    try:
+        Path(path).lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def pending_roots(root):
+    # Probe every root, even when the first exists. A short-circuiting any()
+    # could hide an inaccessible request or batch directory.
+    return tuple(name for name in ('imports.sqlite', 'import-requests', 'import-batches')
+                 if _present(Path(root) / name))
+
+
 def _inventory(root):
     """Recognize canonical committed sidecars; ignore only known transient names."""
     found = {}
     for name in ('import-requests', 'import-batches'):
         directory = root / name
-        if not os.path.lexists(directory):
+        if not _present(directory):
             continue
         local_path(directory, exists=True)
         regular(directory, directory=True)
@@ -531,13 +549,151 @@ def _records(root, data_dir, db, names):
     return requests, batches, reviews
 
 
+def _direct_page_identity(rows, cancelled):
+    """Hash bounded logical pages without granting physical-page verification."""
+    hashed, count, characters = sha256(), 0, 0
+    for count, row in enumerate(rows, 1):
+        _check(cancelled)
+        ordinal, physical, printed, verified, raw, raw_hash = row
+        if (count > 10_000 or type(ordinal) is not int or ordinal != count
+                or physical is not None or printed is not None
+                or type(verified) is not int or verified != 0
+                or not isinstance(raw, str) or '\x00' in raw
+                or not _hash(raw_hash) or digest(raw) != raw_hash):
+            raise ValueError('Pending direct import has invalid logical pages.')
+        characters += len(raw)
+        if characters > 10_000_000:
+            raise ValueError('Pending direct import exceeds its text budget.')
+        hashed.update((canonical([ordinal, None, None, 0, raw_hash]) + '\n').encode('utf-8'))
+    if not count:
+        raise ValueError('Pending direct import has no logical pages.')
+    return count, hashed.hexdigest()
+
+
+def _direct_extraction_identity(source, asset_sha256, mime, workspace, edition):
+    """Read-only child action: prove an unpublished job without catalog writes."""
+    from .extract.document_formats import EXTENDED_MIMES
+    docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    epub = 'application/epub+zip'
+    if (not _hash(asset_sha256) or mime not in EXTENDED_MIMES | {docx, epub}
+            or not _text(workspace, 200) or not _text(edition, 200)):
+        raise ValueError('Invalid direct import identity request.')
+    source = local_path(source, exists=True)
+    raw = _read(source, MAX_BYTES)
+    if sha256(raw).hexdigest() != asset_sha256 or classify(raw, SUFFIXES[mime]) != mime:
+        raise ValueError('Pending direct import source identity changed.')
+    if mime == epub:
+        from .extract.epub_ordered import extract_epub
+        from .reader.ebook_contents import extraction_settings
+        extracted = extract_epub(raw)
+        settings = extraction_settings(extracted)
+    elif mime == docx:
+        from .extract.docx_ordered import extract_docx
+        extracted = extract_docx(raw)
+        settings = canonical(dict(adapter='python-docx-ordered-v1', kind='logical_segment',
+                                  provenance=extracted['provenance']))
+    else:
+        from .extract.document_formats import extract_document, extraction_settings
+        extracted = extract_document(raw, SUFFIXES[mime], deadline=time.monotonic() + 60)
+        settings = canonical(extraction_settings(extracted, mime))
+    count, pages_hash = _direct_page_identity(
+        ((ordinal, None, None, 0, row['raw_text'], row['text_sha256'])
+         for ordinal, row in enumerate(extracted['records'], 1)), lambda: False)
+    return dict(revision=digest(canonical([workspace, edition, asset_sha256, settings])),
+                config_sha256=digest(settings), page_count=count, pages_sha256=pages_hash)
+
+
+def _direct_job(request, catalog, asset, originals, cancelled):
+    """Bind non-journal formats to their sealed revision or exact retained bytes.
+
+    DOCX, EPUB and the additional document adapters publish directly. A stopped
+    request can have a job ID before any catalog row exists. Only that case asks
+    the existing isolated worker for bounded, read-only extraction hashes.
+    Sealed historical imports keep their original extraction configuration.
+    """
+    from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME
+    docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    epub = 'application/epub+zip'
+    if (asset is None or asset['sha256'] != request.get('asset_sha256')
+            or asset['mime'] not in EXTENDED_MIMES | {docx, epub}):
+        raise ValueError('Pending request has a foreign journal job.')
+    mime = asset['mime']
+    expected_adapter = ('python-docx-ordered-v1' if mime == docx else
+                        'epub-spine-v1' if mime == epub else 'ordered-document-v1')
+    expected_format = 'DOCX' if mime == docx else 'EPUB' if mime == epub else FORMAT_BY_MIME[mime].name
+    identity = (request['workspace'], request['metadata']['edition_id'], asset['sha256'])
+    publication = catalog.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
+                                  (request['job'],)).fetchone()
+    intent = request.get('publication')
+    if publication is not None:
+        if tuple(publication[:3]) != identity or catalog.execute(
+                'SELECT 1 FROM sealed WHERE revision=?', (request['job'],)).fetchone() is None:
+            raise ValueError('Pending direct import has a foreign or unsealed publication.')
+        settings = publication['config']
+        if not isinstance(settings, str) or len(settings.encode('utf-8')) > MAX_PAYLOAD:
+            raise ValueError('Pending direct import configuration exceeds its budget.')
+        config = _decode(settings.encode('utf-8'), newline=False)
+        if (not isinstance(config, dict) or config.get('adapter') != expected_adapter
+                or config.get('kind') != 'logical_segment' or not isinstance(config.get('provenance'), dict)
+                or config['provenance'].get('asset_sha256') != asset['sha256']
+                or mime in EXTENDED_MIMES and config.get('format') != expected_format
+                or request['job'] != digest(canonical([*identity, settings]))):
+            raise ValueError('Pending direct import has a foreign extraction identity.')
+        config_hash = digest(settings)
+        count, pages_hash = _direct_page_identity(catalog.execute(
+            'SELECT ordinal,physical,printed,verified,raw,digest FROM page '
+            'WHERE revision=? ORDER BY ordinal', (request['job'],)), cancelled)
+    else:
+        if (request['state'] in ('complete', 'superseded')
+                or intent is not None and (intent['committed'] or intent['before']['revision_existed'])):
+            raise ValueError('Completed direct import has no sealed publication.')
+        from .ingest.worker import _invoke
+        reply = _invoke(dict(action='direct-identity', source=str(originals / asset['filename']),
+            sha256=asset['sha256'], mime=mime, workspace=identity[0], edition=identity[1], timeout=60),
+            timeout=60, cancelled=cancelled)
+        _check(cancelled)
+        if isinstance(reply, dict) and reply.get('state') == 'cancelled':
+            raise InterruptedError('Pending direct import verification cancelled.')
+        if isinstance(reply, dict) and reply.get('state') == 'timed_out':
+            raise TimeoutError('Pending direct import verification time limit reached.')
+        if (not isinstance(reply, dict) or set(reply) !=
+                {'revision', 'config_sha256', 'page_count', 'pages_sha256'}
+                or any(not _hash(reply[key]) for key in ('revision', 'config_sha256', 'pages_sha256'))
+                or type(reply['page_count']) is not int or not 1 <= reply['page_count'] <= 10_000
+                or reply['revision'] != request['job']):
+            raise ValueError('Pending direct import has a foreign or unverifiable extraction identity.')
+        config_hash, count, pages_hash = reply['config_sha256'], reply['page_count'], reply['pages_sha256']
+    result = request.get('result')
+    if request['state'] == 'complete' and (
+            result.get('id') != request['job'] or type(result.get('completed')) is not int
+            or result['completed'] != count or result.get('verified') is not False
+            or result.get('format', expected_format) != expected_format):
+        raise ValueError('Pending direct import completion differs from its sealed publication.')
+    if intent is not None:
+        if (intent['config_sha256'] != config_hash or intent['page_count'] != count
+                or intent['pages_sha256'] != pages_hash):
+            raise ValueError('Pending direct import receipt differs from its source publication.')
+        active = intent['before']['active_revision']
+        if active is not None and catalog.execute(
+                'SELECT 1 FROM revision WHERE id=? AND workspace=? AND edition=?',
+                (active, *identity[:2])).fetchone() is None:
+            raise ValueError('Pending direct import pre-state has a foreign revision.')
+
+
 def _relations(requests, batches, reviews, jobs, journal):
+    # Direct-publication jobs are resolved after the original bytes have been
+    # retained/verified. Batch and journal/review relations are checked first.
+    direct_requests = []
     for request in requests.values():
         if 'job' in request:
             job = jobs.get(request['job'])
-            if job is None or (job['workspace'], job['edition'], job['asset']) != (
+            if job is None:
+                direct_requests.append(request)
+            elif (job['workspace'], job['edition'], job['asset']) != (
                     request['workspace'], request['metadata']['edition_id'], request.get('asset_sha256')):
                 raise ValueError('Pending request has a foreign journal job.')
+            elif request_profile(request) != profile_from_config(job['config']):
+                raise ValueError('Pending request differs from its journal source profile.')
     for batch in batches.values():
         for row in batch['rows']:
             request = requests.get(row['request_id'])
@@ -577,18 +733,20 @@ def _relations(requests, batches, reviews, jobs, journal):
                     or digest(payload['raw_text']) != review['raw_sha256']
                     or payload['physical_index'] != review['physical'] or payload['status'] != 'review_required'):
                 raise ValueError('Pending review differs from its extracted checkpoint.')
+    return direct_requests
 
 
 def _references(requests, batches):
     for identity, request in sorted(requests.items()):
-        yield 'import-requests/' + identity + '.json', None, request['source'], request.get('expected_manifest'), request.get('asset_sha256')
+        yield ('import-requests/' + identity + '.json', None, request['source'],
+               request.get('expected_manifest'), request.get('asset_sha256'), request_profile(request))
     for identity, batch in sorted(batches.items()):
         for row in batch['rows']:
             if row['manifest'] is not None:
-                yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None
+                yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None, None
 
 
-def _source_checkpoints(asset, raw, jobs, journal):
+def _source_checkpoints(asset, original, jobs, journal, cancelled):
     """A TXT checkpoint is verifiable against original bytes without parsing."""
     for job in jobs.values():
         if job['asset'] != asset['sha256']:
@@ -597,6 +755,21 @@ def _source_checkpoints(asset, raw, jobs, journal):
         if (asset['mime'], kind) not in (('text/plain', 'logical_segment'), ('application/pdf', 'physical_page')):
             raise ValueError('Pending journal MIME differs from the source format.')
         if kind == 'logical_segment':
+            profile = profile_from_config(job['config'])
+            if profile is not None:
+                from .ingest.streamed_ingest import checked_checkpoint, MAX_RECORD_BYTES
+                plan = inspect_text(original, profile, expected_digest=asset['sha256'],
+                                    expected_size=asset['size_bytes'], cancelled=cancelled)
+                if len(plan.fragments) != job['count']:
+                    raise ValueError('Pending streamed source count differs from its journal.')
+                for checkpoint in journal.execute('SELECT ordinal,CASE WHEN length(CAST(payload AS BLOB))<=? '
+                        'THEN payload ELSE NULL END AS payload,digest FROM checkpoint WHERE job=? ORDER BY ordinal',
+                        (MAX_RECORD_BYTES, job['id'])):
+                    _check(cancelled)
+                    checked_checkpoint(checkpoint, job['asset'], plan.fragments[checkpoint['ordinal'] - 1],
+                                       checkpoint['ordinal'])
+                continue
+            raw = _read(original, MAX_BYTES)
             segments = raw.decode('utf-8-sig').split('\f')
             if len(segments) != job['count'] or not any(item.strip() for item in segments):
                 raise ValueError('Pending text source count differs from its journal.')
@@ -608,13 +781,54 @@ def _source_checkpoints(asset, raw, jobs, journal):
                     raise ValueError('Pending text checkpoint differs from the exact original bytes.')
 
 
-def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: False):
+
+def _remember_profile(profiles, asset, profile):
+    if profile is None:
+        return
+    previous = profiles.get(asset)
+    if previous is None or profile.maximum_bytes > previous.maximum_bytes:
+        profiles[asset] = profile
+
+
+def _profile_manifest(profiles):
+    return [dict(sha256=asset, profile=profile.to_dict()) for asset, profile in sorted(profiles.items())]
+
+
+def _manifest_profiles(metadata):
+    rows = metadata.get('source_profiles', [])
+    if not isinstance(rows, list) or len(rows) > MAX_FILES:
+        raise ValueError('Invalid streamed pending-source profile inventory.')
+    profiles = {}
+    for row in rows:
+        if (not isinstance(row, dict) or set(row) != {'sha256', 'profile'}
+                or not _hash(row['sha256']) or row['sha256'] in profiles):
+            raise ValueError('Invalid streamed pending-source profile entry.')
+        profiles[row['sha256']] = profile_from_value(row['profile'])
+    if _profile_manifest(profiles) != rows:
+        raise ValueError('Streamed pending-source profiles are not canonical.')
+    return profiles
+
+
+def _verify_original(asset, path, profile, cancelled):
+    if profile is not None:
+        incoming = inspect_text(path, profile, expected_digest=asset['sha256'],
+                                expected_size=asset['size_bytes'], cancelled=cancelled)
+        if asset['mime'] != incoming.mime:
+            raise ValueError('Pending original MIME differs from its selected source profile.')
+    else:
+        raw = _read(path, MAX_BYTES)
+        if (len(raw) != asset['size_bytes'] or classify(raw, Path(asset['filename']).suffix) != asset['mime']
+                or sha256(raw).hexdigest() != asset['sha256']):
+            raise ValueError('Pending original MIME or checksum mismatch.')
+
+
+def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=None):
     """Create a self-contained component under the caller's root writer guard."""
     _check(cancelled)
-    if type(max_bytes) is not int or max_bytes < 0:
-        raise ValueError('Pending import byte budget must be a nonnegative integer.')
-    max_bytes = min(max_bytes, MAX_TOTAL)
     root = local_path(app.root, exists=True)
+    roots = pending_roots(root)
+    if expected_roots is not None and roots != expected_roots:
+        raise ValueError('Pending import roots changed during backup; retry after pausing imports.')
     target = local_path(target)
     target.mkdir(mode=0o700)
     before = _inventory(root)
@@ -622,27 +836,21 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
     if not catalog_path.exists():
         catalog_path = app.database
     journal = None
-    files, assets, bindings = [], {}, []
-    total_bytes = 0
-    def reserve(size):
-        nonlocal total_bytes
-        total_bytes += size
-        if total_bytes > max_bytes or len(files) >= MAX_FILES:
-            raise ValueError('Pending import backup exceeds its complete byte or file budget.')
+    files, assets, bindings, profiles = [], {}, [], {}
     try:
         with closing(_catalog(catalog_path)) as catalog:
             jobs = {}
             journal_path = root / 'imports.sqlite'
-            if os.path.lexists(journal_path):
+            if _present(journal_path):
                 for suffix in ('-wal', '-shm', '-journal'):
-                    if os.path.lexists(Path(str(journal_path) + suffix)):
+                    if _present(Path(str(journal_path) + suffix)):
                         local_path(Path(str(journal_path) + suffix), exists=True)
                 source_db, _ = _journal(journal_path, catalog, cancelled)
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
                 with closing(source_db), closing(sqlite3.connect(target / 'imports.sqlite')) as backup:
                     def progress(status, remaining, total):
                         _check(cancelled)
-                        if total * page_size > min(MAX_JOURNAL, max_bytes):
+                        if total * page_size > MAX_JOURNAL:
                             raise ValueError('Pending journal exceeds its backup budget.')
                     source_db.backup(backup, pages=256, progress=progress)
                     # Online backup copies the source header's WAL flag. Make
@@ -651,37 +859,43 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                     if backup.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                         raise ValueError('Pending journal snapshot is not self-contained.')
                 journal, jobs = _journal(target / 'imports.sqlite', catalog, cancelled)
-                entry = _entry(target / 'imports.sqlite', 'imports.sqlite', cancelled)
-                reserve(entry['size_bytes'])
-                files.append(entry)
+                files.append(_entry(target / 'imports.sqlite', 'imports.sqlite', cancelled))
             for name, stamp in sorted(before.items()):
                 _check(cancelled)
                 maximum = MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST
                 raw = _read(root / name, maximum)
                 if _stamp(regular(root / name)) != stamp:
                     raise ValueError('Pending import state changed during backup; retry after pausing imports.')
-                reserve(len(raw))
                 entry = _write(target / name, raw)
                 entry['filename'] = name
                 files.append(entry)
             requests, batches, reviews = _records(target, str(root), catalog, before)
-            _relations(requests, batches, reviews, jobs, journal)
+            direct_requests = _relations(requests, batches, reviews, jobs, journal)
 
-            def retain(expected=None, known=None, source=None):
+            def retain(expected=None, known=None, source=None, profile=None):
                 wanted = known or (expected['sha256'] if expected else None)
                 if wanted in assets:
                     entry = assets[wanted]
                     if expected is not None and (entry['sha256'], entry['mime'], entry['size_bytes']) != (
                             expected['sha256'], expected['mime'], expected['size']):
                         raise ValueError('Pending source manifests disagree.')
+                    if profile is None and entry['size_bytes'] > MAX_BYTES:
+                        raise ValueError('A legacy pending request cannot borrow a streamed-source allowance.')
+                    if profile is not None:
+                        if entry['mime'] != profile.mime or entry['size_bytes'] > profile.maximum_bytes:
+                            raise ValueError('Pending streamed source exceeds its selected profile.')
+                        _remember_profile(profiles, wanted, profile)
                     return wanted
                 retained = None
                 if wanted is not None:
                     candidates = [root / 'originals' / (wanted + suffix) for suffix in SUFFIXES.values()]
-                    if any(os.path.lexists(path) for path in candidates):
-                        retained = app.assets.resolve(wanted)
+                    if any(_present(path) for path in candidates):
+                        retained = (app.assets.resolve(wanted, profile=profile, cancelled=cancelled)
+                                    if profile is not None else app.assets.resolve(wanted))
                 try:
-                    incoming = planned_snapshot(local_path(retained or source, exists=True)) if retained or source else None
+                    selected = local_path(retained or source, exists=True) if retained or source else None
+                    incoming = (inspect_text(selected, profile, cancelled=cancelled) if profile is not None else
+                                planned_snapshot(selected)) if selected is not None else None
                 except FileNotFoundError as exc:
                     raise ValueError('Pending import source bytes are missing; restore the selected original before a complete backup.') from exc
                 if incoming is None:
@@ -689,8 +903,14 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
                 name = incoming.digest + SUFFIXES[incoming.mime]
-                reserve(len(incoming.data))
-                entry = _write(target / 'originals' / name, incoming.data)
+                if sum(item['size_bytes'] for item in files) + incoming.size > MAX_TOTAL:
+                    raise ValueError('Pending import backup exceeds its total byte budget.')
+                if profile is not None:
+                    entry = dict(filename=name, size_bytes=incoming.size, sha256=incoming.digest)
+                    _copy(selected, target / 'originals' / name, entry, cancelled)
+                    _remember_profile(profiles, incoming.digest, profile)
+                else:
+                    entry = _write(target / 'originals' / name, incoming.data)
                 entry['filename'] = name
                 entry['mime'] = incoming.mime
                 assets[incoming.digest] = entry
@@ -700,19 +920,24 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 return incoming.digest
 
             for job in jobs.values():
-                retain(known=job['asset'])
-            for name, row_id, source, expected, known in _references(requests, batches):
+                retain(known=job['asset'], profile=profile_from_config(job['config']))
+            for name, row_id, source, expected, known, profile in _references(requests, batches):
                 _check(cancelled)
-                asset_hash = retain(expected, known, source)
+                asset_hash = retain(expected, known, source, profile)
                 bindings.append(dict(filename=name, row_id=row_id, source=source, asset_sha256=asset_hash))
             for asset in assets.values():
                 _check(cancelled)
-                _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
-        if _inventory(root) != before:
+                original = target / 'originals' / asset['filename']
+                _verify_original(asset, original, profiles.get(asset['sha256']), cancelled)
+                _source_checkpoints(asset, original, jobs, journal, cancelled)
+            for request in direct_requests:
+                _check(cancelled)
+                _direct_job(request, catalog, assets.get(request.get('asset_sha256')),
+                            target / 'originals', cancelled)
+        if _inventory(root) != before or pending_roots(root) != roots:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
-        # Windows file timestamps can stay unchanged after a same-sized edit.
-        # Recheck actual committed sidecar bytes before accepting the snapshot.
         for entry in files:
+            _check(cancelled)
             if entry['filename'] in before and _entry(root / entry['filename'], entry['filename'], cancelled) != entry:
                 raise ValueError('Pending import state changed during backup; retry after pausing imports.')
     finally:
@@ -720,26 +945,35 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
             journal.close()
     result = dict(version=1, data_dir=str(root), files=sorted(files, key=lambda item: item['filename']),
                   assets=sorted(assets.values(), key=lambda item: item['filename']), sources=bindings)
+    if profiles:
+        result.update(version=3, scan_pages=[], source_profiles=_profile_manifest(profiles))
     validate_pending(result)
     sync_directory(target)
     return result
 
 
 def _component_name(name):
-    suffixes = '|'.join(re.escape(suffix) for suffix in sorted(set(SUFFIXES.values())))
     return isinstance(name, str) and bool(re.fullmatch(
         r'imports\.sqlite|import-requests/(?:reviews/)?[0-9a-f]{32}\.json|'
-        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}(?:' + suffixes + ')', name))
+        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}(?:'
+        + '|'.join(re.escape(suffix) for suffix in sorted(set(SUFFIXES.values()))) + ')', name))
 
 
 def validate_pending(metadata):
     """Validate enclosing manifest fields before touching component paths."""
-    if (not isinstance(metadata, dict) or set(metadata) != {'version', 'data_dir', 'files', 'assets', 'sources'}
-            or type(metadata['version']) is not int or metadata['version'] != 1
+    base = {'version', 'data_dir', 'files', 'assets', 'sources'}
+    if (not isinstance(metadata, dict) or type(metadata.get('version')) is not int
+            or metadata['version'] not in (1, 3)
+            or set(metadata) != (base if metadata['version'] == 1 else base | {'scan_pages', 'source_profiles'})
             or any(not isinstance(metadata[key], list) for key in ('files', 'assets', 'sources'))
             or any(len(metadata[key]) > MAX_FILES for key in ('files', 'assets', 'sources'))):
         raise ValueError('Invalid pending import backup manifest.')
     _source(metadata['data_dir'])
+    profiles = _manifest_profiles(metadata)
+    if bool(profiles) != (metadata['version'] == 3):
+        raise ValueError('Streamed pending sources require their versioned profile inventory.')
+    if metadata['version'] == 3 and metadata['scan_pages'] != []:
+        raise ValueError('Saved folder-scan continuations are not part of this source profile.')
     files, total = {}, 0
     for item in metadata['files']:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
@@ -747,7 +981,9 @@ def validate_pending(metadata):
                 or not _hash(item['sha256']) or type(item['size_bytes']) is not int or item['size_bytes'] <= 0):
             raise ValueError('Invalid pending import file manifest.')
         name = item['filename']
-        limit = MAX_JOURNAL if name == 'imports.sqlite' else MAX_BYTES if name.startswith('originals/') else (
+        profile = profiles.get(Path(name).stem) if name.startswith('originals/') else None
+        limit = MAX_JOURNAL if name == 'imports.sqlite' else (
+            profile.maximum_bytes if profile is not None else MAX_BYTES) if name.startswith('originals/') else (
             MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST)
         if item['size_bytes'] > limit:
             raise ValueError('Pending import file exceeds its byte budget.')
@@ -757,15 +993,21 @@ def validate_pending(metadata):
         raise ValueError('Pending import backup exceeds its total byte budget.')
     assets = {}
     for item in metadata['assets']:
+        profile = (profiles.get(item.get('sha256')) if isinstance(item, dict)
+                   and isinstance(item.get('sha256'), str) else None)
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256', 'mime'}
                 or not _hash(item['sha256']) or item['mime'] not in SUFFIXES
                 or item['filename'] != item['sha256'] + SUFFIXES[item['mime']]
-                or item['sha256'] in assets or type(item['size_bytes']) is not int or not 0 < item['size_bytes'] <= MAX_BYTES):
+                or item['sha256'] in assets or type(item['size_bytes']) is not int
+                or not 0 < item['size_bytes'] <= (profile.maximum_bytes if profile is not None else MAX_BYTES)
+                or profile is not None and item['mime'] != profile.mime):
             raise ValueError('Invalid pending original manifest.')
         expected = dict(filename='originals/' + item['filename'], size_bytes=item['size_bytes'], sha256=item['sha256'])
         if files.get(expected['filename']) != expected:
             raise ValueError('Pending original is missing from its component manifest.')
         assets[item['sha256']] = item
+    if not set(profiles) <= set(assets):
+        raise ValueError('A streamed source profile has no retained pending original.')
     if {name for name in files if name.startswith('originals/')} != {'originals/' + item['filename'] for item in assets.values()}:
         raise ValueError('Unlisted pending original bytes.')
     bindings = set()
@@ -791,25 +1033,39 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     """
     _check(cancelled)
     validate_pending(metadata)
+    profiles = _manifest_profiles(metadata)
     source = local_path(source, exists=True)
     regular(source, directory=True)
     stage = local_path(stage, exists=True)
     regular(stage, directory=True)
     new_root = local_path(new_root)
-    names = set()
-    for directory, dirs, filenames in os.walk(source, followlinks=False):
-        for name in dirs:
-            regular(Path(directory) / name, directory=True)
-            if (Path(directory) / name).relative_to(source).as_posix() not in ('originals', 'import-requests', 'import-requests/reviews', 'import-batches'):
-                raise ValueError('Unexpected directory in pending import backup.')
-        for name in filenames:
-            path = Path(directory) / name
-            regular(path)
-            relative = path.relative_to(source).as_posix()
-            if not _component_name(relative):
-                raise ValueError('Unexpected file in pending import backup.')
-            names.add(relative)
-    if names != {entry['filename'] for entry in metadata['files']}:
+    names = {entry['filename'] for entry in metadata['files']}
+    missing = set(names)
+    # Stream entries rather than building an os.walk directory listing.
+    # Only four directory names are permitted, and file tracking is bounded
+    # by the already validated manifest. Enumeration errors must propagate.
+    directories = [source]
+    while directories:
+        _check(cancelled)
+        directory = directories.pop()
+        with os.scandir(directory) as children:
+            for child in children:
+                _check(cancelled)
+                path = directory / child.name
+                relative = path.relative_to(source).as_posix()
+                if child.is_dir(follow_symlinks=False):
+                    regular(path, directory=True)
+                    if relative not in ('originals', 'import-requests', 'import-requests/reviews', 'import-batches'):
+                        raise ValueError('Unexpected directory in pending import backup.')
+                    directories.append(path)
+                else:
+                    regular(path)
+                    if not _component_name(relative):
+                        raise ValueError('Unexpected file in pending import backup.')
+                    if relative not in missing:
+                        raise ValueError('Pending import backup has missing or unlisted files.')
+                    missing.remove(relative)
+    if missing:
         raise ValueError('Pending import backup has missing or unlisted files.')
     # Verify into a fresh private component first. No database is queried and no
     # original is accepted until all component hashes have been checked.
@@ -824,11 +1080,14 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
             if 'imports.sqlite' in names:
                 journal, jobs = _journal(verified / 'imports.sqlite', catalog, cancelled)
             requests, batches, reviews = _records(verified, metadata['data_dir'], catalog, names)
-            _relations(requests, batches, reviews, jobs, journal)
+            direct_requests = _relations(requests, batches, reviews, jobs, journal)
             assets = {entry['sha256']: entry for entry in metadata['assets']}
             bindings = {(entry['filename'], entry['row_id']): entry for entry in metadata['sources']}
             expected_bindings, referenced = set(), {job['asset'] for job in jobs.values()}
-            for name, row_id, old_source, expected, known in _references(requests, batches):
+            expected_profiles = {}
+            for job in jobs.values():
+                _remember_profile(expected_profiles, job['asset'], profile_from_config(job['config']))
+            for name, row_id, old_source, expected, known, profile in _references(requests, batches):
                 identity = name, row_id
                 expected_bindings.add(identity)
                 binding = bindings.get(identity)
@@ -838,27 +1097,39 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 if (known is not None and asset['sha256'] != known or expected is not None and
                         (asset['sha256'], asset['mime'], asset['size_bytes']) != (expected['sha256'], expected['mime'], expected['size'])):
                     raise ValueError('Pending source binding would retarget an import.')
+                if (asset['size_bytes'] > (profile.maximum_bytes if profile is not None else MAX_BYTES)
+                        or profile is not None and asset['mime'] != profile.mime):
+                    raise ValueError('Pending original exceeds its own immutable request profile.')
+                _remember_profile(expected_profiles, asset['sha256'], profile)
                 referenced.add(asset['sha256'])
+            if _profile_manifest(expected_profiles) != _profile_manifest(profiles):
+                raise ValueError('Pending source profiles differ from their actual request and journal identities.')
             if set(bindings) != expected_bindings or referenced != set(assets):
                 raise ValueError('Pending backup contains missing or unreferenced original bytes.')
             for asset in assets.values():
-                raw = _read(verified / 'originals' / asset['filename'], MAX_BYTES)
-                if classify(raw, Path(asset['filename']).suffix) != asset['mime'] or sha256(raw).hexdigest() != asset['sha256']:
-                    raise ValueError('Pending original MIME or checksum mismatch.')
-                _source_checkpoints(asset, raw, jobs, journal)
+                _check(cancelled)
+                original = verified / 'originals' / asset['filename']
+                _verify_original(asset, original, profiles.get(asset['sha256']), cancelled)
+                _source_checkpoints(asset, original, jobs, journal, cancelled)
+            for request in direct_requests:
+                _check(cancelled)
+                _direct_job(request, catalog, assets.get(request.get('asset_sha256')),
+                            verified / 'originals', cancelled)
 
             # Change only the explicitly listed location fields. Existing
             # status, job, expected manifest, result and identity fields survive.
             for request_id, request in requests.items():
                 binding = bindings['import-requests/' + request_id + '.json', None]
-                request['data_dir'] = str(new_root)
-                request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])
-                # A candidate is bound to one original process attempt and its
-                # root/source paths. Restoring is not evidence that it committed;
-                # explicit resume verifies the existing source/journal again.
+                # _records validated the original immutable request binding.
+                # An execution receipt from another data root never authorizes
+                # publication or replay in the newly restored library.
+                request.pop('publication', None)
                 request.pop('attempt', None)
                 request.pop('publication_candidate', None)
                 request.pop('publication_watermark', None)
+                request.pop('attempt_id', None)
+                request['data_dir'] = str(new_root)
+                request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])
                 _write(stage / 'import-requests' / (request_id + '.json'), (canonical(request) + '\n').encode('utf-8'))
             for batch_id, batch in batches.items():
                 batch['data_dir'] = str(new_root)
@@ -885,9 +1156,11 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     added = []
     for asset in metadata['assets']:
         target = stage / 'originals' / asset['filename']
-        if os.path.lexists(target):
-            raw = _read(target, MAX_BYTES)
-            if len(raw) != asset['size_bytes'] or sha256(raw).hexdigest() != asset['sha256']:
+        if _present(target):
+            profile = profiles.get(asset['sha256'])
+            if (regular(target).st_size != asset['size_bytes']
+                    or file_digest(target, maximum_bytes=profile.maximum_bytes if profile else MAX_BYTES,
+                                   cancelled=cancelled) != asset['sha256']):
                 raise ValueError('Pending original conflicts with a catalog original.')
         else:
             _copy(verified / 'originals' / asset['filename'], target, asset, cancelled)

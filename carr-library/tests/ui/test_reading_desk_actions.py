@@ -216,15 +216,20 @@ class Frame:
     def report(self, message):
         self.messages.append(message)
 
-    def run_job(self, title, operation, done=None):
+    def run_job(self, title, operation, done=None, failed=None):
         self.jobs.append(title)
         self.cancel_event.clear()
         if self.before_operation is not None:
             callback, self.before_operation = self.before_operation, None
             callback()
-        result = operation()
-        if done is not None:
-            done(result)
+        try:
+            result = operation()
+            if done is not None:
+                done(result)
+        except Exception as exc:
+            if failed is None:
+                raise
+            failed(exc)
 
 
 class Dialogs:
@@ -306,17 +311,6 @@ def test_state_export_does_not_overwrite_private_database(source):
     assert 'outside' in frame.messages[-1]
 
 
-def test_reading_export_preserves_file_created_while_job_is_queued(source, tmp_path):
-    app, workspace, _, _, _ = source
-    target = tmp_path / 'reading.json'
-    frame = Frame(app, workspace)
-    frame.before_operation = lambda: target.write_bytes(b'Independent new file')
-    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
-    assert target.read_bytes() == b'Independent new file'
-    assert 'destination changed' in frame.messages[-1]
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
 def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_path):
     app, workspace, book, desk, _ = source
     state = ReadingState(app.root)
@@ -333,3 +327,185 @@ def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_pat
     ReadingActions(frame, dialogs=Dialogs(path=target)).import_state()
     assert 'archived' in frame.messages[-1]
     assert state.bookmarks(workspace, book['edition']) == ()
+
+
+class _DeferredExportFrame(Frame):
+    """Use real worker threads while the test owns native callback delivery."""
+    def run_job(self, title, operation, done=None, failed=None):
+        assert not self.working
+        self.working = True
+        self.cancel_event.clear()
+        self.jobs.append(SimpleNamespace(title=title, operation=operation, done=done,
+                                         failed=failed, result=None, error=None))
+
+    def work(self, index):
+        from concurrent.futures import ThreadPoolExecutor
+        job = self.jobs[index]
+        with ThreadPoolExecutor(max_workers=1) as worker:
+            try:
+                job.result = worker.submit(job.operation).result()
+            except Exception as exc:
+                job.error = exc
+
+    def complete(self, index):
+        job = self.jobs[index]
+        self.working = False
+        if self._closing:
+            return
+        try:
+            if job.error is not None:
+                raise job.error
+            if job.done is not None:
+                job.done(job.result)
+        except Exception as exc:
+            if job.failed is None:
+                raise
+            job.failed(exc)
+
+    def finish(self, index):
+        self.work(index)
+        self.complete(index)
+
+
+def _reading_export(source, tmp_path, monkeypatch, *, existing=True):
+    import sys
+    from unittest.mock import Mock
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading-output.json'
+    if existing:
+        target.write_bytes(b'Existing independent work')
+    wx = SimpleNamespace(YES=1, NO=2, YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16)
+    wx.MessageBox = Mock(return_value=wx.YES)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    frame = _DeferredExportFrame(app, workspace)
+    actions = ReadingActions(frame, dialogs=Dialogs(path=target))
+    return frame, actions, target, wx
+
+
+def test_reading_export_captures_and_publishes_in_workers_with_ui_confirmation(
+        source, tmp_path, monkeypatch):
+    from threading import get_ident
+    from carr_library.ui import export_destination, reading_desk
+    frame, actions, target, wx = _reading_export(source, tmp_path, monkeypatch)
+    main, observed, approvals = get_ident(), [], []
+    actual_capture = export_destination.capture_export_destination
+    actual_write = reading_desk.write_export
+
+    def capture(*args, **kwargs):
+        assert get_ident() != main
+        approval = actual_capture(*args, **kwargs)
+        approvals.append(approval)
+        observed.append('capture')
+        return approval
+
+    def publish(*args, **kwargs):
+        assert get_ident() != main
+        assert kwargs['approval'] is approvals[0]
+        observed.append('publish')
+        return actual_write(*args, **kwargs)
+
+    def consent(*args):
+        assert get_ident() == main
+        assert observed == ['capture']
+        return wx.YES
+
+    monkeypatch.setattr(export_destination, 'capture_export_destination', capture)
+    monkeypatch.setattr(reading_desk, 'write_export', publish)
+    wx.MessageBox.side_effect = consent
+    actions.export_state()
+    assert not observed and len(frame.jobs) == 1
+    frame.work(0)
+    wx.MessageBox.assert_not_called()
+    assert target.read_bytes() == b'Existing independent work'
+    frame.complete(0)
+    assert len(frame.jobs) == 2 and observed == ['capture']
+    frame.finish(1)
+    assert observed == ['capture', 'publish']
+    assert target.read_text(encoding='utf-8') == ReadingState(frame.library.root).export_state(frame.active[0])
+    assert frame.messages[-1] == 'Reading positions and page bookmarks exported.'
+    assert frame.evidence.note == 'Unsaved private note'
+
+
+@pytest.mark.parametrize('stage', ['before_capture', 'after_capture', 'in_confirmation'])
+def test_reading_export_cancel_before_publication_keeps_existing_target(
+        source, tmp_path, monkeypatch, stage):
+    frame, actions, target, wx = _reading_export(source, tmp_path, monkeypatch)
+    if stage == 'in_confirmation':
+        def consent(*args):
+            frame.cancel_event.set()
+            return wx.YES
+        wx.MessageBox.side_effect = consent
+    actions.export_state()
+    if stage == 'before_capture':
+        frame.cancel_event.set()
+    frame.work(0)
+    if stage == 'after_capture':
+        frame.cancel_event.set()
+    frame.complete(0)
+    assert len(frame.jobs) == 1 and frame.cancel_event.is_set()
+    assert target.read_bytes() == b'Existing independent work'
+    assert 'not exported' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('change', ['library', 'topic', 'close'])
+def test_reading_export_stale_capture_never_confirms_or_publishes(
+        source, tmp_path, monkeypatch, change):
+    frame, actions, target, wx = _reading_export(source, tmp_path, monkeypatch)
+    actions.export_state()
+    frame.work(0)
+    if change == 'library':
+        frame.library = object()
+    elif change == 'topic':
+        frame.active = (frame.active[0], 'another-topic')
+    else:
+        frame._closing = True
+    frame.complete(0)
+    wx.MessageBox.assert_not_called()
+    assert len(frame.jobs) == 1 and target.read_bytes() == b'Existing independent work'
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_reading_export_changed_destination_after_consent_is_preserved(
+        source, tmp_path, monkeypatch, existing):
+    frame, actions, target, wx = _reading_export(source, tmp_path, monkeypatch, existing=existing)
+    actions.export_state()
+    frame.finish(0)
+    assert len(frame.jobs) == 2
+    target.write_bytes(b'Later independent work')
+    frame.finish(1)
+    assert target.read_bytes() == b'Later independent work'
+    assert 'not exported' in frame.messages[-1] and 'changed' in frame.messages[-1]
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_reading_export_declined_consent_does_not_render(source, tmp_path, monkeypatch):
+    frame, actions, target, wx = _reading_export(source, tmp_path, monkeypatch)
+    wx.MessageBox.return_value = wx.NO
+    actions.export_state()
+    frame.finish(0)
+    assert len(frame.jobs) == 1 and target.read_bytes() == b'Existing independent work'
+    assert frame.messages[-1] == 'Reading state export cancelled.'
+
+
+@pytest.mark.parametrize('late_cancel', [False, True])
+def test_reading_export_saved_receipt_and_notice_survive_late_cancel(
+        source, tmp_path, monkeypatch, late_cancel):
+    from carr_library.research.export_file import ExportReceipt
+    from carr_library.ui import reading_desk
+    frame, actions, target, wx = _reading_export(source, tmp_path, monkeypatch)
+    actual_write = reading_desk.write_export
+    warning = 'The file is saved. Temporary-file cleanup is still pending; do not repeat the export.'
+
+    def publish(*args, **kwargs):
+        receipt = actual_write(*args, **kwargs)
+        if late_cancel:
+            frame.cancel_event.set()
+        return ExportReceipt(receipt.path, warning)
+
+    monkeypatch.setattr(reading_desk, 'write_export', publish)
+    actions.export_state()
+    frame.finish(0)
+    frame.finish(1)
+    assert target.read_text(encoding='utf-8') == ReadingState(frame.library.root).export_state(frame.active[0])
+    assert frame.messages[-1] == 'Reading positions and page bookmarks exported. ' + warning
+    assert len(frame.jobs) == 2

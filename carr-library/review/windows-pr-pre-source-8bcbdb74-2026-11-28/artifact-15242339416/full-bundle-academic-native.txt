@@ -1,0 +1,40 @@
+PASS: academic UI comes from the installed package
+PASS: wx uses real native Windows controls
+PASS: real desktop exposes the Academic menu
+PASS: academic library has its keyboard shortcut
+PASS: native academic filters have readable names
+PASS: native reference details are read only
+PASS: native reference editor has separate bibliography and reading pages
+PASS: native modal action returned its expected result
+PASS: native create saved real metadata and reading state
+PASS: native reference list accepts actual keyboard focus
+PASS: native detail view displays the selected saved reference
+PASS: validation failure focuses actual native status
+PASS: validation failure preserves typed notes and invalid field
+PASS: declining discard keeps the native editor and draft
+PASS: native modal action returned its expected result
+PASS: native edit persists its explicit reading choices
+PASS: stale native form keeps its draft and exposes the conflict
+PASS: native modal action returned its expected result
+PASS: stale native edit cannot overwrite saved notes
+PASS: native filters use real scoped reading and tag queries
+PASS: duplicate suggestions retain both references and explain a reason
+PASS: native import preview does not preselect any reference
+PASS: native import details correspond to the selected entry
+PASS: native modal action returned its expected result
+PASS: only the explicitly checked import was saved
+PASS: native export action exports all active references despite visible filters
+PASS: native export action excludes private notes by default
+PASS: explicit personal-note export includes the requested notes
+PASS: linked-document action passes a verified viewing copy to the launcher callback
+PASS: missing native selection does not copy an arbitrary last reference
+PASS: native first page reports more results without hiding them
+PASS: native next page reaches the remaining references exactly once
+PASS: native previous page returns to the same records
+PASS: archived references leave the default native results
+PASS: native archive view exposes a restore action for the correct reference
+PASS: restored reference returns with active metadata
+PASS: academic operations preserve retained original bytes and saved source evidence
+PASS: closing the academic modal preserves the parent notebook, scope and draft
+PASS: keyboard focus can return to the retained native research draft
+{"checks": 39, "external_viewer": "recording callback only", "installed_ui_sha256": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b", "manual_keyboard": "NOT_RUN", "native_file_pickers": "NOT_RUN", "nvda": "NOT_RUN", "platform": "Windows", "result": "PASS", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}

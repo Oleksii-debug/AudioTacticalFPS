@@ -1,0 +1,159 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "base_tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a",
+  "core_tree": "0676572abd301630bec9dd9d0135b400ff765977",
+  "requirement": {
+    "document": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+    "git_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "section": "4. Shared contracts to complete / Resource broker",
+    "actual_path": "Reader → Use voice for progress... → existing WindowsProgressSound worker → LocalProgressSpeech.speak_progress"
+  },
+  "observed_source_gap": "The selected progress voice could be a heavy helper/model route, yet speak_progress called VoiceRegistry.synthesize directly. Its unconditional outer TemporaryDirectory cleanup and registry leave/run-lock release also ran after a causal AudioCleanupPending. This is a reviewed source boundary, not a measured CI failure.",
+  "changes": [
+    "Reuse existing ReaderSynthesisRequest on the existing feedback worker. Known basic native routes retain their exact provider/type decision; heavy routes require the current library and share the existing ResourceBroker policy.",
+    "Pass the remaining original 30-second notification deadline as the admission timeout, with the same stop callback. SpeechSettings still limits each synthesis call to 20 seconds and 2 MiB, and notice text remains bounded to 240 readable characters.",
+    "Use existing retained_context(ExitStack) to retain the exact acquired run lock, active selected-registry reference and outer temporary audio until all causal native owners are quiet. Temporary cleanup executes before registry leave and serialization release.",
+    "Preserve existing uncertain playback player/temp retention, selection copying/close semantics, chosen voice/settings checks and false-on-explicit ordinary cancellation. Causal pending errors wrapped in InterruptedError or ResourceCancelled are re-raised for retained ownership.",
+    "Keep activation/copy/owner implementation and every helper after activate_progress_voice byte-identical. No UI, runtime, broker, provider, native-process, endpoint, policy, dependency or workflow source is changed.",
+    "Adapt only the existing test factory to an actual separate library policy and stable synthetic provider fingerprint. The post-synthesis cancellation test observes completed real PCM before cancelling, preserving its phase rather than relying on guard-call count.",
+    "Append 20 meaningful cases and one short user-help section; all previous case/negative-control assertions remain."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "before_blob": "17da97b7b4a26a5f230e455dc2e4760779b4551f",
+      "after_blob": "09f009355d77a2de3a0e071c59058a7b10db0054",
+      "before_sha256": "476158fa98794f23b012f3c7073634b4a9d293cd457537c2ce624b2a49058ef3",
+      "after_sha256": "20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393",
+      "inverse_exact": true,
+      "hunk_count": 12
+    },
+    {
+      "path": "carr-library/tests/speech/test_progress_speech.py",
+      "before_blob": "4259410481d0712cc8776624d0ba9020cf65573a",
+      "after_blob": "9ebff94cca02a0519c4cc987c45f89e17bb62397",
+      "before_sha256": "bbe9469efbb46f13cea60654a4ac2e44d55f680ef2d6c20c8ce2ef786f9f8c7f",
+      "after_sha256": "fad1e0b59bd7bb7c36afecead480b2c3610bfab4b233bf77a3c6d4deb9c8754c",
+      "inverse_exact": true,
+      "hunk_count": 12
+    },
+    {
+      "path": "carr-library/docs/runtime_resources.md",
+      "before_blob": "24081fcf765fc06ea3a01af1d1a57423dadf1ad6",
+      "after_blob": "587c14c9b172615c6f385bf0374a5b037321aed0",
+      "before_sha256": "4a2b13abf99c0555c3a777301d09eea9a130e5abd305885a15756709edbd501d",
+      "after_sha256": "b77234e961a6f4ca612f98d0a2d86e4741894be7aff5bbc319ea23eb9bfe0ded",
+      "inverse_exact": true,
+      "hunk_count": 1
+    }
+  ],
+  "reuse": {
+    "synthesis_admission": "f07e080f072ea13d3a9bd46c2dc46d30accd7726",
+    "cleanup": "139d382383083301b21f38da3301ed36e590fbb6",
+    "operation_progress": "e6d3d7c4441c8111f44b593b8807e33379f2bbf7",
+    "speech_runtime": "32e04064f9a527ba75b43d242cbc9c4fe9dcb245",
+    "no_new_service_broker_owner_or_worker": true,
+    "worker_thread_contract": "WindowsProgressSound._start already calls speak_progress on carr-progress-sound. The new request is created on that same thread and uses a synchronous callback that reads saved settings and selected registry state only. No wx control reads or writes were introduced; existing timer/CallAfter integration is unchanged."
+  },
+  "preservation": {
+    "source_before_speak_except_imports": true,
+    "source_after_speak": true,
+    "original_test_functions": 23,
+    "original_planned_cases": 33,
+    "original_assertion_lines": 76,
+    "original_assertions_retained_in_order": true,
+    "final_assertion_lines": 142,
+    "added_test_functions": 7,
+    "added_planned_cases": 20,
+    "final_planned_cases": 53,
+    "old_optional_installed_voice_dependency_skips": "The two original optional Linux Flite availability checks remain unchanged. New cases have no skips; strict CI provides the actual required runtime.",
+    "notice_seconds": 30,
+    "synthesis_seconds": 20,
+    "max_output_bytes": 2097152,
+    "maximum_notice_characters": 240
+  },
+  "tests": {
+    "changed_selector": "tests/speech/test_progress_speech.py",
+    "adjacent_regressions": [
+      "tests/ui/test_operation_progress.py",
+      "tests/ui/test_progress_media_quiet.py",
+      "tests/ui/test_progress_voice_actions.py",
+      "tests/ui/test_studio_progress_isolation.py",
+      "tests/speech/test_synthesis_admission.py",
+      "tests/speech/test_registered_studio_voices.py"
+    ],
+    "added_case_groups": [
+      {
+        "name": "Actual shared CPU/RAM/output-volume reservation and release before playback",
+        "cases": 1
+      },
+      {
+        "name": "Exact basic provider remains available during competing heavy reservation",
+        "cases": 1
+      },
+      {
+        "name": "Unknown/heavy provider cannot invent a library policy",
+        "cases": 1
+      },
+      {
+        "name": "Real broker wait, explicit cancellation and original deadline including already-spent time",
+        "cases": 2
+      },
+      {
+        "name": "Saved settings revoked while waiting; verify runs on existing worker without GUI access",
+        "cases": 1
+      },
+      {
+        "name": "Actual pinned Python helper success/cancellation; exact existing owned launch exits before lease/files release",
+        "cases": 2
+      },
+      {
+        "name": "Two actual native child families; basic/heavy, direct/InterruptedError/ResourceCancelled and either exit order",
+        "cases": 12
+      }
+    ],
+    "causal_retention_assertions": [
+      "Both real child families remain alive before release.",
+      "No final notification output or playback is accepted.",
+      "Outer/private stage, real broker reservation for heavy work, active registry ref and run lock remain retained.",
+      "A repeated notification is refused while ownership is unresolved.",
+      "Closing the last selection cannot close the registry before both families are quiet.",
+      "Completion acknowledgment is registered after retained-context callbacks and proves stage/lease/ref/lock release before final assertions.",
+      "Non-pending exceptional helper exit is recorded; causal pending exit is never credited as completed."
+    ]
+  },
+  "call_site_audit": [
+    {
+      "path": "carr-library/scripts/windows_progress_smoke.py",
+      "git_blob": "95677913018659ba792dc07d80454797522e1bc1",
+      "result": "No LocalProgressSpeech/custom registry construction; native progress uses notifications Off. Unchanged."
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_media_quiet.py",
+      "git_blob": "da42e5e385c7900e25a05a77a1d0c8422bd5beb0",
+      "result": "Injects the separate speak_progress/quiescent interface, not a VoiceRegistry. Unchanged."
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "git_blob": "2e755b77bab0c21bff759bc6e248ece79bac878a",
+      "result": "Faithful current library root already supplied. Synthetic ListedVoices only selects/clones/closes; fingerprint begins only during actual speech. Unchanged."
+    }
+  ],
+  "review": {
+    "production_peer": "voice_reading CLEAR on09f00935",
+    "final_test_doc_peer": "voice_reading CLEAR on0676572/9ebff94",
+    "fixture_correction": "The actual helper observer now records completed non-pending exceptional exit and rethrows the same error. All assertions and53 planned cases remain.",
+    "cloud_readback": "All3 core files fetched back in full and exactly matched prepared content.",
+    "inverse_checks": "All3 full old preimages recovered exactly from inverse hunks."
+  },
+  "qualification_limits": [
+    "No host execution, test/compile run, native audio or CI result is claimed.",
+    "Actual test PCM/helper processes are synthetic fixtures, not neural inference or voice quality.",
+    "No consent/device/endpoint fallback, model installation, data upload or privacy/rights change.",
+    "Root owns all branch/ref/workflow integration; this package is an unreferenced sparse tree."
+  ]
+}

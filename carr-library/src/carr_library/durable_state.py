@@ -67,16 +67,110 @@ def _unique(pairs):
     return value
 
 
+def _open_json_file(path):
+    """Read a non-inheritable snapshot with Windows delete sharing.
+
+    Legacy Windows replacement can still reject an open destination. Readers
+    close promptly; live writers must bound any sharing-race retry separately.
+    """
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
+    return read_json_snapshot(path)[0]
+
+
+def read_bytes_snapshot(path, *, max_bytes=None, allow_missing=False):
+    """Capture bounded state bytes and their digest before optional typed parsing.
+
+    Opt-in absence is observed only after the first full path guard. A path
+    lost during an admitted read or an inode-race retry still raises.
+    """
+    maximum = MAX_JSON_BYTES if max_bytes is None else max_bytes
+    if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
+        raise ValueError('Use a positive bounded JSON read budget.')
+    if type(allow_missing) is not bool:
+        raise ValueError('Missing-state admission must be a boolean.')
+    # An atomic writer can win between lstat and open. Retry that race only;
+    # linked paths and invalid opened objects still fail before reading bytes.
+    for attempt in range(8):
+        initial_absence = allow_missing and attempt == 0
+        path = local_path(path, exists=not initial_absence)
+        if initial_absence:
+            try:
+                path.lstat()  # Do not follow a newly substituted dangling link.
+            except FileNotFoundError:
+                return None, None
+        before = regular(path)
+        if before.st_size > maximum:
+            raise ValueError('State exceeds its configured JSON budget.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            # A valid snapshot can already have zero links after replacement;
+            # multiple links or reparse points are never admitted.
+            if (not stat.S_ISREG(opened.st_mode)
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400
+                    or opened.st_nlink > 1):
+                raise ValueError('State must use regular local files, without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck ancestors after opening, before consuming the bound handle.
+            local_path(path, exists=True)
+            if opened.st_size > maximum:
+                raise ValueError('State exceeds its configured JSON budget.')
+            raw = stream.read(maximum + 1)
+        break
+    else:
+        raise ValueError('State changed repeatedly while opening; retry the operation.')
+    if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
-                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    return raw, sha256(raw).hexdigest()
+
+
+def read_json_snapshot(path, *, max_bytes=None, allow_missing=False):
+    """Return decoded state and a digest of the same bounded captured bytes.
+
+    With explicit missing-state admission, only initial guarded absence returns
+    (None, None). A JSON null has its actual nonempty byte digest.
+    """
+    if type(allow_missing) is not bool:
+        raise ValueError('Missing-state admission must be a boolean.')
+    if allow_missing:
+        raw, token = read_bytes_snapshot(path, max_bytes=max_bytes, allow_missing=True)
+        if token is None:
+            return None, None
+    else:
+        raw, token = read_bytes_snapshot(path, max_bytes=max_bytes)
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    return value, token
 
 
 def sync_directory(path):

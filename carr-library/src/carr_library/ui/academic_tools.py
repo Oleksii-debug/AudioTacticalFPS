@@ -7,9 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..research.export_file import write_export
-from .export_destination import confirm_export_destination
 from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
-from ..research.outline_export import export_topic_outline as export_outline
 from .literature_matrix import make_matrix_dialog
 
 
@@ -34,54 +32,19 @@ class AcademicDialogs:
         finally:
             dialog.Destroy()
 
-    def outline_options(self, frame, *, include_descendants=True, tag_filter=None):
-        import wx
-
-        dialog = wx.Dialog(frame, title='Export research outline', size=(570, 340))
-        try:
-            layout = wx.BoxSizer(wx.VERTICAL)
-            description = wx.StaticText(dialog, label=(
-                'Export the active research topic as an ordered outline. '
-                'Source quotations and your research notes have separate labels.'))
-            description.Wrap(520)
-            layout.Add(description, 0, wx.EXPAND | wx.ALL, 8)
-            descendants = wx.CheckBox(dialog, label='Include &subtopics')
-            descendants.SetName('Include subtopics in research outline')
-            descendants.SetValue(include_descendants)
-            layout.Add(descendants, 0, wx.ALL, 8)
-            layout.Add(wx.StaticText(dialog, label='Only this exact tag; blank includes all'),
-                       0, wx.LEFT | wx.RIGHT, 8)
-            tag = wx.TextCtrl(dialog, value=tag_filter or '')
-            tag.SetName('Exact tag for outline; blank includes all tags')
-            layout.Add(tag, 0, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(dialog, label='Export format'), 0, wx.LEFT | wx.RIGHT, 8)
-            kind = wx.Choice(dialog, choices=['Markdown (.md)', 'Plain text (.txt)'])
-            kind.SetName('Research outline export format')
-            kind.SetSelection(0)
-            layout.Add(kind, 0, wx.EXPAND | wx.ALL, 8)
-            layout.Add(dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL),
-                       0, wx.ALIGN_RIGHT | wx.ALL, 8)
-            dialog.SetSizer(layout)
-            dialog.SetEscapeId(wx.ID_CANCEL)
-            descendants.SetFocus()
-            if dialog.ShowModal() != wx.ID_OK:
-                return None
-            return descendants.GetValue(), tag.GetValue().strip() or None, ('markdown', 'text')[kind.GetSelection()]
-        finally:
-            dialog.Destroy()
-
     def save_path(self, frame, *, kind, format):
         import wx
 
         extension, wildcard = {
             'markdown': ('md', 'Markdown (*.md)|*.md'),
-            'text': ('txt', 'Plain text (*.txt)|*.txt'),
             'csv': ('csv', 'CSV (*.csv)|*.csv'),
         }[format]
-        name = 'research-outline' if kind == 'outline' else 'literature-review'
+        if kind != 'matrix':
+            raise ValueError('Choose a source comparison export.')
+        name = 'literature-review'
         dialog = wx.FileDialog(frame, 'Save ' + name.replace('-', ' '),
             defaultFile=f'{name}.{extension}', wildcard=wildcard,
-            style=wx.FD_SAVE)
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
         finally:
@@ -136,9 +99,6 @@ class AcademicActions:
                     elif command.kind == 'refresh':
                         self.compare_sources(include_descendants=command.include_descendants,
                                              tag_filter=command.tag_filter)
-                    elif command.kind == 'outline':
-                        self.outline(include_descendants=command.include_descendants,
-                                     tag_filter=command.tag_filter)
                     elif command.kind in ('matrix_csv', 'matrix_markdown'):
                         self._export(scope, kind='matrix', format=command.kind.removeprefix('matrix_'),
                                      include_descendants=command.include_descendants, tag_filter=command.tag_filter)
@@ -174,51 +134,33 @@ class AcademicActions:
         if not panel.refresh(evidence_id=evidence.evidence_id, focus=True):
             panel.note.SetFocus()
 
-    def outline(self, event=None, *, include_descendants=True, tag_filter=None):
-        try:
-            scope = self._scope(topic=True)
-            options = self.dialogs.outline_options(self.frame,
-                include_descendants=include_descendants, tag_filter=tag_filter)
-            if options is None:
-                self.frame.report('Outline export cancelled. No file was written.')
-                return
-            self._require_current(scope)
-            descendants, tag, format = options
-            self._export(scope, kind='outline', format=format,
-                         include_descendants=descendants, tag_filter=tag)
-        except Exception as exc:
-            self.frame.report(f'Outline export unavailable: {exc}')
-
     def _export(self, scope, *, kind, format, include_descendants, tag_filter):
         self._require_current(scope)
         destination = self.dialogs.save_path(self.frame, kind=kind, format=format)
         if destination is None:
             self.frame.report('Export cancelled. No file was written.')
             return
-        approval = confirm_export_destination(self.frame, destination, private_root=scope.library.root)
-        if approval is None:
-            self.frame.report('Export cancelled. No file was written.')
-            return
         self._require_current(scope)
-        exporter = export_outline if kind == 'outline' else export_matrix
+        if kind != 'matrix':
+            raise ValueError('Choose a source comparison export.')
 
         def save():
             self._require_current(scope)
-            text = exporter(scope.library, scope.workspace, scope.topic, format=format,
+            text = export_matrix(scope.library, scope.workspace, scope.topic, format=format,
                 include_descendants=include_descendants, tag_filter=tag_filter,
                 cancelled=self.frame.cancel_event.is_set)
             if self.frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled. No file was written.')
             self._require_current(scope)
             write_export(destination, text, private_root=scope.library.root,
-                         cancelled=self.frame.cancel_event.is_set, approval=approval)
+                         cancelled=self.frame.cancel_event.is_set)
             return destination
 
         def done(path):
             if self._current(scope):
                 self.frame.report(f'Export saved: {path}')
 
-        self.frame.run_job('Exporting research outline' if kind == 'outline' else 'Exporting source comparison', save, done)
+        self.frame.run_job('Exporting source comparison', save, done)
 
 
 def edit_catalog_edition(frame, workspace, edition_id):
@@ -256,19 +198,17 @@ def edit_catalog_edition(frame, workspace, edition_id):
         frame.report(f'Metadata editor unavailable: {exc}')
 
 
-def install_academic_actions(frame):
+def install_source_comparison_actions(frame):
     import wx
-    from .bibliography_import import open_bibliography_import
     from .catalog_quality import open_catalog_quality
 
+    if getattr(frame, 'source_comparison_actions', None) is not None:
+        return frame.source_comparison_actions
     actions = AcademicActions(frame)
-    academic_index = frame.menu_bar.FindMenu('Academic')
-    menu = (frame.menu_bar.GetMenu(academic_index)
-            if academic_index >= 0 else wx.Menu())
+    index = frame.menu_bar.FindMenu('Research')
+    menu = frame.menu_bar.GetMenu(index) if index >= 0 else wx.Menu()
     commands = (
         ('Compare sources in active topic\tCtrl+Alt+M', actions.compare_sources),
-        ('Export research outline with subtopics', actions.outline),
-        ('Import bibliographic metadata from RIS', lambda event: open_bibliography_import(frame)),
         ('Check catalog quality', lambda event: open_catalog_quality(frame,
             edit_edition=lambda workspace, edition: edit_catalog_edition(frame, workspace, edition))),
     )
@@ -276,8 +216,7 @@ def install_academic_actions(frame):
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
     # Preserve existing menus and their handlers, including post-merge fixes.
-    if academic_index < 0:
-        help_index = frame.menu_bar.FindMenu('Help')
-        frame.menu_bar.Insert(help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(), menu, '&Academic')
-    frame.academic_actions = actions
+    if index < 0:
+        frame.menu_bar.Append(menu, '&Research')
+    frame.source_comparison_actions = actions
     return actions

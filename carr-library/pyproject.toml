@@ -15,11 +15,12 @@ dependencies = [
   "platformdirs==4.10.0",
   "filelock==3.29.0",
   "Pillow==13.0.0",
+  "py3langid==0.4.0",
   "defusedxml==0.7.1",
-  "comtypes==1.5.0; sys_platform == 'win32'",
   "bibtexparser==2.1.0",
   "pylatexenc==2.11",
   "quickjs-ng==0.18.0.2",
+  "comtypes==1.5.0; sys_platform == 'win32'",
 ]
 license-files = [
   "bootstrap/vendor/cairn_extractors/LICENSE",
@@ -28,15 +29,17 @@ license-files = [
   "src/carr_library/research/_vendor_rispy/LICENSE",
   "src/carr_library/search/_vendor/rifflux/LICENSE",
   "src/carr_library/ui/_vendor/wx_grid/LICENSE",
-  "src/carr_library/speech/COMTYPES_LICENSE.txt",
   "src/carr_library/citations/_vendor_citeproc/LICENSE",
   "src/carr_library/citations/_vendor_citeproc/CPAL",
   "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+  "src/carr_library/speech/COMTYPES_LICENSE.txt",
   "src/carr_library/extract/TESSDATA_FAST_LICENSE",
   "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+  "src/carr_library/extract/PY3LANGID_LICENSE",
 ]
 
 [project.optional-dependencies]
+sync = ["cryptography==50.0.2"]
 desktop = ["wxPython==4.2.4"]
 semantic = [
   "fastembed==0.9.1",
@@ -75,13 +78,13 @@ include-package-data = true
 packages = [
   "carr_library",
   "carr_library.acquisition",
+  "carr_library.audio",
+  "carr_library.assistant",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",
   "carr_library.extract",
   "carr_library.ingest",
-  "carr_library.integrations",
-  "carr_library.language_qualification",
   "carr_library.reader",
   "carr_library.research",
   "carr_library.research._vendor_rispy",
@@ -92,13 +95,14 @@ packages = [
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",
-  "carr_library.audio",
   "carr_library.speech",
   "carr_library.studio",
-  "carr_library.assistant",
+  "carr_library.sync",
   "carr_library.operations",
   "carr_library.transcription",
   "carr_library.conversion",
+  "carr_library.academic_integration",
+  "carr_library.language_qualification",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",
@@ -110,10 +114,12 @@ bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
-"carr_library.speech" = ["COMTYPES_LICENSE.txt"]
-"carr_library.language_qualification" = ["data/*.md"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
-"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
+"carr_library.audio" = ["legacy-runtime-lock.json", "runtime-source-lock.json", "runtime-setup-README.txt"]
+"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE", "ocr-language-detector.json", "PY3LANGID_LICENSE"]
+"carr_library.academic_integration" = ["styles/*.csl", "locales/*.xml", "vendor/*", "csl_worker.cjs"]
+"carr_library.language_qualification" = ["data/*.md"]
+"carr_library.speech" = ["COMTYPES_LICENSE.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

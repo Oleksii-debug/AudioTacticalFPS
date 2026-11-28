@@ -1,0 +1,106 @@
+{
+  "schema": "carr-independent-source-review/1",
+  "status": "CLEAR",
+  "execution": "NOT_RUN",
+  "path": ".github/workflows/carr-reconciliation-checks.yml",
+  "preimage": "998abe9bb34ec64304023b037e7d91a5b58246d9",
+  "candidate_blob": "1c698acbfb85594a60c152b4db0a756b2c8cf2f3",
+  "candidate_tree": "2e5b4b0857e31cf73e9182690f63624e93bf6f7b",
+  "review_scope": "Only the two aggregate CI step timeout changes and associated comments.",
+  "changes": [
+    {
+      "oldline": 67,
+      "newline": 67,
+      "before": "        timeout-minutes: 5",
+      "after": "        # Exact 5d19 was still passing tests at the five-minute\n        # aggregate cutoff. Keep all test/product/native deadlines unchanged.\n        timeout-minutes: 10"
+    },
+    {
+      "oldline": 73,
+      "newline": 75,
+      "before": "        timeout-minutes: 5",
+      "after": "        # Exact 5d19 was still passing tests at the five-minute\n        # aggregate cutoff. Keep all test/product/native deadlines unchanged.\n        timeout-minutes: 10"
+    }
+  ],
+  "inverse_proof": "Removing the two new explanatory comment pairs and changing only the two aggregate timeout-minutes values from10 back to5 recovers the entire preimage byte-for-byte.",
+  "preserved": {
+    "source_selectors": 39,
+    "installed_selectors": 39,
+    "source_and_installed_selector_arrays_identical": true,
+    "selectors": [
+      "tests/storage/test_recording_backup.py",
+      "tests/audio/test_playback.py",
+      "tests/storage/test_evidence_drafts.py",
+      "tests/ui/test_save_all.py",
+      "tests/ui/test_evidence_draft_recovery.py",
+      "tests/speech/test_progress_speech.py",
+      "tests/storage/test_canonical_backup_compat.py",
+      "tests/storage/test_composite_backup.py",
+      "tests/storage/test_v3_state_backup.py",
+      "tests/ui/test_save_all_access.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/ui/test_save_actions.py",
+      "tests/ui/test_reader_keymap_context.py",
+      "tests/ui/test_command_palette.py",
+      "tests/ui/test_keyboard_export.py",
+      "tests/ui/test_keyboard_rename.py",
+      "tests/ui/test_keyboard_settings.py",
+      "tests/speech/test_reading.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/ui/test_scope_labels.py",
+      "tests/language_qualification/test_inventory_cleanup.py",
+      "tests/speech/test_runtime_settings_restore.py",
+      "tests/ui/test_export_confirmation.py",
+      "tests/reader/test_export_approval_budget.py",
+      "tests/e2e/test_export_destination.py",
+      "tests/ui/test_academic_actions.py",
+      "tests/ui/test_academic_export_handler.py",
+      "tests/ui/test_catalog_tools_dialog.py",
+      "tests/ui/probe_catalog_insights_actions.py",
+      "tests/reader/test_file_export.py",
+      "tests/reader/test_binary_file_export.py",
+      "tests/reader/test_export_no_clobber.py",
+      "tests/reader/test_export_publication_boundary.py",
+      "tests/reader/test_finish_export_formats.py",
+      "tests/assistant/test_transcription_workflow.py",
+      "tests/transcription/test_supplied_worker_bridge.py",
+      "tests/assistant/test_workflows.py",
+      "tests/assistant/test_workflow_access.py",
+      "tests/ui/test_assistant_voice_preview.py"
+    ],
+    "source_ci_check_jobs": 2,
+    "job_timeout_minutes": 20,
+    "native_steps": 7,
+    "native_step_timeout_minutes": 3,
+    "product_deadlines": "UNCHANGED",
+    "per_suite_deadlines": "UNCHANGED",
+    "assertions_and_strict_failure_skip_policy": "UNCHANGED",
+    "source_installed_origin_and_exact_source_guards": "UNCHANGED",
+    "artifact_rules_and_native_steps": "UNCHANGED"
+  },
+  "capacity_change": {
+    "source_step_minutes": {
+      "before": 5,
+      "after": 10
+    },
+    "installed_step_minutes": {
+      "before": 5,
+      "after": 10
+    }
+  },
+  "motivating_terminal_evidence": {
+    "run_id": 46098474779,
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "provenance": "Exact terminal observations supplied by parent root; this peer review independently fetched the complete baseline and candidate workflow blobs, not a duplicate job-log fetch.",
+    "source_completed_modules": 34,
+    "source_required_modules": 39,
+    "source_completed_passed": 983,
+    "source_completed_failed": 0,
+    "source_unfinished_modules": 5,
+    "installed_last_reported_progress": "79%",
+    "installed_final_junit_case_count": null,
+    "terminal_error": "The action … has timed out after 5 minutes.",
+    "later_native_steps_passed": 7,
+    "prior_run_status": "INCOMPLETE; no success inferred for unfinished source modules or installed cases."
+  },
+  "review_conclusion": "The change gives the existing aggregate commands more CI execution capacity without changing any tested product behavior, per-suite timeout, selector or acceptance predicate. The unchanged20-minute job remains the overall cap; this review does not predict completion or mark the historical interrupted run passed."
+}

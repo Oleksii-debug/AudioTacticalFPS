@@ -1,0 +1,85 @@
+Run 46101827090; job 140845769489; head 78dc8ab6838e964bc115418c47c4ec3ef4226a91
+Actual windows_voice_preferences_smoke.py --source . stdout; all 80 checks. Timestamp/ANSI prefixes removed only.
+Scope: preference and native synthesis-option widgets with synthetic PCM; not the separate percentage-Seek native endpoint scenario.
+
+PASS opening preferences is silent and does not write
+PASS native control: Add or remove favorite
+PASS native Space down
+PASS native Space up
+PASS native favorite persists
+PASS native control: Save default for language
+PASS native Space down
+PASS native Space up
+PASS native exact-language default persists
+PASS native control: Voice profile name
+PASS native control: Profile synthesis rate, minus ten to ten
+PASS native control: Profile volume, zero to one hundred
+PASS native control: Save voice profile
+PASS native Space down
+PASS native Space up
+PASS native control: Saved voice profiles
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS native profile applies exact declared controls
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS native control: Voice preference status
+PASS fresh inventory refuses a removed voice without substitution
+PASS native control: Save default for language
+PASS native Space down
+PASS native Space up
+PASS native control: Voice preference status
+PASS changed library refuses native save
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS review is pending before close
+PASS native control: Close voice preferences
+PASS native Space down
+PASS native Space up
+PASS closed modal has no pending worker callback
+PASS close suppresses the queued selection
+PASS fresh review stays off the GUI thread
+PASS every fresh registry closes while the reader registry remains borrowed
+PASS native synthesis options own the current modal
+PASS native control: Use native voice pitch
+PASS native Space down
+PASS native Space up
+PASS native control: Read punctuation aloud
+PASS native Space down
+PASS native Space up
+PASS native control: Cancel native voice options
+PASS native Space down
+PASS native Space up
+PASS native Cancel retains default synthesis options
+PASS native synthesis options own the current modal
+PASS native control: Use native voice pitch
+PASS native Space down
+PASS native Space up
+PASS native control: Read punctuation aloud
+PASS native Space down
+PASS native Space up
+PASS native control: Apply native voice options
+PASS native Space down
+PASS native Space up
+PASS native Apply captures pitch and punctuation without automatic synthesis
+PASS native-selected settings reach the actual registry on the existing worker
+PASS native options survive passive exact draft recovery
+PASS incompatible current voice preserves and gates the requested settings
+PASS unsupported native request refuses without fallback or worker entry
+PASS native synthesis options own the current modal
+PASS unsupported native controls and Apply are disabled
+PASS native control: Reset native voice options
+PASS native Space down
+PASS native Space up
+PASS explicit native default reset makes Apply available
+PASS native control: Apply native voice options
+PASS native Space down
+PASS native Space up
+PASS native reset retains rate and volume without starting another render
+PASS native synthesis options own the current modal
+PASS direct native modal destruction cannot publish pending options
+PASS all native settings operations leave the shared worker idle
+NATIVE_VOICE_OPTION_CHECKS_PASS 80

@@ -1,0 +1,85 @@
+{
+  "schema": "carr-ci-terminal-subset-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "run": 46101828603,
+  "workflow": ".github/workflows/carr-component-followup-evaluation.yml",
+  "observed_at": "2026-11-28T03:42:26Z",
+  "scope": "Three completed modes only. Windows installed job140845774538 was still running step13 at this observation; no running log was fetched or result inferred.",
+  "modes": [
+    {
+      "file": "linux-source.json",
+      "job": 140845774510,
+      "status": "success",
+      "modules": 81,
+      "passed": 2893,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "linux-installed.json",
+      "job": 140845774246,
+      "status": "success",
+      "selectors": 81,
+      "passed": 2893,
+      "passing_subtests": 12,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "file": "windows-source.json",
+      "job": 140845774486,
+      "status": "failure",
+      "modules": 80,
+      "passed": 2889,
+      "failed": 1,
+      "skipped": 0
+    }
+  ],
+  "application_identity": {
+    "python_modules": 380,
+    "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+  },
+  "source_module_receipts": {
+    "citation_formatting": {
+      "path": "tests/academic_integration/test_formatting.py",
+      "linux_source": 39,
+      "windows_source": 39,
+      "failed": 0
+    },
+    "studio_clip_dialog": {
+      "path": "tests/studio/test_clip_dialog.py",
+      "linux_source": 54,
+      "windows_source": 54,
+      "failed": 0
+    }
+  },
+  "limitations": [
+    "Installed quiet pytest output reports an overall count, not independent case counts for each selected module.",
+    "The Windows source failure is the canonical-versus-short temporary-path fixture mismatch recorded in the attached trace; its prepared correction is not part of tested head78.",
+    "The separate Windows virtual-environment and native clip steps were skipped after the source unit failure. Source deadline21PASS is not proof of that separate venv step.",
+    "Native additional-document import checks completed before the Windows source failure: source27 and installed28. File-picker operation and NVDA remain NOT_RUN.",
+    "No endpoint, physical capture, human listening or real model qualification is inferred.",
+    "Artifact IDs, sizes and ZIP digests are reported metadata; artifact ZIPs were not downloaded for this receipt."
+  ],
+  "files": [
+    {
+      "path": "linux-source.json",
+      "sha256": "f25cba28fca58cc492058d3a4a3922ef9b17e273d807ddd49c5b04f272fe0d63"
+    },
+    {
+      "path": "linux-installed.json",
+      "sha256": "6341f33102c618ba5158b8bdd2f4e67a6f230d4503e4aacbf38c8cccbc4b7aac"
+    },
+    {
+      "path": "windows-source.json",
+      "sha256": "34d6bafeabdc3a27cad646e3c7d40612dd04a4e1eabbee7cddd6cb50415a43a0"
+    },
+    {
+      "path": "windows-source-progress-path-failure.txt",
+      "sha256": "4ad1213b76b5ecb497a8949bed863790a2ee4aed3b20c13b787e7a64c428012b"
+    }
+  ]
+}

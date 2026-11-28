@@ -1,0 +1,183 @@
+{
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run": 46088683372,
+  "job": 140804190853,
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T00:36:00Z",
+      "completed_at": "2026-11-28T00:36:01Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T00:36:01Z",
+      "completed_at": "2026-11-28T00:36:08Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T00:36:08Z",
+      "completed_at": "2026-11-28T00:36:09Z"
+    },
+    {
+      "name": "Install exact application and native desktop dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T00:36:09Z",
+      "completed_at": "2026-11-28T00:37:05Z"
+    },
+    {
+      "name": "Prepare explicitly pinned private test audio runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T00:37:05Z",
+      "completed_at": "2026-11-28T00:37:16Z"
+    },
+    {
+      "name": "Prepare pinned OCR for required recognition and backup acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T00:37:16Z",
+      "completed_at": "2026-11-28T00:38:38Z"
+    },
+    {
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T00:38:38Z",
+      "completed_at": "2026-11-28T00:38:39Z"
+    },
+    {
+      "name": "Verify installed reader, translation, voice and delivery services",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 8,
+      "started_at": "2026-11-28T00:38:39Z",
+      "completed_at": "2026-11-28T00:45:24Z"
+    },
+    {
+      "name": "Verify installed backup and import publication integrity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T00:45:24Z",
+      "completed_at": "2026-11-28T00:52:24Z"
+    },
+    {
+      "name": "Require actual Windows recording process ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T00:52:24Z",
+      "completed_at": "2026-11-28T00:52:24Z"
+    },
+    {
+      "name": "Require native voice preferences and fresh inventory review",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T00:52:24Z",
+      "completed_at": "2026-11-28T00:52:27Z"
+    },
+    {
+      "name": "Require source and installed native reading tabs and focus",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T00:52:27Z",
+      "completed_at": "2026-11-28T00:52:43Z"
+    },
+    {
+      "name": "Real native SAPI, scene production, keyboard controls and restart",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 13,
+      "started_at": "2026-11-28T00:52:43Z",
+      "completed_at": "2026-11-28T00:52:43Z"
+    },
+    {
+      "name": "Require progress isolation and actual selected-voice rendering regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T00:52:43Z",
+      "completed_at": "2026-11-28T00:53:20Z"
+    },
+    {
+      "name": "Require Advanced translation permission and checkpoint regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T00:53:20Z",
+      "completed_at": "2026-11-28T00:53:36Z"
+    },
+    {
+      "name": "Require local proposal scope and review regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T00:53:36Z",
+      "completed_at": "2026-11-28T00:53:42Z"
+    },
+    {
+      "name": "Native local proposal and actual loopback HTTP with external egress blocked",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T00:53:42Z",
+      "completed_at": "2026-11-28T00:53:55Z"
+    },
+    {
+      "name": "Validate local services, DSP, integrity and provider permission boundaries",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 18,
+      "started_at": "2026-11-28T00:53:55Z",
+      "completed_at": "2026-11-28T02:13:18Z"
+    },
+    {
+      "name": "Keep source and test evidence only",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-11-28T02:13:18Z",
+      "completed_at": "2026-11-28T02:13:19Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 37,
+      "started_at": "2026-11-28T02:13:19Z",
+      "completed_at": "2026-11-28T02:13:19Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 38,
+      "started_at": "2026-11-28T02:13:19Z",
+      "completed_at": "2026-11-28T02:13:21Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 39,
+      "started_at": "2026-11-28T02:13:21Z",
+      "completed_at": "2026-11-28T02:13:21Z"
+    }
+  ]
+}

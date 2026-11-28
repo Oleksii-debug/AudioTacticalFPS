@@ -109,24 +109,6 @@ def test_pinned_controller_rechecks_library_authorization(controller):
     assert controller.get(row.id) == row
 
 
-def test_academic_controller_captures_destination_before_render(controller, tmp_path, monkeypatch):
-    controller.create(form_values(draft()))
-    target = tmp_path / 'bibliography.txt'
-    target.write_bytes(b'Approved previous export')
-    original = controller.export
-
-    def render(**kwargs):
-        content = original(**kwargs)
-        target.write_bytes(b'Independent work saved while rendering')
-        return content
-
-    monkeypatch.setattr(controller, 'export', render)
-    with pytest.raises(ValueError, match='destination changed'):
-        controller.export_to(target)
-    assert target.read_bytes() == b'Independent work saved while rendering'
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
 def test_import_dialog_selection_is_explicit_and_failed_batch_is_atomic(controller):
     data = json.dumps([
         {'type': 'book', 'title': 'First imported reference'},
@@ -174,27 +156,6 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     with pytest.raises(ValueError):
         controller.export_to(private)
     assert private.read_text() == 'Existing private file'
-
-
-@pytest.mark.parametrize('existing', [False, True])
-def test_bibliography_preserves_newer_destination_during_render(
-        controller, tmp_path, monkeypatch, existing):
-    target = tmp_path / 'bibliography.txt'
-    if existing:
-        target.write_bytes(b'Explicitly selected old bibliography.')
-    render = controller.export
-    newer = b'Independent work saved while bibliography renders.'
-
-    def render_and_change(**options):
-        value = render(**options)
-        target.write_bytes(newer)
-        return value
-
-    monkeypatch.setattr(controller, 'export', render_and_change)
-    with pytest.raises(ValueError, match='destination changed'):
-        controller.export_to(target)
-    assert target.read_bytes() == newer
-    assert not list(tmp_path.glob('.research-export-*'))
 
 
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
@@ -570,23 +531,239 @@ def test_live_academic_completion_reports_done_callback_error(controller, native
     assert 'Visible callback failure' in window.status.value
 
 
-def test_native_export_handler_retains_text_return_and_cleanup_notice(
-        controller, native_handlers, monkeypatch, tmp_path):
-    from carr_library.ui import academic_library_dialog as ui
-    from carr_library.research.export_file import ExportReceipt
-    controller.create(form_values(draft()))
-    actual_writer = ui.write_export
+class _ExportExecutor:
+    """Each task runs on a real worker only when the test advances that phase."""
+    def __init__(self):
+        self.jobs = []
 
-    def completed_with_notice(*args, **kwargs):
-        receipt = actual_writer(*args, **kwargs)
-        return ExportReceipt(receipt.path, 'Completed; temporary cleanup needs attention.')
+    def submit(self, operation, *args):
+        future = Future()
+        self.jobs.append((future, lambda: operation(*args)))
+        return future
 
-    monkeypatch.setattr(ui, 'write_export', completed_with_notice)
-    window = native_handlers.make('academic', controller)
+    def finish(self, index):
+        future, operation = self.jobs[index]
+
+        def run():
+            try:
+                future.set_result(operation())
+            except Exception as exc:
+                future.set_exception(exc)
+
+        with ThreadPoolExecutor(max_workers=1) as worker:
+            worker.submit(run).result()
+
+
+def _academic_export_window(controller, native_handlers, tmp_path, monkeypatch):
+    ui = native_handlers
+    window = ui.make('academic', controller)
     window.controller = controller
-    destination = tmp_path / 'references.ris'
-    result = window.export_to(destination, format='ris')
-    assert isinstance(result, str)
-    assert result.encode('utf-8') == destination.read_bytes()
-    assert len(controller.preview(result.encode('utf-8'), 'ris').entries) == 1
-    assert 'Completed; temporary cleanup needs attention.' in window.status.value
+    window.executor = _ExportExecutor()
+    window._export_host = SimpleNamespace(library=controller.library,
+        active=(controller.workspace, None), _closing=False)
+    window._export_options = Mock(return_value=(('text', 'Plain text', 'txt'), None, False))
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Existing target')
+    picker = Mock()
+    picker.ShowModal.return_value = ui.wx.ID_OK
+    picker.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=picker)
+    ui.wx.FD_SAVE = 1
+    ui.wx.YES, ui.wx.NO = 2, 4
+    ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 8, 16, 32
+    ui.wx.MessageBox = Mock(return_value=ui.wx.YES)
+    return window, target, picker
+
+
+def test_academic_export_hashes_and_renders_only_in_existing_worker_and_confirms_on_ui(
+        controller, native_handlers, tmp_path, monkeypatch):
+    from threading import get_ident
+    from carr_library.ui import academic_library_dialog as module
+    controller.create(form_values(draft()))
+    window, target, picker = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    main_thread, captures = get_ident(), []
+    capture = module.capture_export_destination
+
+    def observe(*args, **kwargs):
+        captures.append(get_ident())
+        assert get_ident() != main_thread
+        return capture(*args, **kwargs)
+
+    # The fixture compiles the unchanged nested class with a copied globals map.
+    # Instrument the map the running handler actually resolves, retaining its
+    # real worker and UI callback delivery.
+    monkeypatch.setitem(window.on_export.__func__.__globals__,
+                        'capture_export_destination', observe)
+    native_handlers.wx.MessageBox.side_effect = lambda *args: (
+        native_handlers.wx.YES if get_ident() == main_thread else pytest.fail('Confirmation left the UI thread'))
+    window.on_export()
+    assert captures == [] and len(window.executor.jobs) == 1
+    assert target.read_bytes() == b'Existing target'
+    window.executor.finish(0)
+    assert len(captures) == 1
+    native_handlers.wx.MessageBox.assert_not_called()
+    native_handlers.drain()
+    assert len(window.executor.jobs) == 2 and target.read_bytes() == b'Existing target'
+    window.executor.finish(1)
+    native_handlers.drain()
+    assert target.read_text(encoding='utf-8') == controller.export()
+    assert 'Bibliography exported' in window.status.value
+    picker.Destroy.assert_called_once()
+
+
+@pytest.mark.parametrize('stage', ['before_capture', 'after_capture', 'in_confirmation', 'close_in_confirmation'])
+def test_academic_export_cancelled_between_phases_never_resets_cancellation(
+        controller, native_handlers, tmp_path, monkeypatch, stage):
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    if stage in ('in_confirmation', 'close_in_confirmation'):
+        def confirm(*args):
+            if stage == 'close_in_confirmation':
+                window.on_cancel()
+            else:
+                window.cancel_event.set()
+            return native_handlers.wx.YES
+        native_handlers.wx.MessageBox.side_effect = confirm
+    window.on_export()
+    if stage == 'before_capture':
+        window.cancel_event.set()
+    window.executor.finish(0)
+    if stage == 'after_capture':
+        window.cancel_event.set()
+    native_handlers.drain()
+    assert len(window.executor.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+@pytest.mark.parametrize('change', ['destroy_before_capture', 'destroy_after_capture',
+                                    'library', 'topic', 'controller'])
+def test_academic_export_stale_or_closed_owner_never_publishes(
+        controller, native_handlers, tmp_path, monkeypatch, change):
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    window.on_export()
+    if change == 'destroy_before_capture':
+        native_handlers.destroy(window)
+    window.executor.finish(0)
+    if change == 'destroy_after_capture':
+        native_handlers.destroy(window)
+    elif change == 'library':
+        window._export_host.library = object()
+    elif change == 'topic':
+        window._export_host.active = ('another-workspace', None)
+    elif change == 'controller':
+        window.controller = object()
+    native_handlers.drain()
+    assert len(window.executor.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+@pytest.mark.parametrize('initial', ['existing', 'absent'])
+def test_academic_export_changed_after_approval_preserves_competing_file(
+        controller, native_handlers, tmp_path, monkeypatch, initial):
+    import os
+    controller.create(form_values(draft()))
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    if initial == 'absent':
+        target.unlink()
+    window.on_export()
+    window.executor.finish(0)
+    native_handlers.drain()
+    stamp = target.stat() if target.exists() else None
+    target.write_bytes(b'Switched target')  # Same length as the prior existing file.
+    if stamp is not None:
+        os.utime(target, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+    window.executor.finish(1)
+    native_handlers.drain()
+    assert target.read_bytes() == b'Switched target'
+    assert 'not completed' in window.status.value
+
+
+def test_academic_export_declined_overwrite_has_no_render_or_publish_phase(
+        controller, native_handlers, tmp_path, monkeypatch):
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    native_handlers.wx.MessageBox.return_value = native_handlers.wx.NO
+    window.on_export()
+    window.executor.finish(0)
+    native_handlers.drain()
+    assert len(window.executor.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+def test_academic_export_completed_publication_remains_success_after_late_cancel(
+        controller, native_handlers, tmp_path, monkeypatch):
+    controller.create(form_values(draft()))
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    window.on_export()
+    window.executor.finish(0)
+    native_handlers.drain()
+    window.executor.finish(1)
+    window.cancel_event.set()
+    native_handlers.drain()
+    assert target.read_text(encoding='utf-8') == controller.export()
+    assert 'Bibliography exported' in window.status.value
+
+
+def test_academic_export_cancellation_after_render_preserves_destination(controller, tmp_path, monkeypatch):
+    cancelled = Event()
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Existing target')
+    original = controller.export
+
+    def rendered(**kwargs):
+        value = original(**kwargs)
+        cancelled.set()
+        return value
+
+    monkeypatch.setattr(controller, 'export', rendered)
+    with pytest.raises(TimeoutError, match='cancelled'):
+        controller.export_to(target, cancelled=cancelled.is_set)
+    assert target.read_bytes() == b'Existing target'
+
+
+def test_academic_export_destroyed_during_confirmation_never_touches_dead_controls(
+        controller, native_handlers, tmp_path, monkeypatch):
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+
+    def confirm(*args):
+        native_handlers.destroy(window)
+        return native_handlers.wx.YES
+
+    native_handlers.wx.MessageBox.side_effect = confirm
+    window.on_export()
+    window.executor.finish(0)
+    native_handlers.drain()
+    assert len(window.executor.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+def test_text_controller_contract_and_receipt_result_use_same_publication(controller, tmp_path):
+    controller.create(form_values(draft()))
+    target, second = tmp_path / 'plain.txt', tmp_path / 'receipt.txt'
+    content = controller.export_to(target)
+    detailed, receipt = controller.export_with_receipt(second)
+    assert content == detailed == controller.export()
+    assert target.read_text(encoding='utf-8') == second.read_text(encoding='utf-8') == content
+    assert receipt.path == second and receipt.cleanup_warning is None
+
+
+@pytest.mark.parametrize('late_cancel', [False, True])
+def test_academic_export_reports_committed_cleanup_warning(
+        controller, native_handlers, tmp_path, monkeypatch, late_cancel):
+    from carr_library.research.export_file import ExportReceipt
+    from carr_library.ui import academic_library_dialog as module
+    controller.create(form_values(draft()))
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    actual_write = module.write_export
+    warning = 'The file is saved. Temporary-file cleanup is still pending; do not repeat the export.'
+
+    def publish(*args, **kwargs):
+        receipt = actual_write(*args, **kwargs)
+        if late_cancel:
+            window.cancel_event.set()
+        return ExportReceipt(receipt.path, warning)
+
+    monkeypatch.setattr(module, 'write_export', publish)
+    window.on_export()
+    window.executor.finish(0)
+    native_handlers.drain()
+    window.executor.finish(1)
+    native_handlers.drain()
+    assert target.read_text(encoding='utf-8') == controller.export()
+    assert 'Bibliography exported' in window.status.value and warning in window.status.value
+    assert 'not completed' not in window.status.value
+    assert len(window.executor.jobs) == 2

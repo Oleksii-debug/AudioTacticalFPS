@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "status": "BUILT_NOT_INSTALLED",
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "bundle_manifest_sha256": "42edfd7c6fb81e99b7616f10eb56df1ef5fc2d0be946c67e9c34131de1d76be3",
+  "application_version": "0.2.0.dev2",
+  "managed_upgrade_protocol": "carr-managed-upgrade/1",
+  "template_sha256": "d69d621aaa61739dd9cdd550b3c45261ef8afcbfbf97d21adbcd8ab42c701041",
+  "maintenance_sha256": {
+    "maintenance.py": "db2cd3f07d3af6055667ed818a7889c6b9094100643578dda347841aed2cb5fb",
+    "installation_lease.py": "63068eeb4ab1aa734719df0d2b6156bda5907b8ee74dd690da958bcfb8a72562",
+    "bundle_verifier.py": "68dffedea8e372302bbe7a0407fb382d2730dec9b16603c537b591ad8d7fe3eb",
+    "managed_installation.py": "9b70d31705ad4ee7a600649018d3d7c1e07bbe922814fbd70a337f8e9f2d86fe",
+    "process.py": "2af9d942637da3c675a7a4861c86aca1b63a072ffbb4d5c30af7e304967dc95d",
+    "windows_process.py": "6907f4bf2253cc2459b3d0369947dc319a4a084ebbd8500f92fd1360177d5fa6",
+    "models.py": "a22ba261813330f2e4ce1dc6d44fb02c8988ea1a849cb43b2951a175293945dc",
+    "cleanup.py": "ce26559c9f460d347f2e67f792adaa0da53080513723432f5dab6a3c32fee588"
+  },
+  "release_status": "unsigned-private-candidate",
+  "authenticode_verified": false,
+  "windows_installation_verified": false,
+  "nvda_verified": false,
+  "setup_sha256": "7b4a68f67337dd28fea9fd469300df407ca891496b602fdd98ee0a3fd5d07ba5",
+  "setup_bytes": 82397138,
+  "toolchain": {
+    "schema": 1,
+    "iscc_sha256": "f02fa0e5f237b47d7ed1edae9b991866ec94fe02af61eb6a73e94f92fe8e0604",
+    "publisher": "Pyrsys B.V.",
+    "upstream_signature": "Valid",
+    "version": "6.7.4",
+    "archive_sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
+  }
+}

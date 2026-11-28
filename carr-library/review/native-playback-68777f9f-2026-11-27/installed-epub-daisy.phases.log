@@ -1,0 +1,67 @@
+2026-11-27T22:15:26.0530923Z EPUB_DAISY_PHASE starting
+2026-11-27T22:15:26.2843157Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.studio.publishing
+2026-11-27T22:15:26.2844176Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.studio.publishing_source
+2026-11-27T22:15:26.2846953Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.studio.daisy
+2026-11-27T22:15:26.2848612Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.reader.ebook_audio
+2026-11-27T22:15:26.2851072Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.ui.publishing_dialog
+2026-11-27T22:15:26.2854332Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.ui.ebook_audio_dialog
+2026-11-27T22:15:26.2857973Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.ui.ebook_model
+2026-11-27T22:15:26.2863142Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.ui.reading_desk
+2026-11-27T22:15:26.2865605Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.speech.player
+2026-11-27T22:15:26.2868954Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.speech._wave_output
+2026-11-27T22:15:26.2872552Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.runtime_settings
+2026-11-27T22:15:26.2875797Z EPUB_DAISY_PHASE exact imported publication/reader module: carr_library.audio.cleanup
+2026-11-27T22:15:26.2877410Z EPUB_DAISY_PHASE actual Windows native widgets
+2026-11-27T22:15:28.3407891Z EPUB_DAISY_PHASE actual completed synthetic PCM production
+2026-11-27T22:15:28.5883163Z EPUB_DAISY_PHASE native Space down: &Load jobs / receipts
+2026-11-27T22:15:28.6246535Z EPUB_DAISY_PHASE native Space up: &Load jobs / receipts
+2026-11-27T22:15:28.7102694Z EPUB_DAISY_PHASE completed job requires explicit native selection
+2026-11-27T22:15:28.7112232Z EPUB_DAISY_PHASE native Space down: &Export EPUB3
+2026-11-27T22:15:28.7357869Z EPUB_DAISY_PHASE native Space up: &Export EPUB3
+2026-11-27T22:15:29.3587512Z EPUB_DAISY_PHASE native EPUB export completed
+2026-11-27T22:15:29.3594387Z EPUB_DAISY_PHASE native Space down: Export &DAISY 2.02
+2026-11-27T22:15:29.3815692Z EPUB_DAISY_PHASE native Space up: Export &DAISY 2.02
+2026-11-27T22:15:29.9691948Z EPUB_DAISY_PHASE native DAISY export completed
+2026-11-27T22:15:29.9713025Z EPUB_DAISY_PHASE DAISY preserves exact source and measured-only synchronization
+2026-11-27T22:15:29.9721394Z EPUB_DAISY_PHASE native Space down: &Verify receipt
+2026-11-27T22:15:29.9941167Z EPUB_DAISY_PHASE native Space up: &Verify receipt
+2026-11-27T22:15:30.1040386Z EPUB_DAISY_PHASE same DAISY receipt verifies exact bytes
+2026-11-27T22:15:30.1046590Z EPUB_DAISY_PHASE native Space down: Export &DAISY 2.02
+2026-11-27T22:15:30.1268842Z EPUB_DAISY_PHASE native Space up: Export &DAISY 2.02
+2026-11-27T22:15:30.1291336Z EPUB_DAISY_PHASE native new-only publication retains existing bytes
+2026-11-27T22:15:30.1296608Z EPUB_DAISY_PHASE native Space down: &Close
+2026-11-27T22:15:30.1511348Z EPUB_DAISY_PHASE native Space up: &Close
+2026-11-27T22:15:30.5913302Z EPUB_DAISY_PHASE actual EPUB import completed
+2026-11-27T22:15:30.6414215Z EPUB_DAISY_PHASE native Space down: EPUB synchronized recorded audio...
+2026-11-27T22:15:30.6632841Z EPUB_DAISY_PHASE native Space up: EPUB synchronized recorded audio...
+2026-11-27T22:15:31.0017358Z EPUB_DAISY_PHASE recorded reader retained a live session after native initialization
+2026-11-27T22:15:31.0017948Z EPUB_DAISY_PHASE wrapped source view selects the exact authored recorded interval
+2026-11-27T22:15:31.0023870Z EPUB_DAISY_PHASE recorded reader borrows the existing source-reader worker
+2026-11-27T22:15:31.0025121Z EPUB_DAISY_PHASE open and selected fragment do not autoplay
+2026-11-27T22:15:31.0025969Z EPUB_DAISY_PHASE recorded cues retain the exact imported source interval count
+2026-11-27T22:15:31.0032860Z EPUB_DAISY_PHASE native Space down: Play from selected segment
+2026-11-27T22:15:31.0257470Z EPUB_DAISY_PHASE native Space up: Play from selected segment
+2026-11-27T22:15:31.4922862Z EPUB_DAISY_PHASE real WinMM/MCI endpoint is playing prepared recorded PCM
+2026-11-27T22:15:31.4930263Z EPUB_DAISY_PHASE native Space down: Pause recorded audio
+2026-11-27T22:15:31.5150753Z EPUB_DAISY_PHASE native Space up: Pause recorded audio
+2026-11-27T22:15:31.5174479Z EPUB_DAISY_PHASE native Pause preserves prepared segment
+2026-11-27T22:15:31.5180843Z EPUB_DAISY_PHASE native Space down: Resume recorded audio
+2026-11-27T22:15:31.5398094Z EPUB_DAISY_PHASE native Space up: Resume recorded audio
+2026-11-27T22:15:31.5688696Z EPUB_DAISY_PHASE native Space down: Next recorded segment
+2026-11-27T22:15:31.5903679Z EPUB_DAISY_PHASE native Space up: Next recorded segment
+2026-11-27T22:15:31.6428775Z EPUB_DAISY_PHASE explicit segment navigation stops sound without autoplay
+2026-11-27T22:15:31.6436370Z EPUB_DAISY_PHASE native Space down: Play from selected segment
+2026-11-27T22:15:31.6650791Z EPUB_DAISY_PHASE native Space up: Play from selected segment
+2026-11-27T22:15:32.1700658Z EPUB_DAISY_PHASE native Space down: Stop recorded audio
+2026-11-27T22:15:32.1911034Z EPUB_DAISY_PHASE native Space up: Stop recorded audio
+2026-11-27T22:15:32.2378060Z EPUB_DAISY_PHASE native Stop closes endpoint and releases its prepared file
+2026-11-27T22:15:32.2385189Z EPUB_DAISY_PHASE native Space down: Where am I in recorded audio?
+2026-11-27T22:15:32.2611260Z EPUB_DAISY_PHASE native Space up: Where am I in recorded audio?
+2026-11-27T22:15:32.2680899Z EPUB_DAISY_PHASE recorded position report keeps source timing limitations explicit
+2026-11-27T22:15:32.2708008Z EPUB_DAISY_PHASE native Space down: Close recorded audio
+2026-11-27T22:15:32.2941259Z EPUB_DAISY_PHASE native Space up: Close recorded audio
+2026-11-27T22:15:32.3106597Z EPUB_DAISY_PHASE recorded modal returned without source or quotation mutation
+2026-11-27T22:15:32.3107299Z EPUB_DAISY_PHASE recorded source and PCM stages are closed
+2026-11-27T22:15:32.3116003Z EPUB_DAISY_PHASE native Space down: Close reader
+2026-11-27T22:15:32.3333216Z EPUB_DAISY_PHASE native Space up: Close reader
+2026-11-27T22:15:32.3689405Z EPUB_DAISY_PHASE complete

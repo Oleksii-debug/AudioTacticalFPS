@@ -12,8 +12,15 @@ from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import create_backup, restore_backup
 from carr_library.operations import ResourceBroker, ResourceLimits
 from carr_library.transcription import TranscriptionService
-from carr_library import backup_sidecars, backup_transcription
+from carr_library import backup_compat as backup_sidecars, backup_transcription
 from carr_library.transcription.models import fingerprint
+
+
+def state_files(manifest):
+    # This host preserves its format-5/3 native producer. Only the test's
+    # inventory projection changes; every original path/hash assertion remains.
+    return [{**row, 'filename': 'state/' + row['filename']} for row in manifest['state']]
+
 
 
 @pytest.fixture
@@ -76,9 +83,9 @@ def test_completed_transcript_and_edits_restore_without_external_runtime_or_cach
     backup = tmp_path / 'complete-backup'
     digest = create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
-    assert not any('/cache/' in row['filename'] for row in manifest['sidecars'])
-    assert any('/inputs/' in row['filename'] for row in manifest['sidecars'])
-    assert not any(row['filename'].endswith(('model.bin','protocol_worker.py','python.exe')) for row in manifest['sidecars'])
+    assert not any('/cache/' in row['filename'] for row in state_files(manifest))
+    assert any('/inputs/' in row['filename'] for row in state_files(manifest))
+    assert not any(row['filename'].endswith(('model.bin','protocol_worker.py','python.exe')) for row in state_files(manifest))
     audio.unlink()
     shutil.rmtree(engine.root)
     destination = restore_backup(backup, tmp_path / 'complete-restored', digest)
@@ -115,7 +122,7 @@ def test_typed_cache_inclusion_keeps_source_and_result_authority(prepared, tmp_p
     backup = tmp_path / 'backup'
     checksum = create_backup(app, backup, include_generated=include_generated)
     manifest = read_json(backup / 'manifest.json')
-    assert any('/cache/' in row['filename'] for row in manifest['sidecars']) is include_generated
+    assert any('/cache/' in row['filename'] for row in state_files(manifest)) is include_generated
     destination = restore_backup(backup, tmp_path / 'restored', checksum)
     restored = TranscriptionService(destination / 'state/transcription')
     assert restored.read_transcript(job['id']) == service.read_transcript(job['id'])
@@ -180,7 +187,7 @@ def test_silent_empty_exports_and_historical_edits_survive_typed_backup(prepared
     backup = tmp_path / 'backup'
     checksum = create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
-    empty = [row for row in manifest['sidecars'] if row['size_bytes'] == 0]
+    empty = [row for row in state_files(manifest) if row['size_bytes'] == 0]
     assert {Path(row['filename']).suffix for row in empty} == {'.txt', '.srt'}
     destination = restore_backup(backup, tmp_path / 'restored', checksum)
     restored = TranscriptionService(destination / 'state/transcription')
@@ -194,11 +201,17 @@ def test_input_streaming_has_separate_budget_and_honors_whole_backup_limit(prepa
     audio = tmp_path / 'larger-than-metadata.wav'
     audio.write_bytes(b'S' * (1024 * 1024))
     service.create_job(profile['id'], [audio])
-    monkeypatch.setattr(backup_sidecars, 'MAX_BYTES', 512 * 1024)
+    monkeypatch.setattr(backup_transcription, 'MAX_METADATA_BYTES', 512 * 1024)
     # A source larger than the entire metadata allowance remains streamable.
     create_backup(app, tmp_path / 'successful')
-    with pytest.raises(ValueError):
-        create_backup(app, tmp_path / 'bounded', max_bytes=512 * 1024)
+    from carr_library import state_backup
+    snapshot = state_backup.snapshot_state
+    with monkeypatch.context() as bound:
+        def bounded(*args, **kwargs):
+            return snapshot(*args, **kwargs, max_bytes=512 * 1024)
+        bound.setattr(state_backup, 'snapshot_state', bounded)
+        with pytest.raises(ValueError):
+            create_backup(app, tmp_path / 'bounded')
     monkeypatch.setattr(backup_transcription, 'MAX_INPUT_BYTES', audio.stat().st_size - 1)
     with pytest.raises(ValueError):
         create_backup(app, tmp_path / 'excessive-input')
@@ -216,12 +229,14 @@ def test_legacy_state_manifest_keeps_typed_asr_and_revokes_execution(prepared, t
     backup = tmp_path / 'legacy-backup'
     create_backup(app, backup, include_generated=True)
     manifest = read_json(backup / 'manifest.json')
-    entries = manifest.pop('sidecars')
+    entries = state_files(manifest)
     assert all(entry['filename'].startswith('state/') for entry in entries)
-    # Historical v4 state manifests include pending imports; current v4 uses
-    # the explicitly typed sidecars field. Both retain exact source hashes.
+    # Exercise the accepted foreign flat-v4 envelope from exact native copied
+    # bytes. Both shapes retain source hashes and must revoke execution trust.
     manifest['version'] = 4
-    manifest['state'] = [{**entry, 'filename': entry['filename'][len('state/'):]} for entry in entries]
+    manifest.pop('state')
+    assert 'sidecars' not in manifest
+    manifest['sidecars'] = entries
     raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True) + '\n').encode('utf-8')
     (backup / 'manifest.json').write_bytes(raw)
     destination = restore_backup(backup, tmp_path / 'restored-legacy', sha256(raw).hexdigest())
@@ -316,7 +331,7 @@ def test_restore_rejects_cache_contradicting_manifest_inclusion(prepared, tmp_pa
     backup = tmp_path / 'backup'
     create_backup(app, backup, include_generated=True)
     manifest = read_json(backup / 'manifest.json')
-    assert any(backup_transcription.is_cache_file(row['filename']) for row in manifest['sidecars'])
+    assert any(backup_transcription.is_cache_file(row['filename']) for row in state_files(manifest))
     manifest['generated_audio_included'] = False
     raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True) + '\n').encode('utf-8')
     (backup / 'manifest.json').write_bytes(raw)

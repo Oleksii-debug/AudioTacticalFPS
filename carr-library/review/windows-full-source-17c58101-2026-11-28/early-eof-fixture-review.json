@@ -1,0 +1,61 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "reviewed_tree": "71cbe92e0e78ec09aa2739760cf6902edf54344d",
+  "path": "carr-library/tests/audio/test_process_deadline.py",
+  "preimage": "79948bafb1a91a6c4ffc3cc70260fec6a1b3b33d",
+  "reviewed_blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+  "sha256": "8a88bb69073d984ca26af193bdd6b6b1f506d0787559a88d09ce7b1852f7c4fc",
+  "exact_inverse": true,
+  "tests": {
+    "cases_unchanged": 21,
+    "early_eof_cases_using_direct_stdio": 3,
+    "other_cases_keep_sys_executable": 18,
+    "old_assertions_retained": 82,
+    "new_static_assertion_occurrences": 89,
+    "worker_timeout_seconds": 5,
+    "readiness_wait_seconds": 10
+  },
+  "findings": [
+    "Conditional-expression precedence includes the complete import/identity/close block only for early_eof; normal generated child payload is unchanged.",
+    "On Windows only the three explicit direct_stdio callers use an absolute existing active CPython sys._base_executable; other cases and all production launch paths are unchanged.",
+    "The actual child checks implementation name, major/minor/micro version and sys.maxsize against the parent before closing descriptors.",
+    "The ready marker is written and closed as a sibling then atomically replaced, so parent PID parsing cannot observe a just-created empty marker.",
+    "WindowsJobProcess uses the existing Popen launcher with native CreateProcess result; its owned leader PID remains the actual process PID. The marker must equal that PID.",
+    "Existing child exit, reader drain, pending-owner cleanup, elapsed allowances, assertions and test case count remain."
+  ],
+  "evidence": {
+    "failed_run": 46088683366,
+    "failed_job": 140804190798,
+    "failed_head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "actual_main_python": "CPython3.11.9,64bit AMD64",
+    "interpreter_evidence_tree": "1645bc361a8add6252cfeb777a115a0674ad53d5",
+    "interpreter_evidence_blob": "9d6df3bcfac989a78bdd02144d669c2918c875e6",
+    "three_failure_blocks_blob": "457f49d4f984ecaadfa0fc0576701219fd06acfc"
+  },
+  "primary_sources": [
+    {
+      "repository": "python/cpython",
+      "version": "v3.11.9",
+      "path": "PC/launcher.c",
+      "blob": "da566a180168c5d80104e68b3595f140c4ba989f",
+      "sha256": "492f7b8ec9312976c7428f4265866e89d2d187001931c31018de73440dfe4aaa",
+      "url": "https://github.com/python/cpython/blob/v3.11.9/PC/launcher.c",
+      "reviewed_behavior": "run_child duplicates the standard handles, creates an inheriting child and waits for that child without closing those duplicated standard handles."
+    },
+    {
+      "repository": "python/cpython",
+      "version": "v3.11.9",
+      "path": "PCbuild/venvlauncher.vcxproj",
+      "sha256": "e1960f17be3d7674286e57f0220dafdd7fc1753ecdadc2ab0c4a67edd4989d4a",
+      "url": "https://github.com/python/cpython/blob/v3.11.9/PCbuild/venvlauncher.vcxproj",
+      "reviewed_behavior": "The venv launcher compiles PC/launcher.c with VENV_REDIRECT."
+    }
+  ],
+  "limits": [
+    "This is a fixture-only source review, not a passing native rerun.",
+    "Existing separately completed8b bridge21-case successes remain their own evidence.",
+    "The production process ownership implementation, selected-interpreter contract and all product deadlines remain unchanged."
+  ]
+}

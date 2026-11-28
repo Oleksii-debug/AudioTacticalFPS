@@ -1,0 +1,457 @@
+{
+  "run": 46093366008,
+  "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "job": 140819158582,
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1
+    },
+    {
+      "name": "Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3
+    },
+    {
+      "name": "Install the actual desktop package in a fresh environment",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4
+    },
+    {
+      "name": "Start existing Windows audio services and record actual endpoint capability",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 5
+    },
+    {
+      "name": "Preserve early audio endpoint diagnostics",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6
+    },
+    {
+      "name": "Locate installed Microsoft x64 launcher tools",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7
+    },
+    {
+      "name": "Compile the private native launch entry from this source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8
+    },
+    {
+      "name": "Execute the actual native launcher process contract",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9
+    },
+    {
+      "name": "Prepare the exact reviewed private Windows audio runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10
+    },
+    {
+      "name": "Check the installed application through its self-test entrypoint",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11
+    },
+    {
+      "name": "Require locale-independent backup and real process cancellation regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12
+    },
+    {
+      "name": "Check the installed offline OCR catalogue and console entrypoint",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13
+    },
+    {
+      "name": "Exercise the installed native OCR catalogue and model manager",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14
+    },
+    {
+      "name": "Exercise native academic references and reading controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15
+    },
+    {
+      "name": "Exercise native keyboard preferences and installed OCR selection",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16
+    },
+    {
+      "name": "Exercise the installed native command palette",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17
+    },
+    {
+      "name": "Prepare the pinned EPUB conformance checker",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18
+    },
+    {
+      "name": "Prepare the exact official offline DAISY validation schemas",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19
+    },
+    {
+      "name": "Require source and installed actual DAISY publication structure",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 20
+    },
+    {
+      "name": "Verify actual native publication controls and EPUB conformance",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 21
+    },
+    {
+      "name": "Compile actual Windows SDK WinMM layout evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 22
+    },
+    {
+      "name": "Verify actual installed Windows SAPI speech and native preview",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 23
+    },
+    {
+      "name": "Require actual Windows capture process ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24
+    },
+    {
+      "name": "Require source and installed native recording controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25
+    },
+    {
+      "name": "Require measured capture from the explicitly reviewed virtual input",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 26
+    },
+    {
+      "name": "Diagnose only the failed explicitly selected capture input",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 27
+    },
+    {
+      "name": "Preserve initial native playback and recording diagnostics",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 28
+    },
+    {
+      "name": "Exercise native audio studio and provider settings",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 29
+    },
+    {
+      "name": "Verify explicit provider policy and local planner using local HTTP fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 30
+    },
+    {
+      "name": "Retain core-only fallback and offline startup coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 31
+    },
+    {
+      "name": "Match production dependencies before required source suites",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32
+    },
+    {
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33
+    },
+    {
+      "name": "Prepare the verified OCR engine before its required source regression",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 34
+    },
+    {
+      "name": "Exercise actual managed OCR and ordered choices with Unicode Windows paths",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 35
+    },
+    {
+      "name": "Require exact source and installed OCR and result-page controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 36
+    },
+    {
+      "name": "Require actual reading preparation from source and installed package",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 37
+    },
+    {
+      "name": "Require native voice preferences and fresh inventory review",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 38
+    },
+    {
+      "name": "Require native Word review and current-reader assistant controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 39
+    },
+    {
+      "name": "Require native reviewed recording-to-reference package controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 40
+    },
+    {
+      "name": "Require native encrypted portable snapshot review and restore",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 41
+    },
+    {
+      "name": "Require native streamed UTF-8 source intake",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 42
+    },
+    {
+      "name": "Require native protected voice-profile review and transfer",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 43
+    },
+    {
+      "name": "Require native scoped ranked and federated result continuation",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 44
+    },
+    {
+      "name": "Record required integrated source-suite inventory",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 45
+    },
+    {
+      "name": "Exercise native Import Center and durable batch workflow",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 46
+    },
+    {
+      "name": "Exercise installed measured progress and real busy-time keys",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 47
+    },
+    {
+      "name": "Require source and installed native desktop and production controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 48
+    },
+    {
+      "name": "Require installed native scene clip controls and measured PCM effects",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 49
+    },
+    {
+      "name": "Require source and installed native reading tabs and visual focus",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 50
+    },
+    {
+      "name": "Require source and installed reader editing, spelling, appearance and output controls",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 51
+    },
+    {
+      "name": "Exercise native supplied-worker transcription controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 52
+    },
+    {
+      "name": "Exercise native reader, translation, voice setup and delivery lifecycle",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 53
+    },
+    {
+      "name": "Exercise native extended-document imports and exact retained reading",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 54
+    },
+    {
+      "name": "Exercise native wx startup and source-opening events",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 55
+    },
+    {
+      "name": "Exercise native saved-evidence page selection and note recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 56
+    },
+    {
+      "name": "Exercise native reference metadata review and historical outline export",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 57
+    },
+    {
+      "name": "Exercise native research-notebook search and keyboard actions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 58
+    },
+    {
+      "name": "Exercise native EPUB section navigation and image descriptions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 59
+    },
+    {
+      "name": "Exercise native library reports and academic exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 60
+    },
+    {
+      "name": "Exercise native EPUB contents and exact chapter search",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 61
+    },
+    {
+      "name": "Exercise native full-source reader and page bookmarks",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 62
+    },
+    {
+      "name": "Exercise native catalog reports and source comparison export",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 63
+    },
+    {
+      "name": "Exercise native advanced query builder and exact-source actions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 64
+    },
+    {
+      "name": "Prepare the pinned local model through the existing upstream verifier",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 65
+    },
+    {
+      "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 66
+    },
+    {
+      "name": "Build pinned standard setup and execute actual install, repair and uninstall",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 67
+    },
+    {
+      "name": "Require the retained bundle local proposal through actual loopback HTTP",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 68
+    },
+    {
+      "name": "Preserve completed native and bundle diagnostics before source inventory",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 69
+    },
+    {
+      "name": "Run required workflows against the complete pinned runtime",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 70
+    },
+    {
+      "name": "Retain the exact wheel only after the full Windows aggregate succeeds",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 71
+    },
+    {
+      "name": "Preserve exact-commit runtime and test evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 72
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 143
+    },
+    {
+      "name": "Post Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 144
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 145
+    }
+  ]
+}

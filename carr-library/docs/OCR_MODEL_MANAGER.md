@@ -20,8 +20,17 @@ Importing PDF documents opens an OCR selection dialog. Choose the models
 installed with the OCR runtime, Managed Fast, or Managed Best. Select only the
 languages or scripts the document needs. English is the initial selection when
 available; the application does not load every installed model by default.
-Several checked text models enable an explicit mixed-language Tesseract pass.
+Use the ordered chooser to filter installed entries, add at most eight text
+models and move them into the required recognition priority. Several selected
+text models enable an explicit mixed-language Tesseract pass.
 An installed `osd` model enables the separate optional orientation control.
+
+The same chooser serves direct imports and Import Center. Its **Manage offline
+models** action opens the catalogue above. Saved presets retain the exact model
+order, orientation setting and Installed/Fast/Best profile; legacy installed-model
+presets remain readable. To use a preset for another profile, select that model
+set and wait for its inventory before applying the preset. Changing the chooser
+affects future import plans; saved queues keep their captured configuration.
 
 `script/Latin` and `script/Cyrillic` are distinct from language models such as
 `lat`, `eng`, `ukr` and `slk`. The exact model identifier and byte identity remain

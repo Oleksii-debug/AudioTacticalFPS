@@ -21,8 +21,11 @@ It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
-After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
-startup fails, so a screen reader can read the error. Installation and
+After installation, open `ResearchLibrary.exe` when the private package includes
+the native entry. This unsigned launcher uses the included Python and the same
+installation marker. Its source and build checks do not constitute code signing
+or NVDA acceptance. `ResearchLibrary.cmd` remains available; its terminal stays
+visible if startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
@@ -59,23 +62,6 @@ inside the extracted program folder. Copy any such personal files to a separate
 location and verify the copy before deleting that program folder. Never delete
 a folder containing your only research copy. The application does not silently
 move existing data. The installer refuses to replace an existing environment.
-
-## Optional local audio setup
-
-The transferable library archive excludes the reviewed FFmpeg binary runtime.
-Windows voice reading and WAV synthesis remain available. Audio Studio needs
-local FFmpeg and ffprobe. After installing the library, open `SetupLocalAudio.cmd`
-to review and explicitly confirm acquisition of the three pinned public inputs.
-Without confirmation the helper only displays its plan. It prepares a fresh
-folder outside the program installation; it does not modify the bundle seal,
-select engines, download voices or download models.
-
-In **Local audio, voice and music engines**, use **Choose FFmpeg executable**
-and **Choose FFprobe executable** to select the two paths printed by setup.
-Reopen the studio after saving those choices. Existing intentionally installed
-tools may be selected through the same controls. The preparation helper checks
-integrity, not audio quality or a redistribution grant. New delivery archives
-must continue to exclude these locally prepared audio payloads.
 
 ## Installation from a source checkout
 
@@ -184,7 +170,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS, BibTeX or CSL JSON files through a preview. Select the records to keep;
+Import RIS or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -193,18 +179,9 @@ never automatically merged or deleted. Archive and restore retain their IDs.
 Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
-readable reference list. The separate **Citation styles** action uses a real,
-pinned, offline CSL processor for APA 7, Chicago author-date or notes,
-MLA, Harvard, Vancouver/NLM and IEEE, or an explicitly loaded independent
-custom CSL file. It previews citations and bibliography
-entries and exports text, formatted HTML or an editable Word document. Author
-names stay literal by default; choose the explicit **Family, Given, optional
-Suffix** convention to format personal initials and inverted names. Braced
-organisation names remain literal. Formatting does not approve source text or
-convert a publication's page range into a verified quotation pinpoint.
-See [citation styles and BibTeX import](V3_BIBLIOGRAPHY.md) for the keyboard and
-headless workflows, supported metadata and current acceptance evidence.
-Entering a DOI or URL alone does not send a network request or download an attachment.
+readable reference list, not a certified APA, MLA or Chicago citation style.
+BibTeX import and online DOI lookup are not part of this version. Entering a DOI
+or URL does not send a network request or download an attachment.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -212,41 +189,6 @@ Install an update into a new program folder, with a backup of your library saved
 first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
-
-## Full-library backup and reading recovery
-
-Choose **Library, Back up all libraries** to save all libraries, including archived ones,
-their registered originals, immutable source revisions, research evidence,
-notes, topics, tags, saved queries and academic references. The current common
-backup format is 4; it also includes the supported typed application state and
-pending-import recovery records. Catalog schema 5 retains the transaction-owned
-import publication receipts. Reading state, introduced in backup format 3,
-includes page bookmarks and resume positions in `reading-state.json`. If no
-reading state has been saved, the manifest records its absence explicitly.
-
-The database and reading state are captured under the same library writer lock.
-Each included file is bound by size and SHA256, and saved reading places are
-checked against the copied edition, revision, page or segment and source hashes.
-Corrupt, mismatched or linked reading state causes the operation to stop without
-silently leaving bookmarks out. The reader still checks the current source when
-opening a restored place; an old revision is reported as stale instead of being
-redirected to a newer one.
-
-Keep the returned manifest SHA256 separately from the backup folder. Use
-**Library, Restore backup to a new folder** to validate the complete supported
-backup and create a new data directory; it
-does not overwrite or merge an existing library. Formats 1 and 2 remain
-compatible but do not contain reading state. Their separately exported reading
-bookmarks can be imported after restoring the matching library.
-
-Format 4 additionally preserves its supported application settings, reading
-copies, audio projects, assistant job state and pending-import journals under
-explicit typed sidecar rules. Restored work is not started automatically;
-process-specific worker attempt hints are discarded before an explicit resume.
-Audio exported outside the library data directory needs its own copy. Model
-installations outside that directory and Windows Credential Manager secrets
-are not transferred as ordinary application state. Historical backup formats
-remain readable only with the data that their own manifests declared.
 
 ## Review the source catalog
 
@@ -332,14 +274,6 @@ use the same checked Save workflow as topic exports.
 
 ### Search and source actions
 
-**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
-Nearby fields accept one literal word or phrase per line. Build the expression,
-choose Use query, then press Enter in Search. The explicit Advanced search mode
-supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
-through NEAR/100 within one page or text segment. Existing search modes keep
-their original meanings. See `docs/ACADEMIC_SEARCH.md` in the source repository
-for syntax, examples, scope and limits.
-
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently
 chooses **Short quotations**, usually a source sentence around the match, or
@@ -367,26 +301,6 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
-
-## Academic research tools
-
-Press **Alt+A** to open the **Academic** menu. In an open research topic,
-**Ctrl+Alt+M** compares saved source versions, themes, exact quotations and
-research notes. Include subtopics, filter by an exact tag, open selected evidence
-in its existing editor, or export the comparison as CSV/Markdown. **Export
-research outline with subtopics** writes the ordered topic structure as Markdown
-or plain text, keeping source quotations and your notes separately labelled.
-
-**Import bibliographic metadata from RIS** reviews a local RIS record for an
-already imported edition. Only checked title/author/language/edition/volume
-fields are applied; unchecked fields are preserved. Year, journal, DOI and other
-unsupported metadata are not imported, and no attachment or URL is opened.
-**Check catalog quality** reviews missing fields, unfiled editions and tentative
-duplicate hints in one library or collection. It does not merge records.
-
-See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
-limits and provenance. These commands add no runtime dependency or schema
-migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
 
 ## Search across saved research topics
 

@@ -1,0 +1,664 @@
+{
+  "schema": "carr-immutable-artifact-receipts/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "source_run": 46098474617,
+  "helper": {
+    "head": "680369ff84d340ffb4b5d261cc1f6e2940e5023a",
+    "run_id": 46099885012,
+    "job_id": 140839691592,
+    "conclusion": "success",
+    "decoded_log": {
+      "sha256": "75c9335d3a775ce34a7fd7baf8dcd6cfd681d4fd9022b0ffcf7a616dbdab86d4",
+      "bytes": 171073
+    }
+  },
+  "scope": "Read-only already uploaded immutable capture and endpoint artifacts while the full source workflow was still running. No application execution.",
+  "raw_files": [
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "installed-recording-controls.txt",
+      "bytes": 8033,
+      "sha256": "7993a89830b246cd5e9c87402e70310d09d4696214bb094473c18f57ab717002",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/installed-recording-controls.txt",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "9e87b60c2979ee9ff5b908ded517a751c901e88c8427c880ad3b84f91907afaa",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/native-recording-device.json",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "native-recording-device.txt",
+      "bytes": 4970,
+      "sha256": "00244838553dbcb11010bb0b1258aae74b6e1f19db1580ab3efb70cfa121f9b9",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/native-recording-device.txt",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "native-recording-process.txt",
+      "bytes": 3799,
+      "sha256": "a6194f9de61d7a9d39fa7eefb9e395162f4dd5a5f4a1094c1b4871640dd21076",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/native-recording-process.txt",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "d00e369e28115eb847f7e3a499ade31c924927e6448d747155272afb95917140",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/recording-access-diagnostic.json",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "recording-access-diagnostic.txt",
+      "bytes": 10216,
+      "sha256": "d00e369e28115eb847f7e3a499ade31c924927e6448d747155272afb95917140",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/recording-access-diagnostic.txt",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "recording-device-inventory.txt",
+      "bytes": 416,
+      "sha256": "72743ad38c81f5d9f06bd55a4b184596c373c43ac125654670e665d3f0ec5a64",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/recording-device-inventory.txt",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245390243,
+      "mode": "recording",
+      "path": "source-recording-controls.txt",
+      "bytes": 8033,
+      "sha256": "7993a89830b246cd5e9c87402e70310d09d4696214bb094473c18f57ab717002",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/recording/source-recording-controls.txt",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245205408,
+      "mode": "endpoint",
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/endpoint/audio-endpoint.json",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245205408,
+      "mode": "endpoint",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "2ddc7b1f735e12d29724253a4a77fecdd946d4f91d224485a02e82b63529770f",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/endpoint/audio-services.json",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    },
+    {
+      "artifact": 15245205408,
+      "mode": "endpoint",
+      "path": "endpoint-evaluation.json",
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "encoding": "utf-8-sig",
+      "target": "carr-library/review/receiving-5d19dde7-2026-11-28/capture/raw/endpoint/endpoint-evaluation.json",
+      "raw_bytes_verified": true,
+      "utf8_roundtrip_verified": true
+    }
+  ],
+  "records": [
+    {
+      "kind": "READER",
+      "data": {
+        "run": 46098474617,
+        "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+        "attempt": 1,
+        "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+        "source_run_status": "in_progress",
+        "source_run_conclusion": null,
+        "scope": "read-only immutable public bundle/capture receipts; no application execution"
+      }
+    },
+    {
+      "kind": "ARTIFACT",
+      "data": {
+        "id": 15245390243,
+        "name": "carr-windows-recording-5d19dde77aca6a257ee601c1bc49b8504c342cee-1",
+        "bytes": 16782,
+        "sha256": "bfb7b897560f39729bf580fbd5549ba65cf567f8cc3b11eb93727298619dba42",
+        "created_at": "2026-11-28T02:44:31Z",
+        "updated_at": "2026-11-28T02:44:31Z",
+        "run": 46098474617,
+        "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+        "mode": "recording"
+      }
+    },
+    {
+      "kind": "INVENTORY",
+      "data": {
+        "artifact": 15245390243,
+        "files": [
+          {
+            "path": "installed-recording-controls.json",
+            "bytes": 4292,
+            "compressed_bytes": 1277,
+            "selected": true
+          },
+          {
+            "path": "installed-recording-controls.txt",
+            "bytes": 8033,
+            "compressed_bytes": 1547,
+            "selected": true
+          },
+          {
+            "path": "native-audio-preview.json",
+            "bytes": 198,
+            "compressed_bytes": 141,
+            "selected": false
+          },
+          {
+            "path": "native-recording-device.json",
+            "bytes": 2773,
+            "compressed_bytes": 1044,
+            "selected": true
+          },
+          {
+            "path": "native-recording-device.txt",
+            "bytes": 4970,
+            "compressed_bytes": 1276,
+            "selected": true
+          },
+          {
+            "path": "native-recording-process.json",
+            "bytes": 2420,
+            "compressed_bytes": 689,
+            "selected": true
+          },
+          {
+            "path": "native-recording-process.txt",
+            "bytes": 3799,
+            "compressed_bytes": 866,
+            "selected": true
+          },
+          {
+            "path": "native-winmm-sdk-layout.json",
+            "bytes": 700,
+            "compressed_bytes": 299,
+            "selected": false
+          },
+          {
+            "path": "recording-access-diagnostic.json",
+            "bytes": 10216,
+            "compressed_bytes": 2073,
+            "selected": true
+          },
+          {
+            "path": "recording-access-diagnostic.txt",
+            "bytes": 10216,
+            "compressed_bytes": 2073,
+            "selected": true
+          },
+          {
+            "path": "recording-device-inventory.json",
+            "bytes": 414,
+            "compressed_bytes": 268,
+            "selected": true
+          },
+          {
+            "path": "recording-device-inventory.txt",
+            "bytes": 416,
+            "compressed_bytes": 269,
+            "selected": true
+          },
+          {
+            "path": "source-recording-controls.json",
+            "bytes": 4292,
+            "compressed_bytes": 1277,
+            "selected": true
+          },
+          {
+            "path": "source-recording-controls.txt",
+            "bytes": 8033,
+            "compressed_bytes": 1547,
+            "selected": true
+          }
+        ]
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "installed-recording-controls.json",
+        "bytes": 4292,
+        "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "installed-recording-controls.json",
+        "bytes": 4292,
+        "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "PASS",
+          "check_count": 65,
+          "last_checks": [
+            "Cancel is announced distinctly",
+            "native focus reaches Start recording",
+            "native key dispatch: Start recording",
+            "native focus reaches Stop and save recording",
+            "native key dispatch: Stop and save recording",
+            "native recording owner window actually destroyed",
+            "Escape closes only after active capture cleanup",
+            "closing preserves exactly the verified originals"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "installed-recording-controls.txt",
+        "bytes": 8033,
+        "sha256": "7993a89830b246cd5e9c87402e70310d09d4696214bb094473c18f57ab717002",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "native-recording-device.json",
+        "bytes": 2773,
+        "sha256": "9e87b60c2979ee9ff5b908ded517a751c901e88c8427c880ad3b84f91907afaa",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "native-recording-device.json",
+        "bytes": 2773,
+        "sha256": "9e87b60c2979ee9ff5b908ded517a751c901e88c8427c880ad3b84f91907afaa",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "FAILED",
+          "error": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 160, in main\n    run(args, report)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 114, in run\n    future.result()\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 449, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 401, in __get_result\n    raise self._exception\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 552, in capture\n    return self._capture(device, title, options, stop_requested, checked,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 650, in _capture\n    result = run_process(command, budget=budget, cancelled=cancelled,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 558, in run_process\n    raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')\ncarr_library.audio.models.AudioError: Local audio worker failed (exit 4294967291): [in#0 @ 000001a828749000] Could not find output pin from audio only capture device.\r\n[in#0 @ 000001a828749000] Could not enumerate audio only devices (or none found).\r\n[in#0 @ 000001a828748940] Error opening input: I/O error\r\nError opening input file audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{3AD88171-BF7B-4F52-8B3E-1F835DA0D920}.\r\nError opening input files: I/O error\n"
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "native-recording-device.txt",
+        "bytes": 4970,
+        "sha256": "00244838553dbcb11010bb0b1258aae74b6e1f19db1580ab3efb70cfa121f9b9",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "native-recording-process.json",
+        "bytes": 2420,
+        "sha256": "3cce987971c862b37aa08433ee2676a2f4f836d7da663bb20ca080c4f0374dde",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "native-recording-process.json",
+        "bytes": 2420,
+        "sha256": "3cce987971c862b37aa08433ee2676a2f4f836d7da663bb20ca080c4f0374dde",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "PASS",
+          "check_count": 15,
+          "last_checks": [
+            "unrelated concurrent native process remains outside capture ownership",
+            "native short-worker venv is created without acquiring dependencies",
+            "short venv worker preserves the explicitly selected environment",
+            "short venv uses the real base interpreter behind its redirector",
+            "short venv lifetime members and native streams finish before return",
+            "nested-short venv worker preserves the explicitly selected environment",
+            "nested-short venv uses the real base interpreter behind its redirector",
+            "nested-short venv lifetime members and native streams finish before return"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "native-recording-process.txt",
+        "bytes": 3799,
+        "sha256": "a6194f9de61d7a9d39fa7eefb9e395162f4dd5a5f4a1094c1b4871640dd21076",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "recording-access-diagnostic.json",
+        "bytes": 10216,
+        "sha256": "d00e369e28115eb847f7e3a499ade31c924927e6448d747155272afb95917140",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "recording-access-diagnostic.json",
+        "bytes": 10216,
+        "sha256": "d00e369e28115eb847f7e3a499ade31c924927e6448d747155272afb95917140",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "DIAGNOSED",
+          "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee"
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "recording-access-diagnostic.txt",
+        "bytes": 10216,
+        "sha256": "d00e369e28115eb847f7e3a499ade31c924927e6448d747155272afb95917140",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "recording-device-inventory.json",
+        "bytes": 414,
+        "sha256": "f892eb90d1b7a28bd710bf00abee233105f3026756f7d2491110de102dbeb1d8",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "recording-device-inventory.json",
+        "bytes": 414,
+        "sha256": "f892eb90d1b7a28bd710bf00abee233105f3026756f7d2491110de102dbeb1d8",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "PASS"
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "recording-device-inventory.txt",
+        "bytes": 416,
+        "sha256": "72743ad38c81f5d9f06bd55a4b184596c373c43ac125654670e665d3f0ec5a64",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "source-recording-controls.json",
+        "bytes": 4292,
+        "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "source-recording-controls.json",
+        "bytes": 4292,
+        "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "PASS",
+          "check_count": 65,
+          "last_checks": [
+            "Cancel is announced distinctly",
+            "native focus reaches Start recording",
+            "native key dispatch: Start recording",
+            "native focus reaches Stop and save recording",
+            "native key dispatch: Stop and save recording",
+            "native recording owner window actually destroyed",
+            "Escape closes only after active capture cleanup",
+            "closing preserves exactly the verified originals"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245390243,
+        "mode": "recording",
+        "path": "source-recording-controls.txt",
+        "bytes": 8033,
+        "sha256": "7993a89830b246cd5e9c87402e70310d09d4696214bb094473c18f57ab717002",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "ARTIFACT",
+      "data": {
+        "id": 15245205408,
+        "name": "carr-windows-audio-endpoint-5d19dde77aca6a257ee601c1bc49b8504c342cee-1",
+        "bytes": 3943,
+        "sha256": "e6efc1afcb3536b59c0171412f44d8653dbc855b6efaa4ce2cfc3e397683206a",
+        "created_at": "2026-11-28T02:42:22Z",
+        "updated_at": "2026-11-28T02:42:22Z",
+        "run": 46098474617,
+        "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+        "mode": "endpoint"
+      }
+    },
+    {
+      "kind": "INVENTORY",
+      "data": {
+        "artifact": 15245205408,
+        "files": [
+          {
+            "path": "audio-endpoint.json",
+            "bytes": 949,
+            "compressed_bytes": 462,
+            "selected": true
+          },
+          {
+            "path": "audio-services.json",
+            "bytes": 376,
+            "compressed_bytes": 169,
+            "selected": true
+          },
+          {
+            "path": "endpoint-evaluation.json",
+            "bytes": 5259,
+            "compressed_bytes": 1892,
+            "selected": true
+          },
+          {
+            "path": "signature-json-ps51.json",
+            "bytes": 670,
+            "compressed_bytes": 284,
+            "selected": false
+          },
+          {
+            "path": "signature-json-ps7.json",
+            "bytes": 489,
+            "compressed_bytes": 267,
+            "selected": false
+          },
+          {
+            "path": "tested-commit.txt",
+            "bytes": 42,
+            "compressed_bytes": 43,
+            "selected": false
+          }
+        ]
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245205408,
+        "mode": "endpoint",
+        "path": "audio-endpoint.json",
+        "bytes": 949,
+        "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245205408,
+        "mode": "endpoint",
+        "path": "audio-endpoint.json",
+        "bytes": 949,
+        "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "READY"
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245205408,
+        "mode": "endpoint",
+        "path": "audio-services.json",
+        "bytes": 376,
+        "sha256": "2ddc7b1f735e12d29724253a4a77fecdd946d4f91d224485a02e82b63529770f",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245205408,
+        "mode": "endpoint",
+        "path": "audio-services.json",
+        "bytes": 376,
+        "sha256": "2ddc7b1f735e12d29724253a4a77fecdd946d4f91d224485a02e82b63529770f",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "errors": []
+        }
+      }
+    },
+    {
+      "kind": "MEMBER",
+      "data": {
+        "artifact": 15245205408,
+        "mode": "endpoint",
+        "path": "endpoint-evaluation.json",
+        "bytes": 5259,
+        "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+        "encoding": "utf-8-sig"
+      }
+    },
+    {
+      "kind": "JSON_SUMMARY",
+      "data": {
+        "artifact": 15245205408,
+        "mode": "endpoint",
+        "path": "endpoint-evaluation.json",
+        "bytes": 5259,
+        "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+        "encoding": "utf-8-sig",
+        "summary": {
+          "status": "PASS",
+          "phase": "complete"
+        }
+      }
+    },
+    {
+      "kind": "COMPLETE",
+      "data": {
+        "run": 46098474617,
+        "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+        "artifacts": 2,
+        "selected_files": 15,
+        "zip_digests_verified": true,
+        "application_acceptance": "NOT_ASSESSED",
+        "long_logs": "bounded excerpts; full member hashes retained",
+        "private_assets": "NOT_READ"
+      }
+    }
+  ],
+  "limits": [
+    "Only11files supplied as raw UTF-8 bytes are reproduced. Four successful JSON objects are represented solely by labeled helper summaries; raw source/installed controls and process logs retain their actual output.",
+    "All reproduced bytes, sizes, member SHA256 and UTF8 roundtrips were independently verified. Both artifact ZIP digests were verified by the guarded helper.",
+    "No privacy, consent or default-device change. No physical-microphone, listening or NVDA qualification.",
+    "WASAPI shared Initialize returned0x80070005 for the unchanged selected endpoint; observed current-user microphone Deny does not by itself establish exclusive causality.",
+    "Capture remains FAILED. A read-only DIAGNOSED result or WinMM format-query READY is not capture acceptance."
+  ]
+}

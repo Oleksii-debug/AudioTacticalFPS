@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "parent": "415cf906b53ad46fb15c4a4880791075cf49c76c",
+  "runtime_evidence_before_repair": {
+    "run": 46072595751,
+    "linux_source_job": 140752813732,
+    "linux_installed_job": 140752813568,
+    "source_completed_modules": 50,
+    "source_clean_modules": 48,
+    "each_mode_passed_cases": 1591,
+    "each_mode_failed_cases": 2,
+    "skipped": 0,
+    "failures": [
+      "tests/reader/test_ebook_audio.py::test_actual_studio_publication_import_and_recorded_overlay_roundtrip",
+      "tests/speech/test_wave_output.py::test_long_pcm_uses_same_output_without_requesting_live_volume_and_keeps_transport_controls"
+    ]
+  },
+  "repairs": [
+    {
+      "path": "carr-library/src/carr_library/studio/publishing.py",
+      "pre": "fcc52fe7328800e0c7882fe02bc727b9bce9b807",
+      "post": "06a4cf26f27636def80eaeb561989ea1348cfeac",
+      "scope": "Reuse exact canonical owner receipt; retain strict equality and all get/source/artifact validation."
+    },
+    {
+      "path": "carr-library/tests/studio/test_publishing.py",
+      "pre": "ecc27ec6396ad873e9134c66e82a8427253a6538",
+      "post": "e68225bcbb32a756647249fb5bf908ffadab0664",
+      "scope": "Original module retained as byte prefix; 16 additive current/legacy and strict refusal cases."
+    },
+    {
+      "path": "carr-library/tests/speech/test_wave_output.py",
+      "pre": "630c824eb515a6e8671b0b6bacac5d949654dfcc",
+      "post": "eb9de941376a8afa3152f7611dacfb94fe5bc013",
+      "scope": "One new test models native played-sample and Open/Reset counters; all existing predicates retained."
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "pre": "b11786c6fefee09b7be236a1bfbb9991010306d2",
+      "post": "c864c5f680e3cd390fbf3a0513faeddb582323f5",
+      "scope": "One accessible-name literal updated to the actual translation control."
+    }
+  ],
+  "status": "SOURCE_REVIEWED; successor runtime NOT_RUN at composition",
+  "release": {
+    "eligible_wheel": "NONE",
+    "full_platform": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_RUN"
+  }
+}

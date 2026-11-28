@@ -1,0 +1,80 @@
+{
+  "schema": "carr-focused-native-playback-evidence/1",
+  "status": "PASS",
+  "scope": "Four existing native source/installed reader-player and EPUB/DAISY probes on the exact recorded commit; this is not aggregate release qualification.",
+  "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "source_tree": "ab4bd12008e03e7b7ce6b65755776114ff6a0ffd",
+  "source_subtree": "883b1638c6894b6dfb970bed24884713ca8ea9b2",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "wheel_sha256": "60e0218290c6aec7cc9e84b8acfc9270384999d7e3ba00550249bf1142568638",
+  "source_installed_wheel_inventory": {
+    "status": "PASS",
+    "python_files": 376,
+    "total_python_bytes": 6112489,
+    "checks": "Unique actual universal-research-library RECORD owner outside checkout and inside the selected virtual environment; complete Python namespace and byte equality.",
+    "desktop_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798"
+  },
+  "output": {
+    "inventory_count": 2,
+    "explicit_selected_name": "CABLE In 16 Ch (VB-Audio Virtua",
+    "explicit_selected_identity": "03499026489e4fe177410261943f455878a7b2a53991412734cc7f563bc1aea2",
+    "queue_and_epub": "Retain their existing session default routing; no claim that all playback uses the separately selected secondary endpoint."
+  },
+  "probes": [
+    {
+      "name": "reader-player",
+      "mode": "source",
+      "status": "PASS",
+      "checks": 198,
+      "report": "source-reader-player.stdout.json"
+    },
+    {
+      "name": "reader-player",
+      "mode": "installed",
+      "status": "PASS",
+      "checks": 198,
+      "report": "installed-reader-player.stdout.json"
+    },
+    {
+      "name": "EPUB/DAISY",
+      "mode": "source",
+      "status": "PASS",
+      "checks": 65,
+      "module_identity_checks": 12,
+      "native_key_event_checks": 32,
+      "behavior_checks": 21,
+      "phases": "source-epub-daisy.phases.log"
+    },
+    {
+      "name": "EPUB/DAISY",
+      "mode": "installed",
+      "status": "PASS",
+      "checks": 65,
+      "module_identity_checks": 12,
+      "native_key_event_checks": 32,
+      "behavior_checks": 21,
+      "phases": "installed-epub-daisy.phases.log"
+    }
+  ],
+  "verified_behavior": [
+    "Actual short-path MCI playback, native position, pause, silent seek, explicit resume and Stop.",
+    "Explicit stable output identity; selection does not autoplay or silently select a different endpoint.",
+    "Native A/B repeat, sleep timer and configurable skips; actual listening-copy conversion preserves original timeline mapping.",
+    "Explicit live controls own one WinMM handle and release native buffers on Stop.",
+    "A long hash-bound retained queue PCM uses the admitted waveOut path, advances measured position, retains exact source ownership through Pause and Save, reopens passively, and releases native resources on Close and direct destruction.",
+    "Native EPUB3 and DAISY 2.02 publication, exact receipt verification, refusal to overwrite an existing output, retained EPUB import, explicit recorded-audio playback, Pause/Resume/Next/Stop and source-stage closure."
+  ],
+  "count_note": "Check counts include module provenance and native key-event assertions; they are not independent pytest test cases.",
+  "limits": {
+    "complete_ordinary_aggregate": "NOT_QUALIFIED_BY_THIS_RUN",
+    "sealed_delivery_bundle": "NOT_RUN_IN_THIS_FOCUSED_JOB",
+    "pinned_delivery_python_3_11_18": "NOT_RUN_IN_THIS_FOCUSED_JOB",
+    "actual_audio_capture": "NOT_RUN",
+    "physical_microphone_or_output_device": "NOT_RUN",
+    "audible_listening": "NOT_RUN",
+    "voice_model_inference_or_quality": "NOT_RUN",
+    "human_nvda": "NOT_RUN",
+    "daisy_hardware_reader": "NOT_RUN",
+    "full_independent_daisy_rule_validation": "NOT_RUN"
+  }
+}

@@ -1,0 +1,624 @@
+{
+  "schema": "carr-exact-component-observation/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098479318,
+  "job_id": 140835247284,
+  "conclusion": "failure",
+  "started_at": "2026-11-28T02:44:01Z",
+  "completed_at": "2026-11-28T03:01:34Z",
+  "mode": "windows-source",
+  "passed_cases": 2564,
+  "failed_assertions": 0,
+  "setup_errors": 24,
+  "skipped_cases": 0,
+  "passed_subtests": null,
+  "selected_modules": 74,
+  "rows": [
+    {
+      "status": "PASS",
+      "selector": "tests/assistant/test_state_io.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/catalog/test_archive_portability.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/catalog/test_intake_portability.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/catalog/test_epub_metadata.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/assistant/test_local_planning.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/catalog/test_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/extract/test_ocr_language_regions.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/extract/test_page_ocr.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/extract/test_ocr_evidence_fidelity.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/extract/test_automatic_ocr_native.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_production_hardening.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "FAIL",
+      "selector": "tests/studio/test_clip_dialog.py",
+      "passed": 30,
+      "failed": 24,
+      "skipped": 0,
+      "exit": 1
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_production.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_production_operation_backup.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_studio_output_settings.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_studio_draft_backup.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_backup_scan_bounds.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_v3_state_backup.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_book_audio.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_backup_sidecars.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_canonical_backup_compat.py",
+      "passed": 68,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/transcription/test_runtime_inventory.py",
+      "passed": 172,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/transcription/test_runtime_admission.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/transcription/test_service.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_asr_additional_profile.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/transcription/test_admission_boundaries.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/packaging/test_windows_bundle.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/packaging/test_standard_installer.py",
+      "passed": 149,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/operations/test_resources.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/operations/test_facade.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/operations/test_production_admission.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/e2e/test_operations_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/e2e/test_import_worker_publication.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_operations_policy.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_synthesis_admission.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_transcription_backup.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/audio/test_model_voices.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_registered_studio_voices.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_backup_book_plan_bindings.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_book_audio_dialog.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_python_helper.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_runtime_settings_restore.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_engine_settings_review.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/audio/test_cleanup_contexts.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/audio/test_audio_process.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_python_helper_backup.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/audio/test_capture_access_diagnostic.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/audio/test_recording_windows_process.py",
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/audio/test_process_deadline.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_ebook_dialog.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_ebook_audio_initialization.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/reader/test_ebook_audio_lifecycle.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_wave_output.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_player_controls.py",
+      "passed": 87,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_player_transport.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_output_devices.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_listening.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/speech/test_playlist.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/reader/test_ebook_audio.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/search/test_source_page_benchmark.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_federated_labels.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_reader_synthesis.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/packaging/test_windows_launcher_bundle.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_state_json_reader.py",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/transcription/test_control_reads.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/storage/test_reader_synthesis_backup.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_publishing.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_daisy_publishing.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "selector": "tests/studio/test_measured_audio.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "failing_module": "tests/studio/test_clip_dialog.py",
+  "failure_kind": "New loop_preview fixture constructs default schema1 with duration; Project rejects edited timing before each of24 test bodies.",
+  "corrected_test_blob": "5f46d0924be44798f15f5076a4811e04eab97dc9",
+  "correction_execution": "NOT_RUN; separate successor",
+  "decoded_log": {
+    "sha256": "a06aabb7bf7810a8f2a0c485ea711b982f29407f7d7859ea3de39961b9b6cd0d",
+    "bytes": 303966
+  },
+  "thread_warning_found": false,
+  "limits": [
+    "No aggregate PASS; no claim that errored test bodies ran.",
+    "Modeled loop tests do not establish actual audio output or manual NVDA.",
+    "Source mode does not exercise the separate installed Windows virtual-environment test step."
+  ]
+}

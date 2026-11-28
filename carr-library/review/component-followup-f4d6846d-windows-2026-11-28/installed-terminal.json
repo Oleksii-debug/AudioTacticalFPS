@@ -1,0 +1,73 @@
+{
+  "schema": "carr-component-terminal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "run_id": 46085997194,
+  "job_id": 140795574554,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085997194/job/140795574554",
+  "mode": "installed",
+  "platform": "windows-2022",
+  "python": "3.11.9",
+  "status": "completed",
+  "conclusion": "failure",
+  "started_at": "2026-11-28T00:12:24Z",
+  "completed_at": "2026-11-28T00:38:28Z",
+  "log": {
+    "provenance": "Completed GitHub job log decoded by connector; SHA256 covers those exact decoded UTF-8 text bytes, not an original ZIP member.",
+    "sha256": "ca71ee0a072668f5b90bf3f278a766f64843e600b78f1c183fbac8e57aa5cd00",
+    "characters": 138808
+  },
+  "cases": {
+    "passed": 2091,
+    "failed": 10,
+    "skipped": 0,
+    "subtests_passed": 12,
+    "duration_seconds": 1355.54
+  },
+  "module_totals_available": false,
+  "failures": [
+    "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "FAILED tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit] - AssertionError: {'created': 1795825480.5929856, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}",
+    "FAILED tests/transcription/test_service.py::test_actual_process_receipts_reading_and_subtitle_rollover - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "FAILED tests/transcription/test_service.py::test_isolated_worker_preserves_unicode_paths_and_diagnostics - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "FAILED tests/packaging/test_standard_installer.py::test_repair_retains_changed_and_foreign_files_then_rebuilds - UnicodeEncodeError: 'charmap' codec can't encode character '\\u03a9' in position 11: character maps to <undefined>",
+    "FAILED tests/packaging/test_standard_installer.py::test_uninstall_removes_only_owned_program_and_leaves_external_data - UnicodeEncodeError: 'charmap' codec can't encode character '\\u03a9' in position 23: character maps to <undefined>",
+    "FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty",
+    "FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty"
+  ],
+  "groups": [
+    {
+      "cases": 6,
+      "family": "Previously observed ASR cases",
+      "evidence": "These failed node IDs belong to the prior301 ASR failure set. This head lacks the reviewed EOF-observer correction."
+    },
+    {
+      "cases": 2,
+      "family": "Resource test worker importability",
+      "evidence": "Actual spawn children raise ModuleNotFoundError: No module named 'tests' before reservation; parent queue waits expire at their unchanged5s/10s limits. Source-only repair f8121 is absent from this head."
+    },
+    {
+      "cases": 2,
+      "family": "Installer Unicode fixture encoding",
+      "evidence": "Two test fixture write_text calls contain U+03A9 without explicit encoding and fail in the CP1252 encoder before the tested repair/uninstall operation."
+    }
+  ],
+  "new_fixture_trace": {
+    "path": "installed-unicode-fixture-failures.txt",
+    "sha256": "8e42923eec46aa7aae48994dfcf90a0b92b487185b8dce9273ac6daff1877d9b"
+  },
+  "installed_inventory": {
+    "python_modules": 379,
+    "source_inventory_sha256": "b5ba1d2322fc23a0d0758086313d09a7959eb35f1da509b25fb96b7a2805a7ef"
+  },
+  "artifact_from_completed_upload_log": {
+    "id": 15240895266,
+    "name": "carr-component-followup-windows-2022-installed-f4d6846d037c079438f96c85bbebfe0f979dd25b-1",
+    "size_bytes": 47736,
+    "sha256": "70d5f3644fd4f599f3cc1182638529794280fe77f97f1268a2ac302d4f1d1b24",
+    "member_bytes_decoded": false
+  },
+  "qualification": "FAILED. All four f4 component jobs are now terminal; this receipt does not qualify a final application archive, installer, or model-quality claim."
+}

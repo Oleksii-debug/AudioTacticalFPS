@@ -1,0 +1,111 @@
+{
+  "schema": "carr-source-only-adaptation-review/1",
+  "task": "Existing standard native Windows Install, Repair and Uninstall acceptance",
+  "donor": {
+    "commit": "fd0cca2405f33c813c4cf43c9661edf1f2e93a55",
+    "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+    "blob": "16dd04bfbe2a55ee64eddcc8bffe0222dc7630e0"
+  },
+  "current": {
+    "base_commit": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+    "script_path": "carr-library/scripts/windows_standard_installer_smoke.py",
+    "script_blob": "9d595e91c994a7d7b208bdaeb83af08541236dc5",
+    "script_sha256": "a60587f3b0301376b8cdaa9953bd5f331f789e618194fb721436a348cb8672a8",
+    "shared_source_inputs": [
+      {
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "blob": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+        "sha256": "2c6009febd3d4e5bcc845f1d43d6da813730c2cd827192555263418cda02ea36"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/windows_process.py",
+        "blob": "12b249c548c211333d783877a7ef0c08f2dd2ed1",
+        "sha256": "b3dcd0a5781816349e95e2201ebe5bb8d27f7e30325f5e33d51c244da30333b8"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/models.py",
+        "blob": "085587e46381a5b2db17dd75fa8b7b793f4094d1",
+        "sha256": "a22ba261813330f2e4ce1dc6d44fb02c8988ea1a849cb43b2951a175293945dc"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/cleanup.py",
+        "blob": "139d382383083301b21f38da3301ed36e590fbb6",
+        "sha256": "ce26559c9f460d347f2e67f792adaa0da53080513723432f5dab6a3c32fee588"
+      }
+    ]
+  },
+  "execution": "NOT_RUN",
+  "preservation_checks": {
+    "unicode_shortcuts_and_library_fixture_unchanged": true,
+    "probe_through_hold_start_unchanged": true,
+    "repair_uninstall_result_main_bytes_unchanged": true,
+    "wait_owned_tree_unchanged": true,
+    "native_timeouts_identical": true,
+    "cleanup_interruption_status_poll_inside_caught_region": true,
+    "cleanup_announcement_interruption_retains_same_owner": true
+  },
+  "adaptation": {
+    "ownership": "Use current audio.process.owned_process for both native launch sites. No JobProcess, windows_job or capture_types replacement is introduced.",
+    "natural_exit": "Read the exact existing _carr_job accounting only while awaiting Inno's natural second phase. Existing context exit remains responsible for all retained-member handle exit proof.",
+    "pending_cleanup": "Walk every direct/cause/context owner and keep log streams in retained_context until all owners quiesce. Record KeyboardInterrupt/SystemExit from the announcement, initial status polling and waits; finish the same owner and every later owner before rethrowing the first interruption.",
+    "input_admission": "Preserve the donor launcher's absolute executable, NUL refusal and 65534-byte UTF-16 command-line guard through native_arguments.",
+    "native_input": "DEVNULL preserves donor stdin_pipe=False behavior.",
+    "timeouts": [
+      1200,
+      30,
+      90,
+      300,
+      300,
+      60,
+      15,
+      90,
+      30,
+      10,
+      180,
+      300,
+      300
+    ],
+    "model_or_network_authority": "No entitlement, managed-update, private engine, policy/consent change, endpoint fallback or public executable upload is added."
+  },
+  "dependencies": {
+    "voice_owned_paths": [
+      "packaging/windows_installer/*",
+      "src/carr_library/installation_lease.py",
+      "src/carr_library/managed_installation.py",
+      "tests/packaging/test_standard_installer.py"
+    ],
+    "root_owned_paths": [
+      "existing launcher/entrypoints",
+      "ordinary main/V3 workflow composition"
+    ],
+    "fixture_migrations": "Two existing probe ownership tests should mock native_owned_process with a context manager that appends the original close event in finally and use an absolute synthetic executable path; the missing-job test uses _carr_job=None. Keep original outcomes, event sequences and timeout assertions.",
+    "focused_workflow_owner": "/root/audio_render"
+  },
+  "exact_inverse_hunks": [
+    {
+      "before": "from carr_library.audio.windows_job import JobProcess\nfrom carr_library.audio.cleanup import pending_cleanup\nfrom carr_library.audio.capture_types import AudioCleanupPending",
+      "after": "from carr_library.audio.process import owned_process as native_owned_process\nfrom carr_library.audio.cleanup import _pending_owners, retained_context\nfrom carr_library.audio.windows_process import _Accounting"
+    },
+    {
+      "before": "def active_job_processes(child):\n    \"\"\"Use the exact shared owner's live handle, never PID enumeration.\"\"\"\n    if not getattr(child, '_job', None):\n        raise RuntimeError('The native acceptance process has no live owned job.')\n    return child._active_processes()",
+      "after": "def active_job_processes(child):\n    \"\"\"Observe the existing job while Inno finishes its natural second phase.\"\"\"\n    job = getattr(child, '_carr_job', None)\n    if job is None or job.handle is None:\n        raise RuntimeError('The native acceptance process has no live owned job.')\n    # This is only the passive natural-completion wait. Exiting the existing\n    # owned_process context still requires every retained native member handle\n    # to confirm exit; accounting alone never authorizes releasing ownership.\n    return job._query(1, _Accounting()).active_processes"
+    },
+    {
+      "before": "def stop_owned_process(child):\n    try:\n        if child.close() is False:\n            raise RuntimeError('Native process cleanup is not confirmed.')\n    except (Exception, KeyboardInterrupt, SystemExit) as error:\n        pending = pending_cleanup(child.close,\n            message='Native installation acceptance cleanup is still pending.')\n        wait_cleanup_owner(pending.cleanup_owner)\n        if isinstance(error, (KeyboardInterrupt, SystemExit)):\n            raise\n\n\ndef owned_process(command, *, cwd, log, timeout=1200, success=True):\n    environment = {k: v for k, v in os.environ.items()\n                   if not k.upper().startswith(('PYTHON', 'PIP_'))}\n    environment.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',\n                       PIP_NO_INDEX='1', DO_NOT_TRACK='1')\n    with log.open('xb') as stream:\n        try:\n            child = JobProcess([str(item) for item in command], cwd=cwd,\n                env=environment, stdin_pipe=False, stdout=stream, stderr=stream)\n        except AudioCleanupPending as error:\n            wait_cleanup_owner(error.cleanup_owner)\n            raise\n        try:\n            deadline = time.monotonic() + timeout\n            result = child.wait(timeout=timeout)\n            wait_owned_tree(child, deadline=deadline)\n        finally:\n            stop_owned_process(child)\n    if (result == 0) != success:\n        raise RuntimeError(f'Native acceptance failed at {log.name}: exit {result}')\n    return result\n\n\n",
+      "after": "def wait_pending_cleanup(error):\n    \"\"\"Deliver recorded interruptions only after every causal owner is quiet.\"\"\"\n    interrupted = None\n    for owner in _pending_owners(error):\n        try:\n            wait_cleanup_owner(owner)\n        except (KeyboardInterrupt, SystemExit) as signal:\n            if interrupted is None:\n                interrupted = signal\n    if interrupted is not None:\n        raise interrupted from error\n\n\ndef native_arguments(command):\n    \"\"\"Preserve the donor launcher's bounded absolute argument-vector guard.\"\"\"\n    arguments = [str(item) for item in command]\n    if (not arguments or any('\\x00' in item for item in arguments)\n            or not os.path.isabs(arguments[0])\n            or len(subprocess.list2cmdline(arguments).encode('utf-16-le')) > 65534):\n        raise ValueError('Use a bounded argument vector with an absolute local executable.')\n    return arguments\n\n\ndef owned_process(command, *, cwd, log, timeout=1200, success=True):\n    environment = {k: v for k, v in os.environ.items()\n                   if not k.upper().startswith(('PYTHON', 'PIP_'))}\n    environment.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',\n                       PIP_NO_INDEX='1', DO_NOT_TRACK='1')\n    with retained_context(log.open('xb')) as stream:\n        try:\n            with native_owned_process(native_arguments(command), cwd=cwd,\n                    env=environment, stdin=subprocess.DEVNULL,\n                    stdout=stream, stderr=stream) as child:\n                deadline = time.monotonic() + timeout\n                result = child.wait(timeout=timeout)\n                wait_owned_tree(child, deadline=deadline)\n        except BaseException as error:\n            # Launch and shutdown may carry multiple direct or masked owners.\n            # Keep this exact log open until each existing owner proves exit.\n            wait_pending_cleanup(error)\n            raise\n    if (result == 0) != success:\n        raise RuntimeError(f'Native acceptance failed at {log.name}: exit {result}')\n    return result\n\n\n"
+    },
+    {
+      "before": "    try:\n        child = JobProcess([str(python).upper(), '-I', '-B', '-X', 'utf8', '-c', HOLD_APPLICATION,\n                           str(ready), str(release)], cwd=work,\n                          stdin_pipe=False, stdout=subprocess.DEVNULL,\n                          stderr=subprocess.DEVNULL)\n    except AudioCleanupPending as error:\n        wait_cleanup_owner(error.cleanup_owner)\n        raise\n    try:\n        wait_ready(ready, child)\n        owned_process([root / 'maintenance/ResonanceSetup.exe', *common,\n                       '/LOG=' + str(report / 'busy-repair.log')], cwd=work,\n                      log=report / 'busy-repair-process.log', timeout=90, success=False)\n        owned_process([root / 'unins000.exe', *common,\n                       '/LOG=' + str(report / 'busy-uninstall.log')], cwd=work,\n                      log=report / 'busy-uninstall-process.log', timeout=30, success=False)\n        if child.poll() is not None:\n            raise RuntimeError('Maintenance stopped the running application.')\n    finally:\n        release.write_text('release')\n        try:\n            child.wait(timeout=10)\n        finally:\n            stop_owned_process(child)",
+      "after": "    try:\n        with native_owned_process(\n                native_arguments([str(python).upper(), '-I', '-B', '-X', 'utf8', '-c', HOLD_APPLICATION,\n                                  str(ready), str(release)]), cwd=work, stdin=subprocess.DEVNULL,\n                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as child:\n            try:\n                wait_ready(ready, child)\n                owned_process([root / 'maintenance/ResonanceSetup.exe', *common,\n                               '/LOG=' + str(report / 'busy-repair.log')], cwd=work,\n                              log=report / 'busy-repair-process.log', timeout=90, success=False)\n                owned_process([root / 'unins000.exe', *common,\n                               '/LOG=' + str(report / 'busy-uninstall.log')], cwd=work,\n                              log=report / 'busy-uninstall-process.log', timeout=30, success=False)\n                if child.poll() is not None:\n                    raise RuntimeError('Maintenance stopped the running application.')\n            finally:\n                release.write_text('release')\n                child.wait(timeout=10)\n    except BaseException as error:\n        wait_pending_cleanup(error)\n        raise"
+    },
+    {
+      "before": "    while not owner.quiescent_event.is_set():\n        try:\n            owner.close()\n            owner.quiescent_event.wait(.25)\n        except (KeyboardInterrupt, SystemExit) as error:\n            if interrupted is None:\n                interrupted = error",
+      "after": "    while True:\n        try:\n            if owner.quiescent_event.is_set():\n                break\n            owner.close()\n            owner.quiescent_event.wait(.25)\n        except (KeyboardInterrupt, SystemExit) as error:\n            if interrupted is None:\n                interrupted = error"
+    },
+    {
+      "before": "    try:\n        print('Waiting for owned native acceptance processes to stop.', flush=True)\n    except (OSError, UnicodeError):\n        # A closed console must not release ownership of a live process tree.\n        pass\n    interrupted = None\n    while True:",
+      "after": "    interrupted = None\n    try:\n        print('Waiting for owned native acceptance processes to stop.', flush=True)\n    except (OSError, UnicodeError):\n        # A closed console must not release ownership of a live process tree.\n        pass\n    except (KeyboardInterrupt, SystemExit) as error:\n        interrupted = error\n    while True:"
+    }
+  ],
+  "fixture_migrations_additional": "Exercise two causal pending owners with KeyboardInterrupt/SystemExit recorded in the first owner's announcement, initial status check or close; the first and second owner must both prove quiescence before interruption is delivered."
+}

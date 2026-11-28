@@ -1,0 +1,145 @@
+{
+  "schema": "carr-source-review/1",
+  "subject": "Studio saved-clip loop preview",
+  "base_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "base_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "independent_review": "CLEAR: parent independently reviewed final source/native lifecycle, including RLock ownership, generation captured before the existing Stop, quiet admitted repeats, session/source guards, Destroy revocation, normal timer-error cleanup and natural-end explicit Loop.",
+  "core_tree": "4c5c77090fdf6793f1dc14561ca3a9eba60edecc",
+  "requirement": {
+    "path": "docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+    "blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "item": "V3-05",
+    "behavior": "Explicit loop preview of the selected saved clip using the existing player"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "220deb97a7914b8d54de7912ebd3206d479bb794",
+      "preimage": "75ee89f41ec6942b1b80f1b73d37b1b8775f878b",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_dialog.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7bc9ed69c4c6777eb3254dd9d0b75994075c3465",
+      "preimage": "b27382f806173cbcb7b30e5715e9f11d4a517f56",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/scripts/windows_clip_editor_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6218e786234a589181ade5eda2d258216ab02d9d",
+      "preimage": "a388fd197b51603860b68b752f3919a143508142",
+      "readback": "EXACT"
+    }
+  ],
+  "reuse": {
+    "player": "a36bc5e38d25490965b9f124af37d557a8a1dd68",
+    "quiet_admission": "17da97b7b4a26a5f230e455dc2e4760779b4551f",
+    "output_devices": "a2b604ac3be0fdb7591179be12e76dd4b49d9f9f",
+    "donor_pr152_head": "7a445cfa0701465facc80fe5dee226ba628aa4d6",
+    "donor_result": "Both inspected donor clip controls and current production had one-shot preview. No alternate player/controller/schema adopted."
+  },
+  "invariants": [
+    "The first preview requires the existing explicit Preview action. The new loop action is separate and explicit.",
+    "Loop uses existing WavePlayer.set_ab_loop(0, actual duration), enable_repeat(True), poll(restart=False) and quiet-admitted restart_repeat.",
+    "Natural completion preserves the exact reviewed binding so a later explicit Loop click can start it; Stop, source/project/selection, player-session, Cancel, Close and Destroy revoke it.",
+    "Original files, project schema/fingerprints/revisions, output selection, provider/runtime, shared executor and retained cleanup owners are unchanged.",
+    "Automatic repeat never focuses a control or invokes speech. Explicit loop changes use the existing focused status.",
+    "Only the GUI owner accesses wx.Timer. Worker finalization revokes Python state first; queued GUI timer callbacks cannot restart after cleanup.",
+    "Failed native closure retains the existing player/editor/preview; timer-start refusal cannot arm an unseen loop and normal timer-stop errors remain visible.",
+    "Captured Destroy always queues the retained editor cleanup and skips the event even when the native timer wrapper is already deleted."
+  ],
+  "tests": {
+    "suite": "tests/studio/test_clip_dialog.py",
+    "original_test_functions": 27,
+    "original_assertions": "Retained; original file is recovered exactly by removing the additive suffix and reversing three fixture-only bindings",
+    "added_test_functions": 14,
+    "added_parameterized_cases": 25,
+    "methodology": "Actual immutable Project/Scene/Cue, actual PCM files, actual WavePlayer and play_when_quiet; only native MCI calls and GUI dispatch/timer are modeled",
+    "cases": [
+      "Explicit first Preview",
+      "Wet/dry repeat and two cycles",
+      "Natural end then explicit Loop",
+      "Stop during rendering or quiet wait",
+      "Project/cue/library/player-session/cancel revocation",
+      "Changed preview PCM",
+      "Stop/Close quiet-hold release",
+      "Failed native Close retention and retry",
+      "Forced Destroy and deleted timer",
+      "Worker finalizer does not call wx",
+      "Constructor cleanup-registration failure",
+      "Timer start and normal stop failures",
+      "Late Loop/Disable/timer events after Close or Destroy"
+    ],
+    "new_skips": 0,
+    "deadlines": "Existing tests and native deadlines unchanged",
+    "result": "NOT_RUN"
+  },
+  "native": {
+    "script": "scripts/windows_clip_editor_smoke.py",
+    "mode": "Existing installed native clip probe",
+    "default": "Existing native widgets/FFmpeg plus passive loop-control checks; no audio endpoint opened, loop playback reports NOT_RUN",
+    "optional_cli": [
+      "--loop-output-device INDEX",
+      "--loop-output-identity LOWERCASE_SHA256"
+    ],
+    "admission": "Both arguments required; exact output index and stable identity compared before playback; no endpoint fallback",
+    "optional_checks": [
+      "Loaded module bytes equal the checked-out source under the actual installed package",
+      "Explicit first Preview, no automatic repeat",
+      "Natural preview completion before explicit Loop",
+      "At least two actual native repeats",
+      "Same exact output identity and preview/project/original bytes",
+      "Native Disable stops repeating",
+      "Native Stop revokes binding and closes playback owner"
+    ],
+    "previous_assertions": "Every prior native assertion retained; inverse edits recover the complete original script",
+    "original_textual_check_calls": 35,
+    "new_textual_check_calls": 48,
+    "counts_note": "Static call-site counts, not executed or dynamic check totals",
+    "physical_output_device": "NOT_RUN",
+    "acoustic_listening": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "result": "NOT_RUN"
+  },
+  "integration": {
+    "workflow_owner": "root",
+    "requirements": [
+      "Add relevant existing clip suites to both focused source/installed selector lists",
+      "Run the optional native playback mode only with the separately reviewed exact endpoint; endpoint-free component runners retain passive mode",
+      "Add the separately reviewed portable test_recording_windows_process module as requested by root"
+    ],
+    "workflow_edits": "None in this overlay"
+  },
+  "limits": [
+    "No execution was available on the host.",
+    "Loop restarts use the existing 100 ms GUI poll plus quiet admission; no gapless/sample-accurate repetition or hearing quality is claimed.",
+    "The existing saved clip trim/duration defines the preview; this adds no new range store or automatic restore playback.",
+    "No refs, branches, PRs or published application artifacts changed."
+  ],
+  "user_help": {
+    "tree": "4101517c5e68f14eddae0050f67fc0afeb17575e",
+    "files": [
+      {
+        "path": "carr-library/docs/START_UK.txt",
+        "preimage": "51d291347f4c67a653270ac13f4c221303dc22e1",
+        "sha": "e6ec98bf64ed807d09067310aabbda6a2d37b86f",
+        "readback": "EXACT"
+      },
+      {
+        "path": "carr-library/docs/audio_engine.md",
+        "preimage": "6dde40bc752022e27ac6df5c92e29711f8bd27ab",
+        "sha": "7a23ee00fb1aea871085e76ec0641761f7a94c9f",
+        "readback": "EXACT"
+      }
+    ],
+    "scope": "Additive concise Ukrainian usage; existing contents retained; source-reviewed and execution NOT_RUN."
+  }
+}

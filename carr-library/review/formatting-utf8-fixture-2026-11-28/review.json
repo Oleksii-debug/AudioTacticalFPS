@@ -1,0 +1,65 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "tested_head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "observed_failure": {
+    "run": 46101828603,
+    "job": 140845774538,
+    "mode": "Windows installed",
+    "test": "tests/academic_integration/test_formatting.py::test_upstream_pins_licenses_and_all_asset_digests",
+    "test_line": 62,
+    "error": "UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d in position 73: character maps to <undefined>",
+    "cause": "The existing fixture used locale-default Path.read_text on a UTF-8 CPAL license. The actual isolated Windows interpreter used CP1252. The failure occurs before the existing ATTRIBUTION predicate.",
+    "completed_evidence_tree": "e546835d6c717855dc45fb18406f35276e8f280d",
+    "failure_trace_blob": "96983b5887603c65e39a21beba0be60955836a81",
+    "artifact": {
+      "id": 15247185451,
+      "size_bytes": 61317,
+      "sha256": "264a9f24604e5332cf5dc3a3dc133a42bd52ed673e92f011a663f1fc9b9e8455"
+    }
+  },
+  "change": {
+    "path": "carr-library/tests/academic_integration/test_formatting.py",
+    "before_blob": "349f32097e93164e07fbbe978392d955c596a596",
+    "after_blob": "9176a857eda42b2443378659070babc831b3f466",
+    "before_sha256": "2c46cf4fcc08cb6118ad35cdc08a8b61f1bbf6856088ed00e8e690e3317d0bdd",
+    "after_sha256": "0a64d21e9f9564c8f773e1d58faee38b24732593a21d613fcdd43ecac67243f4",
+    "description": "Declare encoding='utf-8' on the existing UPSTREAM.json and CPAL license reads in the same upstream asset test. No asset, product, process, environment or workflow change.",
+    "hunks": 2,
+    "exact_inverse": true,
+    "full_blob_readback": "EXACT"
+  },
+  "inspected_assets": [
+    {
+      "path": "carr-library/src/carr_library/academic_integration/UPSTREAM.json",
+      "blob": "d98edb62ec84f3f1c1358a7ca6920eeaf688a183",
+      "contents": "ASCII-only JSON; explicit UTF-8 preserves its current bytes and meaning."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/LICENSE-CPAL-1.0.txt",
+      "blob": "0ed5b69013c62675941639f3acad0ce3d746a4a7",
+      "contents": "UTF-8 text including smart quotes; existing attribution predicate is retained."
+    }
+  ],
+  "preservation": {
+    "existing_case_count": 39,
+    "test_functions_before": 25,
+    "test_functions_after": 25,
+    "assertion_lines_before": 98,
+    "assertion_lines_after": 98,
+    "assertion_predicates": "Unchanged; the attribution assertion gains only explicit text decoding.",
+    "parameters_and_cases": "Exact original bytes.",
+    "timeout_and_cancel": "Original .1-second timeout and <3-second bounds plus all seven actual-family cleanup controls are unchanged.",
+    "production_blob_unchanged": "798560a96e409047dd36a6f77e1ca6a864c5ccc1",
+    "other_io": "The later real-child readiness marker already reads UTF-8. Remaining implicit fixture writes are fixed ASCII or json.dumps-escaped script content; no additional deterministic non-ASCII decoding mismatch was found."
+  },
+  "peer_review": {
+    "reviewer": "/root/voice_reading",
+    "verdict": "CLEAR",
+    "scope": "Exact two-line inverse, UTF-8 asset declarations, all assertions/cases and owned-family/deadline preservation.",
+    "execution": "NOT_RUN"
+  },
+  "qualification": "The prepared fixture correction has not run. Completed78 remains failure with the original uncorrected test."
+}

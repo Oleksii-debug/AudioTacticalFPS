@@ -1,5 +1,5 @@
 """Page-preserving adapter over pypdf, PDFium and Tesseract; trusted inputs only."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from contextlib import closing
 from hashlib import sha256
 from io import BytesIO, StringIO
@@ -12,8 +12,8 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
-from .ocr_languages import model_ids
+from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime, NON_READING_MODELS
+from .ocr_languages import model_ids, split_languages
 from .ocr_process import run_ocr
 
 
@@ -26,12 +26,14 @@ class _OcrOutputLimit(ValueError):
     pass
 
 
-def _read_ocr_output(path):
+def _read_ocr_output(path, maximum=_MAX_OCR_OUTPUT_BYTES):
     # Match the ingestion checkpoint ceiling before reading an unbounded file.
     # The journal still checks the size of the complete serialized checkpoint.
+    if type(maximum) is not int or not 1 <= maximum <= _MAX_OCR_OUTPUT_BYTES:
+        raise ValueError('Invalid OCR output budget.')
     with path.open('rb') as stream:
-        data = stream.read(_MAX_OCR_OUTPUT_BYTES + 1)
-    if len(data) > _MAX_OCR_OUTPUT_BYTES:
+        data = stream.read(maximum + 1)
+    if len(data) > maximum:
         raise _OcrOutputLimit('OCR output exceeds checkpoint limit')
     return data.decode('utf-8')
 
@@ -44,6 +46,7 @@ def _ocr_blocks(tsv, render_size):
         raise ValueError('unexpected OCR layout header')
     width, height = render_size
     blocks = []
+    seen_words = set()
     for row in rows:
         if None in row or any(value is None for value in row.values()):
             raise ValueError('incomplete OCR layout row')
@@ -55,14 +58,29 @@ def _ocr_blocks(tsv, render_size):
         confidence = float(row['conf'])
         left, top, box_width, box_height = (int(row[k]) for k in ('left', 'top', 'width', 'height'))
         line = tuple(int(row[k]) for k in ('block_num', 'par_num', 'line_num'))
-        if (not math.isfinite(confidence) or not -1 <= confidence <= 100
+        word = (*line, int(row['word_num']))
+        if (word in seen_words or not row['text'].strip()
+                or not math.isfinite(confidence) or not -1 <= confidence <= 100
                 or not (0 <= left < width and 0 <= top < height)
                 or not (0 < box_width <= width - left and 0 < box_height <= height - top)
                 or any(part < 1 for part in line) or int(row['word_num']) < 1
                 or '\x00' in row['text']):
             raise ValueError('invalid OCR layout word')
+        seen_words.add(word)
         blocks.append(dict(text=row['text'], confidence=confidence,
                            bbox=(left, top, box_width, box_height), line=line))
+    return blocks
+
+
+def _matching_ocr_blocks(tsv, render_size, raw):
+    """Admit layout only when its text agrees with the raw OCR candidate.
+
+    Ignore layout whitespace, not punctuation, Unicode code points or order.
+    This is a consistency check, not proof that OCR recognized the source.
+    """
+    blocks = _ocr_blocks(tsv, render_size)
+    if ''.join(raw.split()) != ''.join(part for block in blocks for part in block['text'].split()):
+        raise ValueError('OCR layout and raw text disagree')
     return blocks
 
 
@@ -75,13 +93,18 @@ class Config:
     orientation: bool = False
     model_policy: str = 'default'
     model_profile: str = 'installed'
+    automatic_languages: bool = False
 
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
+        if type(self.automatic_languages) is not bool:
+            raise ValueError('automatic language selection must be boolean')
         selected = model_ids(self.languages)
-        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
-            raise ValueError('duplicate or oversized language selection')
+        if self.automatic_languages and len(selected) > 8:
+            raise ValueError('Automatic OCR supports at most eight reviewed bootstrap models.')
+        if NON_READING_MODELS.intersection(selected):
+            raise ValueError('Choose reading languages or scripts; special detectors are separate.')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_profile not in ('installed', 'fast', 'best'):
@@ -91,8 +114,23 @@ class Config:
         if self.model_policy == POLICY:
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
+        # Recognition has a smaller explicit budget than catalog inventory.
+        # Auxiliary models and duplicate selectors cannot become text languages.
+        split_languages(self.languages)
+        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
+            raise ValueError('duplicate or oversized language selection')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
+
+
+def config_dict(config):
+    """Preserve legacy manual request bytes; automatic mode is explicit."""
+    if not isinstance(config, Config):
+        raise TypeError('Choose a validated OCR configuration.')
+    value = asdict(config)
+    if not config.automatic_languages:
+        value.pop('automatic_languages')
+    return value
 
 
 def extract_page(asset, physical_index, config=Config()):
@@ -181,8 +219,8 @@ def extract_page(asset, physical_index, config=Config()):
                         provenance['ocr_runtime'] = runtime.fingerprint()
 
                     with tempfile.TemporaryDirectory() as tmp:
-                        def run(args):
-                            return run_ocr(runtime, args, remaining=remaining)
+                        def run(args, *, budget=None):
+                            return run_ocr(runtime, args, remaining=remaining if budget is None else budget)
 
                         model_args = []
                         if config.model_policy == POLICY:
@@ -196,17 +234,35 @@ def extract_page(asset, physical_index, config=Config()):
                                 return result
                             provenance['ocr_model'] = model_provenance
 
-                        def recognize(raster, name):
+                        def recognize(raster, name, *, languages=None, psm=3,
+                                      maximum=_MAX_OCR_OUTPUT_BYTES, budget=None):
+                            languages = config.languages if languages is None else languages
+                            if not set(model_ids(languages)) <= set(model_ids(config.languages)) or psm not in (3, 6):
+                                raise ValueError('A regional OCR pass must use the reviewed model pool.')
+                            check = remaining if budget is None else budget
+                            check()
                             inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
                             raster.save(inp, dpi=(config.dpi, config.dpi))
-                            run([exe, str(inp), str(out), '-l', config.languages,
-                                 '--dpi', str(config.dpi), '--psm', '3', *model_args,
-                                 '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'])
-                            return (_read_ocr_output(out.with_suffix('.txt')),
-                                    _read_ocr_output(out.with_suffix('.tsv')))
+                            run([exe, str(inp), str(out), '-l', languages,
+                                 '--dpi', str(config.dpi), '--psm', str(psm), *model_args,
+                                 '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'], budget=check)
+                            values = (_read_ocr_output(out.with_suffix('.txt'), maximum),
+                                      _read_ocr_output(out.with_suffix('.tsv'), maximum))
+                            check()
+                            return values
 
                         provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
                         raw, tsv = recognize(image, 'baseline')
+                        if config.automatic_languages:
+                            from .ocr_regions import language_candidates
+                            observations, candidate = language_candidates(
+                                image, raw, tsv, config, remaining, recognize)
+                            provenance['language_detection'] = observations
+                            result['warnings'].append('automatic_language_candidates_require_review')
+                            if candidate is not None:
+                                raw, tsv = candidate
+                            else:
+                                result['warnings'].append('automatic_language_baseline_retained:' + observations['status'])
                         provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
                         if config.orientation:
                             from .ocr_orientation_bridge import orientation_candidate
@@ -222,13 +278,15 @@ def extract_page(asset, physical_index, config=Config()):
                     result['status'] = 'review_required'
                     result['warnings'].append('portable_ocr_runtime_unavailable_or_invalid')
                     return result
+                except InterruptedError:
+                    raise
                 except (OSError, subprocess.SubprocessError, UnicodeError):
                     result['status'] = 'review_required'
                     result['warnings'].append('ocr_failed_or_timed_out')
                     return result
     provenance.update(method='ocr_candidate', ocr_text=raw, ocr_tsv=tsv, psm=3)
     try:
-        result['blocks'] = _ocr_blocks(tsv, provenance['render_size'])
+        result['blocks'] = _matching_ocr_blocks(tsv, provenance['render_size'], raw)
     except (csv.Error, ValueError, OverflowError):
         # Preserve both raw outputs for review, but never expose a partial or
         # malformed layout as usable word-coordinate evidence.

@@ -1,0 +1,202 @@
+{
+  "schema": "carr-focused-workflow-review/1",
+  "workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+  "blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+  "branch": "carr/standard-installation-evaluation-20261128",
+  "base_commit": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+  "execution": "NOT_RUN",
+  "local_parser_or_test_execution": false,
+  "jobs": [
+    {
+      "os": "ubuntu-24.04",
+      "minutes": 25,
+      "modes": [
+        "source",
+        "installed"
+      ],
+      "native_installation": false
+    },
+    {
+      "os": "windows-2022",
+      "minutes": 60,
+      "modes": [
+        "source",
+        "installed"
+      ],
+      "native_installation": true
+    }
+  ],
+  "selectors": [
+    "tests/packaging/test_standard_installer.py",
+    "tests/packaging/test_managed_launch_boundary.py",
+    "tests/packaging/test_native_checks.py",
+    "tests/packaging/test_windows_bundle.py",
+    "tests/packaging/test_windows_launcher_bundle.py",
+    "tests/packaging/test_install_bytecode.py",
+    "tests/packaging/test_worker_bytecode.py",
+    "tests/packaging/test_source_wheel.py",
+    "tests/packaging/test_native_runtime.py",
+    "tests/audio/test_local_runtime_cli.py",
+    "tests/test_delivery_cli.py"
+  ],
+  "source_APIs": {
+    "donor_workflow": {
+      "path": ".github/workflows/carr-managed-update.yml",
+      "blob": "9b240321d167b2f39e4098dc19f3692db0fa1da0",
+      "reuse": "Current pinned compiler/runtime acquisition and single core-bundle preparation only; A/B, update and trusted-client paths omitted."
+    },
+    "strict_and_provenance_workflow": {
+      "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+      "blob": "fbc0887a87b98e90c791edd5c2120513ae543388",
+      "reuse": "Existing strict offline source/installed policy, complete Python namespace/byte equality and unique RECORD owner."
+    },
+    "builder": {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "blob": "ea14a607d755761d782404944513a1473f6956a5",
+      "launcher_flags": [
+        "--launcher",
+        "--launcher-evidence"
+      ]
+    },
+    "setup_builder": {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "blob": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "required_flags": [
+        "--bundle",
+        "--bundle-manifest-sha256",
+        "--output",
+        "--iscc",
+        "--toolchain-receipt"
+      ]
+    },
+    "probe": {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "blob": "9d595e91c994a7d7b208bdaeb83af08541236dc5",
+      "required_flags": [
+        "--setup",
+        "--build-evidence",
+        "--work",
+        "--report"
+      ],
+      "required_native_true_fields": [
+        "actual_inno_install",
+        "actual_offline_runtime_bootstrap",
+        "per_user_start_menu",
+        "per_user_repair_uninstall_registration",
+        "fresh_shortcut_collision_refused",
+        "uninstaller_wrapper_removed",
+        "native_launcher_prelaunch_lease",
+        "live_job_preserved",
+        "repair_retains_modified_and_foreign_files",
+        "actual_repair",
+        "actual_uninstall",
+        "populated_library_bytes_preserved"
+      ]
+    },
+    "source_lock": {
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "blob": "891f1b3df07057f1f3e93f23e27ddbeb71e681e5",
+      "windows_pins": 19,
+      "linux_pins": 17,
+      "linux_exclusions": [
+        "comtypes",
+        "wxpython"
+      ]
+    },
+    "sbom": {
+      "path": "carr-library/packaging/windows-sbom.cdx.json",
+      "blob": "a1ca0534107867d6c73a324fd6042779ba2b9133"
+    },
+    "python": {
+      "path": "carr-library/packaging/windows-python.json",
+      "blob": "3945fc762a831fcf59c66a5f8afe88f7fef6c97a",
+      "archive_sha256": "f31751f4a8483f5ac7cd77ad83f8dfb80d9f2a7245bff1585e27516c777fb46f"
+    },
+    "launcher_toolchain": {
+      "path": "carr-library/packaging/native-launcher/toolchain.lock.json",
+      "blob": "75e7cc434ef2a50ab3f08fd1d0ab1a5b9eaedf91"
+    },
+    "native_runtime": {
+      "path": "carr-library/packaging/native-runtime/source-lock.json",
+      "blob": "f6452ed7bd1c13da81b04835edf546038e4ee1b6"
+    },
+    "inno_toolchain": {
+      "path": "carr-library/packaging/windows_installer/toolchain.lock.json",
+      "blob": "5092ad9c032b5b497f00b841295263a997534f9c"
+    }
+  },
+  "controls": {
+    "exact_event_checkout": true,
+    "full_git_history_for_source_verifier": true,
+    "complete_source_wheel_installed_python_namespace_and_bytes": true,
+    "installed_unique_record_owner_outside_checkout_inside_venv": true,
+    "installed_module_version_pin_check": true,
+    "original_ci_check_source_timeout_seconds": 600,
+    "original_PYTEST_CHILD_offline_xfail_policy": true,
+    "installed_pytest_isolated_no_pythonpath_importlib": true,
+    "installed_nonempty_junit_zero_fail_error_skip": true,
+    "one_source_wheel_per_os": true,
+    "one_windows_core_bundle": true,
+    "native_internal_probe_deadlines_unchanged": true,
+    "native_step_minutes": 30,
+    "no_skip_as_windows_acceptance": true,
+    "native_after_unit_failure_preserves_original_failure": true,
+    "native_asset_hash_size_and_toolchain_verification": true,
+    "outside_repository_binary_staging": true,
+    "artifacts": [
+      "json",
+      "txt",
+      "log",
+      "xml"
+    ],
+    "executable_or_wheel_upload": false,
+    "workflow_concurrency_cancels_in_progress": false,
+    "ordinary_workflow_modified": false,
+    "refs_modified": false
+  },
+  "limitations": [
+    "No public signing, release qualification, unprivileged-account acceptance, NVDA or native network-trace claim.",
+    "No optional media runtime/models, managed A-to-B update, entitlement or protected private asset workflow is introduced.",
+    "Final composed source must include both standard installer test modules, launcher/entrypoint integration and the adapted helper inventory before this isolated branch is published."
+  ],
+  "static_checks": {
+    "issues": [],
+    "identical_suite_lists": 3,
+    "heredocOpens": 5,
+    "closes": 5,
+    "sourceInstalledInventory": true,
+    "source_wheel_builds": 1,
+    "core_bundle_builds": 1,
+    "native_12_fields_emitted_true": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "setup_build_flags_supported": true,
+    "current_launcher_builder_sibling_import_preserved": true,
+    "setup_builder_final_cli_unchanged": true,
+    "probe_final_cli_result_and_deadlines_unchanged": true,
+    "final_test_selectors_present": true,
+    "final_test_skip_xfail_markers_present": false
+  },
+  "dependencies_review": {
+    "source_tree": "d37cb699cbce0fd3df2294fb09c456351e6cf265",
+    "maintenance": "0139f2ce5e7024908ab2d0fea0bd65edcdd1a63c",
+    "standard_tests": "2c99632da01db65a9a452a913148c0138638e688",
+    "launch_tests": "819e3fcec6c0ca3376a836a159ef3721c501dfcf",
+    "planned_new_portable_cases": 177,
+    "status": "STATIC_REVIEW_CLEAR",
+    "execution": "NOT_RUN",
+    "review_scope": "Probe/process/stream API and all-owner interruption tests reviewed by audio_render; final wheel/helper binding and native-checks bootstrap lease guard reviewed separately by locate_project and root.",
+    "final_branding_delta": "Display-only AppPublisher label and exact template assertion; no ownership, CLI or signing qualification change."
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "carr-ci-aggregate-budget-review/1",
+  "source_review": "CLEAR",
+  "execution": "NOT_RUN",
+  "base_head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "workflow": ".github/workflows/carr-reconciliation-checks.yml",
+  "base_blob": "998abe9bb34ec64304023b037e7d91a5b58246d9",
+  "before": {
+    "sha256": "632bcbb8d543e0f84afa31f5c8cd95ce9b24e01c3ebe8c639a0ca9be82818b0a",
+    "bytes": 13099
+  },
+  "after": {
+    "sha256": "7b7a156d09c13f38a01c16fc9be47b42a08ef789f8f24d4832708ebd119d7e27",
+    "bytes": 13385
+  },
+  "changed": "Only the two whole-selection GitHub Actions step budgets increase from five to ten minutes. Job remains twenty minutes; all 39 selected modules per mode, native step budgets, concurrency, exit checks, product and individual-test deadlines are byte-identical.",
+  "exact_inverse_verified": true,
+  "reason": {
+    "run_id": 46098474779,
+    "job_id": 140835230725,
+    "source_completed_modules": 34,
+    "required_modules": 39,
+    "source_completed_cases": 983,
+    "source_completed_failures": 0,
+    "source_unfinished_modules": 5,
+    "source_status": "INCOMPLETE_AT_CI_CUTOFF",
+    "installed_status": "INCOMPLETE_AT_CI_CUTOFF",
+    "installed_last_progress": "79%",
+    "installed_case_count": null,
+    "both_step_elapsed_seconds": 300,
+    "later_native_steps": "7/7 SUCCESS; separate scope",
+    "decoded_terminal_log": {
+      "sha256": "a8d734abd3d4be5ff24ecd4edb954167a745a910e45b7994dced0d5fb9cdaf57",
+      "bytes": 141852
+    }
+  },
+  "limits": [
+    "No successful aggregate is inferred from partial case results.",
+    "This changes CI capacity only; no tested operation deadline or failure assertion is relaxed.",
+    "A new exact-head run must finish both selections before compatibility PASS."
+  ],
+  "peer": {
+    "agent": "/root/locate_project",
+    "verdict": "CLEAR",
+    "after_blob": "1c698acbfb85594a60c152b4db0a756b2c8cf2f3",
+    "scope": "Exact reverse two budget/comment hunks restore baseline998abe byte-for-byte. All39selectors per mode,20-minute job, seven3-minute native steps and strict verdict policy retained."
+  }
+}

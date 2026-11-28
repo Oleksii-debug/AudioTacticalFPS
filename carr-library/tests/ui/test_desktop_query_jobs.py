@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from carr_library.search.pagination import SearchPage
 from carr_library.ui.search_model import Hit, SearchModel
 
 
@@ -52,7 +53,10 @@ def panel(handlers):
     panel.grid, panel.details, panel.status = Mock(), Mock(), Mock()
     panel._refresh_details = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
-        library=SimpleNamespace(search=Mock(), semantic_ranker=object()), report=Mock())
+        library=SimpleNamespace(search=Mock(), search_page=Mock(), semantic_ranker=object()), report=Mock())
+    panel.bound_library = panel.frame.library
+    panel.previous_page, panel.next_page = Mock(), Mock()
+    panel._reset_pages()
     return panel
 
 
@@ -61,18 +65,21 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     def search(*args, on_status, cancelled, **kwargs):
         assert not cancelled()
         on_status(note)
-        return ()
-    panel.frame.library.search.side_effect = search
+        return SearchPage((), None)
+    panel.frame.library.search_page.side_effect = search
     panel.on_search(None)
-    panel.frame.library.search.assert_not_called()
-    _, operation, complete = panel.frame.run_job.call_args.args
+    panel.frame.library.search_page.assert_not_called()
+    _, operation, complete = panel.frame.run_job.call_args.args[:3]
     rows = operation()
     panel.status.ChangeValue.assert_not_called()
     complete(rows)
     assert note in panel.status.ChangeValue.call_args.args[0]
-    assert 'No results.' in panel.status.ChangeValue.call_args.args[0]
+    assert '0 results.' in panel.status.ChangeValue.call_args.args[0]
+    assert 'This selected search is complete.' in panel.status.ChangeValue.call_args.args[0]
+    panel.frame.library.search.assert_not_called()
+    assert panel.frame.library.search_page.call_args.kwargs['cursor'] is None
     panel.status.SetFocus.assert_called_once()
-    cancelled = panel.frame.library.search.call_args.kwargs['cancelled']
+    cancelled = panel.frame.library.search_page.call_args.kwargs['cancelled']
     panel.frame.cancel_event.set()
     assert cancelled()
 
@@ -95,14 +102,14 @@ def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(pa
 def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(panel):
     def first(*args, on_status, **kwargs):
         on_status('Old fallback notice.')
-        return ()
-    panel.frame.library.search.side_effect = first
+        return SearchPage((), None)
+    panel.frame.library.search_page.side_effect = first
     panel.on_search(None)
-    _, old_operation, old_complete = panel.frame.run_job.call_args.args
+    _, old_operation, old_complete = panel.frame.run_job.call_args.args[:3]
     old_rows = old_operation()
-    panel.frame.library.search.side_effect = lambda *args, **kwargs: ()
+    panel.frame.library.search_page.side_effect = lambda *args, **kwargs: SearchPage((), None)
     panel.on_search(None)
-    _, operation, complete = panel.frame.run_job.call_args.args
+    _, operation, complete = panel.frame.run_job.call_args.args[:3]
     complete(operation())
     assert 'Old fallback notice.' not in panel.status.ChangeValue.call_args.args[0]
     previous = panel.status.ChangeValue.call_count

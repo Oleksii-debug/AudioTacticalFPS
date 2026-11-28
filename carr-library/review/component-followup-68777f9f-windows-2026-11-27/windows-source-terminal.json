@@ -1,0 +1,59 @@
+{
+  "schema": "carr-ci-terminal-observation/1",
+  "head": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "run_id": 46075228427,
+  "job_id": 140761287055,
+  "job_name": "Updated components / windows-2022 / source",
+  "mode": "Windows source",
+  "conclusion": "cancelled",
+  "started_at": "2026-11-27T22:18:38Z",
+  "completed_at": "2026-11-27T23:38:39Z",
+  "elapsed_seconds": 4801,
+  "provenance": {
+    "kind": "completed-job decoded log and GitHub job metadata",
+    "decoded_utf8_sha256": "a172b8f8a573f11d6aee1c196b971c643fc524fceb88def3103a4f29379b1cdf",
+    "decoded_characters": 2198207,
+    "original_artifact_member_bytes": false
+  },
+  "result": {
+    "final_aggregate_case_totals": null,
+    "aggregate_qualification": "NOT_ESTABLISHED",
+    "completed_module_verdicts": [
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_state_io.py",
+        "detail": "junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/catalog/test_archive_portability.py",
+        "detail": "junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/catalog/test_intake_portability.py",
+        "detail": "junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+      }
+    ],
+    "completed_modules_only_case_totals": {
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0
+    },
+    "observed_error": "ValueError: the environment variable is longer than 32767 characters",
+    "location": "pytest setup/teardown assigning PYTEST_CURRENT_TEST for tests/catalog/test_epub_metadata.py::test_bad_xml",
+    "cause_observed": "The parameter ID includes the original over-limit XML bytes.",
+    "known_correction": {
+      "source_head": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+      "test_blob": "7b1dc2c59861612bbec77e8edca89187092a15f4",
+      "scope": "Only the oversized parameter receives the bounded explicit ID xml-over-limit; payload and assertions remain unchanged."
+    }
+  },
+  "limitations": [
+    "The94 passed cases belong only to3 completed strict module verdicts; they are not a complete Windows aggregate.",
+    "The completed log ended during the existing EPUB setup/teardown error report. No later module result is inferred.",
+    "Cancellation is retained as reported by GitHub; no source change or deadline waiver is inferred.",
+    "No running-job log was fetched.",
+    "No private model, runtime, user data, environment dump, enormous parameter payload or executable is included."
+  ]
+}

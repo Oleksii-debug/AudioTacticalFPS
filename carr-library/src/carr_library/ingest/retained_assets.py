@@ -34,8 +34,13 @@ class RetainedAssets:
             raise RetentionError('invalid asset digest')
         return [self.root / (digest + suffix) for suffix in SUFFIXES.values()]
 
-    def resolve(self, digest):
+    def resolve(self, digest, *, profile=None, cancelled=lambda: False):
         """Internal verified lookup; never expose directly to unscoped UI."""
+        maximum = MAX_BYTES
+        if profile is not None:
+            from .streamed_text import profile_from_value
+            profile = profile_from_value(profile)
+            maximum = profile.maximum_bytes
         paths = [p for p in self._paths(digest) if os.path.lexists(p)]
         if len(paths) != 1:
             raise RetentionError('missing or ambiguous retained asset')
@@ -43,13 +48,146 @@ class RetainedAssets:
         info = path.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
                 getattr(info, 'st_file_attributes', 0) & 0x400 or
-                not 0 < info.st_size <= MAX_BYTES):
+                not 0 < info.st_size <= maximum or
+                profile is not None and path.suffix != profile.suffix):
             raise RetentionError('invalid retained asset file')
-        if hash_file(path) != digest:
+        if profile is None:
+            actual = hash_file(path)
+        else:
+            from .streamed_text import file_digest
+            actual = file_digest(path, maximum_bytes=maximum, cancelled=cancelled)
+        if actual != digest:
             raise RetentionError('retained asset digest mismatch')
         return path
 
-    def _recover_staged_publication(self, target, digest):
+    def retain_file(self, source, mime, digest, size, *, profile=None,
+                    expected_identity=None, cancelled=lambda: False):
+        """Copy an explicitly admitted source into the same immutable store.
+
+        The ordinary byte API keeps its old limit. This file-backed API uses
+        bounded reads and the same private staging/recovery namespace. Only
+        this attempt's exact two-link publication can release its staging twin.
+        """
+        from tempfile import mkdtemp
+        import shutil
+        from ..durable_state import local_path, sync_directory
+        from .streamed_text import (check_cancelled, file_digest, file_identity,
+                                    profile_from_value, regular_file, verified_reader)
+        maximum = MAX_BYTES
+        if profile is not None:
+            profile = profile_from_value(profile)
+            maximum = profile.maximum_bytes
+        if (mime not in SUFFIXES or type(size) is not int or not 0 < size <= maximum
+                or profile is not None and mime != profile.mime):
+            raise RetentionError('unsupported or oversized streamed asset')
+        paths = self._paths(digest)
+        source = local_path(source, exists=True)
+        before = regular_file(source)
+        if before.st_size != size:
+            raise RetentionError('invalid streamed source identity')
+        identity = file_identity(before)
+        if expected_identity is not None and tuple(expected_identity) != identity:
+            raise RetentionError('streamed source changed after validation')
+        target = self.root / (digest + SUFFIXES[mime])
+        existing = [path for path in paths if os.path.lexists(path)]
+        if existing:
+            if existing != [target]:
+                raise RetentionError('missing or ambiguous retained asset')
+            self._recover_staged_publication(target, digest, maximum_bytes=maximum,
+                                             cancelled=cancelled)
+            result = self.resolve(digest, profile=profile, cancelled=cancelled)
+            if result.stat().st_size != size:
+                raise RetentionError('retained asset size changed')
+            sync_directory(self.root)
+            return result
+        check_cancelled(cancelled)
+        if shutil.disk_usage(self.root).free < size + 16 * 1024**2:
+            raise RetentionError('not enough disk space to retain the selected original')
+        root_info = self.root.lstat()
+        if (not stat.S_ISDIR(root_info.st_mode)
+                or getattr(root_info, 'st_file_attributes', 0) & 0x400):
+            raise RetentionError('the retained original directory changed')
+        temporary = Path(mkdtemp(prefix='.carr-original-', dir=self.root))
+        directory_info = temporary.lstat()
+        stage = temporary / 'original'
+        created, staged, publication_started = None, None, False
+
+        def same_directory(path, expected):
+            info = path.lstat()
+            return (stat.S_ISDIR(info.st_mode)
+                    and not getattr(info, 'st_file_attributes', 0) & 0x400
+                    and os.path.samestat(info, expected))
+
+        def same_payload(info, expected, links):
+            return (stat.S_ISREG(info.st_mode) and info.st_nlink == links
+                    and not getattr(info, 'st_file_attributes', 0) & 0x400
+                    and os.path.samestat(info, expected)
+                    and info.st_size == expected.st_size
+                    and info.st_mtime_ns == expected.st_mtime_ns)
+
+        try:
+            hashed, copied = sha256(), 0
+            with verified_reader(source, expected_identity=identity) as incoming, stage.open('xb') as output:
+                created = os.fstat(output.fileno())
+                while True:
+                    check_cancelled(cancelled)
+                    block = incoming.read(min(1024 * 1024, size + 1 - copied))
+                    if not block:
+                        break
+                    copied += len(block)
+                    if copied > size:
+                        raise RetentionError('streamed source grew during retention')
+                    hashed.update(block)
+                    output.write(block)
+                if copied != size or hashed.hexdigest() != digest:
+                    raise RetentionError('streamed source checksum changed during retention')
+                output.flush()
+                os.fsync(output.fileno())
+                staged = os.fstat(output.fileno())
+            check_cancelled(cancelled)
+            if (not same_directory(self.root, root_info)
+                    or not same_directory(temporary, directory_info)
+                    or not same_payload(stage.lstat(), staged, 1)
+                    or file_digest(stage, maximum_bytes=maximum, cancelled=cancelled) != digest):
+                raise RetentionError('staged original changed before publication')
+            check_cancelled(cancelled)
+            publication_started = True
+            os.link(stage, target)
+            # A cancellation after this commit cannot delete or relabel the
+            # retained original. Complete only this owned pair; unknown links
+            # or a replaced target remain intact for explicit recovery.
+            if (not same_directory(self.root, root_info)
+                    or not same_directory(temporary, directory_info)
+                    or not same_payload(stage.lstat(), staged, 2)
+                    or not same_payload(target.lstat(), staged, 2)
+                    or file_digest(target, maximum_bytes=maximum, expected_links=2) != digest):
+                raise RetentionError('retained original publication ownership changed')
+            sync_directory(self.root)
+            if (not same_payload(stage.lstat(), staged, 2)
+                    or not same_payload(target.lstat(), staged, 2)):
+                raise RetentionError('retained original links changed before staging release')
+            stage.unlink()
+            if (not same_directory(self.root, root_info)
+                    or not same_payload(target.lstat(), staged, 1)
+                    or file_digest(target, maximum_bytes=maximum) != digest):
+                raise RetentionError('retained original changed after staging release')
+            sync_directory(temporary)
+            return self.resolve(digest, profile=profile, cancelled=lambda: False)
+        finally:
+            if not publication_started and created is not None and os.path.lexists(stage):
+                info = stage.lstat()
+                if (same_directory(temporary, directory_info)
+                        and stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                        and not getattr(info, 'st_file_attributes', 0) & 0x400
+                        and os.path.samestat(info, created)):
+                    stage.unlink()
+            if (same_directory(temporary, directory_info)
+                    and not any(temporary.iterdir())):
+                temporary.rmdir()
+                sync_directory(self.root)
+
+    def _recover_staged_publication(self, target, digest, *, maximum_bytes=MAX_BYTES,
+                                    cancelled=lambda: False):
         """Finish only a fully accounted link publication under the writer guard.
 
         A process can die after linking the target but before TemporaryDirectory
@@ -57,16 +195,19 @@ class RetainedAssets:
         remove those exact staging twins only after validating the complete set;
         an unknown link or ambiguous directory leaves every entry untouched.
         """
+        from .streamed_text import check_cancelled, file_digest
+        check_cancelled(cancelled)
         published = target.lstat()
         if (not stat.S_ISREG(published.st_mode) or
                 getattr(published, 'st_file_attributes', 0) & 0x400 or
-                not 0 < published.st_size <= MAX_BYTES):
+                not 0 < published.st_size <= maximum_bytes):
             raise RetentionError('invalid retained asset file')
         if published.st_nlink == 1:
             return
         if published.st_nlink < 2 or not published.st_ino:
             raise RetentionError('invalid retained asset links')
-        if hash_file(target) != digest:
+        if file_digest(target, maximum_bytes=maximum_bytes,
+                       expected_links=published.st_nlink, cancelled=cancelled) != digest:
             raise RetentionError('retained asset digest mismatch')
 
         def private_directory(path):
@@ -87,6 +228,7 @@ class RetainedAssets:
 
         twins = []
         for directory in self.root.iterdir():
+            check_cancelled(cancelled)
             # The fixed prefix and eight-character suffix are the namespace
             # created by this module's TemporaryDirectory, not arbitrary paths.
             if not re.fullmatch(r'\.carr-original-[a-z0-9_]{8}', directory.name):

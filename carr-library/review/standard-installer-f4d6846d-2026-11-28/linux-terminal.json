@@ -1,0 +1,236 @@
+{
+  "schema": "resonance-standard-installation-job-evidence/1",
+  "source_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+  "run_id": 46086003377,
+  "job_id": 140795594456,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46086003377/job/140795594456",
+  "runner": "ubuntu-24.04",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T00:11:24Z",
+  "completed_at": "2026-11-28T00:12:22Z",
+  "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+  "source": {
+    "required_modules": 11,
+    "passed_modules": 11,
+    "failed_modules": 0,
+    "passed_cases": 326,
+    "failed_cases": 0,
+    "skipped_cases": 0,
+    "module_verdicts": [
+      {
+        "module": "tests/packaging/test_standard_installer.py",
+        "passed": 130,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_native_checks.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_windows_bundle.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_windows_launcher_bundle.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_worker_bytecode.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_native_runtime.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/audio/test_local_runtime_cli.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/test_delivery_cli.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/packaging/test_install_bytecode.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "required_modules": 11,
+    "passed_cases": 326,
+    "passed_subtests": 22,
+    "failed_cases": 0,
+    "skipped_cases": 0,
+    "strict_junit_cases": 326,
+    "seconds": 10.42
+  },
+  "package_identity": {
+    "python_files": 379,
+    "wheel": {
+      "payload_files": 489,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 394,
+      "source_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+      "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+      "wheel_sha256": "4c85ae857a66d2450fdb59ea19ed27ec6ca4466589158570045f4f21bcf5cf8b"
+    },
+    "receipt_file": "linux-package-identity.json",
+    "observed_status": "PASS"
+  },
+  "decoded_job_log_utf8": {
+    "sha256": "e5fa65e66e6042bc249f0cc4f3368d36cf2fa4db96a25253320ae30e5df0d764",
+    "bytes": 272704,
+    "scope": "Exact decoded string returned by GitHub job-log tool before timestamp/ANSI normalization; not the original artifact ZIP/member hash."
+  },
+  "artifact_from_completed_log": {
+    "id": 15239053404,
+    "bytes": 28970,
+    "reported_sha256": "7161c5762af01b0ee48a45ae82bf5851938fae64a3b9ae7947e450ef17758e28",
+    "download_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46086003377/artifacts/15239053404",
+    "original_artifact_independently_downloaded": false
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 6,
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Require source standard installation and existing launcher contracts",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 10,
+      "name": "Build one exact current core bundle and its standard setup",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 11,
+      "name": "Require actual native standard Install Repair and Uninstall",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 12,
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 23,
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 24,
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 25,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "limits": {
+    "native_windows_setup": "NOT_RUN_IN_THIS_LINUX_JOB",
+    "native_windows_install_repair_uninstall": "NOT_RUN_IN_THIS_LINUX_JOB",
+    "source_installed_tests_are_contract_fixtures": true,
+    "windows11_human_nvda": "NOT_RUN",
+    "setup_signing": "NOT_ASSESSED",
+    "full_platform": "NOT_QUALIFIED",
+    "successor_head_pass_transfer": false
+  }
+}

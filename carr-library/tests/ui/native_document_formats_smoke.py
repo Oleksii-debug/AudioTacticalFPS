@@ -177,7 +177,8 @@ def run_native(source=None):
                 dialog = state['import']
                 check('native queue recognizes HTML and Markdown as two documents',
                       dialog.batch['counts']['queued'] == 2 and dialog.rows.GetCount() == 2)
-                button = next(child for child in dialog.GetChildren()
+                # Action buttons are owned by the focus-scrollable import form.
+                button = next(child for child in dialog.form.GetChildren()
                               if isinstance(child, wx.Button) and child.GetLabel() == '&Start queued files')
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
                 event.SetEventObject(button)
@@ -229,7 +230,10 @@ def run_native(source=None):
                       and reader.controller.current.verified is False
                       and 'unverified' in reader.location.GetValue().lower())
                 check('native imported text receives keyboard focus', pump(lambda: wx.Window.FindFocus() is reader.text))
-                next_button = next(button for button in reader.buttons if button.GetName() == 'Next source location')
+                next_button, _handler = reader.command_buttons['reader.next']
+                check('native next-segment command retains its accessible name',
+                      next_button.GetName() == 'Next source location'
+                      and next_button.GetLabel().startswith('Next source location'))
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, next_button.GetId())
                 event.SetEventObject(next_button)
                 check('native next-document-segment button event is handled',

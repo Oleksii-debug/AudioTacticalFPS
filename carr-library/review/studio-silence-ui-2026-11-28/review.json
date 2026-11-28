@@ -1,0 +1,344 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "basis": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "scope": "Explicit read-only Scene Studio silence inspection using the existing worker and shared typed backend; no engine, registry, resource owner or publication implementation is replaced.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "before_blob": "31ef5bf074c58c6fe5136cb7489dd04579d68e50",
+      "after_blob": "2314eacb91e0c8562c8d609faf9e97f9f6d38301",
+      "sha256": "c92254c17a6e43dd4391ce7e0db2bc2fc6c30e6344782c9d179c99692d54de4e",
+      "bytes": 57344
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_silence_inspection.py",
+      "before_blob": null,
+      "after_blob": "36b7ea4b33d3b56f4088c0b524be5f560c1420f3",
+      "sha256": "1aacc15b7b81a8bcf6da66359f371f3b3af269d6af7aa9d2010378f196151934",
+      "bytes": 7447
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_silence_inspection.py",
+      "before_blob": null,
+      "after_blob": "e8f71a28524b41e44ba4b74e2aac1ac02bd245a3",
+      "sha256": "6ada20ab9488aa717595ce8351c92ca46a4c2b94bbf9419b175e24a5efc7cbf2",
+      "bytes": 29858
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "before_blob": "c864c5f680e3cd390fbf3a0513faeddb582323f5",
+      "after_blob": "05fddb6f72be6522cf65e4650583e4e4cec0d0b5",
+      "sha256": "5c72ee16a15ce7402e46593f17ca4de89630cee493dec9ade14bc028428f505a",
+      "bytes": 18875
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_output_settings.py",
+      "before_blob": "a40f3451c468633fb9ea36e1e4a5d600794d6d84",
+      "after_blob": "c2e5cde7c5b4617d9717bf835aeb09cb3a1e81fa",
+      "sha256": "26998ff42753cc736a92429ddea11f38c4d4e0e94183c826f95a0157368a2acb",
+      "bytes": 20620
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "before_blob": "79842c4c7c209b5b3d862fd0a3e5f439112d8a26",
+      "after_blob": "510ba1f6a790833a56012d89e8ca0b12b057fae9",
+      "sha256": "1ccf99b84aaa91ba25943592b8419fd9da27569b945a2c7956b7e776ab6cb927",
+      "bytes": 11584
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "before_blob": "78ba78972c23f805cddd7db0a38e09a2ef80d62e",
+      "after_blob": "5004172fc9e163ab410a81f531f16d7d8bbabf6b",
+      "sha256": "26ae287c5c2c0a13eb7d3174a2c0eaabd59860d7d780b9425b47577b0617b904",
+      "bytes": 23209
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "before_blob": "2e755b77bab0c21bff759bc6e248ece79bac878a",
+      "after_blob": "a365b074c7282398f624a739dbfbd958cd8ee272",
+      "sha256": "ae21107f35500e70622ef69024874cc6af388831f8e0fd248feb8aa94ce776c1",
+      "bytes": 32581
+    }
+  ],
+  "public_contract": {
+    "criteria": "carr_library.audio.silence.SilenceCriteria(threshold_dbfs, minimum_seconds)",
+    "validation_exception": "ValueError",
+    "threshold_dbfs": {
+      "minimum": -192,
+      "maximum": 0,
+      "default": -50
+    },
+    "minimum_seconds": {
+      "exclusive_minimum": 0,
+      "maximum": 31536000,
+      "default": 2
+    },
+    "channel_policy": "every-channel; absolute sample at or below the threshold",
+    "retained_interval_cap": 4096,
+    "result_display_character_cap": 1048576,
+    "backend": "ProductionService.inspect_silence(job_id, threshold_dbfs=..., minimum_seconds=..., cancelled=..., progress=...)",
+    "output": "Seconds are primary; exact half-open frames, sample rate, total frames and original master SHA-256 are also shown. The unchanged full structured report remains available on the result dialog."
+  },
+  "lifetime": [
+    "The same existing Studio executor, progress object and cancellation Event are used.",
+    "Worker checks use captured Python owner/job/library/project/generation state; native signature reads remain on the owner thread.",
+    "Queued phases/completion check a request generation before touching native controls.",
+    "Close during inspection cancels without writing a production pause control or closing a borrowed service.",
+    "Existing ordinary run callers retain pause_production=True and delivery_guard=True defaults.",
+    "The existing F8 button temporarily labels and names inspection cancellation and restores ordinary Pause afterward.",
+    "The backend alone owns broker admission, job/source locks, PCM staging and causal native cleanup."
+  ],
+  "source_hunks": [
+    {
+      "label": "inspection request and operation scope",
+      "before": "    voices, current_job, alive, busy = (), None, True, False\n",
+      "after": "    voices, current_job, alive, busy = (), None, True, False\n    active_production = False\n    inspection_generation, inspection_owner_id = 0, dialog.GetId()\n"
+    },
+    {
+      "label": "named inspection action",
+      "before": "                (('progress_voice', 'Use voice for progress...'), ('save_all', 'Save all open drafts'), ('cancel_save_all', 'Cancel Save All'))):",
+      "after": "                (('inspect_silence', 'Inspect long silences...'), ('progress_voice', 'Use voice for progress...'),\n                 ('save_all', 'Save all open drafts'), ('cancel_save_all', 'Cancel Save All'))):"
+    },
+    {
+      "label": "inspection follows existing busy state",
+      "before": "        buttons['preview'].Enable(not busy and current_job is not None)\n",
+      "after": "        buttons['preview'].Enable(not busy and current_job is not None)\n        buttons['inspect_silence'].Enable(not busy and current_job is not None)\n"
+    },
+    {
+      "label": "explicit production pause policy",
+      "before": "    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):\n        nonlocal busy\n",
+      "after": "    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False,\n            pause_production=True):\n        nonlocal busy, active_production\n"
+    },
+    {
+      "label": "capture operation pause policy",
+      "before": "        busy = True\n        cancel.clear()\n",
+      "after": "        busy = True\n        active_production = pause_production\n        cancel.clear()\n"
+    },
+    {
+      "label": "clear operation policy after submit failure",
+      "before": "            busy = False\n            controls()\n            failed_operation(exc)\n",
+      "after": "            busy = False\n            active_production = False\n            controls()\n            failed_operation(exc)\n"
+    },
+    {
+      "label": "completion owns operation policy",
+      "before": "                nonlocal busy\n                finished.set()\n",
+      "after": "                nonlocal busy, active_production\n                finished.set()\n"
+    },
+    {
+      "label": "clear operation policy before result delivery",
+      "before": "                busy = False\n                controls()\n                try:\n                    result = done.result()\n",
+      "after": "                busy = False\n                active_production = False\n                controls()\n                try:\n                    result = done.result()\n"
+    },
+    {
+      "label": "captured read-only inspection on existing worker",
+      "before": "    def help_text(event=None):\n",
+      "after": "    def inspect_long_silences(event=None):\n        nonlocal inspection_generation\n        if busy or not alive or current_job is None:\n            return\n        inspection_generation += 1\n        generation, identity, project = inspection_generation, current_job, controller.project\n\n        def current():\n            # This callback also runs on the existing worker: only captured\n            # Python state is read here, never a native widget.\n            return (alive and inspection_generation == generation and current_job == identity\n                    and controller.project is project and frame.library is save_library\n                    and frame.library.root == save_root and not getattr(frame, '_closing', False))\n\n        try:\n            if not current():\n                raise ValueError('The selected production or library changed. Reopen this inspection.')\n            signature = editor_signature()\n\n            def current_ui():\n                return current() and editor_signature() == signature\n\n            from .studio_silence_inspection import choose_criteria, show_result\n            criteria = choose_criteria(dialog, current=current_ui)\n            if criteria is None:\n                return\n            if not current_ui():\n                raise ValueError('The selected production changed while choosing inspection criteria.')\n\n            def stopped():\n                return cancel.is_set() or not current()\n\n            def inspect(measured):\n                if stopped():\n                    raise InterruptedError('Audio inspection was cancelled before it started.')\n                result = service.inspect_silence(identity,\n                    threshold_dbfs=criteria.threshold_dbfs,\n                    minimum_seconds=criteria.minimum_seconds,\n                    cancelled=stopped, progress=measured)\n                if stopped():\n                    raise InterruptedError('Audio inspection was cancelled before results were shown.')\n                return result\n\n            def completed(result):\n                if stopped() or not current_ui():\n                    raise InterruptedError('The selected production changed; the late inspection was discarded.')\n                if result.get('job_id') != identity:\n                    raise ValueError('The silence inspection belongs to a different production.')\n                show_result(dialog, result, current=lambda: not stopped() and current_ui())\n                if current() and not cancel.is_set():\n                    report('Silence inspection finished. The completed audio was not changed or played.', True)\n\n            run(inspect, completed, phase='Inspecting completed audio for long silences',\n                with_progress=True, pause_production=False)\n        except Exception as exc:\n            if current():\n                report(str(exc), True)\n\n    def inspection_owner_destroyed(event):\n        nonlocal inspection_generation\n        if event.GetId() == inspection_owner_id:\n            inspection_generation += 1\n        event.Skip()\n\n    def help_text(event=None):\n"
+    },
+    {
+      "label": "inspection close cancels without writing job control",
+      "before": "        if current_job is not None and busy:\n            service.request_pause(current_job)\n",
+      "after": "        if current_job is not None and busy and active_production:\n            service.request_pause(current_job)\n"
+    },
+    {
+      "label": "bind native inspection button",
+      "before": "                           'preview': preview, 'help': help_text, 'close': close,\n",
+      "after": "                           'preview': preview, 'inspect_silence': inspect_long_silences,\n                           'help': help_text, 'close': close,\n"
+    },
+    {
+      "label": "revoke captured inspection on actual owner destruction",
+      "before": "    dialog.Bind(wx.EVT_CLOSE, close)\n",
+      "after": "    dialog.Bind(wx.EVT_CLOSE, close)\n    dialog.Bind(wx.EVT_WINDOW_DESTROY, inspection_owner_destroyed)\n"
+    },
+    {
+      "label": "explicit accessible action name",
+      "before": "            if identity == 'progress_voice':\n                button.SetName('Use selected local voice for progress')\n",
+      "after": "            if identity == 'progress_voice':\n                button.SetName('Use selected local voice for progress')\n            elif identity == 'inspect_silence':\n                button.SetName('Inspect long silences in completed audio')\n"
+    },
+    {
+      "label": "inspection cancellation is not a paused production",
+      "before": "        if busy:\n            progress.pause('Audio production paused; completed chunks retained')\n",
+      "after": "        if busy:\n            if active_production:\n                progress.pause('Audio production paused; completed chunks retained')\n            else:\n                progress.cancel('Audio inspection cancelled')\n"
+    },
+    {
+      "label": "request-scoped delivery guard defaults to original behavior",
+      "before": "            pause_production=True):\n        nonlocal busy, active_production\n        if busy or not alive:\n",
+      "after": "            pause_production=True, delivery_guard=lambda: True):\n        nonlocal busy, active_production\n        if busy or not alive or not delivery_guard():\n"
+    },
+    {
+      "label": "revoked phase delivery never touches controls",
+      "before": "                    if alive and not finished.is_set():\n                        report(message)\n",
+      "after": "                    if alive and delivery_guard() and not finished.is_set():\n                        report(message)\n"
+    },
+    {
+      "label": "inspection cancellation is distinct from a resumable job",
+      "before": "            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled))\n            state = 'paused' if interrupted else 'failed'\n            if worker and with_progress and job_identity is not None:\n",
+      "after": "            interrupted = isinstance(exc, (InterruptedError, AudioCancelled)) and (worker or not pause_production)\n            state = ('paused' if pause_production else 'cancelled') if interrupted else 'failed'\n            if worker and with_progress and job_identity is not None and pause_production:\n"
+    },
+    {
+      "label": "queued result checks owner before native controls",
+      "before": "                if not alive:\n                    return\n                busy = False\n                active_production = False\n",
+      "after": "                if not alive or not delivery_guard():\n                    busy = False\n                    active_production = False\n                    return\n                busy = False\n                active_production = False\n"
+    },
+    {
+      "label": "no result feedback after nested review owner destruction",
+      "before": "                if not alive:\n                    return\n                try:\n                    outcome = operation_outcome(result)\n",
+      "after": "                if not alive or not delivery_guard():\n                    return\n                try:\n                    outcome = operation_outcome(result)\n"
+    },
+    {
+      "label": "bind only new inspection to captured window generation",
+      "before": "                with_progress=True, pause_production=False)\n",
+      "after": "                with_progress=True, pause_production=False,\n                delivery_guard=lambda: inspection_generation == generation)\n"
+    },
+    {
+      "label": "existing F8 control names the actual non-resumable inspection cancellation",
+      "before": "        buttons['pause'].Enable(busy)\n",
+      "after": "        buttons['pause'].Enable(busy)\n        pause_label = 'Cancel inspection (F8)' if busy and not active_production else '&Pause (F8)'\n        buttons['pause'].SetLabel(pause_label)\n        buttons['pause'].SetName(pause_label.replace('&', ''))\n"
+    }
+  ],
+  "old_fixture_proofs": [
+    {
+      "path": "carr-library/tests/ui/test_studio_output_settings.py",
+      "hunks": [
+        {
+          "before": "('render', 'open', 'roles', 'jobs', 'pause', 'preview', 'progress_voice')",
+          "after": "('render', 'open', 'roles', 'jobs', 'pause', 'preview', 'progress_voice', 'inspect_silence')"
+        },
+        {
+          "before": "        self.enabled = bool(enabled)\n    def GetSelection(self):\n",
+          "after": "        self.enabled = bool(enabled)\n    def SetLabel(self, label):\n        self.label = label\n    def SetName(self, name):\n        self.name = name\n    def GetSelection(self):\n"
+        },
+        {
+          "before": "    exec('def factory():\\n    current_job = None\\n    busy = False\\n    alive = True\\n'\n",
+          "after": "    exec('def factory():\\n    current_job = None\\n    busy = False\\n    alive = True\\n'\n         + '    active_production = True\\n'\n"
+        }
+      ],
+      "inverse_exact": true,
+      "assertion_lines": 72,
+      "all_assertion_lines_unchanged": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "hunks": [
+        {
+          "before": "    busy, alive = False, True\n",
+          "after": "    busy, alive = False, True\n    active_production = False\n"
+        },
+        {
+          "before": "    alive, busy = True, False\n",
+          "after": "    alive, busy = True, False\n    active_production = False\n"
+        }
+      ],
+      "inverse_exact": true,
+      "assertion_lines": 38,
+      "all_assertion_lines_unchanged": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "hunks": [
+        {
+          "before": "    busy = False\n    alive = True\n    current_job = 'saved-production'\n",
+          "after": "    busy = False\n    alive = True\n    active_production = False\n    current_job = 'saved-production'\n"
+        },
+        {
+          "before": "    busy = True\n    current_job = 'saved-production'\n",
+          "after": "    busy = True\n    active_production = True\n    current_job = 'saved-production'\n"
+        }
+      ],
+      "inverse_exact": true,
+      "assertion_lines": 88,
+      "all_assertion_lines_unchanged": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "hunks": [
+        {
+          "before": "        autosave=lambda: None, cancel=threading.Event(), busy=False,\n",
+          "after": "        autosave=lambda: None, cancel=threading.Event(), busy=False, active_production=False,\n"
+        }
+      ],
+      "inverse_exact": true,
+      "assertion_lines": 150,
+      "all_assertion_lines_unchanged": true
+    }
+  ],
+  "native_hunks": [
+    {
+      "label": "finite inspection event deadlines and measured source proof",
+      "before": "from tempfile import TemporaryDirectory\n",
+      "after": "from tempfile import TemporaryDirectory\nfrom time import monotonic, sleep\nfrom hashlib import sha256\nimport traceback\n"
+    },
+    {
+      "label": "optional extra Studio scenario keeps all old inspections",
+      "before": "        def inspect_dialog(open_dialog, required_names, close_id=None):\n",
+      "after": "        def inspect_dialog(open_dialog, required_names, close_id=None, exercise=None):\n"
+    },
+    {
+      "label": "exercise actual dialog before original Close",
+      "before": "                inspected.append(all(any(required in name for name in names) for required in required_names))\n",
+      "after": "                inspected.append(all(any(required in name for name in names) for required in required_names))\n                if exercise is not None:\n                    exercise(dialog)\n"
+    },
+    {
+      "label": "actual completed-job inspection through native Studio action",
+      "before": "        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'))\n",
+      "after": "\n        silence_errors, silence_checks = [], []\n        def inspect_silence_controls(studio):\n            \"\"\"Actual threshold measurement, not a perceptual silence verdict.\"\"\"\n            timers, active, received = [], [True], []\n            master = Path(report['destination']) / 'master.wav'\n            original_master = master.read_bytes()\n            original_job = service.get(job)\n\n            def descendants(parent):\n                for child in parent.GetChildren():\n                    yield child\n                    yield from descendants(child)\n\n            def named(parent, name):\n                found = [child for child in descendants(parent) if child.GetName() == name]\n                assert len(found) == 1, (name, [child.GetName() for child in descendants(parent)])\n                return found[0]\n\n            def button(parent, label):\n                found = [child for child in descendants(parent)\n                         if isinstance(child, wx.Button) and child.GetLabel().replace('&', '') == label]\n                assert len(found) == 1, label\n                return found[0]\n\n            def click(control):\n                event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())\n                event.SetEventObject(control)\n                assert control.GetEventHandler().ProcessEvent(event)\n\n            def pump(predicate, description, timeout=30):\n                deadline = monotonic() + timeout\n                while not predicate():\n                    if silence_errors:\n                        raise AssertionError('\\n'.join(silence_errors))\n                    if monotonic() >= deadline:\n                        status = named(studio, 'Production and save status').GetValue()\n                        raise TimeoutError(description + ': ' + status)\n                    app.Yield()\n                    sleep(.01)\n\n            def later_modal(title, action, timeout=30):\n                deadline = monotonic() + timeout\n                owner_id = studio.GetId()\n                def inspect():\n                    if not active[0] or silence_errors:\n                        return\n                    found = None\n                    try:\n                        for candidate in wx.GetTopLevelWindows():\n                            try:\n                                parent = candidate.GetParent()\n                                if (isinstance(candidate, wx.Dialog) and candidate.IsShown()\n                                        and candidate.IsModal() and candidate.GetTitle() == title\n                                        and parent is not None and parent.GetId() == owner_id):\n                                    found = candidate\n                                    break\n                            except RuntimeError:\n                                continue  # A previously closed native wrapper is not this modal.\n                        if found is None:\n                            if monotonic() >= deadline:\n                                raise TimeoutError('The current Studio modal did not appear: ' + title)\n                            timers.append(wx.CallLater(25, inspect))\n                            return\n                        action(found)\n                    except BaseException:\n                        silence_errors.append(traceback.format_exc())\n                        if found is not None:\n                            try:\n                                if found.IsModal():\n                                    found.EndModal(wx.ID_CANCEL)\n                            except RuntimeError:\n                                pass\n                timers.append(wx.CallLater(25, inspect))\n\n            try:\n                jobs_button = button(studio, 'Saved jobs')\n                pump(jobs_button.IsEnabled, 'Initial Studio inventory did not finish')\n                def select_job(chooser):\n                    lists = [child for child in descendants(chooser) if isinstance(child, wx.ListBox)]\n                    assert len(lists) == 1\n                    choices = lists[0]\n                    indices = [index for index in range(choices.GetCount())\n                               if ('job ' + job) in choices.GetString(index)]\n                    assert len(indices) == 1\n                    choices.SetSelection(indices[0])\n                    okay = [child for child in descendants(chooser)\n                            if isinstance(child, wx.Button) and child.GetId() == wx.ID_OK]\n                    assert len(okay) == 1\n                    click(okay[0])\n                later_modal('Production jobs', select_job)\n                click(jobs_button)\n                assert not silence_errors\n                inspect_button = named(studio, 'Inspect long silences in completed audio')\n                assert inspect_button.IsEnabled() and inspect_button.AcceptsFocusFromKeyboard()\n                silence_checks.append('explicit saved-job selection enables the named inspection action')\n\n                def criteria(window):\n                    threshold = named(window, 'Silence threshold in dBFS (-192 through 0)')\n                    minimum = named(window, 'Minimum silence in seconds (greater than 0; at most 31536000)')\n                    accept = named(window, 'Inspect completed audio with these criteria')\n                    feedback = named(window, 'Silence inspection criteria and validation status')\n                    assert threshold.GetValue() == '-50' and minimum.GetValue() == '2'\n                    assert all(control.AcceptsFocusFromKeyboard()\n                               for control in (threshold, minimum, accept, feedback))\n                    minimum.SetValue('0')\n                    click(accept)\n                    assert window.IsModal() and feedback.GetValue()\n                    assert not button(studio, 'Pause (F8)').IsEnabled()\n                    # A deliberate inclusive full-scale threshold proves exact\n                    # whole-file frame accounting; it is not a quality claim.\n                    threshold.SetValue('0')\n                    minimum.SetValue('0.25')\n                    click(accept)\n                    silence_checks.append('named criteria require explicit valid finite values before work')\n                later_modal('Inspect long silences — criteria', criteria)\n                click(inspect_button)\n                assert not silence_errors\n                cancel_inspection = named(studio, 'Cancel inspection (F8)')\n                assert cancel_inspection.IsEnabled() and not inspect_button.IsEnabled()\n                silence_checks.append('existing F8 action names inspection cancellation while work is active')\n\n                def result_view(window):\n                    value = window.inspection_result\n                    output = named(window, 'Long-silence inspection results in seconds')\n                    assert output.AcceptsFocusFromKeyboard() and not output.IsEditable()\n                    assert value['schema'] == 'carr-silence-inspection/1' and value['status'] == 'complete'\n                    assert value['job_id'] == job\n                    assert value['source']['sha256'] == sha256(original_master).hexdigest()\n                    assert value['source']['size'] == len(original_master)\n                    assert value['criteria']['threshold_dbfs'] == 0\n                    assert value['criteria']['minimum_seconds'] == .25\n                    assert value['criteria']['amplitude_limit_s32'] == 2**31\n                    assert value['criteria']['comparison'] == 'absolute-sample-at-or-below'\n                    assert value['interval_count'] == 1 and value['omitted_count'] == 0\n                    interval = value['intervals'][0]\n                    assert interval['start_frame'] == 0 and interval['end_frame'] == value['audio']['frames']\n                    assert interval['end_seconds'] == value['audio']['frames'] / value['audio']['sample_rate']\n                    assert '0.000000 to ' in output.GetValue() and 'not a quality verdict' in output.GetValue()\n                    assert 'Matching intervals: 1; shown: 1; omitted: 0.' in output.GetValue()\n                    assert getattr(studio, '_audio_player', None) is None\n                    received.append(value)\n                    click(named(window, 'Close long-silence inspection'))\n                    silence_checks.append('read-only native result preserves exact frames and original source hash')\n                later_modal('Long-silence inspection — completed output', result_view)\n                pump(lambda: bool(received), 'Completed inspection result was not delivered')\n                assert not silence_errors\n                pump(lambda: not button(studio, 'Pause (F8)').IsEnabled(), 'Inspection did not release the shared worker')\n                assert named(studio, 'Pause (F8)').GetLabel() == '&Pause (F8)'\n                assert master.read_bytes() == original_master\n                assert service.get(job) == original_job\n                assert getattr(studio, '_audio_player', None) is None\n                silence_checks.append('completed audio and job remain unchanged with no playback and restored Pause label')\n                import carr_library\n                from carr_library.audio import silence\n                from carr_library.studio import render\n                from carr_library.ui import studio_dialog, studio_silence_inspection\n                package = Path(carr_library.__file__).resolve().parent\n                origins = []\n                for module, relative in (\n                    (silence, 'audio/silence.py'), (render, 'studio/render.py'),\n                    (studio_dialog, 'ui/studio_dialog.py'),\n                    (studio_silence_inspection, 'ui/studio_silence_inspection.py')):\n                    path = Path(module.__file__).resolve()\n                    assert path == package / relative\n                    origins.append(dict(module=module.__name__, path=str(path),\n                                        sha256=sha256(path.read_bytes()).hexdigest()))\n                result['silence_inspection'] = dict(status='PASS', checks=silence_checks,\n                    measurement=received[0], module_origins=origins, audible_playback='NOT_STARTED',\n                    perceptual_quality='NOT_CLAIMED', manual_nvda='NOT_RUN')\n            except BaseException:\n                silence_errors.append(traceback.format_exc())\n            finally:\n                active[0] = False\n                for timer in timers:\n                    timer.Stop()\n\n        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'),\n                       exercise=inspect_silence_controls)\n        assert not silence_errors, '\\n'.join(silence_errors)\n"
+    },
+    {
+      "label": "loaded service leaf is bound in native evidence",
+      "before": "                from carr_library.studio import render\n",
+      "after": "                from carr_library.studio import render, silence_inspection as studio_inspection\n"
+    },
+    {
+      "label": "hash actual service leaf bytes",
+      "before": "                    (silence, 'audio/silence.py'), (render, 'studio/render.py'),\n",
+      "after": "                    (silence, 'audio/silence.py'), (render, 'studio/render.py'),\n                    (studio_inspection, 'studio/silence_inspection.py'),\n"
+    },
+    {
+      "label": "native accessible frame/source identity",
+      "before": "                    assert '0.000000 to ' in output.GetValue() and 'not a quality verdict' in output.GetValue()\n",
+      "after": "                    assert '0.000000 to ' in output.GetValue() and 'not a quality verdict' in output.GetValue()\n                    assert f\"frames [0, {value['audio']['frames']})\" in output.GetValue()\n                    assert value['source']['sha256'] in output.GetValue()\n"
+    }
+  ],
+  "native_preservation": {
+    "old_assertion_lines": 13,
+    "old_assertions_all_preserved_in_order": true,
+    "whole_file_inverse_exact": true,
+    "previous_scenarios_and_checks_retained": true,
+    "added_scenario_deadline_seconds": 30,
+    "outer_workflow_minutes": 5,
+    "inputs": "Reuse the existing actual completed SAPI Studio job; explicit 0 dBFS /0.25 s proves inclusive whole-file integer PCM accounting, never perceptual quality.",
+    "origins": [
+      "audio/silence.py",
+      "studio/silence_inspection.py",
+      "studio/render.py",
+      "ui/studio_dialog.py",
+      "ui/studio_silence_inspection.py"
+    ]
+  },
+  "tests": {
+    "new_file": "tests/ui/test_studio_silence_inspection.py",
+    "planned_cases": 65,
+    "functions": 22,
+    "skips_or_xfails_added": false,
+    "actual_prerequisites": [
+      "FFmpeg",
+      "ffprobe"
+    ],
+    "scopes": [
+      "Shared finite criteria and bounded readable report",
+      "Actual extracted current worker/control/Close handlers",
+      "Fresh modal/queued/completed owner and source selection",
+      "Cancellation versus resumable production, later-render policy restoration",
+      "Captured native owner-ID destruction before queued control access",
+      "Real file-backed pending CleanupOwner retains staging after Future error/Close; native-family proof belongs to backend suite",
+      "Actual completed PCM inspection on a real worker; job and output bytes unchanged",
+      "Actual criteria/result construction with modeled wx dispatch; native widgets exercised separately"
+    ]
+  },
+  "execution_claims": {
+    "new_ui_or_native": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "perceptual_voice_or_audio_quality": "NOT_CLAIMED",
+    "new_backend": "Final backend source must be composed separately; this tree contains UI/tests/native only."
+  }
+}

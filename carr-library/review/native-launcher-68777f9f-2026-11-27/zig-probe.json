@@ -1,0 +1,33 @@
+{
+  "schema": "carr-log-extracted-native-launcher-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head_sha": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "run_id": 46075232117,
+  "job_id": 140761299598,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232117/job/140761299598",
+  "evidence_kind": "Exact parsed probe JSON from completed job log, emitted twice with identical values; not original artifact-member bytes.",
+  "decoded_job_log_utf8_sha256": "34bab084edf95a040ef17c5ec6533b30bdb9efe8126168d1aa60fbcd07a1f888",
+  "probe": {
+    "schema": 1,
+    "status": "passed",
+    "checks": [
+      "unicode-spaces-fixed-argv-offline-optional-runtimes",
+      "read-only-ready-probe",
+      "fixed-installation-check",
+      "child-exit-status-propagated",
+      "extra-arguments-rejected",
+      "incomplete-state-preserved-without-reinstall",
+      "missing-runtime-does-not-search-path",
+      "fresh-package-reuses-fixed-offline-installer",
+      "research-data-sentinel-preserved"
+    ],
+    "check_count": 9,
+    "launcher_sha256": "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec",
+    "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+    "native_launcher_execution_verified": true,
+    "actual_python_installation_verified": false,
+    "nvda_verified": false,
+    "authenticode_verified": false
+  },
+  "limitation": "Synthetic child probe only. No executable, runtime, model or user data is included. Actual Python installation, NVDA and Authenticode remain unverified."
+}

@@ -1,0 +1,166 @@
+{
+  "schema": "carr.exact-standard-observation/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098476106,
+  "job_id": 140835235248,
+  "status": "PASS",
+  "platform": "linux",
+  "started_at": "2026-11-28T02:40:38Z",
+  "completed_at": "2026-11-28T02:41:37Z",
+  "source_passed": 345,
+  "installed_passed": 345,
+  "installed_subtests_passed": 22,
+  "failed": 0,
+  "skipped": 0,
+  "python_modules": 380,
+  "python_inventory": {
+    "sha256": "3dca930d425c6e6d0564edc344aa6eb568002e79babf75e2a1298b72190791b3",
+    "bytes": 51832
+  },
+  "decoded_log": {
+    "sha256": "8388be4e4c427b235d5455267b470dd2fab1afdc43a1971e8d955774c1db4b44",
+    "bytes": 275615
+  },
+  "identity": {
+    "dependency_selection": {
+      "build_support": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "zstandard": "0.25.0"
+      },
+      "effective_requirements_sha256": "278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0",
+      "excluded": [
+        "comtypes",
+        "wxpython"
+      ],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0"
+      },
+      "platform": "linux",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": false
+    },
+    "executable": "/home/runner/work/_temp/carr-standard-installation-python/bin/python",
+    "installed_package": "/home/runner/work/_temp/carr-standard-installation-python/lib/python3.11/site-packages/carr_library",
+    "mode": "source-and-installed",
+    "prefix": "/home/runner/work/_temp/carr-standard-installation-python",
+    "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+    "required_suites": [
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/packaging/test_native_checks.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/packaging/test_install_bytecode.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/packaging/test_native_runtime.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/test_delivery_cli.py"
+    ],
+    "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "source_package": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library",
+    "status": "PASS"
+  },
+  "rows": [
+    {
+      "selector": "tests/packaging/test_standard_installer.py",
+      "passed": 149,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_native_checks.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_windows_bundle.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_windows_launcher_bundle.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_worker_bytecode.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_source_wheel.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_native_runtime.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/audio/test_local_runtime_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/test_delivery_cli.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/packaging/test_install_bytecode.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "limits": [
+    "Linux source and installed contracts only; the actual Windows Inno lifecycle is a separate still-running job.",
+    "No final package, signing, NVDA or whole-candidate acceptance inference."
+  ]
+}

@@ -16,6 +16,7 @@ import struct
 import sys
 import sysconfig
 from tempfile import TemporaryDirectory
+import threading
 import wave
 
 from ._io import (check_cancelled, digest, local_file, new_output, run_process,
@@ -81,7 +82,8 @@ class SpeechResult:
     chunks: int
 
 
-def _wave_info(path):
+def _wave_info(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     with wave.open(str(path), 'rb') as audio:
         if (audio.getcomptype() != 'NONE' or audio.getsampwidth() not in (1, 2, 3, 4)
                 or audio.getnchannels() not in (1, 2) or not 8000 <= audio.getframerate() <= 192000
@@ -91,7 +93,9 @@ def _wave_info(path):
                                        audio.getnframes(), audio.getsampwidth())
         total = 0
         while block := audio.readframes(65536):
+            check_cancelled(cancelled)
             total += len(block)
+        check_cancelled(cancelled)
         if total != frames * channels * width:
             raise ValueError('The voice produced truncated audio.')
         return rate, channels, frames, width
@@ -117,12 +121,12 @@ def split_utterances(text, *, maximum=2400):
 
 class VoiceRegistry:
     """A registry only of actually enumerated voices; no imaginary catalog."""
-    def __init__(self, providers=(), *, cancelled=lambda: False):
+    def __init__(self, providers=()):
         self._providers = list(providers)
         self._voices = {}
         self._owners = {}
         self.notices = []
-        self._cancelled = cancelled
+        self._close_lock = threading.Lock()
         try:
             self.reload()
         except BaseException:
@@ -130,9 +134,7 @@ class VoiceRegistry:
             raise
 
     @classmethod
-    def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False, dordiai=None,
-                 cancelled=lambda: False):
-        check_cancelled(cancelled)
+    def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False):
         providers = []
         if os.name == 'nt':
             providers.append(NativeSapiProvider())
@@ -148,25 +150,13 @@ class VoiceRegistry:
         flite_executable = ffmpeg or shutil.which('ffmpeg')
         if include_flite and flite_executable:
             providers.append(FliteProvider(flite_executable))
-        registry = cls(providers, cancelled=cancelled)
-        try:
-            if dordiai is not None:
-                from ..integrations.dordiai_speech import install_dordiai_provider
-                install_dordiai_provider(registry, dordiai, cancelled=cancelled)
-            return registry
-        except BaseException:
-            registry.close()
-            raise
+        return cls(providers)
 
-    def reload(self, *, cancelled=None):
-        if cancelled is not None:
-            self._cancelled = cancelled
+    def reload(self):
         entries, owners, notices = {}, {}, []
         for provider in self._providers:
-            check_cancelled(self._cancelled)
             try:
-                values = (provider.voices(cancelled=self._cancelled)
-                          if getattr(provider, 'cancellable_discovery', False) else provider.voices())
+                values = provider.voices()
                 if len(values) > 10000:
                     raise ValueError('The voice provider returned too many voices.')
                 candidate = {}
@@ -177,29 +167,28 @@ class VoiceRegistry:
                 entries.update(candidate)
                 owners.update({key: provider for key in candidate})
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                if getattr(provider, 'failure_is_fatal', False):
+                    raise
                 notices.append(f'{provider.name}: {exc}')
-        check_cancelled(self._cancelled)
         self._voices, self._owners, self.notices = entries, owners, notices
         return self.voices()
 
-    def add_provider(self, provider, *, cancelled=None):
+    def add_provider(self, provider):
         self._providers.append(provider)
-        try:
-            return self.reload(cancelled=cancelled)
-        except BaseException:
-            self._providers.remove(provider)
-            close = getattr(provider, 'close', None)
-            if callable(close):
-                close()
-            raise
+        return self.reload()
 
     def voices(self):
         return tuple(self._voices.values())
 
     def close(self):
-        """Release every owned local worker, including a provider that failed discovery."""
-        providers, self._providers = self._providers, []
-        self._voices, self._owners = {}, {}
+        """Release owned providers once, including failed discovery workers.
+
+        A progress selection owns the registry only when explicitly activated;
+        its shared lifetime guard defers this call until all speech has ended.
+        """
+        with self._close_lock:
+            providers, self._providers = self._providers, []
+            self._voices, self._owners = {}, {}
         errors = []
         for provider in providers:
             close = getattr(provider, 'close', None)
@@ -216,22 +205,40 @@ class VoiceRegistry:
         except (KeyError, TypeError) as exc:
             raise ValueError('Select an available installed voice and reload if it was removed.') from exc
 
-    def fingerprint(self, voice_id):
+    def fingerprint(self, voice_id, *, cancelled=lambda: False):
         """Fingerprint visible installed runtime/voice assets for render caches.
 
         SAPI exposes an opaque token, not every proprietary driver's model file.
         Its identity remains a token/host fingerprint and is described as such;
         it is never represented as proof of a third-party model revision.
         """
+        check_cancelled(cancelled)
         voice = self.get(voice_id)
         provider = self._owners[voice_id]
-        identity = {'voice': asdict(voice), 'executable_sha256': digest(provider.executable)}
+        fingerprint = getattr(provider, 'fingerprint', None)
+        if callable(fingerprint):
+            from .studio_voice_adapter import StudioVoiceProvider
+            # Existing extension callbacks keep their one-argument API. Only
+            # the known adapter has a cancellable identity contract; arbitrary
+            # trusted extension code cannot be forcibly interrupted here.
+            value = (fingerprint(voice_id, cancelled=cancelled)
+                     if type(provider) is StudioVoiceProvider else fingerprint(voice_id))
+            check_cancelled(cancelled)
+            if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{64}', value):
+                raise ValueError('The registered voice adapter returned an invalid runtime identity.')
+            identity = {'voice': asdict(voice), 'registered_runtime_sha256': value}
+        else:
+            identity = {'voice': asdict(voice), 'executable_sha256': digest(provider.executable, cancelled=cancelled)}
         if isinstance(provider, PiperProvider):
             model, config, _, _ = provider._models[voice_id]
-            identity.update(model_sha256=digest(local_file(model)), config_sha256=digest(local_file(config)))
+            identity.update(model_sha256=digest(local_file(model), cancelled=cancelled),
+                            config_sha256=digest(local_file(config), cancelled=cancelled))
         elif isinstance(provider, LocalHelperProvider):
-            provider._verify()
+            provider._verify(cancelled=cancelled)
             identity['helper_contract'] = 'carr.local-voice.v1'
+            if provider.script is not None:
+                identity['helper_script_sha256'] = provider.expected_script_hash
+                identity['helper_launch'] = 'isolated-python-script.v1'
         elif isinstance(provider, SapiProvider):
             identity.update(token=provider._tokens[voice_id], architecture=provider.architecture,
                             model_identity='opaque-installed-SAPI-token')
@@ -242,7 +249,7 @@ class VoiceRegistry:
                 except PackageNotFoundError:
                     client_version = 'unavailable'
                 worker = Path(__file__).with_name('sapi_native_worker.py')
-                identity.update(native_worker_sha256=digest(worker) if worker.is_file() else None,
+                identity.update(native_worker_sha256=digest(worker, cancelled=cancelled) if worker.is_file() else None,
                                 native_protocol='carr.sapi-native.v1',
                                 com_client='comtypes', com_client_version=client_version)
         elif os.name != 'nt' and isinstance(provider, (FliteProvider, EspeakProvider)):
@@ -256,13 +263,12 @@ class VoiceRegistry:
             assets = {}
             for directory in directories:
                 for path in directory.glob(prefix + '*.so*'):
+                    check_cancelled(cancelled)
                     actual = path.resolve(strict=True)
                     if actual.is_file():
-                        assets[str(actual)] = digest(actual)
+                        assets[str(actual)] = digest(actual, cancelled=cancelled)
             identity['installed_voice_libraries'] = assets
-        provider_fingerprint = getattr(provider, 'fingerprint', None)
-        if callable(provider_fingerprint):
-            identity['provider_fingerprint'] = provider_fingerprint(voice_id)
+        check_cancelled(cancelled)
         return sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
 
     def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False):
@@ -295,9 +301,10 @@ class VoiceRegistry:
                     if not chunk.strip():
                         continue
                     part = staged.parent / 'utterance.wav'
+                    remove_part = True
                     try:
                         provider.render(chunk, voice, part, options, cancelled)
-                        rate, channels, size, width = _wave_info(part)
+                        rate, channels, size, width = _wave_info(part, cancelled=cancelled)
                         if params is None:
                             params = rate, channels, width
                             combined.setframerate(rate)
@@ -313,17 +320,23 @@ class VoiceRegistry:
                                 combined.writeframesraw(block)
                         frames += size
                         count += 1
+                    except BaseException as error:
+                        from ..audio.cleanup import _pending_owners
+                        # new_output retains this exact directory until every
+                        # causal process owner is quiet; do not unlink its chunk.
+                        remove_part = not _pending_owners(error)
+                        raise
                     finally:
-                        part.unlink(missing_ok=True)
-            rate, channels, frames, _ = _wave_info(staged)
-            checksum = digest(staged)
+                        if remove_part:
+                            part.unlink(missing_ok=True)
+            rate, channels, frames, _ = _wave_info(staged, cancelled=cancelled)
+            checksum = digest(staged, cancelled=cancelled)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
 
 
 class SapiProvider:
     name = 'Installed SAPI 5'
-    cancellable_discovery = True
 
     def __init__(self, executable, *, architecture='64'):
         if architecture not in ('32', '64'):
@@ -348,8 +361,8 @@ class SapiProvider:
             raise ValueError('Invalid SAPI response.')
         return value
 
-    def voices(self, *, cancelled=lambda: False):
-        result = self._request({'operation': 'voices'}, cancelled=cancelled)
+    def voices(self):
+        result = self._request({'operation': 'voices'})
         if not isinstance(result.get('voices'), list):
             raise ValueError('Invalid SAPI voice list.')
         voices, tokens = [], {}
@@ -406,7 +419,7 @@ class NativeSapiProvider(SapiProvider):
             request.write_bytes(raw)
             helper = Path(__file__).with_name('sapi_native_worker.py')
             command = ([self.executable, '--carr-sapi-native-worker', request, reply]
-                       if getattr(sys, 'frozen', False) else [self.executable, '-I', '-B', '-X', 'utf8', helper, request, reply])
+                       if getattr(sys, 'frozen', False) else [self.executable, '-I', '-B', helper, request, reply])
             _, _, returncode = run_process(command, cancelled=cancelled, timeout=timeout,
                 output_file=temporary / 'speech.wav' if output is not None else reply,
                 max_output=budget if output is not None else 2_000_000, allow_failure=True)
@@ -427,7 +440,7 @@ class NativeSapiProvider(SapiProvider):
                 raise ValueError('Native SAPI replied from an unexpected host architecture or adapter.')
             if output is not None:
                 check_cancelled(cancelled)
-                _wave_info(temporary / 'speech.wav')
+                _wave_info(temporary / 'speech.wav', cancelled=cancelled)
                 # Same-filesystem, no-overwrite publication into the parent's
                 # already private chunk staging area; final WAV stays atomic.
                 os.link(temporary / 'speech.wav', output)
@@ -512,18 +525,20 @@ class PiperProvider:
     """
     name = 'Installed Piper'
 
-    def __init__(self, executable, models):
+    def __init__(self, executable, models, *, cancelled=lambda: False):
+        check_cancelled(cancelled)
         self.executable = Path(executable).resolve(strict=True)
         local_file(self.executable)
         self._models = {}
         self._voices = []
         for row in models:
+            check_cancelled(cancelled)
             if not isinstance(row, dict):
                 raise ValueError('A Piper voice manifest must be an object.')
             model = local_file(row['path'])
             config = local_file(row.get('config', str(model) + '.json'))
             for path, expected in ((model, row.get('sha256')), (config, row.get('config_sha256'))):
-                if not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected) or digest(path) != expected:
+                if not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected) or digest(path, cancelled=cancelled) != expected:
                     raise ValueError('Piper voice/config hash verification failed.')
             license_text = text_value(row.get('license'), 'voice license', maximum=2048)
             identifier = 'piper:' + row['sha256']
@@ -533,18 +548,20 @@ class PiperProvider:
             self._voices.append(Voice(identifier, row['name'], 'Piper', row['language'],
                                       ('rate', 'volume'), vendor='User-installed voice', license=license_text))
 
-    def voices(self):
+    def voices(self, *, cancelled=lambda: False):
+        check_cancelled(cancelled)
         return tuple(self._voices)
 
     def render(self, text, voice, output, settings, cancelled):
         model, config, model_hash, config_hash = self._models[voice.id]
-        if digest(local_file(model)) != model_hash or digest(local_file(config)) != config_hash:
+        if (digest(local_file(model), cancelled=cancelled) != model_hash
+                or digest(local_file(config), cancelled=cancelled) != config_hash):
             raise ValueError('The installed Piper model changed; review and register it again.')
         run_process([self.executable, '--model', str(model), '--config', str(config),
                      '--output-file', str(output), '--length-scale', str(2 ** (-settings.rate / 10)),
                      '--volume', str(settings.volume / 100)], input_bytes=(text + '\n').encode('utf-8'),
                     cancelled=cancelled, timeout=settings.timeout_seconds, output_file=output,
-                    max_output=settings.max_output_bytes)
+                    max_output=settings.max_output_bytes, owned_tree=True)
 
 
 class LocalHelperProvider:
@@ -556,35 +573,51 @@ class LocalHelperProvider:
     """
     name = 'Opt-in local voice helper'
 
-    def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024):
+    def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024,
+                 script=None, script_sha256=None, cancelled=lambda: False):
         if enabled is not True:
             raise ValueError('Explicitly enable a reviewed local voice helper before running it.')
         self.executable = local_file(executable)
         self.expected_hash = sha256
+        if (script is None) != (script_sha256 is None):
+            raise ValueError('A Python helper script and its SHA256 must be configured together.')
+        self.script = local_file(script) if script is not None else None
+        self.expected_script_hash = script_sha256
         self.engine_name = text_value(engine_name, 'engine name', maximum=128)
         if type(max_voices) is not int or not 1 <= max_voices <= 10000:
             raise ValueError('Set a voice catalog limit from 1 to 10000.')
         self.max_voices = max_voices
         self._tokens = {}
-        self._verify()
+        self._verify(cancelled=cancelled)
 
-    def _verify(self):
+    def _verify(self, *, cancelled=lambda: False):
         if (not isinstance(self.expected_hash, str) or not re.fullmatch('[0-9a-f]{64}', self.expected_hash)
-                or digest(local_file(self.executable)) != self.expected_hash):
+                or digest(local_file(self.executable), cancelled=cancelled) != self.expected_hash):
             raise ValueError('Local voice helper hash verification failed.')
+        if self.script is not None and (
+                not isinstance(self.expected_script_hash, str)
+                or not re.fullmatch('[0-9a-f]{64}', self.expected_script_hash)
+                or digest(local_file(self.script), cancelled=cancelled) != self.expected_script_hash):
+            raise ValueError('Local voice helper script hash verification failed.')
 
     def _request(self, payload, *, cancelled=lambda: False, timeout=30, output=None, budget=512*1024*1024):
-        self._verify()
+        self._verify(cancelled=cancelled)
         raw = json.dumps({'schema': 'carr.local-voice.v1', **payload}, ensure_ascii=False).encode('utf-8')
-        reply, _, _ = run_process([self.executable], input_bytes=raw, cancelled=cancelled,
-                                 timeout=timeout, output_file=output, max_output=budget)
+        command = [self.executable]
+        if self.script is not None:
+            # A reviewed stdlib bridge gets only this fixed isolated invocation.
+            # User text remains UTF-8 JSON; no caller-supplied Python argv.
+            command.extend(('-I', '-B', '-S', str(self.script)))
+        reply, _, _ = run_process(command, input_bytes=raw, cancelled=cancelled,
+                                 timeout=timeout, output_file=output, max_output=budget,
+                                 owned_tree=True)
         data = json.loads(reply.decode('utf-8'))
         if not isinstance(data, dict) or data.get('schema') != 'carr.local-voice.v1':
             raise ValueError('Unsupported local voice-helper response.')
         return data
 
-    def voices(self):
-        data = self._request({'operation': 'voices'})
+    def voices(self, *, cancelled=lambda: False):
+        data = self._request({'operation': 'voices'}, cancelled=cancelled)
         rows = data.get('voices')
         if not isinstance(rows, list) or len(rows) > self.max_voices:
             raise ValueError('Invalid local voice catalog size.')

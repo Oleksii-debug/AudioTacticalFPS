@@ -1,21 +1,43 @@
-"""Native language/profile choice for reviewed scanned-page import."""
+"""Installed-model choices for the application's reviewed scanned-page import."""
 from pathlib import Path
 
 from ..extract.page_ocr import Config
+from ..extract.ocr_languages import model_label, split_languages
+from ..extract.pinned_tessdata import POLICY
 
-# Compatible quick presets for existing Import Center queues and controls.
-# The full installed/managed selector is the authority for custom selections.
-LANGUAGES = (
-    ('English', 'eng'),
-    ('Ukrainian', 'ukr'),
-    ('Slovak', 'slk'),
-    ('English, Ukrainian and Slovak', 'eng+ukr+slk'),
-)
+
+def config_summary(config):
+    profile = 'pinned fast models' if config.model_policy == POLICY else 'installed model profile'
+    if config.model_profile != 'installed':
+        profile = 'managed ' + config.model_profile.title() + ' model profile' + (
+            '; pinned fast verification' if config.model_policy == POLICY else '')
+    names = ', '.join(model_label(code) for code in split_languages(config.languages))
+    automatic = ('; automatic language and region review within this selected pool; uncertain results keep the first pass'
+                 if config.automatic_languages else '; explicit manual language choice')
+    return names + '; ' + profile + ('; orientation check on' if config.orientation else '') + automatic
+
+
+def choose_model_config(parent, initial=None, *, preset_root=None):
+    import wx
+    from .ocr_language_dialog import create_ocr_dialog
+    dialog = create_ocr_dialog(parent, initial, preset_root=preset_root)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return None
+        return dialog.result
+    finally:
+        dialog.Destroy()
 
 
 def choose_ocr_config(parent, paths):
-    """Return None on cancellation; native text-only imports need no OCR dialog."""
+    """Preserve direct-import API; native text-only imports need no model dialog."""
     if not any(Path(path).suffix.casefold() == '.pdf' for path in paths):
         return Config()
-    from .ocr_selection import choose_model_config
-    return choose_model_config(parent)
+    library = getattr(parent, 'library', None)
+    return choose_model_config(parent, preset_root=getattr(library, 'root', None))
+
+
+def choose_installed_languages(parent):
+    """Compatibility entry point using the same ordered, installed-model picker."""
+    library = getattr(parent, 'library', None)
+    return choose_model_config(parent, preset_root=getattr(library, 'root', None))

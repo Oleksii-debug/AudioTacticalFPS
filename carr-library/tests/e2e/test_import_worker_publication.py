@@ -6,12 +6,12 @@ are the real production implementations, with synthetic local documents.
 """
 from pathlib import Path
 from contextlib import closing
+import errno
 import shutil
 import sqlite3
 import subprocess
 import sys
 import time
-from types import SimpleNamespace
 
 import pytest
 
@@ -43,20 +43,85 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False, startup_delay=0):
+def _wait_for_barrier(process, marker, *, timeout=15.0):
+    """Bound startup separately from the real supervisor timeout under test."""
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            try:
+                raw = marker.read_bytes()
+            except FileNotFoundError:
+                raw = None
+            except PermissionError as exc:
+                winerror = getattr(exc, 'winerror', None)
+                if sys.platform != 'win32' or not (
+                        winerror in (5, 32, 33)
+                        or (winerror is None and exc.errno == errno.EACCES)):
+                    raise
+                # Windows CRT open reports sharing/access denial as EACCES
+                # without winerror. A retry does not prove a transient cause:
+                # keep the original deadline and child-exit/cleanup checks.
+                raw = None
+            if raw is not None:
+                # The child atomically publishes the entire PID acknowledgement.
+                assert raw.endswith(b'\n') and raw[:-1].isdigit(), raw
+                pid = int(raw[:-1])
+                assert pid > 0, raw
+                return pid
+            if process.poll() is not None:
+                raise AssertionError(
+                    f'Import worker exited before its barrier: {process.returncode}')
+            if time.monotonic() >= deadline:
+                raise AssertionError(
+                    f'Import worker did not reach its barrier within {timeout}s')
+            time.sleep(0.01)
+    except BaseException:
+        # Popen has not returned to _invoke yet, so this fixture owns cleanup.
+        worker._stop(process)
+        raise
+
+
+def _child_exit_check(request, process, pid):
+    """Retain the actual Windows child's handle, including behind a venv launcher."""
+    if sys.platform != 'win32':
+        assert pid == process.pid
+        return lambda: process.poll() is not None
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    handle = kernel.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE only.
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    request.addfinalizer(lambda: kernel.CloseHandle(handle))
+    return lambda: kernel.WaitForSingleObject(handle, 0) == 0  # WAIT_OBJECT_0.
+
+
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False,
+             arm_timeout=False, request=None, startup_delay=0.0):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
+    children = []
     code = f'''
 import os, time
-time.sleep({startup_delay!r})
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
 def _pause():
-    Path({str(marker)!r}).write_text('observed', encoding='utf-8')
+    time.sleep({startup_delay!r})
+    marker = Path({str(marker)!r})
+    temporary = marker.with_name(marker.name + '.tmp')
+    temporary.write_bytes((str(os.getpid()) + '\\n').encode('ascii'))
+    os.replace(temporary, marker)
     if {exit_after!r}:
         os._exit(7)
-    time.sleep(60)
+    time.sleep(20)
 '''
     if boundary == 'before':
         code += '''
@@ -96,28 +161,62 @@ LibraryApp._import_file = _replay
             return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-        return popen(command, **options)
+        process = popen(command, **options)
+        child = dict(process=process)
+        children.append(child)
+        if arm_timeout:
+            assert request is not None
+            # The request is already in Popen's temporary stdin file. Wait for
+            # the actual SQL boundary before _invoke starts its unchanged clock.
+            # No production timeout, clock, result, or stop operation is replaced.
+            try:
+                pid = _wait_for_barrier(process, marker)
+                child['exited'] = _child_exit_check(request, process, pid)
+            except BaseException:
+                worker._stop(process)
+                raise
+        return process
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    return children
 
 
-def _observe_termination(monkeypatch, marker, termination):
-    """Reach the real commit barrier before expiring only the parent deadline."""
-    outcomes = []
-    invoke = worker._invoke
+def _assert_reaped(children, *, acknowledged=False):
+    assert len(children) == 1, children
+    child = children[0]
+    assert child['process'].poll() is not None
+    assert child['process'].wait(timeout=1) == child['process'].returncode
+    if acknowledged:
+        assert child['exited'](), 'The acknowledged native child is still running.'
 
-    def observe(*args, **kwargs):
-        result = invoke(*args, **kwargs)
-        outcomes.append(result['state'])
-        return result
 
-    monkeypatch.setattr(worker, '_invoke', observe)
-    if termination == 'timeout':
-        monotonic = time.monotonic
-        monkeypatch.setattr(worker, 'time', SimpleNamespace(
-            monotonic=lambda: monotonic() + (100 if marker.is_file() else 0),
-            sleep=time.sleep))
-    return outcomes
+@pytest.mark.parametrize('child_code', ('import time; time.sleep(20)', 'pass'),
+                         ids=('missing-barrier', 'exit-before-barrier'))
+def test_barrier_startup_is_bounded_and_reaps_unacknowledged_child(tmp_path, child_code):
+    options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+                | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
+               if sys.platform == 'win32' else {'start_new_session': True})
+    process = subprocess.Popen([sys.executable, '-I', '-B', '-c', child_code], **options)
+    with pytest.raises(AssertionError, match='before its barrier|did not reach its barrier'):
+        _wait_for_barrier(process, tmp_path / 'never-published', timeout=0.1)
+    assert process.poll() is not None
+    assert process.wait(timeout=1) == process.returncode
+
+
+def test_timeout_follows_acknowledged_barrier_after_slow_startup(tmp_path, monkeypatch, request):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Independent startup budget')
+    source = _source(tmp_path, 'txt')
+    original = source.read_bytes()
+    marker = tmp_path / 'delayed-after-commit'
+    children = _barrier(monkeypatch, marker, boundary='after', arm_timeout=True,
+                        request=request, startup_delay=0.25)
+    result = worker.run_request(app.root, workspace, source, _metadata(), Config(), timeout=0.1)
+    assert marker.exists(), result
+    _assert_reaped(children, acknowledged=True)
+    assert result['state'] == 'complete' and result['publication_recovered'] is True, result
+    assert source.read_bytes() == original
+    assert app.assets.resolve(result['asset']).read_bytes() == original
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -135,25 +234,20 @@ def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, argumen
 
 @pytest.mark.parametrize('kind', ('txt', 'pdf', 'docx'))
 @pytest.mark.parametrize('termination', ('cancel', 'crash', 'timeout'))
-def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind, termination):
+def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, request, kind, termination):
     app = LibraryApp(tmp_path / 'private')
     workspace = app.create_workspace('Publication')
     collection = app.create_collection(workspace, 'Published collection')
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
-             startup_delay=startup_delay)
-    outcomes = _observe_termination(monkeypatch, marker, termination)
-    started = time.monotonic()
+    children = _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+                        arm_timeout=termination == 'timeout', request=request)
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=30.0)
-    if startup_delay:
-        assert time.monotonic() - started > 3.0  # Actual startup exceeds the old deadline.
+        timeout=3.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
-    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
+    _assert_reaped(children, acknowledged=termination == 'timeout')
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
     assert result['verified'] is (kind == 'txt')
@@ -179,23 +273,19 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
 
 @pytest.mark.parametrize('kind', ('pdf', 'docx'))
 @pytest.mark.parametrize('termination', ('cancel', 'crash', 'timeout'))
-def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypatch, kind, termination):
+def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypatch, request, kind, termination):
     app = LibraryApp(tmp_path / 'private')
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
+    original = source.read_bytes()
     marker = tmp_path / 'before-commit'
-    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
-             startup_delay=startup_delay)
-    outcomes = _observe_termination(monkeypatch, marker, termination)
-    started = time.monotonic()
+    children = _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+                        arm_timeout=termination == 'timeout', request=request)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=30.0)
-    if startup_delay:
-        assert time.monotonic() - started > 3.0
+        timeout=3.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
-    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
+    _assert_reaped(children, acknowledged=termination == 'timeout')
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:
@@ -205,6 +295,7 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     record = worker.load_request(app.root, result['request_id'])
     assert record['publication_candidate'] is not None
     assert record['state'] == result['state']
+    assert source.read_bytes() == original
 
 
 @pytest.mark.parametrize('kind', ('txt', 'pdf', 'docx'))
@@ -423,3 +514,251 @@ def test_recovered_commit_with_pending_extraction_journal_survives_backup(tmp_pa
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
         assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
     assert restored.search(workspace, 'Railway')[0].quote == 'Railway'
+
+
+@pytest.mark.parametrize('competitor_kind', ('direct', 'second-request', 'forged-sidecar'))
+def test_competing_replay_registration_cannot_complete_stopped_attempt(
+        tmp_path, monkeypatch, competitor_kind):
+    """Equal memberships after rollback do not prove which transaction added them."""
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Registration ownership')
+    source = _source(tmp_path, 'pdf')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    assert first['state'] == 'complete'
+    requested = app.create_collection(workspace, 'Requested new membership')
+    metadata = _metadata((requested,))
+    planned = worker.prepare_request(app.root, workspace, source, metadata, Config())
+    marker = tmp_path / 'before-registration-commit'
+    real_popen, real_stop = worker.subprocess.Popen, worker._stop
+    _barrier(monkeypatch, marker, boundary='before')
+    competing = []
+
+    def stop_then_register(process):
+        real_stop(process)
+        if marker.exists() and not competing:
+            competing.append(None)
+            with monkeypatch.context() as clean_launch:
+                clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
+                if competitor_kind == 'direct':
+                    competing[0] = app._import_file(workspace, source, config=Config(), **metadata)
+                else:
+                    competing[0] = worker.run_request(app.root, workspace, source,
+                                                      metadata, Config(), timeout=15)
+            if competitor_kind == 'forged-sidecar':
+                stopped = worker.load_request(app.root, planned['request_id'])
+                other = worker.load_request(app.root, competing[0]['request_id'])
+                stopped['publication_candidate'] = dict(other['publication_candidate'],
+                                                        attempt=stopped['attempt'])
+                worker._store(app.root, planned['request_id'], stopped)
+
+    monkeypatch.setattr(worker, '_stop', stop_then_register)
+    result = worker.run_request(app.root, workspace, source, metadata, Config(),
+        request_id=planned['request_id'], cancelled=marker.exists, timeout=15)
+    assert marker.exists() and competing[0]['state'] == 'complete', competing
+    assert result['state'] == 'cancelled' and not result.get('publication_recovered'), result
+    assert len(app.browse(workspace, collection=requested)) == 1
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT request_id FROM import_publication').fetchone()[0] == first['request_id']
+        assert db.execute('SELECT count(*) FROM import_registration WHERE request_id=?',
+                          (planned['request_id'],)).fetchone()[0] == 0
+        if competitor_kind != 'direct':
+            assert db.execute('SELECT changed FROM import_registration WHERE request_id=?',
+                              (competing[0]['request_id'],)).fetchone()[0] == 1
+
+
+def test_successful_noop_replay_has_its_own_ack_but_keeps_first_source_owner(tmp_path):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('No-op replay')
+    source = _source(tmp_path, 'txt')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    replay = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    assert first['state'] == replay['state'] == 'complete' and first['id'] == replay['id']
+    record = worker.load_request(app.root, replay['request_id'])
+    assert record['publication']['committed'] is True
+    with app.read(workspace) as db:
+        assert db.execute('SELECT request_id FROM import_publication').fetchone()[0] == first['request_id']
+        receipt = db.execute('SELECT revision,changed FROM import_registration WHERE request_id=? AND attempt=?',
+                             (record['request_id'], record['attempt'])).fetchone()
+        assert tuple(receipt) == (first['id'], 0)
+        assert worker.validate_committed_publication(db, record) == record['publication_candidate']
+        record['publication']['committed'] = False
+        assert worker.validate_committed_publication(db, record) is None
+
+
+def test_registration_receipt_rejects_modified_prestate_even_when_membership_exists(tmp_path):
+    from copy import deepcopy
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Bound registration intent')
+    source = _source(tmp_path, 'txt')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    collection = app.create_collection(workspace, 'New membership')
+    replay = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config())
+    assert replay['state'] == 'complete'
+    record = worker.load_request(app.root, replay['request_id'])
+    with app.read(workspace) as db:
+        assert worker.validate_committed_publication(db, record) is not None
+        changed = deepcopy(record)
+        changed['publication']['before']['missing_memberships'] = []
+        with pytest.raises(ValueError, match='registration receipt'):
+            worker.validate_committed_publication(db, changed)
+        assert db.execute('SELECT request_id FROM import_publication').fetchone()[0] == first['request_id']
+
+
+def test_canonical_v5_request_without_qa011_sidecar_recovers_without_new_parser(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Canonical V5 request')
+    source = _source(tmp_path, 'txt')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    record = worker.load_request(app.root, first['request_id'])
+    record.pop('attempt_id')
+    record.pop('publication')
+    record.pop('result')
+    record['state'] = 'running'
+    worker._store(app.root, first['request_id'], record)
+    source.unlink()
+    def forbidden(*args, **kwargs):
+        raise AssertionError('The canonical transaction already proves this exact committed source.')
+    monkeypatch.setattr(worker, '_invoke', forbidden)
+    result = worker.run_request(app.root, workspace, source, {}, Config(), request_id=first['request_id'])
+    assert result['state'] == 'complete' and result['id'] == first['id']
+    assert result['publication_recovered'] is True
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM import_registration').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('with_qa011_intent', (False, True))
+def test_historical_completed_request_remains_readable_without_inventing_owner(
+        tmp_path, monkeypatch, with_qa011_intent):
+    from hashlib import sha256
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Historical completion')
+    source = _source(tmp_path, 'txt')
+    result = app._import_file(workspace, source, config=Config(), **_metadata())
+    planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())
+    record = dict(planned, state='complete', job=result['id'], asset_sha256=result['asset'],
+                  result=dict(result))
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+        if with_qa011_intent:
+            count, pages = worker.publication_pages(db, result['id'])
+            config = db.execute('SELECT config FROM revision WHERE id=?', (result['id'],)).fetchone()[0]
+            record['attempt_id'] = 'a' * 32
+            record['publication'] = dict(version=1, attempt_id=record['attempt_id'],
+                request_sha256=worker.request_identity(record), revision=result['id'],
+                config_sha256=sha256(config.encode('utf-8')).hexdigest(),
+                page_count=count, pages_sha256=pages,
+                before=dict(revision_existed=False, active_revision=None, missing_memberships=[]),
+                result=dict(result), committed=True)
+    worker._store(app.root, record['request_id'], record)
+    source.unlink()
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Reading a verified historical completion does not rerun extraction.')
+    monkeypatch.setattr(worker, '_invoke', forbidden)
+    reopened = worker.run_request(app.root, workspace, source, {}, Config(), request_id=record['request_id'])
+    assert reopened['state'] == 'complete' and reopened['id'] == result['id']
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+        assert db.execute('SELECT count(*) FROM import_registration').fetchone()[0] == 0
+
+
+def _barrier_fixture_child(root):
+    """Publish the same complete PID acknowledgement with an actual child."""
+    marker = root / 'actual-pid-marker'
+    code = (
+        'import os,sys,time; from pathlib import Path; '
+        'marker=Path(sys.argv[1]); temporary=marker.with_name(marker.name+".tmp"); '
+        'temporary.write_bytes((str(os.getpid())+"\\n").encode("ascii")); '
+        'os.replace(temporary,marker); time.sleep(20)')
+    options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+                | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
+               if sys.platform == 'win32' else {'start_new_session': True})
+    return subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(marker)],
+                            **options), marker
+
+
+@pytest.mark.parametrize('platform, error_number, winerror, recovers', [
+    ('win32', errno.EACCES, None, True),
+    ('win32', errno.EACCES, 5, True),
+    ('win32', errno.EACCES, 32, True),
+    ('win32', errno.EACCES, 33, True),
+    ('linux', errno.EACCES, None, False),
+    ('win32', errno.EPERM, None, False),
+    ('win32', errno.EACCES, 87, False),
+], ids=('windows-crt-eacces', 'windows-access', 'windows-sharing', 'windows-lock',
+        'non-windows-access', 'windows-other-errno', 'windows-other-winerror'))
+def test_owned_barrier_access_retry_keeps_exact_pid_and_rejects_other_errors(
+        tmp_path, monkeypatch, request, platform, error_number, winerror, recovers):
+    from types import SimpleNamespace
+    process, marker = _barrier_fixture_child(tmp_path)
+    try:
+        pid = _wait_for_barrier(process, marker)
+        exited = _child_exit_check(request, process, pid)
+        original = marker.read_bytes()
+        error = PermissionError(error_number, 'Purpose-written access-denial observation.', str(marker))
+        if winerror is not None:
+            error.winerror = winerror
+        assert getattr(error, 'winerror', None) == winerror
+        observations = []
+
+        class ObservedMarker:
+            def read_bytes(self):
+                raw = marker.read_bytes()
+                observations.append(raw)
+                if len(observations) == 1:
+                    raise error
+                return raw
+
+        # Replace this test module's platform view only. The real child,
+        # pathlib and production stop operation retain their actual OS.
+        monkeypatch.setitem(_wait_for_barrier.__globals__, 'sys',
+                            SimpleNamespace(platform=platform))
+        if recovers:
+            assert _wait_for_barrier(process, ObservedMarker()) == pid
+            assert observations == [original, original]
+            assert process.poll() is None and not exited()
+        else:
+            with pytest.raises(PermissionError) as caught:
+                _wait_for_barrier(process, ObservedMarker())
+            assert caught.value is error and observations == [original]
+            assert process.poll() is not None and exited()
+        assert marker.read_bytes() == original == (str(pid) + '\n').encode('ascii')
+    finally:
+        worker._stop(process)
+    assert process.poll() is not None
+    assert process.wait(timeout=1) == process.returncode
+
+
+@pytest.mark.parametrize('termination', ('startup-deadline', 'child-exit'))
+def test_owned_barrier_permanent_windows_crt_denial_never_acknowledges_or_leaks_child(
+        tmp_path, monkeypatch, request, termination):
+    from types import SimpleNamespace
+    process, marker = _barrier_fixture_child(tmp_path)
+    try:
+        pid = _wait_for_barrier(process, marker)
+        exited = _child_exit_check(request, process, pid)
+        original = marker.read_bytes()
+        error = PermissionError(errno.EACCES, 'Permanent fixture refusal.', str(marker))
+        assert getattr(error, 'winerror', None) is None
+        observations = []
+
+        class DeniedMarker:
+            def read_bytes(self):
+                observations.append(marker.read_bytes())
+                raise error
+
+        if termination == 'child-exit':
+            worker._stop(process)
+            assert process.poll() is not None and exited()
+        monkeypatch.setitem(_wait_for_barrier.__globals__, 'sys',
+                            SimpleNamespace(platform='win32'))
+        expected = ('did not reach its barrier within 0.1s'
+                    if termination == 'startup-deadline' else 'exited before its barrier')
+        with pytest.raises(AssertionError, match=expected):
+            _wait_for_barrier(process, DeniedMarker(), timeout=0.1)
+        assert observations and all(raw == original for raw in observations)
+        assert process.poll() is not None and exited()
+        assert marker.read_bytes() == original
+    finally:
+        worker._stop(process)
+    assert process.wait(timeout=1) == process.returncode

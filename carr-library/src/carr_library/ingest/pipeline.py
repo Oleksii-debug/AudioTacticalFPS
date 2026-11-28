@@ -15,7 +15,7 @@ import sqlite3
 import tempfile
 
 from carr_library.catalog.intake import snapshot, IntakeError
-from carr_library.extract.page_ocr import Config, extract_page
+from carr_library.extract.page_ocr import Config, config_dict, extract_page
 from carr_library.storage.revisions import Page
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 
@@ -93,7 +93,7 @@ class Ingest:
             if reader.is_encrypted:
                 raise IngestError('encrypted PDF')
             count = len(reader.pages)
-            settings = dict(adapter='page_ocr-v1', kind='physical_page', config=asdict(config),
+            settings = dict(adapter='page_ocr-v1', kind='physical_page', config=config_dict(config),
                             pypdf=importlib.metadata.version('pypdf'),
                             pdfium=importlib.metadata.version('pypdfium2'))
             segments = None

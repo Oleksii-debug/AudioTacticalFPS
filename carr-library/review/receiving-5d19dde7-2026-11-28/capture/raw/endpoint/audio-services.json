@@ -1,0 +1,19 @@
+{
+  "driver_installed": false,
+  "startup_policy_changed": false,
+  "errors": [],
+  "services": [
+    {
+      "name": "AudioEndpointBuilder",
+      "before": "Stopped",
+      "after": "Running",
+      "start_type": "Manual"
+    },
+    {
+      "name": "Audiosrv",
+      "before": "Stopped",
+      "after": "Running",
+      "start_type": "Manual"
+    }
+  ]
+}

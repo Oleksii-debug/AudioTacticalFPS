@@ -12,10 +12,10 @@ import threading
 
 from ..reader.reading_desk import ReadingDesk
 from ..reader.reading_state import MAX_BYTES, ReadingState
-from ..research.export_file import write_export, export_completion
-from .export_destination import confirm_export_destination
+from ..research.export_file import write_export
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
+from .export_destination import completion_message, start_export
 
 
 def _chosen(index, values):
@@ -178,6 +178,9 @@ class ReadingDialog:
         self.controller = ReaderController(desk, state, guard, self.cancelled.is_set, defer_display=True)
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-desk')
         self.closed = self.busy = False
+        self.destroyed = False
+        self._owner_id = self.dialog.GetId()
+        self._audio_dialog = None
         self.buttons = []
         self.command_buttons = {}
         self.accelerators = []
@@ -204,20 +207,26 @@ class ReadingDialog:
                      command_id='reader.back')
         self._button(history, 'Forward in reading session', lambda _: self.history(1),
                      command_id='reader.forward')
-        self._button(history, 'Where am I?', self.where,
-                     command_id='reader.where')
+        self._button(history, 'Where am I?', self.where, command_id='reader.where')
         layout.Add(history, 0, wx.EXPAND | wx.ALL, 4)
-        bookmarks = wx.BoxSizer(wx.HORIZONTAL)
+        bookmarks = wx.WrapSizer(wx.HORIZONTAL)
         self._button(bookmarks, 'Add named page bookmark...', self.add_bookmark,
                      command_id='reader.bookmark_add')
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
                      command_id='reader.bookmarks')
         self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
-        self._button(bookmarks, 'Find a reader command...', lambda event: self.keyboard.commands(event),
+        self._button(bookmarks, 'Find a reader command...', lambda _: self.keyboard.commands(),
                      command_id='reader.commands')
-        self._button(bookmarks, 'Reader keyboard shortcuts...', lambda event: self.keyboard.settings(event),
+        self._button(bookmarks, 'Reader keyboard shortcuts...', lambda _: self.keyboard.settings(),
                      command_id='reader.settings')
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
+        audio = wx.WrapSizer(wx.HORIZONTAL)
+        # Ctrl+Alt+N remains reserved for the screen reader. Narration stays
+        # available as an explicit button and configurable Reader command.
+        self._button(audio, 'Prepare narration of this source location...', self.prepare_narration,
+                     command_id='reader.narration')
+        self._button(audio, 'EPUB synchronized recorded audio...', self.open_audio)
+        layout.Add(audio, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Reading operation status')
         self.status.SetMinSize((-1, 65))
@@ -233,9 +242,10 @@ class ReadingDialog:
         layout.Add(footer, 0, wx.ALIGN_RIGHT)
         self.dialog.SetSizer(layout)
         self.dialog.SetEscapeId(wx.ID_CANCEL)
-        from .reading_shortcuts import ReaderKeyboardAdapter
-        self.keyboard = ReaderKeyboardAdapter(self, getattr(parent, 'keyboard_commands', None))
+        from .keyboard_settings import ReaderKeyboardAdapter
+        self.keyboard = ReaderKeyboardAdapter(self)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
+        self.dialog.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
 
     def _button(self, sizer, label, handler, modifier=None, key=None, *, command_id=None):
         wx = self.wx
@@ -245,8 +255,10 @@ class ReadingDialog:
         sizer.Add(button, 0, wx.ALL, 3)
         self.buttons.append(button)
         if command_id is not None:
+            if command_id in self.command_buttons:
+                raise ValueError('Duplicate Reader command identity.')
             self.command_buttons[command_id] = (button, handler)
-        elif modifier is not None:
+        if modifier is not None:
             identifier = wx.NewIdRef()
             self._accelerator_ids.append(identifier)
             self.dialog.Bind(wx.EVT_MENU, handler, id=int(identifier))
@@ -308,10 +320,8 @@ class ReadingDialog:
         # Only this UI-thread acceptance can change resume/history. A worker
         # completed after cancellation or close never reaches this point.
         self.controller.accept(navigation)
-        help_shortcut = self.keyboard.shortcut('reader.help') if hasattr(self, 'keyboard') else 'F1'
         self.status.ChangeValue(self.controller.save_warning or
-            ('Source location loaded. Page-level resume saved. '
-             + (f'Use {help_shortcut} for reader shortcuts.' if help_shortcut else 'Choose Reader keyboard guide for shortcuts.')))
+            'Source location loaded. Page-level resume saved. Use F1 for reader shortcuts.')
         self.text.SetFocus()
 
     def navigate(self, direction):
@@ -348,6 +358,21 @@ class ReadingDialog:
             self.location.SetFocus()
         self._run('Checking current source location', self.controller.where, show)
 
+    def prepare_narration(self,event=None):
+        from .audio_studio import prepare_reading_studio,StudioDialog
+        def prepare():
+            page=self.controller.where()
+            studio=prepare_reading_studio(self.controller.desk.library.root,page)
+            return page,studio
+        def opened(value):
+            page,studio=value
+            self.controller.check()
+            StudioDialog(self.dialog,studio,script=page.raw_text,
+                title=page.title+' — '+page.locator.display()).show()
+            self.controller.check()
+            self.text.SetFocus()
+        self._run('Preparing a separate narration copy',prepare,opened)
+
     def add_bookmark(self, event=None):
         if self.busy:
             return
@@ -370,9 +395,7 @@ class ReadingDialog:
     def manage_bookmarks(self, event=None):
         def choose(rows):
             if not rows:
-                shortcut = self.keyboard.shortcut('reader.bookmark_add') if hasattr(self, 'keyboard') else 'Ctrl+B'
-                self._message('This book has no page bookmarks yet. '
-                              + (f'Use {shortcut} to add one.' if shortcut else 'Choose Add named page bookmark.'))
+                self._message('This book has no page bookmarks yet. Use Ctrl+B to add one.')
                 return
             labels = [f'{item.label}; {item.location.kind.replace("_", " ")} '
                       f'{item.location.index}; source revision {item.location.revision[:12]}' for item in rows]
@@ -407,30 +430,71 @@ class ReadingDialog:
                               lambda _: self._message('Bookmark deleted. Source text is unchanged.'))
         self._run('Loading page bookmarks', self.controller.bookmarks, choose)
 
-    def help(self, event=None):
-        if self.busy:
+    def open_audio(self, event=None):
+        if self.busy or self.closed or self.controller.current is None:
             return
-        shortcuts = (self.keyboard.guide() if hasattr(self, 'keyboard') else
-                     'Use the named reader buttons for navigation and bookmarks.')
+        try:
+            self.controller.check()
+            page = self.controller.current
+            def guard():
+                self.controller.check()
+                if self.closed or self.controller.current != page:
+                    raise ValueError('The source reading selection changed. Open recorded audio again.')
+            from .ebook_audio_dialog import EbookAudioDialog
+            reader = EbookAudioDialog(self.dialog, self.controller.desk, page.ordinal, guard,
+                progress=getattr(self.parent, 'operation_progress', None),
+                executor=self.executor, parent_cancelled=self.cancelled.is_set)
+            self._audio_dialog = reader
+            try:
+                reader.show()
+            finally:
+                self._audio_dialog = None
+                if not self.closed:
+                    self.text.SetFocus()
+        except Exception as exc:
+            self._error(exc)
+
+    def help(self, event=None):
+        if self.busy or self.closed:
+            return
         self.dialogs.show(self.dialog, 'Reader keyboard guide',
             'Tab and Shift+Tab move among named native controls.\n'
             'The full source text is read-only; use your usual screen-reader text navigation.\n'
-            + shortcuts + '\n'
+            + self.keyboard.guide() + '\n'
             'Escape: close this reader and return to the library.\n\n'
+            'Reader shortcuts can be changed from Reader keyboard shortcuts. '
+            'Their original keys can be restored there without changing main-window choices.\n\n'
             'Resume and bookmarks save the current source page or text segment, not the NVDA cursor. '
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
-            'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'EPUB synchronized recorded audio uses the selected section’s authored local media overlays. '
+            'Opening and selecting a segment do not start sound; use Play, Pause, Resume and Stop. '
+            'No speech replacement or inferred word timing is used.\n\n'
+            'Reading, Export reading positions and bookmarks also saves a separate JSON backup.')
         self.text.SetFocus()
+
+    def _destroyed(self, event):
+        if event.GetId() == self._owner_id:
+            self.destroyed = self.closed = True
+            self.cancelled.set()
+            if self._audio_dialog is not None:
+                self._audio_dialog.force_close()
+            # Owner IDs, not dying wrapper identity, revoke queued completions.
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        event.Skip()
 
     def close(self, event=None):
         if self.closed:
             return
+        if self._audio_dialog is not None:
+            self._audio_dialog.close()
+            if not self._audio_dialog.closed:
+                return
         self.closed = True
         self.cancelled.set()
-        if hasattr(self, 'keyboard'):
-            self.keyboard.close()
+        keyboard = getattr(self, 'keyboard', None)
+        if keyboard is not None:
+            keyboard.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -441,7 +505,8 @@ class ReadingDialog:
             self.dialog.ShowModal()
         finally:
             self.close()
-            self.dialog.Destroy()
+            if not self.destroyed:
+                self.dialog.Destroy()
 
 
 @dataclass(frozen=True)
@@ -574,23 +639,28 @@ class ReadingActions:
             path = self.dialogs.path(self.frame, save=True)
             if path is None:
                 return
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
-            if approval is None:
-                return
             self._guard(scope)
 
-            def save():
+            def save(approval, cancelled, check_live):
+                check_live()
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
-                return self._run(scope, lambda: write_export(path, content,
-                    private_root=scope.library.root, approval=approval,
-                    cancelled=self.frame.cancel_event.is_set))
-            self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
-                lambda receipt: self.frame.report(export_completion(
-                    'Reading positions and page bookmarks exported.', receipt)))
+                # Rendering can dispatch slow work; bind publication to the
+                # same live library and exact pre-confirmation destination.
+                check_live()
+                return write_export(path, content, private_root=scope.library.root,
+                                    cancelled=cancelled, approval=approval)
+
+            start_export(self.frame, path, private_root=scope.library.root,
+                check_scope=lambda: self._guard(scope), operation=save,
+                done=lambda receipt: self.frame.report(completion_message(
+                    'Reading positions and page bookmarks exported.', receipt)),
+                title='Exporting reading state',
+                failed=lambda exc: self.frame.report(f'Reading state was not exported: {exc}'),
+                declined=lambda: self.frame.report('Reading state export cancelled.'))
         except Exception as exc:
-            self.frame.report(f'Reading state export: {exc}')
+            self.frame.report(f'Reading state was not exported: {exc}')
 
     def import_state(self, event=None):
         try:

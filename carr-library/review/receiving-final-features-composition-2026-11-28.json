@@ -1,0 +1,711 @@
+{
+  "schema": "carr.receiving-candidate-composition/1",
+  "prepared_at_utc": "2026-11-28 02:30:25 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "canonical_branch": "carr-library",
+  "canonical_head_reviewed": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "parent": "2a369156909ea8c307b28148e1fe01ea9fc21501",
+  "base_tree": "b12ad3935421324d2c5ea867b85238b7a76bb58a",
+  "source_preimage": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "status": "SOURCE_REVIEWED_EXECUTION_PENDING",
+  "execution": "NOT_RUN",
+  "python_modules_expected": 380,
+  "components": [
+    {
+      "key": "c39_loop_tree_full",
+      "tree": "5144d3c2dd92f49f325fce57cd474fbd35f279dc",
+      "paths": [
+        "carr-library/docs/START_UK.txt",
+        "carr-library/docs/audio_engine.md",
+        "carr-library/review/studio-loop-preview-2026-11-28/exact-hunks.json",
+        "carr-library/review/studio-loop-preview-2026-11-28/source-review.json",
+        "carr-library/review/studio-loop-preview-2026-11-28/user-help-hunks.json",
+        "carr-library/scripts/windows_clip_editor_smoke.py",
+        "carr-library/src/carr_library/ui/studio_clips.py",
+        "carr-library/tests/studio/test_clip_dialog.py"
+      ]
+    },
+    {
+      "key": "c39_facade_tree_full",
+      "tree": "8df703c1479211bfc2082df0da5a61d25950189a",
+      "paths": [
+        "carr-library/review/operation-details-2026-11-28/exact-hunks.json",
+        "carr-library/review/operation-details-2026-11-28/source-review.json",
+        "carr-library/src/carr_library/operations/facade.py",
+        "carr-library/src/carr_library/ui/operations_dialog.py",
+        "carr-library/tests/e2e/test_operations_cli.py",
+        "carr-library/tests/operations/test_facade.py",
+        "carr-library/tests/operations/test_production_admission.py",
+        "carr-library/tests/storage/test_production_operation_backup.py",
+        "carr-library/tests/ui/test_operations_policy.py"
+      ]
+    },
+    {
+      "key": "c39_facade_docs_tree_full",
+      "tree": "e0b5cbadccf929b6d672467cb7b5814a307a94f1",
+      "paths": [
+        "carr-library/docs/runtime_resources.md",
+        "carr-library/review/operation-details-2026-11-28/user-docs-review.json"
+      ]
+    },
+    {
+      "key": "c40_voice_final_tree",
+      "tree": "3fee83fe093b748bf9367192c4b5703dc7a8e996",
+      "paths": [
+        "carr-library/docs/runtime_resources.md",
+        "carr-library/review/reader-synthesis-admission-2026-11-28/review.json",
+        "carr-library/scripts/windows_reader_navigation_smoke.py",
+        "carr-library/src/carr_library/audio/model_voices.py",
+        "carr-library/src/carr_library/audio/voices.py",
+        "carr-library/src/carr_library/speech/runtime.py",
+        "carr-library/src/carr_library/speech/studio_voice_adapter.py",
+        "carr-library/src/carr_library/speech/synthesis_admission.py",
+        "carr-library/src/carr_library/ui/speech_dialog.py",
+        "carr-library/tests/audio/test_model_voices.py",
+        "carr-library/tests/speech/test_registered_studio_voices.py",
+        "carr-library/tests/speech/test_synthesis_admission.py",
+        "carr-library/tests/ui/test_progress_job_review.py",
+        "carr-library/tests/ui/test_progress_voice_actions.py",
+        "carr-library/tests/ui/test_reader_synthesis.py"
+      ]
+    },
+    {
+      "key": "c39_deadline_tree_full",
+      "tree": "71cbe92e0e78ec09aa2739760cf6902edf54344d",
+      "paths": [
+        "carr-library/tests/audio/test_process_deadline.py"
+      ]
+    },
+    {
+      "key": "c39_deadline_review_tree",
+      "tree": "013e0a1506e13fe4e78c0da0b3f8c4c3ef5e40d7",
+      "paths": [
+        "carr-library/review/windows-full-source-17c58101-2026-11-28/early-eof-fixture-review.json"
+      ]
+    },
+    {
+      "key": "c40_marker_final_tree",
+      "tree": "a74d72491d1a6ffdae6ec3f58dbc1a0af7a6efb6",
+      "paths": [
+        "carr-library/review/import-marker-access-2026-11-28/exact-hunks.json",
+        "carr-library/review/import-marker-access-2026-11-28/source-review.json",
+        "carr-library/tests/e2e/test_import_worker_publication.py"
+      ]
+    },
+    {
+      "key": "c39_v3_17_evidence_tree_full",
+      "tree": "bb3edd7e2da191bc09ba2824d52d408f58dbdf2e",
+      "paths": [
+        "carr-library/review/windows-v3-terminal-17c58101-2026-11-28/job-steps.json",
+        "carr-library/review/windows-v3-terminal-17c58101-2026-11-28/publication-marker-failure.txt",
+        "carr-library/review/windows-v3-terminal-17c58101-2026-11-28/terminal-result.json"
+      ]
+    },
+    {
+      "key": "c39_reuse_latest_tree_full",
+      "tree": "5bc6e3e8fd801671eb5935a8623f4f45a736330b",
+      "paths": [
+        "carr-library/review/pr99-sbom-delta-2026-11-28/audit.json",
+        "carr-library/review/pr99-sbom-delta-2026-11-28/delta.json"
+      ]
+    },
+    {
+      "key": "c40_workflow_tree_full",
+      "tree": "b2a7dc593be5c360242a5e386c7681f7d3bfa39e",
+      "paths": [
+        ".github/workflows/carr-component-followup-evaluation.yml",
+        ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+        ".github/workflows/carr-v3.yml",
+        ".github/workflows/carr-windows.yml"
+      ]
+    }
+  ],
+  "features": [
+    "Studio clip preview repeats through the existing player, with request-generation revocation and retained native cleanup ownership.",
+    "Operation details expose bounded redacted declared identity/resource/output information without creating new execution or artifact-verification authority.",
+    "Reader Read and Save WAV classify the actual provider/registered route and use existing resource admission, owner-thread freshness and causal cleanup retention.",
+    "Known cancellation paths include canonical identity work, actual helper ownership, PCM validation and final WAV hashing.",
+    "Windows early-EOF fixture uses the active CPython base executable only for its three direct-stdio contracts; all previous deadlines/assertions remain.",
+    "Windows publication fixture admits the additional errno-only EACCES observation into its existing bounded retry, with unchanged original test bodies."
+  ],
+  "composition_overlap": {
+    "path": "carr-library/docs/runtime_resources.md",
+    "operation_details_blob": "f8ed0a83882fe54d61f07485eaa4fc3ce4cd83f0",
+    "final_reader_addition_blob": "24081fcf765fc06ea3a01af1d1a57423dadf1ad6",
+    "resolution": "Reader additive section on the exact accepted operation-details preimage; both sections retained."
+  },
+  "workflow_review": {
+    ".github/workflows/carr-windows.yml": {
+      "old_selector_occurrences": 783,
+      "new_selector_occurrences": 785,
+      "lost": [],
+      "old_timeouts": [
+        "timeout-minutes: 252",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 2",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 6",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 2",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 5",
+        "timeout-minutes: 12",
+        "timeout-minutes: 8",
+        "timeout-minutes: 5",
+        "timeout-minutes: 16",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 20",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 25",
+        "timeout-minutes: 5",
+        "timeout-minutes: 7",
+        "timeout-minutes: 38",
+        "timeout-minutes: 3",
+        "timeout-minutes: 8",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 97",
+        "timeout-minutes: 20",
+        "timeout-minutes: 5",
+        "timeout-minutes: 75"
+      ],
+      "new_timeouts": [
+        "timeout-minutes: 252",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 2",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 6",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 2",
+        "timeout-minutes: 5",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 5",
+        "timeout-minutes: 12",
+        "timeout-minutes: 8",
+        "timeout-minutes: 5",
+        "timeout-minutes: 16",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 8",
+        "timeout-minutes: 20",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 25",
+        "timeout-minutes: 5",
+        "timeout-minutes: 7",
+        "timeout-minutes: 38",
+        "timeout-minutes: 3",
+        "timeout-minutes: 8",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 97",
+        "timeout-minutes: 20",
+        "timeout-minutes: 5",
+        "timeout-minutes: 75"
+      ],
+      "old_ci_jobs": [
+        "--jobs 2",
+        "--jobs 2"
+      ],
+      "new_ci_jobs": [
+        "--jobs 2",
+        "--jobs 2"
+      ]
+    },
+    ".github/workflows/carr-v3.yml": {
+      "old_selector_occurrences": 30,
+      "new_selector_occurrences": 30,
+      "lost": [],
+      "old_timeouts": [
+        "timeout-minutes: 110",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 7"
+      ],
+      "new_timeouts": [
+        "timeout-minutes: 110",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 10",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 7"
+      ],
+      "old_ci_jobs": null,
+      "new_ci_jobs": null
+    },
+    ".github/workflows/carr-reader-voice-controls-evaluation.yml": {
+      "old_selector_occurrences": 33,
+      "new_selector_occurrences": 48,
+      "lost": [],
+      "old_timeouts": [
+        "timeout-minutes: 25",
+        "timeout-minutes: 8",
+        "timeout-minutes: 12",
+        "timeout-minutes: 12",
+        "timeout-minutes: 3"
+      ],
+      "new_timeouts": [
+        "timeout-minutes: 25",
+        "timeout-minutes: 8",
+        "timeout-minutes: 5",
+        "timeout-minutes: 5",
+        "timeout-minutes: 12",
+        "timeout-minutes: 12",
+        "timeout-minutes: 3"
+      ],
+      "old_ci_jobs": [
+        "--jobs 2"
+      ],
+      "new_ci_jobs": [
+        "--jobs 2"
+      ]
+    },
+    ".github/workflows/carr-component-followup-evaluation.yml": {
+      "old_selector_occurrences": 126,
+      "new_selector_occurrences": 150,
+      "lost": [],
+      "old_timeouts": [
+        "timeout-minutes: 75",
+        "timeout-minutes: 5",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5"
+      ],
+      "new_timeouts": [
+        "timeout-minutes: 75",
+        "timeout-minutes: 5",
+        "timeout-minutes: 10",
+        "timeout-minutes: 3",
+        "timeout-minutes: 5",
+        "timeout-minutes: 5",
+        "timeout-minutes: 5"
+      ],
+      "old_ci_jobs": [
+        "--jobs 2"
+      ],
+      "new_ci_jobs": [
+        "--jobs 2"
+      ]
+    }
+  },
+  "workflow_notes": [
+    "All existing selected test path occurrences, strict skip/failure checks, jobs settings and previous deadlines remain.",
+    "Focused reader workflow supplies actual FFmpeg/Flite prerequisites and selects all six affected reader test modules.",
+    "Focused component source/installed suites also select the publication fixture, all changed operation modules, clip dialog and native process membership cases.",
+    "Windows installed component additionally runs the whole process-deadline module through an actual venv and the native clip-editor widget/FFmpeg probe.",
+    "Actual audible clip repeat is required only on the previously authorized exact endpoint-evaluation push/repository/ref and explicit unique secondary endpoint identity; no permission or default-device changes."
+  ],
+  "prior_evidence": {
+    "evidence_branch_head": "2a369156909ea8c307b28148e1fe01ea9fc21501",
+    "preservation": "All prior immutable records inherited unchanged; each remains bound to its recorded original commit, run, job, bytes and scope.",
+    "old17_full_main": "Terminal failure: 11290 passed, 8 failed, 0 skipped. Original failures preserved.",
+    "old17_v3": "Terminal failure: installed1778 passed/5 failed; integrity632 passed/0 failed; source6536 passed/6 failed, 0 skipped. Original failures preserved.",
+    "prior8b": "Focused installation, native launcher, reader voice, components, bridge and bibliography gates completed. Full PR source jobs remain separate and do not qualify this successor.",
+    "qualification_transfer": false
+  },
+  "limitations": [
+    "No final DONE, release, installer eligibility, NVDA usability, real model inference/language quality or default-environment audio acceptance is inferred.",
+    "No models, binaries, private recordings, credentials or secrets are introduced.",
+    "The known zero-output PR VM and the separate endpoint capture access denial remain distinct retained environment observations.",
+    "Source review is not Python execution; the unavailable local executor is not represented as a passing test."
+  ],
+  "files": [
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "preimage": "51d291347f4c67a653270ac13f4c221303dc22e1",
+      "blob": "e6ec98bf64ed807d09067310aabbda6a2d37b86f",
+      "sha256": "c1f6eb8edbe353e06f62641fb7651d23ee54b1851c791912bc662143b3ecc1c1",
+      "bytes": 33631
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "preimage": "6dde40bc752022e27ac6df5c92e29711f8bd27ab",
+      "blob": "7a23ee00fb1aea871085e76ec0641761f7a94c9f",
+      "sha256": "a7496f32355d60ebd1fc0d92d5b17c32b24df706e7b249be90407866e1d958cb",
+      "bytes": 19985
+    },
+    {
+      "path": "carr-library/review/studio-loop-preview-2026-11-28/exact-hunks.json",
+      "preimage": null,
+      "blob": "f8ac6c3d9a0c47a3cfcf4fd494e66390d58f3b9c",
+      "sha256": "e6cdf393dd1b89462d608438541996189e1ab26b1a7a4813870f10035a11f3a6",
+      "bytes": 58661
+    },
+    {
+      "path": "carr-library/review/studio-loop-preview-2026-11-28/source-review.json",
+      "preimage": null,
+      "blob": "869397a0197ee5c5f1d8a23d9c80828ded47e183",
+      "sha256": "226d05a4e1eed96a808e379a409c25c6bfb9e629a4abe13c0b367a6ab13eb5bf",
+      "bytes": 7429
+    },
+    {
+      "path": "carr-library/review/studio-loop-preview-2026-11-28/user-help-hunks.json",
+      "preimage": null,
+      "blob": "5371581c961e541e2a893bcdc2e4b85e7e6cba21",
+      "sha256": "420f73d6c653f51ec0c8c61d772c20bdae185a6461036a5f8432c3ea95e0db92",
+      "bytes": 6069
+    },
+    {
+      "path": "carr-library/scripts/windows_clip_editor_smoke.py",
+      "preimage": "a388fd197b51603860b68b752f3919a143508142",
+      "blob": "6218e786234a589181ade5eda2d258216ab02d9d",
+      "sha256": "7e8e12ab98a7b83b520a6dfd3569420a5e854cd33c610da66ecb868319e9ab1a",
+      "bytes": 27140
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "preimage": "75ee89f41ec6942b1b80f1b73d37b1b8775f878b",
+      "blob": "220deb97a7914b8d54de7912ebd3206d479bb794",
+      "sha256": "8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e",
+      "bytes": 44042
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_dialog.py",
+      "preimage": "b27382f806173cbcb7b30e5715e9f11d4a517f56",
+      "blob": "7bc9ed69c4c6777eb3254dd9d0b75994075c3465",
+      "sha256": "411d63afc35f85008e069c2cbb3495190a7b908e7227863f74e526cad3904cb7",
+      "bytes": 50507
+    },
+    {
+      "path": "carr-library/review/operation-details-2026-11-28/exact-hunks.json",
+      "preimage": null,
+      "blob": "4dd6a485476c583a664d5b826b3298bceafd5194",
+      "sha256": "8847da6334200734669df7d2fa88da25a5f97186b86ac8691b9efa127f77a784",
+      "bytes": 52435
+    },
+    {
+      "path": "carr-library/review/operation-details-2026-11-28/source-review.json",
+      "preimage": null,
+      "blob": "dc1b3ab3a0aea220ac552edfb7d9d7da572ad623",
+      "sha256": "8093d0d9e26d01098a535c3e52b4288a59074d4a470f9d6b14e5cdc7736ae3c9",
+      "bytes": 6643
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/facade.py",
+      "preimage": "966e71d7f54d5385dcfb4bf74c349b588e389e09",
+      "blob": "11161cbbd79ebbf8b65e5488c98132c33d430ea2",
+      "sha256": "8106b530a13262e87cb6f733f322ae2bcb4f74a441dcb0c3061fcb3c43902285",
+      "bytes": 18156
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "preimage": "901c32be5e5b03a556a89a7717e34dc40db6f479",
+      "blob": "f06f338f72ffd8168f2b7567298849cc7acee6c4",
+      "sha256": "99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b",
+      "bytes": 13531
+    },
+    {
+      "path": "carr-library/tests/e2e/test_operations_cli.py",
+      "preimage": "f5477d021d9b644506002e1219e27b2dc6f82a00",
+      "blob": "cf6656cb0cf92066a7f302d6e36b8e91dcf952b6",
+      "sha256": "fdd1507437b37ab4f287e376824c17b22260b9a6456dc7a9d1507b5a1f724659",
+      "bytes": 4875
+    },
+    {
+      "path": "carr-library/tests/operations/test_facade.py",
+      "preimage": "c41babf1fc93cfe5d60c7fcb7a56efd8009aee35",
+      "blob": "49e24ed03ddb80f961067d9c223f2e3d7cc3e584",
+      "sha256": "2fd9258b1392d98db7ca14a46260573c2cc8444e3cfedf4bd689ec7b28a6d2c7",
+      "bytes": 19718
+    },
+    {
+      "path": "carr-library/tests/operations/test_production_admission.py",
+      "preimage": "5ffe6c26e63d9f14c476bdb92ba29a6698cccd6f",
+      "blob": "5b6df7601fb03dff3b5112bdca2ce20c5a71c37d",
+      "sha256": "fe4255519ef0e6002ada1bb92079c8f9783e37488245fb47b5d0c938cc2e49e4",
+      "bytes": 15422
+    },
+    {
+      "path": "carr-library/tests/storage/test_production_operation_backup.py",
+      "preimage": "b96b74e914a916e1da60cd56424c5cea64125d59",
+      "blob": "f04bf802efbdcda87eb5d7c524fcd5e42da9efd1",
+      "sha256": "c8da9c7d7507fa6078004c247992985826d600e938792f2bd363af82557e9170",
+      "bytes": 8689
+    },
+    {
+      "path": "carr-library/tests/ui/test_operations_policy.py",
+      "preimage": "f033b76f132c457f6ff1533fbff96a1a84e699c5",
+      "blob": "d3eb95df78f54b5ceffd5bc034ec730b9e444333",
+      "sha256": "b51e221b6da2c78ba814d4532d2e26c8ec20d66ef134fda85661ad5373373d9d",
+      "bytes": 6046
+    },
+    {
+      "path": "carr-library/docs/runtime_resources.md",
+      "preimage": "1535d48a97fa7fd4148b1eeeb5d5746b36221236",
+      "blob": "24081fcf765fc06ea3a01af1d1a57423dadf1ad6",
+      "sha256": "4a2b13abf99c0555c3a777301d09eea9a130e5abd305885a15756709edbd501d",
+      "bytes": 15619
+    },
+    {
+      "path": "carr-library/review/operation-details-2026-11-28/user-docs-review.json",
+      "preimage": null,
+      "blob": "3bf3b5f4cf7a106b8e2467b32a5f5f3277086d66",
+      "sha256": "f308ef0a9f1ef1d5a12ef1e0b277a4cf7f088c7fee2eb04b4e84ad18e1424490",
+      "bytes": 3845
+    },
+    {
+      "path": "carr-library/review/reader-synthesis-admission-2026-11-28/review.json",
+      "preimage": null,
+      "blob": "5140c02c20c35e4b1813deb868d917b38a28348d",
+      "sha256": "685ecdbf18cbdded7b1aad9e3d60e55bcd0ff997a9ad2f055a2c5507128185d1",
+      "bytes": 13572
+    },
+    {
+      "path": "carr-library/scripts/windows_reader_navigation_smoke.py",
+      "preimage": "93459a0632f63b3f7a17aa3d0585e9120df55b8b",
+      "blob": "9596d851f03f4550eeee4573ab031ffff06691ae",
+      "sha256": "78bd53f676b2bf63443498745bffad62a0436dc83d81dc993381c12b918b3add",
+      "bytes": 23800
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/model_voices.py",
+      "preimage": "beefdc5bbb6163a416c923a22d85fb513d200c9b",
+      "blob": "9cfeb8ec4b95ac65ed22437617e1d27596316e6b",
+      "sha256": "b3feecba08d652469b6ebc3c02c23387e5e0655f0a19e1d04af188c48edfbb0b",
+      "bytes": 31180
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voices.py",
+      "preimage": "fe1f8dabf679ffaec822eb0c609fb5d870a1d135",
+      "blob": "d8d145d25022e605a7b1f5d6362d49df267fec05",
+      "sha256": "68f0b5f68394f50c92db610e898469aa73f59c8231affb44c788989d15c59ce3",
+      "bytes": 33587
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "preimage": "3cf7730fe552c6318bdeeaf2a08eb344ca058014",
+      "blob": "32e04064f9a527ba75b43d242cbc9c4fe9dcb245",
+      "sha256": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd",
+      "bytes": 34240
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/studio_voice_adapter.py",
+      "preimage": "58d14946c5510cf87d59ea88223635e65a8456fd",
+      "blob": "4d416af450d91390b9cce59e7eac7a0e68905456",
+      "sha256": "8fafd0749a5661cb284c92b9d8c9cb30a9fa5219971abac9a24ab579431904c6",
+      "bytes": 6865
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/synthesis_admission.py",
+      "preimage": null,
+      "blob": "f07e080f072ea13d3a9bd46c2dc46d30accd7726",
+      "sha256": "a66bc1659bf3d1d8e2cf71693f166bfb87fddf57cc75be342e3b4fc727778af5",
+      "bytes": 12794
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "preimage": "8760f3b119047124e4ead3596b5d0f6530e76992",
+      "blob": "3257f7a4e8d077081fe6276f5ce5fcd30f89168a",
+      "sha256": "670f4ae40abaf14b95c8a5ce24bb640163436466cc0718b82d82195774293257",
+      "bytes": 71735
+    },
+    {
+      "path": "carr-library/tests/audio/test_model_voices.py",
+      "preimage": "f79c41f48f97a0dbb2c03c944b0607cb3713a793",
+      "blob": "076571868dfd52684dba1af9018f3dcff905e547",
+      "sha256": "ecc222391e2ff885d451020251283c4be5537fce3ba211bf1f949f3616aa2973",
+      "bytes": 18848
+    },
+    {
+      "path": "carr-library/tests/speech/test_registered_studio_voices.py",
+      "preimage": "b256ca6cf3e356cc71eeb15ee33e39d22ba215bc",
+      "blob": "dbf9a33e636dee63ac1102e99a6c417c13be1fcd",
+      "sha256": "1ebe6492854b6a78cc9884fc7f96a698a746eeaf8a31794e6f2e23bf367bd510",
+      "bytes": 10954
+    },
+    {
+      "path": "carr-library/tests/speech/test_synthesis_admission.py",
+      "preimage": null,
+      "blob": "e1ca8bc9415264441ce4060b417c13f7cd21d088",
+      "sha256": "ed431ef260cd414f20b5664f0f1b0fb3dc859be630ea049bb62913e8665190c2",
+      "bytes": 29962
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "preimage": "e35bb08ea2528b60915a38c9f2aa1a974ecb97d2",
+      "blob": "78ba78972c23f805cddd7db0a38e09a2ef80d62e",
+      "sha256": "44718f9ca52a748777c19f99d4c6959f26fe3f96ab75039fb3c3dd9997aeba16",
+      "bytes": 23150
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "preimage": "428aef05b05e30632b8f2a2d88adbf1eec40fe91",
+      "blob": "2e755b77bab0c21bff759bc6e248ece79bac878a",
+      "sha256": "da654037501a3ec04ec2f28426f749187249fa85715b84a05889c0e7e11f1780",
+      "bytes": 32556
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_synthesis.py",
+      "preimage": "9d40c808f0b51d32e12c11bd24ca2a62f9f47f3c",
+      "blob": "abcc257c033517e4908fabae7a625be5920b4362",
+      "sha256": "bc6811cf98b2361f7b1aade1674800dada15d1a75c381d8c998507fa4d8138cb",
+      "bytes": 32753
+    },
+    {
+      "path": "carr-library/tests/audio/test_process_deadline.py",
+      "preimage": "79948bafb1a91a6c4ffc3cc70260fec6a1b3b33d",
+      "blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+      "sha256": "8a88bb69073d984ca26af193bdd6b6b1f506d0787559a88d09ce7b1852f7c4fc",
+      "bytes": 27910
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/early-eof-fixture-review.json",
+      "preimage": null,
+      "blob": "92f3d3bffee80c1cf6531b69dfad86e31299c9db",
+      "sha256": "8692edc25b6f6ad30960bb913593798a62230f29b9fac36c9cadc1238e692680",
+      "bytes": 3345
+    },
+    {
+      "path": "carr-library/review/import-marker-access-2026-11-28/exact-hunks.json",
+      "preimage": null,
+      "blob": "c3fef8d7ce0a4c1f46b4460474dc7e86250580f2",
+      "sha256": "c51300600fec2f1e7969a5a216531ab2f679fc3462b2195b66319b2bafdd9efa",
+      "bytes": 6391
+    },
+    {
+      "path": "carr-library/review/import-marker-access-2026-11-28/source-review.json",
+      "preimage": null,
+      "blob": "e92452a424102452be2d38b02298cc055cb87dda",
+      "sha256": "2ce15eb346ac6ec358c8d5ac4a941d31ee15915dd5160620caf5b584059bf58f",
+      "bytes": 4067
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_worker_publication.py",
+      "preimage": "183472ece4d2681e1c8a073ac3aeab4f2f75c8cd",
+      "blob": "063a1510a5125b3cf8918b66abd8c1747fb236c8",
+      "sha256": "46280f0b9faf41408e2d7cb1bf3cbeb911cfc1db9676b23b9e11b69d4e2c183e",
+      "bytes": 38993
+    },
+    {
+      "path": "carr-library/review/windows-v3-terminal-17c58101-2026-11-28/job-steps.json",
+      "preimage": null,
+      "blob": "98b2b414a402f3b9a99a315b57a520d6f200b6ae",
+      "sha256": "cb1035b153fe8c6c879baaf51749aecd8dbad0649f60009c2e5fb00d38a0b7bc",
+      "bytes": 5769
+    },
+    {
+      "path": "carr-library/review/windows-v3-terminal-17c58101-2026-11-28/publication-marker-failure.txt",
+      "preimage": null,
+      "blob": "5e6e7db49eb8ecea5fd146b5005d1114e6adf121",
+      "sha256": "77b17e4f08e86e43c8e43e1fd651c1c5e72ea6729a300cc52b158e753b018bf6",
+      "bytes": 5239
+    },
+    {
+      "path": "carr-library/review/windows-v3-terminal-17c58101-2026-11-28/terminal-result.json",
+      "preimage": null,
+      "blob": "7e583e9e918981c499da810f20fd56d71c8cd616",
+      "sha256": "fbb304af3317ea898fbf2bf43469148d233f4a3b4a3c29c32abc901b05c1cfa3",
+      "bytes": 3974
+    },
+    {
+      "path": "carr-library/review/pr99-sbom-delta-2026-11-28/audit.json",
+      "preimage": null,
+      "blob": "bec6b84d1102c6b952bc8c733541d22896c4c02c",
+      "sha256": "0fadc3608c20673fbb261a341df86954d878ee55a88a41c31b2757c18c45d375",
+      "bytes": 11783
+    },
+    {
+      "path": "carr-library/review/pr99-sbom-delta-2026-11-28/delta.json",
+      "preimage": null,
+      "blob": "0b012c97775b88cbd892f9c9d6dcab001992615c",
+      "sha256": "b98f15be1188ed1718225e2b9b6458dc9d5f926f98f8a2451e2cf5646f5a20d9",
+      "bytes": 10331
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "preimage": "e2978d77cd62ef2502901e7799b471d1378ff7e3",
+      "blob": "ef72106c69c83e6c02aa2fe614b3624894a0e630",
+      "sha256": "b4808e8e8857979e30680d8026c7e71046ec5fc4750d04bea45210eabc7a16be",
+      "bytes": 20320
+    },
+    {
+      "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+      "preimage": "be4078b9a2e4a8fa03c60a7be9368cf2c4d28aa8",
+      "blob": "4234b179b4ed8bfd996e38e0ab2576552801fd81",
+      "sha256": "8f4b448aecb3c398989410749216f88fac63c54d6751b3e28bdc131e2a662227",
+      "bytes": 17176
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "2873eb24a0d7cddbe544fdcc41199192888be6c5",
+      "blob": "5dde76c3633c7bd98ca69123e8feea4cf2871a3d",
+      "sha256": "591a3435afe22b59d5ea1ee58afa377ca11f1fc05329879826a0b8016e63df85",
+      "bytes": 36107
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "5d3b8169b61e6bcfad35057827ef929037a3466e",
+      "blob": "4265fb9912cfea14a2deda24d216c62c72078396",
+      "sha256": "b25dbbd14287416edf0f222413011d9d4b74d23329311c204fcbcaef4c4227b7",
+      "bytes": 165608
+    }
+  ]
+}

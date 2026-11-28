@@ -1,0 +1,314 @@
+[
+  {
+    "line": 355,
+    "path": "tests/audio/test_playback.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 368,
+    "path": "tests/storage/test_evidence_drafts.py",
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 379,
+    "path": "tests/ui/test_save_all.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 390,
+    "path": "tests/ui/test_evidence_draft_recovery.py",
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 403,
+    "path": "tests/speech/test_progress_speech.py",
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 414,
+    "path": "tests/storage/test_recording_backup.py",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 426,
+    "path": "tests/storage/test_composite_backup.py",
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 438,
+    "path": "tests/storage/test_canonical_backup_compat.py",
+    "passed": 68,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 449,
+    "path": "tests/ui/test_save_all_access.py",
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 458,
+    "path": "tests/storage/test_v3_state_backup.py",
+    "passed": 43,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 471,
+    "path": "tests/ui/test_save_actions.py",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 481,
+    "path": "tests/ui/test_progress_job_review.py",
+    "passed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 494,
+    "path": "tests/ui/test_reader_keymap_context.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 499,
+    "path": "tests/ui/test_command_palette.py",
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 516,
+    "path": "tests/ui/test_keyboard_export.py",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 521,
+    "path": "tests/ui/test_keyboard_rename.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 540,
+    "path": "tests/ui/test_keyboard_settings.py",
+    "passed": 63,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 551,
+    "path": "tests/speech/test_reading.py",
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 562,
+    "path": "tests/ui/test_scope_labels.py",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 573,
+    "path": "tests/language_qualification/test_inventory_cleanup.py",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 585,
+    "path": "tests/speech/test_runtime_settings_restore.py",
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 596,
+    "path": "tests/ui/test_export_confirmation.py",
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 607,
+    "path": "tests/reader/test_export_approval_budget.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 618,
+    "path": "tests/e2e/test_export_destination.py",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 630,
+    "path": "tests/ui/test_academic_actions.py",
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 641,
+    "path": "tests/packaging/test_source_wheel.py",
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 653,
+    "path": "tests/ui/test_catalog_tools_dialog.py",
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 665,
+    "path": "tests/ui/test_academic_export_handler.py",
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 677,
+    "path": "tests/reader/test_file_export.py",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 689,
+    "path": "tests/reader/test_binary_file_export.py",
+    "passed": 35,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 701,
+    "path": "tests/reader/test_export_no_clobber.py",
+    "passed": 35,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 712,
+    "path": "tests/reader/test_export_publication_boundary.py",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 724,
+    "path": "tests/reader/test_finish_export_formats.py",
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 735,
+    "path": "tests/ui/probe_catalog_insights_actions.py",
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 747,
+    "path": "tests/assistant/test_transcription_workflow.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 758,
+    "path": "tests/assistant/test_workflows.py",
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 769,
+    "path": "tests/assistant/test_workflow_access.py",
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 780,
+    "path": "tests/ui/test_assistant_voice_preview.py",
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 785,
+    "path": "tests/transcription/test_supplied_worker_bridge.py",
+    "passed": 91,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  }
+]

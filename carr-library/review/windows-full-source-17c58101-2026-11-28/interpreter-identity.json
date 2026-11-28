@@ -1,0 +1,44 @@
+{
+  "schema": "carr-completed-log-evidence/1",
+  "run": 46088683366,
+  "job": 140804190798,
+  "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "python_version": "3.11.9",
+  "reported_sys_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "main_venv_executable": "D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+  "observed_base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+  "observation_scope": "Main diagnostic prints its sys.version/executable; current native short-venv receipt prints base_executable and actual native_image; source pytest headers agree. No extrapolation to another CI head or host.",
+  "cause": "Not established by these log values alone; root is separately reviewing the exact CPython v3.11.9 launcher source.",
+  "excerpts": [
+    {
+      "first_line": 177,
+      "last_line": 185,
+      "text": "2026-11-28T00:37:10.8567664Z   HF_HUB_DISABLE_TELEMETRY: 1\r\n2026-11-28T00:37:10.8567871Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1\r\n2026-11-28T00:37:10.8568055Z   TRANSFORMERS_OFFLINE: 1\r\n2026-11-28T00:37:10.8568228Z   DO_NOT_TRACK: 1\r\n2026-11-28T00:37:10.8568370Z ##[endgroup]\r\n2026-11-28T00:37:10.9674732Z ##[group]Installed versions\r\n2026-11-28T00:37:10.9791941Z Successfully set up CPython (3.11.9)\r\n2026-11-28T00:37:10.9792404Z ##[endgroup]\r\n2026-11-28T00:37:11.0005523Z ##[group]Run $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'\r"
+    },
+    {
+      "first_line": 331,
+      "last_line": 336,
+      "text": "2026-11-28T00:37:56.5097998Z Successfully built universal-research-library\r\n2026-11-28T00:37:56.5099669Z Installing collected packages: universal-research-library\r\n2026-11-28T00:37:57.8627323Z Successfully installed universal-research-library-0.2.0.dev2\r\n2026-11-28T00:37:58.4432308Z No broken requirements found.\r\n2026-11-28T00:37:59.2641925Z {\"python\": \"3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]\", \"windows\": \"Windows-10-10.0.20348-SP0\", \"sqlite\": \"3.45.1\", \"wx\": \"4.2.4 msw (phoenix) wxWidgets 3.2.8\"}\r\n2026-11-28T00:37:59.3075993Z ##[group]Run # This prepares the disposable runner only. Existing service startup,\r"
+    },
+    {
+      "first_line": 1866,
+      "last_line": 1889,
+      "text": "2026-11-28T00:40:45.8459344Z   \"human_listening\": \"NOT_RUN\",\r\n2026-11-28T00:40:45.8460863Z   \"short_venv_workers\": [\r\n2026-11-28T00:40:45.8462762Z     {\r\n2026-11-28T00:40:45.8464612Z       \"prefix\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-p24ew6py\\\\short-worker-venv\",\r\n2026-11-28T00:40:45.8465844Z       \"base_prefix\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\",\r\n2026-11-28T00:40:45.8467941Z       \"executable\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-p24ew6py\\\\short-worker-venv\\\\Scripts\\\\python.exe\",\r\n2026-11-28T00:40:45.8468953Z       \"base_executable\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\r\n2026-11-28T00:40:45.8470784Z       \"native_image\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\r\n2026-11-28T00:40:45.8472331Z       \"case\": \"short\",\r\n2026-11-28T00:40:45.8473857Z       \"lifetime_processes\": 3\r\n2026-11-28T00:40:45.8475338Z     },\r\n2026-11-28T00:40:45.8476803Z     {\r\n2026-11-28T00:40:45.8479036Z       \"prefix\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-p24ew6py\\\\short-worker-venv\",\r\n2026-11-28T00:40:45.8479999Z       \"base_prefix\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\",\r\n2026-11-28T00:40:45.8482220Z       \"executable\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-p24ew6py\\\\short-worker-venv\\\\Scripts\\\\python.exe\",\r\n2026-11-28T00:40:45.8483217Z       \"base_executable\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\r\n2026-11-28T00:40:45.8484912Z       \"native_image\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\r\n2026-11-28T00:40:45.8486222Z       \"case\": \"nested-short\",\r\n2026-11-28T00:40:45.8487760Z       \"lifetime_processes\": 5\r\n2026-11-28T00:40:45.8489198Z     }\r\n2026-11-28T00:40:45.8490686Z   ]\r\n2026-11-28T00:40:45.8492118Z }\r\n2026-11-28T00:40:45.9257344Z ##[group]Run $ffmpeg = Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe'\r\n2026-11-28T00:40:45.9257849Z \u001b[36;1m$ffmpeg = Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe'\u001b[0m\r"
+    },
+    {
+      "first_line": 2359,
+      "last_line": 2367,
+      "text": "2026-11-28T00:41:05.6312831Z   \"policy_changes\": false,\r\n2026-11-28T00:41:05.6314491Z   \"physical_microphone\": \"NOT_RUN\",\r\n2026-11-28T00:41:05.6326318Z   \"human_listening\": \"NOT_RUN\",\r\n2026-11-28T00:41:05.6326681Z   \"nvda\": \"NOT_RUN\",\r\n2026-11-28T00:41:05.6327584Z   \"source_commit\": \"17c581015fc1ca6f3294f4cce1fe894f33a843cd\",\r\n2026-11-28T00:41:05.6328368Z   \"python\": \"3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]\",\r\n2026-11-28T00:41:05.6329077Z   \"executable\": \"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Scripts\\\\python.exe\",\r\n2026-11-28T00:41:05.6329518Z   \"access_settings\": {\r\n2026-11-28T00:41:05.6329768Z     \"status\": \"DIAGNOSED\",\r"
+    },
+    {
+      "first_line": 8889,
+      "last_line": 8903,
+      "text": "2026-11-28T00:52:16.2983403Z   Python3_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\r\n2026-11-28T00:52:16.2983716Z   CARR_PYTHON: D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe\r\n2026-11-28T00:52:16.2984118Z   CARR_VSDEVCMD: C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\Tools\\VsDevCmd.bat\r\n2026-11-28T00:52:16.2984527Z   CARR_LAUNCHER_DIR: D:\\a\\_temp\\carr-integrated-launcher\r\n2026-11-28T00:52:16.2984794Z   CARR_AUDIO_RUNTIME: D:\\a\\_temp\\carr-audio-runtime\r\n2026-11-28T00:52:16.2985085Z   CARR_EPUBCHECK_ARCHIVE: D:\\a\\_temp\\carr-epubcheck-5.3.0.zip\r\n2026-11-28T00:52:16.2985517Z   CARR_EPUBCHECK_JAVA: C:\\hostedtoolcache\\windows\\Java_Temurin-Hotspot_jdk\\17.0.21-100000002\\x64\\bin\\java.exe\r\n2026-11-28T00:52:16.2985951Z   CARR_DAISY_SCHEMAS: D:\\a\\_temp\\carr-daisy-validation-schemas\r\n2026-11-28T00:52:16.2986234Z   CARR_CI_OCR_DIR: D:\\a\\_temp\\carr-bundle-ci\\ocr\r\n2026-11-28T00:52:16.2986484Z   CARR_CI_MODEL_DIR: D:\\a\\_temp\\carr-model-ci\\minilm\r\n2026-11-28T00:52:16.2986793Z   CARR_CI_MODEL_MANIFEST: D:\\a\\_temp\\carr-model-ci\\model-manifest.json\r\n2026-11-28T00:52:16.2987060Z ##[endgroup]\r\n2026-11-28T00:52:17.4097546Z ============================= test session starts =============================\r\n2026-11-28T00:52:17.4100502Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0\r\n2026-11-28T00:52:17.4102666Z rootdir: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\r"
+    },
+    {
+      "first_line": 11039,
+      "last_line": 11044,
+      "text": "2026-11-28T01:25:09.4472878Z ________ test_early_eof_waits_for_actual_exit_before_freezing_deadline ________\r\n2026-11-28T01:25:09.4473308Z \r\n2026-11-28T01:25:09.4477312Z observed = namespace(children=[<WindowsJobProcess: returncode: 1 args: ['D:\\\\a\\\\_temp\\\\carr-windows-python\\...>], offset=0.0, wait_before_return=False)\r\n2026-11-28T01:25:09.4482068Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019A1456CB90>\r\n2026-11-28T01:25:09.4494043Z tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-2p3jsji_/pytest/test_early_eof_waits_for_actua0')\r\n2026-11-28T01:25:09.4509457Z \r"
+    }
+  ]
+}

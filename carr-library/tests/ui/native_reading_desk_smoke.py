@@ -81,8 +81,10 @@ def run_native(source=None):
         reader.dialog.Show()
         reader.dialog.Raise()
 
-        def click(label):
-            control = next(button for button in reader.buttons if button.GetName() == label)
+        def click(command, label):
+            control, _handler = reader.command_buttons[command]
+            check('native command keeps its accessible name: ' + command,
+                  control.GetName() == label and control.GetLabel().startswith(label))
             event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
             event.SetEventObject(control)
             check('native button event: ' + label, control.GetEventHandler().ProcessEvent(event))
@@ -101,12 +103,12 @@ def run_native(source=None):
                   reader.text.GetName() == 'Full source page or text segment')
             check('native text receives focus after load',
                   pump(lambda: wx.Window.FindFocus() == reader.text, timeout=3))
-            click('Next source location')
+            click('reader.next', 'Next source location')
             check('next source location has exact second text', reader.text.GetValue() == raw.split('\f')[1])
             check('page-level resume stored second segment',
                   state.resume(workspace, book['edition']).index == 2)
             check('reading leaves unsaved host note unchanged', note.GetValue() == 'Unsaved note — preserve this.')
-            click('Where am I?')
+            click('reader.where', 'Where am I?')
             check('location identifies segment without inventing printed pagination',
                   'segment 2' in reader.location.GetValue().lower()
                   and 'unpaginated' in reader.location.GetValue().lower()
@@ -122,20 +124,20 @@ def run_native(source=None):
                 def choose(self, *args, **kwargs):
                     return next(self.choices)
             reader.dialogs = SyntheticAnswers()
-            click('Add named page bookmark...')
+            click('reader.bookmark_add', 'Add named page bookmark...')
             bookmarks = state.bookmarks(workspace, book['edition'])
             check('named bookmark persists exact second source location',
                   len(bookmarks) == 1 and bookmarks[0].label == 'Seminar marker'
                   and bookmarks[0].location.index == 2)
-            click('Start at first source location')
+            click('reader.first', 'Start at first source location')
             check('explicit first location opens first source', reader.controller.current.ordinal == 1)
-            click('Manage page bookmarks...')
+            click('reader.bookmarks', 'Manage page bookmarks...')
             check('bookmark action reopens the exact saved source',
                   reader.controller.current.ordinal == 2
                   and reader.text.GetValue() == raw.split('\f')[1])
-            click('Back in reading session')
+            click('reader.back', 'Back in reading session')
             check('session back restores first source location', reader.controller.current.ordinal == 1)
-            click('Forward in reading session')
+            click('reader.forward', 'Forward in reading session')
             check('session forward restores bookmarked source location', reader.controller.current.ordinal == 2)
             check('reading does not manufacture citation selections', library._selections == {})
             reader.close()

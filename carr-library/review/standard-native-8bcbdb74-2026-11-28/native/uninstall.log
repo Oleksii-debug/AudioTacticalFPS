@@ -1,0 +1,71 @@
+﻿2026-11-28 01:29:20.565   Log opened. (Time zone: UTC+00:00)
+2026-11-28 01:29:20.565   Setup version: Inno Setup version 6.7.4
+2026-11-28 01:29:20.565   Original Uninstall EXE: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\unins000.exe
+2026-11-28 01:29:20.565   Uninstall DAT: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\unins000.dat
+2026-11-28 01:29:20.565   Current Uninstall EXE: C:\Users\RUNNER~1\AppData\Local\Temp\is-VQFZLPSKOM-uninstall.tmp\_unins.tmp
+2026-11-28 01:29:20.565   Uninstall command line: /SECONDPHASE="D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\unins000.exe" /FIRSTPHASEWND=$901EA /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG=D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-standard-installation-results\native\uninstall.log
+2026-11-28 01:29:20.565   Windows version: 10.0.20348
+2026-11-28 01:29:20.565   Windows architecture: x64 (64-bit)
+2026-11-28 01:29:20.565   Machine types supported by system: x86 x64
+2026-11-28 01:29:20.565   User privileges: Administrative
+2026-11-28 01:29:20.581   Administrative install mode: No
+2026-11-28 01:29:20.581   Install mode root key: HKEY_CURRENT_USER
+2026-11-28 01:29:20.581   RedirectionGuard status for current process: Enabled in enforcing mode
+2026-11-28 01:29:20.581   Cleaning up any residual temporary files from previous Uninstall runs.
+2026-11-28 01:29:20.581   Cleanup finished (1 directories found, 1 directories checked, 0 files deleted).
+2026-11-28 01:29:20.581   Created protected temporary directory: C:\Users\RUNNER~1\AppData\Local\Temp\is-YABTP3CJ1I.tmp
+2026-11-28 01:29:20.831   -- DLL function import --
+2026-11-28 01:29:20.831   Function and DLL name: CreateFileW@kernel32.dll
+2026-11-28 01:29:20.831   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 01:29:20.831   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 01:29:20.831   -- DLL function import --
+2026-11-28 01:29:20.831   Function and DLL name: CloseHandle@kernel32.dll
+2026-11-28 01:29:20.831   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 01:29:20.831   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 01:29:20.831   -- DLL function import --
+2026-11-28 01:29:20.831   Function and DLL name: GetCurrentProcessId@kernel32.dll
+2026-11-28 01:29:20.831   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 01:29:20.831   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 01:29:20.831   -- DLL function import --
+2026-11-28 01:29:20.831   Function and DLL name: GetCurrentProcess@kernel32.dll
+2026-11-28 01:29:20.831   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 01:29:20.831   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 01:29:20.831   -- DLL function import --
+2026-11-28 01:29:20.831   Function and DLL name: OpenProcess@kernel32.dll
+2026-11-28 01:29:20.831   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 01:29:20.831   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 01:29:20.831   -- DLL function import --
+2026-11-28 01:29:20.831   Function and DLL name: DuplicateHandle@kernel32.dll
+2026-11-28 01:29:20.831   Importing the DLL function. Dest DLL name: kernel32.dll
+2026-11-28 01:29:20.831   Successfully imported the DLL function. Delay loaded? No
+2026-11-28 01:29:27.552   {"operation": "check", "status": "PASS"}
+2026-11-28 01:29:43.247   {"bundle_sha256": "42edfd7c6fb81e99b7616f10eb56df1ef5fc2d0be946c67e9c34131de1d76be3", "coordination_receipt_retained": true, "operation": "uninstall", "status": "PASS", "user_data_modified": false}
+2026-11-28 01:29:43.247   Starting the uninstallation process.
+2026-11-28 01:29:43.247   Deleting registry key: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1
+2026-11-28 01:29:43.247   Deleting registry value: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1\NoModify
+2026-11-28 01:29:43.247   Deleting registry value: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1\ModifyPath
+2026-11-28 01:29:43.404   Deleting file: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Resonance\Uninstall Resonance.lnk
+2026-11-28 01:29:43.466   Deleting file: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Resonance\Repair Resonance.lnk
+2026-11-28 01:29:43.482   Deleting file: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Resonance\Resonance.lnk
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\cleanup.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\models.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\windows_process.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\process.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\managed_installation.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\bundle_verifier.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\installation_lease.py
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\maintenance.py
+2026-11-28 01:29:43.482   Deleting directory: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance
+2026-11-28 01:29:43.482   Failed to delete directory (145). Will retry later.
+2026-11-28 01:29:43.482   Deleting registry key: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1
+2026-11-28 01:29:43.482   Deleting registry value: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1\NoModify
+2026-11-28 01:29:43.482   Deleting registry value: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1\ModifyPath
+2026-11-28 01:29:43.482   Deleting directory: C:\Users\runneradmin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Resonance
+2026-11-28 01:29:43.482   Deleting file: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance\ResonanceSetup.exe
+2026-11-28 01:29:43.498   Deleting directory: D:\a\_temp\carr-standard-installation-private\actual-standard-work\Resonance installed Ω\maintenance
+2026-11-28 01:29:43.498   Deleting Uninstall data files.
+2026-11-28 01:29:43.498   Creating "_unins-done.tmp" file.
+2026-11-28 01:29:44.020   Uninstallation process succeeded.
+2026-11-28 01:29:44.020   Removed all? Yes
+2026-11-28 01:29:44.020   Need to restart Windows? No
+2026-11-28 01:29:44.575   Log closed.

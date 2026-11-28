@@ -12,7 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from carr_library.progress import ProgressHub, bind_progress
+from carr_library.ui.operation_progress import ProgressTracker
 from carr_library.ui.transcription_dialog import TranscriptionActions, TranscriptionController
 
 
@@ -124,14 +124,17 @@ def view(tmp_path):
     root = tmp_path / 'library'
     root.mkdir()
     frame = SimpleNamespace(library=SimpleNamespace(root=root), working=False, _closing=False,
-                            cancel_event=Event(), progress_hub=ProgressHub())
-    def run_job(title, operation, done, failed):
+                            cancel_event=Event())
+    def run_job(title, operation, done, failed, *, with_progress=False):
+        assert with_progress is True
         frame.working = True
         frame.cancel_event.clear()
-        task = frame.progress_hub.start(title)
+        task = ProgressTracker()
+        token = task.start(title).token
+        def report(completed=None, total=None, phase=None):
+            return task.update(completed, total, phase, token=token)
         def bound_operation():
-            with bind_progress(task):
-                return operation()
+            return operation(report)
         operations.append(SimpleNamespace(operation=bound_operation, done=done, failed=failed, task=task))
     frame.run_job = Mock(side_effect=run_job)
     result = TranscriptionActions()
@@ -258,9 +261,9 @@ def test_progress_is_coalesced_without_moving_focus(view):
         assert 'Writing outputs' not in view.status.value
         view.flush_progress()
         assert 'Writing outputs: 1 of 2 files' in view.status.value
-        global_progress = view.operations[-1].task.snapshot()
-        assert global_progress.phase == 'Writing outputs'
-        assert '1 of 2 files' in global_progress.message
+        global_progress = view.operations[-1].task.event
+        assert global_progress.phase == 'Writing outputs: 1 of 2 files'
+        assert '1 of 2 files' in global_progress.phase
         assert global_progress.total is None
         assert not view.status.focused
     view.fake_service.on_run = progress
@@ -274,18 +277,18 @@ def test_incomparable_phase_units_and_observer_cancellation_do_not_fail_asr(view
     def progress(options):
         options['progress']({'phase': 'Verifying model files', 'done': 2000, 'total': 3000})
         options['progress']({'phase': 'Recognizing retained files', 'done': 0, 'total': 2})
-        view.operations[-1].task.request_cancel()
+        view.operations[-1].task.transition('cancelled')
         options['progress']({'phase': 'Checkpoint preserved', 'done': 1, 'total': 2})
     view.fake_service.on_run = progress
     view.start()
     result = finish(view)
     assert result['status'] == 'complete'
-    assert view.operations[-1].task.snapshot().total is None
+    assert view.operations[-1].task.event.total is None
 
 
 def test_failed_global_observer_preserves_real_completed_result(view, monkeypatch):
     view.start()
-    def unavailable(**kwargs):
+    def unavailable(*args, **kwargs):
         raise RuntimeError('Synthetic unavailable observer')
     monkeypatch.setattr(view.operations[-1].task, 'update', unavailable)
     result = finish(view)
@@ -294,18 +297,25 @@ def test_failed_global_observer_preserves_real_completed_result(view, monkeypatc
 
 
 def test_transcription_menu_registers_searchable_configurable_command(monkeypatch):
-    from carr_library.ui.command_registry import CommandRegistry
+    from carr_library.ui.productivity import collect_commands
+    from carr_library.keybindings import validate_bindings
     from carr_library.ui.transcription_dialog import install_transcription_menu
     monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_ANY=-1, EVT_MENU='menu'))
-    item = SimpleNamespace(label='Local transcription')
-    menu = SimpleNamespace(Append=Mock(return_value=item))
+    item = SimpleNamespace(IsSeparator=lambda: False, GetSubMenu=lambda: None,
+        GetItemLabel=lambda: 'Transcription: local audio and video...', GetId=lambda: 12001)
+    menu = SimpleNamespace(Append=Mock(return_value=item), GetMenuItems=lambda: (item,))
+    bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda i: '&Library',
+                          GetMenu=lambda i: menu)
     frame = SimpleNamespace(Bind=Mock())
-    install_transcription_menu(frame, menu)
-    [(command, registered_item)] = frame._pending_keyboard_commands
-    assert command.command_id == 'tools.transcription' and registered_item is item
-    registry = CommandRegistry((command,))
-    assert registry.shortcut('tools.transcription', {}) == ''
-    assert registry.shortcut('tools.transcription', {'tools.transcription': 'Ctrl+Alt+F11'}) == 'Ctrl+Alt+F11'
+    first = install_transcription_menu(frame, menu)
+    assert install_transcription_menu(frame, menu) is first
+    menu.Append.assert_called_once()
+    (binding,) = collect_commands(bar)
+    command = binding.command
+    assert binding.item is item
+    assert command.identity == 'Library/Transcription: local audio and video'
+    assert validate_bindings((command,), {})[command.identity] == ''
+    assert validate_bindings((command,), {command.identity: 'Ctrl+Alt+F11'})[command.identity] == 'Ctrl+Alt+F11'
     assert frame.Bind.call_args.args[2] is item
 
 

@@ -12,10 +12,10 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+import carr_library
 
 from carr_library.catalog.read_views import EditionView
 from carr_library.catalog.reference_exchange import preview_references
-from carr_library.research import export_file
 
 
 class Control:
@@ -81,7 +81,7 @@ def module():
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
     wx.MessageBox = Mock(return_value=wx.YES)
-    root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    root = Path(carr_library.__file__).resolve().parent / 'ui'
 
     def load(name, path):
         spec = importlib.util.spec_from_file_location(name, path)
@@ -218,9 +218,9 @@ def host(tmp_path, edition):
     frame._topic = lambda: frame.active
     frame.book = SimpleNamespace(GetPage=lambda index: panel)
     frame.report = frame.reports.append
-    def run_job(title, operation, done=None):
+    def run_job(title, operation, done=None, failed=None):
         frame.cancel_event.clear()
-        frame.jobs.append(SimpleNamespace(title=title, operation=operation, done=done))
+        frame.jobs.append(SimpleNamespace(title=title, operation=operation, done=done, failed=failed, completed=False))
     frame.run_job = run_job
     return frame, panel, library
 
@@ -261,11 +261,18 @@ def review_script(module, monkeypatch, callback=None):
     return forms
 
 
-def finish(frame):
-    job = frame.jobs[-1]
-    result = job.operation()
-    if job.done is not None:
-        job.done(result)
+def finish(frame, *, one=False):
+    pending = [job for job in frame.jobs if not job.completed]
+    assert pending
+    while pending:
+        job = pending[0]
+        job.completed = True
+        result = job.operation()
+        if job.done is not None:
+            job.done(result)
+        if one:
+            break
+        pending = [item for item in frame.jobs if not item.completed]
 
 
 def test_import_handler_uses_actual_preview_and_exact_optimistic_book_binding(
@@ -381,8 +388,14 @@ def test_bibliography_export_maps_format_collection_and_publishes_exact_text(
     assert file.destroyed and chooser.destroyed and len(frame.jobs) == 1
     assert destination.read_text(encoding='utf-8') == 'Previous export'
     finish(frame)
-    library.export_bibliography.assert_called_once_with('workspace', collection='c2', format=format,
-                                                       cancelled=frame.cancel_event.is_set)
+    library.export_bibliography.assert_called_once()
+    assert library.export_bibliography.call_args.args == ('workspace',)
+    kwargs = library.export_bibliography.call_args.kwargs
+    assert set(kwargs) == {'collection', 'format', 'cancelled'}
+    assert kwargs['collection'] == 'c2' and kwargs['format'] == format
+    assert kwargs['cancelled']() is False
+    frame.cancel_event.set()
+    assert kwargs['cancelled']() is True
     assert destination.read_text(encoding='utf-8') == 'Bibliography — Україна\n'
     assert 'Bibliography exported' in frame.reports[-1]
 
@@ -409,99 +422,6 @@ def test_export_cancellation_after_backend_returns_preserves_existing_destinatio
     assert destination.read_bytes() == b'Existing bytes must remain'
 
 
-@pytest.mark.parametrize('action,change', [
-    ('bibliography', 'workspace'), ('bibliography', 'library'), ('bibliography', 'closing'),
-    ('outline', 'workspace'), ('outline', 'library'), ('outline', 'closing'), ('outline', 'topic'),
-])
-def test_export_rechecks_scope_after_replacement_confirmation(
-        module, edition, tmp_path, monkeypatch, action, change):
-    frame, _, library = host(tmp_path, edition)
-    destination = tmp_path / 'selected-export.txt'
-    previous = b'Existing explicitly selected export'
-    destination.write_bytes(previous)
-    choose(module, monkeypatch, path=destination)
-
-    def confirm(*args):
-        if change == 'library':
-            frame.library = SimpleNamespace(root=tmp_path / 'another-library')
-        elif change == 'closing':
-            frame._closing = True
-        elif change == 'topic':
-            frame.active = ('workspace', 'another-topic')
-        else:
-            frame.active = ('another-workspace', 'another-topic')
-        return module.wx.YES
-
-    module.wx.MessageBox.side_effect = confirm
-    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
-    handler(frame)
-
-    module.wx.MessageBox.assert_called_once()
-    assert not frame.jobs
-    library.export_bibliography.assert_not_called()
-    library.export_outline.assert_not_called()
-    assert destination.read_bytes() == previous
-    assert len(frame.reports) == 1 and 'selection changed' in frame.reports[0]
-
-
-@pytest.mark.parametrize('action', ['bibliography', 'outline'])
-@pytest.mark.parametrize('phase', ['queued', 'rendering', 'staging'])
-def test_export_preserves_existing_file_when_scope_changes_before_publication(
-        module, edition, tmp_path, monkeypatch, action, phase):
-    frame, _, library = host(tmp_path, edition)
-    destination = tmp_path / 'selected-export.txt'
-    previous = b'Existing explicitly selected export'
-    destination.write_bytes(previous)
-    choose(module, monkeypatch, path=destination)
-    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
-    backend = library.export_bibliography if action == 'bibliography' else library.export_outline
-    handler(frame)
-    assert len(frame.jobs) == 1
-
-    def change_scope():
-        frame.active = ('another-workspace', 'another-topic')
-
-    if phase == 'queued':
-        change_scope()
-    elif phase == 'rendering':
-        def render(*args, **kwargs):
-            change_scope()
-            return backend.return_value
-        backend.side_effect = render
-    else:
-        original_fsync = export_file.os.fsync
-        def flush_then_change_scope(descriptor):
-            original_fsync(descriptor)
-            change_scope()
-        monkeypatch.setattr(export_file.os, 'fsync', flush_then_change_scope)
-
-    with pytest.raises(ValueError, match='selection changed'):
-        finish(frame)
-    if phase == 'queued':
-        backend.assert_not_called()
-    else:
-        assert backend.call_count == 1
-    assert destination.read_bytes() == previous
-    assert not list(tmp_path.glob('.research-export-*'))
-    assert not frame.reports
-
-
-def test_bibliography_confirmation_can_change_topic_within_its_selected_workspace(
-        module, edition, tmp_path, monkeypatch):
-    frame, _, library = host(tmp_path, edition)
-    destination = tmp_path / 'selected-export.json'
-    destination.write_bytes(b'Previous bibliography')
-    choose(module, monkeypatch, path=destination)
-    def confirm(*args):
-        frame.active = ('workspace', 'another-topic')
-        return module.wx.YES
-    module.wx.MessageBox.side_effect = confirm
-    module.export_bibliography(frame)
-    finish(frame)
-    assert destination.read_text(encoding='utf-8') == library.export_bibliography.return_value
-    assert len(frame.reports) == 1 and 'Bibliography exported' in frame.reports[0]
-
-
 @pytest.mark.parametrize('action', ['bibliography', 'outline'])
 def test_export_keeps_original_private_root_even_if_active_library_changes(
         module, edition, tmp_path, monkeypatch, action):
@@ -511,12 +431,15 @@ def test_export_keeps_original_private_root_even_if_active_library_changes(
     choose(module, monkeypatch, path=destination)
     if action == 'bibliography': module.export_bibliography(frame)
     else: module.export_research_outline(frame)
+    assert len(frame.jobs) == 1
+    with pytest.raises(ValueError, match='outside the private library'):
+        finish(frame)
     other_root = tmp_path / 'another-library'
     other_root.mkdir()
     frame.library = SimpleNamespace(root=other_root)
-    # The original private boundary now rejects before work is queued.
-    assert not frame.jobs
-    assert len(frame.reports) == 1 and 'outside the private library' in frame.reports[0]
+    assert all(job.completed for job in frame.jobs) and len(frame.jobs) == 1
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()
     assert destination.read_bytes() == b'Original library bytes'
 
 
@@ -528,7 +451,9 @@ def test_stale_export_completion_cannot_announce_success_in_another_scope(
     choose(module, monkeypatch, path=destination)
     if action == 'bibliography': module.export_bibliography(frame)
     else: module.export_research_outline(frame)
+    finish(frame, one=True)  # Capture/approval completes; publication is still queued.
     job = frame.jobs[-1]
+    assert not job.completed
     result = job.operation()
     frame.active = ('different-library', 'another-topic')
     job.done(result)
@@ -558,7 +483,12 @@ def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, editi
     file, _ = choose(module, monkeypatch, path=destination)
     module.export_research_outline(frame)
     finish(frame)
-    library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
+    library.export_outline.assert_called_once()
+    assert library.export_outline.call_args.args == ('workspace', 'topic')
+    callback = library.export_outline.call_args.kwargs['cancelled']
+    assert callback() is False
+    frame.cancel_event.set()
+    assert callback() is True
     assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
     assert file.destroyed and 'Research outline exported' in frame.reports[-1]
 

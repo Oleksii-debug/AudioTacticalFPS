@@ -1,0 +1,537 @@
+{
+  "schema": "carr-reviewed-composition/1",
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "created_at_utc": "2026-11-28 05:15:52 UTC",
+  "application_parent": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "parent_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "canonical_specification": {
+    "branch": "carr-library",
+    "head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "git_blob": "080bb9104d3224749e9317c2273d803c0ac37835"
+      },
+      {
+        "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+        "git_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+      },
+      {
+        "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+        "git_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+      }
+    ],
+    "scope": "Read-only measured silence warnings for saved complete Scene, Book-part and Director masters; retain existing shared job, resource, source, native lifetime and accessible worker contracts."
+  },
+  "components": [
+    {
+      "name": "core",
+      "tree": "2ee6c29815bad3cf44f0afe137d6b0b3c6acacbb",
+      "paths": 14
+    },
+    {
+      "name": "wrappers",
+      "tree": "429425ac54cbbd7ca94218e63dbc0ad255aa31d7",
+      "paths": 6
+    },
+    {
+      "name": "scene_ui",
+      "tree": "156c9df7c04d8e39f1487db440c979bdffbdaea7",
+      "paths": 9
+    },
+    {
+      "name": "book_publication_ui",
+      "tree": "23c553c1133112dc6b0b3f3c1d3c2c3c8b3c5c65",
+      "paths": 5
+    },
+    {
+      "name": "process_race",
+      "tree": "15a2bc82cb40c54108447440cd712e0b87d4a1cd",
+      "paths": 3
+    },
+    {
+      "name": "csl_utf8",
+      "tree": "376214814d511b304246f4e19102091afb128f61",
+      "paths": 2
+    },
+    {
+      "name": "receiving_workflows",
+      "tree": "d58cc5acce38705d90eb21c84ebdd249c400553b",
+      "paths": 4
+    },
+    {
+      "name": "documentation",
+      "tree": "d244563ba236956167c371def2b59b60fdc467b5",
+      "paths": 4
+    }
+  ],
+  "composition": {
+    "component_paths": 47,
+    "manifest_paths": 1,
+    "total_changed_paths": 48,
+    "deleted_paths": 0,
+    "overlapping_component_paths": 0,
+    "added_paths": 22,
+    "modified_paths": 26,
+    "application_python_before": 380,
+    "application_python_after": 383,
+    "application_package_blobs_before": 473,
+    "application_package_blobs_after": 476,
+    "application_python_modified": 9,
+    "application_python_added": 3,
+    "existing_python_removed": 0,
+    "source_inventory_encoding": "SHA-256 of UTF-8 JSON.stringify(sorted [{path,git_blob}]) with no trailing newline",
+    "source_inventory_sha256": "0b7b07269abcde4961a02ba1b086d064881fd919996758f9b54b669e9fa69365"
+  },
+  "files": [
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "component": "core",
+      "preimage": "7a23ee00fb1aea871085e76ec0641761f7a94c9f",
+      "sha": "0f2f3583e643e0f3bcb6c8a6fb4aec95944ab795",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/long-silence-inspection-2026-11-28/donor-observed-helper-failures.json",
+      "component": "core",
+      "preimage": null,
+      "sha": "611d4332059ea61610c570b8c64528c16cf458b1",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/long-silence-inspection-2026-11-28/exact-hunks.json",
+      "component": "core",
+      "preimage": null,
+      "sha": "02a585ecbbed6afc845a91ba60857417d98fc937",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/long-silence-inspection-2026-11-28/planned-test-inventory.json",
+      "component": "core",
+      "preimage": null,
+      "sha": "96cfeb4e271566d55937fd6690b2d584fc20d81e",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/long-silence-inspection-2026-11-28/reuse-reconciliation.json",
+      "component": "core",
+      "preimage": null,
+      "sha": "74072437d7f35729f7d8dcf6dc43a60522c85e33",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/long-silence-inspection-2026-11-28/source-review.json",
+      "component": "core",
+      "preimage": null,
+      "sha": "d05ac4f4c46bc1f07422cbef3aae4dcd6f71b55a",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "component": "core",
+      "preimage": "f6892a649b51e9670744dabedaee8322a889f564",
+      "sha": "d336957bbd017891a9686797077c953f52023e64",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/silence.py",
+      "component": "core",
+      "preimage": null,
+      "sha": "6a50070b2f1e41237ee81b03ae017a5860d589d8",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "component": "core",
+      "preimage": "8dcece0364823f8d2514ced6cd50455ffc8d4cf6",
+      "sha": "16e5d0de8543351f3a0d0987b3780b0b7edc7012",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "component": "core",
+      "preimage": "4b5a04ca80e881ed7fbcfb07392d4332cfdaf280",
+      "sha": "4a2b750195ffda21a688da19a0df6551549c46bc",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/silence_inspection.py",
+      "component": "core",
+      "preimage": null,
+      "sha": "6c89ecb645bfb6c11c9d4f948314c284620b4ab2",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_local_runtime_cli.py",
+      "component": "core",
+      "preimage": "99c903cc9be1a27fe45c7f3bc628ca4b39c219c2",
+      "sha": "54a489426b69179c14eb26897c25bec5eafc5754",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_silence_inspection.py",
+      "component": "core",
+      "preimage": null,
+      "sha": "257bd69857b82a34373910aa880f33b03feb2380",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/studio/test_silence_inspection.py",
+      "component": "core",
+      "preimage": null,
+      "sha": "7391de5d4386fa98ca71792a18cb5123b5b50043",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/silence-source-wrappers-2026-11-28/inverse-hunks.json",
+      "component": "wrappers",
+      "preimage": null,
+      "sha": "2406ae91289da7000c4adacaa2b130fa8d3d4e30",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/silence-source-wrappers-2026-11-28/review.json",
+      "component": "wrappers",
+      "preimage": null,
+      "sha": "784653293508d2928a16f73f1e15b5ec50418889",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "component": "wrappers",
+      "preimage": "e6657bc580ccc247e3e971bf6287addd78aaf811",
+      "sha": "db32aeb0d056ccaf2704fa0f9e2c2edba399f11d",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "component": "wrappers",
+      "preimage": "55039c9ead2e448392756b2cadd28d99d5398675",
+      "sha": "f50c6527d89638b37be249304d94583c3dc0b3c0",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_silence.py",
+      "component": "wrappers",
+      "preimage": null,
+      "sha": "6bee2f7ec8f65eb93adeffc2de0bbd725f0ad79e",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/studio/test_director_silence.py",
+      "component": "wrappers",
+      "preimage": null,
+      "sha": "859cf31f3da97edf1c5727ae9b673649bd93139f",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/studio-silence-ui-2026-11-28/review.json",
+      "component": "scene_ui",
+      "preimage": null,
+      "sha": "5e2430d177c831bf0bba0fe5308347a308014b81",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "component": "scene_ui",
+      "preimage": "c864c5f680e3cd390fbf3a0513faeddb582323f5",
+      "sha": "05fddb6f72be6522cf65e4650583e4e4cec0d0b5",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "component": "scene_ui",
+      "preimage": "31ef5bf074c58c6fe5136cb7489dd04579d68e50",
+      "sha": "2314eacb91e0c8562c8d609faf9e97f9f6d38301",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_silence_inspection.py",
+      "component": "scene_ui",
+      "preimage": null,
+      "sha": "36b7ea4b33d3b56f4088c0b524be5f560c1420f3",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "component": "scene_ui",
+      "preimage": "78ba78972c23f805cddd7db0a38e09a2ef80d62e",
+      "sha": "5004172fc9e163ab410a81f531f16d7d8bbabf6b",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "component": "scene_ui",
+      "preimage": "2e755b77bab0c21bff759bc6e248ece79bac878a",
+      "sha": "a365b074c7282398f624a739dbfbd958cd8ee272",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_output_settings.py",
+      "component": "scene_ui",
+      "preimage": "a40f3451c468633fb9ea36e1e4a5d600794d6d84",
+      "sha": "c2e5cde7c5b4617d9717bf835aeb09cb3a1e81fa",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "component": "scene_ui",
+      "preimage": "79842c4c7c209b5b3d862fd0a3e5f439112d8a26",
+      "sha": "510ba1f6a790833a56012d89e8ca0b12b057fae9",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_silence_inspection.py",
+      "component": "scene_ui",
+      "preimage": null,
+      "sha": "e8f71a28524b41e44ba4b74e2aac1ac02bd245a3",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/book-publication-silence-ui-2026-11-28/review.json",
+      "component": "book_publication_ui",
+      "preimage": null,
+      "sha": "550bb351bf2c011805b049d360d70479be415c5c",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "component": "book_publication_ui",
+      "preimage": "86b184a46e35c2b76be7f2a36d4c435d8e0157dc",
+      "sha": "0e16e240dbf6f6d84a3f27e3c296d00bbdff0175",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/publishing_dialog.py",
+      "component": "book_publication_ui",
+      "preimage": "63a0516a50773cf82a4c6e91cb9166c7e4684158",
+      "sha": "d28205d7c82bc811bee2908698e05c8b0b75750d",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/studio/test_publishing_handlers.py",
+      "component": "book_publication_ui",
+      "preimage": "31830b291a84bcc0ab3468e7ea3bd654cb0d1dc2",
+      "sha": "d8491a65caf86d6d14a79d3e643d7087baf77521",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_audio_dialog.py",
+      "component": "book_publication_ui",
+      "preimage": "8c8cc3e0bf0147f842e3698f8b6e2b601fd2f435",
+      "sha": "d74c357df9c5060ac7b24a330aedcc6f349961d8",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/process-watch-scan-race-2026-11-28/review.json",
+      "component": "process_race",
+      "preimage": null,
+      "sha": "108f914fec1c319f905cdeca4ce44cbf78f36ac4",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "component": "process_race",
+      "preimage": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c",
+      "sha": "2287f6a6423229b5a5c476cff4970bbe108bef5e",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_audio_process.py",
+      "component": "process_race",
+      "preimage": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db",
+      "sha": "3b4b9d648c0e3e31c60c8522a5396042a1c06add",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/canonical-csl-utf8-pr99-2026-11-28/review.json",
+      "component": "csl_utf8",
+      "preimage": null,
+      "sha": "04603bffdfa96bacf3485433d1b4ab5b53f66e1e",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/citations/test_csl.py",
+      "component": "csl_utf8",
+      "preimage": "aa228ad6b203506fdd1b970496f8ca6e192e4b63",
+      "sha": "eab5b324ba623021a7fb20cb47fc22a85164d490",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "component": "receiving_workflows",
+      "preimage": "301d45feca0338e48a49a7e96e606fc38a72dec7",
+      "sha": "40c95c79f99b1293877919759ca608e3593699e1",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "component": "receiving_workflows",
+      "preimage": "a454322a63b25e46f13f817a9c8594521a9cf7b8",
+      "sha": "f448e7cda39525a08ed10fb71d1ea496e05d8091",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "component": "receiving_workflows",
+      "preimage": "029cf775f6acdf7407ddeaab196949451698ead9",
+      "sha": "8ceddfd58e27420decfa3a718f8f8cd7582a8e05",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/v3-silence-process-receiving-selectors-2026-11-28.json",
+      "component": "receiving_workflows",
+      "preimage": null,
+      "sha": "8f34f40ec997a5ca9d335d774df4aeafe37f8e47",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "component": "documentation",
+      "preimage": "401942f4bdc84d9a71aac487a4b2bcde5a1baaec",
+      "sha": "cdfa0c335a926c5f9a94a0c5464a4131e2de8847",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/STUDIO_OUTPUT_REVIEW.md",
+      "component": "documentation",
+      "preimage": "99ffb2321164cfaee6964b16da32516d958da898",
+      "sha": "daac3dacc204334c318c01796450c2eafe3ddd16",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "component": "documentation",
+      "preimage": "d3f3be29cf477b9170e4050339098b1d6a7bac30",
+      "sha": "bb6ba988855663f6972f7f4e86611d14caba9ecf",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/silence-inspection-documentation-2026-11-28.json",
+      "component": "documentation",
+      "preimage": null,
+      "sha": "c95856a0df959f63471094b7384ef39907ce6239",
+      "mode": "100644"
+    }
+  ],
+  "behavior": {
+    "measurement": "Actual integer PCM WAV/RF64, mono/stereo, 8/16/24/32-bit; explicit finite dBFS and positive seconds; inclusive all-channel threshold, exact half-open frame intervals, EOF handling, bounded 4096 retained records with full omission counts. No downquantization or automatic edits.",
+    "runtime": "Only selected FFmpeg/ffprobe are constructed for inspection under existing shared admission. Source guards, source identities, job locks, staging and runtime bindings remain retained through every causal native cleanup owner, including cancellation. One absolute deadline covers admission, decode, scan and final verification.",
+    "source_wrappers": "Book requires original source and current saved plan/part identity. Director uses current project publication lock, completed master and artifact metadata. Publication routing retains the original job_id and records the selected source identity separately.",
+    "gui": "Saved job/part selection and named criteria/report dialogs; existing worker and generation guards. Scene F8 cancel label, Book Cancel inspection without an F8 claim, publication existing Cancel operation. No autoplay, automatic edits, output selection or forced publication metadata.",
+    "process_race": "Accept only a watched directory's genuine disappearance before scandir opens, confirmed by fresh non-following lstat. Replacement, permission and iterator errors remain failures; original deadlines and cleanup ownership are unchanged.",
+    "csl": "Reuse the reviewed donor's two explicit UTF-8 fixture reads; all original CSL test assertions remain unchanged."
+  },
+  "validation": {
+    "component_reviews": "Root and independent peers reviewed exact final sources, inverse/prefix preservation, source/worker/lifetime boundaries and final documentation. Final components are individually immutable Git trees listed above.",
+    "manifest_blob_checks": 54,
+    "new_planned_cases": [
+      {
+        "scope": "PCM/Scene service/CLI",
+        "count": 66
+      },
+      {
+        "scope": "Book/Director wrappers",
+        "count": 32
+      },
+      {
+        "scope": "Scene criteria and UI",
+        "count": 65
+      },
+      {
+        "scope": "Book/publication UI",
+        "count": 56
+      },
+      {
+        "scope": "watched directory disappearance",
+        "count": 15
+      }
+    ],
+    "planned_case_count_is_execution": false,
+    "native_probe": "Additive installed actual SAPI/Studio completed-master inspection with exact frame metadata and installed module origins. Every prior native assertion remains; new probe execution is NOT_RUN here.",
+    "selectors": {
+      "component": {
+        "both_modes_add": [
+          "tests/citations/test_csl.py",
+          "tests/audio/test_silence_inspection.py",
+          "tests/studio/test_silence_inspection.py",
+          "tests/ui/test_studio_silence_inspection.py",
+          "tests/audio/test_local_runtime_cli.py",
+          "tests/studio/test_book_silence.py",
+          "tests/studio/test_director_silence.py",
+          "tests/studio/test_publishing_handlers.py"
+        ],
+        "windows_common_before": 80,
+        "windows_common_after": 88,
+        "linux_before": 81,
+        "linux_after": 89
+      },
+      "main": {
+        "source_and_installed_add": [
+          "tests/audio/test_silence_inspection.py",
+          "tests/studio/test_silence_inspection.py",
+          "tests/ui/test_studio_silence_inspection.py",
+          "tests/studio/test_book_silence.py",
+          "tests/studio/test_director_silence.py"
+        ],
+        "source_selectors_before": 445,
+        "source_selectors_after": 450
+      },
+      "v3": {
+        "installed_add": [
+          "tests/audio/test_silence_inspection.py",
+          "tests/studio/test_silence_inspection.py",
+          "tests/ui/test_studio_silence_inspection.py",
+          "tests/studio/test_book_silence.py",
+          "tests/studio/test_director_silence.py",
+          "tests/ui/test_book_audio_dialog.py",
+          "tests/studio/test_publishing_handlers.py"
+        ],
+        "source_directory_selection_already_covers": [
+          "tests/audio/test_silence_inspection.py",
+          "tests/studio/test_silence_inspection.py",
+          "tests/studio/test_book_silence.py",
+          "tests/studio/test_director_silence.py",
+          "tests/studio/test_publishing_handlers.py"
+        ],
+        "source_explicit_add": [
+          "tests/ui/test_studio_silence_inspection.py",
+          "tests/ui/test_book_audio_dialog.py"
+        ],
+        "installed_required_presence_added": [
+          "audio.test_silence_inspection",
+          "studio.test_silence_inspection",
+          "ui.test_studio_silence_inspection",
+          "studio.test_book_silence",
+          "studio.test_director_silence",
+          "ui.test_book_audio_dialog",
+          "studio.test_publishing_handlers"
+        ],
+        "installed_selectors_before": 65,
+        "installed_selectors_after": 72
+      }
+    },
+    "preservation": "No deletes, no old selector removals, no weakened assertions, no changed product/job deadlines, permission/device policy, private runtime, network authorization or release guards. New tests are actual native PCM/process fixtures where their contract requires it; GUI/controller tests remain labeled as such.",
+    "local_execution": "NOT_RUN: local execution host is unavailable; no fabricated local interpreter, syntax, test, audio or NVDA result.",
+    "candidate_execution": "NOT_RUN at composition; receive each terminal workflow at the eventual immutable commit.",
+    "manual_windows_nvda": "NOT_RUN; the 11 new manual inspection checks are explicitly unexecuted."
+  },
+  "previous_receiving": {
+    "evidence_branch": "carr/receiving-evidence-f8311d17-20261128",
+    "immutable_commit": "b3f17bf707f2c7d287633e867382d03e4033364c",
+    "index": "carr-library/review/receiving-evidence-f8311d17-2026-11-28.json",
+    "note": "Separate historical receipts retain each exact tested head. f831 ordinary/scoped gates passed; its full MAIN/V3 remain pending at this checkpoint. 10e3 V3 passed and MAIN source passed all445 modules, while MAIN capture and full bundle failed. No prior result qualifies this changed candidate."
+  },
+  "external_donor_reconciliation": {
+    "pr209_head": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+    "pr210_head": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "manifest": "carr-library/review/long-silence-inspection-2026-11-28/reuse-reconciliation.json",
+    "decision": "Reuse compatible real block-boundary fixture cases. Alternate PCM16-only engine, job store and runtime architecture are not transplanted over the current source. Donor helper failures and limited native results are retained as donor evidence only."
+  },
+  "delivery": {
+    "pr": 127,
+    "base_branch": "carr-library",
+    "qualification_transfer": false,
+    "final_wheel_release": "NOT_QUALIFIED; no final wheel, platform DONE, acoustic quality, manual NVDA or private runtime/rights acceptance is claimed."
+  }
+}
