@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "kind": "native-conversion-key-release-admission",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "6d12d7b570875bb2b864740dcdb73331b4ae40dc",
+  "paths": [
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "preimage": "72cfa1dff72e3b46cf1f4c6de7159eb8bd15bac3",
+      "blob_sha": "a8b2cf7ce191630b50fc8ee846ada1b89559a10d",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "preimage": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+      "blob_sha": "f75a733ac6c1943de65198998d8055db9f17c225",
+      "exact_readback": true
+    }
+  ],
+  "actual_basis": {
+    "run_id": 46102080138,
+    "job_id": 140846545400,
+    "source_commit": "63d25c74e9f72feb951ce2f8d081325176100baa",
+    "source_tree": "409401efdb25e171ab0b55bae1119d2579ace1c0",
+    "source_cases_passed": 351,
+    "installed_cases_passed": 351,
+    "gui_native": "FAIL",
+    "excerpt": [
+      "2026-11-28T03:32:02.7224036Z PASS: real existing reader receives the exact verified UTF-8 copy",
+      "2026-11-28T03:32:03.1662448Z PASS: verified copy remains unbound and gives no native quotation authority",
+      "2026-11-28T03:32:03.1663436Z PASS: real reader Save preserves the verified copy and its original",
+      "2026-11-28T03:32:03.2081478Z PASS: native reader closes and returns to the same conversion result window",
+      "2026-11-28T03:32:18.2170646Z DIAG: actual native conversion {\"event\": \"import-confirmation-timeout\", \"explicit_yes\": false, \"state\": {\"observed\": false, \"answered\": false, \"returned\": false}, \"question\": null, \"foreground\": 131772, \"focus\": 131810, \"no_button\": null, \"yes_button\": null, \"import_enabled\": true, \"pressed\": [], \"host_working\": false, \"result_visible\": true, \"action_status\": \"\"}",
+      "2026-11-28T03:32:18.2174586Z FAIL: native conversion callback",
+      "2026-11-28T03:32:18.2179724Z Traceback (most recent call last):",
+      "2026-11-28T03:32:18.2185452Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 356, in invoke",
+      "2026-11-28T03:32:18.2201742Z     callback()",
+      "2026-11-28T03:32:18.2207142Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 557, in visit",
+      "2026-11-28T03:32:18.2210072Z     raise TimeoutError('Native reading-copy confirmation did not finish.')",
+      "2026-11-28T03:32:18.2214541Z TimeoutError: Native reading-copy confirmation did not finish."
+    ],
+    "inference_boundary": "The old log proves reader Save and close PASS followed by no import question at 15 seconds. It does not record keys at dispatch; an actual race cause is not claimed proven until the rerun."
+  },
+  "source_cause": "The reader can disappear before the deferred Escape KeyUp executes: reader visits run every25ms while release is scheduled40ms after KeyDown. The next press previously moved focus and sent a key without checking the still-held set or enabled state.",
+  "correction": "The existing press.dispatch checks the captured live top-level HWND first, waits for no held keys and the actual target enabled before Raise/SetFocus/KeyDown under its original5s deadline. A bounded optional observation records only that explicit dispatch target/key/current native state. No direct button command replaces keyboard input.",
+  "native_contract": {
+    "required_named_checks": 30,
+    "origin_count": 30,
+    "focus_admission_seconds": 5,
+    "key_release_delay_ms": 40,
+    "confirmation_seconds": 15,
+    "unchanged": true
+  },
+  "suite": {
+    "path": "tests/ui/test_native_conversion_diagnostics.py",
+    "preimage_count": 23,
+    "count": 30,
+    "functions": [
+      "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+      "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+      "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+      "test_native_conversion_observer_preserves_original_admission_error",
+      "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+      "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+      "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks",
+      "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+      "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings",
+      "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+      "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change",
+      "test_native_conversion_key_waits_for_prior_release_and_enabled_target",
+      "test_native_conversion_key_keeps_five_second_bound_without_dispatch",
+      "test_native_conversion_key_refuses_a_destroyed_owned_control_before_focus"
+    ],
+    "added_functions": [
+      "test_native_conversion_key_waits_for_prior_release_and_enabled_target",
+      "test_native_conversion_key_keeps_five_second_bound_without_dispatch",
+      "test_native_conversion_key_refuses_a_destroyed_owned_control_before_focus"
+    ],
+    "case_counts": {
+      "test_native_conversion_key_waits_for_prior_release_and_enabled_target": 3,
+      "test_native_conversion_key_keeps_five_second_bound_without_dispatch": 3,
+      "test_native_conversion_key_refuses_a_destroyed_owned_control_before_focus": 1
+    },
+    "companions": [
+      "scripts/windows_document_conversion_smoke.py"
+    ],
+    "old_source_prefix_exact": true
+  },
+  "focused_gate_delta_for_root": {
+    "helper_path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+    "helper_preimage": "01c98c0452549c81b7fe218d9be090d157109071",
+    "workflow_path": ".github/workflows/carr-next15-conversion.yml",
+    "workflow_preimage": "b73ca62ed8216b8df2b1577a1b6bf5308bb7d221",
+    "source_before": 351,
+    "source_after": 358,
+    "installed_before": 351,
+    "installed_after": 358,
+    "changes": "Existing diagnostics whole23→30; exact new test/native pins; workflow helper/native pins and351→358 labels. No new companion or source-module origin."
+  },
+  "inverse_audit": {
+    "native_exact_two_hunks": true,
+    "old23_test_prefix": true,
+    "all_old_check_literals_preserved": true,
+    "all_product_modules_unchanged": true
+  },
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact dispatch readiness/owner/deadline/observation seam, actual main/direct press and release callback tests,30/14 inventory; no runtime cause claim."
+  },
+  "execution": "NOT_RUN"
+}

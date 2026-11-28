@@ -282,3 +282,103 @@ def test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change(ch
     else:
         raise AssertionError(changed)
     assert not env['reader_copy_matches'](raw, native, document)
+
+
+def keyboard_driver(*, held=False, enabled=True, focus=True):
+    env, diagnostic = helpers()
+    source = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_document_conversion_smoke.py'
+    tree = ast.parse(source.read_text(encoding='utf-8'), filename=str(source))
+    main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    functions = []
+    for name in ('press', 'release'):
+        node, = [item for item in main.body if isinstance(item, ast.FunctionDef) and item.name == name]
+        functions.append(node)
+    pending, calls = [], []
+    state = dict(now=0.0, live=True, enabled=enabled, focused=None, foreground=0, admit_focus=focus)
+    control = SimpleNamespace(GetName=lambda: 'Import verified reading copy into selected library',
+                              IsEnabled=lambda: state['enabled'])
+    def set_focus():
+        calls.append(('focus', control))
+        if state['admit_focus']:
+            state['focused'] = control
+    control.SetFocus = set_focus
+    top = SimpleNamespace(GetHandle=lambda: 71, Raise=lambda: calls.append(('raise', 71)))
+    def foreground(handle):
+        calls.append(('foreground', handle))
+        state['foreground'] = handle
+    def down(code):
+        calls.append(('down', code))
+        return True
+    def up(code):
+        calls.append(('up', code))
+        return True
+    env.update(
+        wx=SimpleNamespace(WXK_SPACE=32, GetTopLevelParent=lambda item: top,
+                           Window=SimpleNamespace(FindFocus=lambda: state['focused'])),
+        user32=SimpleNamespace(IsWindow=lambda handle: state['live'] and handle == 71,
+                               SetForegroundWindow=foreground,
+                               GetForegroundWindow=lambda: state['foreground']),
+        simulator=SimpleNamespace(KeyDown=down, KeyUp=up), pressed={27} if held else set(),
+        monotonic=lambda: state['now'], later=lambda delay, callback: pending.append((delay, callback)))
+    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])),
+                 str(source), 'exec'), env)
+    return env, state, control, pending, calls, diagnostic
+
+
+@pytest.mark.parametrize('blocked', ['escape-held', 'control-disabled', 'both'])
+def test_native_conversion_key_waits_for_prior_release_and_enabled_target(blocked):
+    env, state, control, pending, calls, diagnostic = keyboard_driver(
+        held=blocked != 'control-disabled', enabled=blocked == 'escape-held')
+    env['press'](control)
+    delay, callback = pending.pop(0)
+    assert delay == 1
+    callback()
+    assert calls == [] and diagnostic.getvalue() == ''
+    delay, callback = pending.pop(0)
+    assert delay == 25
+    state['now'] = .026
+    callback()
+    assert calls == [] and diagnostic.getvalue() == ''
+    # Release the actual earlier gesture using this native probe's own release
+    # function; no premature synthetic key or focus is allowed.
+    if 27 in env['pressed']:
+        env['release'](27)
+    state['enabled'] = True
+    delay, callback = pending.pop(0)
+    assert delay == 25
+    state['now'] = .051
+    callback()
+    assert [item for item in calls if item[0] == 'down'] == [('down', 32)]
+    assert env['pressed'] == {32} and state['focused'] is control
+    record = json.loads(diagnostic.getvalue().split('DIAG: actual native conversion ', 1)[1])
+    assert record['event'] == 'native-key-dispatch' and record['held_keys'] == []
+    assert record['enabled'] is True and record['key'] == 32
+    delay, callback = pending.pop(0)
+    assert delay == 40
+    callback()
+    assert env['pressed'] == set() and calls[-1] == ('up', 32) and pending == []
+
+
+@pytest.mark.parametrize('blocked', ['escape-held', 'control-disabled', 'focus-refused'])
+def test_native_conversion_key_keeps_five_second_bound_without_dispatch(blocked):
+    env, state, control, pending, calls, diagnostic = keyboard_driver(
+        held=blocked == 'escape-held', enabled=blocked != 'control-disabled',
+        focus=blocked != 'focus-refused')
+    env['press'](control)
+    pending.pop(0)[1]()
+    state['now'] = 5.0
+    with pytest.raises(TimeoutError, match='Native conversion'):
+        pending.pop(0)[1]()
+    assert not any(item[0] in ('down', 'up') for item in calls)
+    assert diagnostic.getvalue() == '' and pending == []
+    assert env['pressed'] == ({27} if blocked == 'escape-held' else set())
+
+
+def test_native_conversion_key_refuses_a_destroyed_owned_control_before_focus():
+    env, state, control, pending, calls, diagnostic = keyboard_driver()
+    env['press'](control)
+    state['live'] = False
+    with pytest.raises(AssertionError, match='selected conversion control is gone'):
+        pending.pop(0)[1]()
+    assert calls == [] and diagnostic.getvalue() == '' and pending == []
+    assert env['pressed'] == set()

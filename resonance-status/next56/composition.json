@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "kind": "converter-real-key-gesture-admission",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "parent": "6d12d7b570875bb2b864740dcdb73331b4ae40dc",
+  "parent_tree": "52820bb94754f06a148072f755a92129dcd06cff",
+  "manifest": "50753beb11e90fd093519ac730f6d458eae103f8",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "preimage": "72cfa1dff72e3b46cf1f4c6de7159eb8bd15bac3",
+      "blob": "a8b2cf7ce191630b50fc8ee846ada1b89559a10d"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "preimage": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+      "blob": "f75a733ac6c1943de65198998d8055db9f17c225"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": "01c98c0452549c81b7fe218d9be090d157109071",
+      "blob": "31eaef849aa2836ffd44d7a75090eb5245f1918c"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "b73ca62ed8216b8df2b1577a1b6bf5308bb7d221",
+      "blob": "7f50a1975a00f826874b0fef3c6884ca6aaf3619"
+    },
+    {
+      "path": "resonance-status/next56/converter_key_handoff.json",
+      "preimage": null,
+      "blob": "50753beb11e90fd093519ac730f6d458eae103f8"
+    }
+  ],
+  "root_audit": {
+    "native_only_press_function_changed": true,
+    "old23_test_bytes_exact_prefix": true,
+    "diagnostics_module_cases": 30,
+    "diagnostics_module_functions": 14,
+    "source_total": 358,
+    "isolated_installed_total": 358,
+    "helper_exact_count_and_two_pin_inverse": true,
+    "workflow_exact_labels_and_pins_inverse": true,
+    "native_pin_occurrences": 3
+  },
+  "previous_actual": {
+    "run": 46102080138,
+    "windows_job": 140846545400,
+    "source": 351,
+    "installed": 351,
+    "reader_save_and_close": "PASS",
+    "import_confirmation": "FAIL; actual question absent after15s, enabled/idle observed; earlier40ms Escape release crossed next25ms reader-close observation",
+    "causality": "Source-supported ordering gap; corrected actual native outcome is not established until rerun."
+  },
+  "preserved": {
+    "focus_seconds": 5,
+    "import_question_seconds": 15,
+    "key_release_ms": 40,
+    "native_controls": 30,
+    "native_confirmation": "Actual owned default No and explicit Yes remain required",
+    "no_product_change": true
+  },
+  "workflow_operations": [
+    {
+      "before": "01c98c0452549c81b7fe218d9be090d157109071",
+      "after": "31eaef849aa2836ffd44d7a75090eb5245f1918c",
+      "occurrences": 2
+    },
+    {
+      "before": "72cfa1dff72e3b46cf1f4c6de7159eb8bd15bac3",
+      "after": "a8b2cf7ce191630b50fc8ee846ada1b89559a10d",
+      "occurrences": 3
+    },
+    {
+      "before": "Exact351 portable",
+      "after": "Exact358 portable",
+      "occurrences": 2
+    },
+    {
+      "before": "Require351 source and351",
+      "after": "Require358 source and358",
+      "occurrences": 2
+    },
+    {
+      "before": "All351 source and351",
+      "after": "All358 source and358",
+      "occurrences": 2
+    }
+  ],
+  "execution": "NOT_RUN"
+}

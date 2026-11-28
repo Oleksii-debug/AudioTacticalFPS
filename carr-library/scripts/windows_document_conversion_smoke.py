@@ -374,6 +374,13 @@ def main(argv=None):
         def dispatch():
             if not user32.IsWindow(handle):
                 raise AssertionError('The selected conversion control is gone.')
+            # A reader can disappear before its deferred Escape KeyUp. Do not
+            # transfer focus or send another key while that gesture is held.
+            if pressed or not control.IsEnabled():
+                if monotonic() >= until:
+                    raise TimeoutError('Native conversion keys or selected control did not become ready.')
+                later(25, dispatch)
+                return
             top.Raise()
             user32.SetForegroundWindow(handle)
             control.SetFocus()
@@ -382,6 +389,10 @@ def main(argv=None):
                     raise TimeoutError('Native conversion focus did not reach the exact control.')
                 later(25, dispatch)
                 return
+            observe_native(event='native-key-dispatch', control=control.GetName()[:128],
+                           key=int(key), held_keys=sorted(pressed),
+                           enabled=bool(control.IsEnabled()),
+                           foreground=int(user32.GetForegroundWindow() or 0))
             if not simulator.KeyDown(key):
                 raise AssertionError('Native conversion key down failed.')
             pressed.add(key)
