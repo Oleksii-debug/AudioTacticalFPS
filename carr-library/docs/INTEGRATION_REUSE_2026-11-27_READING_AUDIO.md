@@ -10,7 +10,114 @@ Canonical `carr-library` was last checked at
 The existing composition is extended through its current services and persisted
 formats; the canonical service layout is not copied over competing implementations.
 
-## Standard installation and observed Windows corrections — 2026-11-28
+## Current process and native acceptance corrections — 2026-11-28
+
+This composition extends `f4d6846d037c079438f96c85bbebfe0f979dd25b`.
+Every correction below is **INTEGRATED / NOT_RUN** at composition. Exact
+predecessor results are retained separately and do not qualify the successor.
+
+### Observe actual process exit without relaxing verification
+
+The existing stdout/stderr reader threads can now observe the same process
+after actual EOF, using bounded native waits within the original execution
+allowance. Only a positive process exit receives a monotonic timestamp; EOF
+alone, an earlier callback, or a later return code cannot backdate completion.
+Caller-side cancellation, fresh control/profile/content verification, staging,
+output and progress checks keep their existing execution path and bounds.
+
+The native wait and cleanup share a narrow handoff lock, so Windows cannot
+close the leader handle while an EOF reader is waiting on it. The existing
+cleanup owner requires both native family quiescence and reader/stream
+completion before releasing retained resources. A confirmed native stop is
+remembered during later I/O retries; no second supervisor, observer thread or
+repeated stop of a retired process group is introduced.
+
+The original eight deadline cases remain, with thirteen additive real-child
+cases. The existing late-exit fixture advances its same clock before releasing
+the actual child, preserving the condition that every possible observation is
+late. The five-second ASR allowance, all ASR assertions, fresh control reads,
+profile verification and other process/recording tests remain unchanged.
+[Exact review and inverse hunks](evidence/2026-11-28/asr-eof-observation-review.json)
+distinguish the observed 8.203-second caller callback from the unknown true
+child-exit time. Runtime success must be established by the receiving gates.
+
+### Use the actual current installer and native control contracts
+
+The completed Windows installer run exposed a donor-schema mismatch before
+setup compilation: its maintenance guard expected a bundled-launcher flag
+that the current producer does not emit. The successor requires the actual
+current Windows x64/CPython target, bundled Python and the exact
+`ResearchLibrary.exe` entry in the sealed file inventory. The existing
+producer still verifies native PE/source evidence before capturing those bytes;
+the complete manifest digest, paths, inventory and mandatory verifier remain.
+The fixture now has the real manifest shape. All 130 old cases remain, with
+14 additional actual-file and typed-manifest cases; no bootstrap, lease,
+Repair/Uninstall, bundle producer or PE parser is replaced.
+[Observed failure and review](../review/standard-installer-current-bundle-review-2026-11-28.json)
+retain the exact core bundle and wheel identities.
+
+The native voice probe now calls `ProcessIdle` on the existing active
+`wx.EventLoopBase`, which the pinned wxPython exposes, and rejects an absent
+or stopped loop. Its earlier call on `wx.App` failed after 78 native checks.
+The original destruction event, before/after synthesis state, five-second
+predicate and 90-second watchdog remain required; no application lifecycle
+change or simulated native result is substituted.
+
+The installed resource tests now spawn an explicitly importable tests-only
+helper. Each real child verifies the same application and broker module origins
+as its parent. Only the tests/operations directory is temporarily importable;
+the checkout root and src are not added. Original real crash/contention,
+timeouts, 46 cases and the 26 new file-lock boundaries remain unchanged.
+
+### Read-only evidence for the selected input failure
+
+The complete Windows aggregate adds a failure-only diagnostic under the same
+exact disposable endpoint-evaluation branch and successful prerequisite guards.
+It binds the original failed capture receipt, freshly enumerated selected
+opaque device identity and current explicit FFmpeg bytes. Existing native
+moniker/WaveInID/opaque-endpoint code observes fixed read-only consent values,
+query/open return codes and shared WASAPI initialization without starting
+capture or requesting sample buffers. It never changes permissions, services,
+drivers, formats, defaults or device selection.
+
+The same existing process owner retains the private stage; a standalone
+diagnostic writes FAILED/pending evidence and synchronously drains all causal
+owners before returning or delivering an interruption. Its 55 planned contract
+cases include an actual parent/owned-child lifetime barrier. DIAGNOSED records
+observations only. The original required capture failure remains a failure;
+neither the diagnostic nor an earlier VM's result establishes a current cause
+or capture acceptance. Source and original reused blocks are bound in
+[the diagnostic review](../review/capture-access-diagnostic-source-review-2026-11-28.json).
+
+### Completed predecessor evidence
+
+| Exact source and scope | Completed result | Remaining boundary |
+| --- | --- | --- |
+| f4d6846d standard installer, Linux | 11 source suites / 326 cases passed; installed 326 plus 22 subtests passed; zero failed/skipped cases; all 379 Python module bytes matched | Linux does not execute native Windows setup. |
+| f4d6846d standard installer, Windows | The same 326 source and 326 installed cases plus 22 installed subtests passed; exact core bundle and source-wheel checks passed | Setup preparation failed on the absent donor flag; actual Install/Repair/Uninstall did not run. |
+| f4d6846d component Linux source | 62/62 modules, 2,104 passed, zero failed/skipped cases | The installed lane is separate. |
+| f4d6846d component Linux installed | 2,102 passed plus 12 subtests, two failed, zero skips | Both real spawned test children could not import their test module. The tests-only helper correction above needs execution. |
+| f4d6846d component Windows source | 59/61 modules passed; 2,090 cases passed, 11 failed, zero skipped | Only the existing ASR service/admission modules fail. All failing nodes are a subset of the prior 301c32da failures; this source predates the EOF observation correction. |
+| f4d6846d focused voice Windows installed | All 11 contract suites / 301 cases passed; zero failed/skipped cases; 78 native checks passed before the probe API error | The native aggregate failed and needs its corrected rerun. Other mode receipts remain separately identified. |
+| 301c32da component Windows installed | 1,847 cases plus 12 subtests passed, zero failures/skips; 377 exact matching package modules | Its same-head source lane still had 14 ASR failures; installed success does not override those failures or identify their cause. |
+
+Receipts are retained under
+[standard installer](../review/standard-installer-f4d6846d-2026-11-28/),
+[Linux components](../review/component-followup-f4d6846d-linux-2026-11-28/),
+[Windows source components](../review/component-followup-f4d6846d-windows-2026-11-28/),
+[voice controls](../review/reader-voice-f4d6846d-2026-11-28/) and
+[301 Windows components](../review/component-followup-301c32da-windows-2026-11-27/).
+Counts describe separate overlapping scopes and are not a unique-test total.
+
+The ordinary source/installed selectors retain every earlier suite and add the
+new diagnostic/deadline coverage where needed. All six ordinary workflows and
+the complete Windows aggregate must qualify the same exact receiving head
+before its wheel is eligible. Physical input/listening, actual owner engines,
+language quality, human Windows 11/NVDA, signing, private update authority,
+distribution rights and remaining platform/interoperability work stay open.
+No final wheel, private release archive or whole-platform completion is claimed.
+
+## Historical standard installation and observed Windows corrections — 2026-11-28
 
 This receiving composition extends exact source
 `301c32da8dbc2de6060f8cc0972c6e5651abb1bf`. Every new source/probe correction

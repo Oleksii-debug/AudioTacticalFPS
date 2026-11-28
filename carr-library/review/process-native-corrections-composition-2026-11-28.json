@@ -1,0 +1,477 @@
+{
+  "schema": "resonance-native-process-receiving-composition/1",
+  "created_at_utc": "2026-11-28 00:33:05 UTC",
+  "base_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "base_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+  "tree_before_receiving_manifest": "511253dea2137c51fcd3740082f9c90187d8de7f",
+  "application_source": {
+    "path": "carr-library/src",
+    "before": "6eb25e939ca7ebbbb4f8378fa50a8708a9101a1a",
+    "after": "e44f0fbe26108412154f4ca74b254d8f3d99a036",
+    "python_module_count": 379,
+    "changed_modules": [
+      {
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "before": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+        "after": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c"
+      }
+    ],
+    "dependency_lock_changes": 0
+  },
+  "authority": {
+    "canonical_branch": "carr-library",
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "agents": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "integration_issue_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "overlays": [
+    {
+      "label": "gates",
+      "tree": "0bb4c84cb77e80ab65efaea9fadcf02cf4a9325f"
+    },
+    {
+      "label": "selected_capture_diagnostic",
+      "tree": "575ab282e621c2b9539ddca2880259d4f359bc2f"
+    },
+    {
+      "label": "asr_exit_observation",
+      "tree": "6f53e4d3f52b3216c9727486ba6b506182b2bedb"
+    },
+    {
+      "label": "resource_spawn_fixture",
+      "tree": "f8121ebc968bb829c4545fd4518bb9926f590243"
+    },
+    {
+      "label": "current_installer_manifest",
+      "tree": "bca294ea675a72055ef3e08a4d993a02d7e638bb"
+    },
+    {
+      "label": "native_voice_idle_api",
+      "tree": "5d0cb504ab2193afbc47763084af84d8d24491ff"
+    },
+    {
+      "label": "standard_installer_linux_result",
+      "tree": "027820882faa46d9f6dd4a7d5b92ee169bdef09f"
+    },
+    {
+      "label": "reader_voice_installed_result",
+      "tree": "cd199aecce65569c7b9fa680c0c04232f2952368"
+    },
+    {
+      "label": "component_linux_source_result",
+      "tree": "a215169b7db8e07537dba4ca6048214f13fe03f8"
+    },
+    {
+      "label": "component_linux_installed_result",
+      "tree": "d1d4d0ac2985b490641dfdb603830a471124e5ec"
+    },
+    {
+      "label": "component_301_windows_installed",
+      "tree": "c97bed41970c1a7c435f03834fe018fdf0b778cc"
+    },
+    {
+      "label": "receiving_docs",
+      "tree": "34bca6796ac6a74bbb9ced2b78d759326e847d78"
+    },
+    {
+      "label": "component_f4_windows_source",
+      "tree": "205458bc5ba62b2c2d460159e15486059cdd927e"
+    }
+  ],
+  "paths": [
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before": "ea663a4572a06b7118bbb9acdf2b043d6a3e74a4",
+      "sha": "e2978d77cd62ef2502901e7799b471d1378ff7e3",
+      "label": "gates",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-platform-reconcile-dbbb.yml",
+      "before": "6eac1873aa83489d990b02f55e69adef7de8efaa",
+      "sha": "e79fdc070e3de138ed78a41abc3f08bc671499d3",
+      "label": "gates",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "before": "b8ed4f861700c78303285f072e5353374879c862",
+      "sha": "847b1e36301a5f3185555d727a27bc20363ae23e",
+      "label": "gates",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "d06d7eedd02da552328914724668b34ef8fe0ce1",
+      "sha": "2873eb24a0d7cddbe544fdcc41199192888be6c5",
+      "label": "gates",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "83e463f7d05e357346755541d9bbefa0c92ff40c",
+      "sha": "5d3b8169b61e6bcfad35057827ef929037a3466e",
+      "label": "gates",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-access-diagnostic-main-hunks-2026-11-28.json",
+      "before": null,
+      "sha": "3120cf4c9c21d2e861239e35ffc624dbfecef18c",
+      "label": "selected_capture_diagnostic",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-access-diagnostic-source-review-2026-11-28.json",
+      "before": null,
+      "sha": "c85c78327e3264a86290c999ac2437fe113e1d74",
+      "label": "selected_capture_diagnostic",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/windows_capture_access_diagnostic.py",
+      "before": null,
+      "sha": "fa21a15909302814c8c42bd1d5ecc160e663cb44",
+      "label": "selected_capture_diagnostic",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_capture_access_diagnostic.py",
+      "before": null,
+      "sha": "edd302ca0efda98c3ffc236711b178c04b75c7fd",
+      "label": "selected_capture_diagnostic",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/evidence/2026-11-28/asr-eof-observation-review.json",
+      "before": null,
+      "sha": "769c7448e820081592c5407deacf842906b3485f",
+      "label": "asr_exit_observation",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "before": "afbccf32c08bf5b6d20cf8cdea420bedfd6b26e8",
+      "sha": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c",
+      "label": "asr_exit_observation",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_process_deadline.py",
+      "before": "700a8937e7aeaadb85cea3f31042371ad5ade2a2",
+      "sha": "9f8a4e0e9231492794e381b100666e779fd312fe",
+      "label": "asr_exit_observation",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/operations/carr_resource_process_fixture.py",
+      "before": null,
+      "sha": "484a4ff45a84467f2be9738636c39b862787af91",
+      "label": "resource_spawn_fixture",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/operations/test_resources.py",
+      "before": "32a9747544bc423294adbdda81c606024f4e1f6f",
+      "sha": "83aca3017ad570c6d8fad29fcf105a0c72878463",
+      "label": "resource_spawn_fixture",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/maintenance.py",
+      "before": "0139f2ce5e7024908ab2d0fea0bd65edcdd1a63c",
+      "sha": "efd6884c4d63d7c1b1a551dbe4a75ad4abc1d11d",
+      "label": "current_installer_manifest",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installer-current-bundle-review-2026-11-28.json",
+      "before": null,
+      "sha": "92425b5c3cf528f0fd56320b63defaaba75fad17",
+      "label": "current_installer_manifest",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before": "2c99632da01db65a9a452a913148c0138638e688",
+      "sha": "7ec96e632a1b547789c3356988c89dce5f565ffd",
+      "label": "current_installer_manifest",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "before": "522ff49d2fe930f97d6b152b38bb273fcedae184",
+      "sha": "6519abd0f992d90ee596139bdad7c9595612986d",
+      "label": "native_voice_idle_api",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installer-f4d6846d-2026-11-28/linux-package-identity.json",
+      "before": null,
+      "sha": "06c5c8762f30bd5b81f61c191108be7b63921e79",
+      "label": "standard_installer_linux_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installer-f4d6846d-2026-11-28/linux-terminal.json",
+      "before": null,
+      "sha": "5ef33751d297c9da5c35d0a0c6347016c6b67851",
+      "label": "standard_installer_linux_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/idle-api-correction.json",
+      "before": null,
+      "sha": "21fd562f23981de1241d5c1bffc7dd8c44bbb1cb",
+      "label": "reader_voice_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/windows-installed-native-failure.txt",
+      "before": null,
+      "sha": "ae042ef02d8198eaeeee6f7469ef61969f3f4d27",
+      "label": "reader_voice_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/windows-installed-package-identity.json",
+      "before": null,
+      "sha": "5cf692d3442ff37928703f945061fff7d5b9240a",
+      "label": "reader_voice_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/windows-installed-terminal.json",
+      "before": null,
+      "sha": "a708482845968d078e7f84a2563fb228b5a482b9",
+      "label": "reader_voice_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-linux-2026-11-28/source-terminal.json",
+      "before": null,
+      "sha": "849d7d05e7edef8410c5f62a73390176103d6177",
+      "label": "component_linux_source_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-linux-2026-11-28/installed-failures.txt",
+      "before": null,
+      "sha": "2cc8dba579a60947add879095b2722f9eeacc710",
+      "label": "component_linux_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-linux-2026-11-28/installed-terminal.json",
+      "before": null,
+      "sha": "2239634d0b48edc2e8eba5097d99e38a372e2cbc",
+      "label": "component_linux_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-linux-2026-11-28/resource-spawn-fixture-change.json",
+      "before": null,
+      "sha": "c12e11ae025e8316f2e336eda08a118caada6112",
+      "label": "component_linux_installed_result",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-301c32da-windows-2026-11-27/windows-installed-terminal.json",
+      "before": null,
+      "sha": "35fb769188aca61d0424201102b8048dedf42802",
+      "label": "component_301_windows_installed",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md",
+      "before": "38c36d7d89bf632ac53694a1731a3e0453e21368",
+      "sha": "19812fb48e497c8a7b25b7334e699c4bd2c74289",
+      "label": "receiving_docs",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/READING_WORKFLOW_ACCEPTANCE.md",
+      "before": "215357666b29f7ab66884f253ab1950332df77c9",
+      "sha": "5502bde45b4da18108a81535f874ad4e769f57cc",
+      "label": "receiving_docs",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "69c4b28c6fea6b9fea2b291a5efb537c7e9a8169",
+      "sha": "855504a6a578701d4b508ae677a8be34bd657d01",
+      "label": "receiving_docs",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-windows-2026-11-28/asr-rebind-diagnostic.json",
+      "before": null,
+      "sha": "d11a34ac2eda6d4c743526a1d49c54c7cfd663d9",
+      "label": "component_f4_windows_source",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-windows-2026-11-28/source-terminal.json",
+      "before": null,
+      "sha": "7958c58ee6877e735f9146a709bc24188c9fd61d",
+      "label": "component_f4_windows_source",
+      "mode": "100644"
+    }
+  ],
+  "tree_audit": {
+    "expected_paths": 34,
+    "changed_or_added": 34,
+    "deletions": 0,
+    "unexpected_changes": 0,
+    "complete_recursive_tree": true,
+    "all_prepared_blobs_read_back_exact": true,
+    "readback_characters": 982123
+  },
+  "review": {
+    "process_source_inverse_hunks": 9,
+    "process_source_inverse_exact": true,
+    "original_deadline_tests_inverse_exact": true,
+    "native_wait_handle_handoff": "Root and Locate CLEAR; same existing readers and CleanupOwner, bounded positive exit observations only.",
+    "diagnostic": "Root and Locate CLEAR; same exact selected failed input, read-only native access and synchronous causal-owner drain.",
+    "resource_spawn": "Root, Locate and Audio CLEAR; tests-only helper, exact child application/broker origins.",
+    "installer": "Root, Locate and Audio CLEAR; current producer-shaped sealed launcher inventory, same native producer/verifier.",
+    "voice_idle_api": "Root and Locate CLEAR; existing active native loop, all original predicates/timeouts retained.",
+    "execution": "NOT_RUN_AT_COMPOSITION",
+    "new_test_cases": {
+      "deadline": {
+        "original": 8,
+        "added": 13,
+        "total": 21
+      },
+      "capture_diagnostic": {
+        "total": 55
+      },
+      "standard_installer": {
+        "original": 130,
+        "added": 14,
+        "total": 144
+      },
+      "resource_guards": {
+        "total": 46,
+        "unchanged_case_count": true
+      }
+    }
+  },
+  "workflow_delta": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "83e463f7d05e357346755541d9bbefa0c92ff40c",
+      "before_chars": 163225,
+      "after_chars": 164226,
+      "added": [
+        {
+          "path": "tests/audio/test_capture_access_diagnostic.py",
+          "occurrences_added": 2
+        }
+      ],
+      "removed": 0
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "d06d7eedd02da552328914724668b34ef8fe0ce1",
+      "before_chars": 35899,
+      "after_chars": 36039,
+      "added": [
+        {
+          "path": "tests/audio/test_process_deadline.py",
+          "occurrences_added": 1
+        },
+        {
+          "path": "tests/audio/test_capture_access_diagnostic.py",
+          "occurrences_added": 1
+        }
+      ],
+      "removed": 0
+    },
+    {
+      "path": ".github/workflows/carr-platform-reconcile-dbbb.yml",
+      "preimage": "6eac1873aa83489d990b02f55e69adef7de8efaa",
+      "before_chars": 53743,
+      "after_chars": 53850,
+      "added": [
+        {
+          "path": "tests/audio/test_capture_access_diagnostic.py",
+          "occurrences_added": 2
+        }
+      ],
+      "removed": 0
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "preimage": "ea663a4572a06b7118bbb9acdf2b043d6a3e74a4",
+      "before_chars": 16041,
+      "after_chars": 16163,
+      "added": [
+        {
+          "path": "tests/audio/test_capture_access_diagnostic.py",
+          "occurrences_added": 2
+        }
+      ],
+      "removed": 0
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "preimage": "b8ed4f861700c78303285f072e5353374879c862",
+      "before_chars": 4215,
+      "after_chars": 4286,
+      "added": [
+        {
+          "path": "tests/audio/test_audio_process.py",
+          "occurrences_added": 1
+        },
+        {
+          "path": "tests/audio/test_process_deadline.py",
+          "occurrences_added": 1
+        }
+      ],
+      "removed": 0
+    }
+  ],
+  "preserved": {
+    "original_required_suites": true,
+    "original_fail_skip_xfail_gates": true,
+    "asr_5_second_budget": true,
+    "uncached_control_and_profile_validation": true,
+    "all_existing_operation_timeouts": true,
+    "selected_capture_original_failure": true,
+    "exact_endpoint_evaluation_branch_guard": true,
+    "microphone_consent_and_os_policy": true,
+    "whole_family_and_io_cleanup_required": true,
+    "existing_installer_bootstrap_and_lease": true,
+    "current_bundle_and_pe_producers": true,
+    "complete_source_wheel_verifier": true,
+    "full_windows_and_six_ordinary_same_head_required": true
+  },
+  "qualification": {
+    "source_status": "REVIEWED_INTEGRATED_NOT_RUN",
+    "historical_results_apply_only_to_named_heads": true,
+    "native_capture": "UNRESOLVED",
+    "actual_standard_installer": "RECEIVING_RERUN_REQUIRED",
+    "asr_deadline_source_cases": "RECEIVING_RERUN_REQUIRED",
+    "final_wheel": "NOT_ELIGIBLE",
+    "full_platform": "NOT_QUALIFIED",
+    "physical_microphone": "NOT_RUN",
+    "human_nvda": "NOT_RUN",
+    "signed_publisher": "NOT_CONFIGURED",
+    "private_runtime_or_binary_uploads": false
+  },
+  "review_file": "carr-library/review/process-native-corrections-composition-2026-11-28.json",
+  "predecessor_windows_source": {
+    "head": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+    "job_id": 140795574441,
+    "modules_passed": 59,
+    "modules_total": 61,
+    "passed": 2090,
+    "failed": 11,
+    "skipped": 0,
+    "failures": "Existing ASR service/admission only; all11 nodes already failed at301.",
+    "receiving_asr_fix": "NOT_RUN"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "resonance-native-idle-api-correction/1",
+  "base_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+  "preimage_blob": "522ff49d2fe930f97d6b152b38bb273fcedae184",
+  "successor_blob": "6519abd0f992d90ee596139bdad7c9595612986d",
+  "execution": "NOT_RUN",
+  "hunk": {
+    "before": "                app.ProcessIdle()\n",
+    "after": "                loop = wx.EventLoopBase.GetActive()\n                if loop is None or not loop.IsRunning():\n                    raise RuntimeError('The native options acceptance lost its active event loop.')\n                loop.ProcessIdle()\n"
+  },
+  "exact_inverse": true,
+  "cause": "AttributeError: 'App' object has no attribute 'ProcessIdle'",
+  "selection": "Use the already running native event loop after ShowModal returns, and refuse an absent or stopped loop. Do not construct a replacement loop or fake destruction.",
+  "official_sources": [
+    {
+      "url": "https://docs.wxpython.org/wx.EventLoopBase.html",
+      "review": "GetActive returns the current running loop or None; ProcessIdle is a method of EventLoopBase."
+    },
+    {
+      "url": "https://github.com/wxWidgets/Phoenix/blob/wxPython-4.2.4/etg/evtloop.py",
+      "decoded_utf8": {
+        "sha256": "33e489bf0d96987f8fa9b395d74dbe2f69dca4cd6619fa7444cb3c640f83aef5",
+        "bytes": 2964
+      },
+      "review": "Pinned wxPython 4.2.4 wraps the event-loop base."
+    },
+    {
+      "url": "https://github.com/wxWidgets/Phoenix/blob/wxPython-4.2.4/etg/app.py",
+      "decoded_utf8": {
+        "sha256": "e50809f22a5d455cc97da4a257161d58ba2065f2e662a9adc42db68f5c0b0f8d",
+        "bytes": 24421
+      }
+    }
+  ],
+  "preserved": {
+    "all_native_assertions": true,
+    "original_destroy_event_required": true,
+    "before_after_synthesis_state": true,
+    "original_predicate_timeout_seconds": 5,
+    "watchdog_seconds": 90,
+    "domain_sources_unchanged": true,
+    "all_301_contract_cases_retained": true
+  },
+  "peer_review": "Locate exact diff and active MainLoop context CLEAR; receiving native rerun required."
+}

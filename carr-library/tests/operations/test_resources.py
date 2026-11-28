@@ -17,29 +17,23 @@ from carr_library.operations import (ResourceBroker, ResourceLimits, ResourceReq
     ResourceTimeout, ResourceUnavailable)
 
 
-def _hold(directory, request, queue, stop, *, crash=False):
-    try:
-        broker = ResourceBroker(directory)
-        with broker.reserve(ResourceRequest.from_dict(request), operation_id='child', timeout=2) as lease:
-            queue.put(('held', lease.id))
-            if not stop.wait(10):
-                raise TimeoutError('Parent did not stop fixture process.')
-            if crash:
-                os._exit(73)
-        queue.put(('released', None))
-    except BaseException as exc:
-        queue.put(('error', type(exc).__name__))
-        raise
+@pytest.fixture
+def spawn_targets(monkeypatch):
+    import importlib
+    import sys
+    import carr_library
 
-
-def _contend(directory, label, queue, start):
-    broker = ResourceBroker(directory)
-    if not start.wait(10):
-        raise TimeoutError('Parent did not start fixture process.')
-    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id=label, timeout=5):
-        queue.put((label, 'entered', time.monotonic()))
-        time.sleep(.12)
-        queue.put((label, 'exiting', time.monotonic()))
+    directory = Path(__file__).resolve().parent
+    # Add only this tests/operations directory for the spawned target import.
+    # In particular, do not add the repository root or application src here.
+    monkeypatch.syspath_prepend(str(directory))
+    module = importlib.import_module('carr_resource_process_fixture')
+    assert Path(module.__file__).resolve() == directory / 'carr_resource_process_fixture.py'
+    expected = {
+        'expected_package': str(Path(carr_library.__file__).resolve()),
+        'expected_broker': str(Path(sys.modules[ResourceBroker.__module__].__file__).resolve()),
+    }
+    return module, expected
 
 
 @pytest.fixture
@@ -210,11 +204,12 @@ def test_capacity_freed_after_deadline_does_not_start_late_worker(broker, monkey
             holder.__exit__(None, None, None)
 
 
-def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
+def test_actual_spawned_process_crash_releases_without_pid_reaping(broker, spawn_targets):
+    targets, expected = spawn_targets
     ctx = multiprocessing.get_context('spawn')
     queue, stop = ctx.Queue(), ctx.Event()
-    process = ctx.Process(target=_hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
-                          kwargs={'crash': True})
+    process = ctx.Process(target=targets._hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
+                          kwargs={'crash': True, **expected})
     process.start()
     try:
         state, identity = queue.get(timeout=5)
@@ -242,11 +237,13 @@ def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
         queue.close()
 
 
-def test_actual_process_contention_has_no_overlapping_admission(tmp_path):
+def test_actual_process_contention_has_no_overlapping_admission(tmp_path, spawn_targets):
+    targets, expected = spawn_targets
     broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
     ctx = multiprocessing.get_context('spawn')
     queue, start = ctx.Queue(), ctx.Event()
-    workers = [ctx.Process(target=_contend, args=(broker.root, label, queue, start)) for label in ('one', 'two')]
+    workers = [ctx.Process(target=targets._contend, args=(broker.root, label, queue, start),
+                           kwargs=expected) for label in ('one', 'two')]
     for process in workers:
         process.start()
     try:

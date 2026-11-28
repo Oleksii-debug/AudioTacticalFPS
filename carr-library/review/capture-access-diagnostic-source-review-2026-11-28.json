@@ -1,0 +1,211 @@
+{
+  "schema": "carr-source-only-diagnostic-review/1",
+  "purpose": "Read-only observations after the unchanged explicit virtual-input capture acceptance fails.",
+  "execution": "NOT_RUN",
+  "base_application_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "original_source": {
+    "path": ".github/workflows/carr-capture-format-diagnostic.yml",
+    "blob": "482e4bca9e1d619449393c8c5125dd18c378c70c"
+  },
+  "new_source": {
+    "path": "carr-library/scripts/windows_capture_access_diagnostic.py",
+    "blob": "fa21a15909302814c8c42bd1d5ecc160e663cb44",
+    "sha256": "62bccd95920b327937ffc0b9291b1ee6e609bd194d57524f3f1e8f2db6baa5f3"
+  },
+  "tests": {
+    "path": "carr-library/tests/audio/test_capture_access_diagnostic.py",
+    "blob": "edd302ca0efda98c3ffc236711b178c04b75c7fd",
+    "planned_cases": 55,
+    "execution": "NOT_RUN",
+    "windows_specific_skip_markers": false,
+    "scopes": [
+      "exact CI context before diagnostic work",
+      "original failed capture selection",
+      "fresh stable identity including reorder and ambiguity",
+      "invalid child selection before native library loading",
+      "real Python child under original18-second owned process budget",
+      "native denial observations remain denial",
+      "private stage retained for direct/masked multi-owner errors from discovery or child",
+      "original receipt changed during admission",
+      "bounded unique finite JSON and exact selected native result",
+      "fixed KEY_READ registry and redaction",
+      "failed child and pending cleanup remain failed reports",
+      "standalone process persists failed receipt before synchronously draining every original causal owner",
+      "initial-status, close and early-report KeyboardInterrupt/SystemExit deferred until all actual owners settle",
+      "actual diagnostic parent process remains alive while its actual owned child and private stage are retained",
+      "nested WASAPI flags cannot claim capture, buffers, property changes or fallback",
+      "stage deletion is asserted only after an actual completion callback registered after the retained-stage notification"
+    ]
+  },
+  "reuse_units": [
+    {
+      "unit": "method",
+      "byte_equal": true,
+      "sha256": "a4c098650745e20e541f22d0449fcbb5d652b988f7a8f6e2af9a88aa68308ccb"
+    },
+    {
+      "unit": "release",
+      "byte_equal": true,
+      "sha256": "2c46a94c6e48499655e6c8ae2ac1249959ec8735c6b1875d3269583bfaae4784"
+    },
+    {
+      "unit": "ok",
+      "byte_equal": true,
+      "sha256": "b21ccd002c515811e9bb38d95e5e2c0ffdf5fc210ecce55b56d5a21c920a01b6"
+    },
+    {
+      "unit": "property_value",
+      "byte_equal": true,
+      "sha256": "92cbfe6a13fe3b28b4df53719206b86becebd103a11101c1cc16cb02ff7e0384"
+    },
+    {
+      "unit": "WaveFormat",
+      "byte_equal": true,
+      "sha256": "c28eeece42d1a0350cd7e566f92f1e5c12974b386b9c0289113f456fb649623e"
+    },
+    {
+      "unit": "inspect_wasapi",
+      "byte_equal": true,
+      "sha256": "169393d5f2ead0082acf34bf205fa2babc9735080af55275073ea9f96beb9de0"
+    },
+    {
+      "unit": "moniker_WaveInID_MME_WASAPI_sequence",
+      "byte_equal": true,
+      "sha256": "2e75cb6a62da62b29b8bb3b0ee97c61a11e4779fd8a5b48b17ff7f66678530e3"
+    },
+    {
+      "unit": "fixed_registry_read_value",
+      "byte_equal": true
+    },
+    {
+      "unit": "fixed_registry_and_session_calls",
+      "byte_equal": true
+    }
+  ],
+  "removed": [
+    "DirectShow IAMStreamConfig.SetFormat block",
+    "all FFmpeg input format and capture trials",
+    "standalone workflow installation/download/service/driver steps"
+  ],
+  "preserved": {
+    "exact_original_failed_receipt_digest": true,
+    "fresh_recording_service_device_lookup": true,
+    "same_reviewed_friendly_name": true,
+    "opaque_moniker_sha256_matches_original_device_id": true,
+    "actual_native_property_bag_WaveInID": true,
+    "opaque_endpoint_id_no_parsing_or_default": true,
+    "original_query_and_open_without_sample_buffers": true,
+    "original_WASAPI_shared_Initialize_without_Start_or_GetBuffer": true,
+    "existing_run_process_owned_tree": true,
+    "native_child_timeout_seconds": 18,
+    "discovery_existing_timeout_seconds": 15,
+    "max_native_log_bytes": 262144,
+    "private_stage_retained_by_existing_cleanup_context": true,
+    "original_capture_failure_remains": true,
+    "no_registry_driver_service_policy_or_default_writes": true,
+    "existing_synchronous_owner_proof_before_standalone_exit": true,
+    "pending_cleanup_creates_no_new_worker_or_owner": true,
+    "early_failed_report_survives_cleanup_wait": true,
+    "original_error_or_recorded_signal_delivered_after_quiescence": true,
+    "nested_WASAPI_read_only_flags_required": true
+  },
+  "main_insertion": {
+    "path": ".github/workflows/carr-windows.yml",
+    "preimage_blob": "83e463f7d05e357346755541d9bbefa0c92ff40c",
+    "hunk_file": "carr-library/review/capture-access-diagnostic-main-hunks-2026-11-28.json",
+    "hunk_blob": "3120cf4c9c21d2e861239e35ffc624dbfecef18c",
+    "exact_inverse": true,
+    "original_capture_timeout_minutes": 3,
+    "additional_diagnostic_step_minutes": 2,
+    "guard": "Existing exact repository/push/evaluation branch and successful prerequisites; selected_capture.outcome must be failure.",
+    "artifact_files": [
+      "recording-access-diagnostic.json",
+      "recording-access-diagnostic.txt"
+    ],
+    "existing_recording_artifact_globs_unchanged": true,
+    "workflow_file_in_overlay": false
+  },
+  "limitations": [
+    "DIAGNOSED records observations; it does not grant capture, model, listening, NVDA, release or sealed-bundle acceptance.",
+    "No particular consent/policy cause is inferred from missing keys, output-format success, or an earlier VM's result.",
+    "The original capture acceptance, selected input and any native failure remain authoritative.",
+    "Portable real-child tests exercise process ownership only. Native COM/MME/WASAPI behavior still needs the future Windows diagnostic.",
+    "No product/evaluation/PR/workflow reference has been changed by this overlay.",
+    "Pending cleanup keeps the diagnostic process alive until the existing owners prove quiescence. The enclosing two-minute CI step remains a failure-preserving orchestration bound, not a weaker cleanup proof."
+  ],
+  "review": {
+    "root_source_readback": "CLEAR for986f84496c53edec7ff69d9fae03560ea8b18ad1",
+    "initial_static_peer": "Caller/fixture scope clear; initial35beb standalone-exit gap was then found by root and corrected in986f.",
+    "execution": "NOT_RUN",
+    "standalone_lifetime_hunks": [
+      {
+        "before": "        raise ValueError('The native diagnostic did not retain its exact selection or read-only result contract.')\n    return value\n",
+        "after": "        raise ValueError('The native diagnostic did not retain its exact selection or read-only result contract.')\n    wasapi = value.get('wasapi')\n    if wasapi is not None or value['status'] == 'DIAGNOSED':\n        if (type(wasapi) is not dict\n                or any(wasapi.get(name) is not False for name in\n                       ('capture_started', 'buffers_requested', 'property_changes', 'device_fallback'))\n                or wasapi.get('shared_mode') is not True):\n            raise ValueError('The native WASAPI observations do not preserve their no-capture contract.')\n    return value\n"
+      },
+      {
+        "before": "\ndef main(arguments=None):\n",
+        "after": "\ndef _save_report(path, report):\n    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\\n',\n                    encoding='utf-8')\n\n\ndef _wait_for_pending(owners, interrupted=None):\n    \"\"\"Keep this standalone process alive until each existing owner is quiet.\n\n    This uses the same synchronous proof as the installer. It creates no\n    worker, lease or replacement owner. Record interruptions and deliver them\n    only after every original causal resource has actually settled.\n    \"\"\"\n    for owner in owners:\n        while True:\n            try:\n                if owner.quiescent_event.is_set():\n                    break\n                owner.close()\n                owner.quiescent_event.wait(.25)\n            except (KeyboardInterrupt, SystemExit) as signal:\n                if interrupted is None:\n                    interrupted = signal\n    return interrupted\n\n\ndef main(arguments=None):\n"
+      },
+      {
+        "before": "        if owners:\n            report['cleanup_pending'] = True\n            report['cleanup_owner_count'] = len(owners)\n        raise\n    finally:\n        args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\\n',\n                               encoding='utf-8')\n        print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)",
+        "after": "        if owners:\n            report['cleanup_pending'] = True\n            report['cleanup_owner_count'] = len(owners)\n            # Preserve the failed observations before a potentially prolonged\n            # cleanup wait. Failure to write must not release the native owner.\n            interrupted = None\n            try:\n                _save_report(args.report, report)\n            except (KeyboardInterrupt, SystemExit) as signal:\n                interrupted = signal\n            except Exception as write_error:\n                report['early_report_error'] = type(write_error).__name__ + ': ' + str(write_error)[:512]\n            interrupted = _wait_for_pending(owners, interrupted)\n            report['cleanup_pending'] = False\n            report['cleanup_quiescent'] = True\n            if interrupted is not None:\n                raise interrupted from error\n        raise\n    finally:\n        _save_report(args.report, report)\n        print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)"
+      }
+    ],
+    "inverse_reconstructs_blob": "b25ace6ed8a91f057bd16763682868f8d417bec6",
+    "source_and_tests_readback_exact": [
+      {
+        "path": "carr-library/review/capture-access-diagnostic-main-hunks-2026-11-28.json",
+        "sha": "3120cf4c9c21d2e861239e35ffc624dbfecef18c",
+        "size": 1819,
+        "exact": true
+      },
+      {
+        "path": "carr-library/scripts/windows_capture_access_diagnostic.py",
+        "sha": "fa21a15909302814c8c42bd1d5ecc160e663cb44",
+        "size": 29743,
+        "exact": true
+      },
+      {
+        "path": "carr-library/tests/audio/test_capture_access_diagnostic.py",
+        "sha": "edd302ca0efda98c3ffc236711b178c04b75c7fd",
+        "size": 27767,
+        "exact": true
+      }
+    ],
+    "stage_notification_fixture": {
+      "preimage_blob": "b6965d89398ebc59f1dabfdeefe63aaee788700e",
+      "successor_blob": "edd302ca0efda98c3ffc236711b178c04b75c7fd",
+      "hunks": [
+        {
+          "before": "pending = [None]\nstage = [None]\n\ndef failing_run",
+          "after": "pending = [None]\nstage = [None]\nnotifications_done = threading.Event()\n\ndef failing_run"
+        },
+        {
+          "before": "diagnostic.run = failing_run\ntry:\n    try:\n        diagnostic.main",
+          "after": "def failing_with_notification(args, report):\n    try:\n        return failing_run(args, report)\n    finally:\n        # The retained-stage callback has been registered while unwinding\n        # failing_run. This later callback acknowledges notification completion,\n        # which is deliberately distinct from native quiescence.\n        if pending[0] is not None:\n            pending[0].cleanup_owner.add_quiescent_callback(notifications_done.set)\n\ndiagnostic.run = failing_with_notification\ntry:\n    try:\n        diagnostic.main"
+        },
+        {
+          "before": "        proof['owner_quiet'] = error.cleanup_owner.quiescent\n        proof['stage_removed'] = stage[0] is not None and not stage[0].exists()",
+          "after": "        proof['owner_quiet'] = error.cleanup_owner.quiescent\n        proof['stage_notification_completed'] = notifications_done.wait(5)\n        if not proof['stage_notification_completed']:\n            raise AssertionError('The actual retained-stage notification did not finish.')\n        proof['stage_removed'] = stage[0] is not None and not stage[0].exists()"
+        },
+        {
+          "before": "    assert proof['same_error'] and proof['owner_quiet'] and proof['stage_removed']\n",
+          "after": "    assert proof['same_error'] and proof['owner_quiet'] and proof['stage_removed']\n    assert proof['stage_notification_completed'] is True\n"
+        }
+      ],
+      "source_unchanged": true,
+      "cases_unchanged": 55,
+      "native_deadlines_unchanged": true,
+      "stage_notification_wait_seconds": 5
+    },
+    "native_lifetime_source_blob_unchanged": "fa21a15909302814c8c42bd1d5ecc160e663cb44",
+    "original_42_cases_retained": true,
+    "total_planned_cases": 55,
+    "stage_notification_peer": "locate_project independently read edd302ca: callback is registered after retained-stage context unwinding, acknowledgment precedes deletion assertion; all55 cases and native bounds retained. Source-only CLEAR, no execution."
+  },
+  "source_tree": "ce39382ae773b0ffbf92574a81dbfb3816cead16",
+  "supersedes_unqualified_source_trees": [
+    "35bebd86767e93b797d179e7cf1cbb8b5ed73e79",
+    "0fc732d57a7ed0ca29c485426a9dd7679b341de9"
+  ]
+}

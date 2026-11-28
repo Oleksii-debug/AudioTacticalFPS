@@ -39,7 +39,58 @@ application archive excludes the separately set up audio runtime. No eligible
 delivery wheel, final private archive, signed installer or whole-platform
 completion is claimed by this checkpoint.
 
-## Current standard installation composition — 2026-11-28
+## Current source/runtime correction composition — 2026-11-28
+
+The successor of `f4d6846d037c079438f96c85bbebfe0f979dd25b` addresses
+the measured exit-observation ambiguity through the existing two diagnostic
+readers. It records only positive native exit, preserves the five-second ASR
+allowance and every fresh caller-side guard, and keeps the same cleanup owner
+pending until both the native family and its I/O resources are quiet. A native
+wait/cleanup handoff protects the Windows leader handle; no new supervisor or
+control cache is introduced. All eight existing deadline cases remain with
+thirteen additive actual-child cases. This correction is NOT_RUN at composition.
+
+The same successor corrects three observed receiving-environment mismatches:
+standard setup now checks the actual producer-shaped native launcher inventory;
+the wxPython native probe uses the existing active event loop for idle deletion;
+and real multiprocessing resource tests use an importable tests-only helper
+whose children verify exact application and broker origins. Old assertions,
+deadlines, source identity, installation leases and data preservation remain.
+
+At f4d6846d, standard-installer source and installed selections each passed
+326 cases on both Linux and Windows (22 extra installed subtests per OS).
+The Windows core bundle was verified, but setup preparation failed before real
+Install/Repair/Uninstall on an absent donor-only manifest field. Component
+Linux source passed 2,104 cases across 62 modules; installed passed 2,102 plus
+12 subtests and failed two spawn-import fixtures. Focused voice Windows
+installed passed 301 contracts, then failed the native probe after 78 checks
+because wx.App has no ProcessIdle method. These exact failures remain recorded;
+reviewed source corrections are not passing receiving results.
+
+The f4d6846d Windows source component lane also completed: 59/61 modules
+passed, with 2,090 passed cases and 11 ASR failures, zero skips. All failing
+nodes were already failing at 301c32da. Its measured maximum checkpoint
+callback was 8.281 seconds; the true child-exit time was still unknown. This
+head predates the reviewed independent EOF observation and cannot qualify it.
+
+The completed 301c32da Windows installed component lane passed 1,847 cases
+plus 12 subtests. Its same-head source lane's 14 ASR failures remain valid.
+Neither result proves the actual child-exit time during a delayed caller
+verification callback.
+
+A new failure-only selected-input diagnostic reuses the existing native
+read-only crosswalk on the exact endpoint-evaluation branch. It never starts
+capture, requests sample buffers or changes consent/policy/services/drivers/
+formats/defaults. It retains the exact original failed selection and all
+existing process owners; DIAGNOSED does not turn capture into PASS.
+
+[The latest integration section](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md#current-process-and-native-acceptance-corrections--2026-11-28)
+links exact code reviews, per-head receipts and limitations. The required
+same-head ordinary/full-Windows gates, final-wheel eligibility and remaining
+platform scope are unchanged. No final application archive or complete
+platform acceptance is claimed.
+
+## Historical standard installation composition — 2026-11-28
 
 The receiving successor of `301c32da8dbc2de6060f8cc0972c6e5651abb1bf`
 adds standard per-user Install, Repair and Uninstall through the existing sealed

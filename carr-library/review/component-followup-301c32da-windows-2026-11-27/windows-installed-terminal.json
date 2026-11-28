@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "scope": "Completed Windows installed job log; no original artifact-member byte claims.",
+  "run_id": 46081225448,
+  "head_sha": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+  "job_id": 140780410757,
+  "mode": "installed",
+  "platform": "windows-2022",
+  "python": "3.11.9",
+  "conclusion": "success",
+  "started_at": "2026-11-27T23:45:35Z",
+  "completed_at": "2026-11-28T00:05:24Z",
+  "decoded_log_characters": 93201,
+  "decoded_log_sha256": "cb19b70d78f6179e7cdca80cac68f0307bd0e4452372a51c42ca2881f8ade6f4",
+  "passed": 1847,
+  "failed": 0,
+  "skipped": 0,
+  "subtests_passed": 12,
+  "pytest_seconds": 1027.33,
+  "python_module_count": 377,
+  "source_inventory_sha256": "3bd6e879c598dff3c2ddac95a06c17b5f64160d6206a4bda7856fbd071ee2b50",
+  "proof_lines": [
+    "{\"status\": \"PASS\", \"module_origin\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\", \"python_modules\": 377, \"source_inventory_sha256\": \"3bd6e879c598dff3c2ddac95a06c17b5f64160d6206a4bda7856fbd071ee2b50\"}",
+    "1847 passed, 12 subtests passed in 1027.33s (0:17:07)",
+    "INSTALLED_CASES_PASS 1847"
+  ],
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:45:36Z",
+      "completed_at": "2026-11-27T23:45:36Z"
+    },
+    {
+      "number": 2,
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:45:36Z",
+      "completed_at": "2026-11-27T23:45:37Z"
+    },
+    {
+      "number": 3,
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:45:37Z",
+      "completed_at": "2026-11-27T23:45:43Z"
+    },
+    {
+      "number": 4,
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:45:43Z",
+      "completed_at": "2026-11-27T23:45:43Z"
+    },
+    {
+      "number": 5,
+      "name": "Require actual portable audio and OCR commands",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-27T23:45:43Z",
+      "completed_at": "2026-11-27T23:45:43Z"
+    },
+    {
+      "number": 6,
+      "name": "Install exact application and component test prerequisites",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:45:43Z",
+      "completed_at": "2026-11-27T23:46:23Z"
+    },
+    {
+      "number": 7,
+      "name": "Prepare pinned audio for actual clip processing and native controls",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:46:23Z",
+      "completed_at": "2026-11-27T23:46:35Z"
+    },
+    {
+      "number": 8,
+      "name": "Prepare the existing verified OCR engine for automatic-language controls",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:46:35Z",
+      "completed_at": "2026-11-27T23:48:10Z"
+    },
+    {
+      "number": 9,
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:48:10Z",
+      "completed_at": "2026-11-27T23:48:11Z"
+    },
+    {
+      "number": 10,
+      "name": "Require installed module origin and exact complete Python source inventory",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:48:11Z",
+      "completed_at": "2026-11-27T23:48:12Z"
+    },
+    {
+      "number": 11,
+      "name": "Require source and installed native additional-document imports",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-27T23:48:12Z",
+      "completed_at": "2026-11-27T23:48:12Z"
+    },
+    {
+      "number": 12,
+      "name": "Require source updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-27T23:48:12Z",
+      "completed_at": "2026-11-27T23:48:12Z"
+    },
+    {
+      "number": 13,
+      "name": "Require installed updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-27T23:48:12Z",
+      "completed_at": "2026-11-28T00:05:20Z"
+    },
+    {
+      "number": 14,
+      "name": "Retain public synthetic source and installed evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T00:05:20Z",
+      "completed_at": "2026-11-28T00:05:21Z"
+    },
+    {
+      "number": 27,
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T00:05:21Z",
+      "completed_at": "2026-11-28T00:05:21Z"
+    },
+    {
+      "number": 28,
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T00:05:21Z",
+      "completed_at": "2026-11-28T00:05:23Z"
+    },
+    {
+      "number": 29,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T00:05:23Z",
+      "completed_at": "2026-11-28T00:05:23Z"
+    }
+  ],
+  "qualification": "This exact installed Windows lane passed. The same-head source Windows lane has14 ASR failures; this installed result does not supersede or explain them."
+}

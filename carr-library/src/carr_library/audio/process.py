@@ -360,6 +360,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     The worker timeout ends at its first observed exit; later caller-side
     validation does not extend execution or erase cancellation/output checks.
     ProcessResult.elapsed still includes that validation and pipe collection.
+    Existing diagnostic readers may observe the same leader after EOF while
+    the caller validates a checkpoint. EOF itself never proves process exit;
+    native family shutdown and reader completion remain required cleanup.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -376,6 +379,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise AudioCancelled('Audio operation cancelled before starting.')
     watched = tuple(Path(path) for path in watch)
     overflow = threading.Event()
+    stop_observers = threading.Event()
+    exit_lock = threading.Lock()
+    wait_lock = threading.Lock()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
     process = _start_process(args, owned_tree=owned_tree,
@@ -387,6 +393,39 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     observed_exit_at = None
     reader_failures = []
 
+    def record_exit():
+        nonlocal observed_exit_at
+        # Capture only after an exact-process poll/wait positively returned.
+        # Never infer this time from EOF, a callback, or the start of a wait.
+        observed = time.monotonic()
+        with exit_lock:
+            if observed_exit_at is None or observed < observed_exit_at:
+                observed_exit_at = observed
+
+    def exit_time():
+        with exit_lock:
+            return observed_exit_at
+
+    def observe_eof_exit():
+        while not stop_observers.is_set():
+            # The same lock hands an in-flight bounded wait to native cleanup.
+            # In particular, a Windows Job may close the leader handle there.
+            # Caller validation never holds or waits for this observation lock.
+            with wait_lock:
+                if stop_observers.is_set() or exit_time() is not None:
+                    return
+                remaining = budget.timeout - (time.monotonic() - started)
+                if remaining <= 0:
+                    return
+                try:
+                    code = process.wait(timeout=min(.05, remaining))
+                except subprocess.TimeoutExpired:
+                    continue
+                if code is None:
+                    raise AudioError('Audio worker exit observation returned no status.')
+                record_exit()
+                return
+
     def read_pipe(pipe, name):
         count = 0
         partial = b''
@@ -394,6 +433,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             while True:
                 data = pipe.read1(4096)
                 if not data:
+                    observe_eof_exit()
                     break
                 if name == 'stdout' and progress is not None:
                     partial += data
@@ -419,18 +459,21 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         except Exception as exc:
             reader_failures.append(exc)
         finally:
-            pipe.close()
+            try:
+                pipe.close()
+            except Exception as exc:
+                reader_failures.append(exc)
 
     threads, started_pipes = [], set()
     last_progress = None
 
     def check():
-        nonlocal last_progress, stopped_at, observed_exit_at
+        nonlocal last_progress, stopped_at
         # A cancellation callback may also verify a completed checkpoint. Take
         # positive process evidence before that work, never backdate an exit
         # first observed after the allowance or during a slow callback.
-        if observed_exit_at is None and process.poll() is not None:
-            observed_exit_at = time.monotonic()
+        if exit_time() is None and process.poll() is not None:
+            record_exit()
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
         if (stop_requested is not None and stopped_at is None
@@ -448,7 +491,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker diagnostic stream could not be read.') from reader_failures[0]
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
-        worker_until = time.monotonic() if observed_exit_at is None else observed_exit_at
+        worker_until = exit_time()
+        if worker_until is None:
+            worker_until = time.monotonic()
         if worker_until - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
         total, count = 0, 0
@@ -495,7 +540,8 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         while process.poll() is None:
             check()
             try:
-                process.wait(timeout=.05)
+                if process.wait(timeout=.05) is not None:
+                    record_exit()
             except subprocess.TimeoutExpired:
                 pass
         # Observe a cancellation even when the leader exits between polls;
@@ -513,26 +559,48 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
                              time.monotonic() - started, process.returncode, stopped_at is not None)
     finally:
-        def cleanup_process():
-            if owned_tree:
-                return _stop_owned(process)
-            _terminate(process)
-            return True
+        stop_observers.set()
+        stopped = False
 
         def release_streams():
+            close_error = None
             if process.stdin is not None:
                 try:
                     process.stdin.close()
-                except OSError:
-                    pass
+                except OSError as exc:
+                    if owned_tree:
+                        close_error = exc
             for thread in threads:
                 if thread.ident is not None:
                     thread.join(timeout=2)
-            # A started reader closes its own pipe; allocation/start failures
-            # leave the other streams owned by this cleanup, including retries.
+            if any(thread.ident is not None and thread.is_alive() for thread in threads):
+                raise AudioError('Audio worker diagnostic readers have not confirmed shutdown.')
+            # Join first: a started reader owns its pipe until its thread ends.
+            # Retry a failed owned close as well as allocation/start failures.
             for pipe in (process.stdout, process.stderr):
-                if pipe is not None and pipe not in started_pipes:
-                    pipe.close()
+                if pipe is not None and (owned_tree or pipe not in started_pipes):
+                    try:
+                        pipe.close()
+                    except Exception as exc:
+                        if close_error is None:
+                            close_error = exc
+            if close_error is not None:
+                raise close_error
+
+        def cleanup_process():
+            nonlocal stopped
+            with wait_lock:
+                if not stopped:
+                    if owned_tree:
+                        if _stop_owned(process) is not True:
+                            raise RuntimeError('The owned audio process has not confirmed shutdown.')
+                    else:
+                        _terminate(process)
+                    stopped = True
+            # Required I/O completion precedes CleanupOwner quiescence. It is
+            # not a notification which could fail after staging is released.
+            release_streams()
+            return True
 
         try:
             cleanup_process()
@@ -542,9 +610,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                 raise
             from .cleanup import pending_cleanup
             raise pending_cleanup(cleanup_process,
-                message='Audio process cleanup is still pending; capture remains reserved.',
-                callbacks=(release_streams,)) from exc
-        release_streams()
+                message='Audio process cleanup is still pending; capture remains reserved.') from exc
 
 
 def fsync_directory(path):

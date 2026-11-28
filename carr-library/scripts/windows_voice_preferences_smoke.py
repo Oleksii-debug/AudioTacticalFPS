@@ -356,7 +356,10 @@ def _run(args, report):
             def destroyed_after_idle():
                 # Top-level Destroy queues deletion for native idle processing;
                 # ShowModal may return before EVT_WINDOW_DESTROY is delivered.
-                app.ProcessIdle()
+                loop = wx.EventLoopBase.GetActive()
+                if loop is None or not loop.IsRunning():
+                    raise RuntimeError('The native options acceptance lost its active event loop.')
+                loop.ProcessIdle()
                 return destroyed_view.destroyed
             pump(destroyed_after_idle, 'Native options owner destruction did not settle')
             check('direct native modal destruction cannot publish pending options',

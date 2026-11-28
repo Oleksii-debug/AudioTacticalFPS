@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "task": "Current bundle launcher inventory admission for standard installation",
+  "base_commit": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "observed": {
+    "run_id": 46086003377,
+    "job_id": 140795594673,
+    "run_attempt": 1,
+    "conclusion": "failure",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46086003377",
+    "source_contracts": {
+      "modules": 11,
+      "passed": 326,
+      "failed": 0,
+      "skipped": 0
+    },
+    "installed_contracts": {
+      "passed": 326,
+      "subtests": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    "native_launcher_synthetic_checks": 9,
+    "failure_step": "Build one exact current core bundle and its standard setup",
+    "native_standard_install_repair_uninstall": "NOT_RUN: setup preparation failed before compilation",
+    "traceback": [
+      "2026-11-28T00:18:55.2249724Z {\"bundle_manifest_sha256\": \"3598c62f31c7a40467ff0f83b97398d93068162ea393f1c70ed05420dfeb6be1\", \"payload_files\": 489, \"profile\": \"current-core-19-windows-pins\", \"project_name\": \"universal-research-library\", \"project_version\": \"0.2.0.dev2\", \"required_runtime_files\": 394, \"source_commit\": \"f4d6846d037c079438f96c85bbebfe0f979dd25b\", \"source_tree\": \"c952cd61e4156ea734442e2758722f22280dc070\", \"wheel_sha256\": \"d24c1d32a1ccfd4f752d41f2a188ffe6e7cfee7ad16b7c3e2031bdcd61999ebe\"}",
+      "2026-11-28T00:18:55.4283239Z Traceback (most recent call last):",
+      "2026-11-28T00:18:55.4289702Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\windows_installer\\build_setup.py\", line 225, in <module>",
+      "2026-11-28T00:18:55.4310853Z     main()",
+      "2026-11-28T00:18:55.4317097Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\windows_installer\\build_setup.py\", line 217, in main",
+      "2026-11-28T00:18:55.4322223Z     result = prepare(args.bundle, args.output, manifest_sha256=args.bundle_manifest_sha256,",
+      "2026-11-28T00:18:55.4327303Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-28T00:18:55.4333017Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\windows_installer\\build_setup.py\", line 113, in prepare",
+      "2026-11-28T00:18:55.4338162Z     document = maintenance.bundle(bundle, manifest_sha256, allow_installed=installed_bundle)",
+      "2026-11-28T00:18:55.4345513Z                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-28T00:18:55.4350768Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\windows_installer\\maintenance.py\", line 249, in bundle",
+      "2026-11-28T00:18:55.4355809Z     raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')",
+      "2026-11-28T00:18:55.4361255Z ValueError: Standard installation requires the existing complete Python/native launcher bundle.",
+      "2026-11-28T00:18:55.4575466Z ##[error]Process completed with exit code 1.",
+      "2026-11-28T00:18:55.4749346Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "2026-11-28T00:18:55.4749806Z with:",
+      "2026-11-28T00:18:55.4750203Z   name: carr-standard-installation-windows-2022-f4d6846d037c079438f96c85bbebfe0f979dd25b-1",
+      "2026-11-28T00:18:55.4751455Z   path: carr-library/ci-standard-installation-results/**/*.json",
+      "2026-11-28T00:18:55.4752415Z   if-no-files-found: error",
+      "2026-11-28T00:18:55.4752637Z   retention-days: 7",
+      "2026-11-28T00:18:55.4752825Z   compression-level: 6",
+      "2026-11-28T00:18:55.4753012Z   overwrite: false",
+      "2026-11-28T00:18:55.4753200Z   include-hidden-files: false",
+      "2026-11-28T00:18:55.4753411Z   archive: true",
+      "2026-11-28T00:18:55.4753575Z env:",
+      "2026-11-28T00:18:55.4753754Z   CARR_TEST_MODE: source-and-installed",
+      "2026-11-28T00:18:55.4753996Z   PYTHONUTF8: 1",
+      "2026-11-28T00:18:55.4754251Z   PYTHONUNBUFFERED: 1",
+      "2026-11-28T00:18:55.4754485Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1",
+      "2026-11-28T00:18:55.4754728Z   PIP_DISABLE_PIP_VERSION_CHECK: 1",
+      "2026-11-28T00:18:55.4754951Z   ORT_DISABLE_TELEMETRY: 1",
+      "2026-11-28T00:18:55.4755145Z   HF_HUB_OFFLINE: 1",
+      "2026-11-28T00:18:55.4755327Z   HF_HUB_DISABLE_TELEMETRY: 1",
+      "2026-11-28T00:18:55.4755543Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1",
+      "2026-11-28T00:18:55.4755769Z   TRANSFORMERS_OFFLINE: 1",
+      "2026-11-28T00:18:55.4755967Z   DO_NOT_TRACK: 1",
+      "2026-11-28T00:18:55.4756225Z   pythonLocation: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+      "2026-11-28T00:18:55.4756661Z   PKG_CONFIG_PATH: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64/lib/pkgconfig",
+      "2026-11-28T00:18:55.4757108Z   Python_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+      "2026-11-28T00:18:55.4757495Z   Python2_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+      "2026-11-28T00:18:55.4757866Z   Python3_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+      "2026-11-28T00:18:55.4758303Z   CARR_PYTHON: D:\\a\\_temp\\carr-standard-installation-python\\Scripts\\python.exe",
+      "2026-11-28T00:18:55.4759131Z   CARR_TEST_WHEEL: D:\\a\\_temp\\carr-standard-installation-wheel\\universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "2026-11-28T00:18:55.4759769Z   CARR_STANDARD_PRIVATE: D:\\a\\_temp\\carr-standard-installation-private",
+      "2026-11-28T00:18:55.4760332Z   CARR_STANDARD_ZIG: D:\\a\\_temp\\carr-standard-installation-private\\zig\\zig-x86_64-windows-0.14.1\\zig.exe",
+      "2026-11-28T00:18:55.4760790Z ##[endgroup]",
+      "2026-11-28T00:18:55.6581061Z With the provided path, there will be 21 files uploaded",
+      "2026-11-28T00:18:55.6587555Z Artifact name is valid!",
+      "2026-11-28T00:18:55.6589160Z Root directory input is valid!"
+    ],
+    "verified_bundle_manifest_sha256": "3598c62f31c7a40467ff0f83b97398d93068162ea393f1c70ed05420dfeb6be1",
+    "sealed_application_wheel_sha256": "d24c1d32a1ccfd4f752d41f2a188ffe6e7cfee7ad16b7c3e2031bdcd61999ebe",
+    "source_tree": "c952cd61e4156ea734442e2758722f22280dc070",
+    "native_launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+    "artifact": {
+      "id": 15239835768,
+      "bytes": 37719,
+      "sha256": "a6a6f55a983386ad58dbfd7355020b634d9277eb7d2ee3f5d0cd071c4226b6ba",
+      "verified_from": "GitHub artifact metadata; archive not locally decoded in this review"
+    },
+    "completed_log": {
+      "sha256": "545027276c28945de10a6e71bef3a592227b87936a66803cac5b8ce2775417b9",
+      "characters": 302918
+    },
+    "linux": {
+      "job_id": 140795594456,
+      "source_modules": 11,
+      "source_passed": 326,
+      "installed_passed": 326,
+      "installed_subtests": 22,
+      "failed": 0,
+      "skipped": 0,
+      "log_sha256": "e5fa65e66e6042bc249f0cc4f3368d36cf2fa4db96a25253320ae30e5df0d764"
+    }
+  },
+  "cause": "The adopted maintenance guard required bundled_launcher=True. The authoritative current bundle producer does not emit that field; its verified ResearchLibrary.exe is sealed in the exact files inventory. The synthetic fixture incorrectly invented both that flag and native-launcher-build.json.",
+  "current_authority": [
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "blob": "ea14a607d755761d782404944513a1473f6956a5",
+      "sha256": "af6d500f62497f9da7750fb99716e47dac2d20561d49a738cdb627594bf9c724",
+      "checks": [
+        "TARGET is Windows x64 / CPython 3.11",
+        "Both explicit launcher and evidence are required together",
+        "verify_launcher binds bounded PE and evidence to the exact Git commit",
+        "The committed inspect_pe source is compared byte-for-byte before use",
+        "The copied ResearchLibrary.exe is compared with the measured launcher hash before manifest capture",
+        "The manifest files map contains exact ResearchLibrary.exe bytes; no bundled_launcher flag or copied native-launcher-build.json"
+      ]
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_pe.py",
+      "blob": "6dc2708791108b9ebf4656e3f8480945e337d10b",
+      "sha256": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+      "checks": [
+        "x64 PE32+ Windows GUI subsystem",
+        "ASLR, high-entropy ASLR and DEP",
+        "Allowed Windows imports only",
+        "Embedded asInvoker/uiAccess=false/longPathAware manifest",
+        "Unsigned development build; no signing or execution claim"
+      ]
+    },
+    {
+      "path": "carr-library/packaging/install_windows.py",
+      "blob": "0946a7105009843541124bef6105107138c8ae50",
+      "sha256": "68dffedea8e372302bbe7a0407fb382d2730dec9b16603c537b591ad8d7fe3eb",
+      "checks": [
+        "Same mandatory verifier after exact inventory comparison",
+        "Every declared file digest and plain path is checked",
+        "Actual bundled Python and native runtime inventories remain checked"
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "path": "carr-library/packaging/windows_installer/maintenance.py",
+      "before_blob": "0139f2ce5e7024908ab2d0fea0bd65edcdd1a63c",
+      "after_sha256": "db2cd3f07d3af6055667ed818a7889c6b9094100643578dda347841aed2cb5fb",
+      "hunks": [
+        {
+          "before": "    if document.get('bundled_python') is not True or document.get('bundled_launcher') is not True:\n        raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')\n",
+          "after": "    # The current bundle builder verifies the x64 launcher against its exact\n    # committed source and seals ResearchLibrary.exe in files. It has no\n    # bundled_launcher flag; the actual inventory is the launcher authority.\n    files = document.get('files')\n    if (document.get('target') != 'Windows x64 / CPython 3.11'\n            or document.get('bundled_python') is not True\n            or not isinstance(files, dict) or 'ResearchLibrary.exe' not in files):\n        raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')\n"
+        },
+        {
+          "before": "    expected_files = dict(document['files'], **{'bundle-manifest.json': expected})",
+          "after": "    expected_files = dict(files, **{'bundle-manifest.json': expected})"
+        }
+      ],
+      "after_blob": "efd6884c4d63d7c1b1a551dbe4a75ad4abc1d11d"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before_blob": "2c99632da01db65a9a452a913148c0138638e688",
+      "after_sha256": "4902d6b9909d93e5612cbabbf232e0042b8bc20c8b86e333a8d384a66cafc54d",
+      "fixture_hunks": [
+        {
+          "before": "    raw = (json.dumps(dict(schema=1, target='win_amd64', bundled_python=True,\n        bundled_launcher=True, source_commit=source_commit, files=files), sort_keys=True) + '\\n').encode()",
+          "after": "    raw = (json.dumps(dict(schema=1, target='Windows x64 / CPython 3.11',\n        bundled_python=True, bundled_model=False, bundled_ocr=False, bundled_audio=False,\n        source_commit=source_commit, files=files), sort_keys=True) + '\\n').encode()"
+        },
+        {
+          "before": "                 'ResearchLibrary.exe', 'native-launcher-build.json'):",
+          "after": "                 'ResearchLibrary.exe'):"
+        }
+      ],
+      "appended_sha256": "ed00a9f735ede8a0b261d9554ef9d74ab5c0c0ec1c3738fdf992a4a070984d3b",
+      "after_blob": "7ec96e632a1b547789c3356988c89dce5f565ffd"
+    }
+  ],
+  "boundaries_preserved": [
+    "No bundle producer or native PE parser changes",
+    "No helper inventory, lease, process ownership, bootstrap, repair or uninstall changes",
+    "Same exact manifest digest, strict paths, full actual inventory and mandatory verifier",
+    "Same source-wheel/helper proof and create-only setup output",
+    "All original 130 cases and every old assertion retained; inverse recovery exact",
+    "No workflow, ref, timeout or native assertion changes"
+  ],
+  "new_tests": {
+    "status": "NOT_RUN",
+    "original_cases": 130,
+    "added_cases": 14,
+    "total_planned_cases": 144,
+    "cases": [
+      "Current producer-shaped manifest prepares without donor flag or fake receipt",
+      "Seven missing/unsealed/resealed/undeclared/tampered/wrong-digest/directory/hardlink controls preserve source and refuse setup output",
+      "Five typed/current-target/Python contract controls",
+      "A donor launcher flag cannot substitute for an actual native file"
+    ]
+  },
+  "verification": {
+    "cloud_readback": "EXACT for source and tests; final manifest readback recorded separately",
+    "mechanical_inverse": "EXACT",
+    "execution": "NOT_RUN",
+    "native_installation": "NOT_RUN"
+  },
+  "recommended_selectors": [
+    "tests/packaging/test_standard_installer.py",
+    "tests/packaging/test_windows_launcher_bundle.py",
+    "tests/packaging/test_windows_bundle.py",
+    "tests/packaging/test_managed_launch_boundary.py"
+  ],
+  "required_actual_gate": "Same current-core standard installer workflow source+installed and actual Install/Repair/Uninstall; retain all original native result requirements."
+}

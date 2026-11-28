@@ -363,6 +363,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require measured capture from the explicitly reviewed virtual input
+        id: selected_capture
         if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && github.event_name == 'push' && github.repository == 'Oleksii-debug/AudioTacticalFPS' && github.ref == 'refs/heads/carr/ci-endpoint-evaluation-20261127' }}
         timeout-minutes: 3
         run: |
@@ -376,6 +377,13 @@ jobs:
           $selected = @($inventory.devices | Where-Object { $_.name -ceq 'CABLE Output (VB-Audio Virtual Cable)' })
           if ($inventory.status -cne 'PASS' -or $selected.Count -ne 1) { throw 'The exact reviewed virtual capture input is unavailable or ambiguous; inspect the retained inventory.' }
           & $env:CARR_PYTHON -I -B scripts/windows_recording_device_probe.py --ffmpeg $ffmpeg --report 'ci-results/native-recording-device.json' --device-id $selected[0].id 2>&1 | Tee-Object 'ci-results/native-recording-device.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Diagnose only the failed explicitly selected capture input
+        if: ${{ !cancelled() && steps.selected_capture.outcome == 'failure' && steps.desktop_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && github.event_name == 'push' && github.repository == 'Oleksii-debug/AudioTacticalFPS' && github.ref == 'refs/heads/carr/ci-endpoint-evaluation-20261127' }}
+        timeout-minutes: 2
+        run: |
+          $ffmpeg = Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe'
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_capture_access_diagnostic.py --ffmpeg $ffmpeg --capture-report 'ci-results/native-recording-device.json' --report 'ci-results/recording-access-diagnostic.json' 2>&1 | Tee-Object 'ci-results/recording-access-diagnostic.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Preserve initial native playback and recording diagnostics
         if: always()
@@ -762,6 +770,7 @@ jobs:
             'tests/audio/test_render.py',
             'tests/audio/test_audio_process.py',
             'tests/audio/test_process_deadline.py',
+            'tests/audio/test_capture_access_diagnostic.py',
             'tests/audio/test_publication_fsync.py',
             'tests/audio/test_windows_volume_boundary.py',
             'tests/audio/test_effects.py',
@@ -1815,6 +1824,7 @@ jobs:
                             'tests/audio/test_effects.py',
                             'tests/audio/test_audio_process.py',
                             'tests/audio/test_process_deadline.py',
+            'tests/audio/test_capture_access_diagnostic.py',
                             'tests/audio/test_publication_fsync.py',
                             'tests/audio/test_music.py',
                             'tests/audio/test_music_settings.py',

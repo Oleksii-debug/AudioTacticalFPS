@@ -117,8 +117,9 @@ def reseal(root, *, source_commit=None):
         source_commit = json.loads(manifest.read_bytes())['source_commit']
     files = {p.relative_to(root).as_posix(): checksum(p.read_bytes())
              for p in root.rglob('*') if p.is_file() and p.name != 'bundle-manifest.json'}
-    raw = (json.dumps(dict(schema=1, target='win_amd64', bundled_python=True,
-        bundled_launcher=True, source_commit=source_commit, files=files), sort_keys=True) + '\n').encode()
+    raw = (json.dumps(dict(schema=1, target='Windows x64 / CPython 3.11',
+        bundled_python=True, bundled_model=False, bundled_ocr=False, bundled_audio=False,
+        source_commit=source_commit, files=files), sort_keys=True) + '\n').encode()
     manifest.write_bytes(raw)
     return checksum(raw)
 
@@ -129,7 +130,7 @@ def payload(tmp_path, monkeypatch, committed_application):
     root.mkdir()
     for name in ('install.lock', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd',
                  'README.txt', 'runtime/python.exe', 'runtime/Lib/os.py',
-                 'ResearchLibrary.exe', 'native-launcher-build.json'):
+                 'ResearchLibrary.exe'):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(('SYNTHETIC, NOT EXECUTABLE: ' + name).encode())
@@ -1262,3 +1263,119 @@ def test_completed_bootstrap_retains_stream_then_preserves_success_after_pending
         else:
             assert future.result(5) is None
     assert owner.quiescent and all(stream.closed for stream in streams)
+
+
+def _replace_bundle_manifest(root, document):
+    raw = (json.dumps(document, sort_keys=True) + '\n').encode('utf-8')
+    (root / 'bundle-manifest.json').write_bytes(raw)
+    return checksum(raw)
+
+
+def test_current_launcher_inventory_without_donor_flag_is_prepared(tmp_path, payload):
+    root, expected = payload
+    before = (root / 'bundle-manifest.json').read_bytes()
+    manifest = json.loads(before)
+    assert manifest['target'] == 'Windows x64 / CPython 3.11'
+    assert set(manifest) == {'schema', 'target', 'bundled_python', 'bundled_model',
+                             'bundled_ocr', 'bundled_audio', 'source_commit', 'files'}
+    assert 'bundled_launcher' not in manifest
+    assert 'native-launcher-build.json' not in manifest['files']
+    assert manifest['files']['ResearchLibrary.exe'] == checksum(
+        (root / 'ResearchLibrary.exe').read_bytes())
+    assert service.bundle(root, expected) == manifest
+
+    output = tmp_path / 'current-schema-setup'
+    result = build.prepare(root, output, manifest_sha256=expected)
+    assert result['bundle_manifest_sha256'] == expected
+    assert result['source_commit'] == manifest['source_commit']
+    assert result['status'] == 'SOURCE_PREPARED'
+    assert result['windows_installation_verified'] is False
+    assert (output / 'payload/ResearchLibrary.exe').read_bytes() == (
+        root / 'ResearchLibrary.exe').read_bytes()
+    assert (output / 'payload/bundle-manifest.json').read_bytes() == before
+    assert (root / 'bundle-manifest.json').read_bytes() == before
+
+
+@pytest.mark.parametrize('change', [
+    'missing', 'missing-resealed', 'undeclared', 'tampered',
+    'wrong-digest', 'directory', 'hardlink',
+])
+def test_current_launcher_inventory_refuses_missing_or_changed_payload_before_output(
+    tmp_path, payload, change
+):
+    root, expected = payload
+    launcher = root / 'ResearchLibrary.exe'
+    original = launcher.read_bytes()
+    foreign = tmp_path / 'foreign-launcher.exe'
+    if change in {'missing', 'missing-resealed', 'directory'}:
+        launcher.unlink()
+        if change == 'directory':
+            launcher.mkdir()
+        if change == 'missing-resealed':
+            expected = reseal(root)
+    elif change == 'undeclared':
+        manifest = json.loads((root / 'bundle-manifest.json').read_bytes())
+        del manifest['files']['ResearchLibrary.exe']
+        expected = _replace_bundle_manifest(root, manifest)
+    elif change == 'tampered':
+        launcher.write_bytes(original + b'\nchanged after bundle sealing\n')
+    elif change == 'wrong-digest':
+        manifest = json.loads((root / 'bundle-manifest.json').read_bytes())
+        manifest['files']['ResearchLibrary.exe'] = '0' * 64
+        expected = _replace_bundle_manifest(root, manifest)
+    else:
+        foreign.write_bytes(original)
+        launcher.unlink()
+        os.link(foreign, launcher)
+    before = {p.relative_to(root).as_posix(): p.read_bytes()
+              for p in root.rglob('*') if p.is_file()}
+    directories = sorted(p.relative_to(root).as_posix()
+                         for p in root.rglob('*') if p.is_dir())
+    output = tmp_path / 'must-not-prepare-changed-launcher'
+    with pytest.raises(ValueError, match='launcher bundle|missing, changed, or undeclared|unlinked'):
+        build.prepare(root, output, manifest_sha256=expected)
+    assert not output.exists()
+    assert {p.relative_to(root).as_posix(): p.read_bytes()
+            for p in root.rglob('*') if p.is_file()} == before
+    assert sorted(p.relative_to(root).as_posix()
+                  for p in root.rglob('*') if p.is_dir()) == directories
+    if change == 'hardlink':
+        assert foreign.read_bytes() == original
+        assert os.path.samefile(launcher, foreign)
+        assert launcher.stat().st_nlink == 2
+
+
+@pytest.mark.parametrize(('field', 'value'), [
+    pytest.param('target', 'win_amd64', id='donor-target'),
+    pytest.param('target', 'Windows ARM64 / CPython 3.11', id='wrong-architecture'),
+    pytest.param('bundled_python', False, id='no-bundled-python'),
+    pytest.param('bundled_python', 1, id='nonboolean-python'),
+    pytest.param('files', [], id='untyped-file-inventory'),
+])
+def test_standard_setup_requires_current_native_bundle_contract_before_output(
+    tmp_path, payload, field, value
+):
+    root, _ = payload
+    manifest = json.loads((root / 'bundle-manifest.json').read_bytes())
+    manifest[field] = value
+    expected = _replace_bundle_manifest(root, manifest)
+    before = (root / 'bundle-manifest.json').read_bytes()
+    output = tmp_path / 'must-not-prepare-incompatible-bundle'
+    with pytest.raises(ValueError, match='complete Python/native launcher bundle'):
+        build.prepare(root, output, manifest_sha256=expected)
+    assert not output.exists()
+    assert (root / 'bundle-manifest.json').read_bytes() == before
+
+
+def test_donor_launcher_flag_cannot_replace_the_actual_owned_launcher(tmp_path, payload):
+    root, _ = payload
+    (root / 'ResearchLibrary.exe').unlink()
+    reseal(root)
+    manifest = json.loads((root / 'bundle-manifest.json').read_bytes())
+    manifest['bundled_launcher'] = True
+    expected = _replace_bundle_manifest(root, manifest)
+    output = tmp_path / 'must-not-trust-declared-launcher'
+    with pytest.raises(ValueError, match='complete Python/native launcher bundle'):
+        build.prepare(root, output, manifest_sha256=expected)
+    assert not output.exists()
+    assert not (root / 'ResearchLibrary.exe').exists()

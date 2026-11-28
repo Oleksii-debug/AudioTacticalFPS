@@ -245,11 +245,17 @@ def bundle(root, expected, *, allow_installed=False):
     if hashlib.sha256(raw).hexdigest() != digest(expected):
         raise ValueError('The bundle differs from this installer identity.')
     document = json.loads(raw, object_pairs_hook=unique)
-    if document.get('bundled_python') is not True or document.get('bundled_launcher') is not True:
+    # The current bundle builder verifies the x64 launcher against its exact
+    # committed source and seals ResearchLibrary.exe in files. It has no
+    # bundled_launcher flag; the actual inventory is the launcher authority.
+    files = document.get('files')
+    if (document.get('target') != 'Windows x64 / CPython 3.11'
+            or document.get('bundled_python') is not True
+            or not isinstance(files, dict) or 'ResearchLibrary.exe' not in files):
         raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')
     if not re.fullmatch('[0-9a-f]{40}', str(document.get('source_commit', ''))):
         raise ValueError('Standard installation requires an exact source commit.')
-    expected_files = dict(document['files'], **{'bundle-manifest.json': expected})
+    expected_files = dict(files, **{'bundle-manifest.json': expected})
     for name, checksum in expected_files.items():
         relative(name)
         digest(checksum)

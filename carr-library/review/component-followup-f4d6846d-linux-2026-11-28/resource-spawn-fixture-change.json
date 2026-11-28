@@ -1,0 +1,43 @@
+{
+  "schema": "carr-source-review/1",
+  "kind": "resource-spawn-test-fixture",
+  "based_on": "f4d6846d037c079438f96c85bbebfe0f979dd25b",
+  "failed_run": 46085997194,
+  "failed_job": 140795574448,
+  "sparse_tree": "f8121ebc968bb829c4545fd4518bb9926f590243",
+  "changes": [
+    {
+      "path": "carr-library/tests/operations/test_resources.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83aca3017ad570c6d8fad29fcf105a0c72878463",
+      "before_sha": "32a9747544bc423294adbdda81c606024f4e1f6f"
+    },
+    {
+      "path": "carr-library/tests/operations/carr_resource_process_fixture.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "484a4ff45a84467f2be9738636c39b862787af91",
+      "before_sha": null
+    }
+  ],
+  "preserved": {
+    "original_test_functions": 27,
+    "current_parameterized_cases": 46,
+    "lock_guard_additions": 26,
+    "unchanged_parent_wait_seconds": [
+      5,
+      10
+    ],
+    "worker_bodies_preserved_except_origin_assertions": true,
+    "full_test_inverse_matches_old_bytes": true,
+    "old_test_characters": 30058
+  },
+  "implementation": "Move the same two real spawn targets to a uniquely named tests/operations helper. Temporarily add only that tests directory via monkeypatch; child verifies exact parent carr_library and broker module origins before reserving.",
+  "excluded_changes": [
+    "No repository or src directory added to isolated installed paths.",
+    "No production source, resource policy, workflow, timeout, assertion removal, or skip introduced."
+  ],
+  "review": "Root and Audio independently reviewed the exact two files and cleared the isolated test import and child application-origin boundary; no execution claim.",
+  "execution": "NOT_RUN"
+}

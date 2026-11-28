@@ -175,12 +175,11 @@ def test_exit_during_callback_is_not_backdated_when_first_observation_is_late(ob
         child = observed.children[0]
         assert child.poll() is None
         sampled.append(child.pid)
+        # Advance before releasing the real child: every possible positive
+        # observation, including an EOF reader, is now genuinely late.
+        observed.offset += 6.0
         release.write_bytes(b'explicit fixture release')
         assert child.wait(timeout=10) == 0
-        # The runner did not observe an exit before entering this callback.
-        # It cannot infer that completion preceded its deadline from a later
-        # returncode, even when the callback itself waited for the real child.
-        observed.offset += 6.0
         return False
 
     code = (
@@ -195,3 +194,500 @@ def test_exit_during_callback_is_not_backdated_when_first_observation_is_late(ob
         run(code, cancelled=review)
     assert len(sampled) == 1 and release.is_file()
     assert closed(observed).returncode == 0
+
+
+
+# The following cases keep real owned children and real reader threads. Only
+# the already-scoped audio clock advances; process.wait/poll are never faked.
+import threading
+
+
+def tracked_readers(monkeypatch, observed, *, after_read=None, wait_hook=None):
+    real_thread = threading.Thread
+    actual_start = process._start_process
+    tracked = SimpleNamespace(threads=[], completed=[], waits=[])
+
+    def create(*arguments, **options):
+        target = options['target']
+
+        def read(*args, **kwargs):
+            try:
+                return target(*args, **kwargs)
+            finally:
+                tracked.completed.append(threading.get_ident())
+                if after_read is not None:
+                    after_read()
+
+        options = dict(options, target=read)
+        thread = real_thread(*arguments, **options)
+        tracked.threads.append(thread)
+        return thread
+
+    # Do not replace threading.Thread globally: existing CleanupOwner retries
+    # and the test's orchestration thread keep their unchanged implementation.
+    monkeypatch.setattr(process, 'threading',
+                        SimpleNamespace(**{**vars(threading), 'Thread': create}))
+
+    def start(arguments, **options):
+        child = actual_start(arguments, **options)
+        actual_wait = child.wait
+
+        def wait(timeout=None):
+            if threading.current_thread() in tracked.threads:
+                tracked.waits.append((threading.get_ident(), timeout))
+                if wait_hook is not None:
+                    return wait_hook(child, actual_wait, timeout)
+            return actual_wait(timeout=timeout)
+
+        child.wait = wait
+        return child
+
+    monkeypatch.setattr(process, '_start_process', start)
+    return tracked
+
+
+def wait_for_file(path):
+    until = time.monotonic() + 10
+    while not path.exists() and time.monotonic() < until:
+        time.sleep(.005)
+    assert path.is_file(), 'The actual fixture child did not reach its gate.'
+
+
+def join_readers(tracked):
+    assert len(tracked.threads) == 2
+    for thread in tracked.threads:
+        thread.join(timeout=10)
+        assert not thread.is_alive()
+    assert len(set(tracked.completed)) == 2
+
+
+def gated_code(tmp_path, *, early_eof=False, stderr_bytes=0, exit_code=0):
+    ready, release = tmp_path / 'worker-ready', tmp_path / 'release-worker'
+    code = (
+        'from pathlib import Path\n'
+        'import os,time\n'
+        + ('os.close(1)\nos.close(2)\n' if early_eof else '')
+        + 'Path(' + repr(str(ready)) + ').write_bytes(b"ready")\n'
+        'release = Path(' + repr(str(release)) + ')\n'
+        'while not release.exists():\n'
+        '    time.sleep(.005)\n'
+        + ('os.write(2, b"x" * ' + str(stderr_bytes) + ')\n' if stderr_bytes else '')
+        + ('' if early_eof else 'os.write(1, b"verified child\\n")\n')
+        + (('os._exit(' if early_eof else 'raise SystemExit(') + str(exit_code) + ')\n')
+    )
+    return ready, release, code
+
+
+@pytest.mark.parametrize('exit_code', [0, 7])
+def test_reader_observes_real_exit_during_slow_caller_validation(
+        observed, monkeypatch, tmp_path, exit_code):
+    observed.wait_before_return = False
+    tracked = tracked_readers(monkeypatch, observed)
+    ready, release, code = gated_code(tmp_path, exit_code=exit_code)
+    caller = threading.get_ident()
+    calls = []
+
+    def review():
+        if not observed.children:
+            return False
+        assert threading.get_ident() == caller
+        calls.append(caller)
+        if len(calls) == 1:
+            wait_for_file(ready)
+            assert observed.children[0].poll() is None
+            release.write_bytes(b'release during the caller checkpoint')
+            # Only the actual EOF readers can record exit during this callback.
+            join_readers(tracked)
+            assert tracked.waits and all(who != caller for who, _ in tracked.waits)
+            assert all(0 < allowance <= .05 for _, allowance in tracked.waits)
+            observed.offset += 6.0
+        return False
+
+    result = run(code, cancelled=review, allow_failure=True)
+    assert result.returncode == exit_code and result.stdout == b'verified child\n'
+    assert result.elapsed >= 6.0 and len(calls) >= 3
+    assert closed(observed).returncode == exit_code
+
+
+def test_early_eof_waits_for_actual_exit_before_freezing_deadline(observed, monkeypatch, tmp_path):
+    observed.wait_before_return = False
+    entered = threading.Event()
+
+    def wait_hook(child, actual_wait, timeout):
+        entered.set()
+        return actual_wait(timeout=timeout)
+
+    tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+    ready, release, code = gated_code(tmp_path, early_eof=True)
+    calls = []
+
+    def review():
+        if not observed.children:
+            return False
+        calls.append(threading.get_ident())
+        if len(calls) == 1:
+            wait_for_file(ready)
+            assert entered.wait(10)
+            assert observed.children[0].poll() is None
+            release.write_bytes(b'exit only after an actual reader wait started')
+            join_readers(tracked)
+            observed.offset += 6.0
+        return False
+
+    result = run(code, cancelled=review)
+    assert result.returncode == 0 and result.stdout == result.stderr == b''
+    assert result.elapsed >= 6.0 and tracked.waits
+    assert closed(observed).returncode == 0
+
+
+def test_closed_diagnostic_pipes_do_not_stop_a_live_child_deadline(
+        observed, monkeypatch, tmp_path):
+    observed.wait_before_return = False
+    entered = threading.Event()
+
+    def wait_hook(child, actual_wait, timeout):
+        entered.set()
+        return actual_wait(timeout=timeout)
+
+    tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+    ready, release, code = gated_code(tmp_path, early_eof=True)
+    calls = []
+
+    def review():
+        if not observed.children:
+            return False
+        calls.append(threading.get_ident())
+        wait_for_file(ready)
+        assert entered.wait(10)
+        assert observed.children[0].poll() is None
+        observed.offset += 6.0
+        return False
+
+    with pytest.raises(process.AudioError, match='time allowance'):
+        run(code, cancelled=review)
+    assert len(calls) == 1 and tracked.waits and not release.exists()
+    closed(observed)
+
+
+def test_late_eof_cannot_backdate_a_leader_exit_behind_inherited_pipes(
+        observed, monkeypatch, tmp_path):
+    observed.wait_before_return = False
+    tracked = tracked_readers(monkeypatch, observed)
+    ready, release = tmp_path / 'leader-ready', tmp_path / 'release-leader'
+    descendant_ready, descendant_release = tmp_path / 'descendant-ready', tmp_path / 'release-descendant'
+    descendant_code = (
+        'from pathlib import Path\nimport time\n'
+        'Path(' + repr(str(descendant_ready)) + ').write_bytes(b"ready")\n'
+        'release = Path(' + repr(str(descendant_release)) + ')\n'
+        'while not release.exists():\n    time.sleep(.005)\n'
+        'print("descendant completed")\n'
+    )
+    code = (
+        'from pathlib import Path\nimport subprocess,sys,time,os\n'
+        'child = subprocess.Popen([sys.executable, "-I", "-B", "-c", '
+        + repr(descendant_code) + '])\n'
+        'Path(' + repr(str(ready)) + ').write_bytes(b"ready")\n'
+        'release = Path(' + repr(str(release)) + ')\n'
+        'while not release.exists():\n    time.sleep(.005)\n'
+        'os._exit(0)\n'
+    )
+    calls = []
+
+    def review():
+        if not observed.children:
+            return False
+        calls.append(threading.get_ident())
+        wait_for_file(ready)
+        wait_for_file(descendant_ready)
+        assert observed.children[0].poll() is None
+        release.write_bytes(b'leader finishes; descendant still holds both pipes')
+        assert observed.children[0].wait(timeout=10) == 0
+        assert not tracked.completed and not tracked.waits
+        observed.offset += 6.0
+        descendant_release.write_bytes(b'EOF is now after the original allowance')
+        join_readers(tracked)
+        return False
+
+    with pytest.raises(process.AudioError, match='time allowance'):
+        run(code, cancelled=review)
+    assert len(calls) == 1 and release.exists() and descendant_release.exists()
+    assert closed(observed).returncode == 0
+
+
+@pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+def test_timely_reader_exit_preserves_fresh_caller_guards(
+        observed, monkeypatch, tmp_path, failure):
+    observed.wait_before_return = False
+    tracked = tracked_readers(monkeypatch, observed)
+    ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+    reviewed = tmp_path / 'reviewed-runtime'
+    reviewed.write_bytes(b'exact reviewed content')
+    approved = sha256(reviewed.read_bytes()).hexdigest()
+    output = tmp_path / 'worker-output'
+    output.write_bytes(b'accepted-size')
+    caller = threading.get_ident()
+    calls = []
+
+    def review():
+        if not observed.children:
+            return False
+        assert threading.get_ident() == caller
+        calls.append(caller)
+        if len(calls) == 1:
+            wait_for_file(ready)
+            assert observed.children[0].poll() is None
+            release.write_bytes(b'complete before parent final checks')
+            join_readers(tracked)
+            observed.offset += 6.0
+            if failure == 'identity':
+                reviewed.write_bytes(b'changed after the child actually exited')
+            if failure == 'staging':
+                output.write_bytes(b'x' * 2048)
+        if sha256(reviewed.read_bytes()).hexdigest() != approved:
+            raise ValueError('reviewed runtime identity changed')
+        return failure == 'cancel'
+
+    error, message = {
+        'cancel': (process.AudioCancelled, 'cancelled'),
+        'identity': (ValueError, 'runtime identity changed'),
+        'diagnostic': (process.AudioError, 'diagnostic'),
+        'staging': (process.AudioError, 'disk budget'),
+    }[failure]
+    with pytest.raises(error, match=message):
+        run(code, cancelled=review, watch=(output,),
+            budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+    assert calls and tracked.waits
+    assert closed(observed).returncode == 0
+
+
+def test_eof_wait_failure_still_rejects_completed_real_child(observed, monkeypatch, tmp_path):
+    observed.wait_before_return = False
+    wait_error = OSError('synthetic exact-process wait failure')
+
+    def wait_hook(child, actual_wait, timeout):
+        actual_wait(timeout=timeout)
+        raise wait_error
+
+    tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+    ready, release, code = gated_code(tmp_path)
+    calls = []
+
+    def review():
+        if not observed.children:
+            return False
+        calls.append(True)
+        if len(calls) == 1:
+            wait_for_file(ready)
+            release.write_bytes(b'complete with observable wait failure')
+            join_readers(tracked)
+        return False
+
+    with pytest.raises(process.AudioError, match='diagnostic stream') as failure:
+        run(code, cancelled=review)
+    assert failure.value.__cause__ is wait_error and tracked.waits
+    assert closed(observed).returncode == 0
+
+
+def test_pending_reader_completion_retains_stage_after_native_family_stops(
+        observed, monkeypatch, tmp_path):
+    from carr_library.audio.cleanup import AudioCleanupPending, retained_temporary_directory
+
+    observed.wait_before_return = False
+    release_reader = threading.Event()
+    native_stops = []
+    actual_stop = process._stop_owned
+    owner = None
+    stage = None
+
+    def stop(child):
+        native_stops.append(child.pid)
+        return actual_stop(child)
+
+    def after_read():
+        release_reader.wait()
+
+    tracked = tracked_readers(monkeypatch, observed, after_read=after_read)
+    monkeypatch.setattr(process, '_stop_owned', stop)
+    try:
+        with pytest.raises(AudioCleanupPending) as failure:
+            with retained_temporary_directory(prefix='reader-owned-', dir=tmp_path) as directory:
+                stage = Path(directory)
+                (stage / 'retained').write_bytes(b'owned until both readers end')
+                run('print("completed before reader acknowledgement")')
+        owner = failure.value.cleanup_owner
+        assert len(native_stops) == 1 and len(tracked.completed) == 2
+        assert all(thread.is_alive() for thread in tracked.threads)
+        assert stage.is_dir() and not owner.quiescent
+        assert observed.children[0].poll() is not None
+        released = threading.Event()
+        owner.add_quiescent_callback(released.set)
+        release_reader.set()
+        assert released.wait(10)
+        assert owner.quiescent and owner.close() is True
+        assert len(native_stops) == 1 and not stage.exists()
+        assert all(not thread.is_alive() for thread in tracked.threads)
+        closed(observed)
+    finally:
+        release_reader.set()
+        if owner is not None:
+            owner.close()
+            owner.quiescent_event.wait(10)
+        for thread in tracked.threads:
+            thread.join(timeout=10)
+
+
+def test_failed_reader_pipe_close_remains_retryable_before_stage_release(
+        observed, monkeypatch, tmp_path):
+    from carr_library.audio.cleanup import AudioCleanupPending, retained_temporary_directory
+
+    observed.wait_before_return = False
+    allow_close = threading.Event()
+    actual_start, actual_stop = process._start_process, process._stop_owned
+    native_stops, close_attempts = [], []
+    owner = None
+
+    class RetainedPipe:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def read1(self, size):
+            return self.stream.read1(size)
+
+        @property
+        def closed(self):
+            return self.stream.closed
+
+        def close(self):
+            close_attempts.append(allow_close.is_set())
+            if not allow_close.is_set():
+                raise OSError('synthetic reader pipe close failure')
+            return self.stream.close()
+
+    def start(arguments, **options):
+        child = actual_start(arguments, **options)
+        child.stdout = RetainedPipe(child.stdout)
+        return child
+
+    def stop(child):
+        native_stops.append(child.pid)
+        return actual_stop(child)
+
+    monkeypatch.setattr(process, '_start_process', start)
+    monkeypatch.setattr(process, '_stop_owned', stop)
+    try:
+        with pytest.raises(AudioCleanupPending) as failure:
+            with retained_temporary_directory(prefix='pipe-owned-', dir=tmp_path) as directory:
+                stage = Path(directory)
+                (stage / 'retained').write_bytes(b'close must finish before deletion')
+                run('print("actual completed bytes")')
+        owner = failure.value.cleanup_owner
+        assert close_attempts and len(native_stops) == 1
+        assert not observed.children[0].stdout.closed
+        assert stage.is_dir() and not owner.quiescent
+        released = threading.Event()
+        owner.add_quiescent_callback(released.set)
+        allow_close.set()
+        assert released.wait(10)
+        assert owner.quiescent and owner.close() is True
+        assert len(native_stops) == 1 and not stage.exists()
+        closed(observed)
+    finally:
+        allow_close.set()
+        if owner is not None:
+            owner.close()
+            owner.quiescent_event.wait(10)
+
+
+def test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handle(
+        observed, monkeypatch, tmp_path):
+    observed.wait_before_return = False
+    entered, release_wait = threading.Event(), threading.Event()
+    cleanup_started, cleanup_handoff = threading.Event(), threading.Event()
+    runner = None
+    trace, failures, native_stops = [], [], []
+    actual_stop, actual_lock, actual_event = process._stop_owned, threading.Lock, threading.Event
+
+    def wait_hook(child, actual_wait, timeout):
+        trace.append('eof wait entered')
+        entered.set()
+        assert release_wait.wait(10)
+        try:
+            return actual_wait(timeout=timeout)
+        finally:
+            trace.append('eof wait returned')
+
+    tracked = tracked_readers(monkeypatch, observed, wait_hook=wait_hook)
+
+    def event():
+        value = actual_event()
+        actual_set = value.set
+
+        def set_event():
+            actual_set()
+            if threading.current_thread() is runner and entered.is_set():
+                cleanup_started.set()
+
+        value.set = set_event
+        return value
+
+    class ObservedLock:
+        def __init__(self):
+            self.lock = actual_lock()
+
+        def __enter__(self):
+            if (threading.current_thread() is runner and cleanup_started.is_set()
+                    and entered.is_set() and not release_wait.is_set()):
+                # Observe the real lock acquisition attempt; do not fabricate
+                # acquisition, release, process status, or a successful wait.
+                cleanup_handoff.set()
+            self.lock.acquire()
+            return self
+
+        def __exit__(self, *_):
+            self.lock.release()
+
+    monkeypatch.setattr(process.threading, 'Event', event)
+    monkeypatch.setattr(process.threading, 'Lock', ObservedLock)
+
+    def stop(child):
+        assert release_wait.is_set()
+        assert trace[-1] == 'eof wait returned'
+        native_stops.append(child.pid)
+        trace.append('native cleanup')
+        return actual_stop(child)
+
+    monkeypatch.setattr(process, '_stop_owned', stop)
+    _, _, code = gated_code(tmp_path, early_eof=True)
+
+    def cancel():
+        if not observed.children:
+            return False
+        assert entered.wait(10)
+        return True
+
+    def execute():
+        try:
+            run(code, cancelled=cancel)
+        except BaseException as error:
+            failures.append(error)
+
+    runner = threading.Thread(target=execute, name='actual-audio-caller')
+    try:
+        runner.start()
+        assert entered.wait(10) and cleanup_handoff.wait(10)
+        assert runner.is_alive() and not native_stops
+        assert not release_wait.is_set()
+        release_wait.set()
+        runner.join(timeout=10)
+        assert not runner.is_alive()
+        assert len(failures) == 1 and isinstance(failures[0], process.AudioCancelled)
+        assert len(native_stops) == 1 and tracked.waits
+        assert trace.index('eof wait returned') < trace.index('native cleanup')
+        assert all(not thread.is_alive() for thread in tracked.threads)
+        closed(observed)
+    finally:
+        release_wait.set()
+        runner.join(timeout=15)
+        # The existing observed fixture performs idempotent cleanup again.
+        # Keep its teardown outside this operation's exact-once/order observer.
+        monkeypatch.setattr(process, '_stop_owned', actual_stop)
