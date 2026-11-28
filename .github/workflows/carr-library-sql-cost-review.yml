@@ -1,0 +1,89 @@
+name: Actual canonical active-page query diagnosis
+on:
+  push:
+    branches: [carr/library-sql-cost-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-library-sql-cost-review.yml', '.github/diagnostics/query_active_pages.py']
+permissions:
+  contents: read
+concurrency:
+  group: actual-library-sql-cost-${{ github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  corpus:
+    name: Actual canonical SQL / ${{ matrix.books }} books
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        books: [100, 1000]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_SQL_BOOKS: ${{ matrix.books }}
+      CARR_SQL_HEAD: ${{ github.sha }}
+      CARR_SQL_RUN: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Select a fresh private actual profile
+        run: |
+          python -I -B -X utf8 - <<'PY'
+          import os
+          from pathlib import Path
+          import tempfile
+          parent = Path(tempfile.mkdtemp(prefix="carr-sql-", dir=os.environ["RUNNER_TEMP"]))
+          assert parent.is_dir() and not parent.is_symlink()
+          fixture = parent / "fixture"
+          assert not os.path.lexists(fixture)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
+              stream.write("CARR_SQL_DIR=" + str(fixture) + "\n")
+          Path("ci-library-sql-cost").mkdir()
+          PY
+      - name: Install exact composed application
+        run: python -m pip install ".[test,sync]"
+      - name: Bind every installed package file and measurement script
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ../.github/diagnostics/query_active_pages.py before
+      - name: Generate the actual original corpus with resource admission
+        timeout-minutes: 5
+        run: python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SQL_DIR" --books "$CARR_SQL_BOOKS" --segments 40 --search-spool-bytes 2147483648 --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-sql-cost/generate.json
+      - name: Admit the corpus through the public import queue
+        timeout-minutes: 5
+        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SQL_DIR" --memory-mib 1024 --search-disk-mib 2048 --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 > ci-library-sql-cost/initialize.jsonl
+      - name: Complete actual public import
+        timeout-minutes: 16
+        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SQL_DIR" --seconds 900 > ci-library-sql-cost/import.jsonl
+      - name: Verify every original catalog segment and retained source
+        timeout-minutes: 6
+        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SQL_DIR" --seconds 300 > ci-library-sql-cost/verify.jsonl
+      - name: Compare read-only SQL plans and actual ranked phases
+        timeout-minutes: 12
+        run: python -I -B -X utf8 ../.github/diagnostics/query_active_pages.py measure
+      - name: Require unchanged exact package and measurement bytes
+        if: always()
+        run: python -I -B -X utf8 ../.github/diagnostics/query_active_pages.py after
+      - name: Preserve selected dependency identity
+        if: always()
+        run: python -I -m pip freeze > ci-library-sql-cost/dependencies.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: library-sql-cost-${{ matrix.books }}-${{ github.sha }}
+          path: carr-library/ci-library-sql-cost/
+          if-no-files-found: error
+          retention-days: 14
