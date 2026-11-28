@@ -1,0 +1,193 @@
+{
+  "schema": "carr-current-delivery-and-menu-review/1",
+  "status": "SOURCE_REVIEWED_DOCUMENTATION_CORRECTION_PREPARED",
+  "observed_at_utc": "2026-11-28 01:14:16 UTC",
+  "candidate": {
+    "commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+    "version": "0.2.0.dev2",
+    "main_run": 46089514448,
+    "main_job": 140806885393,
+    "main_status_at_review": "SOURCE_IN_PROGRESS",
+    "runtime_qualification": "Not established by this source review."
+  },
+  "purpose": "Close the active developer-command documentation mismatch, reconcile the concurrently changed menu owner by exact source identity, and distinguish a development installation from a retained complete Windows installer.",
+  "reviewed_bindings": [
+    {
+      "path": "carr-library/src/carr_library/ui/api_connections.py",
+      "blob": "59d6a57c84606c8d9c3cbb78462b5e6d8eee5bdb"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/productivity.py",
+      "blob": "348cc35dd963e99d01659dc89a85bea1e95e299f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "blob": "cdd05ff077464344f7f2407d17a82691f5d96ab6"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "blob": "61f7fdd37282f91e36925b2fee3deb913d44e85f"
+    },
+    {
+      "path": "carr-library/tests/ui/native_academic_comparison_smoke.py",
+      "blob": "b20f2962c4b2807eb761474f8da6900413cda538"
+    },
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "blob": "42dffc358261e8d6bf866fb6ed6e3752b41b776a"
+    },
+    {
+      "path": "carr-library/packaging/create_delivery.py",
+      "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef"
+    },
+    {
+      "path": "carr-library/packaging/build_standard_installer.py",
+      "blob": "bd258f3d71767f97c99fd65a8c2ebd484b49b770"
+    },
+    {
+      "path": "carr-library/packaging/NATIVE_RUNTIME.md",
+      "blob": "57d8cbf36d9fe393547f6bfd026da15ecc80c54b"
+    },
+    {
+      "path": "carr-library/packaging/MODEL_BUNDLE.md",
+      "blob": "91e659e65c458f003069f00ad349030cecd321dc"
+    },
+    {
+      "path": "carr-library/pyproject.toml",
+      "blob": "c1615aa86ec88a7732c1d6227407077b05a0fb6c"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d"
+    }
+  ],
+  "running_documentation": {
+    "path": "carr-library/docs/RUNNING.md",
+    "component_commit": "5ff6d92e4b493aa10dd8dad311c91c246024b284",
+    "component_tree": "94e5888d9f5e74f1f532d91e58c5ab19c8a480b2",
+    "sole_parent": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "before_blob": "4ca6971c523f0b1e4edb835857660b0ccd5a4b05",
+    "after_blob": "1f8779c9f9b3580d8df70c79a6b7e1fb5d6e88ac",
+    "before_sha256": "e0383dd11326d0e435cea264b3d0e5d40719a9e541fecb2e87428ab124639211",
+    "after_sha256": "d52f6f211ca8307275a52fe22bc03413202722eefa2d3f5950e857486726ec5e",
+    "before": "dist/universal_research_library-0.2.0.dev1-py3-none-any.whl",
+    "after": "dist/universal_research_library-0.2.0.dev2-py3-none-any.whl",
+    "exact_inverse_reconstructs_original": true,
+    "characters_before": 31467,
+    "characters_after": 31467,
+    "decision": "Correct the single active wheel filename to the current pyproject version. No application, dependency, test or workflow change.",
+    "independent_review": "Root fetched the actual component commit and both complete documents, checked the sole path and parent, and reproduced the exact inverse."
+  },
+  "menu_composition": {
+    "status": "NO_NEWLY_EVIDENCED_APPLICATION_GAP",
+    "menus": [
+      {
+        "menu": "File",
+        "key": "F"
+      },
+      {
+        "menu": "Edit",
+        "key": "E"
+      },
+      {
+        "menu": "Library",
+        "key": "L"
+      },
+      {
+        "menu": "Research",
+        "key": "R"
+      },
+      {
+        "menu": "Bibliography",
+        "key": "B"
+      },
+      {
+        "menu": "Academic",
+        "key": "A"
+      },
+      {
+        "menu": "Help",
+        "key": "H"
+      },
+      {
+        "menu": "Source",
+        "key": "S"
+      },
+      {
+        "menu": "Reading",
+        "key": "D"
+      },
+      {
+        "menu": "Audio",
+        "key": "U"
+      },
+      {
+        "menu": "Settings",
+        "key": "I"
+      },
+      {
+        "menu": "Tools",
+        "key": "T"
+      },
+      {
+        "menu": "Options",
+        "key": "O"
+      }
+    ],
+    "distinct_count": 13,
+    "actual_settings_caption": "Sett&ings",
+    "actual_edit_caption": "&Edit",
+    "actual_tools_caption": "&Tools",
+    "concurrent_input": {
+      "pr": 99,
+      "commit": "89c07e451540e4caac6a36cd6142fcdd274264b1",
+      "tree": "23e8829a0f4618101e0fe299ef6acd231a772aa5",
+      "settings_caption": "S&ettings",
+      "document": "carr-library/docs/acceptance/ACADEMIC_MENU_ACCESS_KEYS_20261128.md"
+    },
+    "disposition": "Do not copy the other composition's Alt+E Settings label: current014 already assigns Alt+E to Edit and uses Alt+I for Settings. The thirteen current menu keys are distinct.",
+    "existing_source_coverage": "The selected test_desktop_handlers.py calls actual installers, requires &Edit and Sett&ings, and asserts all composed mnemonic keys are distinct.",
+    "existing_native_coverage": "The selected native_academic_comparison_smoke.py constructs the real DesktopFrame, preserves global access-key uniqueness, and requires exactly one of each of the four academic workflow actions; no stale numeric six-item assertion remains.",
+    "prior_actual_source": {
+      "commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+      "run": 46078342596,
+      "job": 140771249163,
+      "selector": "tests/ui/test_desktop_handlers.py",
+      "passed": 66,
+      "failed": 0,
+      "skipped": 0,
+      "source_blob_unchanged": true,
+      "qualification_not_transferred": true
+    },
+    "guide": "START_UK.txt correctly records Alt+I for Settings and Alt+E for Edit.",
+    "decision": "Keep current owners, guides and existing source/installed/native gates unchanged. Current014 actual native execution remains separately required."
+  },
+  "delivery": {
+    "releases_endpoint": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/releases?per_page=100",
+    "observed_release_count": 0,
+    "current_tree_has_ready_installer_or_binary_archive": false,
+    "current_main_upload": "carr-library/ci-results/; evidence and explicitly retained public application source wheels. No complete installer/native/model payload is retained by this upload contract.",
+    "source_wheel_scope": "A public application wheel is a development/build input, not a self-contained Windows installer.",
+    "private_builder": "create_delivery.py labels the result private-local-delivery and requires exact sealed file inventory plus complete OCR corresponding-source TAR.",
+    "standard_builder": "build_standard_installer.py calls the same manifest verifier, _require_transferable_audio_inventory and trusted payload verification before compilation and publication.",
+    "audio_transfer_boundary": "Both builders refuse audio/audio-runtime inventories until exact package-specific source, notices and replacement review establishes the required transfer clearance.",
+    "native_supplement_boundary": "NATIVE_RUNTIME.md scopes the Microsoft DLL supplement to the same account holder's private local installation; it does not establish public redistribution permission.",
+    "model_boundary": "MODEL_BUNDLE.md distinguishes exact hashes and source selection from outstanding model redistribution review.",
+    "installation_available": "Documented development source installation at the exact reviewed commit, including the desktop dependency group; optional runtimes/models remain explicit.",
+    "complete_private_delivery_dependency": "An approved private delivery channel/profile and the included payload's source/notices/rights review. No new reduced product or public binary upload was introduced.",
+    "installed_binary_observation": "This review did not download or execute a complete installer."
+  },
+  "scope_limits": [
+    "This document is a source and delivery-contract review, not current014 application acceptance.",
+    "No current runtime PASS is copied from f77 or the other PR composition.",
+    "The final-reader artifact pins remain null until the actual completed main artifact is observed.",
+    "The entire V3 platform remains NOT_QUALIFIED pending actual owner engines/models and authorized samples, model/language/corpus quality, physical audio, manual Windows11/NVDA, and production/distribution authority.",
+    "The supplied ASR source is already available and reviewed; actual model/acoustic qualification remains separate.",
+    "The technical authority preserves the initial English UI and current Ukrainian/Slovak workflows."
+  ],
+  "reviewers": [
+    "/root/capacity_measurements",
+    "/root"
+  ]
+}
