@@ -1,0 +1,44 @@
+{
+  "schema": "resonance-selected-conversion-retention-correction/1",
+  "created_utc": "2026-11-28 00:08:23 UTC",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "7beb65f317e8ceddb385048c1c442342f0bf608c",
+  "base_tree": "061b925457a41afa5919bbff7dd64620cbac190e",
+  "files": [
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "264fcc84bcfeac1b15b5ca30f9ea1d1b6ffd9114",
+      "after": "cc4013e9ecfb76c5454f850eaba2f25285d370b1"
+    }
+  ],
+  "finding": "Both platform-specific closed ordinary report allowlists still admitted installed reports1..5 after the reviewed helper was expanded to8 whole suites. Successful installed execution creates6..8 reports and would make final report retention refuse.",
+  "change": "Exactly two range(1,6) expressions become range(1,9). No other workflow bytes change.",
+  "added_closed_names": [
+    "installed-6.xml",
+    "installed-6.txt",
+    "installed-6-origins.json",
+    "installed-7.xml",
+    "installed-7.txt",
+    "installed-7-origins.json",
+    "installed-8.xml",
+    "installed-8.txt",
+    "installed-8-origins.json"
+  ],
+  "preserved": {
+    "helper": "6906734c565379c8b086f012894de0a7250b6c64",
+    "source_cases": 254,
+    "installed_cases": 254,
+    "whole_suites": 8,
+    "source_pins": 29,
+    "module_origins": 19,
+    "all_native_phases": 6,
+    "only_json_txt_xml": true,
+    "file_size_limit_bytes": 8388608,
+    "total_limit_bytes": 67108864,
+    "all_other_guards_byte_identical": true
+  },
+  "reverse_audit": "Replacing exactly the two range(1,9) lines with the original lines reconstructs264fcc84bcfeac1b15b5ca30f9ea1d1b6ffd9114 byte-for-byte.",
+  "execution": "Static integration finding only; no failure was fabricated, no native case or required runtime boundary is bypassed, and no ref/run was changed.",
+  "review": "Bounded independent peer requested from progress_completion."
+}

@@ -107,7 +107,7 @@ jobs:
           tree = subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD^{tree}'],text=True).strip()
           ordinary = {'identity-before.json','source-contracts.txt','source-summary.json','wheel-build.txt',
               'source-wheel-proof.json','wheel-install.txt','installed-pip-check.txt','contracts-summary.json'}
-          for number in range(1,6):
+          for number in range(1,9):
               ordinary.update({f'installed-{number}.xml',f'installed-{number}.txt',f'installed-{number}-origins.json'})
           native = {'acquisition.json','acquisition.txt','firewall.json','firewall-programs.json',
               'required-native-phases.json','native-cleanup.json'}
@@ -606,7 +606,7 @@ jobs:
           tree = subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD^{tree}'],text=True).strip()
           ordinary = {'identity-before.json','source-contracts.txt','source-summary.json','wheel-build.txt',
               'source-wheel-proof.json','wheel-install.txt','installed-pip-check.txt','contracts-summary.json'}
-          for number in range(1,6):
+          for number in range(1,9):
               ordinary.update({f'installed-{number}.xml',f'installed-{number}.txt',f'installed-{number}-origins.json'})
           native = {'acquisition.json','acquisition.txt','firewall.json','firewall-programs.json',
               'required-native-phases.json','native-cleanup.json'}
