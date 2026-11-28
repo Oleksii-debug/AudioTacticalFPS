@@ -36,7 +36,6 @@ jobs:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
-      CARR_SCALE_DIR: ${{ runner.temp }}/carr-actual-library-${{ matrix.tier.name }}
       CARR_SCALE_TIER: ${{ matrix.tier.name }}
       CARR_SCALE_BOOKS: ${{ matrix.tier.books }}
       CARR_SCALE_BYTES: ${{ matrix.tier.bytes }}
@@ -51,6 +50,15 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
+      - name: Select this runner's fresh measured profile path
+        run: |
+          python -I -B -X utf8 - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path(os.environ["RUNNER_TEMP"]) / ("carr-actual-library-" + os.environ["CARR_SCALE_TIER"])
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
+              stream.write("CARR_SCALE_DIR=" + str(path) + "\n")
+          PY
       - name: Install the exact composed application
         run: python -m pip install ".[test,sync]"
       - name: Bind all installed package bytes and the actual measurement scripts
