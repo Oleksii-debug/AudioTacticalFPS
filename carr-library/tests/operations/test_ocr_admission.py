@@ -213,7 +213,9 @@ def test_precancelled_resume_does_not_rewrite_an_explicitly_prepared_request(tmp
     monkeypatch.setattr(worker, '_invoke',
                         lambda *_args, **_kwargs: pytest.fail('A cancelled prepared request launched native work'))
     try:
-        prepared = worker.prepare_request(app.root, workspace, source, {}, Config())
+        prepared = worker.prepare_request(app.root, workspace, source,
+            dict(title=None, authors=(), language=None, edition=None, volume=None,
+                 collections=(), work_id=None, edition_id=None), Config())
         identity = prepared['request_id']
         path = app.root / 'import-requests' / (identity + '.json')
         saved = path.read_bytes()
