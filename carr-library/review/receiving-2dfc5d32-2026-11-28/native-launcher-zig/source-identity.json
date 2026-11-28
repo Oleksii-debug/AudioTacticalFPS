@@ -1,0 +1,37 @@
+[
+  {
+    "path": "carr-library/packaging/native-launcher/launcher.c",
+    "git_blob": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+    "expected_sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+    "observed_sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+    "matches": true
+  },
+  {
+    "path": "carr-library/packaging/native-launcher/launcher_core.h",
+    "git_blob": "456ff2695b5b5749290e054d1f8031e483999374",
+    "expected_sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+    "observed_sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+    "matches": true
+  },
+  {
+    "path": "carr-library/packaging/native-launcher/launcher.rc",
+    "git_blob": "7cf42ebb63320940ad33bda24747a292bd67ed63",
+    "expected_sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+    "observed_sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+    "matches": true
+  },
+  {
+    "path": "carr-library/packaging/native-launcher/launcher.manifest",
+    "git_blob": "cfaea634d9705ae75f23b9423350e051cce7b732",
+    "expected_sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+    "observed_sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+    "matches": true
+  },
+  {
+    "path": "carr-library/packaging/native-launcher/toolchain.lock.json",
+    "git_blob": "75e7cc434ef2a50ab3f08fd1d0ab1a5b9eaedf91",
+    "expected_sha256": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50",
+    "observed_sha256": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50",
+    "matches": true
+  }
+]

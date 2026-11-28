@@ -1,0 +1,58 @@
+{
+  "schema": "carr-text-evidence-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569613,
+  "job_id": 140876044090,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/full-decoded-log.txt",
+      "git_blob": "d8f82748b9549e72e488c4f2e8655bc2785ece61",
+      "utf8_bytes": 30897,
+      "sha256": "1ce2b3b619ad475cd7e2f7de19f86072509639d0dbff7093e5c366806649b83d"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/run-metadata.json",
+      "git_blob": "ec8f0c0d58ee89666f31bc99dee0da66259c5b7d",
+      "utf8_bytes": 15422,
+      "sha256": "f2b574d2b442280ba6eaebcb3b63077066ffbaff143c1f0e29427958a7a9b15b"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/job-metadata.json",
+      "git_blob": "4034e87d9afd358874c9b37f2cff13562691617f",
+      "utf8_bytes": 3500,
+      "sha256": "2c74ef6ea5f26e14b932ef95c482a3c07f883bea9b0359d12cb5b076b9839a2c"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/build-evidence-log-extracted.json",
+      "git_blob": "e731f76a3f635d9740f38631be31f8104a973069",
+      "utf8_bytes": 1735,
+      "sha256": "a88483e1ad538912027cbd472de823fee96015af12e7d00bdb56eba4c89eeffc"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/native-probe-log-extracted.json",
+      "git_blob": "3c844fafa11393fbcbf06eb26bb374b70d871ef2",
+      "utf8_bytes": 944,
+      "sha256": "8a4f7c84a25b27fb8de2a0460f2c1a5f6730f78bde73c481eafb7da19431894a"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/source-identity.json",
+      "git_blob": "bb986351bd2c1a0e874c49ed9e54f28b5aa69176",
+      "utf8_bytes": 1705,
+      "sha256": "1aa5c55981db65c60e8c1919ef04fde33be109ac62741d89cfa02b1b284424a4"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/qualification.json",
+      "git_blob": "f4c1d89f2f94a446c4e0584031fbb370fa7337a2",
+      "utf8_bytes": 4346,
+      "sha256": "a8a493eb63b47fbc81258771f57e5f8214f2dab61ab5615d718d23824a32f176"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/README.md",
+      "git_blob": "5e2b804ed0ade632433e45b4c44b37ee96b8ba0f",
+      "utf8_bytes": 973,
+      "sha256": "e680a00de1260a8fbd75841329d7d847dd6defea7ef1cbd541d2d1483f854c84"
+    }
+  ],
+  "readback": "Every listed blob fetched and compared completely.",
+  "private_binaries_downloaded": false
+}

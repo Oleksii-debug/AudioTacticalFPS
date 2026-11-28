@@ -1,0 +1,108 @@
+{
+  "id": 140876044090,
+  "run_id": 46111569613,
+  "workflow_name": "CARR native Windows launch entry",
+  "head_branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569613",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzN3XOg",
+  "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140876044090",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569613/job/140876044090",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T05:19:21Z",
+  "started_at": "2026-11-28T05:57:43Z",
+  "completed_at": "2026-11-28T05:59:23Z",
+  "name": "pinned-zig-native-launcher",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T05:57:44Z",
+      "completed_at": "2026-11-28T05:57:45Z"
+    },
+    {
+      "name": "Check out exact event source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T05:57:45Z",
+      "completed_at": "2026-11-28T05:57:53Z"
+    },
+    {
+      "name": "Set up Python for the shared stdlib build and probe",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T05:57:53Z",
+      "completed_at": "2026-11-28T05:57:53Z"
+    },
+    {
+      "name": "Verify the pinned official Zig distribution before extraction",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T05:57:53Z",
+      "completed_at": "2026-11-28T05:58:20Z"
+    },
+    {
+      "name": "Build private PE with the exact shared cross-build command",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T05:58:20Z",
+      "completed_at": "2026-11-28T05:59:19Z"
+    },
+    {
+      "name": "Execute the Zig PE on actual Windows",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T05:59:19Z",
+      "completed_at": "2026-11-28T05:59:19Z"
+    },
+    {
+      "name": "Record source and native-tested private executable identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T05:59:19Z",
+      "completed_at": "2026-11-28T05:59:20Z"
+    },
+    {
+      "name": "Post Set up Python for the shared stdlib build and probe",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T05:59:20Z",
+      "completed_at": "2026-11-28T05:59:20Z"
+    },
+    {
+      "name": "Post Check out exact event source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T05:59:20Z",
+      "completed_at": "2026-11-28T05:59:22Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T05:59:22Z",
+      "completed_at": "2026-11-28T05:59:22Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140876044090",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490191,
+  "runner_name": "GitHub Actions 1000490191",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

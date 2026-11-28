@@ -1,0 +1,110 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "Pinned Zig build and actual Windows synthetic-child launcher execution",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "run_id": 46111569613,
+  "run_attempt": 1,
+  "job_id": 140876044090,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:57:43Z",
+  "completed_at": "2026-11-28T05:59:23Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569613/job/140876044090",
+  "workflow": {
+    "path": ".github/workflows/carr-native-launcher.yml",
+    "git_blob": "b3fb988da8ffa9312fdd09d788b25caecef825a8"
+  },
+  "source_identity": {
+    "observed_checkout": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "checkout_occurrences": 3,
+    "reported_source_files": 5,
+    "source_hashes_independently_matched": true,
+    "details": "source-identity.json"
+  },
+  "toolchain": {
+    "version": "0.14.1",
+    "archive_sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+    "archive_bytes": 82229343,
+    "binary_sha256": "1ddf230367e07738c4a769eae66c1db7469e37bd520e81c86356453d0db2b9fd",
+    "primary_url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip"
+  },
+  "private_executable": {
+    "sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+    "size_bytes": 15360,
+    "target": "x86_64-windows-gnu",
+    "release_status": "unsigned-private-candidate",
+    "static_pe": {
+      "schema": 1,
+      "file": "ResearchLibrary.exe",
+      "bytes": 15360,
+      "sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+      "machine": "x86_64",
+      "subsystem": "windows-gui",
+      "aslr": true,
+      "high_entropy_aslr": true,
+      "dep": true,
+      "timestamp": 3721080413,
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll",
+        "SHELL32.dll"
+      ],
+      "reproducible_build_marker": true,
+      "embedded_as_invoker": true,
+      "certificate_table_present": false,
+      "authenticode_signed": false,
+      "windows_execution_verified": false,
+      "nvda_verified": false
+    }
+  },
+  "native": {
+    "status": "passed",
+    "successful_named_checks": 9,
+    "checks": [
+      "unicode-spaces-fixed-argv-offline-optional-runtimes",
+      "read-only-ready-probe",
+      "fixed-installation-check",
+      "child-exit-status-propagated",
+      "extra-arguments-rejected",
+      "incomplete-state-preserved-without-reinstall",
+      "missing-runtime-does-not-search-path",
+      "fresh-package-reuses-fixed-offline-installer",
+      "research-data-sentinel-preserved"
+    ],
+    "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+    "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+    "native_launcher_execution_verified": true,
+    "actual_python_installation_verified": false,
+    "nvda_verified": false,
+    "authenticode_verified": false,
+    "provenance": "The build's pre-execution windows_execution_verified=false is static PE metadata; the later matching-hash probe explicitly proves native launcher execution."
+  },
+  "other_compiler": {
+    "job_id": 140876044245,
+    "status": "Not qualified by this receipt; last observed queued."
+  },
+  "artifacts": {
+    "workflow_uploads_artifacts": false,
+    "api_observation": {
+      "total_count": 0,
+      "artifacts": []
+    },
+    "binary_downloaded": false,
+    "binary_published": false
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "log_type": "Complete connector-decoded text; original timestamps/line endings preserved.",
+    "decoded_utf8_bytes": 30897,
+    "decoded_utf8_sha256": "1ce2b3b619ad475cd7e2f7de19f86072509639d0dbff7093e5c366806649b83d",
+    "extracted_receipts": "Both build and probe JSON appear twice in the log and are exactly equal; stored copies are log-derived."
+  },
+  "limits": [
+    "This receipt covers only the Zig job, not the queued MSVC job or full workflow success.",
+    "Native launcher checks use the synthetic native child; actual Python installation, NVDA and Authenticode remain explicitly unverified.",
+    "No final release executable or installer is uploaded or qualified."
+  ]
+}

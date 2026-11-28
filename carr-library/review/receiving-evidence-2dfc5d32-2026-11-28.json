@@ -115,6 +115,14 @@
       "job": 140876084007,
       "kind": "Terminal PR bibliography at the actual candidate checkout: all 29 source modules and 1,092 cases passed; 69 installed native checks and five exact module hashes. The endpoint trial remains separate.",
       "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/qualification.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "676e5240e0902e229d4bfc358c194ff56050f6cb",
+      "run": 46111569613,
+      "job": 140876044090,
+      "kind": "Terminal pinned Zig launcher trial: all nine actual native checks passed; source build inputs and private PE digest recorded. MSVC, real Python installation, NVDA and Authenticode remain separate.",
+      "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/qualification.json"
     }
   ],
   "candidate_runs": {
