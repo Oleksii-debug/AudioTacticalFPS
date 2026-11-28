@@ -1,6 +1,6 @@
 # Canonical convergence — 2026-11-27
 
-[Latest exact execution checkpoint: 95ef ordinary gates and bbf EPUB/document diagnosis](acceptance/20261128-95efc7-completed-gates-and-epub-diagnostic.json). The focused EPUB job failed after its corrected highlight; the follow-up is pending, not accepted.
+[Latest exact execution checkpoint: 7a terminal gates and actual native-output diagnosis](acceptance/20261128-7a445c-terminal-and-native-output.json). All 22 ordinary jobs are terminal (17 successful, five failed). The reviewed source successor has no whole-head acceptance; the tested hosted Windows runner still exposes no render endpoint after its audio services start.
 
 ## Reviewed identities and authority
 
@@ -796,3 +796,53 @@ b11 as parents. It imports no diagnostic workflow or diagnostic ancestry, and
 changes no shared ref. Complete acceptance still requires actual successor
 results; no existing deadline, assertion, origin check or optional qualification
 is waived.
+
+## 7a terminal source follow-through and the native-output prerequisite
+
+The [exact 28 November UTC checkpoint](acceptance/20261128-7a445c-terminal-and-native-output.json)
+binds ordinary results to `7a445cfa0701465facc80fe5dee226ba628aa4d6` and
+tree `b88e627d10ad397cc2d0ec9ce67b59155e257800`. All 22 ordinary jobs
+completed: seventeen succeeded and five failed. The complete Windows source
+selection contains 404 occurrences / 403 distinct paths, including the existing
+OCR-selection duplicate and bootstrap compatibility suite. Its terminal log
+contains 402 complete strict reports, with 9865 passes, 61 failures and no
+skips. Federated advanced search and portable handoff did not receive a final
+report before the unchanged 35-minute phase deadline. Interleaved pytest
+progress is not a substitute for a suite's final JUnit and cleanup verdict.
+
+The prepared ordinary union `22ae69319a8ad822b81786c2a8233b3c75dfad49`
+(tree `126cb570054473db08cd68210f8f16a7135cdc16`) contains the reviewed
+EPUB owner-local start-error correction, actual pre-cleanup observation and
+initial-import cancellation boundary fixes. The newly observed source failures
+also required the actual passive Studio autosave format in the typed backup
+adapter and a range check before converting huge integers for a finiteness
+check. The remaining fixture updates follow current metadata routing, pure
+collection validators, retained-source cancellation, paged search, physical-page
+locators and the actual overwrite confirmer. Ordinary workflows and their
+original required assertions remain unchanged at this prepared source identity.
+Diagnostic workflows and their ancestry are excluded.
+
+Studio recovery now tests the canonical version-4 sidecar manifest emitted by
+`create_backup`; the legacy version-5 state layout remains a read-only
+normalizer. Generated audio must carry its completed typed receipt and exact
+bytes. The tests retain deletion of the original state, two complete restores,
+accepted transcription receipts, source reading hashes, retained HTML resume
+and withdrawal of old output permissions. Cancellation observes the real second
+descriptor read after the retained-input receipt is staged. Unknown case-alias
+filenames still fail before destination publication. Unfinished Studio draft
+text remains passive and does not run a voice engine or grant output access.
+
+The actual `2ed50a1` Windows diagnostic started AudioEndpointBuilder and
+Audiosrv, but no sound device or render endpoint appeared. All six query-only
+PCM16 shapes returned WinMM BADDEVICEID (2); both EPUB and the standalone MCI
+probe returned 326. The owner correction correctly makes that error visible
+and clears pending playback. Required native output is still unqualified.
+The supported next acceptance environment is an available Windows x64 session
+with an existing working render endpoint, the same exact source identity,
+fresh pinned installed package and unchanged native probes. No driver install,
+license assumption, signing-policy change, silent skip or fixture substitution
+is part of this source correction.
+
+Focused source execution and all final ordinary successor gates are still
+required. Historical passing counts here do not qualify the prepared union,
+physical listening, human NVDA use, private models or a signed public release.

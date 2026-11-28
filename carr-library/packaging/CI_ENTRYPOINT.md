@@ -1,4 +1,39 @@
-# Provider-neutral CI entrypoint (candidate, not an active workflow)
+# Provider-neutral CI entrypoint
+
+## Current completion-candidate use
+
+GitHub Actions is active in the repository's root `.github/workflows/`.
+The current ordinary gates include `carr-windows.yml`, `carr-v3.yml`,
+`carr-academic-reconciliation.yml`, the reader/transcription/component
+workflows, native launchers and portable lifetime recovery. The selected
+candidate and actual results are recorded in
+[release readiness](../docs/V3_RELEASE_READINESS.md) and
+[the convergence ledger](../docs/CANONICAL_CONVERGENCE_20261127.md).
+
+Use the exact complete selector inventory and prerequisites from the matching
+workflow at the commit being tested. The single-suite example below checks
+the runner itself; it does not replace a required product gate. Each strict
+suite retains its isolated process, 600-second bound, offline policy, explicit
+JUnit result and successful cleanup requirement. Missing tests, skips,
+XFAIL/XPASS, failed process cleanup or absent terminal reports remain failures
+or incomplete evidence.
+
+Installed acceptance uses a fresh environment and the workflow's pinned
+dependencies and runtime preparation. The installed package must match the
+tested checkout; a result from an earlier commit does not qualify a successor.
+The native playback probes require actual Windows output capabilities.
+Starting the built-in audio services without obtaining a render endpoint does
+not satisfy that prerequisite. Keep native failures visible; see
+[the terminal and output diagnosis](../docs/acceptance/20261128-7a445c-terminal-and-native-output.json)
+for the exact failed hosted execution and source evidence.
+
+The initial bootstrap record below preserves its original limited execution
+and historical blockers. Its statements that Actions was inactive or root
+workflow work was outside that earlier task's scope do not describe the current
+completion work. Current dependency authority is the selected candidate's
+reviewed lock and matching workflow.
+
+## Initial bootstrap record (historical)
 
 This is a small wrapper around the existing pytest dependency in PR #17. No new test engine or package manager. Run only on reviewed code and synthetic fixtures, in a disposable checkout with no private data, tokens, or production credentials. The runner is not a security sandbox for arbitrary Python tests.
 
