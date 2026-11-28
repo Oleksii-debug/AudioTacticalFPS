@@ -1,0 +1,121 @@
+{
+  "schema": "carr-search-native-final-composition/1",
+  "status": "SOURCE_COMPOSED_NOT_EXECUTED",
+  "baseline": {
+    "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+    "tracked_files": 1810
+  },
+  "components": {
+    "search_fixture": "53a7bbb40c593cd282e79b78803839d3006297d1",
+    "early_native_workflow": "847759802d11f916686269ca1a9ed19f12d72968",
+    "observed_failed_main": "01b57abe7be28ebda30c100e9cad43465f388c8d"
+  },
+  "changed_paths_excluding_this_manifest": [
+    {
+      "path": ".github/workflows/carr-native-main-final.yml",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "3971121f4239d14590ee92e1cc5eeb09afff6573"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "operation": "modify",
+      "previous_git_blob": "2692acda5ef8f1aff80be07b1430005b77effce8",
+      "selected_content_sha256": "392967ea1edb8c62f2bc23cfd504b0df2477f94218243bdd74dbf2f709b3406c"
+    },
+    {
+      "path": "carr-library/docs/evidence/7c991-main-observed-failure-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "d6761352d48920cf9d60a8abbed9aac2d063ab6c"
+    },
+    {
+      "path": "carr-library/docs/evidence/7c991-main-observed-failure-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "ce74a44ed219f856e166404e0c3ec95aa4d642bb"
+    },
+    {
+      "path": "carr-library/docs/evidence/main-native-early-focus-source-parity-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "7f8a6606b45856655903bc1165aa86afa1e9fc89"
+    },
+    {
+      "path": "carr-library/docs/evidence/search-continuation-copy-completion-fixture-repair-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "fb895ba5954198aa0c1aa30594b58e3be3104ce8"
+    },
+    {
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "operation": "modify",
+      "previous_git_blob": "551b2470b53d5a8743f5730b77ca6a66c935b3cb",
+      "selected_content_sha256": "0ea1bca6f30189224b1d0ecbf41304e07cedc41bccf80f17c6923be9c7092273"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+      "operation": "modify",
+      "previous_git_blob": "a71a2f0e553a222817d485c8602f1bd85abba6ad",
+      "selected_git_blob": "3cff32ca38b7097a943cf92d36512356076dede6"
+    }
+  ],
+  "composition_record_path": "carr-library/docs/evidence/search-native-final-composition-20261128.json",
+  "expected_tree": {
+    "tracked_files": 1816,
+    "modified_paths": 3,
+    "added_paths": 6,
+    "deleted_paths": 0
+  },
+  "preservation": {
+    "application_package_files": 425,
+    "application_changed": 0,
+    "test_tree_files": 628,
+    "native_probe_changed": 1,
+    "regression_test_filename_files": 569,
+    "regression_test_filename_files_changed": 0,
+    "baseline_workflows": 48,
+    "baseline_workflows_changed": 0,
+    "added_workflow": 1,
+    "reader_source_pins": 21,
+    "reader_source_pins_changed": 0,
+    "requirement_objects": 24,
+    "requirement_objects_changed": 0,
+    "all_prior_matrix_properties_retained": true,
+    "readiness_update": "Pure insertion; exact inverse reconstructs the baseline."
+  },
+  "observed_parent": {
+    "source_suites": 451,
+    "passing_case_events": 11589,
+    "failed_cases": 0,
+    "skipped_cases": 0,
+    "protected_direct_cases": 5947,
+    "protected_modules": 252,
+    "main_conclusion": "FAILURE",
+    "failure_step": 26,
+    "actual_failure": "Native clipboard GetData returned false after eight checks.",
+    "unobserved": "Worker/callback state and clipboard ownership at the failed read.",
+    "later_steps_27_through_53": "SKIPPED"
+  },
+  "next_acceptance": {
+    "execution": "NOT_RUN",
+    "focused": [
+      "Exact existing main native steps 23–48 with before/after source and installed payload binding",
+      "Basic plus complete local translation source324/installed324/native8",
+      "Completed-audio inspection/helper source274/installed274/native29"
+    ],
+    "required_after_focused": [
+      "Full exact-source main and five auxiliary jobs",
+      "Actual successful-main artifact binding and independent inert reading",
+      "Fresh canonical/protection/ancestry read, expected-head fast-forward and readback"
+    ],
+    "no_historical_success_transfer": true
+  },
+  "full_platform_status": "NOT_QUALIFIED",
+  "limits": [
+    "Source review does not establish actual successor execution.",
+    "This component adds an earlier native lane; the main workflow and its complete populations remain mandatory.",
+    "Real model, language, acoustic, hardware, manual accessibility and distribution acceptance remain distinct."
+  ]
+}

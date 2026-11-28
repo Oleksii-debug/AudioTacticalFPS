@@ -1185,5 +1185,59 @@
     },
     "independent_review": "Root and durable_native_composition independently reviewed the exact d128 source, retained assertions, receipt, deadlines and source-tree invariants.",
     "full_platform_status": "NOT_QUALIFIED"
+  },
+  "post_7c_search_copy_completion": {
+    "baseline_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "baseline_tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+    "actual_main": {
+      "run_id": 46121064501,
+      "job_id": 140905458267,
+      "attempt": 1,
+      "status": "FAILURE",
+      "source_suites_passed": 451,
+      "source_case_events_passed": 11589,
+      "source_failed": 0,
+      "source_skipped": 0,
+      "protected_modules": 252,
+      "protected_direct_cases": 5947,
+      "protected_weighted_starts": 6603,
+      "native_citations": "PASS",
+      "basic_translation": "PASS",
+      "advanced_translation": "PASS",
+      "failed_step": 26,
+      "failed_receipt_checks": 8,
+      "failure": "wx.TheClipboard.GetData(TextDataObject) returned false.",
+      "later_steps_27_through_53": "SKIPPED",
+      "proof": "evidence/7c991-main-observed-failure-20261128.json"
+    },
+    "source_correction": {
+      "component": "53a7bbb40c593cd282e79b78803839d3006297d1",
+      "path": "tests/ui/probe_search_continuation_native.py",
+      "scope": "Use the existing bounded completion wait before the unchanged exact desktop clipboard assertion.",
+      "actual_failure_worker_phase": "NOT_RECORDED",
+      "source_established_defect": "A fixed 40 ms callback did not await asynchronous retained-source verification and clipboard publication.",
+      "labels_preserved": 21,
+      "probe_deadline_seconds": 150,
+      "workflow_timeout_minutes": 4,
+      "application_changed": false,
+      "execution": "NOT_RUN"
+    },
+    "additive_focused_workflow": {
+      "component": "847759802d11f916686269ca1a9ed19f12d72968",
+      "path": ".github/workflows/carr-native-main-final.yml",
+      "exact_copied_native_blocks": 26,
+      "exact_copied_prerequisite_blocks": 17,
+      "main_workflow_unchanged": true,
+      "reader_source_pins_unchanged": 21,
+      "execution": "NOT_RUN",
+      "scope": "Earlier exact-source execution of existing mandatory main gates; does not replace full main or final artifact inspection.",
+      "main_native_step_range": {
+        "first": 23,
+        "last": 48
+      }
+    },
+    "composed_candidate_execution": "NOT_RUN",
+    "full_platform_status": "NOT_QUALIFIED",
+    "no_historical_success_transfer": true
   }
 }

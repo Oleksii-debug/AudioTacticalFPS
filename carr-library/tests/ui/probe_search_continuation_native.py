@@ -208,7 +208,10 @@ def main():
             button, = [child for child in panel.GetChildren()
                        if isinstance(child, wx.Button) and child.GetLabel() == 'Copy &quote']
             press(button)
-            later(desktop_copied)
+            later(lambda: await_page(
+                lambda: not frame.working
+                and panel.status.GetValue().startswith('Copied quote'),
+                desktop_copied))
 
         def desktop_copied():
             check(EXPECTED_CHECKS[8], clipboard() == panel.selected().quote)

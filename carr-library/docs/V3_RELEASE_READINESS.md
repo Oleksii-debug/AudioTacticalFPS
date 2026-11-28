@@ -1,5 +1,41 @@
 # Resonance — current integration and release evidence
 
+## 2026-11-28: native search completion and earlier native qualification
+
+The exact 7c991 main completed with all 451 source suites and 11,589 passing case
+events, plus the protected 252-module / 5,947-direct-case inventory. Native
+citations, Basic translation and Advanced translation passed. Step 26 then emitted
+FAIL after eight checks because the native clipboard returned no text data;
+steps 27–53 were skipped. The [complete failed-main record](evidence/7c991-main-observed-failure-20261128.md)
+retains its current log, Counters, receipts, artifact identity and exact limits.
+
+The [minimal fixture correction](evidence/search-continuation-copy-completion-fixture-repair-20261128.json)
+uses the existing bounded wait for the desktop copy worker to finish and report
+successful publication before the unchanged exact clipboard-text assertion.
+The actual failed log does not record the worker phase; the missing completion
+wait is established from source. All 21 labels, native keys, retained-source
+checks and 150-second deadline remain unchanged. All 425 application files and
+all 569 test_*.py regression files are unchanged; one native probe in the
+628-file test tree changes.
+
+The [additive early native workflow](../../.github/workflows/carr-native-main-final.yml)
+copies the existing main steps 23–48 and their prerequisites without changing
+any copied assertion, condition or timeout. Its [source-parity record](evidence/main-native-early-focus-source-parity-20261128.json)
+binds all 26 native/preparation blocks and 17 prerequisite blocks. It also binds
+exact committed source bytes and the complete installed package before and
+after those gates. The full main workflow, its source/installed populations and
+all 21 independent-reader pins remain unchanged.
+
+This composition is source-reviewed and not yet executed. It requires its own
+native-focused, Basic/local-translation and audio-inspection results, then the
+full main and auxiliary jobs, followed by independent reading of the actual
+successful main artifact. No 7c success transfers to this successor. The
+[composition record](evidence/search-native-final-composition-20261128.json)
+and requirement matrix preserve all 24 requirement objects and prior failures.
+Full-platform model, language, hardware, manual-accessibility and distribution
+acceptance remains NOT_QUALIFIED.
+
+
 Product: **Resonance / Резонанс**, version **0.2.0.dev2**.
 
 This is the integration record for the 27 November technical project, with execution evidence and the reviewed follow-up recorded on 28 November.
