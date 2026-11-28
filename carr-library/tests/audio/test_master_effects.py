@@ -209,7 +209,7 @@ def test_actual_master_child_read_is_protected_against_a_restored_same_size_writ
     output = tmp_path / 'result.wav'
     real = mastering.audio.run_ffmpeg
     observed = []
-    command = [sys.executable, '-I', '-c',
+    command = [sys.executable, '-I', '-B', '-c',
         'from pathlib import Path\nimport os, sys\n'
         'p=Path(sys.argv[1]); stamp=p.stat(); raw=p.read_bytes()\n'
         'try:\n'

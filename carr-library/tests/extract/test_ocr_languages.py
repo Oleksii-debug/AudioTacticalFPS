@@ -206,14 +206,14 @@ def test_actual_child_oversized_output_is_stopped_and_rejected(stream):
     # of changing any installed native executable or model.
     code = f'import sys,time; sys.{stream}.buffer.write(b"x" * 1048576); sys.{stream}.flush(); time.sleep(5)'
     native = SimpleNamespace(executable=sys.executable, root=None,
-                             command=lambda args: [sys.executable, '-c', code])
+                             command=lambda args: [sys.executable, '-B', '-c', code])
     with pytest.raises(models.OcrLanguageError, match='oversized output'):
         models._capture(native, '--list-langs', lambda: 2)
 
 
 def test_actual_child_cancel_is_checked_while_inventory_process_runs():
     native = SimpleNamespace(executable=sys.executable, root=None,
-        command=lambda args: [sys.executable, '-c', 'import time; time.sleep(5)'])
+        command=lambda args: [sys.executable, '-B', '-c', 'import time; time.sleep(5)'])
     stopped = Event()
     timer = Timer(.1, stopped.set)
     timer.start()

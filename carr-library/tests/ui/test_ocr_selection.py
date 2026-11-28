@@ -45,7 +45,7 @@ def test_inventory_parser_rejects_different_bound_model_directory():
 
 def runtime_program(monkeypatch, tmp_path, program):
     runtime = SimpleNamespace(executable=sys.executable, root=tmp_path, tessdata=tmp_path,
-        command=Mock(side_effect=lambda arguments: [sys.executable, '-c',
+        command=Mock(side_effect=lambda arguments: [sys.executable, '-B', '-c',
             "print('tesseract 5.5.0')" if arguments[-1] == '--version' else program]),
         assert_unchanged=Mock(), portable=False, manifest_sha256=None)
     discover = Mock(return_value=runtime)

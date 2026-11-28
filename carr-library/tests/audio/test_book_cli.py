@@ -127,7 +127,7 @@ def child_arguments(library, *args):
         'from carr_library.audio.book_cli import main;'
         'raise SystemExit(main(sys.argv[3:]))'
     )
-    return [sys.executable, '-I', '-c', script, package, boot, '--data-dir', str(library[0].root),
+    return [sys.executable, '-I', '-B', '-c', script, package, boot, '--data-dir', str(library[0].root),
             '--workspace', library[1], *map(str, args)]
 
 

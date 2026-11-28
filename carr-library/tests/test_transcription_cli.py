@@ -216,7 +216,7 @@ def test_top_level_route_and_isolated_installed_origin(prepared_environment, tmp
         'from carr_library.__main__ import main;'
         'raise SystemExit(main(sys.argv[3:]))'
     )
-    result = subprocess.run([sys.executable, '-I', '-c', script, package_root, bootstrap_root,
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', script, package_root, bootstrap_root,
                              'transcription', '--data-dir', str(service.library_root), 'jobs'],
                             cwd=tmp_path, capture_output=True, text=True, encoding='utf-8', timeout=30)
     assert result.returncode == 0, result.stderr[-4000:]

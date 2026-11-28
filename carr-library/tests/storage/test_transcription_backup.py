@@ -393,7 +393,7 @@ with project_lock(pathlib.Path(sys.argv[1]), lock_name='.worker-v5.lock'):
     if sys.stdin.readline().strip() != 'release':
         raise SystemExit(3)
 """
-    process = subprocess.Popen([sys.executable, '-I', '-c', code,
+    process = subprocess.Popen([sys.executable, '-I', '-B', '-c', code,
         str(job / 'logs'), str(ready), package_parent], stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:

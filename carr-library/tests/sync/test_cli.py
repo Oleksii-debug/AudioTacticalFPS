@@ -11,7 +11,7 @@ from carr_library.application import LibraryApp
 
 
 def invoke(root, *arguments, password=None):
-    return subprocess.run([sys.executable, '-m', 'carr_library', 'sync', '--data-dir', str(root), *arguments],
+    return subprocess.run([sys.executable, '-B', '-m', 'carr_library', 'sync', '--data-dir', str(root), *arguments],
         input=password, text=True, capture_output=True, timeout=60)
 
 

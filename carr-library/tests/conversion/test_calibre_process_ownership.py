@@ -66,7 +66,7 @@ def test_inner_converter_keeps_descendant_in_existing_outer_owner(tmp_path, mode
     ready = tmp_path / 'descendant.pid'
     child = (
         "import pathlib,subprocess,sys,time\n"
-        "p=subprocess.Popen([sys.executable,'-I','-c','import time; time.sleep(12)'])\n"
+        "p=subprocess.Popen([sys.executable,'-I','-B','-c','import time; time.sleep(12)'])\n"
         "pathlib.Path(sys.argv[1]).write_text(str(p.pid))\n"
         "mode=sys.argv[2]\n"
         "if mode=='diagnostic-cap':\n"
@@ -82,7 +82,7 @@ def test_inner_converter_keeps_descendant_in_existing_outer_owner(tmp_path, mode
         "if mode=='adapter-timeout':\n"
         " time.monotonic=lambda: deadline if (stage/'descendant.pid').is_file() else real()\n"
         "try:\n"
-        " _run([sys.executable,'-I','-c',sys.argv[4],str(stage/'descendant.pid'),mode],"
+        " _run([sys.executable,'-I','-B','-c',sys.argv[4],str(stage/'descendant.pid'),mode],"
         "stage,deadline,"
         "environment=_environment(stage,stage))\n"
         "except (ValueError,TimeoutError):\n"
