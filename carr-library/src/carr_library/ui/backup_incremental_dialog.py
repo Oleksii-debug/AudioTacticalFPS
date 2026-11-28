@@ -295,7 +295,15 @@ def install_incremental_backup_actions(frame):
     if actions is not None:
         return actions
     actions = IncrementalBackupActions(frame)
-    menu = frame.GetMenuBar().GetMenu(0)
+    bar = frame.GetMenuBar()
+    count = bar.GetMenuCount() if bar is not None else 0
+    if not 0 < count <= 64:
+        raise ValueError('The current Library menu is unavailable.')
+    matches = [bar.GetMenu(index) for index in range(count)
+               if bar.GetMenuLabel(index).replace('&', '') == 'Library']
+    if len(matches) != 1:
+        raise ValueError('The current Library menu must be present exactly once.')
+    menu = matches[0]
     menu.AppendSeparator()
     for identity, label, handler in (
             ('backup.incremental.create', 'Create incremental backup...', actions.create),
