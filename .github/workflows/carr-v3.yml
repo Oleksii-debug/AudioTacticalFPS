@@ -472,6 +472,7 @@ jobs:
             tests/ingest/test_import_session.py \
             tests/ingest/test_import_session_posix.py \
             tests/ingest/test_import_slice_ownership.py \
+            tests/scale/test_library_backup_benchmark.py \
             tests/scale/test_library_catalog_benchmark.py \
             tests/scale/test_library_scale_contract.py \
             tests/scale/test_library_scale_posix.py \
@@ -989,6 +990,7 @@ jobs:
               'tests/ingest/test_import_reconciliation.py',
               'tests/ingest/test_import_session.py',
               'tests/ingest/test_import_slice_ownership.py',
+              'tests/scale/test_library_backup_benchmark.py',
               'tests/scale/test_library_catalog_benchmark.py',
               'tests/scale/test_library_scale_contract.py',
               'tests/search/test_full_scope_ranking.py',

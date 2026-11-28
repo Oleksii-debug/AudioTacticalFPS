@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "scope": "Updated technical scope engineering completion and exact-head qualification for PR143",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "pr": {
+    "number": 143,
+    "branch": "carr/canonical-integrity-finish-20261127",
+    "head": "96cf8a1435187844393b5389001d07a587c417a8",
+    "status": "NOT_FINAL_FAILED_PREDECESSOR"
+  },
+  "draft": {
+    "base_head": "4f08d67a6a6f8eceb0bfd3a2b0c56e8ec2ca50c2",
+    "base_tree": "9661587629e9eaffff902b5725dff9492162e7e4",
+    "final_files": 1499,
+    "exclude_from_final": [
+      ".github/workflows/carr-final-composition-syntax.yml",
+      ".github/diagnostics/final_completion_checkpoint.json"
+    ],
+    "deltas": [
+      {
+        "path": "carr-library/scripts/benchmark_library_backup.py",
+        "sha": "17d8ae5ae97ab57fe5ede1ea46a6f22b385e2b56"
+      },
+      {
+        "path": "carr-library/tests/scale/test_library_backup_benchmark.py",
+        "sha": "d0d300594e17872666031afbf02661155ed0417f"
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "ebdc748705dad0b9949a76583b9696629287a7b7"
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "sha": "a28961607a566775049454ff2ad527f2d1544278"
+      },
+      {
+        "path": "carr-library/scripts/windows_backup_import_access_smoke.py",
+        "sha": "e84cfaf73c1c014daa43be9c576eb884b6ba6933"
+      },
+      {
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "sha": "c79ab12f3b1666387039b8ff7ad58a47e309596f"
+      }
+    ]
+  },
+  "pending": {
+    "search_page_optimization": "Reader implementation pending; based on App0be1b1fc48f27b814a5c6bf5b2a17eb70461f33b. Mandatory fresh original/path/catalog checks before outer page and cursor grant; no cross-call authority cache.",
+    "search_profiles": {
+      "head": "0b5f784b545184d7882ae98e9401f9eb173f744e",
+      "run": 46095688222,
+      "manifest": "6ffe5287b991280dfff5d0d6a420c1555783e0c9",
+      "scope": "Actual1k done;65/129MiB active; profiler overhead is not throughput."
+    },
+    "growth": {
+      "head": "27b5380eee386059affa89f5c38cb354ba20a034",
+      "run": 46095787780,
+      "scope": "Actual10k bothOS active"
+    },
+    "native_access": {
+      "head": "899e6b86c15e7adb5de6a40138764959a82b5668",
+      "run": 46095544415,
+      "manifest": "eecc823b515b568874ab6e8570b41c3b59c406e4",
+      "scope": "Linux1127+1127 complete, Windows installed and native pending"
+    },
+    "scale_workflow": {
+      "source": "f5d558d4ede3d8bbd077fe5a81efbf7d740df3c6",
+      "base": "99f7c9df0f12edc7229c10e4ece0cc40d818a597",
+      "status": "Backup, capacity and exact-source orchestration reviewed;50k phase time limits still require measured selection",
+      "guide": "8497aa216e7b75f8afeacac7bf1d821b6c658bf6",
+      "matrix": "BothOS:1k,10k,50k books x40segments;65MiB,129MiB,2GiB. Fullcommon4/verify/freshrestore at50k and2GiB."
+    },
+    "final": "Publish coherent PR143 head; all7maintainedworkflow gates; repair observed failures; merge expected exacthead after fresh canonical check."
+  },
+  "evidence": {
+    "ocr": "8028ce820007089153832271f2f2ed5721ece25b",
+    "search_common": "01e8b7648c243ec3d1c17b488469cd8f97113d22",
+    "search_model_native": "b4efe83a9f432ddae1f089d06e4453c5df173d0f",
+    "translation": "b60686ae8bc094972f55be9a982ef23bcb9aa8af",
+    "queue": "3a74bd9f959ccc8393a1a21dda94df4717fa7a87",
+    "runtime": "c3154b91c9b45f17e852604d29cde1b5235d2401",
+    "syntax": "c000d9fdbb8480bd208ce3d5f682ba5aa6636fc4",
+    "backup_common_and_palette": "76f4765c713a128836499970d06d56f4177c2eb2",
+    "backup_scale_small": "901e7d9b913fab27696fe76e0cf8cfd421d6a715",
+    "receipt_session_scratch_micro": "54b5e9ed5dc1fef7c3cf7d460bb32058561f4488",
+    "actual_1k": "5415b8b5160553cb1d3842a4839a4a546d55b6e5",
+    "windows_import_profile": "3849feb90028bc70a732ef3bebaab0a3f7fdceec",
+    "auditor_checkpoint": "bed8e6bbe393a86830d554b0d75e0d8db7c6fb37"
+  },
+  "boundaries": [
+    "Component PASS never transfers to later heads.",
+    "No private-engine,135-language human-quality,production signing,physical device or NVDA claim.",
+    "Individual-process high-water memory measured;simultaneous family peak remains explicitly NOT_MEASURED.",
+    "Final excludes every temporary diagnosis/syntax workflow;retain7maintained workflows.",
+    "GitHub immutable objects and owned branches are authoritative; local executor unavailable."
+  ]
+}
