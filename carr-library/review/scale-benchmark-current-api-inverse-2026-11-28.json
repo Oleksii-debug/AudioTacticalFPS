@@ -1,0 +1,971 @@
+{
+  "schema": "carr-source-inverse/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base": "73010d4b24515296edb43f7f27969641a66d3e7c",
+  "donor": "1d85bae4c35bd7fedf385b3eeafc9519d770b0c5",
+  "offsets": "JavaScript UTF-16 code units; apply replacements from highest new_start to lowest",
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "donor_sha": "81e569b33a6acc4a64f3ee04176598487f9efc07",
+      "after_sha": "81e569b33a6acc4a64f3ee04176598487f9efc07",
+      "donor_sha256": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d",
+      "after_sha256": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d",
+      "added_to_target": true,
+      "hunks": [],
+      "exact_inverse": true
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_catalog.py",
+      "donor_sha": "de70eac386a21d88a7a42f4ad5f0271ce88fa133",
+      "after_sha": "ff0b4174f3104201ebf2527b6d489345ed2e874f",
+      "donor_sha256": "6d6620b3bf75b80c7755d093c9281e4e2dc2aff6356b06c542f83d908bceef20",
+      "after_sha256": "0ef21c5d7d3722002dda8e021ba89f63c6ee31ac6eac1eb1958a2b0e767ea7b4",
+      "added_to_target": true,
+      "hunks": [
+        {
+          "old_start": 735,
+          "old_end": 818,
+          "new_start": 735,
+          "new_end": 885,
+          "before": "from carr_library.durable_state import atomic_json, local_path, read_json, regular\n",
+          "after": "from carr_library.durable_state import atomic_json, local_path, read_json_snapshot, regular\nfrom carr_library.ingest.streamed_text import TextProfile\n"
+        },
+        {
+          "old_start": 947,
+          "old_end": 991,
+          "new_start": 1014,
+          "new_end": 1058,
+          "before": "SCHEMA = \"carr-library-catalog-benchmark/1\"\n",
+          "after": "SCHEMA = \"carr-library-catalog-benchmark/2\"\n"
+        },
+        {
+          "old_start": 1019,
+          "old_end": 1041,
+          "new_start": 1086,
+          "new_end": 1109,
+          "before": "MAX_STATE = 64 * 1024\n",
+          "after": "MAX_STATE = 512 * 1024\n"
+        },
+        {
+          "old_start": 1840,
+          "old_end": 2109,
+          "new_start": 1908,
+          "new_end": 2256,
+          "before": "    \"ingest.slices\", \"ingest.worker\", \"ingest.pipeline\", \"ingest.resource_budget\",\n    \"ingest.retained_assets\", \"ingest.session\", \"storage.publication\", \"storage.revisions\",\n    \"citations.text_attestation\", \"search.paging\", \"search.ranked_scope\", \"search.federated\",\n",
+          "after": "    \"ingest.streamed_text\", \"ingest.streamed_ingest\", \"ingest.worker\", \"ingest.pipeline\",\n    \"ingest.resource_budget\", \"ingest.retained_assets\", \"ingest.session\", \"catalog.registration\",\n    \"storage.revisions\", \"citations.streamed_text_attestation\", \"search.pagination\",\n    \"search.source_windows\", \"search.federated\", \"search.federated_pages\",\n"
+        },
+        {
+          "old_start": 2168,
+          "old_end": 2168,
+          "new_start": 2315,
+          "new_end": 2494,
+          "before": "",
+          "after": "def read_json(path, *, maximum):\n    \"\"\"Use the current guarded bounded JSON reader, including duplicate rejection.\"\"\"\n    return read_json_snapshot(path, max_bytes=maximum)[0]\n\n\n"
+        },
+        {
+          "old_start": 7301,
+          "old_end": 7366,
+          "new_start": 7627,
+          "new_end": 7890,
+          "before": "            or generation.get(\"segments\") != state[\"segments\"]):\n",
+          "after": "            or generation.get(\"segments\") != state[\"authored_fields\"]\n            or state[\"segments\"] != sum(row[\"count\"] for row in state[\"fragment_geometry\"]) * state[\"books\"]\n            or state[\"fragment_geometry\"] != list(_fragment_geometry(generation))):\n"
+        },
+        {
+          "old_start": 8690,
+          "old_end": 8749,
+          "new_start": 9214,
+          "new_end": 9244,
+          "before": "def _profile(generation, *, seconds, steps, memory_bytes):\n",
+          "after": "def _field_sizes(generation):\n"
+        },
+        {
+          "old_start": 8812,
+          "old_end": 9814,
+          "new_start": 9307,
+          "new_end": 9562,
+          "before": "        source = spec[\"segments_per_book\"] * spec[\"segment_bytes\"] + spec[\"segments_per_book\"] + 2\n        segment, segments = spec[\"segment_bytes\"], spec[\"segments_per_book\"]\n    elif spec[\"kind\"] == \"large_text\":\n        source, segments = spec[\"source_bytes\"], spec[\"segments\"]\n        segment = max(fixture.LargeTextSpec(source, segments).sizes())\n    else:\n        raise ValueError(\"Unknown generated source profile.\")\n    # The first original record includes its three-byte UTF-8 BOM. The strict\n    # intake allowance counts original bytes before utf-8-sig removes that BOM.\n    segment += len(b\"\\xef\\xbb\\xbf\")\n    growth = max(64*MIB, generation[\"generated_bytes\"] * 6\n                 + generation[\"segments\"] * 1024 + generation[\"completed_books\"] * 16384)\n    return ImportBudget(source_bytes=source, segment_bytes=segment, segments=segments,\n        steps=min(steps, segments + 1), seconds=seconds, memory_bytes=memory_bytes,\n        library_bytes=growth, temporary_bytes=source + 128*MIB)\n",
+          "after": "        return (spec[\"segment_bytes\"],) * spec[\"segments_per_book\"]\n    if spec[\"kind\"] == \"large_text\":\n        return tuple(fixture.LargeTextSpec(spec[\"source_bytes\"], spec[\"segments\"]).sizes())\n    raise ValueError(\"Unknown generated source profile.\")\n"
+        },
+        {
+          "old_start": 9816,
+          "old_end": 9892,
+          "new_start": 9564,
+          "new_end": 12823,
+          "before": "def initialize(directory, *, page_files=1000, slice_items=1000, steps=1001,\n",
+          "after": "def _authored_field(generation, book, field):\n    sizes = _field_sizes(generation)\n    _require(0 <= book < generation[\"completed_books\"] and 1 <= field <= len(sizes),\n             \"An original field is outside the authored source population.\")\n    return b\"\".join(fixture.segment_parts(book, field, sizes[field - 1])).decode(\"utf-8\")\n\n\ndef _fragment_geometry(generation):\n    \"\"\"Independent authored oracle for the current fixed Unicode-offset contract.\n\n    These sizes derive from generated fixture bytes, not from the application's\n    parser or catalog. Source fields and catalog fragments remain distinct.\n    \"\"\"\n    _require(fixture.FILLER_BLOCK.isascii() and fixture.SUFFIX.isascii(),\n             \"The authored geometry oracle requires the exact ASCII filler contract.\")\n    ordinal, rows = 1, []\n    for field, size in enumerate(_field_sizes(generation), 1):\n        prefix = next(fixture.segment_parts(0, field, size))\n        characters = size - len(prefix) + len(prefix.decode(\"utf-8\"))\n        count = (characters + 65535) // 65536\n        rows.append(dict(field=field, first=ordinal, count=count,\n                         characters=characters, size_bytes=size))\n        ordinal += count\n    return tuple(rows)\n\n\ndef _source_fragments(generation, source):\n    ordinal = 1\n    for field in source[\"segments\"]:\n        text = _authored_field(generation, source[\"book\"], field[\"ordinal\"])\n        _require(sha256(text.encode(\"utf-8\")).hexdigest() == field[\"sha256\"]\n                 and len(text) == field[\"characters\"]\n                 and len(text.encode(\"utf-8\")) == field[\"size_bytes\"],\n                 \"The independent authored field differs from the original manifest.\")\n        for start in range(0, len(text), 65536):\n            raw = text[start:start + 65536]\n            yield dict(ordinal=ordinal, field=field[\"ordinal\"], offset=start,\n                       raw=raw, characters=len(raw), size_bytes=len(raw.encode(\"utf-8\")),\n                       sha256=sha256(raw.encode(\"utf-8\")).hexdigest(),\n                       anchor=field[\"anchor\"] if start == 0 else None)\n            ordinal += 1\n\n\ndef _profile(generation, *, seconds, steps, memory_bytes):\n    spec, sizes = generation[\"spec\"], _field_sizes(generation)\n    source = (sum(sizes) + len(sizes) + 2 if spec[\"kind\"] == \"corpus\"\n              else spec[\"source_bytes\"])\n    # Every real fragment has at most 65536 Unicode scalars. The upper bound\n    # uses four UTF-8 bytes per scalar, not the donor's whole-field geometry.\n    segment = min(max(sizes), 4 * 65536)\n    segments = sum(row[\"count\"] for row in _fragment_geometry(generation))\n    if segments * generation[\"completed_books\"] > MAX_ROWS:\n        raise ValueError(\"The actual catalog fragment population exceeds the benchmark bound.\")\n    growth = max(64*MIB, generation[\"generated_bytes\"] * 6\n                 + segments * generation[\"completed_books\"] * 1024\n                 + generation[\"completed_books\"] * 16384)\n    return ImportBudget(source_bytes=source, segment_bytes=segment, segments=segments,\n        steps=min(steps, segments + 1), seconds=seconds, memory_bytes=memory_bytes,\n        library_bytes=growth, temporary_bytes=source + 128*MIB)\n\ndef initialize(directory, *, page_files=1000, steps=1001,\n"
+        },
+        {
+          "old_start": 10235,
+          "old_end": 10375,
+          "new_start": 13166,
+          "new_end": 13238,
+          "before": "            or type(slice_items) is not int or not 1 <= slice_items <= 1000\n            or type(steps) is not int or not 1 <= steps <= 1001\n",
+          "after": "            or type(steps) is not int or not 1 <= steps <= MAX_ROWS + 1\n"
+        },
+        {
+          "old_start": 10836,
+          "old_end": 10988,
+          "new_start": 13699,
+          "new_end": 13857,
+          "before": "    # Source windows use a bounded character allowance derived from this\n    # explicit memory policy. Admit one genuine maximum-size authored segment.\n",
+          "after": "    # Conservative coordinator headroom for the current fixed source windows.\n    # This is an estimate, not a nonexistent per-search RAM policy or OS limit.\n"
+        },
+        {
+          "old_start": 11759,
+          "old_end": 11759,
+          "new_start": 14628,
+          "new_end": 14684,
+          "before": "",
+          "after": "    (directory / \"benchmark\" / \"worker-starts\").mkdir()\n"
+        },
+        {
+          "old_start": 11918,
+          "old_end": 11918,
+          "new_start": 14843,
+          "new_end": 14975,
+          "before": "",
+          "after": "    from carr_library.keybindings import encode_preferences\n    (app.root / 'keybindings.json').write_bytes(encode_preferences({}))\n"
+        },
+        {
+          "old_start": 13456,
+          "old_end": 13622,
+          "new_start": 16513,
+          "new_end": 16791,
+          "before": "        books=generation[\"completed_books\"], segments=generation[\"segments\"],\n        import_budget=budget.to_dict(), page_files=page_files, slice_items=slice_items,\n",
+          "after": "        books=generation[\"completed_books\"], authored_fields=generation[\"segments\"],\n        segments=budget.segments * generation[\"completed_books\"],\n        fragment_geometry=list(_fragment_geometry(generation)),\n        import_budget=budget.to_dict(), page_files=page_files,\n"
+        },
+        {
+          "old_start": 15603,
+          "old_end": 15716,
+          "new_start": 18772,
+          "new_end": 18925,
+          "before": "    value={\"pid\":_co.getpid(),\"peak_bytes\":peak,\"method\":method,\"executable\":_cs.executable,\"prefix\":_cs.prefix}\n",
+          "after": "    value={\"pid\":_co.getpid(),\"peak_bytes\":peak,\"method\":method,\"executable\":_cs.executable,\"prefix\":_cs.prefix,\"protocol_sha256\":_carr_protocol_sha256}\n"
+        },
+        {
+          "old_start": 15929,
+          "old_end": 16045,
+          "new_start": 19138,
+          "new_end": 19287,
+          "before": "def observe_import_workers(directory):\n    \"\"\"Measure each actual worker's own peak; never call this family RSS.\"\"\"\n",
+          "after": "def observe_import_workers(directory, *, cancellation=None):\n    \"\"\"Measure only this profile's actual owned worker, retaining its native runner.\"\"\"\n"
+        },
+        {
+          "old_start": 16088,
+          "old_end": 16088,
+          "new_start": 19330,
+          "new_end": 19442,
+          "before": "",
+          "after": "    from carr_library.audio.models import AudioCancelled\n    from carr_library.ingest.worker import MAX_REQUEST\n"
+        },
+        {
+          "old_start": 16431,
+          "old_end": 16493,
+          "new_start": 19785,
+          "new_end": 19851,
+          "before": "        if offset >= len(args) or anchor not in args[offset]:\n",
+          "after": "        if offset + 2 >= len(args) or anchor not in args[offset]:\n"
+        },
+        {
+          "old_start": 16538,
+          "old_end": 16874,
+          "new_start": 19896,
+          "new_end": 22481,
+          "before": "        if args[offset].count(anchor) != 1 or options.get(\"owned_tree\") is not True:\n            raise AssertionError(\"The measured import must use its exact current owned worker.\")\n        path = directory / \"benchmark\" / \"worker-peaks\" / (uuid4().hex + \".json\")\n        code = \"_carr_peak_path=\" + repr(str(path)) + \"\\n\" + _PEAK_CODE\n",
+          "after": "        protocol, protocol_digest = read_json_snapshot(Path(args[offset + 1]), max_bytes=MAX_REQUEST)\n        if not isinstance(protocol, dict) or protocol.get(\"data_dir\") != str(directory / \"library\"):\n            return original(args, **options)\n        if (protocol_digest != args[offset + 2] or args[offset].count(anchor) != 1\n                or options.get(\"owned_tree\") is not True):\n            raise AssertionError(\"The measured import must retain its exact current protocol and owner.\")\n        token = uuid4().hex\n        path = directory / \"benchmark\" / \"worker-peaks\" / (token + \".json\")\n        code = (\"_carr_peak_path=\" + repr(str(path)) + \"\\n_carr_protocol_sha256=\"\n                + repr(protocol_digest) + \"\\n\" + _PEAK_CODE)\n        selected = cancellation is not None and not cancellation[\"attempted\"]\n        if selected:\n            cancellation[\"attempted\"] = True\n            ready = directory / \"benchmark\" / \"worker-starts\" / (token + \".json\")\n            # The genuine interpreter publishes a closed atomic readiness marker.\n            # This acknowledges native worker startup, not a fabricated parser checkpoint.\n            code += (\"\\n_carr_start=\" + repr(str(ready)) + \"\\n\"\n                \"_carr_pending=_carr_start+'.pending'\\n\"\n                \"with open(_carr_pending,'x',encoding='ascii',newline='\\\\n') as _f:\\n\"\n                \"    _f.write(_cj.dumps({'token':\" + repr(token) + \",'pid':_co.getpid()})); _f.flush(); _co.fsync(_f.fileno())\\n\"\n                \"_co.replace(_carr_pending,_carr_start)\\n\")\n            current = options.get(\"cancelled\", lambda: False)\n            def stop():\n                if current():\n                    return True\n                if cancellation[\"observed\"] is None and ready.exists():\n                    value = read_json(ready, maximum=8192)\n                    _require(set(value) == {\"token\", \"pid\"} and value[\"token\"] == token\n                             and type(value[\"pid\"]) is int and value[\"pid\"] > 0,\n                             \"The actual worker startup acknowledgment changed.\")\n                    cancellation[\"observed\"] = time.monotonic()\n                    cancellation[\"pid\"] = value[\"pid\"]\n                if (cancellation[\"observed\"] is not None\n                        and time.monotonic() - cancellation[\"observed\"] >= cancellation[\"delay\"]):\n                    if cancellation[\"requested\"] is None:\n                        cancellation[\"requested\"] = time.monotonic()\n                    return True\n                return False\n            options = dict(options, cancelled=stop)\n"
+        },
+        {
+          "old_start": 17000,
+          "old_end": 17565,
+          "new_start": 22607,
+          "new_end": 23884,
+          "before": "        native = original(command, **options)\n        value = read_json(path, maximum=8192)\n        if (type(value) is not dict or type(value.get(\"pid\")) is not int or value[\"pid\"] <= 0\n                or type(value.get(\"peak_bytes\")) is not int or value[\"peak_bytes\"] <= 0):\n            raise ValueError(\"The actual worker did not publish a valid own-process peak.\")\n        records.append(dict(value, elapsed_seconds=native.elapsed, returncode=native.returncode,\n                            result_sha256=sha256(native.stdout).hexdigest()))\n        return native\n",
+          "after": "        began = time.perf_counter()\n        try:\n            native = original(command, **options)\n        except BaseException as error:\n            if selected:\n                cancellation[\"native_cancelled\"] = isinstance(error, AudioCancelled)\n            records.append(dict(elapsed_seconds=time.perf_counter() - began,\n                outcome=\"raised\", error_type=type(error).__name__,\n                own_peak_bytes=None, protocol_sha256=protocol_digest))\n            raise\n        else:\n            value = read_json(path, maximum=8192)\n            if (type(value) is not dict or type(value.get(\"pid\")) is not int or value[\"pid\"] <= 0\n                    or type(value.get(\"peak_bytes\")) is not int or value[\"peak_bytes\"] <= 0):\n                raise ValueError(\"The actual worker did not publish a valid own-process peak.\")\n            records.append(dict(value, elapsed_seconds=native.elapsed, returncode=native.returncode,\n                                result_sha256=sha256(native.stdout).hexdigest(),\n                                protocol_sha256=protocol_digest, outcome=\"returned\"))\n            return native\n        finally:\n            if selected:\n                cancellation[\"returned\"] = time.monotonic()\n                cancellation[\"finished\"] = True\n"
+        },
+        {
+          "old_start": 17685,
+          "old_end": 18250,
+          "new_start": 24004,
+          "new_end": 24621,
+          "before": "def run_import(directory, *, seconds=86400, cancelled=lambda: False,\n               crash_after_first_commit=False, stop_after_slices=None):\n    \"\"\"Continue the saved public queue; an authored crash occurs after real commit.\"\"\"\n    deadline = Deadline(seconds, cancelled)\n    if type(crash_after_first_commit) is not bool:\n        raise TypeError(\"The authored crash boundary must be explicit.\")\n    if stop_after_slices is not None and (type(stop_after_slices) is not int or stop_after_slices < 1):\n        raise ValueError(\"Choose a positive finite slice stop.\")\n",
+          "after": "def cancel_import(directory, *, seconds=600, after_worker_seconds=.5):\n    \"\"\"Measure one genuine owned-worker cancellation, then require explicit resume.\"\"\"\n    if (type(after_worker_seconds) not in (int, float) or not math.isfinite(after_worker_seconds)\n            or not 0 <= after_worker_seconds <= 60):\n        raise ValueError(\"Choose a bounded interval after positively observed worker startup.\")\n    deadline = Deadline(seconds)\n    control = dict(delay=after_worker_seconds, attempted=False, observed=None,\n                   requested=None, returned=None, pid=None, finished=False, native_cancelled=False)\n"
+        },
+        {
+          "old_start": 18338,
+          "old_end": 18338,
+          "new_start": 24709,
+          "new_end": 24809,
+          "before": "",
+          "after": "        _require(not state[\"import_complete\"], \"Cancellation needs an unfinished explicit import.\")\n"
+        },
+        {
+          "old_start": 18462,
+          "old_end": 18462,
+          "new_start": 24933,
+          "new_end": 28745,
+          "before": "",
+          "after": "        _require(any(row[\"state\"] != \"complete\" for row in page[\"rows\"]),\n                 \"Select a saved page with an unfinished source before measuring cancellation.\")\n        identities = [(row[\"row_id\"], row[\"request_id\"], row[\"edition_id\"]) for row in page[\"rows\"]]\n        before = time.perf_counter()\n        with observe_import_workers(directory, cancellation=control) as records:\n            page = app.run_import_batch(state[\"workspace\"], page[\"batch_id\"],\n                timeout=min(state[\"import_budget\"][\"seconds\"], deadline.remaining()),\n                cancelled=lambda: deadline.stopped() or control[\"finished\"])\n        _require([(row[\"row_id\"], row[\"request_id\"], row[\"edition_id\"]) for row in page[\"rows\"]] == identities,\n                 \"Cancellation replaced a saved queue/request/edition identity.\")\n        _require(all(row[\"state\"] in (\"queued\", \"complete\") for row in page[\"rows\"]),\n                 \"The actual import worker failed; no cancellation measurement is reported.\")\n        proved = (control[\"native_cancelled\"] and control[\"requested\"] is not None\n                  and control[\"observed\"] is not None\n                  and any((row.get(\"result\") or {}).get(\"state\") == \"cancelled\" for row in page[\"rows\"]))\n        completed_before_boundary = (control[\"finished\"] and control[\"requested\"] is None\n            and any(record[\"outcome\"] == \"returned\" for record in records))\n        result = dict(schema=SCHEMA,\n            status=\"OWNED_WORKER_CANCELLATION_MEASURED\" if proved else \"NOT_RUN\",\n            reason=(None if proved else\n                \"The actual worker completed before the selected cancellation boundary.\"\n                if completed_before_boundary else\n                \"The selected cancellation boundary was not proved; no cancellation measurement is reported.\"),\n            batch_id=page[\"batch_id\"], worker_pid=control[\"pid\"], requested_delay_seconds=after_worker_seconds,\n            child_start_observed=control[\"observed\"] is not None,\n            elapsed_seconds=time.perf_counter() - before,\n            cancellation_to_owned_return_seconds=(control[\"returned\"] - control[\"requested\"]\n                if control[\"requested\"] is not None else None),\n            completed_rows=page[\"counts\"].get(\"complete\", 0), counts=page[\"counts\"],\n            same_saved_identities=True, automatic_resume=False,\n            native_cancelled=control[\"native_cancelled\"], worker_measurements=records,\n            family_proof=(\"unchanged owned run_process returned through cancellation cleanup\"\n                          if proved else \"NO_CANCEL_QUALIFICATION\"),\n            killed_worker_peak=\"NOT_MEASURED\", memory=fixture.process_memory(),\n            originals=fixture.verify_originals(directory, generation, cancelled=deadline.stopped))\n        atomic_json(directory / \"benchmark\" / \"cancellation.json\", result)\n        _event(directory, state, \"import_cancellation\", **{k: v for k, v in result.items()\n            if k not in (\"schema\", \"originals\")})\n        return result\n\n\ndef run_import(directory, *, seconds=86400, cancelled=lambda: False,\n               crash_after_first_commit=False, stop_after_slices=None):\n    \"\"\"Continue the saved public queue; an authored crash occurs after real commit.\"\"\"\n    deadline = Deadline(seconds, cancelled)\n    if type(crash_after_first_commit) is not bool:\n        raise TypeError(\"The authored crash boundary must be explicit.\")\n    if stop_after_slices is not None and (type(stop_after_slices) is not int or stop_after_slices < 1):\n        raise ValueError(\"Choose a positive finite slice stop.\")\n    with _locked(directory) as directory:\n        state, generation = _state(directory)\n        app = LibraryApp(directory / \"library\")\n        page = app.import_batch(state[\"workspace\"], state[\"current_batch\"])\n"
+        },
+        {
+          "old_start": 20413,
+          "old_end": 20504,
+          "new_start": 30696,
+          "new_end": 30696,
+          "before": "                        max_items=1 if crash_after_first_commit else state[\"slice_items\"],\n",
+          "after": ""
+        },
+        {
+          "old_start": 20799,
+          "old_end": 20904,
+          "new_start": 30991,
+          "new_end": 31200,
+          "before": "                        workers=workers[previous_workers:], coordinator_memory=fixture.process_memory())\n",
+          "after": "                        measured_workers=len(workers) - previous_workers,\n                        worker_receipts=\"benchmark/worker-peaks\",\n                        coordinator_memory=fixture.process_memory())\n"
+        },
+        {
+          "old_start": 29176,
+          "old_end": 29176,
+          "new_start": 39472,
+          "new_end": 39542,
+          "before": "",
+          "after": "                oracles = iter(_source_fragments(generation, source))\n"
+        },
+        {
+          "old_start": 29270,
+          "old_end": 29437,
+          "new_start": 39636,
+          "new_end": 39776,
+          "before": "                    _require(observed <= len(source[\"segments\"]), \"The catalog has an extra raw segment.\")\n                    oracle = source[\"segments\"][observed-1]\n",
+          "after": "                    oracle = next(oracles, None)\n                    _require(oracle is not None, \"The catalog has an extra raw fragment.\")\n"
+        },
+        {
+          "old_start": 29559,
+          "old_end": 29559,
+          "new_start": 39898,
+          "new_end": 39954,
+          "before": "",
+          "after": "                        and row[\"raw\"] == oracle[\"raw\"]\n"
+        },
+        {
+          "old_start": 29785,
+          "old_end": 29935,
+          "new_start": 40180,
+          "new_end": 40365,
+          "before": "                        and oracle[\"anchor\"] in row[\"raw\"],\n                        \"Original Unicode, CRLF, form-feed order or raw digest changed.\")\n",
+          "after": "                        and (oracle[\"anchor\"] is None or oracle[\"anchor\"] in row[\"raw\"]),\n                        \"Original Unicode, CRLF, form-feed order or fragment offset changed.\")\n"
+        },
+        {
+          "old_start": 30065,
+          "old_end": 30271,
+          "new_start": 40495,
+          "new_end": 40921,
+          "before": "                _require(observed == len(source[\"segments\"]), \"The last original segment is missing.\")\n                retained = app.assets.resolve(source[\"source_sha256\"], max_bytes=source[\"size_bytes\"])\n",
+          "after": "                _require(observed > 0 and next(oracles, None) is None,\n                         \"The last original fragment is missing.\")\n                retained = app.assets.resolve(source[\"source_sha256\"],\n                    profile=TextProfile(state[\"import_budget\"][\"source_bytes\"],\n                                        ImportBudget.from_dict(state[\"import_budget\"])),\n                    cancelled=deadline.stopped)\n"
+        },
+        {
+          "old_start": 31089,
+          "old_end": 31182,
+          "new_start": 41739,
+          "new_end": 41893,
+          "before": "            source_books=state[\"books\"], source_segments=verified, raw_utf8_bytes=raw_bytes,\n",
+          "after": "            source_books=state[\"books\"], source_segments=verified,\n            authored_source_fields=state[\"authored_fields\"], raw_utf8_bytes=raw_bytes,\n"
+        },
+        {
+          "old_start": 32345,
+          "old_end": 32921,
+          "new_start": 43056,
+          "new_end": 43611,
+          "before": "def _segment(generation, book, ordinal):\n    spec = generation[\"spec\"]\n    if spec[\"kind\"] == \"corpus\":\n        count, size = spec[\"segments_per_book\"], spec[\"segment_bytes\"]\n    else:\n        count = spec[\"segments\"]\n        small, extra = divmod(spec[\"source_bytes\"] - count - 2, count)\n        size = small + (ordinal <= extra)\n    _require(0 <= book < generation[\"completed_books\"] and 1 <= ordinal <= count,\n             \"A search result is outside the generated source population.\")\n    return b\"\".join(fixture.segment_parts(book, ordinal, size)).decode(\"utf-8\"), count\n",
+          "after": "def _segment(generation, book, ordinal, geometry=None):\n    geometry = _fragment_geometry(generation) if geometry is None else geometry\n    for row in geometry:\n        if row[\"first\"] <= ordinal < row[\"first\"] + row[\"count\"]:\n            original = _authored_field(generation, book, row[\"field\"])\n            offset = (ordinal - row[\"first\"]) * 65536\n            return original[offset:offset + 65536], sum(item[\"count\"] for item in geometry), row[\"field\"]\n    raise AssertionError(\"A search locator is outside the actual authored fragment population.\")\n"
+        },
+        {
+          "old_start": 33626,
+          "old_end": 33626,
+          "new_start": 44316,
+          "new_end": 44409,
+          "before": "",
+          "after": "    original, count, field = _segment(generation, book, ordinal, state[\"fragment_geometry\"])\n"
+        },
+        {
+          "old_start": 33672,
+          "old_end": 33974,
+          "new_start": 44455,
+          "new_end": 44715,
+          "before": "        _require((int(found[1]), int(found[2])) == (book, ordinal),\n                 \"A quoted source anchor differs from its public locator.\")\n    original, count = _segment(generation, book, ordinal)\n    _require(hit.quote in original, \"Search returned text absent from the exact original segment.\")\n",
+          "after": "        _require((int(found[1]), int(found[2])) == (book, field),\n                 \"A quoted authored-field anchor differs from its actual fragment locator.\")\n    _require(hit.quote in original, \"Search returned text absent from the exact original fragment.\")\n"
+        },
+        {
+          "old_start": 34478,
+          "old_end": 34545,
+          "new_start": 45219,
+          "new_end": 45285,
+          "before": "def search_catalog(directory, *, seconds=86400, query_seconds=600,\n",
+          "after": "def search_catalog(directory, *, seconds=86400, query_seconds=60,\n"
+        },
+        {
+          "old_start": 34608,
+          "old_end": 34892,
+          "new_start": 45348,
+          "new_end": 45943,
+          "before": "    \"\"\"Measure whole-corpus literal traversal and separately scoped ranking.\"\"\"\n    from carr_library.search.paging import SearchResources\n    if type(query_samples) is not int or not 2 <= query_samples <= 100:\n        raise ValueError(\"Choose 2 through 100 measured query samples.\")\n",
+          "after": "    \"\"\"Measure the current opaque source pages and bounded window ranking.\n\n    The current application does not expose the donor's persistent whole-scope\n    ranked index. No cache, global ranking or hard memory-enforcement result is\n    inferred from these current public calls.\n    \"\"\"\n    if (type(query_samples) is not int or not 2 <= query_samples <= 100\n            or type(query_seconds) not in (int, float) or not math.isfinite(query_seconds)\n            or not .1 <= query_seconds <= 60):\n        raise ValueError(\"Choose 2 through 100 query samples and at most 60 seconds per call.\")\n"
+        },
+        {
+          "old_start": 35502,
+          "old_end": 35902,
+          "new_start": 46553,
+          "new_end": 49755,
+          "before": "        resources = SearchResources(timeout=query_seconds, memory_bytes=state[\"search_memory_bytes\"],\n                                    disk_bytes=state[\"search_disk_bytes\"])\n        visited = bytearray((state[\"segments\"]+7)//8)\n        timings = array(\"d\")\n        cursor, offset, total, source_windows = None, 0, 0, 0\n        window = None\n        sampled = {0, state[\"segments\"]-1}\n        try:\n",
+          "after": "        page_budget, character_budget = 500, 5_000_000\n        def query(text, **options):\n            return app.search_page(state[\"workspace\"], text,\n                collection=state[\"collection\"], limit=100, page_budget=page_budget,\n                character_budget=character_budget,\n                timeout=min(query_seconds, deadline.remaining()),\n                cancelled=deadline.stopped, **options)\n        fragments_per_book = sum(row[\"count\"] for row in state[\"fragment_geometry\"])\n        expected_offsets = {row[\"first\"] - 1 for row in state[\"fragment_geometry\"]}\n        visited = bytearray((state[\"segments\"] + 7) // 8)\n        timings, scanned = array(\"d\"), 0\n        cursor, total = None, 0\n        sampled = {0, (state[\"books\"] - 1) * fragments_per_book + state[\"fragment_geometry\"][-1][\"first\"] - 1}\n        while True:\n            deadline.check()\n            began = time.perf_counter()\n            page = query(\"commonrailway\", mode=\"phrase\", result_mode=\"short\", cursor=cursor)\n            timings.append(time.perf_counter() - began)\n            scanned += page.scanned_segments\n            _require(len(timings) <= state[\"segments\"] * 2 + 1,\n                     \"Search continuation repeated without bounded progress.\")\n            for hit in page.results:\n                index = _checked_hit(app, state, generation, editions, hit, cancelled=deadline.stopped)\n                _require(0 <= index < state[\"segments\"] and index % fragments_per_book in expected_offsets,\n                         \"A literal marker escaped its independently authored field start.\")\n                bit = 1 << (index % 8)\n                _require(not visited[index // 8] & bit, \"A result repeated across actual continuations.\")\n                visited[index // 8] |= bit\n                total += 1\n                if index in sampled:\n                    _checked_hit(app, state, generation, editions, hit, copy=True, cancelled=deadline.stopped)\n            if page.next_cursor is None:\n                break\n            _require(page.next_cursor != cursor, \"An opaque source cursor did not advance.\")\n            cursor = page.next_cursor\n        _require(total == state[\"authored_fields\"], \"Literal traversal omitted an authored source marker.\")\n        small = []\n        for index in range(query_samples):\n            deadline.check()\n            book = index * (state[\"books\"] - 1) // (query_samples - 1)\n            began = time.perf_counter()\n            page = query(fixture.anchor(book, 1), mode=\"phrase\", title=f\"book-{book:05d}\",\n                         result_mode=\"short\")\n            small.append(time.perf_counter() - began)\n            _require(len(page.results) == 1, \"The exact scoped anchor query was not unique.\")\n            _checked_hit(app, state, generation, editions, page.results[0],\n                         copy=True, cancelled=deadline.stopped)\n        unicode_quotes = []\n        for book in dict.fromkeys((0, state[\"books\"] - 1)):\n            count = len(state[\"fragment_geometry\"])\n            text = (fixture.anchor(book, count) + \" commonrailway archive.\\r\\n\"\n                    \"Київ — Žilina; cafe\\u0301; літо\")\n            cursor, matches, pages = None, 0, 0\n"
+        },
+        {
+          "old_start": 35959,
+          "old_end": 36602,
+          "new_start": 49812,
+          "new_end": 50081,
+          "before": "                began = time.perf_counter()\n                page = app.search_page(state[\"workspace\"], \"commonrailway\", mode=\"phrase\",\n                    collection=state[\"collection\"], cursor=cursor, offset=offset, limit=100,\n                    resources=resources, cancelled=deadline.stopped)\n                timings.append(time.perf_counter()-began)\n                _require(len(timings) <= state[\"segments\"]*2+1,\n                         \"Search continuation repeated without bounded progress.\")\n                if page.window_identity != window:\n                    source_windows += 1\n                    window = page.window_identity\n",
+          "after": "                page = query(text, mode=\"phrase\", result_mode=\"short\",\n                             title=f\"book-{book:05d}\", cursor=cursor)\n                pages += 1\n                _require(pages <= fragments_per_book * 2 + 1, \"The Unicode source cursor repeated.\")\n"
+        },
+        {
+          "old_start": 36643,
+          "old_end": 37488,
+          "new_start": 50122,
+          "new_end": 50493,
+          "before": "                    index = _checked_hit(app, state, generation, editions, hit, cancelled=deadline.stopped)\n                    _require(0 <= index < state[\"segments\"], \"Search returned an unexpected segment.\")\n                    bit = 1 << (index % 8)\n                    _require(not visited[index//8] & bit, \"A source result was repeated across continuations.\")\n                    visited[index//8] |= bit\n                    total += 1\n                    if index in sampled:\n                        _checked_hit(app, state, generation, editions, hit, copy=True, cancelled=deadline.stopped)\n                if page.has_more_results:\n                    cursor, offset = page.cursor, offset+100\n                elif page.next_source_cursor is not None:\n                    cursor, offset = page.next_source_cursor, 0\n                else:\n",
+          "after": "                    matches += 1\n                    _require(matches == 1 and hit.quote == text,\n                             \"The exact Unicode/combining/CRLF quotation changed.\")\n                    _checked_hit(app, state, generation, editions, hit,\n                                 copy=True, cancelled=deadline.stopped)\n                if page.next_cursor is None:\n"
+        },
+        {
+          "old_start": 37514,
+          "old_end": 47597,
+          "new_start": 50519,
+          "new_end": 52816,
+          "before": "            _require(total == state[\"segments\"], \"Full literal traversal omitted original source segments.\")\n            _require(app.close_search(), \"The actual literal search owner did not close.\")\n            small = []\n            for index in range(query_samples):\n                deadline.check()\n                book = (index * (state[\"books\"]-1)) // (query_samples-1)\n                began = time.perf_counter()\n                result = app.search_page(state[\"workspace\"], fixture.anchor(book, 1),\n                    mode=\"phrase\", title=f\"book-{book:05d}\", collection=state[\"collection\"],\n                    limit=100, resources=resources, cancelled=deadline.stopped)\n                small.append(time.perf_counter()-began)\n                _require(len(result.results) == 1, \"The exact scoped anchor query was not unique.\")\n                _checked_hit(app, state, generation, editions, result.results[0], copy=True, cancelled=deadline.stopped)\n                _require(app.close_search(), \"The actual scoped query owner did not close.\")\n            unicode_quotes = []\n            for book in dict.fromkeys((0, state[\"books\"]-1)):\n                count = (generation[\"spec\"][\"segments_per_book\"]\n                         if generation[\"spec\"][\"kind\"] == \"corpus\" else generation[\"spec\"][\"segments\"])\n                query = (fixture.anchor(book, count) + \" commonrailway archive.\\r\\n\"\n                         \"Київ — Žilina; cafe\\u0301; літо\")\n                cursor, offset, matches, windows = None, 0, 0, 0\n                while True:\n                    deadline.check()\n                    page = app.search_page(state[\"workspace\"], query, mode=\"phrase\",\n                        title=f\"book-{book:05d}\", collection=state[\"collection\"],\n                        resources=resources, cancelled=deadline.stopped,\n                        cursor=cursor, offset=offset)\n                    if offset == 0:\n                        windows += 1\n                    for hit in page.results:\n                        matches += 1\n                        _require(matches == 1 and hit.quote == query,\n                                 \"The exact Unicode/combining/CRLF quotation changed.\")\n                        # Copy before advancing the owner to another source window.\n                        _checked_hit(app, state, generation, editions, hit,\n                                     copy=True, cancelled=deadline.stopped)\n                    if page.has_more_results:\n                        _require(bool(page.results), \"A result cursor made no progress.\")\n                        cursor, offset = page.cursor, page.offset + len(page.results)\n                    elif page.next_source_cursor is not None:\n                        cursor, offset = page.next_source_cursor, 0\n                    else:\n                        break\n                _require(matches == 1, \"The exact Unicode/combining/CRLF quotation is missing.\")\n                unicode_quotes.append(dict(book=book, last_segment=count, source_windows=windows,\n                    quote_sha256=sha256(query.encode(\"utf-8\")).hexdigest()))\n                _require(app.close_search(), \"The actual Unicode quote owner did not close.\")\n            from carr_library.search.federated import FederatedSearch\n            federation = FederatedSearch(app)\n            library_pages, libraries = 0, []\n            try:\n                library_offset = 0\n                while True:\n                    session = federation.search(state[\"foreign_workspaces\"], \"commonrailway\",\n                        mode=\"phrase\", paged=True, library_offset=library_offset,\n                        limit_per_library=1, resources=resources, cancelled=deadline.stopped)\n                    _require(session.selected_workspaces == tuple(state[\"foreign_workspaces\"])\n                             and len(session.groups) <= 20,\n                             \"The explicit library selection was truncated or expanded.\")\n                    for group in session.groups:\n                        _require(group.workspace != state[\"workspace\"] and len(group.hits) == 1,\n                                 \"The selected auxiliary library was lost.\")\n                        hit = group.hits[0]\n                        _require(hit.result.verified and\n                                 federation.copy(hit, \"quote\", cancelled=deadline.stopped) == hit.result.quote,\n                                 \"The actual federated source handle failed its own scope verification.\")\n                        libraries.append(group.workspace)\n                    library_pages += 1\n                    if not session.has_more_libraries:\n                        break\n                    library_offset += 20\n                    _require(library_pages <= 2, \"The finite explicit library window did not advance.\")\n                _require(libraries == state[\"foreign_workspaces\"],\n                         \"The complete explicit library selection was not traversed.\")\n            finally:\n                federation.clear()\n                # clear() invalidates handles, but may retain a failed cleanup.\n                # Confirm the same actual owners before reporting a completed run.\n                federation_cleanup = [federation._cursor_owner.close()]\n                federation_cleanup.extend(owner.close() for owner in\n                                           federation._retired_cursor_owners)\n                _require(all(federation_cleanup),\n                         \"The actual federated search still owns unconfirmed private results.\")\n            ranked = []\n            for label in (\"first_complete_scope_call\", \"same_source_cache_reopen\"):\n                deadline.check()\n                began = time.perf_counter()\n                page = app.search_page(state[\"workspace\"], \"commonrailway\", mode=\"thematic\",\n                    ranking_scope=\"all\", collection=state[\"collection\"], limit=100,\n                    resources=resources, cancelled=deadline.stopped)\n                elapsed = time.perf_counter()-began\n                _require(page.ranking_scope == \"all\" and page.next_source_cursor is None\n                    and page.source_pages == page.total_results == state[\"segments\"]\n                    and page.source_editions == state[\"books\"],\n                    \"Complete scoped ranking omitted part of the actual corpus.\")\n                for hit in page.results:\n                    _checked_hit(app, state, generation, editions, hit, cancelled=deadline.stopped)\n                last = app.search_page(state[\"workspace\"], \"commonrailway\", mode=\"thematic\",\n                    ranking_scope=\"all\", collection=state[\"collection\"], limit=100,\n                    cursor=page.cursor, offset=max(0, page.total_results-100),\n                    resources=resources, cancelled=deadline.stopped)\n                _require(last.results and not last.has_more_results, \"The final global result page is unavailable.\")\n                _checked_hit(app, state, generation, editions, last.results[-1], copy=True, cancelled=deadline.stopped)\n                if label == \"same_source_cache_reopen\":\n                    _require(page.updated_index_rows == 0, \"An unchanged scoped index rewrote original rows.\")\n                ranked.append(dict(label=label, first_page_seconds=elapsed,\n                    source_pages=page.source_pages, total_results=page.total_results,\n                    index_bytes=page.index_bytes, updated_index_rows=page.updated_index_rows))\n                _require(app.close_search(), \"The completed ranker's exact cleanup owner did not close.\")\n            originals = fixture.verify_originals(directory, generation, cancelled=deadline.stopped)\n            result = dict(schema=SCHEMA, status=\"MEASURED_SYNTHETIC_CORPUS\", pid=os.getpid(),\n                created_pid=state[\"created_pid\"], separate_process=os.getpid()!=state[\"created_pid\"],\n                startup_seconds=startup, elapsed_seconds=time.perf_counter()-started,\n                source_books=state[\"books\"], source_segments=total, source_windows=source_windows,\n                search_memory_allowance_bytes=resources.memory_bytes,\n                literal_page_latency=fixture.distribution(timings),\n                bounded_title_anchor_latency=fixture.distribution(small),\n                complete_scope_ranking=ranked, originals=originals,\n                unicode_quotations=unicode_quotes,\n                explicit_library_navigation=dict(selected=len(libraries), pages=library_pages),\n                federated_cleanup_confirmed=all(federation_cleanup),\n                disk=_disk(directory, state, deadline), memory=fixture.process_memory(),\n                worker_peaks=worker_peaks(directory, deadline),\n                operations=operation_measurements(directory, deadline),\n                implementation_unchanged=_implementation_bytes(implementation_identity()) == _implementation_bytes(state[\"implementation\"]),\n                actual_implementation=implementation_identity(),\n                semantic_model=\"NOT_RUN\", simultaneous_family_peak=\"NOT_MEASURED\",\n                physical_or_human_quality=\"NOT_ASSESSED\",\n                cold_definition=(\"fresh process and LibraryApp; OS and persistent search caches are not cleared\"\n                    if os.getpid() != state[\"created_pid\"] else\n                    \"fresh LibraryApp in the same process; not a process restart; OS and persistent search caches are not cleared\"))\n            result[\"elapsed_seconds\"] = time.perf_counter() - started\n            _require(result[\"worker_peaks\"][\"measured_worker_exits\"] > 0,\n                     \"No actual primary import worker memory measurement exists.\")\n            _require(result[\"implementation_unchanged\"], \"Measured implementation changed during retrieval.\")\n            atomic_json(directory / \"benchmark\" / \"search-measurements.json\", result, replace=True)\n            _event(directory, state, \"search_measured\", source_books=state[\"books\"],\n                   source_segments=total, source_windows=source_windows)\n            return result\n",
+          "after": "                _require(page.next_cursor != cursor, \"The Unicode continuation did not advance.\")\n                cursor = page.next_cursor\n            _require(matches == 1, \"The exact final authored-field quotation is missing.\")\n            unicode_quotes.append(dict(book=book, last_authored_field=count,\n                actual_fragment=state[\"fragment_geometry\"][-1][\"first\"], source_pages=pages,\n                quote_sha256=sha256(text.encode(\"utf-8\")).hexdigest()))\n        from carr_library.search.federated import FederatedSearch\n        federation = FederatedSearch(app)\n        library_pages, libraries, cursor, last_hit = 0, [], None, None\n        try:\n            while True:\n                page = federation.search_page(state[\"foreign_workspaces\"], \"commonrailway\",\n                    mode=\"phrase\", result_mode=\"short\", cursor=cursor, limit_per_library=1,\n                    library_budget=20, page_budget=500, character_budget=5_000_000,\n                    timeout=min(query_seconds, deadline.remaining()), cancelled=deadline.stopped)\n                _require(page.selected_libraries == len(state[\"foreign_workspaces\"])\n                         and len(page.groups) <= 20, \"The explicit library selection changed.\")\n                for group in page.groups:\n                    _require(group.workspace != state[\"workspace\"] and len(group.hits) == 1,\n                             \"An auxiliary selected library was lost or another scope appeared.\")\n                    hit = group.hits[0]\n                    _require(hit.result.verified and\n                        federation.copy(hit, \"quote\", cancelled=deadline.stopped) == hit.result.quote,\n                        \"The actual federated quotation lost its current source authority.\")\n                    libraries.append(group.workspace)\n                    last_hit = hit\n                library_pages += 1\n                if page.next_cursor is None:\n                    break\n                _require(page.next_cursor != cursor and library_pages <= 2,\n                         \"The finite explicit library cursor did not advance.\")\n                cursor = page.next_cursor\n            _require(libraries == state[\"foreign_workspaces\"],\n                     \"The complete explicit library selection was not traversed.\")\n"
+        },
+        {
+          "old_start": 47614,
+          "old_end": 47757,
+          "new_start": 52833,
+          "new_end": 56896,
+          "before": "            if not app.close_search():\n                raise RuntimeError(\"The benchmark retains an unconfirmed actual search cleanup owner.\")\n",
+          "after": "            federation.clear()\n        _require(last_hit is not None, \"No real selected-library handle was produced.\")\n        try:\n            federation.copy(last_hit, \"quote\", cancelled=deadline.stopped)\n        except (ValueError, RuntimeError):\n            handle_revoked = True\n        else:\n            raise AssertionError(\"The cleared federated handle remained usable.\")\n        ranked = []\n        for label in (\"first_bounded_window\", \"repeated_bounded_window\"):\n            began = time.perf_counter()\n            page = query(\"commonrailway\", mode=\"thematic\", result_mode=\"thematic\")\n            elapsed = time.perf_counter() - began\n            _require(page.scope_editions == state[\"books\"] and len(page.results) <= 100\n                     and page.scanned_segments <= page_budget and page.results,\n                     \"The measured thematic page violates the actual source-window contract.\")\n            for hit in page.results:\n                _checked_hit(app, state, generation, editions, hit, cancelled=deadline.stopped)\n            ranked.append(dict(label=label, first_page_seconds=elapsed,\n                scanned_segments=page.scanned_segments, scope_editions=page.scope_editions,\n                returned_results=len(page.results), ordering=page.ordering,\n                has_continuation=page.next_cursor is not None))\n        originals = fixture.verify_originals(directory, generation, cancelled=deadline.stopped)\n        result = dict(schema=SCHEMA, status=\"MEASURED_SYNTHETIC_CORPUS\", pid=os.getpid(),\n            created_pid=state[\"created_pid\"], separate_process=os.getpid() != state[\"created_pid\"],\n            startup_seconds=startup, elapsed_seconds=time.perf_counter() - started,\n            source_books=state[\"books\"], source_segments=state[\"segments\"],\n            authored_source_fields=state[\"authored_fields\"], literal_results=total,\n            source_pages=len(timings), scanned_segments_reported=scanned,\n            source_window_limits=dict(page_budget=page_budget, character_budget=character_budget,\n                                      per_call_seconds=query_seconds),\n            literal_page_latency=fixture.distribution(timings),\n            bounded_title_anchor_latency=fixture.distribution(small),\n            bounded_window_ranking=ranked, originals=originals,\n            unicode_quotations=unicode_quotes,\n            explicit_library_navigation=dict(selected=len(libraries), pages=library_pages),\n            federated_handle_revoked=handle_revoked,\n            disk=_disk(directory, state, deadline), memory=fixture.process_memory(),\n            worker_peaks=worker_peaks(directory, deadline),\n            operations=operation_measurements(directory, deadline),\n            implementation_unchanged=_implementation_bytes(implementation_identity()) ==\n                                     _implementation_bytes(state[\"implementation\"]),\n            actual_implementation=implementation_identity(),\n            global_ranking=\"NOT_PROVIDED_BY_CURRENT_APPLICATION\", semantic_model=\"NOT_RUN\",\n            hard_memory_enforcement=\"NOT_MEASURED\", simultaneous_family_peak=\"NOT_MEASURED\",\n            physical_or_human_quality=\"NOT_ASSESSED\",\n            cold_definition=(\"fresh process and LibraryApp; OS caches are not cleared\"\n                if os.getpid() != state[\"created_pid\"] else\n                \"fresh LibraryApp in the same process; not a process restart; OS caches are not cleared\"))\n        result[\"elapsed_seconds\"] = time.perf_counter() - started\n        _require(result[\"worker_peaks\"][\"measured_worker_exits\"] > 0,\n                 \"No actual import worker memory measurement exists.\")\n        _require(result[\"implementation_unchanged\"], \"Measured implementation changed during retrieval.\")\n        atomic_json(directory / \"benchmark\" / \"search-measurements.json\", result, replace=True)\n        _event(directory, state, \"search_measured\", source_books=state[\"books\"],\n               source_segments=state[\"segments\"], literal_results=total, source_pages=len(timings))\n        return result\n"
+        },
+        {
+          "old_start": 47838,
+          "old_end": 47921,
+          "new_start": 56977,
+          "new_end": 57070,
+          "before": "    parser.add_argument(\"command\", choices=(\"init\", \"import\", \"verify\", \"search\"))\n",
+          "after": "    parser.add_argument(\"command\", choices=(\"init\", \"import\", \"cancel\", \"verify\", \"search\"))\n"
+        },
+        {
+          "old_start": 48163,
+          "old_end": 48228,
+          "new_start": 57312,
+          "new_end": 57312,
+          "before": "    parser.add_argument(\"--slice-items\", type=int, default=1000)\n",
+          "after": ""
+        },
+        {
+          "old_start": 48686,
+          "old_end": 48754,
+          "new_start": 57770,
+          "new_end": 57918,
+          "before": "    parser.add_argument(\"--query-seconds\", type=float, default=600)\n",
+          "after": "    parser.add_argument(\"--cancel-after-worker-seconds\", type=float, default=.5)\n    parser.add_argument(\"--query-seconds\", type=float, default=60)\n"
+        },
+        {
+          "old_start": 48885,
+          "old_end": 48985,
+          "new_start": 58049,
+          "new_end": 58119,
+          "before": "        result = initialize(args.fixture, page_files=args.page_files, slice_items=args.slice_items,\n",
+          "after": "        result = initialize(args.fixture, page_files=args.page_files,\n"
+        },
+        {
+          "old_start": 49450,
+          "old_end": 49450,
+          "new_start": 58584,
+          "new_end": 58753,
+          "before": "",
+          "after": "    elif args.command == \"cancel\":\n        result = cancel_import(args.fixture, seconds=args.seconds,\n            after_worker_seconds=args.cancel_after_worker_seconds)\n"
+        },
+        {
+          "old_start": 49875,
+          "old_end": 49904,
+          "new_start": 59178,
+          "new_end": 59490,
+          "before": "    raise SystemExit(main())\n",
+          "after": "    from carr_library.audio.cleanup import drain_pending_cleanup\n    try:\n        code = main()\n    except BaseException as error:\n        drain_pending_cleanup(error)\n        raise\n    interruption = drain_pending_cleanup()\n    if interruption is not None:\n        raise interruption\n    raise SystemExit(code)\n"
+        }
+      ],
+      "exact_inverse": true
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_backup.py",
+      "donor_sha": "17d8ae5ae97ab57fe5ede1ea46a6f22b385e2b56",
+      "after_sha": "0e8b19c1f4db16c214c0d3a06730e36e04d94bad",
+      "donor_sha256": "8cf97171449547b2636daadd1602b7c0ffcc1c77d9d29b933d0ecb1f8eb0e57b",
+      "after_sha256": "3d5b3052eaf308c435d6afcadb26a9cf86cc21cc5b7265da0279f8f8b1ed64a5",
+      "added_to_target": true,
+      "hunks": [
+        {
+          "old_start": 0,
+          "old_end": 85,
+          "new_start": 0,
+          "new_end": 92,
+          "before": "\"\"\"Measure common4 backup, verification and fresh restore of a real imported corpus.\n",
+          "after": "\"\"\"Measure native format5 backup, verification and fresh restore of a real imported corpus.\n"
+        },
+        {
+          "old_start": 804,
+          "old_end": 887,
+          "new_start": 811,
+          "new_end": 1022,
+          "before": "from carr_library.durable_state import atomic_json, local_path, read_json, regular\n",
+          "after": "from carr_library.durable_state import atomic_json, local_path, read_json_snapshot, regular\nfrom carr_library.ingest.streamed_text import TextProfile\nfrom carr_library.ingest.resource_budget import ImportBudget\n"
+        },
+        {
+          "old_start": 928,
+          "old_end": 971,
+          "new_start": 1063,
+          "new_end": 1106,
+          "before": "SCHEMA = \"carr-library-backup-benchmark/1\"\n",
+          "after": "SCHEMA = \"carr-library-backup-benchmark/2\"\n"
+        },
+        {
+          "old_start": 2062,
+          "old_end": 2128,
+          "new_start": 2197,
+          "new_end": 2262,
+          "before": "    \"backup_current\", \"backup_producers\", \"backup_transcription\",\n",
+          "after": "    \"backup_compat\", \"backup_producers\", \"backup_transcription\",\n"
+        },
+        {
+          "old_start": 2200,
+          "old_end": 2221,
+          "new_start": 2334,
+          "new_end": 2384,
+          "before": "    \"search.paging\",\n",
+          "after": "    \"search.pagination\", \"search.source_windows\",\n"
+        },
+        {
+          "old_start": 2225,
+          "old_end": 2225,
+          "new_start": 2388,
+          "new_end": 2481,
+          "before": "",
+          "after": "def read_json(path, *, maximum):\n    return read_json_snapshot(path, max_bytes=maximum)[0]\n\n\n"
+        },
+        {
+          "old_start": 11244,
+          "old_end": 11244,
+          "new_start": 11500,
+          "new_end": 11574,
+          "before": "",
+          "after": "            oracles = iter(catalog._source_fragments(generation, source))\n"
+        },
+        {
+          "old_start": 11503,
+          "old_end": 11664,
+          "new_start": 11833,
+          "new_end": 11967,
+          "before": "                _require(observed <= len(source[\"segments\"]), \"An extra restored raw segment appeared.\")\n                oracle = source[\"segments\"][observed-1]\n",
+          "after": "                oracle = next(oracles, None)\n                _require(oracle is not None, \"An extra restored raw fragment appeared.\")\n"
+        },
+        {
+          "old_start": 11717,
+          "old_end": 11778,
+          "new_start": 12020,
+          "new_end": 12113,
+          "before": "                _require(row[\"ordinal\"] == oracle[\"ordinal\"]\n",
+          "after": "                _require(row[\"ordinal\"] == oracle[\"ordinal\"] and row[\"raw\"] == oracle[\"raw\"]\n"
+        },
+        {
+          "old_start": 11972,
+          "old_end": 12120,
+          "new_start": 12307,
+          "new_end": 12487,
+          "before": "                    and oracle[\"anchor\"] in row[\"raw\"],\n                    \"Restored Unicode, CRLF, formfeed order or raw source digest differs.\")\n",
+          "after": "                    and (oracle[\"anchor\"] is None or oracle[\"anchor\"] in row[\"raw\"]),\n                    \"Restored Unicode, CRLF, formfeed order or raw fragment digest differs.\")\n"
+        },
+        {
+          "old_start": 12381,
+          "old_end": 12650,
+          "new_start": 12748,
+          "new_end": 13151,
+          "before": "            _require(observed == len(source[\"segments\"]), \"The final original segment is missing.\")\n            retained = app.assets.resolve(source[\"source_sha256\"], max_bytes=source[\"size_bytes\"],\n                                          cancelled=deadline.stopped)\n",
+          "after": "            _require(observed > 0 and next(oracles, None) is None,\n                     \"The final original fragment is missing.\")\n            retained = app.assets.resolve(source[\"source_sha256\"],\n                profile=TextProfile(state[\"import_budget\"][\"source_bytes\"],\n                                    ImportBudget.from_dict(state[\"import_budget\"])),\n                cancelled=deadline.stopped)\n"
+        },
+        {
+          "old_start": 14111,
+          "old_end": 14221,
+          "new_start": 14612,
+          "new_end": 14684,
+          "before": "            jobs, maximum_segments = db.execute(\"SELECT count(*),coalesce(max(count),1) FROM job\").fetchone()\n",
+          "after": "            jobs = db.execute(\"SELECT count(*) FROM job\").fetchone()[0]\n"
+        },
+        {
+          "old_start": 15511,
+          "old_end": 15837,
+          "new_start": 15974,
+          "new_end": 16389,
+          "before": "    # Restore keeps one independently verified pending copy while projecting\n    # the current paths into its fresh root. Staged/final hard links share bytes.\n    staging_bytes = _round_mib(database_bytes + retained_bytes + fields[\"other\"][\"bytes\"]\n                              + 2*pending_bytes + 2*manifest_bytes + 64*MIB)\n",
+          "after": "    # Current _copy_allowance and _staging_requirement reserve two copies of\n    # every declared archive-data byte, plus both bounded manifest encodings.\n    # Published hard links do not reduce the verifier's independent copy plan.\n    archive_data_bound = database_bytes + retained_bytes + fields[\"other\"][\"bytes\"] + pending_bytes\n    staging_bytes = _round_mib(2*archive_data_bound + 2*manifest_bytes + 64*MIB)\n"
+        },
+        {
+          "old_start": 16579,
+          "old_end": 16674,
+          "new_start": 17131,
+          "new_end": 17191,
+          "before": "        jobs=max(1, jobs), checkpoints=max(1, checkpoints), segments=max(1, maximum_segments),\n",
+          "after": "        jobs=max(1, jobs), checkpoints=max(1, checkpoints),\n"
+        },
+        {
+          "old_start": 16794,
+          "old_end": 16906,
+          "new_start": 17311,
+          "new_end": 17367,
+          "before": "    archive_bound = database_bytes + retained_bytes + fields[\"other\"][\"bytes\"] + pending_bytes + manifest_bytes\n",
+          "after": "    archive_bound = archive_data_bound + manifest_bytes\n"
+        },
+        {
+          "old_start": 19960,
+          "old_end": 20047,
+          "new_start": 20421,
+          "new_end": 20636,
+          "before": "            and new[\"import_budget\"] == old[\"import_budget\"] == state[\"import_budget\"]\n",
+          "after": "            and new[\"source_profile\"] == old[\"source_profile\"]\n            == TextProfile(state[\"import_budget\"][\"source_bytes\"],\n                           ImportBudget.from_dict(state[\"import_budget\"])).to_dict()\n"
+        },
+        {
+          "old_start": 22006,
+          "old_end": 22325,
+          "new_start": 22595,
+          "new_end": 22751,
+          "before": "    \"\"\"Reach the last original logical segment through the actual bounded reader.\"\"\"\n    from carr_library.search.paging import SearchResources\n    book = state[\"books\"] - 1\n    count = (generation[\"spec\"][\"segments_per_book\"]\n             if generation[\"spec\"][\"kind\"] == \"corpus\" else generation[\"spec\"][\"segments\"])\n",
+          "after": "    \"\"\"Reach the final authored field through current bounded opaque source pages.\"\"\"\n    book, count = state[\"books\"] - 1, len(state[\"fragment_geometry\"])\n"
+        },
+        {
+          "old_start": 22446,
+          "old_end": 22672,
+          "new_start": 22872,
+          "new_end": 22912,
+          "before": "    resources = SearchResources(timeout=max(.1, min(86400, deadline.remaining())),\n        memory_bytes=state[\"search_memory_bytes\"], disk_bytes=state[\"search_disk_bytes\"])\n    cursor, offset, windows, matched = None, 0, 0, 0\n",
+          "after": "    cursor, pages, matched = None, 0, 0\n"
+        },
+        {
+          "old_start": 22713,
+          "old_end": 23115,
+          "new_start": 22953,
+          "new_end": 23387,
+          "before": "        page = app.search_page(state[\"workspace\"], query, mode=\"phrase\", title=f\"book-{book:05d}\",\n            collection=state[\"collection\"], limit=100, resources=resources,\n            cursor=cursor, offset=offset, cancelled=deadline.stopped)\n        if offset == 0:\n            windows += 1\n        _require(windows <= state[\"segments\"] + 1, \"Restored source navigation repeated without progress.\")\n",
+          "after": "        page = app.search_page(state[\"workspace\"], query, mode=\"phrase\",\n            result_mode=\"short\", title=f\"book-{book:05d}\", collection=state[\"collection\"],\n            limit=100, page_budget=500, character_budget=5_000_000,\n            timeout=min(60, deadline.remaining()), cursor=cursor, cancelled=deadline.stopped)\n        pages += 1\n        _require(pages <= state[\"segments\"] + 1, \"Restored source navigation repeated.\")\n"
+        },
+        {
+          "old_start": 23421,
+          "old_end": 23736,
+          "new_start": 23693,
+          "new_end": 23730,
+          "before": "        if page.has_more_results:\n            _require(bool(page.results), \"A restored result cursor made no progress.\")\n            cursor, offset = page.cursor, page.offset + len(page.results)\n        elif page.next_source_cursor is not None:\n            cursor, offset = page.next_source_cursor, 0\n        else:\n",
+          "after": "        if page.next_cursor is None:\n"
+        },
+        {
+          "old_start": 23754,
+          "old_end": 23933,
+          "new_start": 23748,
+          "new_end": 24092,
+          "before": "    _require(matched == 1 and app.close_search(), \"The last source copy or current cursor cleanup failed.\")\n    return dict(book=book, last_segment=count, source_windows=windows,\n",
+          "after": "        _require(page.next_cursor != cursor, \"A restored source cursor did not advance.\")\n        cursor = page.next_cursor\n    _require(matched == 1, \"The final verified source copy is missing.\")\n    return dict(book=book, last_authored_field=count,\n                actual_fragment=state[\"fragment_geometry\"][-1][\"first\"], source_pages=pages,\n"
+        },
+        {
+          "old_start": 24509,
+          "old_end": 24599,
+          "new_start": 24668,
+          "new_end": 24758,
+          "before": "    \"\"\"Use the current common4 path with explicit external resources and a fresh root.\"\"\"\n",
+          "after": "    \"\"\"Use the current native5 path with explicit external resources and a fresh root.\"\"\"\n"
+        },
+        {
+          "old_start": 26388,
+          "old_end": 26388,
+          "new_start": 26547,
+          "new_end": 26631,
+          "before": "",
+          "after": "        source_before = _inventory(source.root, deadline, maximum, identities=True)\n"
+        },
+        {
+          "old_start": 26401,
+          "old_end": 32770,
+          "new_start": 26644,
+          "new_end": 26879,
+          "before": "            source_before = _inventory(source.root, deadline, maximum, identities=True)\n            try:\n                policy, estimate = _policy(source, state, source_before, seconds, memory_bytes, deadline)\n            except _PolicyCapacity as error:\n                result = dict(schema=SCHEMA, status=\"NOT_RUN\", stage=\"backup policy admission\",\n                    source_books=state[\"books\"], source_segments=state[\"segments\"],\n                    selected_seconds=seconds, selected_memory_bytes=memory_bytes,\n                    reserve_bytes=reserve_bytes, admission=error.details,\n                    archive_created=False, restore_created=False)\n                _report(directory, result)\n                return result\n            selected_policy = policy.to_dict()\n            admission = _admission(directory, measured_existing, policy, estimate, reserve_bytes)\n            if admission[\"status\"] == \"NOT_RUN\":\n                result = dict(schema=SCHEMA, status=\"NOT_RUN\", stage=\"backup resource admission\",\n                    source_books=state[\"books\"], source_segments=state[\"segments\"],\n                    policy=selected_policy, admission=admission, archive_created=False, restore_created=False)\n                _report(directory, result)\n                return result\n            # Every following operation uses the same already selected typed\n            # allowance and the same outer deadline/cancellation callback.\n            began = time.perf_counter()\n            editions, scan_pages = catalog._edition_map(source, state, deadline)\n            original_raw = _raw_catalog(source, directory, state, generation, editions, deadline)\n            original_catalog = _catalog_digest(source, deadline)\n            _require(source.close_search(), \"The source library retains a live search owner.\")\n            times[\"source_oracle_seconds\"] = time.perf_counter()-began\n            began = time.perf_counter()\n            checksum = source.backup(archive, include_generated=False,\n                backup_budget=policy, cancelled=stopped)\n            times[\"backup_seconds\"] = time.perf_counter()-began\n            deadline.check()\n            _require(type(checksum) is str and len(checksum) == 64\n                and fixture.digest_file(archive / \"manifest.json\", cancelled=deadline.stopped)[0] == checksum,\n                \"The actual backup receipt differs from its published manifest.\")\n            archive_before = _inventory(archive, deadline, maximum)\n            began = time.perf_counter()\n            verified = library_backup.verify_backup(archive, checksum,\n                backup_budget=policy, cancelled=stopped)\n            times[\"verify_seconds\"] = time.perf_counter()-began\n            _require(verified[\"version\"] == 4 and verified[\"kind\"] == \"carr-library\",\n                     \"The real verifier did not accept the existing common4 format.\")\n            # The verifier's manifest is evidence only. Its values never enter\n            # policy construction, which completed before source.backup above.\n            del verified\n            deadline.check()\n            began = time.perf_counter()\n            actual_root = library_backup.restore_backup(archive, restored_path, checksum,\n                backup_budget=policy, cancelled=stopped)\n            times[\"restore_seconds\"] = time.perf_counter()-began\n            _require(actual_root == restored_path and restored_path != source.root\n                and not (restored_path / \".restore-incomplete\").exists(),\n                \"The actual restore did not finish in its fresh selected root.\")\n            deadline.check()\n            began = time.perf_counter()\n            restored = LibraryApp(restored_path)\n            restored_raw = _raw_catalog(restored, directory, state, generation, editions, deadline)\n            restored_catalog = _catalog_digest(restored, deadline)\n            _require(restored_raw == original_raw, \"The entire restored raw-source oracle differs.\")\n            _require(restored_catalog == original_catalog, \"The full canonical catalog or FTS bytes differ logically.\")\n            passive = _passive_restore(source, restored, state, deadline)\n            quotation = _last_copy(restored, state, generation, editions, deadline)\n            _require(restored.close_search(), \"The restored library retains a live search owner.\")\n            times[\"restored_oracle_and_copy_seconds\"] = time.perf_counter()-began\n            began = time.perf_counter()\n            _require(_catalog_digest(source, deadline) == original_catalog,\n                     \"The source canonical catalog changed during backup or restore.\")\n            _require(catalog._edition_map(source, state, deadline)[0] == editions,\n                     \"The source completed-row identities changed.\")\n            _require(source.close_search(), \"The source owner did not close before final comparison.\")\n            source_after = _inventory(source.root, deadline, maximum, identities=True)\n            _require(source_after == source_before, \"The source library inventory changed during the measured roundtrip.\")\n            archive_after = _inventory(archive, deadline, maximum)\n            _require(archive_after == archive_before, \"Verification or restore changed the selected archive.\")\n            external_after = fixture.verify_originals(directory, generation, cancelled=deadline.stopped)\n            _require(external_after == external_before, \"The authored external original inventory changed.\")\n            _require({path.relative_to(directory).as_posix():\n                fixture.digest_file(path, cancelled=deadline.stopped) for path in control_paths} == controls,\n                \"The benchmark source manifest, generation or prior import evidence changed.\")\n            after_implementation = implementation_identity()\n            _require(catalog._implementation_bytes(after_implementation) ==\n                     catalog._implementation_bytes(implementation),\n                     \"The selected implementation changed during the actual roundtrip.\")\n            _require(policy.to_dict() == selected_policy, \"The selected external resource policy changed.\")\n            deadline.check()\n            times[\"final_independent_comparison_seconds\"] = time.perf_counter()-began\n            result = dict(schema=SCHEMA, status=\"BACKUP_RESTORE_VERIFIED\", pid=os.getpid(),\n",
+          "after": "            policy, estimate = _policy(source, state, source_before, seconds, memory_bytes, deadline)\n        except _PolicyCapacity as error:\n            result = dict(schema=SCHEMA, status=\"NOT_RUN\", stage=\"backup policy admission\",\n"
+        },
+        {
+          "old_start": 32850,
+          "old_end": 34578,
+          "new_start": 26959,
+          "new_end": 27169,
+          "before": "                durable_scan_pages=scan_pages, policy=selected_policy, admission=admission,\n                archive_path=str(archive), restored_root=str(restored_path), manifest_sha256=checksum,\n                source_inventory_equal=True, archive_inventory_equal=True,\n                catalog_equal=True, raw_equal=True, external_originals_equal=True,\n                implementation_unchanged=True, passive_restore=passive,\n                source_oracle=original_raw, restored_oracle=restored_raw,\n                canonical_catalog=original_catalog, source_inventory=source_before,\n                archive_inventory=archive_before, originals=external_after,\n                last_verified_source_copy=quotation,\n                measured_restored=fixture.tree_bytes(restored_path, maximum_entries=maximum,\n                                                      cancelled=deadline.stopped),\n                measured_final_fixture=fixture.tree_bytes(directory, maximum_entries=maximum,\n                                                           cancelled=deadline.stopped),\n                timings=times, elapsed_seconds=time.perf_counter()-started,\n                memory=fixture.process_memory(), implementation=after_implementation,\n                automatic_resume=False, policy_authority=\"explicit caller, selected before archive creation\",\n                measurement_scope=\"actual current process plus real common4 operations; no concurrent family peak claim\",\n                final_disk_measurement_boundary=\"after restore and all oracles, before writing this final report\",\n                compatibility_scope=\"same installed producer and reader; earlier-version fixtures are a separate gate\")\n            deadline.check()\n",
+          "after": "                selected_seconds=seconds, selected_memory_bytes=memory_bytes,\n                reserve_bytes=reserve_bytes, admission=error.details,\n                archive_created=False, restore_created=False)\n"
+        },
+        {
+          "old_start": 34643,
+          "old_end": 34874,
+          "new_start": 27234,
+          "new_end": 34233,
+          "before": "        finally:\n            for app in (restored, source):\n                if app is not None and not app.close_search():\n                    raise RuntimeError(\"The backup benchmark retains an unconfirmed search cleanup owner.\")\n",
+          "after": "        selected_policy = policy.to_dict()\n        admission = _admission(directory, measured_existing, policy, estimate, reserve_bytes)\n        if admission[\"status\"] == \"NOT_RUN\":\n            result = dict(schema=SCHEMA, status=\"NOT_RUN\", stage=\"backup resource admission\",\n                source_books=state[\"books\"], source_segments=state[\"segments\"],\n                policy=selected_policy, admission=admission, archive_created=False, restore_created=False)\n            _report(directory, result)\n            return result\n        # Every following operation uses the same already selected typed\n        # allowance and the same outer deadline/cancellation callback.\n        began = time.perf_counter()\n        editions, scan_pages = catalog._edition_map(source, state, deadline)\n        original_raw = _raw_catalog(source, directory, state, generation, editions, deadline)\n        original_catalog = _catalog_digest(source, deadline)\n        times[\"source_oracle_seconds\"] = time.perf_counter()-began\n        began = time.perf_counter()\n        checksum = source.backup(archive, include_generated=False,\n            backup_budget=policy, cancelled=stopped)\n        times[\"backup_seconds\"] = time.perf_counter()-began\n        deadline.check()\n        _require(type(checksum) is str and len(checksum) == 64\n            and fixture.digest_file(archive / \"manifest.json\", cancelled=deadline.stopped)[0] == checksum,\n            \"The actual backup receipt differs from its published manifest.\")\n        archive_before = _inventory(archive, deadline, maximum)\n        began = time.perf_counter()\n        verified = library_backup.verify_backup(archive, checksum,\n            backup_budget=policy, cancelled=stopped)\n        times[\"verify_seconds\"] = time.perf_counter()-began\n        _require(verified[\"version\"] == 5 and verified[\"kind\"] == \"carr-library\"\n                 and any(row[\"path\"] == \"keybindings.json\" for row in verified[\"sidecars\"][\"files\"]),\n                 \"The current verifier did not accept the actual typed native5 backup.\")\n        # The verifier's manifest is evidence only. Its values never enter\n        # policy construction, which completed before source.backup above.\n        del verified\n        deadline.check()\n        began = time.perf_counter()\n        actual_root = library_backup.restore_backup(archive, restored_path, checksum,\n            backup_budget=policy, cancelled=stopped)\n        times[\"restore_seconds\"] = time.perf_counter()-began\n        _require(actual_root == restored_path and restored_path != source.root\n            and not (restored_path / \".restore-incomplete\").exists(),\n            \"The actual restore did not finish in its fresh selected root.\")\n        deadline.check()\n        began = time.perf_counter()\n        restored = LibraryApp(restored_path)\n        restored_raw = _raw_catalog(restored, directory, state, generation, editions, deadline)\n        restored_catalog = _catalog_digest(restored, deadline)\n        _require(restored_raw == original_raw, \"The entire restored raw-source oracle differs.\")\n        _require(restored_catalog == original_catalog, \"The full canonical catalog or FTS bytes differ logically.\")\n        passive = _passive_restore(source, restored, state, deadline)\n        quotation = _last_copy(restored, state, generation, editions, deadline)\n        times[\"restored_oracle_and_copy_seconds\"] = time.perf_counter()-began\n        began = time.perf_counter()\n        _require(_catalog_digest(source, deadline) == original_catalog,\n                 \"The source canonical catalog changed during backup or restore.\")\n        _require(catalog._edition_map(source, state, deadline)[0] == editions,\n                 \"The source completed-row identities changed.\")\n        source_after = _inventory(source.root, deadline, maximum, identities=True)\n        _require(source_after == source_before, \"The source library inventory changed during the measured roundtrip.\")\n        archive_after = _inventory(archive, deadline, maximum)\n        _require(archive_after == archive_before, \"Verification or restore changed the selected archive.\")\n        external_after = fixture.verify_originals(directory, generation, cancelled=deadline.stopped)\n        _require(external_after == external_before, \"The authored external original inventory changed.\")\n        _require({path.relative_to(directory).as_posix():\n            fixture.digest_file(path, cancelled=deadline.stopped) for path in control_paths} == controls,\n            \"The benchmark source manifest, generation or prior import evidence changed.\")\n        after_implementation = implementation_identity()\n        _require(catalog._implementation_bytes(after_implementation) ==\n                 catalog._implementation_bytes(implementation),\n                 \"The selected implementation changed during the actual roundtrip.\")\n        _require(policy.to_dict() == selected_policy, \"The selected external resource policy changed.\")\n        deadline.check()\n        times[\"final_independent_comparison_seconds\"] = time.perf_counter()-began\n        result = dict(schema=SCHEMA, status=\"BACKUP_RESTORE_VERIFIED\", pid=os.getpid(),\n            source_books=state[\"books\"], source_segments=state[\"segments\"],\n            durable_scan_pages=scan_pages, policy=selected_policy, admission=admission,\n            archive_path=str(archive), restored_root=str(restored_path), manifest_sha256=checksum,\n            source_inventory_equal=True, archive_inventory_equal=True,\n            catalog_equal=True, raw_equal=True, external_originals_equal=True,\n            implementation_unchanged=True, passive_restore=passive,\n            source_oracle=original_raw, restored_oracle=restored_raw,\n            canonical_catalog=original_catalog, source_inventory=source_before,\n            archive_inventory=archive_before, originals=external_after,\n            last_verified_source_copy=quotation,\n            measured_restored=fixture.tree_bytes(restored_path, maximum_entries=maximum,\n                                                  cancelled=deadline.stopped),\n            measured_final_fixture=fixture.tree_bytes(directory, maximum_entries=maximum,\n                                                       cancelled=deadline.stopped),\n            timings=times, elapsed_seconds=time.perf_counter()-started,\n            memory=fixture.process_memory(), implementation=after_implementation,\n            automatic_resume=False, policy_authority=\"explicit caller, selected before archive creation\",\n            native_backup_format=5,\n            measurement_scope=\"actual current process plus real native5 operations; no concurrent family peak claim\",\n            final_disk_measurement_boundary=\"after restore and all oracles, before writing this final report\",\n            compatibility_scope=\"same current native5 producer and reader; supported flat4 remains a separate canonical compatibility gate\")\n        deadline.check()\n        _report(directory, result)\n        return result\n"
+        },
+        {
+          "old_start": 34876,
+          "old_end": 34876,
+          "new_start": 34235,
+          "new_end": 34236,
+          "before": "",
+          "after": "\n"
+        },
+        {
+          "old_start": 35590,
+          "old_end": 35619,
+          "new_start": 34950,
+          "new_end": 35262,
+          "before": "    raise SystemExit(main())\n",
+          "after": "    from carr_library.audio.cleanup import drain_pending_cleanup\n    try:\n        code = main()\n    except BaseException as error:\n        drain_pending_cleanup(error)\n        raise\n    interruption = drain_pending_cleanup()\n    if interruption is not None:\n        raise interruption\n    raise SystemExit(code)\n"
+        }
+      ],
+      "exact_inverse": true
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_scale_contract.py",
+      "donor_sha": "38efa826d663671f67867106fb7a85978082b2f8",
+      "after_sha": "38efa826d663671f67867106fb7a85978082b2f8",
+      "donor_sha256": "ace5a5f273b157075b4f02aa8eb148ae89d2e52d2105a89def05c71058995cca",
+      "after_sha256": "ace5a5f273b157075b4f02aa8eb148ae89d2e52d2105a89def05c71058995cca",
+      "added_to_target": true,
+      "hunks": [],
+      "exact_inverse": true
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_scale_posix.py",
+      "donor_sha": "8be4f6315ea0d3af7ae1b62204bfa76d17c815d7",
+      "after_sha": "8be4f6315ea0d3af7ae1b62204bfa76d17c815d7",
+      "donor_sha256": "0a6d45808c98d2ec029cd38f1687134626a4e7038e28f21415ed0f6143769243",
+      "after_sha256": "0a6d45808c98d2ec029cd38f1687134626a4e7038e28f21415ed0f6143769243",
+      "added_to_target": true,
+      "hunks": [],
+      "exact_inverse": true
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_catalog_benchmark.py",
+      "donor_sha": "469cf3cc9743f877a8172530e83b267b9c2a2e9e",
+      "after_sha": "8edd918daab602452833f44b53efbde861b41366",
+      "donor_sha256": "669eed75f4757b252f9a5582860e7bd0e53452c6943f801833c0156916e7b52a",
+      "after_sha256": "6ef865f070a5f746dccbab31c7ea4d6584ee28fd32b74c1c95b0018354c11045",
+      "added_to_target": true,
+      "hunks": [
+        {
+          "old_start": 513,
+          "old_end": 562,
+          "new_start": 513,
+          "new_end": 571,
+          "before": "from carr_library.durable_state import read_json\n",
+          "after": "from carr_library.durable_state import read_json_snapshot\n"
+        },
+        {
+          "old_start": 563,
+          "old_end": 653,
+          "new_start": 572,
+          "new_end": 572,
+          "before": "SCRIPT = Path(__file__).resolve().parents[2] / \"scripts\" / \"benchmark_library_catalog.py\"\n",
+          "after": ""
+        },
+        {
+          "old_start": 654,
+          "old_end": 654,
+          "new_start": 573,
+          "new_end": 664,
+          "before": "",
+          "after": "def read_json(path, *, maximum):\n    return read_json_snapshot(path, max_bytes=maximum)[0]\n"
+        },
+        {
+          "old_start": 655,
+          "old_end": 655,
+          "new_start": 665,
+          "new_end": 757,
+          "before": "",
+          "after": "SCRIPT = Path(__file__).resolve().parents[2] / \"scripts\" / \"benchmark_library_catalog.py\"\n\n\n"
+        },
+        {
+          "old_start": 1443,
+          "old_end": 1472,
+          "new_start": 1545,
+          "new_end": 1595,
+          "before": "    return directory, result\n",
+          "after": "    return directory.resolve(strict=True), result\n"
+        },
+        {
+          "old_start": 1522,
+          "old_end": 1593,
+          "new_start": 1645,
+          "new_end": 1701,
+          "before": "    state = adapter.initialize(directory, page_files=2, slice_items=2,\n",
+          "after": "    state = adapter.initialize(directory, page_files=2,\n"
+        },
+        {
+          "old_start": 4781,
+          "old_end": 4928,
+          "new_start": 4889,
+          "new_end": 5160,
+          "before": "    assert measured[\"complete_scope_ranking\"][0][\"total_results\"] == 9\n    assert measured[\"complete_scope_ranking\"][1][\"updated_index_rows\"] == 0\n",
+          "after": "    assert measured[\"literal_results\"] == 9\n    assert measured[\"bounded_window_ranking\"][0][\"scanned_segments\"] == 9\n    assert measured[\"bounded_window_ranking\"][1][\"returned_results\"] == 9\n    assert measured[\"global_ranking\"] == \"NOT_PROVIDED_BY_CURRENT_APPLICATION\"\n"
+        },
+        {
+          "old_start": 5062,
+          "old_end": 5121,
+          "new_start": 5294,
+          "new_end": 5350,
+          "before": "    assert measured[\"federated_cleanup_confirmed\"] is True\n",
+          "after": "    assert measured[\"federated_handle_revoked\"] is True\n"
+        },
+        {
+          "old_start": 10601,
+          "old_end": 10702,
+          "new_start": 10830,
+          "new_end": 10935,
+          "before": "def test_real_multi_mib_segment_uses_the_explicit_search_window_memory_allowance(adapter, tmp_path):\n",
+          "after": "def test_real_multi_mib_field_uses_current_fixed_fragments_and_bounded_source_search(adapter, tmp_path):\n"
+        },
+        {
+          "old_start": 10829,
+          "old_end": 10909,
+          "new_start": 11062,
+          "new_end": 11323,
+          "before": "    state = adapter.initialize(directory, page_files=2, slice_items=2, steps=2,\n",
+          "after": "    original = (directory / \"sources\" / \"book-00000.txt\").read_bytes()\n    text = original.decode(\"utf-8-sig\")\n    fragment_count = (len(text) + 65535) // 65536\n    assert fragment_count == 48\n    state = adapter.initialize(directory, page_files=2, steps=1001,\n"
+        },
+        {
+          "old_start": 11046,
+          "old_end": 11111,
+          "new_start": 11460,
+          "new_end": 11599,
+          "before": "    assert state[\"search_memory_bytes\"] == 97*adapter.MIB + 3*32\n",
+          "after": "    assert state[\"search_memory_bytes\"] == 64*adapter.MIB\n    assert state[\"segments\"] == fragment_count and state[\"authored_fields\"] == 1\n"
+        },
+        {
+          "old_start": 11289,
+          "old_end": 11385,
+          "new_start": 11777,
+          "new_end": 11872,
+          "before": "    result = adapter.search_catalog(directory, seconds=180, query_seconds=120, query_samples=2)\n",
+          "after": "    result = adapter.search_catalog(directory, seconds=180, query_seconds=60, query_samples=2)\n"
+        },
+        {
+          "old_start": 11444,
+          "old_end": 11859,
+          "new_start": 11931,
+          "new_end": 12574,
+          "before": "    assert result[\"source_books\"] == result[\"source_segments\"] == 1\n    assert result[\"search_memory_allowance_bytes\"] == state[\"search_memory_bytes\"]\n    assert result[\"complete_scope_ranking\"][0][\"total_results\"] == 1\n    assert result[\"complete_scope_ranking\"][1][\"updated_index_rows\"] == 0\n    assert result[\"unicode_quotations\"][0][\"last_segment\"] == 1\n    assert result[\"federated_cleanup_confirmed\"] is True\n",
+          "after": "    assert result[\"source_books\"] == 1 and result[\"source_segments\"] == fragment_count\n    assert result[\"source_window_limits\"] == {\n        \"page_budget\": 500, \"character_budget\": 5_000_000, \"per_call_seconds\": 60}\n    assert result[\"bounded_window_ranking\"][0][\"scanned_segments\"] == fragment_count\n    assert result[\"bounded_window_ranking\"][1][\"returned_results\"] == 1\n    assert result[\"global_ranking\"] == \"NOT_PROVIDED_BY_CURRENT_APPLICATION\"\n    assert result[\"unicode_quotations\"][0][\"last_authored_field\"] == 1\n    assert result[\"unicode_quotations\"][0][\"actual_fragment\"] == 1\n    assert result[\"federated_handle_revoked\"] is True\n"
+        },
+        {
+          "old_start": 12012,
+          "old_end": 12097,
+          "new_start": 12727,
+          "new_end": 12850,
+          "before": "    from carr_library.catalog.intake import file_snapshot, TextSegments, IntakeError\n",
+          "after": "    from dataclasses import replace\n    from carr_library.ingest.streamed_text import TextProfile, inspect_text, fragments\n"
+        },
+        {
+          "old_start": 12778,
+          "old_end": 13302,
+          "new_start": 13531,
+          "new_end": 14272,
+          "before": "    assert budget.source_bytes == len(original) and budget.segment_bytes == len(original)\n    captured = file_snapshot(source.parent, source.name, max_bytes=budget.source_bytes)\n    with pytest.raises(IntakeError, match=\"segment exceeds the selected allowance\"):\n        TextSegments(captured, max_segments=1, max_segment_bytes=budget.segment_bytes-1)\n    segments = TextSegments(captured, max_segments=1, max_segment_bytes=budget.segment_bytes)\n    assert len(segments) == 1 and segments[0].encode(\"utf-8\") == original[3:]\n",
+          "after": "    assert budget.source_bytes == len(original) and budget.segment_bytes == len(original) - 3\n    profile = TextProfile(budget.source_bytes, budget)\n    snapshot = inspect_text(source, profile)\n    assert snapshot.digest == sha256(original).hexdigest() and snapshot.size == len(original)\n    smaller = replace(budget, segment_bytes=budget.segment_bytes - 1)\n    with pytest.raises(ValueError, match=\"explicit segment-byte allowance\"):\n        inspect_text(source, TextProfile(smaller.source_bytes, smaller))\n    selected = tuple(fragments(source, profile, expected_digest=snapshot.digest,\n                               expected_identity=snapshot.identity))\n    assert len(selected) == 1 and selected[0].text.encode(\"utf-8\") == original[3:]\n"
+        },
+        {
+          "old_start": 13442,
+          "old_end": 13502,
+          "new_start": 14412,
+          "new_end": 14412,
+          "before": "    from carr_library.search.paging import SearchResources\n\n",
+          "after": ""
+        },
+        {
+          "old_start": 13647,
+          "old_end": 14042,
+          "new_start": 14557,
+          "new_end": 14557,
+          "before": "    state = adapter.initialize(directory, page_files=2, slice_items=2, steps=4,\n        slice_seconds=60, memory_bytes=512*adapter.MIB,\n        search_disk_bytes=128*adapter.MIB, reserve_bytes=0, foreign_libraries=1)\n    assert adapter.run_import(directory, seconds=180)[\"status\"] == \"IMPORT_COMPLETE\"\n    assert adapter.verify_catalog(directory, seconds=180)[\"raw_utf8_bytes\"] == 9*adapter.MIB\n",
+          "after": ""
+        },
+        {
+          "old_start": 14158,
+          "old_end": 14158,
+          "new_start": 14673,
+          "new_end": 15449,
+          "before": "",
+          "after": "    fields = original.read_bytes().decode(\"utf-8-sig\").split(\"\\f\")\n    fragments = tuple(field[start:start + 65536] for field in fields\n                      for start in range(0, len(field), 65536))\n    assert len(fields) == 3 and len(fragments) == 144\n    last_field_first_fragment = 1 + sum((len(field) + 65535) // 65536 for field in fields[:-1])\n    assert last_field_first_fragment == 97\n    state = adapter.initialize(directory, page_files=2, steps=1001,\n        slice_seconds=60, memory_bytes=512*adapter.MIB,\n        search_disk_bytes=128*adapter.MIB, reserve_bytes=0, foreign_libraries=1)\n    assert adapter.run_import(directory, seconds=180)[\"status\"] == \"IMPORT_COMPLETE\"\n    assert adapter.verify_catalog(directory, seconds=180)[\"raw_utf8_bytes\"] == 9*adapter.MIB\n"
+        },
+        {
+          "old_start": 14324,
+          "old_end": 14945,
+          "new_start": 15615,
+          "new_end": 16049,
+          "before": "    try:\n        first = app.search_page(state[\"workspace\"], query, mode=\"phrase\", title=\"book-00000\",\n            collection=state[\"collection\"],\n            resources=SearchResources(timeout=120, memory_bytes=state[\"search_memory_bytes\"],\n                                      disk_bytes=state[\"search_disk_bytes\"]))\n        assert first.results == ()\n        assert first.next_source_cursor is not None and not first.has_more_results\n        assert first.source_pages == 1\n    finally:\n        assert app.close_search()\n    measured = adapter.search_catalog(directory, seconds=180, query_seconds=120, query_samples=2)\n",
+          "after": "    first = app.search_page(state[\"workspace\"], query, mode=\"phrase\", title=\"book-00000\",\n        collection=state[\"collection\"], limit=100, page_budget=500,\n        character_budget=5_000_000, timeout=60)\n    assert first.results == () and first.next_cursor is not None\n    assert 0 < first.scanned_segments < last_field_first_fragment\n    measured = adapter.search_catalog(directory, seconds=180, query_seconds=60, query_samples=2)\n"
+        },
+        {
+          "old_start": 15006,
+          "old_end": 15084,
+          "new_start": 16110,
+          "new_end": 16201,
+          "before": "    assert measured[\"source_books\"] == 1 and measured[\"source_segments\"] == 3\n",
+          "after": "    assert measured[\"source_books\"] == 1 and measured[\"source_segments\"] == len(fragments)\n"
+        },
+        {
+          "old_start": 15132,
+          "old_end": 15465,
+          "new_start": 16249,
+          "new_end": 16731,
+          "before": "        \"book\": 0, \"last_segment\": 3, \"source_windows\": 3,\n        \"quote_sha256\": sha256(query.encode(\"utf-8\")).hexdigest()}]\n    assert measured[\"complete_scope_ranking\"][0][\"total_results\"] == 3\n    assert measured[\"complete_scope_ranking\"][1][\"updated_index_rows\"] == 0\n    assert measured[\"federated_cleanup_confirmed\"] is True\n",
+          "after": "        \"book\": 0, \"last_authored_field\": 3, \"actual_fragment\": last_field_first_fragment,\n        \"source_pages\": 2, \"quote_sha256\": sha256(query.encode(\"utf-8\")).hexdigest()}]\n    assert measured[\"bounded_window_ranking\"][0][\"scanned_segments\"] == first.scanned_segments\n    assert measured[\"bounded_window_ranking\"][1][\"returned_results\"] == 2\n    assert measured[\"global_ranking\"] == \"NOT_PROVIDED_BY_CURRENT_APPLICATION\"\n    assert measured[\"federated_handle_revoked\"] is True\n"
+        },
+        {
+          "old_start": 15625,
+          "old_end": 15625,
+          "new_start": 16891,
+          "new_end": 25325,
+          "before": "",
+          "after": "\n\ndef test_actual_owned_cancellation_retains_saved_ids_before_explicit_child_resume(\n        adapter, tmp_path, monkeypatch):\n    from carr_library.audio import process\n    from carr_library.ingest.worker import MAX_REQUEST\n\n    directory, generation = generated(adapter, tmp_path, books=1, segments=3)\n    state = initialize(adapter, directory, steps=1001)\n    app = LibraryApp(directory / \"library\")\n    page = app.import_batch(state[\"workspace\"], state[\"first_batch\"])\n    identities = [(row[\"row_id\"], row[\"request_id\"], row[\"edition_id\"]) for row in page[\"rows\"]]\n    before = {path.name: sha256(path.read_bytes()).hexdigest()\n              for path in (directory / \"sources\").iterdir()}\n    actual_run, actual_start = process.run_process, process._start_process\n    anchor = \"runpy.run_module('carr_library.ingest.worker',run_name='__main__')\"\n    commands, children, stages = [], [], []\n\n    def hold_only_selected_worker(args, **options):\n        if isinstance(args, (tuple, list)) and \"-c\" in args:\n            offset = args.index(\"-c\") + 1\n            if offset + 2 < len(args) and anchor in args[offset]:\n                request = read_json(Path(args[offset + 1]), maximum=MAX_REQUEST)\n                if request.get(\"data_dir\") == str(directory / \"library\"):\n                    assert args[offset].count(anchor) == 1 and options[\"owned_tree\"] is True\n                    # Only this test holds the genuine child immediately after\n                    # its atomic startup acknowledgment. The benchmark itself\n                    # never delays a worker or substitutes parser progress.\n                    command = list(args)\n                    command[offset] = command[offset].replace(\n                        anchor, \"import time; time.sleep(60); \" + anchor)\n                    commands.append(tuple(command))\n                    stages.extend(options[\"watch\"])\n                    return actual_run(command, **options)\n        return actual_run(args, **options)\n\n    def observe_selected_start(args, **options):\n        child = actual_start(args, **options)\n        if commands and tuple(args) == commands[-1]:\n            children.append(child)\n        return child\n\n    with monkeypatch.context() as selected:\n        selected.setattr(process, \"run_process\", hold_only_selected_worker)\n        selected.setattr(process, \"_start_process\", observe_selected_start)\n        result = adapter.cancel_import(directory, seconds=120, after_worker_seconds=0)\n\n    assert result[\"status\"] == \"OWNED_WORKER_CANCELLATION_MEASURED\"\n    assert result[\"native_cancelled\"] and result[\"child_start_observed\"]\n    assert result[\"worker_pid\"] == children[0].pid and len(children) == len(commands) == 1\n    assert result[\"cancellation_to_owned_return_seconds\"] >= 0\n    assert result[\"same_saved_identities\"] and result[\"automatic_resume\"] is False\n    assert result[\"killed_worker_peak\"] == \"NOT_MEASURED\"\n    assert children[0].returncode is not None\n    if os.name == \"nt\":\n        assert children[0]._carr_job.handle is None and children[0]._carr_job.port is None\n    else:\n        assert children[0]._closed and children[0]._reaped and not children[0]._members\n    assert stages and all(not Path(path).exists() for path in stages)\n    saved = LibraryApp(app.root).import_batch(state[\"workspace\"], state[\"first_batch\"])\n    assert [(row[\"row_id\"], row[\"request_id\"], row[\"edition_id\"]) for row in saved[\"rows\"]] == identities\n    assert saved[\"rows\"][0][\"state\"] == \"queued\"\n    assert saved[\"rows\"][0][\"result\"][\"state\"] == \"cancelled\"\n    assert app.browse(state[\"workspace\"]) == ()\n    assert read_json(directory / \"benchmark\" / \"state.json\", maximum=65536)[\"import_complete\"] is False\n    assert read_json(directory / \"benchmark\" / \"cancellation.json\", maximum=65536) == result\n    assert not (directory / \"benchmark\" / \"catalog-verification.json\").exists()\n\n    continued = invoke(directory, \"import\", \"--seconds\", \"120\")\n    assert continued.returncode == 0, (continued.stdout, continued.stderr)\n    verified = invoke(directory, \"verify\", \"--seconds\", \"120\")\n    assert verified.returncode == 0, (verified.stdout, verified.stderr)\n    complete = LibraryApp(app.root).import_batch(state[\"workspace\"], state[\"first_batch\"])\n    assert [(row[\"row_id\"], row[\"request_id\"], row[\"edition_id\"]) for row in complete[\"rows\"]] == identities\n    assert complete[\"rows\"][0][\"state\"] == \"complete\"\n    report = read_json(directory / \"benchmark\" / \"catalog-verification.json\", maximum=65536)\n    assert report[\"source_books\"] == 1 and report[\"source_segments\"] == 3\n    assert report[\"separate_process\"] and report[\"pid\"] != os.getpid()\n    with app.read(state[\"workspace\"]) as db:\n        assert db.execute(\"SELECT count(*) FROM revision WHERE workspace=?\",\n                          (state[\"workspace\"],)).fetchone()[0] == 1\n    assert before == {path.name: sha256(path.read_bytes()).hexdigest()\n                      for path in (directory / \"sources\").iterdir()}\n    assert adapter.fixture.verify_originals(directory, generation)[\"verified_sources\"] == 1\n\n\ndef test_real_completed_worker_before_selected_delay_never_becomes_cancellation_evidence(adapter, tmp_path):\n    directory, generation = generated(adapter, tmp_path, books=1, segments=1)\n    state = initialize(adapter, directory, steps=1001)\n    result = adapter.cancel_import(directory, seconds=120, after_worker_seconds=60)\n    assert result[\"status\"] == \"NOT_RUN\"\n    assert result[\"native_cancelled\"] is False\n    assert result[\"cancellation_to_owned_return_seconds\"] is None\n    assert result[\"completed_rows\"] == 1 and result[\"automatic_resume\"] is False\n    assert result[\"family_proof\"] == \"NO_CANCEL_QUALIFICATION\"\n    assert len(result[\"worker_measurements\"]) == 1\n    assert result[\"worker_measurements\"][0][\"outcome\"] == \"returned\"\n    app = LibraryApp(directory / \"library\")\n    page = app.import_batch(state[\"workspace\"], state[\"first_batch\"])\n    assert page[\"rows\"][0][\"result\"][\"state\"] == \"complete\"\n    assert adapter.run_import(directory, seconds=120)[\"status\"] == \"IMPORT_COMPLETE\"\n    assert adapter.verify_catalog(directory, seconds=120)[\"source_segments\"] == 1\n    assert adapter.fixture.verify_originals(directory, generation)[\"verified_sources\"] == 1\n\n\n\ndef test_real_failed_worker_cannot_be_reported_as_unmeasured_completed_cancellation(\n        adapter, tmp_path, monkeypatch):\n    from carr_library.audio import process\n    from carr_library.ingest.worker import MAX_REQUEST\n\n    directory, _ = generated(adapter, tmp_path, books=1, segments=1)\n    state = initialize(adapter, directory, steps=1001)\n    actual = process.run_process\n    anchor = \"runpy.run_module('carr_library.ingest.worker',run_name='__main__')\"\n    completed = []\n\n    def failed_selected_bootstrap(args, **options):\n        if isinstance(args, (tuple, list)) and \"-c\" in args:\n            offset = args.index(\"-c\") + 1\n            if offset + 2 < len(args) and anchor in args[offset]:\n                request = read_json(Path(args[offset + 1]), maximum=MAX_REQUEST)\n                if request.get(\"data_dir\") == str(directory / \"library\"):\n                    assert options[\"owned_tree\"] is True and options[\"allow_failure\"] is True\n                    command = list(args)\n                    assert command[offset].count(anchor) == 1\n                    # This test-only child fails after the genuine measured\n                    # bootstrap/ready prefix; no fake process result is returned.\n                    command[offset] = command[offset].replace(anchor, \"raise SystemExit(7)\")\n                    result = actual(command, **options)\n                    completed.append(result)\n                    return result\n        return actual(args, **options)\n\n    monkeypatch.setattr(process, \"run_process\", failed_selected_bootstrap)\n    with pytest.raises(AssertionError, match=\"actual import worker failed\"):\n        adapter.cancel_import(directory, seconds=120, after_worker_seconds=60)\n    assert len(completed) == 1 and completed[0].returncode == 7\n    app = LibraryApp(directory / \"library\")\n    page = app.import_batch(state[\"workspace\"], state[\"first_batch\"])\n    assert page[\"rows\"][0][\"state\"] == \"failed\"\n    assert page[\"rows\"][0][\"result\"][\"state\"] == \"failed\"\n    assert not (directory / \"benchmark\" / \"cancellation.json\").exists()\n    assert not (directory / \"benchmark\" / \"catalog-verification.json\").exists()\n    assert app.browse(state[\"workspace\"]) == ()\n"
+        }
+      ],
+      "exact_inverse": true
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_backup_benchmark.py",
+      "donor_sha": "d0d300594e17872666031afbf02661155ed0417f",
+      "after_sha": "acae6eb09bec318589d89dff72837df5b5a47baa",
+      "donor_sha256": "8d7de0d3125e132f46715f0c4a66594a5407145f61da4fe254707814398dff83",
+      "after_sha256": "3955c881b347c98169e751fac9bfa7949adcfbc1875655667175884ebb703b4f",
+      "added_to_target": true,
+      "hunks": [
+        {
+          "old_start": 0,
+          "old_end": 75,
+          "new_start": 0,
+          "new_end": 74,
+          "before": "\"\"\"Real small-corpus contracts for the separate common4 scale measurement.\n",
+          "after": "\"\"\"Real small-corpus contracts for the current native5 scale measurement.\n"
+        },
+        {
+          "old_start": 481,
+          "old_end": 530,
+          "new_start": 480,
+          "new_end": 538,
+          "before": "from carr_library.durable_state import read_json\n",
+          "after": "from carr_library.durable_state import read_json_snapshot\n"
+        },
+        {
+          "old_start": 531,
+          "old_end": 620,
+          "new_start": 539,
+          "new_end": 539,
+          "before": "SCRIPT = Path(__file__).resolve().parents[2] / \"scripts\" / \"benchmark_library_backup.py\"\n",
+          "after": ""
+        },
+        {
+          "old_start": 621,
+          "old_end": 621,
+          "new_start": 540,
+          "new_end": 631,
+          "before": "",
+          "after": "def read_json(path, *, maximum):\n    return read_json_snapshot(path, max_bytes=maximum)[0]\n"
+        },
+        {
+          "old_start": 622,
+          "old_end": 622,
+          "new_start": 632,
+          "new_end": 723,
+          "before": "",
+          "after": "SCRIPT = Path(__file__).resolve().parents[2] / \"scripts\" / \"benchmark_library_backup.py\"\n\n\n"
+        },
+        {
+          "old_start": 1462,
+          "old_end": 1606,
+          "new_start": 1563,
+          "new_end": 1761,
+          "before": "    state = adapter.catalog.initialize(directory, page_files=1, slice_items=1,\n        steps=2, slice_seconds=60, memory_bytes=512*adapter.MIB,\n",
+          "after": "    directory = directory.resolve(strict=True)\n    state = adapter.catalog.initialize(directory, page_files=1,\n        steps=1001 if complete else 2, slice_seconds=60, memory_bytes=512*adapter.MIB,\n"
+        },
+        {
+          "old_start": 2429,
+          "old_end": 2514,
+          "new_start": 2584,
+          "new_end": 2669,
+          "before": "def test_real_common4_roundtrip_uses_one_external_policy_and_preserves_every_oracle(\n",
+          "after": "def test_real_native5_roundtrip_uses_one_external_policy_and_preserves_every_oracle(\n"
+        },
+        {
+          "old_start": 2680,
+          "old_end": 2680,
+          "new_start": 2835,
+          "new_end": 3028,
+          "before": "",
+          "after": "    expected_fragments = sum((len(field) + 65535) // 65536\n        for source in (directory / \"sources\").glob(\"*.txt\")\n        for field in source.read_bytes().decode(\"utf-8-sig\").split(\"\\f\"))\n"
+        },
+        {
+          "old_start": 4648,
+          "old_end": 4711,
+          "new_start": 4996,
+          "new_end": 5055,
+          "before": "    assert result[\"source_segments\"] == generation[\"segments\"]\n",
+          "after": "    assert result[\"source_segments\"] == expected_fragments\n"
+        },
+        {
+          "old_start": 4979,
+          "old_end": 5059,
+          "new_start": 5323,
+          "new_end": 5399,
+          "before": "    assert result[\"source_oracle\"][\"source_segments\"] == generation[\"segments\"]\n",
+          "after": "    assert result[\"source_oracle\"][\"source_segments\"] == expected_fragments\n"
+        },
+        {
+          "old_start": 5484,
+          "old_end": 5581,
+          "new_start": 5824,
+          "new_end": 5975,
+          "before": "    assert result[\"last_verified_source_copy\"][\"last_segment\"] == (3 if kind == \"corpus\" else 4)\n",
+          "after": "    assert result[\"last_verified_source_copy\"][\"last_authored_field\"] == (3 if kind == \"corpus\" else 4)\n    assert result[\"native_backup_format\"] == 5\n"
+        },
+        {
+          "old_start": 13032,
+          "old_end": 13137,
+          "new_start": 13426,
+          "new_end": 13531,
+          "before": "    assert adapter.library_backup.verify_backup(archive, checksum, backup_budget=policy)[\"version\"] == 4\n",
+          "after": "    assert adapter.library_backup.verify_backup(archive, checksum, backup_budget=policy)[\"version\"] == 5\n"
+        },
+        {
+          "old_start": 13498,
+          "old_end": 13652,
+          "new_start": 13892,
+          "new_end": 13974,
+          "before": "        try:\n            added.append(app.create_workspace(\"An unrequested extra restored scope\"))\n        finally:\n            assert app.close_search()\n",
+          "after": "        added.append(app.create_workspace(\"An unrequested extra restored scope\"))\n"
+        },
+        {
+          "old_start": 14506,
+          "old_end": 14506,
+          "new_start": 14828,
+          "new_end": 16749,
+          "before": "",
+          "after": "\n\n\ndef test_measured_more_than_64_mib_inputs_keep_both_declared_native_copy_allowances(\n        adapter, tmp_path):\n    directory, _ = prepared(adapter, tmp_path)\n    app = LibraryApp(directory / \"library\")\n    state, _ = adapter.catalog._state(directory)\n    observed_input = app.root / \"runtime\" / \"benchmark-policy-buffer.bin\"\n    block = b\"R\" * 65536\n    with observed_input.open(\"xb\") as stream:\n        for _ in range(65 * adapter.MIB // len(block)):\n            assert stream.write(block) == len(block)\n        stream.flush()\n        os.fsync(stream.fileno())\n    assert observed_input.stat().st_size == 65 * adapter.MIB\n    deadline = adapter.catalog.Deadline(60)\n    measured = adapter._inventory(app.root, deadline, 10_000, identities=True)\n    assert measured[\"categories\"][\"other\"][\"bytes\"] >= 65 * adapter.MIB\n    policy, estimate = adapter._policy(app, state, measured, 60, adapter.GIB, deadline)\n    # This is a policy-accounting regression with actual measured input bytes.\n    # The runtime buffer is not an imported source or an archived authority;\n    # this test makes no large-corpus or native-archive capacity claim.\n    declared_archive_data = (policy.database_bytes\n        + measured[\"categories\"][\"originals\"][\"bytes\"]\n        + measured[\"categories\"][\"other\"][\"bytes\"] + policy.pending_bytes)\n    assert declared_archive_data > 64 * adapter.MIB\n    assert estimate[\"archive_upper_bytes\"] == declared_archive_data + policy.manifest_bytes\n    assert policy.staging_bytes >= 2 * declared_archive_data + 2 * policy.manifest_bytes\n    assert adapter.library_backup._copy_allowance(policy) >= declared_archive_data\n    assert adapter.library_backup._copy_allowance(policy, declared_archive_data) > 0\n    assert observed_input.stat().st_size == 65 * adapter.MIB\n    assert not (directory / \"benchmark\" / adapter._ARCHIVE).exists()\n    assert not (directory / \"benchmark\" / adapter._RESTORED).exists()\n"
+        }
+      ],
+      "exact_inverse": true
+    }
+  ]
+}

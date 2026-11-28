@@ -1,0 +1,295 @@
+{
+  "schema": "carr-exact-inverse/1",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_feature_capacity.py",
+      "before_blob": "3c05f97c43036b044bd4b29e9e5ff3aff79cba3c",
+      "before": {
+        "sha256": "ed757b56ddd44faac57c0725fc63e9fafe2df6c4d86c33bcdf9ecb380504d44c",
+        "bytes": 21396
+      },
+      "after": {
+        "sha256": "2bd63c0329a327ac7c6c7be4a1b50617a3aed83dcb749b11d4c4d4dd480c363f",
+        "bytes": 23424
+      },
+      "hunks": [
+        {
+          "start": 27,
+          "removed": [
+            "SUITES = [\"tests/audio/test_director_effects.py\",\"tests/storage/test_director_effects_backup.py\",\"tests/studio/test_interchange.py\",\"tests/storage/test_cue_interchange_backup.py\",\"tests/assistant/test_translation_partition.py\",\"tests/assistant/test_translation_layout.py\",\"tests/assistant/test_translation_epub_layout.py\",\"tests/ui/test_translation_layout.py\",\"tests/storage/test_translation_layout_backup.py\",\"tests/e2e/test_backup_resource_cli.py\",\"tests/storage/test_backup_budget.py\",\"tests/storage/test_backup_capacity.py\",\"tests/storage/test_backup_resource_roundtrip.py\",\"tests/ui/test_backup_resource_actions.py\",\"tests/e2e/test_import_batch_cli.py\",\"tests/e2e/test_streaming_import_pages.py\",\"tests/ingest/test_import_budget.py\",\"tests/ingest/test_import_budget_worker.py\",\"tests/ingest/test_import_scan_pages.py\",\"tests/ingest/test_import_session.py\",\"tests/storage/test_import_capacity_backup.py\",\"tests/ui/test_import_resources.py\"]",
+            "NAMES = [\"carr_library.__main__\",\"carr_library.application\",\"carr_library.assistant.translation\",\"carr_library.assistant.translation_epub_layout_worker\",\"carr_library.assistant.translation_layout\",\"carr_library.assistant.translation_layout_worker\",\"carr_library.assistant.translation_partition\",\"carr_library.audio.cleanup\",\"carr_library.audio.director\",\"carr_library.audio.dsp\",\"carr_library.audio.effect_controls\",\"carr_library.audio.effects\",\"carr_library.audio.projects\",\"carr_library.backup_budget\",\"carr_library.backup_compat\",\"carr_library.backup_incremental\",\"carr_library.backup_incremental_cli\",\"carr_library.backup_options\",\"carr_library.backup_producers\",\"carr_library.backup_report\",\"carr_library.backup_sidecars\",\"carr_library.durable_state\",\"carr_library.ingest.batch_cli\",\"carr_library.ingest.batch_pages\",\"carr_library.ingest.batch_scan\",\"carr_library.ingest.batches\",\"carr_library.ingest.catalog_asset_copy\",\"carr_library.ingest.resource_budget\",\"carr_library.ingest.session\",\"carr_library.ingest.streamed_ingest\",\"carr_library.ingest.streamed_text\",\"carr_library.ingest.worker\",\"carr_library.installation_lease\",\"carr_library.library_backup\",\"carr_library.pending_backup\",\"carr_library.state_recovery\",\"carr_library.storage.revisions\",\"carr_library.streamed_import_cli\",\"carr_library.studio.backup_inputs\",\"carr_library.studio.interchange\",\"carr_library.studio.project\",\"carr_library.studio.publishing\",\"carr_library.studio.render\",\"carr_library.translation_cli\",\"carr_library.ui.audio_effects\",\"carr_library.ui.audio_studio\",\"carr_library.ui.backup_actions\",\"carr_library.ui.backup_incremental_dialog\",\"carr_library.ui.backup_resources\",\"carr_library.ui.desktop_app\",\"carr_library.ui.effects_dialog\",\"carr_library.ui.import_center\",\"carr_library.ui.import_resources\",\"carr_library.ui.translation_dialog\"]"
+          ],
+          "added": [
+            "SUITES = [\"tests/audio/test_director_effects.py\",\"tests/storage/test_director_effects_backup.py\",\"tests/studio/test_interchange.py\",\"tests/storage/test_cue_interchange_backup.py\",\"tests/assistant/test_translation_partition.py\",\"tests/assistant/test_translation_layout.py\",\"tests/assistant/test_translation_epub_layout.py\",\"tests/ui/test_translation_layout.py\",\"tests/storage/test_translation_layout_backup.py\",\"tests/e2e/test_backup_resource_cli.py\",\"tests/storage/test_backup_budget.py\",\"tests/storage/test_backup_capacity.py\",\"tests/storage/test_backup_resource_roundtrip.py\",\"tests/ui/test_backup_resource_actions.py\",\"tests/e2e/test_import_batch_cli.py\",\"tests/e2e/test_streaming_import_pages.py\",\"tests/ingest/test_import_budget.py\",\"tests/ingest/test_import_budget_worker.py\",\"tests/ingest/test_import_scan_pages.py\",\"tests/ingest/test_import_session.py\",\"tests/storage/test_import_capacity_backup.py\",\"tests/ui/test_import_resources.py\",\"tests/speech/test_reading_pauses.py\"]",
+            "NAMES = [\"carr_library.__main__\",\"carr_library.application\",\"carr_library.assistant.translation\",\"carr_library.assistant.translation_epub_layout_worker\",\"carr_library.assistant.translation_layout\",\"carr_library.assistant.translation_layout_worker\",\"carr_library.assistant.translation_partition\",\"carr_library.audio.cleanup\",\"carr_library.audio.director\",\"carr_library.audio.dsp\",\"carr_library.audio.effect_controls\",\"carr_library.audio.effects\",\"carr_library.audio.projects\",\"carr_library.backup_budget\",\"carr_library.backup_compat\",\"carr_library.backup_incremental\",\"carr_library.backup_incremental_cli\",\"carr_library.backup_options\",\"carr_library.backup_producers\",\"carr_library.backup_report\",\"carr_library.backup_sidecars\",\"carr_library.durable_state\",\"carr_library.ingest.batch_cli\",\"carr_library.ingest.batch_pages\",\"carr_library.ingest.batch_scan\",\"carr_library.ingest.batches\",\"carr_library.ingest.catalog_asset_copy\",\"carr_library.ingest.resource_budget\",\"carr_library.ingest.session\",\"carr_library.ingest.streamed_ingest\",\"carr_library.ingest.streamed_text\",\"carr_library.ingest.worker\",\"carr_library.installation_lease\",\"carr_library.library_backup\",\"carr_library.pending_backup\",\"carr_library.state_recovery\",\"carr_library.storage.revisions\",\"carr_library.streamed_import_cli\",\"carr_library.studio.backup_inputs\",\"carr_library.studio.interchange\",\"carr_library.studio.project\",\"carr_library.studio.publishing\",\"carr_library.studio.render\",\"carr_library.translation_cli\",\"carr_library.ui.audio_effects\",\"carr_library.ui.audio_studio\",\"carr_library.ui.backup_actions\",\"carr_library.ui.backup_incremental_dialog\",\"carr_library.ui.backup_resources\",\"carr_library.ui.desktop_app\",\"carr_library.ui.effects_dialog\",\"carr_library.ui.import_center\",\"carr_library.ui.import_resources\",\"carr_library.ui.translation_dialog\",\"carr_library.speech.focus\",\"carr_library.speech.navigation\",\"carr_library.speech.runtime\",\"carr_library.speech.session\",\"carr_library.ui.reader_synthesis\",\"carr_library.ui.reader_tabs\",\"carr_library.ui.speech_dialog\"]"
+          ]
+        },
+        {
+          "start": 125,
+          "removed": [],
+          "added": [
+            "VOICE_PATHS = {",
+            "    'runtime_settings.py', 'speech/runtime.py', 'ui/voice_preferences.py',",
+            "    'language_qualification/catalog.py', 'speech/session.py', 'ui/reader_synthesis.py',",
+            "    'ui/speech_dialog.py', 'ui/reader_tabs.py', 'state_recovery.py', 'backup_producers.py',",
+            "    'speech/navigation.py', 'speech/focus.py',",
+            "}",
+            "",
+            "",
+            "def reader_pause_receipt(root, path, selected, expected, *, installed):",
+            "    value = json.loads(path.read_text(encoding='utf-8-sig'))",
+            "    assert value['status'] == 'PASS' and value['phase'] == 'completed'",
+            "    assert value['installed'] is installed and value['native'] is True",
+            "    assert type(value['checks']) is list and value['checks']",
+            "    assert all(value[key] == 'NOT_RUN' for key in ('acoustic_quality', 'human_listening', 'NVDA'))",
+            "    assert value['reading_pauses'] == {",
+            "        'status': 'PASS', 'checks': 52, 'sentence_ms': 125, 'paragraph_ms': 250,",
+            "        'section_ms': 500, 'pcm_frames': 8600, 'pcm_rate': 8000,",
+            "        'native_keyboard': True, 'playback': 'NOT_RUN', 'nvda': 'NOT_RUN'}",
+            "    assert set(value['modules']) == VOICE_PATHS",
+            "    for relative, row in value['modules'].items():",
+            "        assert Path(row['path']).resolve() == selected / relative",
+            "        assert row['sha256'] == expected[relative]",
+            "        assert digest(selected / relative) == row['sha256']",
+            "    return {'report_sha256': digest(path), 'reading_pause_checks': 52,",
+            "            'total_checks': len(value['checks']), 'modules': value['modules'],",
+            "            'native_keyboard': 'PASS', 'physical_audio': 'NOT_RUN', 'NVDA': 'NOT_RUN'}",
+            "",
+            ""
+          ]
+        },
+        {
+          "start": 170,
+          "removed": [
+            "    return {'translation_report_sha256': digest(translation_path),"
+          ],
+          "added": [
+            "    reading = reader_pause_receipt(root, report / 'bundle-voice-preferences.json',",
+            "        installed, expected, installed=True)",
+            "    return {'reading_pauses': reading, 'translation_report_sha256': digest(translation_path),"
+          ]
+        },
+        {
+          "start": 209,
+          "removed": [
+            "        ('windows_translation_v3_smoke.py', 'windows_backup_import_access_smoke.py')}"
+          ],
+          "added": [
+            "        ('windows_translation_v3_smoke.py', 'windows_backup_import_access_smoke.py',",
+            "         'windows_voice_preferences_smoke.py', 'windows_clipboard_reader_smoke.py')}"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-feature-completion-evaluation.yml",
+      "before_blob": "1293a98d5c4aebb1082a780dfde68249880a8069",
+      "before": {
+        "sha256": "22cd7b3c93d8b216ac0a87275f01d1e3a08fe1ff7a8de9c64d2f0ef754b2c85b",
+        "bytes": 22060
+      },
+      "after": {
+        "sha256": "b8ff462eb85dd9cf5b5afdc4e64cf74784c020228c92e5e84a4611fcee6a9bb4",
+        "bytes": 26022
+      },
+      "hunks": [
+        {
+          "start": 13,
+          "removed": [
+            "    name: Director FX, numeric effects, formatted translation and CUE / ${{ matrix.os }}"
+          ],
+          "added": [
+            "    name: Reader pauses, Director FX, formatted translation and CUE / ${{ matrix.os }}"
+          ]
+        },
+        {
+          "start": 94,
+          "removed": [
+            "          suites = [\"tests/studio/test_interchange.py\",\"tests/storage/test_cue_interchange_backup.py\",\"tests/audio/test_director_effects.py\",\"tests/storage/test_director_effects_backup.py\",\"tests/assistant/test_translation_partition.py\",\"tests/assistant/test_translation_layout.py\",\"tests/assistant/test_translation_epub_layout.py\",\"tests/ui/test_translation_layout.py\",\"tests/storage/test_translation_layout_backup.py\",\"tests/audio/test_effects.py\",\"tests/audio/test_dsp.py\",\"tests/audio/test_effect_presets.py\",\"tests/audio/test_render.py\",\"tests/ui/test_audio_effects.py\",\"tests/studio/test_project_effects.py\",\"tests/audio/test_director.py\",\"tests/audio/test_director_resources.py\",\"tests/audio/test_director_path_identity.py\",\"tests/audio/test_projects.py\",\"tests/ui/test_audio_studio.py\",\"tests/studio/test_publishing_primary.py\",\"tests/studio/test_director_silence.py\",\"tests/assistant/test_translation.py\",\"tests/assistant/test_translation_v3.py\",\"tests/assistant/test_library_translation.py\",\"tests/ui/test_translation_selection.py\",\"tests/ui/test_library_translation_dialog.py\",\"tests/storage/test_translation_runtime_recovery.py\",\"tests/studio/test_production.py\",\"tests/studio/test_production_cancellation_outcomes.py\",\"tests/studio/test_production_hardening.py\",\"tests/studio/test_publishing.py\",\"tests/storage/test_production_operation_backup.py\",\"tests/storage/test_studio_timeline_backup.py\",\"tests/storage/test_canonical_backup_compat.py\",\"tests/audio/test_cleanup_contexts.py\",\"tests/packaging/test_managed_launch_boundary.py\"]"
+          ],
+          "added": [
+            "          suites = [\"tests/studio/test_interchange.py\",\"tests/storage/test_cue_interchange_backup.py\",\"tests/audio/test_director_effects.py\",\"tests/storage/test_director_effects_backup.py\",\"tests/assistant/test_translation_partition.py\",\"tests/assistant/test_translation_layout.py\",\"tests/assistant/test_translation_epub_layout.py\",\"tests/ui/test_translation_layout.py\",\"tests/storage/test_translation_layout_backup.py\",\"tests/audio/test_effects.py\",\"tests/audio/test_dsp.py\",\"tests/audio/test_effect_presets.py\",\"tests/audio/test_render.py\",\"tests/ui/test_audio_effects.py\",\"tests/studio/test_project_effects.py\",\"tests/audio/test_director.py\",\"tests/audio/test_director_resources.py\",\"tests/audio/test_director_path_identity.py\",\"tests/audio/test_projects.py\",\"tests/ui/test_audio_studio.py\",\"tests/studio/test_publishing_primary.py\",\"tests/studio/test_director_silence.py\",\"tests/assistant/test_translation.py\",\"tests/assistant/test_translation_v3.py\",\"tests/assistant/test_library_translation.py\",\"tests/ui/test_translation_selection.py\",\"tests/ui/test_library_translation_dialog.py\",\"tests/storage/test_translation_runtime_recovery.py\",\"tests/studio/test_production.py\",\"tests/studio/test_production_cancellation_outcomes.py\",\"tests/studio/test_production_hardening.py\",\"tests/studio/test_publishing.py\",\"tests/storage/test_production_operation_backup.py\",\"tests/storage/test_studio_timeline_backup.py\",\"tests/storage/test_canonical_backup_compat.py\",\"tests/audio/test_cleanup_contexts.py\",\"tests/packaging/test_managed_launch_boundary.py\",\"tests/speech/test_reading_focus.py\",\"tests/speech/test_reading_pauses.py\",\"tests/speech/test_registered_studio_voices.py\",\"tests/speech/test_session.py\",\"tests/storage/test_reader_synthesis_backup.py\",\"tests/ui/test_reader_synthesis.py\",\"tests/ui/test_reader_tabs.py\"]"
+          ]
+        },
+        {
+          "start": 96,
+          "removed": [
+            "          names = [\"carr_library.studio.interchange\",\"carr_library.studio.render\",\"carr_library.studio.publishing\",\"carr_library.studio.project\",\"carr_library.audio.director\",\"carr_library.audio.projects\",\"carr_library.audio.dsp\",\"carr_library.audio.effects\",\"carr_library.audio.effect_controls\",\"carr_library.ui.audio_studio\",\"carr_library.ui.audio_effects\",\"carr_library.ui.effects_dialog\",\"carr_library.assistant.translation\",\"carr_library.assistant.translation_layout\",\"carr_library.assistant.translation_layout_worker\",\"carr_library.assistant.translation_epub_layout_worker\",\"carr_library.assistant.translation_partition\",\"carr_library.ui.translation_dialog\",\"carr_library.backup_producers\",\"carr_library.state_recovery\",\"carr_library.durable_state\",\"carr_library.audio.cleanup\",\"carr_library.translation_cli\",\"carr_library.installation_lease\"]"
+          ],
+          "added": [
+            "          names = [\"carr_library.studio.interchange\",\"carr_library.studio.render\",\"carr_library.studio.publishing\",\"carr_library.studio.project\",\"carr_library.audio.director\",\"carr_library.audio.projects\",\"carr_library.audio.dsp\",\"carr_library.audio.effects\",\"carr_library.audio.effect_controls\",\"carr_library.ui.audio_studio\",\"carr_library.ui.audio_effects\",\"carr_library.ui.effects_dialog\",\"carr_library.assistant.translation\",\"carr_library.assistant.translation_layout\",\"carr_library.assistant.translation_layout_worker\",\"carr_library.assistant.translation_epub_layout_worker\",\"carr_library.assistant.translation_partition\",\"carr_library.ui.translation_dialog\",\"carr_library.backup_producers\",\"carr_library.state_recovery\",\"carr_library.durable_state\",\"carr_library.audio.cleanup\",\"carr_library.translation_cli\",\"carr_library.installation_lease\",\"carr_library.speech.focus\",\"carr_library.speech.navigation\",\"carr_library.speech.runtime\",\"carr_library.speech.session\",\"carr_library.ui.reader_synthesis\",\"carr_library.ui.reader_tabs\",\"carr_library.ui.speech_dialog\"]"
+          ]
+        },
+        {
+          "start": 281,
+          "removed": [],
+          "added": [
+            "      - name: Require actual native reader pause controls in both package modes",
+            "        if: runner.os == 'Windows'",
+            "        timeout-minutes: 5",
+            "        shell: pwsh",
+            "        run: |",
+            "          $readerProof = @'",
+            "          from hashlib import sha256",
+            "          import json",
+            "          import pathlib",
+            "          import runpy",
+            "          import subprocess",
+            "          import sys",
+            "          import sysconfig",
+            "          import os",
+            "          root = pathlib.Path.cwd().resolve()",
+            "          head = os.environ['CARR_CUE_HEAD']",
+            "          tracked = ('scripts/ci_feature_capacity.py', 'scripts/windows_voice_preferences_smoke.py',",
+            "                     'scripts/windows_clipboard_reader_smoke.py')",
+            "          before = {}",
+            "          for relative in tracked:",
+            "              raw = (root / relative).read_bytes()",
+            "              committed = subprocess.run(['git', 'show', head + ':carr-library/' + relative],",
+            "                  check=True, capture_output=True, timeout=20).stdout",
+            "              assert raw == committed, relative",
+            "              before[relative] = sha256(raw).hexdigest()",
+            "          helper = runpy.run_path(str(root / 'scripts/ci_feature_capacity.py'))",
+            "          source = root / 'src/carr_library'",
+            "          installed = pathlib.Path(sysconfig.get_path('purelib')).resolve() / 'carr_library'",
+            "          reference = json.loads((root / 'review/capacity-python-reference-2026-11-28.json').read_text(encoding='utf-8'))",
+            "          expected = reference['compact_mapping']",
+            "          assert helper['inventory'](source) == helper['inventory'](installed) == expected",
+            "          record = helper['installed_record'](installed, expected)",
+            "          results = []",
+            "          errors = []",
+            "          for mode, selected in (('source', source), ('installed', installed)):",
+            "              path = root / 'ci-cue-interchange' / ('reading-pauses-' + mode + '.json')",
+            "              command = [sys.executable, '-I', '-B', '-X', 'utf8',",
+            "                         str(root / 'scripts/windows_voice_preferences_smoke.py')]",
+            "              command += ['--source', str(root)] if mode == 'source' else ['--expect-installed']",
+            "              completed = subprocess.run(command + ['--report', str(path)], timeout=105)",
+            "              if completed.returncode:",
+            "                  errors.append(mode + ': native process failed')",
+            "                  continue",
+            "              results.append(dict(mode=mode, **helper['reader_pause_receipt'](",
+            "                  root, path, selected, expected, installed=mode == 'installed')))",
+            "          assert helper['inventory'](source) == helper['inventory'](installed) == expected",
+            "          assert helper['installed_record'](installed, expected) == record",
+            "          helper['checkout_head'](root, head)",
+            "          assert {name: sha256((root / name).read_bytes()).hexdigest() for name in tracked} == before",
+            "          assert not errors and len(results) == 2, errors",
+            "          output = dict(status='PASS', commit=head, package_python_files=len(expected),",
+            "              RECORD_sha256=record, tracked_files=before, modes=results, NVDA='NOT_RUN',",
+            "              acoustic_quality='NOT_RUN', physical_audio='NOT_RUN')",
+            "          (root / 'ci-cue-interchange/reading-pauses-qualification.json').write_text(",
+            "              json.dumps(output, sort_keys=True, indent=2) + '\\n', encoding='utf-8')",
+            "          print(json.dumps(output, sort_keys=True), flush=True)",
+            "          '@",
+            "          python -I -B -X utf8 -c $readerProof 2>&1 | Tee-Object 'ci-cue-interchange/reading-pauses-qualification.txt'",
+            "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before_blob": "360ad8af44d91138e283bb65924cc0702feb0b24",
+      "before": {
+        "sha256": "ba485de4c15ffa2e5df40a2702b4be8391c802e374860897aad452047b79efc0",
+        "bytes": 60656
+      },
+      "after": {
+        "sha256": "0f5412d6208dfd926f1010734b630bb3df2c3b55d73fc6a43b1dd4b77d51a0b4",
+        "bytes": 61063
+      },
+      "hunks": [
+        {
+          "start": 624,
+          "removed": [
+            "            'tests/ui/test_backup_resource_actions.py'"
+          ],
+          "added": [
+            "            'tests/ui/test_backup_resource_actions.py',",
+            "            'tests/speech/test_reading_pauses.py',",
+            "            'tests/speech/test_reading_focus.py',",
+            "            'tests/speech/test_session.py',",
+            "            'tests/ui/test_reader_tabs.py'"
+          ]
+        },
+        {
+          "start": 641,
+          "removed": [
+            "          assert len(suites) == 17 and len(set(suites)) == 17"
+          ],
+          "added": [
+            "          assert len(suites) == 21 and len(set(suites)) == 21"
+          ]
+        },
+        {
+          "start": 663,
+          "removed": [
+            "          names = [\"carr_library.__main__\",\"carr_library.application\",\"carr_library.backup_budget\",\"carr_library.backup_compat\",\"carr_library.backup_incremental\",\"carr_library.backup_incremental_cli\",\"carr_library.backup_options\",\"carr_library.backup_report\",\"carr_library.backup_sidecars\",\"carr_library.ingest.batch_cli\",\"carr_library.ingest.batch_pages\",\"carr_library.ingest.batch_scan\",\"carr_library.ingest.batches\",\"carr_library.ingest.catalog_asset_copy\",\"carr_library.ingest.resource_budget\",\"carr_library.ingest.session\",\"carr_library.ingest.streamed_ingest\",\"carr_library.ingest.streamed_text\",\"carr_library.ingest.worker\",\"carr_library.library_backup\",\"carr_library.pending_backup\",\"carr_library.storage.revisions\",\"carr_library.streamed_import_cli\",\"carr_library.studio.backup_inputs\",\"carr_library.ui.backup_actions\",\"carr_library.ui.backup_incremental_dialog\",\"carr_library.ui.backup_resources\",\"carr_library.ui.desktop_app\",\"carr_library.ui.import_center\",\"carr_library.ui.import_resources\"]"
+          ],
+          "added": [
+            "          names = [\"carr_library.__main__\",\"carr_library.application\",\"carr_library.backup_budget\",\"carr_library.backup_compat\",\"carr_library.backup_incremental\",\"carr_library.backup_incremental_cli\",\"carr_library.backup_options\",\"carr_library.backup_report\",\"carr_library.backup_sidecars\",\"carr_library.ingest.batch_cli\",\"carr_library.ingest.batch_pages\",\"carr_library.ingest.batch_scan\",\"carr_library.ingest.batches\",\"carr_library.ingest.catalog_asset_copy\",\"carr_library.ingest.resource_budget\",\"carr_library.ingest.session\",\"carr_library.ingest.streamed_ingest\",\"carr_library.ingest.streamed_text\",\"carr_library.ingest.worker\",\"carr_library.library_backup\",\"carr_library.pending_backup\",\"carr_library.storage.revisions\",\"carr_library.streamed_import_cli\",\"carr_library.studio.backup_inputs\",\"carr_library.ui.backup_actions\",\"carr_library.ui.backup_incremental_dialog\",\"carr_library.ui.backup_resources\",\"carr_library.ui.desktop_app\",\"carr_library.ui.import_center\",\"carr_library.ui.import_resources\",\"carr_library.speech.focus\",\"carr_library.speech.navigation\",\"carr_library.speech.runtime\",\"carr_library.speech.session\",\"carr_library.ui.reader_synthesis\",\"carr_library.ui.reader_tabs\",\"carr_library.ui.speech_dialog\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before_blob": "629fbce7e76e4f57872fb6097e7ba1ce7618737b",
+      "before": {
+        "sha256": "4794bfc80ee86f25118c73a7ec31ee84a8fd6df0393f304aed8d1b0d3e99103d",
+        "bytes": 35185
+      },
+      "after": {
+        "sha256": "80234687dc7d0e8ee62cd1948f9c6dfe9c50be24271b96c0bb3d6f6b610eb893",
+        "bytes": 36050
+      },
+      "hunks": [
+        {
+          "start": 124,
+          "removed": [
+            "          capacity_names = [\"carr_library.__main__\",\"carr_library.application\",\"carr_library.backup_budget\",\"carr_library.backup_compat\",\"carr_library.backup_incremental\",\"carr_library.backup_incremental_cli\",\"carr_library.backup_options\",\"carr_library.backup_report\",\"carr_library.backup_sidecars\",\"carr_library.ingest.batch_cli\",\"carr_library.ingest.batch_pages\",\"carr_library.ingest.batch_scan\",\"carr_library.ingest.batches\",\"carr_library.ingest.catalog_asset_copy\",\"carr_library.ingest.resource_budget\",\"carr_library.ingest.session\",\"carr_library.ingest.streamed_ingest\",\"carr_library.ingest.streamed_text\",\"carr_library.ingest.worker\",\"carr_library.library_backup\",\"carr_library.pending_backup\",\"carr_library.storage.revisions\",\"carr_library.streamed_import_cli\",\"carr_library.studio.backup_inputs\",\"carr_library.ui.backup_actions\",\"carr_library.ui.backup_incremental_dialog\",\"carr_library.ui.backup_resources\",\"carr_library.ui.desktop_app\",\"carr_library.ui.import_center\",\"carr_library.ui.import_resources\"]"
+          ],
+          "added": [
+            "          capacity_names = [\"carr_library.__main__\",\"carr_library.application\",\"carr_library.backup_budget\",\"carr_library.backup_compat\",\"carr_library.backup_incremental\",\"carr_library.backup_incremental_cli\",\"carr_library.backup_options\",\"carr_library.backup_report\",\"carr_library.backup_sidecars\",\"carr_library.ingest.batch_cli\",\"carr_library.ingest.batch_pages\",\"carr_library.ingest.batch_scan\",\"carr_library.ingest.batches\",\"carr_library.ingest.catalog_asset_copy\",\"carr_library.ingest.resource_budget\",\"carr_library.ingest.session\",\"carr_library.ingest.streamed_ingest\",\"carr_library.ingest.streamed_text\",\"carr_library.ingest.worker\",\"carr_library.library_backup\",\"carr_library.pending_backup\",\"carr_library.storage.revisions\",\"carr_library.streamed_import_cli\",\"carr_library.studio.backup_inputs\",\"carr_library.ui.backup_actions\",\"carr_library.ui.backup_incremental_dialog\",\"carr_library.ui.backup_resources\",\"carr_library.ui.desktop_app\",\"carr_library.ui.import_center\",\"carr_library.ui.import_resources\",\"carr_library.speech.focus\",\"carr_library.speech.navigation\",\"carr_library.speech.runtime\",\"carr_library.speech.session\",\"carr_library.ui.reader_synthesis\",\"carr_library.ui.reader_tabs\",\"carr_library.ui.speech_dialog\"]"
+          ]
+        },
+        {
+          "start": 303,
+          "removed": [
+            "            'tests/ui/test_streamed_import.py'"
+          ],
+          "added": [
+            "            'tests/ui/test_streamed_import.py',",
+            "            'tests/speech/test_reading_focus.py',",
+            "            'tests/speech/test_reading_pauses.py',",
+            "            'tests/speech/test_session.py',",
+            "            'tests/ui/test_reader_tabs.py'"
+          ]
+        },
+        {
+          "start": 463,
+          "removed": [
+            "            'tests/ui/test_streamed_import.py'"
+          ],
+          "added": [
+            "            'tests/ui/test_streamed_import.py',",
+            "            'tests/speech/test_reading_focus.py',",
+            "            'tests/speech/test_reading_pauses.py',",
+            "            'tests/speech/test_session.py',",
+            "            'tests/ui/test_reader_tabs.py'"
+          ]
+        },
+        {
+          "start": 475,
+          "removed": [
+            "          suites = [\"tests/e2e/test_import_batch_cli.py\",\"tests/e2e/test_streamed_import_cli.py\",\"tests/e2e/test_streaming_import_pages.py\",\"tests/ingest/test_import_budget.py\",\"tests/ingest/test_import_budget_worker.py\",\"tests/ingest/test_import_scan_pages.py\",\"tests/ingest/test_import_session.py\",\"tests/storage/test_import_capacity_backup.py\",\"tests/ui/test_import_center.py\",\"tests/ui/test_import_resources.py\",\"tests/e2e/test_backup_resource_cli.py\",\"tests/storage/test_backup_budget.py\",\"tests/storage/test_backup_capacity.py\",\"tests/storage/test_backup_resource_roundtrip.py\",\"tests/storage/test_backup_sidecars.py\",\"tests/storage/test_studio_clip_inputs_backup.py\",\"tests/ui/test_backup_resource_actions.py\",\"tests/ingest/test_batch_scan.py\",\"tests/ingest/test_streamed_text.py\",\"tests/ingest/test_streamed_ingest.py\",\"tests/ingest/test_streamed_admission.py\",\"tests/e2e/test_streamed_source_import.py\",\"tests/e2e/test_import_batches.py\",\"tests/e2e/test_import_worker_publication.py\",\"tests/storage/test_library_backup.py\",\"tests/storage/test_backup_incremental.py\",\"tests/storage/test_backup_boundary.py\",\"tests/storage/test_backup_schema_identity.py\",\"tests/storage/test_backup_scan_bounds.py\",\"tests/storage/test_pending_backup.py\",\"tests/storage/test_complete_pending_backup.py\",\"tests/storage/test_direct_import_pending_backup.py\",\"tests/storage/test_streamed_source_backup.py\",\"tests/storage/test_composite_backup.py\",\"tests/storage/test_canonical_backup_compat.py\",\"tests/ui/test_backup_incremental_dialog.py\",\"tests/ui/test_streamed_import.py\",\"tests/audio/test_cleanup_contexts.py\",\"tests/packaging/test_managed_launch_boundary.py\"]"
+          ],
+          "added": [
+            "          suites = [\"tests/e2e/test_import_batch_cli.py\",\"tests/e2e/test_streamed_import_cli.py\",\"tests/e2e/test_streaming_import_pages.py\",\"tests/ingest/test_import_budget.py\",\"tests/ingest/test_import_budget_worker.py\",\"tests/ingest/test_import_scan_pages.py\",\"tests/ingest/test_import_session.py\",\"tests/storage/test_import_capacity_backup.py\",\"tests/ui/test_import_center.py\",\"tests/ui/test_import_resources.py\",\"tests/e2e/test_backup_resource_cli.py\",\"tests/storage/test_backup_budget.py\",\"tests/storage/test_backup_capacity.py\",\"tests/storage/test_backup_resource_roundtrip.py\",\"tests/storage/test_backup_sidecars.py\",\"tests/storage/test_studio_clip_inputs_backup.py\",\"tests/ui/test_backup_resource_actions.py\",\"tests/ingest/test_batch_scan.py\",\"tests/ingest/test_streamed_text.py\",\"tests/ingest/test_streamed_ingest.py\",\"tests/ingest/test_streamed_admission.py\",\"tests/e2e/test_streamed_source_import.py\",\"tests/e2e/test_import_batches.py\",\"tests/e2e/test_import_worker_publication.py\",\"tests/storage/test_library_backup.py\",\"tests/storage/test_backup_incremental.py\",\"tests/storage/test_backup_boundary.py\",\"tests/storage/test_backup_schema_identity.py\",\"tests/storage/test_backup_scan_bounds.py\",\"tests/storage/test_pending_backup.py\",\"tests/storage/test_complete_pending_backup.py\",\"tests/storage/test_direct_import_pending_backup.py\",\"tests/storage/test_streamed_source_backup.py\",\"tests/storage/test_composite_backup.py\",\"tests/storage/test_canonical_backup_compat.py\",\"tests/ui/test_backup_incremental_dialog.py\",\"tests/ui/test_streamed_import.py\",\"tests/audio/test_cleanup_contexts.py\",\"tests/packaging/test_managed_launch_boundary.py\",\"tests/speech/test_reading_focus.py\",\"tests/speech/test_reading_pauses.py\",\"tests/speech/test_registered_studio_voices.py\",\"tests/speech/test_session.py\",\"tests/storage/test_reader_synthesis_backup.py\",\"tests/ui/test_reader_synthesis.py\",\"tests/ui/test_reader_tabs.py\"]"
+          ]
+        }
+      ]
+    }
+  ]
+}

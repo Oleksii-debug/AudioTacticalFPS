@@ -1400,8 +1400,8 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        from .backup_actions import backup
-        return backup(self)
+        from .backup_actions import create_backup
+        return create_backup(self)
 
     def restore_backup(self, event):
         from .backup_actions import restore_backup

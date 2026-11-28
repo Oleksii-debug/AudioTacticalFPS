@@ -1,0 +1,104 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+  "scope": "Add reader pause contracts and actual native receipt validation to the already reviewed aggregate/feature gates.",
+  "base_commit": "246e6e1cc16c649d2204740cc5ee2d01c2d08646",
+  "counts": {
+    "main": {
+      "suites_before": 22,
+      "suites_after": 23,
+      "origins_before": 54,
+      "origins_after": 61
+    },
+    "feature": {
+      "suites_before": 37,
+      "suites_after": 44,
+      "origins_before": 24,
+      "origins_after": 31,
+      "native_modes": 2,
+      "native_pause_checks_per_mode": 52
+    },
+    "component": {
+      "common_before": [
+        149,
+        149
+      ],
+      "common_after": [
+        153,
+        153
+      ],
+      "origins_after": 37,
+      "receipt_suites_after": 46
+    },
+    "v3": {
+      "installed_additional_before": 17,
+      "installed_additional_after": 21,
+      "origins_after": 37,
+      "source_speech_directory_already_selects_all_pause_tests": true,
+      "existing_shared_installed_UI_and_backup_retained": true
+    }
+  },
+  "invariants": [
+    "All old selectors remain in their prior order; no old assertion or deadline removed.",
+    "MAIN uses the existing completed source and bundle gates plus the separate mandatory 23-suite helper. Its existing bundled native voice probe now has its actual 52-pause-check/12-origin receipt validated.",
+    "Feature gate retains its 65-minute job and all37 old suites; the additional native two-mode step uses the probe's unchanged90-second internal watchdog and105-second external process bounds inside a five-minute step.",
+    "V3 source already selects the complete tests/speech directory. Four portable missing installed suites are added to its separate30-minute capacity job; existing installed shared UI/backup selectors remain.",
+    "Component source and installed arrays each add only the four missing pause suites; all seven pause suite receipts and seven production origins are explicitly checked.",
+    "Whole398-file namespace, committed reference, installed RECORD ownership and source/helper/probe identities remain required.",
+    "Every actual runtime verdict remains pending on the composed successor."
+  ],
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_feature_capacity.py",
+      "before_blob": "3c05f97c43036b044bd4b29e9e5ff3aff79cba3c",
+      "before": {
+        "sha256": "ed757b56ddd44faac57c0725fc63e9fafe2df6c4d86c33bcdf9ecb380504d44c",
+        "bytes": 21396
+      },
+      "after": {
+        "sha256": "2bd63c0329a327ac7c6c7be4a1b50617a3aed83dcb749b11d4c4d4dd480c363f",
+        "bytes": 23424
+      },
+      "hunks": 4
+    },
+    {
+      "path": ".github/workflows/carr-feature-completion-evaluation.yml",
+      "before_blob": "1293a98d5c4aebb1082a780dfde68249880a8069",
+      "before": {
+        "sha256": "22cd7b3c93d8b216ac0a87275f01d1e3a08fe1ff7a8de9c64d2f0ef754b2c85b",
+        "bytes": 22060
+      },
+      "after": {
+        "sha256": "b8ff462eb85dd9cf5b5afdc4e64cf74784c020228c92e5e84a4611fcee6a9bb4",
+        "bytes": 26022
+      },
+      "hunks": 4
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before_blob": "360ad8af44d91138e283bb65924cc0702feb0b24",
+      "before": {
+        "sha256": "ba485de4c15ffa2e5df40a2702b4be8391c802e374860897aad452047b79efc0",
+        "bytes": 60656
+      },
+      "after": {
+        "sha256": "0f5412d6208dfd926f1010734b630bb3df2c3b55d73fc6a43b1dd4b77d51a0b4",
+        "bytes": 61063
+      },
+      "hunks": 3
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before_blob": "629fbce7e76e4f57872fb6097e7ba1ce7618737b",
+      "before": {
+        "sha256": "4794bfc80ee86f25118c73a7ec31ee84a8fd6df0393f304aed8d1b0d3e99103d",
+        "bytes": 35185
+      },
+      "after": {
+        "sha256": "80234687dc7d0e8ee62cd1948f9c6dfe9c50be24271b96c0bb3d6f6b610eb893",
+        "bytes": 36050
+      },
+      "hunks": 4
+    }
+  ]
+}

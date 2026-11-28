@@ -1,0 +1,317 @@
+{
+  "schema": "carr-reader-extra-pauses-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "69214167a42e69855cce08cf414c186115b62cca",
+  "base_tree": "b0fe751efc94408636f67a301db6421b762d0be2",
+  "namespace": {
+    "existing_application_python_files_modified": 7,
+    "new_application_modules": 0,
+    "application_python_count": 398
+  },
+  "requirement": {
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+    "scenario": "V3-03",
+    "gap": "Live-reader extra pauses at sentence, paragraph and explicit section boundaries; existing Studio authored pause_after is a separate contract.",
+    "blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "finalization_path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+  },
+  "implementation": [
+    "Extend the existing SpeechSettings, reader modal, session, tabs and VoiceRegistry PCM assembly; no new engine, worker, transport, storage schema or automatic playback.",
+    "Three exact integer millisecond fields, each 0..30000; default zero keeps the old split_utterances route and original engine settings object.",
+    "Reuse current deterministic punctuation/newline and blank-line boundaries; explicit form feed marks sections. Co-located section > paragraph > sentence selects one value, including zero. No inferred heading or language/acoustic alignment.",
+    "Before engine/output admission, nonzero pacing is bounded to 10000 nonempty utterances and one hour of extra silence. Whitespace normalization scans each run once per bounded boundary iterator.",
+    "Count actual sample-rate PCM frames with half-up millisecond rounding, unsigned PCM8 midpoint or signed wider zero, and include extra frames in existing output-byte admission. Existing cancellation and causal output/part retention remain.",
+    "The same immutable settings flow through both actual reader Read and Save WAV owner handoffs. Registered Studio and SAPI facade routes continue through the same existing registry.",
+    "Generic helper receives the exact old six-field native settings payload. Nonzero recovery fields are optional; all-zero reader records retain exact old canonical bytes. Named voice profiles and available-voice declarations are unchanged.",
+    "ReadingAudio validates ordered source offsets and actual frame intervals, holds the prior word during added silence, and retains approximate timing inside spoken segments.",
+    "Native and supported flat backup validators already delegate reader records to ReaderDraftStore.decode; no additional validator allowlist or backup authority was introduced.",
+    "Current __main__/project console registrations expose no direct SpeechSettings reader CLI; the separate audio.cli Director production and authored pause_after contract remain unchanged."
+  ],
+  "safety_boundaries_unchanged": [
+    "Source-document signatures/selected text/voice identity and both fresh owner-thread settings checks.",
+    "Existing output selection, explicit first playback, quiet admission, Stop/Close/Destroy and pending native ownership.",
+    "Existing provider timeout, source/runtime fingerprint checks and maximum PCM output bytes.",
+    "Existing source/installed selectors, assertions, native 90-second watchdog and 5-second readiness waits."
+  ],
+  "tests": {
+    "execution": "NOT_RUN",
+    "added_cases_planned": 78,
+    "existing_files_exact_prefix": true,
+    "suites": [
+      {
+        "path": "tests/speech/test_reading_pauses.py",
+        "new_file": true,
+        "added_cases": 34,
+        "scope": "actual integer PCM widths/channels, half-up rounding, exact boundary precedence and zero-specific setting, long blank run, preflight limits, byte limits, cancellation, helper payload, selection/focus mapping"
+      },
+      {
+        "path": "tests/speech/test_session.py",
+        "added_cases": 12,
+        "scope": "optional nonzero records, exact legacy bytes, CAS and invalid/unknown fields"
+      },
+      {
+        "path": "tests/speech/test_registered_studio_voices.py",
+        "added_cases": 2,
+        "scope": "actual registered Flite concatenation and explicitly modeled SAPI backend through actual adapter/PCM assembly"
+      },
+      {
+        "path": "tests/speech/test_reading_focus.py",
+        "added_cases": 4,
+        "scope": "typed ordered pause-map refusal"
+      },
+      {
+        "path": "tests/storage/test_reader_synthesis_backup.py",
+        "added_cases": 8,
+        "scope": "actual native5/flat4 passive restore plus rehashed typed-refusal controls"
+      },
+      {
+        "path": "tests/ui/test_reader_synthesis.py",
+        "added_cases": 16,
+        "scope": "actual modal/reader callbacks, Read+Save PCM, settings freshness, failed Stop, Cancel/Destroy, recovery"
+      },
+      {
+        "path": "tests/ui/test_reader_tabs.py",
+        "added_cases": 2,
+        "scope": "passive new-tab inheritance and recording position binding"
+      }
+    ],
+    "windows_only_runtime_suite": "tests/speech/test_runtime.py unchanged; no new skips"
+  },
+  "native": {
+    "script": "scripts/windows_voice_preferences_smoke.py",
+    "before_blob": "6519abd0f992d90ee596139bdad7c9595612986d",
+    "after_blob": "031ad7ee23ec0922842c814b0ce6d84a59c84865",
+    "added_checks": 52,
+    "origin_rows_before": 10,
+    "origin_rows_after": 12,
+    "added_origins": [
+      "carr_library.speech.navigation",
+      "carr_library.speech.focus"
+    ],
+    "count_derivation": {
+      "cancel_modal": 17,
+      "apply_modal": 17,
+      "passive_recovery": 1,
+      "worker_pcm": 1,
+      "exact_pcm": 1,
+      "text_and_wave_hash": 1,
+      "focus_holds": 3,
+      "reset_modal": 8,
+      "default_record": 1,
+      "worker_idle": 1,
+      "exact_new_count_guard": 1
+    },
+    "unchanged_watchdog_seconds": 90,
+    "unchanged_predicate_seconds": 5,
+    "measured_fixture": {
+      "sample_rate": 8000,
+      "channels": 1,
+      "frames": 8600,
+      "utterances": 4,
+      "extra_ms": [
+        125,
+        250,
+        500
+      ]
+    },
+    "scope": "Actual native SpinCtrl arrow input, modal ownership, passive files, existing worker and synthetic PCM. Voice inference, audible playback and human NVDA are NOT_RUN.",
+    "execution": "NOT_RUN",
+    "receipt_guard": "Dedicated Reader retains status/nonempty checks and additionally requires reading_pauses.status=PASS, checks=52, and exactly12 module evidence rows.",
+    "aggregate_preimages_inspected": {
+      "main": "5d64b81982cd8eb6dbe63a264fcaa17b9250a543",
+      "v3": "360ad8af44d91138e283bb65924cc0702feb0b24",
+      "component": "629fbce7e76e4f57872fb6097e7ba1ce7618737b"
+    },
+    "aggregate_result": "No exact old voice-preference count/digest predicate to replace; MAIN/V3 already require native script success and component has no invocation. Those three files are not included."
+  },
+  "reviews": {
+    "pcm": {
+      "status": "CLEAR",
+      "review_blob": "c396919f7dfab05108d7f8df40c76284b1071566",
+      "tree": "a53f6e93cae28d6834a88a719a4d0f42fd9a7126",
+      "scope": "runtime/navigation/focus and34+2+4 new actual-PCM/adapter/map cases"
+    },
+    "parent": {
+      "status": "CLEAR",
+      "scope": "seven production files and appended session/UI/tab/native5/flat4 tests; exact old prefixes",
+      "qualification": "Source readback only"
+    },
+    "native_peer": {
+      "status": "PENDING",
+      "scope": "actual keyboard/modal/probe API and exact added-check count"
+    }
+  },
+  "primary_api_sources": [
+    "https://docs.wxpython.org/wx.SpinCtrl.html",
+    "https://github.com/wxWidgets/Phoenix/blob/wxPython-4.2.4/unittests/test_spinctrl.py"
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/navigation.py",
+      "before_blob": "c6915369d387bd2750a234da7c131bf49dd588cb",
+      "after_blob": "50b1a64af9700e03a56d5b3b91a4a22ddb63a085",
+      "utf8_bytes": 6289,
+      "sha256": "bbfc70253bb55bf53b9b43e75db87951afbd9ac2252ade4d2385a7bd81db32f4",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "before_blob": "32e04064f9a527ba75b43d242cbc9c4fe9dcb245",
+      "after_blob": "bb1c1dfc52ebbcb5935a2670f553272fb76f8f10",
+      "utf8_bytes": 38421,
+      "sha256": "0f14ff78d78aac1eb0dadec675d661bebe096f64b37192cfbbc2f23936590090",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "before_blob": "811b233932f8227e3bc65ea8c58f34318ddc4ea1",
+      "after_blob": "f10e0c3bb5840fa8554236e2a4099399d00b1586",
+      "utf8_bytes": 5825,
+      "sha256": "743f58a5d0b088696f00fececacb290698f9df2ede6c7c81263e963602cf56d7",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/focus.py",
+      "before_blob": "1b338ee9d92a9d530211db64cef4b9a07a46b168",
+      "after_blob": "e14cd6d76e901576042f0e808765bdca41b83fae",
+      "utf8_bytes": 8764,
+      "sha256": "51ad514bd8af260849d92ccf550c25d6922487c2737e42494e3550dc8a813050",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_synthesis.py",
+      "before_blob": "094be5e99f763b906bf638e588ff3c1f5b517368",
+      "after_blob": "60fa0d3b980f7467e3058f64557008ad22d315c0",
+      "utf8_bytes": 12855,
+      "sha256": "497b923554ef1bf824c7aa479bc929ae68301a9af172cffcb92811847b8c7967",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "before_blob": "1cb8d68b81161d9b37f90da26a9f174bd57d2261",
+      "after_blob": "e347689edefec9dcce33ef818e21cd089d20c262",
+      "utf8_bytes": 75254,
+      "sha256": "810bc5aa8028e5af18d76c5c4be5c9502445eaeab8e8311a6f91680ff2246d50",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_tabs.py",
+      "before_blob": "a6dc58c16eee4c48702299025408bf058829c213",
+      "after_blob": "5674622e5cafc02d633d53cc374bd4149be6a933",
+      "utf8_bytes": 14590,
+      "sha256": "99e13ccc614f02bce393e60f02067a53cab3a376e40fda31108178114ec5302e",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_pauses.py",
+      "before_blob": null,
+      "after_blob": "4236fdfbd2acdddf4478e09546185c0daf55d6b5",
+      "utf8_bytes": 13858,
+      "sha256": "7c7d61fead17e327dd003050d3cc6636c74e49670e6c1552e160c6ad4e4c65fb",
+      "old_prefix_preserved": null,
+      "inverse_exact": false
+    },
+    {
+      "path": "carr-library/tests/speech/test_session.py",
+      "before_blob": "9207359af23603a9e340b4df182d38022fb82f94",
+      "after_blob": "6d45efa39654db8e2eab9d0eeb5257138f8415d1",
+      "utf8_bytes": 11122,
+      "sha256": "807d68b64386fcd8da3b385f0d87d7a67049815b617b08a3702e9d4c7da083dc",
+      "old_prefix_preserved": true,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/speech/test_registered_studio_voices.py",
+      "before_blob": "dbf9a33e636dee63ac1102e99a6c417c13be1fcd",
+      "after_blob": "eba9c58dbbc58c9b39611ac579529beaacda6d12",
+      "utf8_bytes": 14369,
+      "sha256": "47b416e432025ec0cb190cd9a10f375e40d3f9c1ff433d8a59ccb5635510f2b5",
+      "old_prefix_preserved": true,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_focus.py",
+      "before_blob": "cc4447c13860b3893df5a9dca653344cc9eb8531",
+      "after_blob": "b3c3732c10339c5202e2c3bb05319da5e6992556",
+      "utf8_bytes": 7984,
+      "sha256": "e5821f6615a4cae0d581e9d1bf3e48894a325b4397e4ac6e5b1a994ef50ac3bf",
+      "old_prefix_preserved": true,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/storage/test_reader_synthesis_backup.py",
+      "before_blob": "79ce91ccb1d6eab758e0553208fcff99e71d9490",
+      "after_blob": "b810249573b7af0e3594cd693b842771802d1e10",
+      "utf8_bytes": 8758,
+      "sha256": "51dc17a5fd46ed6f64ed78c94e36085aac1a6655bea07adae2c669222e98b311",
+      "old_prefix_preserved": true,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_synthesis.py",
+      "before_blob": "abcc257c033517e4908fabae7a625be5920b4362",
+      "after_blob": "81cf744697c5749d48d514ad427a2f349ac743c8",
+      "utf8_bytes": 40242,
+      "sha256": "eaed978cab81ae553539c064869f4906cb1d0870e8d96d1ba8e3e2fd1ca03405",
+      "old_prefix_preserved": true,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_tabs.py",
+      "before_blob": "ebb21375282412139a7a39c6733c777d5187434b",
+      "after_blob": "e9141c78484bd49af160ab90ac961755a9a0de24",
+      "utf8_bytes": 29571,
+      "sha256": "b75d79b624978b8b4c394ae40fcccf854cd94c2a9c4f1ebcffa29dafebd16c1e",
+      "old_prefix_preserved": true,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "before_blob": "6519abd0f992d90ee596139bdad7c9595612986d",
+      "after_blob": "031ad7ee23ec0922842c814b0ce6d84a59c84865",
+      "utf8_bytes": 29917,
+      "sha256": "a94d594d5ea7a3eabfc29c3d7a0fa230efe0df2e623648b2ee42b37a2ee72a9b",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+      "before_blob": "b683358bf3325749f852040cef8a9e704c4c414a",
+      "after_blob": "829c3acc249175c9f04abe614144e5a17fa86fc7",
+      "utf8_bytes": 18025,
+      "sha256": "921b8606686f00730d37c3a5708158162db4b8ac2e8ea13e866ef3c397d6e905",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "before_blob": "cdfa0c335a926c5f9a94a0c5464a4131e2de8847",
+      "after_blob": "cdf2e05152e2aea1cebf5b2c0f0b0221a0698dcc",
+      "utf8_bytes": 40879,
+      "sha256": "bbc0bfaedbe96e7d86452cc6e2407507336b48c45e240efc25ecd8c83444de1d",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/docs/VOICE_PREFERENCES.md",
+      "before_blob": "41065b252ca876f51612c6b729184539b32c9d60",
+      "after_blob": "5126b83be9f5999abab1e53a4c4c95fc4f0a0cfb",
+      "utf8_bytes": 9038,
+      "sha256": "f46f4c47232623ff63e5ac59d7c2a8db24f0f77344997b605e3dea3befd1ad4b",
+      "old_prefix_preserved": null,
+      "inverse_exact": true
+    }
+  ],
+  "inverse_path": "carr-library/review/reader-extra-pauses-inverse-2026-11-28.json",
+  "execution_evidence": "No new source, installed, actual native, linguistic-quality or listening acceptance claimed. Existing receiving results retain their exact historical head/scope.",
+  "refs_mutated": false
+}

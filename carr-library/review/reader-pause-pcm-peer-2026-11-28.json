@@ -1,0 +1,69 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "date_utc": "2026-11-28",
+  "reviewer": "audio_render",
+  "verdict": "CLEAR",
+  "scope": "Independent runtime/PCM/registered-voice and precise audio-follow review only; UI/session/backup/native acceptance remains separate.",
+  "source_tree": "82e8721d33e5eea88153ba9fb8e0ce311620f0e2",
+  "test_tree": "35b0bfd5aa9c1e706f5cf71aacdeabbc246031f8",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/focus.py",
+      "sha": "e14cd6d76e901576042f0e808765bdca41b83fae"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/navigation.py",
+      "sha": "50b1a64af9700e03a56d5b3b91a4a22ddb63a085"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "sha": "bb1c1dfc52ebbcb5935a2670f553272fb76f8f10"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_focus.py",
+      "sha": "b3c3732c10339c5202e2c3bb05319da5e6992556"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_pauses.py",
+      "sha": "4236fdfbd2acdddf4478e09546185c0daf55d6b5"
+    },
+    {
+      "path": "carr-library/tests/speech/test_registered_studio_voices.py",
+      "sha": "eba9c58dbbc58c9b39611ac579529beaacda6d12"
+    }
+  ],
+  "contracts": [
+    "Zero pacing uses the original split_utterances and preserves the selected settings object; empty default session behavior is outside this review.",
+    "Nonzero engine calls clear only locally assembled pacing fields; generic Python helper still receives the exact original six ordered settings fields.",
+    "New boundaries are deterministic source punctuation/newline/blank-line/form-feed rules; highest-specificity co-located boundary wins, including explicit zero suppression.",
+    "Unsigned PCM8 uses128; signed16/24/32 silence uses zero bytes. Frames round by (milliseconds*rate+500)//1000, with byte admission before writing silence.",
+    "Bounded preflight caps10000 chunks and3600000 extra milliseconds before creating output or calling an engine; mid-silence and boundary preparation remain cancellable.",
+    "Existing native causal-owner retention of utterance and staging directory is unchanged.",
+    "Measured pause map has strictly increasing source offsets and nonempty in-range half-open PCM spans; audio-follow holds the prior word during inserted silence and remains approximate within speech."
+  ],
+  "test_evidence": {
+    "new_reading_pause_cases": 34,
+    "new_registered_cases": 2,
+    "new_focus_cases": 4,
+    "registered_preimage": "dbf9a33e636dee63ac1102e99a6c417c13be1fcd",
+    "registered_prefix_exact": true,
+    "focus_preimage": "cc4447c13860b3893df5a9dca653344cc9eb8531",
+    "focus_prefix_exact": true,
+    "meaningful_cases": [
+      "Actual8/16/24/32-bit mono/stereo PCM and unchanged UTF-8 text/hash.",
+      "11025Hz x20ms and44100Hz x5ms each yield221 frames.",
+      "Boundary priority, explicit zero suppression, long blank run, chunk/aggregate/output limits.",
+      "Cancellation during actual silence blocks and preparation before any engine call.",
+      "Exact old six-field helper payload.",
+      "Actual registered Flite concatenation compared with separately rendered selected-voice speech.",
+      "Current registered-SAPI adapter with explicitly modeled low-level PCM; exact rate/volume/budget mapping and pre/post registration checks.",
+      "Actual selected-range focus positions and malformed/unrelated map rejection."
+    ]
+  },
+  "limitations": [
+    "No execution result is asserted.",
+    "No speech quality, linguistic alignment, model inference or acoustic/native SAPI qualification is inferred from the synthetic cases."
+  ]
+}

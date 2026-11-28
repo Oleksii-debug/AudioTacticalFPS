@@ -1,0 +1,36 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "date_utc": "2026-11-28",
+  "scope": "Independent focused Windows native capacity workflow/API review",
+  "tree": "2fea0a4144d0330465df4e331257fe826ba6edfd",
+  "path": ".github/workflows/carr-native-capacity-evaluation.yml",
+  "blob": "c950b7414af6bb2d9db156c30d0795815404b75c",
+  "verdict": "CLEAR",
+  "reviewer": "audio_render",
+  "readback": "Complete source and current probe/cleanup API read",
+  "unchanged_blocks": [
+    "Exact current capacity75986c355938b419378142e376dd9c99dd8c9e47 Windows audio/OCR setup",
+    "Entire native command and typed receipt predicate"
+  ],
+  "required_scope": {
+    "installed_worker_cases": 12,
+    "worker_minutes": 5,
+    "native_minutes": 10,
+    "job_minutes": 35,
+    "python_modules": 398
+  },
+  "guards": [
+    "Four probe/policy/test/reference inputs match exact HEAD Git blobs before runpy.",
+    "Whole source/installed namespace and RECORD match committed reference.",
+    "Unchanged PYTEST_CHILD strict exit/expected-failure policy plus exact12 module-bound JUnit cases and0failure/error/skip.",
+    "All existing causal owners and notifications drain before final identity proof.",
+    "HEAD/source/probe/reference hashes rechecked; source and native failures remain workflow failures."
+  ],
+  "fixtures": {
+    "test_blob": "8901a9d15a031233eb6310d892ab7254f5c53c2a",
+    "probe_blob": "2e6b0c40c09b5ee86849f7a148167b56ada9b3a6",
+    "inverse": "Only bounded IDs for the same three payloads and exact unique Library menu lookup; original keyboard/native predicates and deadlines retained."
+  }
+}

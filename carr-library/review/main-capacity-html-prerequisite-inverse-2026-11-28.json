@@ -1,0 +1,27 @@
+{
+  "schema": "carr-review-inverse-hunks/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before_blob": "1a5c29d767863664989e4c5d01f569b599f1617c",
+      "after_blob": "5d64b81982cd8eb6dbe63a264fcaa17b9250a543",
+      "before_sha256": "bb164ea8d6ee16d1da91347a2f50da6fb92c598040dda0ec30cf48205eac0660",
+      "after_sha256": "dd9388a39fa67610a17093b49bfbbe03f6ff72663efa414465ac853a6ebc21a0",
+      "hunks": [
+        {
+          "before": "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          & $python -m pip install --no-deps .\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n",
+          "after": "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0 'beautifulsoup4>=4.12,<5'\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          & $python -m pip install --no-deps .\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n"
+        },
+        {
+          "before": "          # Finish test-only acquisition before the offline execution boundary.\n          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'\n          New-Item -ItemType Directory -Force $testWheels | Out-Null\n          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'), $env:CARR_EPUBCHECK_JAVA) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }\n          $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')\n",
+          "after": "          # Finish test-only acquisition before the offline execution boundary.\n          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'\n          New-Item -ItemType Directory -Force $testWheels | Out-Null\n          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0 'beautifulsoup4>=4.12,<5'\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'), $env:CARR_EPUBCHECK_JAVA) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }\n          $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')\n"
+        },
+        {
+          "before": "\n          $python = Join-Path $bundle '.venv/Scripts/python.exe'\n          # Test dependencies are installed only after production installation passes.\n          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'\n          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'\n",
+          "after": "\n          $python = Join-Path $bundle '.venv/Scripts/python.exe'\n          # Test dependencies are installed only after production installation passes.\n          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0 'beautifulsoup4>=4.12,<5'\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'\n          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'\n"
+        }
+      ]
+    }
+  ]
+}

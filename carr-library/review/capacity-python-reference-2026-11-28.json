@@ -1,12 +1,12 @@
 {
   "schema": "carr-python-reference/1",
-  "base_commit": "73010d4b24515296edb43f7f27969641a66d3e7c",
-  "status": "SOURCE_REVIEWED; exact successor execution pending",
-  "derivation": "All 398 Python paths retained from parent; update only the two observed OCR configuration callers using exact fetched UTF-8 bytes and Git blobs. No parent PASS is inherited.",
+  "base_commit": "246e6e1cc16c649d2204740cc5ee2d01c2d08646",
+  "status": "SOURCE_REFERENCE_NOT_RUNTIME_QUALIFICATION",
+  "derivation": "Preserved superseded398-module lineage only: exact246 parent plus seven reviewed reader pause modules, bounded scan cancellation latch and two-line desktop backup callback repair. Current canonical7e8f9d2 uses a different363-module architecture; no runtime evidence or product selection transfers.",
   "digests": {
-    "git_rows_sha256": "e10d5dfa95720303052ac0965cb0b1e9278664c7a5698ed3597a6e6c16e74a62",
-    "runtime_rows_sha256": "1325da8551c44aaeaafc8f8db72123d3e8cc503ce67452de66da7e1f333cb504",
-    "compact_mapping_sha256": "ad4159441776e84f5fbf5354b86b1fe20f78c84a4325c81f6b32d2316934f147"
+    "git_rows_sha256": "f741e475c398000051c81b59b820432b49d598a0c8ea67dd2d4d5393e08cadeb",
+    "runtime_rows_sha256": "33a2b003adce280a6cfc2478bacb3b5b52bd9544da5842f20683fe804c069e99",
+    "compact_mapping_sha256": "220b7888619ad557aae8cae08a17458c9435493a24be8f788dc2ab089531d682"
   },
   "git_rows": [
     {
@@ -611,7 +611,7 @@
     },
     {
       "path": "carr-library/src/carr_library/ingest/batch_pages.py",
-      "git_blob": "1dfa39b1277a929ecf75d42f50f0f1af9d6281c4"
+      "git_blob": "7c0a2d9072288eb24e237bc6d1b855ddea88335a"
     },
     {
       "path": "carr-library/src/carr_library/ingest/batch_scan.py",
@@ -923,7 +923,7 @@
     },
     {
       "path": "carr-library/src/carr_library/speech/focus.py",
-      "git_blob": "1b338ee9d92a9d530211db64cef4b9a07a46b168"
+      "git_blob": "e14cd6d76e901576042f0e808765bdca41b83fae"
     },
     {
       "path": "carr-library/src/carr_library/speech/listening.py",
@@ -931,7 +931,7 @@
     },
     {
       "path": "carr-library/src/carr_library/speech/navigation.py",
-      "git_blob": "c6915369d387bd2750a234da7c131bf49dd588cb"
+      "git_blob": "50b1a64af9700e03a56d5b3b91a4a22ddb63a085"
     },
     {
       "path": "carr-library/src/carr_library/speech/output_devices.py",
@@ -971,7 +971,7 @@
     },
     {
       "path": "carr-library/src/carr_library/speech/runtime.py",
-      "git_blob": "32e04064f9a527ba75b43d242cbc9c4fe9dcb245"
+      "git_blob": "bb1c1dfc52ebbcb5935a2670f553272fb76f8f10"
     },
     {
       "path": "carr-library/src/carr_library/speech/sapi_native_worker.py",
@@ -979,7 +979,7 @@
     },
     {
       "path": "carr-library/src/carr_library/speech/session.py",
-      "git_blob": "811b233932f8227e3bc65ea8c58f34318ddc4ea1"
+      "git_blob": "f10e0c3bb5840fa8554236e2a4099399d00b1586"
     },
     {
       "path": "carr-library/src/carr_library/speech/source.py",
@@ -1303,7 +1303,7 @@
     },
     {
       "path": "carr-library/src/carr_library/ui/desktop_app.py",
-      "git_blob": "638220343e46ef86aae6d5194980f72e83585690"
+      "git_blob": "64366ef6f477c1d3a1bb82b8edc8553a6245ad25"
     },
     {
       "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
@@ -1483,11 +1483,11 @@
     },
     {
       "path": "carr-library/src/carr_library/ui/reader_synthesis.py",
-      "git_blob": "094be5e99f763b906bf638e588ff3c1f5b517368"
+      "git_blob": "60fa0d3b980f7467e3058f64557008ad22d315c0"
     },
     {
       "path": "carr-library/src/carr_library/ui/reader_tabs.py",
-      "git_blob": "a6dc58c16eee4c48702299025408bf058829c213"
+      "git_blob": "5674622e5cafc02d633d53cc374bd4149be6a933"
     },
     {
       "path": "carr-library/src/carr_library/ui/reader_transport.py",
@@ -1547,7 +1547,7 @@
     },
     {
       "path": "carr-library/src/carr_library/ui/speech_dialog.py",
-      "git_blob": "1cb8d68b81161d9b37f90da26a9f174bd57d2261"
+      "git_blob": "e347689edefec9dcce33ef818e21cd089d20c262"
     },
     {
       "path": "carr-library/src/carr_library/ui/studio_clips.py",
@@ -2354,9 +2354,9 @@
       "sha256": "bd8f47cd47dcf2fc6a4452a3cd386b46b0131e8a666bbade1747293baf5f6570"
     },
     {
-      "bytes": 19398,
+      "bytes": 19695,
       "path": "carr_library/ingest/batch_pages.py",
-      "sha256": "98f26a478e825edb3cf57a7706f970420c6084933e1db2a8bbca5352230b579d"
+      "sha256": "06afa0ce4a4d689b95b16913823fcb306c77212ac1ee3ebb7d77db77e31e3d38"
     },
     {
       "bytes": 26823,
@@ -2744,9 +2744,9 @@
       "sha256": "876061af38a20a6ed73e6761a3232e38e1e8a5dfac72726f16ca4149ef20059d"
     },
     {
-      "bytes": 6918,
+      "bytes": 8764,
       "path": "carr_library/speech/focus.py",
-      "sha256": "bd46903b701068194b012f246b6d8801d27a4c1241ad64db6b986c9b7d61a115"
+      "sha256": "51ad514bd8af260849d92ccf550c25d6922487c2737e42494e3550dc8a813050"
     },
     {
       "bytes": 15801,
@@ -2754,9 +2754,9 @@
       "sha256": "aad6fbeaf6385cd7f1bb2e10f18c0d40cf9dc1c5c866162836d924a8da49b6e9"
     },
     {
-      "bytes": 4859,
+      "bytes": 6289,
       "path": "carr_library/speech/navigation.py",
-      "sha256": "6797cf5f4872af3be0646dedb38105b8afea9c45524e02b2d8ccd073f2c062e3"
+      "sha256": "bbfc70253bb55bf53b9b43e75db87951afbd9ac2252ade4d2385a7bd81db32f4"
     },
     {
       "bytes": 7356,
@@ -2804,9 +2804,9 @@
       "sha256": "4c811cd824979cac6d2a504b98fb655165b821b416caf379734f780e06c855f5"
     },
     {
-      "bytes": 34240,
+      "bytes": 38421,
       "path": "carr_library/speech/runtime.py",
-      "sha256": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd"
+      "sha256": "0f14ff78d78aac1eb0dadec675d661bebe096f64b37192cfbbc2f23936590090"
     },
     {
       "bytes": 8339,
@@ -2814,9 +2814,9 @@
       "sha256": "6512d23dc1e1f6ad46fe34df593535db5279f2be54123c8861e10e87d1b6e7ed"
     },
     {
-      "bytes": 5007,
+      "bytes": 5825,
       "path": "carr_library/speech/session.py",
-      "sha256": "86c58a86b6d906bfa5a31c94d0589a34f25b9746aeeeee5f77a507dae6b11591"
+      "sha256": "743f58a5d0b088696f00fececacb290698f9df2ede6c7c81263e963602cf56d7"
     },
     {
       "bytes": 2859,
@@ -3219,9 +3219,9 @@
       "sha256": "990173356b7f3c5fd70e366ec7200f630bffb7024c68ac340f26a036b87f31d3"
     },
     {
-      "bytes": 77020,
+      "bytes": 77034,
       "path": "carr_library/ui/desktop_app.py",
-      "sha256": "cbc634d42ffbf7c6c56914f8c8bdb534d3202437e4e5521138fd40468e781b56"
+      "sha256": "6e2f9c359ca5481d24a86ae71ea6966f54f35824db1673018ceb50d459ca364e"
     },
     {
       "bytes": 20177,
@@ -3444,14 +3444,14 @@
       "sha256": "e578bd4ddfda7846a19385cfcde0dc2204a3764bdb7a0f9a725c3f71cec1fa39"
     },
     {
-      "bytes": 10228,
+      "bytes": 12855,
       "path": "carr_library/ui/reader_synthesis.py",
-      "sha256": "7527c0f8655ca97390f69831f387e4bffb236def7a701626894968d92b8b40c5"
+      "sha256": "497b923554ef1bf824c7aa479bc929ae68301a9af172cffcb92811847b8c7967"
     },
     {
-      "bytes": 14258,
+      "bytes": 14590,
       "path": "carr_library/ui/reader_tabs.py",
-      "sha256": "a5b611053393aa55d738f33ee8f4a5a416b8e7054c35e493ef16c0cb2a693475"
+      "sha256": "99e13ccc614f02bce393e60f02067a53cab3a376e40fda31108178114ec5302e"
     },
     {
       "bytes": 7435,
@@ -3524,9 +3524,9 @@
       "sha256": "f383f47ce12a8cd2caab657f33494322d9242ec7ef10a0b9d0cda0384b664185"
     },
     {
-      "bytes": 74479,
+      "bytes": 75254,
       "path": "carr_library/ui/speech_dialog.py",
-      "sha256": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59"
+      "sha256": "810bc5aa8028e5af18d76c5c4be5c9502445eaeab8e8311a6f91680ff2246d50"
     },
     {
       "bytes": 44042,
@@ -3745,7 +3745,7 @@
     "file_publication.py": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0",
     "ingest/asset_copy.py": "db1c5d742fa265feea81177f731c504b3e5eaba6c7c786c5e882ead7011daf96",
     "ingest/batch_cli.py": "bd8f47cd47dcf2fc6a4452a3cd386b46b0131e8a666bbade1747293baf5f6570",
-    "ingest/batch_pages.py": "98f26a478e825edb3cf57a7706f970420c6084933e1db2a8bbca5352230b579d",
+    "ingest/batch_pages.py": "06afa0ce4a4d689b95b16913823fcb306c77212ac1ee3ebb7d77db77e31e3d38",
     "ingest/batch_scan.py": "4412a304ecac7a492316cad6cbe0d8b0f00aa0bc45e263b1d6ac8af03bfd2471",
     "ingest/batches.py": "1bfdb7d32d27bf64a55850d9ba6fe1113fe7156910a06825c97f1e1605ad8cc8",
     "ingest/bundle.py": "e1c60c67722ca9f2e36913faa8b8fa6e5c923315cdda2bfc407b3a12a0f8f6c5",
@@ -3823,9 +3823,9 @@
     "speech/_io.py": "338ba24fd644d911ec59327f560394f4f309b55dec9ea4261011e1474c6ddf5a",
     "speech/_wave_output.py": "190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664",
     "speech/clipboard_reader.py": "876061af38a20a6ed73e6761a3232e38e1e8a5dfac72726f16ca4149ef20059d",
-    "speech/focus.py": "bd46903b701068194b012f246b6d8801d27a4c1241ad64db6b986c9b7d61a115",
+    "speech/focus.py": "51ad514bd8af260849d92ccf550c25d6922487c2737e42494e3550dc8a813050",
     "speech/listening.py": "aad6fbeaf6385cd7f1bb2e10f18c0d40cf9dc1c5c866162836d924a8da49b6e9",
-    "speech/navigation.py": "6797cf5f4872af3be0646dedb38105b8afea9c45524e02b2d8ccd073f2c062e3",
+    "speech/navigation.py": "bbfc70253bb55bf53b9b43e75db87951afbd9ac2252ade4d2385a7bd81db32f4",
     "speech/output_devices.py": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5",
     "speech/player.py": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4",
     "speech/playlist.py": "e1131ebaa7c05b6e2e89e14c5af1cb66819b90b7b751ca682e8e76a86c1c2885",
@@ -3835,9 +3835,9 @@
     "speech/reading.py": "9214370ce4f1aeca970a3dec937e0b3cbd672949e243fca2bf78a44d94f46da2",
     "speech/reading_tools.py": "0ec33986f54a584f3284123cac9839ac80d0dd3a19ee9044042c14568e47cf17",
     "speech/regex_worker.py": "4c811cd824979cac6d2a504b98fb655165b821b416caf379734f780e06c855f5",
-    "speech/runtime.py": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd",
+    "speech/runtime.py": "0f14ff78d78aac1eb0dadec675d661bebe096f64b37192cfbbc2f23936590090",
     "speech/sapi_native_worker.py": "6512d23dc1e1f6ad46fe34df593535db5279f2be54123c8861e10e87d1b6e7ed",
-    "speech/session.py": "86c58a86b6d906bfa5a31c94d0589a34f25b9746aeeeee5f77a507dae6b11591",
+    "speech/session.py": "743f58a5d0b088696f00fececacb290698f9df2ede6c7c81263e963602cf56d7",
     "speech/source.py": "019a9fc6b130e6c5f73fccf25a5084a4a3b91766ca9abb70f642e2828631faa1",
     "speech/spelling.py": "b110ce0571113a741570f6b665709adf92a77d52f9aac6328b6e23259286ef09",
     "speech/spelling_worker.py": "698f563221238a71fb86f33989e6d3650acf518e62b7b47fc271d28ba2be6c14",
@@ -3918,7 +3918,7 @@
     "ui/clipboard_reader.py": "41fab62bb55b7d72e642518b86c306838048dbfc41641fdb5f09acfde973017a",
     "ui/command_palette.py": "bbe5c8d042ac4ab24336c8367067a2712e17a0e4de789376c48b27d26826d4b0",
     "ui/delivery_dialog.py": "990173356b7f3c5fd70e366ec7200f630bffb7024c68ac340f26a036b87f31d3",
-    "ui/desktop_app.py": "cbc634d42ffbf7c6c56914f8c8bdb534d3202437e4e5521138fd40468e781b56",
+    "ui/desktop_app.py": "6e2f9c359ca5481d24a86ae71ea6966f54f35824db1673018ceb50d459ca364e",
     "ui/desktop_evidence_panel.py": "d40dd5f3c937188a912764cbb3c918892afb5ea8905f40bcd7804c96cec2e1e0",
     "ui/desktop_integration.py": "d5e4e7f030c09a0d0220fb967ba98526ba7d8a7440de3bc3b08c02f5d8f3c872",
     "ui/desktop_settings.py": "cb85eb0ec31e6b249518b96efd08525e4afcb2c02ea1dd516d40e42aa799c361",
@@ -3963,8 +3963,8 @@
     "ui/reader_preparation.py": "05bccfceed7d4785b3fb666599a77de35db35ba9796495ea5ae93894ba053c37",
     "ui/reader_presentation.py": "b9e800e13a47ee0240b2a37b8172b5c549d00c6971b0187e1969918d3f1cd9db",
     "ui/reader_spelling.py": "e578bd4ddfda7846a19385cfcde0dc2204a3764bdb7a0f9a725c3f71cec1fa39",
-    "ui/reader_synthesis.py": "7527c0f8655ca97390f69831f387e4bffb236def7a701626894968d92b8b40c5",
-    "ui/reader_tabs.py": "a5b611053393aa55d738f33ee8f4a5a416b8e7054c35e493ef16c0cb2a693475",
+    "ui/reader_synthesis.py": "497b923554ef1bf824c7aa479bc929ae68301a9af172cffcb92811847b8c7967",
+    "ui/reader_tabs.py": "99e13ccc614f02bce393e60f02067a53cab3a376e40fda31108178114ec5302e",
     "ui/reader_transport.py": "045ba64d7bc5e0f84d2c3f3a734e630f11cbcf3b6108a067d662930cb14dd763",
     "ui/reading_desk.py": "cab8326758d31094416dc29b30da88f18df40129a8f7ccb4d7fc3079926c40ce",
     "ui/reading_focus.py": "a5391ff19353c86948b9ce7030484872fe96c1f34554225b35a50ca3a2e12c27",
@@ -3979,7 +3979,7 @@
     "ui/search_panel.py": "15ec892fa199ea36e12734a29e84f2e8237271424f8dfa91cf55c4f3037f4803",
     "ui/source_launch.py": "8c2e87eee3a0e0437ac8518f98f1219affd4cbfea8412a6fc954bd59939dc92d",
     "ui/source_review.py": "f383f47ce12a8cd2caab657f33494322d9242ec7ef10a0b9d0cda0384b664185",
-    "ui/speech_dialog.py": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59",
+    "ui/speech_dialog.py": "810bc5aa8028e5af18d76c5c4be5c9502445eaeab8e8311a6f91680ff2246d50",
     "ui/studio_clips.py": "8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e",
     "ui/studio_dialog.py": "c92254c17a6e43dd4391ce7e0db2bc2fc6c30e6344782c9d179c99692d54de4e",
     "ui/studio_silence_inspection.py": "1aacc15b7b81a8bcf6da66359f371f3b3af269d6af7aa9d2010378f196151934",

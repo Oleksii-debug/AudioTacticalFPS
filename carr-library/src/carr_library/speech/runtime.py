@@ -3,7 +3,7 @@
 SAPI, eSpeak, Piper and FFmpeg are invoked with fixed argument vectors. Text is
 data, never a shell command, SSML or a user-supplied FFmpeg filter graph.
 """
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import json
 import locale
@@ -31,8 +31,14 @@ class SpeechSettings:
     punctuation: bool = False
     timeout_seconds: float = 180
     max_output_bytes: int = 512 * 1024 * 1024
+    sentence_pause_ms: int = 0
+    paragraph_pause_ms: int = 0
+    section_pause_ms: int = 0
 
     def __post_init__(self):
+        for value in (self.sentence_pause_ms, self.paragraph_pause_ms, self.section_pause_ms):
+            if type(value) is not int or not 0 <= value <= 30_000:
+                raise ValueError('Extra reading pauses must be integer milliseconds from 0 to 30000.')
         if type(self.rate) is not int or not -10 <= self.rate <= 10:
             raise ValueError('Speech rate must be an integer between -10 and 10.')
         if type(self.volume) is not int or not 0 <= self.volume <= 100:
@@ -70,6 +76,21 @@ class Voice:
 
 
 @dataclass(frozen=True)
+class SpeechPause:
+    text_offset: int
+    start_frame: int
+    end_frame: int
+    kind: str
+
+    def __post_init__(self):
+        if (type(self.text_offset) is not int or self.text_offset <= 0
+                or type(self.start_frame) is not int or self.start_frame <= 0
+                or type(self.end_frame) is not int or self.end_frame <= self.start_frame
+                or self.kind not in ('sentence', 'paragraph', 'section')):
+            raise ValueError('Invalid measured reading pause.')
+
+
+@dataclass(frozen=True)
 class SpeechResult:
     path: Path
     sha256: str
@@ -80,6 +101,7 @@ class SpeechResult:
     voice_id: str
     text_sha256: str
     chunks: int
+    pauses: tuple[SpeechPause, ...] = ()
 
 
 def _wave_info(path, *, cancelled=lambda: False):
@@ -117,6 +139,65 @@ def split_utterances(text, *, maximum=2400):
                     end = candidate
         yield text[start:end]
         start = end
+
+
+_MAX_PACED_CHUNKS = 10_000
+_MAX_TOTAL_PAUSE_MS = 3_600_000
+
+
+def _speech_plan(text, settings, cancelled):
+    pauses = dict(sentence=settings.sentence_pause_ms, paragraph=settings.paragraph_pause_ms,
+                  section=settings.section_pause_ms)
+    if not any(pauses.values()):
+        for chunk in split_utterances(text):
+            yield chunk, 0, None, 0
+        return
+    from .navigation import speech_boundaries
+
+    start = 0
+    for end, kind in speech_boundaries(text, cancelled=cancelled):
+        milliseconds = pauses[kind]
+        if not milliseconds or not text[start:end].strip():
+            continue
+        pending = None
+        for chunk in split_utterances(text[start:end]):
+            check_cancelled(cancelled)
+            if chunk.strip():
+                if pending is not None:
+                    yield pending, 0, None, 0
+                pending = chunk
+        if pending is not None:
+            yield pending, milliseconds, kind, end
+        start = end
+    for chunk in split_utterances(text[start:]):
+        check_cancelled(cancelled)
+        yield chunk, 0, None, 0
+
+
+def _validate_pacing(text, settings, cancelled):
+    """Bound opt-in work before the first engine call or output creation."""
+    if not (settings.sentence_pause_ms or settings.paragraph_pause_ms or settings.section_pause_ms):
+        return
+    chunks = milliseconds = 0
+    for chunk, pause, _, _ in _speech_plan(text, settings, cancelled):
+        check_cancelled(cancelled)
+        if chunk.strip():
+            chunks += 1
+            milliseconds += pause
+        if chunks > _MAX_PACED_CHUNKS or milliseconds > _MAX_TOTAL_PAUSE_MS:
+            raise ValueError('Split paced reading into at most 10000 utterances and one hour of extra pauses.')
+
+
+def _silence(combined, frames, channels, width, cancelled):
+    # PCM8 is unsigned; its silence midpoint is 128. Wider integer PCM is signed.
+    value = b'\x80' if width == 1 else b'\0'
+    remaining = frames
+    while remaining:
+        check_cancelled(cancelled)
+        count = min(remaining, 65536)
+        combined.writeframesraw(value * (count * channels * width))
+        remaining -= count
+    check_cancelled(cancelled)
 
 
 class VoiceRegistry:
@@ -286,7 +367,12 @@ class VoiceRegistry:
         if options.volume != 100 and 'volume' not in voice.capabilities:
             raise ValueError('This voice does not expose synthesis volume control.')
         provider = self._owners[voice_id]
+        _validate_pacing(text, options, cancelled)
+        engine_options = (replace(options, sentence_pause_ms=0, paragraph_pause_ms=0, section_pause_ms=0)
+                          if options.sentence_pause_ms or options.paragraph_pause_ms or options.section_pause_ms
+                          else options)
         count, frames, params = 0, 0, None
+        pauses = []
         target = Path(destination).absolute()
         with new_output(target, cancelled=cancelled) as staged:
             with wave.open(str(staged), 'wb') as combined:
@@ -296,14 +382,14 @@ class VoiceRegistry:
                 combined.setnchannels(1)
                 combined.setsampwidth(2)
                 combined.setframerate(22050)
-                for chunk in split_utterances(text):
+                for chunk, pause_ms, pause_kind, text_offset in _speech_plan(text, options, cancelled):
                     check_cancelled(cancelled)
                     if not chunk.strip():
                         continue
                     part = staged.parent / 'utterance.wav'
                     remove_part = True
                     try:
-                        provider.render(chunk, voice, part, options, cancelled)
+                        provider.render(chunk, voice, part, engine_options, cancelled)
                         rate, channels, size, width = _wave_info(part, cancelled=cancelled)
                         if params is None:
                             params = rate, channels, width
@@ -312,13 +398,18 @@ class VoiceRegistry:
                             combined.setsampwidth(width)
                         elif params != (rate, channels, width):
                             raise ValueError('The voice changed audio format between chunks.')
-                        if (frames + size) * channels * width + 128 > options.max_output_bytes:
+                        silence_frames = (pause_ms * rate + 500) // 1000
+                        if (frames + size + silence_frames) * channels * width + 128 > options.max_output_bytes:
                             raise ValueError('Speech exceeds the selected audio budget. Split it into chapters.')
                         with wave.open(str(part), 'rb') as segment:
                             while block := segment.readframes(65536):
                                 check_cancelled(cancelled)
                                 combined.writeframesraw(block)
                         frames += size
+                        if silence_frames:
+                            _silence(combined, silence_frames, channels, width, cancelled)
+                            pauses.append(SpeechPause(text_offset, frames, frames + silence_frames, pause_kind))
+                            frames += silence_frames
                         count += 1
                     except BaseException as error:
                         from ..audio.cleanup import _pending_owners
@@ -332,7 +423,7 @@ class VoiceRegistry:
             rate, channels, frames, _ = _wave_info(staged, cancelled=cancelled)
             checksum = digest(staged, cancelled=cancelled)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
-                            voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
+                            voice_id, sha256(text.encode('utf-8')).hexdigest(), count, tuple(pauses))
 
 
 class SapiProvider:
@@ -637,8 +728,12 @@ class LocalHelperProvider:
         return tuple(result)
 
     def render(self, text, voice, output, settings, cancelled):
+        # Reader pacing is assembled locally; the versioned engine payload is unchanged.
+        engine_settings = asdict(settings)
+        for name in ('sentence_pause_ms', 'paragraph_pause_ms', 'section_pause_ms'):
+            engine_settings.pop(name)
         response = self._request({'operation': 'render', 'voice_id': self._tokens[voice.id],
-            'text': text, 'output': str(output), 'settings': asdict(settings)}, cancelled=cancelled,
+            'text': text, 'output': str(output), 'settings': engine_settings}, cancelled=cancelled,
             timeout=settings.timeout_seconds, output=output, budget=settings.max_output_bytes)
         if response.get('status') != 'rendered':
             raise ValueError('The local voice helper did not report completion.')

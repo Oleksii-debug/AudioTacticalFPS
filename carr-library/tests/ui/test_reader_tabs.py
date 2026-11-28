@@ -571,3 +571,34 @@ def test_saved_audio_position_binds_exact_synthesis_request(view, field, value):
     assert state.resume is saved and state.resume.audio_seconds == 4.25
     saved.document.replace(0, 1, 'Changed')
     assert view.tabs.saved_audio_position(saved.document, synthesis=exact) == 0
+
+
+def test_new_tab_inherits_extra_pauses_passively_and_preserves_saved_source(view):
+    tabs = view.tabs
+    original_capture = tabs.capture
+    def captured():
+        state, path = original_capture()
+        return replace(state, sentence_pause_ms=125, paragraph_pause_ms=750, section_pause_ms=2000), path
+    tabs.capture = captured
+    first = tabs.current
+    original = first.resume.document.source_text
+    tabs.on_new()
+    assert len(tabs.states) == 2 and tabs.current is not first
+    assert (tabs.current.resume.sentence_pause_ms, tabs.current.resume.paragraph_pause_ms,
+            tabs.current.resume.section_pause_ms) == (125, 750, 2000)
+    restored = tabs.store.draft(tabs.current.entry).load()
+    assert (restored.sentence_pause_ms, restored.paragraph_pause_ms, restored.section_pause_ms) == (125, 750, 2000)
+    assert restored.document.text == '' and first.resume.document.source_text == original
+    assert view.context.stops == 1 and not view.context.reports
+
+
+def test_saved_audio_position_is_bound_to_extra_pause_settings(view):
+    tabs = view.tabs
+    resume = replace(tabs.current.resume, sentence_pause_ms=125, paragraph_pause_ms=250)
+    tabs.save_resume(resume)
+    base = (resume.voice_id, resume.rate, resume.volume, resume.pitch, resume.punctuation)
+    assert tabs.saved_audio_position(resume.document, synthesis=base + (125, 250, 0)) == resume.audio_seconds
+    assert tabs.saved_audio_position(resume.document, synthesis=base) == 0
+    assert tabs.saved_audio_position(resume.document, synthesis=base + (125, 251, 0)) == 0
+    tabs.save_resume(replace(resume, sentence_pause_ms=0, paragraph_pause_ms=0))
+    assert tabs.saved_audio_position(resume.document, synthesis=base) == resume.audio_seconds

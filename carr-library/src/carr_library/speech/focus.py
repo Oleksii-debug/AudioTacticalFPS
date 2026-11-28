@@ -102,6 +102,7 @@ class ReadingAudio:
     path: Path
     frames: int
     sample_rate: int
+    pauses: tuple = ()
 
     @classmethod
     def from_render(cls, document, signature, start, end, text, result):
@@ -112,7 +113,17 @@ class ReadingAudio:
                 or type(result.frames) is not int or result.frames <= 0
                 or type(result.sample_rate) is not int or result.sample_rate <= 0):
             raise ValueError('Rendered audio no longer matches the exact reading-text snapshot.')
-        return cls(document, signature, start, end, Path(result.path), result.frames, result.sample_rate)
+        from .runtime import SpeechPause
+        pauses = getattr(result, 'pauses', ())
+        if not isinstance(pauses, tuple) or len(pauses) > 10_000:
+            raise ValueError('Invalid measured reading-pause map.')
+        prior_text = prior_frame = 0
+        for pause in pauses:
+            if (not isinstance(pause, SpeechPause) or not prior_text < pause.text_offset < len(text)
+                    or not prior_frame < pause.start_frame < pause.end_frame < result.frames):
+                raise ValueError('Invalid measured reading-pause map.')
+            prior_text, prior_frame = pause.text_offset, pause.end_frame
+        return cls(document, signature, start, end, Path(result.path), result.frames, result.sample_rate, pauses)
 
     @property
     def duration_seconds(self):
@@ -126,9 +137,30 @@ class ReadingAudio:
     def span_at(self, plan, path, seconds):
         self.check(plan, path)
         seconds = _number(seconds, 'audio-follow position')
-        fraction = min(seconds / self.duration_seconds, 1)
-        cursor = min(self.end - 1, self.start + int(fraction * (self.end - self.start)))
-        index = plan.index_at(cursor)
+        if self.pauses:
+            # Extra silence has exact frame/text boundaries. Within each spoken
+            # segment word timing remains approximate; silence holds its prior word.
+            frame = min(seconds * self.sample_rate, self.frames)
+            text_start = audio_start = 0
+            cursor = None
+            for pause in self.pauses:
+                if frame < pause.start_frame:
+                    fraction = (frame - audio_start) / (pause.start_frame - audio_start)
+                    cursor = text_start + int(fraction * (pause.text_offset - text_start))
+                    break
+                if frame < pause.end_frame:
+                    cursor = pause.text_offset - 1
+                    break
+                text_start, audio_start = pause.text_offset, pause.end_frame
+            if cursor is None:
+                fraction = (frame - audio_start) / (self.frames - audio_start)
+                cursor = text_start + int(fraction * (self.end - self.start - text_start))
+            cursor = min(self.end - 1, self.start + cursor)
+            index = max(plan.index_at(self.start), bisect_right(plan.starts, cursor) - 1)
+        else:
+            fraction = min(seconds / self.duration_seconds, 1)
+            cursor = min(self.end - 1, self.start + int(fraction * (self.end - self.start)))
+            index = plan.index_at(cursor)
         first, last = plan.spans[index]
         first, last = max(self.start, first), min(self.end, last)
         # A selection can start/end inside a word or contain only punctuation.

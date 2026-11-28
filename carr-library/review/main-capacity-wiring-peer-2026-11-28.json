@@ -1,0 +1,82 @@
+{
+  "schema": "carr-main-capacity-wiring-peer-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "workflow_preimage": "64fe0a67ea0b977800af6df9355c2790dd324123",
+  "reviewed_tree": "bc9a6e5c04b77b7b058a1f4cd89cf21ec03cf5e6",
+  "reviewed_workflow": "1a5c29d767863664989e4c5d01f569b599f1617c",
+  "dependency_corrected_workflow": "5d64b81982cd8eb6dbe63a264fcaa17b9250a543",
+  "independent_scope": "MAIN workflow only; the new ci_feature_capacity.py helper was independently reviewed by audio_render.",
+  "preserved_selection": {
+    "source_count": 451,
+    "source_py": 451,
+    "source_other": [],
+    "bundle_count": 346,
+    "bundle_whole_files": 339,
+    "bundle_nodes": [
+      "tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory",
+      "tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound",
+      "tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries",
+      "tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree",
+      "tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+      "tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence",
+      "tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested"
+    ],
+    "bundle_argv_exact": true,
+    "bundle_argv_count": 11,
+    "exact_pre_feature_arrays": true,
+    "base_blob": "e6696ed7aa1fd1c4afc2b24d4b80ff0647fe61ce",
+    "source_test_files": 450,
+    "source_bootstrap_files": [
+      "bootstrap/semantic_compat/test_probe.py"
+    ]
+  },
+  "limits": {
+    "job_minutes": 252,
+    "complete_bundle_minutes": 97,
+    "old_source_minutes": 75,
+    "new_source_gate_minutes": 30,
+    "new_bundle_gate_minutes": 30,
+    "all_other_original_step_limits_unchanged": true
+  },
+  "gating": [
+    "Source gate runs under not-cancelled and the same installed desktop/OCR/audio prerequisite successes, even if an earlier independent step failed.",
+    "Additional bundle gate requires the exact existing complete_bundle step success and uses its CARR_CI_BUNDLE .venv interpreter.",
+    "All helper/native subprocess failures fail the added step; both native script hashes and bundle-manifest hash remain checked.",
+    "The added bundle step verifies active temporary remote-egress rules for the exact selected installed programs, allowing only the already-declared synthetic loopback peer; finally restores original firewall profiles/rules.",
+    "The public tested-wheel artifact requires success() plus complete_bundle, additional_bundle and additional_source success. The failure artifact still excludes the wheel directory."
+  ],
+  "helper_peer_report": {
+    "agent": "/root/audio_render",
+    "verdict": "CLEAR",
+    "helper_blob": "3c05f97c43036b044bd4b29e9e5ff3aff79cba3c",
+    "tree": "ccaf8270d113aa76328fede0a006e4426f1ac0bd",
+    "reported_scope": "22 unique suites contain all nine moved feature selectors; source/installed/native CLI and both native report paths/fields;54 leaf origins, whole398 current inventory and unique RECORD; unchanged PYTEST_CHILD policy with added proof only."
+  },
+  "prerequisite_correction": {
+    "evidence": {
+      "project": "carr-library/pyproject.toml",
+      "project_blob": "5e73dcc7fb68ea22fd7bbd2c65c4eb783badde6a",
+      "extractor": "carr-library/bootstrap/vendor/cairn_extractors/html_extractor.py",
+      "extractor_blob": "c91772c65d9f75cc12457b58ae0c03629cff614f"
+    },
+    "reason": "The real pending HTML restore fixture resumes HtmlExtractor, which imports bs4 and uses the lxml parser. The current semantic lock includes lxml but no beautifulsoup4.",
+    "requirement": "beautifulsoup4>=4.12,<5",
+    "seams": [
+      "Existing source test-dependency installation",
+      "Existing test-wheel download before offline execution",
+      "Existing --no-index/--find-links bundled test-dependency installation"
+    ],
+    "transitive_dependencies": "The existing pip download resolves and obtains required wheels; the offline install uses the same declared requirement and local test wheelhouse.",
+    "unchanged": "No production dependency lock, bundle seal, application wheel, product module, fixture, selector, deadline or runtime guard is changed."
+  },
+  "exact_correction": {
+    "before_blob": "1a5c29d767863664989e4c5d01f569b599f1617c",
+    "after_blob": "5d64b81982cd8eb6dbe63a264fcaa17b9250a543",
+    "sha256": "dd9388a39fa67610a17093b49bfbbe03f6ff72663efa414465ac853a6ebc21a0",
+    "bytes": 176443,
+    "hunk_groups": 3,
+    "inverse_exact": true,
+    "full_cloud_readback_exact": true
+  },
+  "runtime_claim": "NOT_RUN. No historical qualification is transferred."
+}

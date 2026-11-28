@@ -1,0 +1,29 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "date_utc": "2026-11-28",
+  "reviewer": "audio_render",
+  "tree": "83509820534b07c8016ab59b8277f12308e19b19",
+  "verdict": "CLEAR",
+  "source": {
+    "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+    "before": "1dfa39b1277a929ecf75d42f50f0f1af9d6281c4",
+    "after": "7c0a2d9072288eb24e237bc6d1b855ddea88335a",
+    "exact_inverse": true
+  },
+  "tests": {
+    "path": "carr-library/tests/ingest/test_import_scan_pages.py",
+    "before": "8df874c7c58d8c3e9f184e923a26df89768db78d",
+    "after": "86c04b8a62c032cc088bc496963e6799cdd93e18",
+    "whole_old_file_exact_prefix": true,
+    "additional_cases": 5
+  },
+  "findings": [
+    "Cancellation is latched during the existing finite private inventory; every entry still invokes the callback and applies the original elapsed-time, directory-entry and saved-journal bounds.",
+    "Callback exceptions retain their original identity and propagate. A latched true request reaches the existing broker's immediate cancellation refusal before a source or lease is admitted.",
+    "Initial refusal retains the existing single inert cursor publication; no-progress continuation still raises without appending another journal.",
+    "All five new cases use the actual current LibraryApp/ImportBatchStore and existing broker. Journal/entry failures cannot bypass bounds under cancellation; the patched elapsed clock is confined to batch_pages.",
+    "Original repeated-cancel test and all existing test bytes are retained. No timeout, traversal, provider, native-owner or resource limit changed."
+  ]
+}

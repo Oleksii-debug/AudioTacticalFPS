@@ -1,3 +1,7 @@
+# Archived alternate lineage — current product is canonical7e8f9d2
+
+This file and the historical sections below belong to a preserved alternate implementation. See `../review/ARCHIVED_LINEAGE_DISPOSITION_2026_11_28.md`. This composition is SOURCE_REVIEWED / NOT_RUN and is not a final release or the current product selection.
+
 # Resonance V3 implementation and owner-test delivery status
 
 ## Current receiving: repair of the observed capacity failures

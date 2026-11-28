@@ -1,0 +1,51 @@
+{
+  "schema": "carr-measured-catalog-peer/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "component_tree": "5b253ebb4913ccb74d5d74042e491bb54608e709",
+  "reviewed": [
+    {
+      "path": "carr-library/scripts/benchmark_library_catalog.py",
+      "blob": "ff0b4174f3104201ebf2527b6d489345ed2e874f",
+      "sha256": "0ef21c5d7d3722002dda8e021ba89f63c6ee31ac6eac1eb1958a2b0e767ea7b4"
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_catalog_benchmark.py",
+      "blob": "8edd918daab602452833f44b53efbde861b41366",
+      "sha256": "6ef865f070a5f746dccbab31c7ea4d6584ee28fd32b74c1c95b0018354c11045"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "blob": "81e569b33a6acc4a64f3ee04176598487f9efc07",
+      "sha256": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d"
+    }
+  ],
+  "current_api": {
+    "application": "7bf626ad0545b64313bf680b14caa3b40f4c67d2",
+    "batch_pages": "0a41bbb7f1a8bd492bbdd26c4392be5b04af1ed2",
+    "batches": "f9c73a33ff8a819dba086f7cd7dc8b776b670985",
+    "worker": "c94d8828dd0adb595b943e77224d8adc596b6efe",
+    "federated_pages": "4e26b73f3dc4c1301a31cd638341dfb7fa1dff8e"
+  },
+  "findings": [
+    "Explicit ImportBudget and TextProfile2 map to current saved batch APIs without donor-only SearchResources, max_items, or close_search.",
+    "Independent authored field bytes are bounded to 4 MiB and are split into actual 65,536-character fragments; BOM, Unicode scalars, FF delimiters and exact original hashes are accounted separately.",
+    "Read budget implements current stopped/check protocol; search uses bounded source windows and opaque cursors, exact quotation copy and current federated handle revocation.",
+    "Worker instrumentation selects only the same admitted owned import request, forwards the real runner/options, retains actual cleanup, and labels individual worker peaks without claiming simultaneous family memory.",
+    "Create-only actual source generation, measured preflight, bounded inventories, stable page/request/edition identities, explicit resume, postcommit death and actual native cancellation controls are present.",
+    "Global ranking, semantic model, hard memory enforcement and human quality are explicitly unqualified.",
+    "Final cancellation classification distinguishes genuine child failure from an unproved cancellation and does not infer completed work without a returned native observation."
+  ],
+  "planned_catalog_cases": 13,
+  "execution": "NOT_RUN",
+  "known_separate_dependency": "The two config_from_dict callers on the current capacity base fail at import. The independently prepared caller repair is required before execution.",
+  "scope_limit": "This record covers the named generator/catalog sources and catalog tests only; it does not sign off backup benchmark code or transfer any donor/runtime result.",
+  "final_classification_review": {
+    "previous_catalog_blob": "ae92149e11a1cc0eda7a03b6c4999df5540bd050",
+    "source_hunks": 1,
+    "old_test_source_exact_prefix": true,
+    "conditions": "Failed/quarantined or other unadmitted row outcomes refuse cancellation receipt publication. The specific completed-before-boundary reason requires selected finished + actual returned native record + no cancellation request; otherwise the result explicitly says the boundary was not proved.",
+    "regression": "A real selected owned child exits 7 after actual startup/measurement prefix; current worker returns failed and the harness must emit neither cancellation nor catalog-verification receipt.",
+    "limits": "All original deadlines, process ownership and resource caps unchanged.",
+    "inverse": "EXACT"
+  }
+}

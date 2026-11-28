@@ -1,0 +1,91 @@
+{
+  "schema": "carr-final-aggregate-source-review/1",
+  "status": "SOURCE_REVIEWED / NOT_RUN on successor",
+  "reviewed_at_utc": "2026-11-28 10:32:44 UTC",
+  "parent": "69214167a42e69855cce08cf414c186115b62cca",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "workflow": {
+    "path": ".github/workflows/carr-windows.yml",
+    "base_blob": "64fe0a67ea0b977800af6df9355c2790dd324123",
+    "selected_blob": "5d64b81982cd8eb6dbe63a264fcaa17b9250a543"
+  },
+  "helper": {
+    "path": "carr-library/scripts/ci_feature_capacity.py",
+    "blob": "3c05f97c43036b044bd4b29e9e5ff3aff79cba3c"
+  },
+  "required_old_contract": {
+    "source_modules": 451,
+    "bundle_selector_strings": 357,
+    "bundle_distinct_modules": 352,
+    "bundle_step_minutes": 97,
+    "source_step_minutes": 75,
+    "job_minutes": 252,
+    "source_array_bytes_equal_pre_feature": true,
+    "bundle_array_bytes_equal_pre_feature": true,
+    "initial_bundle_argv_files_unchanged": 11,
+    "strict_native_guards_retained": true
+  },
+  "new_contract": {
+    "additional_source_suites": 22,
+    "additional_installed_suites": 22,
+    "whole_python_reference": "review/capacity-python-reference-2026-11-28.json",
+    "origins": 54,
+    "additional_source_minutes": 30,
+    "additional_bundle_minutes": 30,
+    "installed_wheel_RECORD": true,
+    "original_offline_PYTEST_CHILD_policy_retained": true,
+    "native_translation": {
+      "checks": 130,
+      "origins": 8,
+      "synthetic_REST_calls": 9
+    },
+    "native_import_backup": {
+      "probe": "windows_backup_import_access_smoke.py",
+      "original_bounds_seconds": [
+        450,
+        510,
+        540
+      ],
+      "origins": 28,
+      "actual_receipt_checks": "Positive observed count; no invented fixed counter"
+    },
+    "final_wheel_requires": [
+      "overall success",
+      "complete_bundle success",
+      "additional_bundle success",
+      "additional_source success"
+    ]
+  },
+  "test_prerequisites": {
+    "declared_dependency": "beautifulsoup4>=4.12,<5",
+    "three_seams": [
+      "source installation",
+      "test-wheel download",
+      "offline bundled test-wheel installation"
+    ],
+    "reason": "Real pending HTML recovery fixtures import bs4; the optional test dependency was absent in the hand-written Windows test setup."
+  },
+  "evidence_basis": {
+    "old_complete_bundle_seconds": 5571,
+    "old_complete_bundle_deadline_seconds": 5820,
+    "risk": "Adding new feature/capacity suites to the old aggregate would spend the demonstrated 249-second remaining margin.",
+    "response": "Move only nine added feature modules out of old arrays into a separately required22-suite gate. Keep every original selector, deadline, native predicate and publish condition."
+  },
+  "peer_trees": [
+    "1afeca2781460590e16388a710206b33fc7415f6",
+    "fd0542cbcfd02424dabfc2ab9af6a7f798f7ca8c"
+  ],
+  "component_v3_overlay": {
+    "tree": "fc1641b958b162e89d669cef9658a472dbabdabe",
+    "source_v3_selectors_before": 114,
+    "source_v3_selectors_after": 136,
+    "new_installed_capacity_suites": 17,
+    "new_installed_capacity_minutes": 30,
+    "old_v3_job_minutes": 110,
+    "component_common_before": 116,
+    "component_common_after": 149,
+    "component_each_os": 150,
+    "old_component_job_minutes": 75
+  },
+  "scope_limit": "These are additive required gates and setup fixes. None claims runtime, physical capture, manual NVDA, private engine execution or signed distribution."
+}

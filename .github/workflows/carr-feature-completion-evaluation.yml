@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   review:
-    name: Director FX, numeric effects, formatted translation and CUE / ${{ matrix.os }}
+    name: Reader pauses, Director FX, formatted translation and CUE / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -92,9 +92,9 @@ jobs:
           assert source != installed and not installed.is_relative_to(root / "src")
           selected = source if mode == "source" else installed
           artifacts = root / "ci-cue-interchange"
-          suites = ["tests/studio/test_interchange.py","tests/storage/test_cue_interchange_backup.py","tests/audio/test_director_effects.py","tests/storage/test_director_effects_backup.py","tests/assistant/test_translation_partition.py","tests/assistant/test_translation_layout.py","tests/assistant/test_translation_epub_layout.py","tests/ui/test_translation_layout.py","tests/storage/test_translation_layout_backup.py","tests/audio/test_effects.py","tests/audio/test_dsp.py","tests/audio/test_effect_presets.py","tests/audio/test_render.py","tests/ui/test_audio_effects.py","tests/studio/test_project_effects.py","tests/audio/test_director.py","tests/audio/test_director_resources.py","tests/audio/test_director_path_identity.py","tests/audio/test_projects.py","tests/ui/test_audio_studio.py","tests/studio/test_publishing_primary.py","tests/studio/test_director_silence.py","tests/assistant/test_translation.py","tests/assistant/test_translation_v3.py","tests/assistant/test_library_translation.py","tests/ui/test_translation_selection.py","tests/ui/test_library_translation_dialog.py","tests/storage/test_translation_runtime_recovery.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_publishing.py","tests/storage/test_production_operation_backup.py","tests/storage/test_studio_timeline_backup.py","tests/storage/test_canonical_backup_compat.py","tests/audio/test_cleanup_contexts.py","tests/packaging/test_managed_launch_boundary.py"]
+          suites = ["tests/studio/test_interchange.py","tests/storage/test_cue_interchange_backup.py","tests/audio/test_director_effects.py","tests/storage/test_director_effects_backup.py","tests/assistant/test_translation_partition.py","tests/assistant/test_translation_layout.py","tests/assistant/test_translation_epub_layout.py","tests/ui/test_translation_layout.py","tests/storage/test_translation_layout_backup.py","tests/audio/test_effects.py","tests/audio/test_dsp.py","tests/audio/test_effect_presets.py","tests/audio/test_render.py","tests/ui/test_audio_effects.py","tests/studio/test_project_effects.py","tests/audio/test_director.py","tests/audio/test_director_resources.py","tests/audio/test_director_path_identity.py","tests/audio/test_projects.py","tests/ui/test_audio_studio.py","tests/studio/test_publishing_primary.py","tests/studio/test_director_silence.py","tests/assistant/test_translation.py","tests/assistant/test_translation_v3.py","tests/assistant/test_library_translation.py","tests/ui/test_translation_selection.py","tests/ui/test_library_translation_dialog.py","tests/storage/test_translation_runtime_recovery.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_publishing.py","tests/storage/test_production_operation_backup.py","tests/storage/test_studio_timeline_backup.py","tests/storage/test_canonical_backup_compat.py","tests/audio/test_cleanup_contexts.py","tests/packaging/test_managed_launch_boundary.py","tests/speech/test_reading_focus.py","tests/speech/test_reading_pauses.py","tests/speech/test_registered_studio_voices.py","tests/speech/test_session.py","tests/storage/test_reader_synthesis_backup.py","tests/ui/test_reader_synthesis.py","tests/ui/test_reader_tabs.py"]
 
-          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.director","carr_library.audio.projects","carr_library.audio.dsp","carr_library.audio.effects","carr_library.audio.effect_controls","carr_library.ui.audio_studio","carr_library.ui.audio_effects","carr_library.ui.effects_dialog","carr_library.assistant.translation","carr_library.assistant.translation_layout","carr_library.assistant.translation_layout_worker","carr_library.assistant.translation_epub_layout_worker","carr_library.assistant.translation_partition","carr_library.ui.translation_dialog","carr_library.backup_producers","carr_library.state_recovery","carr_library.durable_state","carr_library.audio.cleanup","carr_library.translation_cli","carr_library.installation_lease"]
+          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.director","carr_library.audio.projects","carr_library.audio.dsp","carr_library.audio.effects","carr_library.audio.effect_controls","carr_library.ui.audio_studio","carr_library.ui.audio_effects","carr_library.ui.effects_dialog","carr_library.assistant.translation","carr_library.assistant.translation_layout","carr_library.assistant.translation_layout_worker","carr_library.assistant.translation_epub_layout_worker","carr_library.assistant.translation_partition","carr_library.ui.translation_dialog","carr_library.backup_producers","carr_library.state_recovery","carr_library.durable_state","carr_library.audio.cleanup","carr_library.translation_cli","carr_library.installation_lease","carr_library.speech.focus","carr_library.speech.navigation","carr_library.speech.runtime","carr_library.speech.session","carr_library.ui.reader_synthesis","carr_library.ui.reader_tabs","carr_library.ui.speech_dialog"]
           
           def checkout_head():
               value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
@@ -278,6 +278,66 @@ jobs:
           python -I -B -X utf8 -c $proof $probeBefore 2>&1 | Tee-Object ci-cue-interchange/translation-native-qualification.txt
           if ($LASTEXITCODE -ne 0) { $failures += 'translation-proof' }
           if ($failures.Count) { throw ('Required formatted translation checks failed: ' + ($failures -join ', ')) }
+
+      - name: Require actual native reader pause controls in both package modes
+        if: runner.os == 'Windows'
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $readerProof = @'
+          from hashlib import sha256
+          import json
+          import pathlib
+          import runpy
+          import subprocess
+          import sys
+          import sysconfig
+          import os
+          root = pathlib.Path.cwd().resolve()
+          head = os.environ['CARR_CUE_HEAD']
+          tracked = ('scripts/ci_feature_capacity.py', 'scripts/windows_voice_preferences_smoke.py',
+                     'scripts/windows_clipboard_reader_smoke.py')
+          before = {}
+          for relative in tracked:
+              raw = (root / relative).read_bytes()
+              committed = subprocess.run(['git', 'show', head + ':carr-library/' + relative],
+                  check=True, capture_output=True, timeout=20).stdout
+              assert raw == committed, relative
+              before[relative] = sha256(raw).hexdigest()
+          helper = runpy.run_path(str(root / 'scripts/ci_feature_capacity.py'))
+          source = root / 'src/carr_library'
+          installed = pathlib.Path(sysconfig.get_path('purelib')).resolve() / 'carr_library'
+          reference = json.loads((root / 'review/capacity-python-reference-2026-11-28.json').read_text(encoding='utf-8'))
+          expected = reference['compact_mapping']
+          assert helper['inventory'](source) == helper['inventory'](installed) == expected
+          record = helper['installed_record'](installed, expected)
+          results = []
+          errors = []
+          for mode, selected in (('source', source), ('installed', installed)):
+              path = root / 'ci-cue-interchange' / ('reading-pauses-' + mode + '.json')
+              command = [sys.executable, '-I', '-B', '-X', 'utf8',
+                         str(root / 'scripts/windows_voice_preferences_smoke.py')]
+              command += ['--source', str(root)] if mode == 'source' else ['--expect-installed']
+              completed = subprocess.run(command + ['--report', str(path)], timeout=105)
+              if completed.returncode:
+                  errors.append(mode + ': native process failed')
+                  continue
+              results.append(dict(mode=mode, **helper['reader_pause_receipt'](
+                  root, path, selected, expected, installed=mode == 'installed')))
+          assert helper['inventory'](source) == helper['inventory'](installed) == expected
+          assert helper['installed_record'](installed, expected) == record
+          helper['checkout_head'](root, head)
+          assert {name: sha256((root / name).read_bytes()).hexdigest() for name in tracked} == before
+          assert not errors and len(results) == 2, errors
+          output = dict(status='PASS', commit=head, package_python_files=len(expected),
+              RECORD_sha256=record, tracked_files=before, modes=results, NVDA='NOT_RUN',
+              acoustic_quality='NOT_RUN', physical_audio='NOT_RUN')
+          (root / 'ci-cue-interchange/reading-pauses-qualification.json').write_text(
+              json.dumps(output, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(output, sort_keys=True), flush=True)
+          '@
+          python -I -B -X utf8 -c $readerProof 2>&1 | Tee-Object 'ci-cue-interchange/reading-pauses-qualification.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Read the exact independent upstream CUE parser source
         if: runner.os == 'Linux'

@@ -1,0 +1,42 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+  "base_commit": "246e6e1cc16c649d2204740cc5ee2d01c2d08646",
+  "failure_head": "69214167a42e69855cce08cf414c186115b62cca",
+  "failure_job": 140948757337,
+  "failure": "The new bounded private inventory raised on initial cancellation before the pre-existing inert admission path, violating the unchanged repeated-cancel regression in both source and installed Linux runs.",
+  "resolution": "Latch requested cancellation while completing the finite private inventory, retain every elapsed-time/entry/journal cap and callback exception, then pass the latched request to the existing ResourceBroker reservation. A new scan saves one inert start cursor; unchanged continuation raises without appending.",
+  "unchanged": [
+    "Original repeated-cancel test and all original assertions",
+    "Source traversal and provider APIs",
+    "Journal, entry, time, memory and source limits",
+    "Shared broker and native ownership"
+  ],
+  "additional_cases": 5,
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "before_blob": "1dfa39b1277a929ecf75d42f50f0f1af9d6281c4",
+      "before": {
+        "sha256": "98f26a478e825edb3cf57a7706f970420c6084933e1db2a8bbca5352230b579d",
+        "bytes": 19398
+      },
+      "after": {
+        "sha256": "06afa0ce4a4d689b95b16913823fcb306c77212ac1ee3ebb7d77db77e31e3d38",
+        "bytes": 19695
+      }
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_scan_pages.py",
+      "before_blob": "8df874c7c58d8c3e9f184e923a26df89768db78d",
+      "before": {
+        "sha256": "3224513b7836e58c96d53c6647e02e77fe83df3d4b938b7bbac496c3dc730c4a",
+        "bytes": 11289
+      },
+      "after": {
+        "sha256": "34a41510b473bd32602e5dce6793ae5d092054e3f87e1c1246fbebe792944067",
+        "bytes": 14529
+      }
+    }
+  ]
+}

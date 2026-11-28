@@ -236,3 +236,67 @@ def test_paged_ocr_config_keeps_legacy_bytes_and_prepared_request_identity(tmp_p
     assert path.read_bytes() == before
     assert reopened.import_batch(workspace, first['batch_id'])['config'] == expected
     assert app.browse(workspace) == ()
+
+
+@pytest.mark.parametrize('guard', ['journals', 'entries', 'time'])
+def test_cancelled_admission_still_checks_the_complete_private_inventory(tmp_path, monkeypatch, guard):
+    from carr_library.ingest import batch_pages, batches
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Bounded cancelled admission')
+    root = sources(tmp_path)
+    first = app.plan_import_page(workspace, [root], max_files=1)
+    directory = app.root / 'import-batches'
+    originals = {path.name: path.read_bytes() for path in directory.glob('*.json')}
+    monkeypatch.setattr(batch_scan, 'planned_snapshot',
+        lambda *a, **k: pytest.fail('A cancelled admission opened another source.'))
+    if guard == 'journals':
+        monkeypatch.setattr(batches, 'MAX_BATCHES', 1)
+        message = 'saved import-journal allowance is full'
+    elif guard == 'entries':
+        monkeypatch.setattr(batches, 'MAX_BATCHES', 2)
+        for number in range(41):
+            (directory / ('private-' + str(number))).write_bytes(b'')
+        message = 'bounded inventory'
+    else:
+        ticks = iter((0.0, 2.0))
+        monkeypatch.setattr(batch_pages, 'time', SimpleNamespace(monotonic=lambda: next(ticks)))
+        message = 'selected time allowance'
+    with pytest.raises((ValueError, InterruptedError), match=message):
+        app.plan_import_page(workspace, [root], cancelled=lambda: True, timeout=1)
+    assert {path.name: path.read_bytes() for path in directory.glob('*.json')} == originals
+    assert app.import_batch(workspace, first['batch_id'])['rows'] == first['rows']
+    assert app.browse(workspace) == ()
+
+
+def test_inventory_cancellation_remains_latched_until_inert_admission(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('One observed cancellation')
+    root = sources(tmp_path)
+    observed = []
+    def cancelled():
+        observed.append(True)
+        return len(observed) == 1
+    monkeypatch.setattr(batch_scan, 'planned_snapshot',
+        lambda *a, **k: pytest.fail('A latched cancellation reached source bytes.'))
+    result = app.plan_import_page(workspace, [root], cancelled=cancelled)
+    assert observed and result['total'] == 0 and result['scan']['reason'] == 'admission'
+    assert result['scan']['cursor']['visited'] == result['scan']['cursor']['planned'] == 0
+    assert len(tuple((app.root / 'import-batches').glob('*.json'))) == 1
+    assert app.browse(workspace) == ()
+
+
+def test_inventory_cancellation_callback_failure_never_creates_a_journal(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Callback failure is not cancellation')
+    root = sources(tmp_path)
+    expected = RuntimeError('Caller cancellation observer failed.')
+    def cancelled():
+        raise expected
+    monkeypatch.setattr(batch_scan, 'planned_snapshot',
+        lambda *a, **k: pytest.fail('A failed cancellation observer reached source bytes.'))
+    with pytest.raises(RuntimeError) as failure:
+        app.plan_import_page(workspace, [root], cancelled=cancelled)
+    assert failure.value is expected
+    assert tuple((app.root / 'import-batches').glob('*.json')) == ()
+    assert app.browse(workspace) == ()

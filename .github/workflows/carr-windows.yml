@@ -66,7 +66,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0 'beautifulsoup4>=4.12,<5'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1041,16 +1041,7 @@ jobs:
             'tests/storage/test_transcription_composite_backup.py',
             'tests/transcription/test_owned_admission.py',
             'tests/transcription/test_protocol_routing.py',
-            'tests/reader/test_export_change_time.py',
-            'tests/audio/test_director_effects.py',
-            'tests/storage/test_director_effects_backup.py',
-            'tests/studio/test_interchange.py',
-            'tests/storage/test_cue_interchange_backup.py',
-            'tests/assistant/test_translation_partition.py',
-            'tests/assistant/test_translation_layout.py',
-            'tests/assistant/test_translation_epub_layout.py',
-            'tests/ui/test_translation_layout.py',
-            'tests/storage/test_translation_layout_backup.py'
+            'tests/reader/test_export_change_time.py'
           )
           ConvertTo-Json -InputObject $suites | Set-Content 'ci-results/required-source-suites.json'
 
@@ -1391,7 +1382,7 @@ jobs:
           # Finish test-only acquisition before the offline execution boundary.
           $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
           New-Item -ItemType Directory -Force $testWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0 'beautifulsoup4>=4.12,<5'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'), $env:CARR_EPUBCHECK_JAVA) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
@@ -1580,7 +1571,7 @@ jobs:
 
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
           # Test dependencies are installed only after production installation passes.
-          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0 'beautifulsoup4>=4.12,<5'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
@@ -1998,16 +1989,7 @@ jobs:
                             'tests/storage/test_transcription_composite_backup.py',
                             'tests/transcription/test_owned_admission.py',
                             'tests/transcription/test_protocol_routing.py',
-                            'tests/reader/test_export_change_time.py',
-              'tests/audio/test_director_effects.py',
-              'tests/storage/test_director_effects_backup.py',
-              'tests/studio/test_interchange.py',
-              'tests/storage/test_cue_interchange_backup.py',
-              'tests/assistant/test_translation_partition.py',
-              'tests/assistant/test_translation_layout.py',
-              'tests/assistant/test_translation_epub_layout.py',
-              'tests/ui/test_translation_layout.py',
-              'tests/storage/test_translation_layout_backup.py']
+                            'tests/reader/test_export_change_time.py']
           class ImmediateFailures:
               def pytest_runtest_logreport(self, report):
                   if report.failed:
@@ -2070,6 +2052,84 @@ jobs:
             throw 'Tested application wheel copy differs.'
           }
           @{ status='PASS'; source_commit=$sourceCommit; source_tree=$wheelProof.source_tree; wheel=$wheels[0].Name; sha256=$wheelProof.wheel_sha256; installed_bundle='PASS' } | ConvertTo-Json | Set-Content 'ci-results/tested-application-wheel.json'
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
+      - name: Require added features and capacity in the exact complete bundle
+        id: additional_bundle
+        if: ${{ !cancelled() && steps.complete_bundle.outcome == 'success' }}
+        timeout-minutes: 30
+        shell: pwsh
+        run: |
+          $bundle = $env:CARR_CI_BUNDLE
+          if (!$bundle -or !(Test-Path -LiteralPath $bundle -PathType Container)) { throw 'The already verified complete bundle is required.' }
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $manifestPath = Join-Path $bundle 'bundle-manifest.json'
+          $manifestBefore = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
+          $probeNames = @('windows_translation_v3_smoke.py', 'windows_backup_import_access_smoke.py')
+          $probeBefore = @{}
+          foreach ($name in $probeNames) { $probeBefore[$name] = (Get-FileHash -LiteralPath (Join-Path 'scripts' $name) -Algorithm SHA256).Hash }
+          $programs = @($python, (Join-Path $bundle '.venv/Scripts/pythonw.exe'),
+            (Join-Path $bundle 'runtime/python.exe'), (Join-Path $bundle 'runtime/pythonw.exe'),
+            (Join-Path $bundle 'ResearchLibrary.exe'), (Join-Path $bundle 'ocr/tesseract.exe'),
+            (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'),
+            (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'),
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) |
+            ForEach-Object { if (!(Test-Path -LiteralPath $_ -PathType Leaf)) { throw 'A required installed runtime program is absent.' }; [System.IO.Path]::GetFullPath($_) } |
+            Select-Object -Unique
+          $remoteRanges = @('0.0.0.1-126.255.255.255', '128.0.0.0-255.255.255.255',
+            '::2-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff')
+          function Normalize-AdditionalRanges($Ranges) {
+            @($Ranges | ForEach-Object {
+              $ends = $_ -split '-', 2
+              if ($ends.Count -ne 2) { throw 'Unexpected firewall remote-address filter.' }
+              ([System.Net.IPAddress]::Parse($ends[0])).ToString() + '-' + ([System.Net.IPAddress]::Parse($ends[1])).ToString()
+            } | Sort-Object)
+          }
+          $expectedRanges = @(Normalize-AdditionalRanges $remoteRanges)
+          $rulePrefix = 'CARR-additional-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -RemoteAddress $remoteRanges -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Added bundle checks require active firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Added bundle egress rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Added bundle rules do not cover every selected runtime.' }
+            foreach ($rule in $active) {
+              $actualRanges = @(Normalize-AdditionalRanges @(($rule | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress))
+              if (@(Compare-Object $expectedRanges $actualRanges).Count -ne 0) { throw 'Added bundle rule remote coverage differs.' }
+            }
+            @{ status='PASS'; blocked_programs=$filters; blocked_remote_ranges=$expectedRanges; allowed_test_peer='loopback'; scope='actual installed programs; synthetic local provider fixtures only' } |
+              ConvertTo-Json -Depth 4 | Set-Content 'ci-results/additional-bundle-firewall.json'
+            & $python -I -B -X utf8 scripts/ci_feature_capacity.py --mode installed --bundle $bundle --head $sourceCommit --report-dir ci-results 2>&1 | Tee-Object 'ci-results/additional-installed.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Added feature/capacity installed cases did not pass.' }
+            & $python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --expect-installed --output ci-results/bundle-formatted-translation.json 2>&1 | Tee-Object 'ci-results/bundle-formatted-translation.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual bundled formatted translation controls did not pass.' }
+            & $python -I -B -X utf8 scripts/windows_backup_import_access_smoke.py 2>&1 | Tee-Object 'ci-results/bundle-native-backup-import.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual bundled import and backup controls did not pass.' }
+            foreach ($name in $probeNames) {
+              if ((Get-FileHash -LiteralPath (Join-Path 'scripts' $name) -Algorithm SHA256).Hash -ne $probeBefore[$name]) { throw 'A native acceptance probe changed during execution.' }
+            }
+            if ((Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'The complete bundle seal changed during added acceptance.' }
+            & $python -I -B -X utf8 scripts/ci_feature_capacity.py --mode native --bundle $bundle --head $sourceCommit --report-dir ci-results 2>&1 | Tee-Object 'ci-results/additional-native.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Added native receipts or the complete bundle identity did not pass.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -2202,8 +2262,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 
+      - name: Require added features and capacity against the complete source runtime
+        id: additional_source
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
+        timeout-minutes: 30
+        run: |
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          $env:PATH = "$env:CARR_CI_OCR_DIR;$env:PATH"
+          $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+          $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+          $env:CARR_TEST_MODEL_DIR = $env:CARR_CI_MODEL_DIR
+          $env:CARR_TEST_MODEL_MANIFEST = $env:CARR_CI_MODEL_MANIFEST
+          & $env:CARR_PYTHON -B -X utf8 scripts/ci_feature_capacity.py --mode source --head $sourceCommit --report-dir ci-results 2>&1 | Tee-Object 'ci-results/additional-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Retain the exact wheel only after the full Windows aggregate succeeds
-        if: ${{ success() && steps.complete_bundle.outcome == 'success' }}
+        if: ${{ success() && steps.complete_bundle.outcome == 'success' && steps.additional_bundle.outcome == 'success' && steps.additional_source.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: carr-tested-application-wheel-${{ github.run_id }}-${{ github.run_attempt }}

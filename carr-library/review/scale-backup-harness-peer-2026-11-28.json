@@ -1,0 +1,56 @@
+{
+  "schema": "carr-backup-benchmark-independent-review/1",
+  "status": "SOURCE_REVIEWED/NOT_RUN",
+  "candidate_tree": "8737215e76bc833054355a0c361cd48cac4304dc",
+  "reviewer": "audio_render",
+  "scope": "Current native5 backup API, caller-selected resource accounting, actual fixture signatures, source/archive invariance and canceled restore-copy.",
+  "files": [
+    {
+      "path": "scripts/benchmark_library_backup.py",
+      "before": "586c56fc42d786abbc10fb71389285d1fdaa9648",
+      "after": "0e8b19c1f4db16c214c0d3a06730e36e04d94bad",
+      "sha256": "3d5b3052eaf308c435d6afcadb26a9cf86cc21cc5b7265da0279f8f8b1ed64a5",
+      "hunks": [
+        {
+          "oldLine": 321,
+          "newLine": 321,
+          "old": "    # Restore keeps one independently verified pending copy while projecting\n    # the current paths into its fresh root. Staged/final hard links share bytes.\n    staging_bytes = _round_mib(database_bytes + retained_bytes + fields[\"other\"][\"bytes\"]\n                              + 2*pending_bytes + 2*manifest_bytes + 64*MIB)",
+          "new": "    # Current _copy_allowance and _staging_requirement reserve two copies of\n    # every declared archive-data byte, plus both bounded manifest encodings.\n    # Published hard links do not reduce the verifier's independent copy plan.\n    archive_data_bound = database_bytes + retained_bytes + fields[\"other\"][\"bytes\"] + pending_bytes\n    staging_bytes = _round_mib(2*archive_data_bound + 2*manifest_bytes + 64*MIB)"
+        },
+        {
+          "oldLine": 338,
+          "newLine": 339,
+          "old": "    archive_bound = database_bytes + retained_bytes + fields[\"other\"][\"bytes\"] + pending_bytes + manifest_bytes",
+          "new": "    archive_bound = archive_data_bound + manifest_bytes"
+        }
+      ]
+    },
+    {
+      "path": "tests/scale/test_library_backup_benchmark.py",
+      "before": "1bc0d7275960c9f3f81bcb5800f629f8b131ab36",
+      "after": "acae6eb09bec318589d89dff72837df5b5a47baa",
+      "sha256": "3955c881b347c98169e751fac9bfa7949adcfbc1875655667175884ebb703b4f",
+      "old_file_exact_prefix": true,
+      "old_cases": 17,
+      "added_cases": 1,
+      "planned_cases": 18
+    }
+  ],
+  "resolved_finding": {
+    "old": "A single copy of database/original/other data plus two pending copies gave _copy_allowance less than its declared archive data above the margin.",
+    "new": "Two copies of all declared archive data plus two manifest limits and the original 64 MiB margin; selected before archive creation.",
+    "regression": "A fully written, fsynced and inventoried 65 MiB input proves current _copy_allowance before and after the complete declared data. This input is not claimed to have been imported or archived."
+  },
+  "verified": [
+    "Public LibraryApp.backup and current verify_backup/restore_backup share the same explicit BackupBudget and outer deadline callback.",
+    "Typed keybindings require actual native format5; no common4 relabeling.",
+    "Complete canonical/FTS rows and raw/original oracles are compared independently; source and archive inventories remain equal after verify/restore.",
+    "Real restore-copy cancellation preserves the already completed archive while refusing partial fresh restore and successful report.",
+    "The old 17 cases are byte-for-byte the new test file prefix; 76 original assert/raises lines are retained.",
+    "ResourceBroker.for_app creates the runtime parent through the actual public initialization path."
+  ],
+  "limits": [
+    "Static independent review; no tests executed by this reviewer.",
+    "No 50k-book, 2GiB-source or large-archive capacity qualification is inferred."
+  ]
+}

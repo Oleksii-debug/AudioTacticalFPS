@@ -1,0 +1,989 @@
+name: Measured library scale acceptance
+
+# Synthetic resources only. Contract and measured tiers keep separate receipts.
+# Existing ordinary, full bundle, native desktop and release gates remain independent.
+on:
+  push:
+    branches: [carr/scale-evaluation-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-scale-evaluation.yml']
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ['carr-library/**', '.github/workflows/carr-scale-evaluation.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-scale-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONUNBUFFERED: '1'
+  PYTHONDONTWRITEBYTECODE: '1'
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  ORT_DISABLE_TELEMETRY: '1'
+  HF_HUB_OFFLINE: '1'
+  HF_HUB_DISABLE_TELEMETRY: '1'
+  HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+  TRANSFORMERS_OFFLINE: '1'
+  DO_NOT_TRACK: '1'
+
+defaults:
+  run:
+    shell: pwsh
+    working-directory: carr-library
+
+jobs:
+  contracts:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.number == 127 }}
+    name: Scale contracts / ${{ matrix.os }} / source and installed
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      CARR_TEST_MODE: scale-contracts
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Bind every authored gate input to exact committed bytes before execution
+        run: |
+          $boundInputs = @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import stat
+          import subprocess
+          
+          root = Path.cwd().resolve(strict=True)
+          repository = root.parent
+          head = os.environ['GITHUB_SHA']
+          actual = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=repository, check=True,
+              capture_output=True, text=True, timeout=10).stdout.strip()
+          assert actual == head and len(head) == 40
+          names = [
+              '.github/workflows/carr-scale-evaluation.yml',
+              'carr-library/pyproject.toml',
+              'carr-library/packaging/windows-cp311.lock',
+              'carr-library/packaging/windows-semantic-cp311.lock',
+              'carr-library/packaging/source_wheel.py',
+              'carr-library/review/capacity-python-reference-2026-11-28.json',
+              *['carr-library/scripts/' + name for name in (
+                  'benchmark_library_scale.py', 'benchmark_library_catalog.py',
+                  'benchmark_library_backup.py', 'run_scale_measurements.py',
+                  'ci_feature_capacity.py', 'ci_check.py', 'windows_reader_player_smoke.py')],
+              *['carr-library/tests/scale/' + name for name in (
+                  'test_library_scale_contract.py', 'test_library_catalog_benchmark.py',
+                  'test_library_backup_benchmark.py', 'test_library_scale_posix.py')],
+          ]
+          rows = []
+          for name in names:
+              path = repository / name
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and not path.is_symlink()
+              assert path.resolve(strict=True) == path and 0 < info.st_size <= 2 * 1024**2, name
+              reference = head + ':' + name
+              size = int(subprocess.run(['git', 'cat-file', '-s', reference], cwd=repository,
+                  check=True, capture_output=True, text=True, timeout=10).stdout)
+              assert size == info.st_size, name
+              committed = subprocess.run(['git', 'cat-file', 'blob', reference], cwd=repository,
+                  check=True, capture_output=True, timeout=10).stdout
+              current = path.read_bytes()
+              assert len(committed) == size and current == committed, name
+              rows.append({'path': name, 'bytes': size, 'sha256': sha256(committed).hexdigest()})
+          out = root / 'ci-scale-results'
+          out.mkdir(exist_ok=True)
+          receipt = {'schema': 'carr-scale-committed-inputs/1', 'status': 'PASS',
+                     'head': head, 'files': rows}
+          (out / 'committed-inputs.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True), flush=True)
+          
+          '@
+          python -I -B -X utf8 -c $boundInputs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and install the exact event wheel with existing dependency pins
+        id: installed
+        timeout-minutes: 8
+        run: |
+          New-Item -ItemType Directory -Force ci-scale-results | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }
+          $sourceCommit | Set-Content ci-scale-results/tested-commit.txt
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-scale-python'
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-scale-wheel'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment $(if ($IsWindows) { 'Scripts/python.exe' } else { 'bin/python' })
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $dependencyFile = Join-Path $env:RUNNER_TEMP 'carr-scale-dependencies.txt'
+          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-scale-verification.lock'
+          $pins = @'
+          import hashlib, json, pathlib, re, sys
+          lock = pathlib.Path('packaging/windows-cp311.lock')
+          raw = lock.read_text(encoding='utf-8')
+          records = re.findall(r'(?m)^([A-Za-z0-9_.-]+)==([^\s]+)[^\n]*(?:\n[ \t]+[^\n]+)*', raw)
+          assert len(records) == 19 and len(records) == len({name.lower() for name, _ in records})
+          excluded = set() if sys.platform == 'win32' else {'comtypes', 'wxpython'}
+          assert excluded <= {name.lower() for name, _ in records}
+          pins = {name: version for name, version in records if name.lower() not in excluded}
+          # The Windows lock includes platform-specific wheel hashes. Linux
+          # reuses its exact package versions, not those Windows-only hashes.
+          effective = raw if sys.platform == 'win32' else ''.join(
+              name + '==' + version + '\n' for name, version in pins.items())
+          pathlib.Path(sys.argv[1]).write_text(effective, encoding='utf-8')
+          semantic = pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(encoding='utf-8')
+          packaging = re.findall(r'(?m)^packaging==[^\n]*(?:\n[ \t]+[^\n]+)*', semantic)
+          assert len(packaging) == 1 and '--hash=sha256:' in packaging[0]
+          pathlib.Path(sys.argv[2]).write_text(packaging[0] + '\n', encoding='utf-8')
+          receipt = dict(platform=sys.platform, pins=pins, excluded=sorted(excluded),
+                         repository_lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(),
+                         effective_requirements_sha256=hashlib.sha256(effective.encode()).hexdigest(),
+                         windows_dependency_hashes_required=sys.platform == 'win32',
+                         pytest='9.0.2',
+                         build_support={'setuptools':'84.2.1','wheel':'0.48.0','zstandard':'0.25.0'},
+                         verification_support=packaging[0].split()[0])
+          pathlib.Path('ci-scale-results/dependency-selection.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True))
+          '@
+          & $python -I -B -X utf8 -c $pins $dependencyFile $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            & $python -m pip install --only-binary=:all: --require-hashes -r $dependencyFile
+          } else {
+            & $python -m pip install --only-binary=:all: --no-deps -r $dependencyFile
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 setuptools==84.2.1 wheel==0.48.0 zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip wheel --no-build-isolation --no-deps --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          & $python -I -B -X utf8 -c "import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))" $wheels[0].FullName | Tee-Object ci-scale-results/wheel-identity.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_TEST_WHEEL=$($wheels[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove complete source wheel and installed Python identity
+        id: inventory
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        run: |
+          $inventory = @'
+          import ast, hashlib, importlib.metadata as metadata, json, os, pathlib, re, runpy, sys, zipfile
+          import carr_library
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          owner = runpy.run_path('scripts/windows_reader_player_smoke.py')['_installed_package_root']
+          installed = owner(metadata.distributions(name='universal-research-library'), carr_library.__file__, checkout)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True))
+          with zipfile.ZipFile(os.environ['CARR_TEST_WHEEL']) as archive:
+              expected = {name: archive.read(name) for name in archive.namelist()
+                          if name.startswith('carr_library/') and name.endswith('.py')}
+          actual = {'carr_library/' + path.relative_to(installed).as_posix()
+                    for path in installed.rglob('*.py')}
+          source_names = {'carr_library/' + path.relative_to(checkout / 'src/carr_library').as_posix()
+                          for path in (checkout / 'src/carr_library').rglob('*.py')}
+          assert expected and actual == source_names == set(expected), 'Python namespace differs.'
+          rows = []
+          for name, data in sorted(expected.items()):
+              source, target = checkout / 'src' / name, installed.parent / name
+              assert source.stat().st_size == target.stat().st_size == len(data), name
+              assert source.read_bytes() == target.read_bytes() == data, name
+              rows.append(dict(path=name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
+          declared = json.loads(pathlib.Path('ci-scale-results/dependency-selection.json').read_text(encoding='utf-8'))
+          assert {name: metadata.version(name) for name in declared['pins']} == declared['pins']
+          assert metadata.version('pytest') == declared['pytest']
+          assert {name: metadata.version(name) for name in declared['build_support']} == declared['build_support']
+          support_name, support_version = declared['verification_support'].split('==')
+          assert metadata.version(support_name) == support_version
+          if sys.platform == 'win32':
+              assert metadata.version('wxPython') == '4.2.4'
+          counts = {"tests/scale/test_library_scale_contract.py": 24,
+                    "tests/scale/test_library_catalog_benchmark.py": 13,
+                    "tests/scale/test_library_backup_benchmark.py": 18}
+          if sys.platform != 'win32':
+              counts["tests/scale/test_library_scale_posix.py"] = 2
+          suites = list(counts)
+          acceptance = runpy.run_path('scripts/ci_feature_capacity.py')
+          reference_path = checkout / 'review/capacity-python-reference-2026-11-28.json'
+          reference = json.loads(reference_path.read_text(encoding='utf-8'))
+          mapping = {row['path'].removeprefix('carr_library/'): row['sha256'] for row in rows}
+          assert len(mapping) == 398 and mapping == reference['compact_mapping']
+          assert acceptance['inventory'](installed) == mapping
+          record_sha256 = acceptance['installed_record'](installed, mapping)
+          scripts = ['benchmark_library_scale.py', 'benchmark_library_catalog.py',
+                     'benchmark_library_backup.py', 'run_scale_measurements.py',
+                     'ci_feature_capacity.py', 'ci_check.py']
+          script_proof = {}
+          for name in scripts:
+              path = checkout / 'scripts' / name
+              assert path.is_file() and not path.is_symlink() and path.stat().st_size <= 2 * 1024**2, name
+              ast.parse(path.read_text(encoding='utf-8'))
+              script_proof[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+          for name in suites:
+              path = checkout / name
+              assert path.is_file() and path.stat().st_size <= 2 * 1024 * 1024, name
+              ast.parse(path.read_text(encoding='utf-8'))
+          print(json.dumps(dict(status='PASS', source_commit=os.environ['GITHUB_SHA'],
+              mode=os.environ['CARR_TEST_MODE'], python=sys.version, executable=sys.executable,
+              prefix=sys.prefix, installed_package=str(installed),
+              source_package=str(checkout / 'src/carr_library'), python_files=rows,
+              required_suites=counts, dependency_selection=declared,
+              source_reference_sha256=hashlib.sha256(reference_path.read_bytes()).hexdigest(),
+              record_sha256=record_sha256, scripts=script_proof), sort_keys=True))
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-scale-results/source-installed-python-inventory.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the unchanged offline contract policy with exact identity proof
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        run: |
+          $gate = @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import runpy
+          import sys
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          
+          mode = sys.argv[1]
+          assert mode in ('source', 'installed') and bool(sys.flags.isolated) == (mode == 'installed')
+          assert sys.dont_write_bytecode
+          assert not any(os.environ.get(name) for name in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS'))
+          root = Path.cwd().resolve(strict=True)
+          artifacts = root / 'ci-scale-results'
+          source = (root / 'src/carr_library').resolve(strict=True)
+          installed = (Path(sysconfig.get_path('purelib')) / 'carr_library').resolve(strict=True)
+          assert source != installed and not installed.is_relative_to(root)
+          assert installed.is_relative_to(Path(sys.prefix).resolve(strict=True))
+          selected = source if mode == 'source' else installed
+          counts = {'tests/scale/test_library_scale_contract.py': 24,
+                    'tests/scale/test_library_catalog_benchmark.py': 13,
+                    'tests/scale/test_library_backup_benchmark.py': 18}
+          if sys.platform != 'win32':
+              counts['tests/scale/test_library_scale_posix.py'] = 2
+          expected_cases = 55 if sys.platform == 'win32' else 57
+          assert sum(counts.values()) == expected_cases
+          helper_path = root / 'scripts/ci_feature_capacity.py'
+          policy_path = root / 'scripts/ci_check.py'
+          reference_path = root / 'review/capacity-python-reference-2026-11-28.json'
+          committed_path = artifacts / 'committed-inputs.json'
+          committed = json.loads(committed_path.read_text(encoding='utf-8'))
+          assert committed['schema'] == 'carr-scale-committed-inputs/1'
+          assert committed['status'] == 'PASS' and committed['head'] == os.environ['GITHUB_SHA']
+          committed_names = [
+              '.github/workflows/carr-scale-evaluation.yml',
+              'carr-library/pyproject.toml',
+              'carr-library/packaging/windows-cp311.lock',
+              'carr-library/packaging/windows-semantic-cp311.lock',
+              'carr-library/packaging/source_wheel.py',
+              'carr-library/review/capacity-python-reference-2026-11-28.json',
+              *['carr-library/scripts/' + name for name in (
+                  'benchmark_library_scale.py', 'benchmark_library_catalog.py',
+                  'benchmark_library_backup.py', 'run_scale_measurements.py',
+                  'ci_feature_capacity.py', 'ci_check.py', 'windows_reader_player_smoke.py')],
+              *['carr-library/tests/scale/' + name for name in (
+                  'test_library_scale_contract.py', 'test_library_catalog_benchmark.py',
+                  'test_library_backup_benchmark.py', 'test_library_scale_posix.py')],
+          ]
+          rows = committed['files']
+          assert len(rows) == len(committed_names) == 17
+          assert {row['path'] for row in rows} == set(committed_names)
+          committed_before = {}
+          for row in rows:
+              path = root.parent / row['path']
+              payload = path.read_bytes()
+              assert len(payload) == row['bytes'] and sha256(payload).hexdigest() == row['sha256'], row['path']
+              committed_before[str(path)] = row['sha256']
+          api = runpy.run_path(str(helper_path))
+          expected = json.loads(reference_path.read_text(encoding='utf-8'))['compact_mapping']
+          assert len(expected) == 398
+          assert api['inventory'](source) == api['inventory'](installed) == expected
+          head = api['checkout_head'](root, os.environ['GITHUB_SHA'])
+          record_before = api['installed_record'](installed, expected)
+          tracked = [Path(__file__), committed_path, *map(Path, committed_before)]
+          tracked_before = {str(path): api['digest'](path) for path in tracked}
+          assert {name: tracked_before[name] for name in committed_before} == committed_before
+          wheel = Path(os.environ['CARR_TEST_WHEEL']).resolve(strict=True)
+          wheel_before = api['digest'](wheel)
+          inventory_sha256 = sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+          
+          class Proof:
+              before = None
+              collected = None
+          
+              def __init__(self):
+                  self.seconds = {suite: 0.0 for suite in counts}
+                  self.expected_failures = []
+                  self.failures = []
+          
+              def pytest_sessionstart(self, session):
+                  self.before = api['origins'](selected, expected)
+          
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in counts}
+                  for item in session.items:
+                      suite = item.nodeid.split('::', 1)[0].replace('\\', '/')
+                      assert suite in self.collected, suite
+                      self.collected[suite] += 1
+                  assert self.collected == counts, (self.collected, counts)
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      print('SCALE_COLLECTION_FAILURE ' + str(report.longrepr)[:12000], flush=True)
+          
+              def pytest_runtest_logreport(self, report):
+                  suite = report.nodeid.split('::', 1)[0].replace('\\', '/')
+                  assert suite in self.seconds, suite
+                  self.seconds[suite] += report.duration
+                  if hasattr(report, 'wasxfail'):
+                      self.expected_failures.append(report.nodeid)
+                  if report.failed:
+                      self.failures.append({'node': report.nodeid, 'phase': report.when})
+                      print('SCALE_CASE_FAILURE ' + report.nodeid + '\n' + str(report.longrepr)[:12000], flush=True)
+          
+          proof = Proof()
+          report = artifacts / (mode + '.xml')
+          result = {'schema': 'carr-scale-contracts/1', 'status': 'FAIL',
+                    'head': head, 'mode': mode, 'python_files': len(expected),
+                    'package_inventory_sha256': inventory_sha256,
+                    'expected_cases': expected_cases, 'required_suites': counts,
+                    'record_sha256': record_before, 'wheel_sha256': wheel_before,
+                    'NVDA': 'NOT_RUN', 'large_scale_measurement': 'SEPARATE_WINDOWS_JOBS'}
+          options = ['-vv', '-s', '--durations=20', '--import-mode=importlib',
+                     '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=60']
+          if mode == 'installed':
+              options += ['-o', 'pythonpath=']
+          try:
+              with tempfile.TemporaryDirectory(prefix='carr-scale-contracts-') as temporary:
+                  policy = runpy.run_path(str(policy_path))['PYTEST_CHILD']
+                  call = 'status = pytest.main(sys.argv[1:], plugins=[policy])'
+                  assert policy.count(call) == 1, 'Existing offline child policy changed; review this adapter.'
+                  execution = policy.replace(call,
+                      'status = pytest.main(sys.argv[1:], plugins=[policy, _scale_proof])')
+                  namespace = {'__name__': '__main__', '_scale_proof': proof}
+                  before_argv = sys.argv
+                  sys.argv = ['-c', *options, '--junitxml', str(report),
+                              '--basetemp', str(Path(temporary) / 'pytest'), *counts]
+                  try:
+                      try:
+                          exec(compile(execution, '<existing-offline-pytest-policy>', 'exec'), namespace)
+                      except SystemExit as error:
+                          status = error.code
+                      else:
+                          raise AssertionError('The unchanged child policy did not return its verdict.')
+                  finally:
+                      sys.argv = before_argv
+                      from carr_library.audio.cleanup import drain_pending_cleanup
+                      interruption = drain_pending_cleanup()
+                      if interruption is not None:
+                          raise interruption
+                  cases = list(ET.parse(report).iter('testcase'))
+                  failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+                  skipped = sum(case.find('skipped') is not None for case in cases)
+                  module_rows = {}
+                  for suite in counts:
+                      suffix = suite.removesuffix('.py').replace('/', '.')
+                      module_rows[suite] = sum(case.get('classname', '').endswith(suffix) for case in cases)
+                  result.update(pytest_status=int(status), cases=len(cases), failed=failed, skipped=skipped,
+                                collected=proof.collected, junit_module_counts=module_rows,
+                                module_seconds=proof.seconds, origins=proof.before,
+                                expected_failures=proof.expected_failures, failure_reports=proof.failures,
+                                junit_sha256=api['digest'](report))
+                  assert status == 0 and not namespace['policy'].seen
+                  assert proof.before is not None and proof.collected == counts
+                  assert len(cases) == expected_cases and module_rows == counts
+                  assert failed == skipped == 0 and not proof.expected_failures
+              result['status'] = 'PASS'
+          finally:
+              # Mutation of any source, wheel, installed file, test or policy fails the gate.
+              try:
+                  assert api['checkout_head'](root, head) == head
+                  assert api['inventory'](source) == api['inventory'](installed) == expected
+                  assert api['installed_record'](installed, expected) == record_before
+                  assert {str(path): api['digest'](path) for path in tracked} == tracked_before
+                  assert api['digest'](wheel) == wheel_before
+                  if proof.before is not None:
+                      assert api['origins'](selected, expected) == proof.before
+              except BaseException:
+                  result['status'] = 'FAIL'
+                  result['identity_after'] = 'FAIL'
+                  raise
+              else:
+                  result['identity_after'] = 'PASS'
+              finally:
+                  (artifacts / (mode + '-contracts.json')).write_text(
+                      json.dumps(result, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+                  print(json.dumps(result, sort_keys=True), flush=True)
+          
+          '@
+          [System.IO.File]::WriteAllText((Join-Path (Get-Location) 'ci-scale-results/check.py'), $gate, [System.Text.UTF8Encoding]::new($false))
+
+      - name: Require all source scale contracts without skips
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          foreach ($name in @('PYTHONPATH','PYTEST_ADDOPTS','PYTEST_PLUGINS')) {
+            Remove-Item ("Env:" + $name) -ErrorAction SilentlyContinue
+          }
+          & $env:CARR_PYTHON -B -X utf8 ci-scale-results/check.py source 2>&1 | Tee-Object ci-scale-results/source-contracts.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the same isolated installed scale contracts without skips
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          foreach ($name in @('PYTHONPATH','PYTEST_ADDOPTS','PYTEST_PLUGINS')) {
+            Remove-Item ("Env:" + $name) -ErrorAction SilentlyContinue
+          }
+          & $env:CARR_PYTHON -I -B -X utf8 ci-scale-results/check.py installed 2>&1 | Tee-Object ci-scale-results/installed-contracts.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Bound and stage only allowed public receipts
+        id: public_receipts
+        if: ${{ always() }}
+        run: |
+          $publicGuard = @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import stat
+          import sys
+          
+          mode = sys.argv[1]
+          profile = sys.argv[2] if len(sys.argv) > 2 else None
+          assert mode in ('contracts', 'measured')
+          assert (profile in ('1000', '10000', '50000', '2gib')) == (mode == 'measured')
+          root = Path.cwd().resolve(strict=True)
+          source = root / 'ci-scale-results'
+          public = root / 'ci-scale-public'
+          public.mkdir()
+          MIB = 1024**2
+          ordinary = {'tested-commit.txt', 'dependency-selection.json', 'wheel-identity.json',
+                      'source-installed-python-inventory.json', 'committed-inputs.json'}
+          if mode == 'contracts':
+              ordinary |= {'source.xml', 'installed.xml', 'source-contracts.json',
+                           'installed-contracts.json', 'source-contracts.txt', 'installed-contracts.txt'}
+          else:
+              ordinary.add('measured-' + profile + '-driver.txt')
+          fixed = {'scale-measurement.json', 'identity-before.json', 'identity-after.json',
+                   'application-admission.json', 'fixture-preflight.json', 'fixture-generation.json',
+                   'fixture-verified-generation.json', 'import-cancellation.json',
+                   'authored-postcommit-exit.json', 'catalog-verification.json',
+                   'search-measurements.json', 'backup-restore.json'}
+          stages = ('01-generate', '02-initialize', '03-cancel', '04-postcommit-exit',
+                    '05-resume', '06-verify', '07-search', '08-backup')
+          measured_names = fixed | {stage + '-' + suffix for stage in stages
+              for suffix in ('request.json', 'result.json', 'stdout.log', 'stderr.log')}
+          rows = []
+          totals = {'ordinary_bytes': 0, 'measured_bytes': 0, 'ordinary_files': 0, 'measured_files': 0}
+          def stamp(info):
+              return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+          def directory(path):
+              info = path.lstat()
+              assert stat.S_ISDIR(info.st_mode) and not path.is_symlink(), 'Nonordinary report directory.'
+          def admit(path, relative, measured):
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink(), 'Nonordinary public receipt.'
+              if measured:
+                  name = path.name
+                  assert name in measured_names, 'Unexpected measured receipt name.'
+                  limit = 64 * 1024 if name.endswith(('-request.json', '-result.json')) else 4*MIB if name.endswith('.log') else 2*MIB
+                  total_key, count_key, maximum_total, maximum_files = 'measured_bytes', 'measured_files', 96*MIB, 64
+              else:
+                  assert relative in ordinary, 'Unexpected surrounding receipt name.'
+                  limit = 2*MIB if relative.endswith('.json') else 4*MIB
+                  total_key, count_key, maximum_total, maximum_files = 'ordinary_bytes', 'ordinary_files', 16*MIB - 128*1024, 16
+              assert 0 <= info.st_size <= limit, 'Public receipt exceeds its byte cap.'
+              assert totals[total_key] + info.st_size <= maximum_total, 'Public receipts exceed their total byte cap.'
+              assert totals[count_key] < maximum_files, 'Public receipts exceed their file-count cap.'
+              with path.open('rb') as stream:
+                  assert stamp(os.fstat(stream.fileno())) == stamp(info), 'Receipt identity changed before read.'
+                  raw = stream.read(limit + 1)
+                  assert stamp(os.fstat(stream.fileno())) == stamp(info), 'Receipt identity changed during read.'
+              assert len(raw) == info.st_size and stamp(path.lstat()) == stamp(info), 'Receipt changed after read.'
+              if relative.endswith('.json'):
+                  value = json.loads(raw.decode('utf-8-sig'))
+                  assert isinstance(value, dict), 'A public JSON receipt must be an object.'
+                  if measured and path.name == 'scale-measurement.json':
+                      assert value.get('schema') == 'carr-measured-scale-run/1', 'Unexpected measurement schema.'
+              destination = public / relative
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              try:
+                  with destination.open('xb') as stream:
+                      assert stream.write(raw) == len(raw)
+              except BaseException:
+                  destination.unlink(missing_ok=True)
+                  raise
+              totals[total_key] += len(raw)
+              totals[count_key] += 1
+              rows.append({'path': relative, 'bytes': len(raw), 'sha256': sha256(raw).hexdigest()})
+          try:
+              directory(source)
+              scanned = 0
+              with os.scandir(source) as entries:
+                  for entry in entries:
+                      scanned += 1
+                      assert scanned <= 32, 'Unexpected surrounding report population.'
+                      path = Path(entry.path)
+                      if mode == 'contracts' and entry.name == 'check.py':
+                          assert path.is_file() and not path.is_symlink() and path.stat().st_size <= 128*1024
+                          continue
+                      if mode == 'measured' and entry.name == 'measured-' + profile:
+                          directory(path)
+                          inner = 0
+                          with os.scandir(path) as children:
+                              for child in children:
+                                  inner += 1
+                                  assert inner <= 64, 'Measured receipt inventory exceeds its bound.'
+                                  admit(Path(child.path), entry.name + '/' + child.name, True)
+                      else:
+                          admit(path, entry.name, False)
+              result = {'schema': 'carr-scale-public-receipts/1', 'status': 'BOUNDED_PUBLIC_RECEIPTS',
+                        'head': os.environ['GITHUB_SHA'], 'job_mode': mode, 'profile': profile,
+                        'files': sorted(rows, key=lambda row: row['path']), **totals,
+                        'scope': 'Artifact validation only; prior FAILED/NOT_RUN statuses are unchanged.'}
+          except BaseException as error:
+              result = {'schema': 'carr-scale-public-receipts/1', 'status': 'RECEIPT_GUARD_FAILED',
+                        'head': os.environ['GITHUB_SHA'], 'job_mode': mode, 'profile': profile,
+                        'error_type': type(error).__name__, 'message': str(error)[:2000],
+                        'files': sorted(rows, key=lambda row: row['path']), **totals}
+              raise
+          finally:
+              manifest = (json.dumps(result, sort_keys=True, indent=2) + '\n').encode('utf-8')
+              assert len(manifest) <= 128*1024 and totals['ordinary_bytes'] + len(manifest) <= 16*MIB
+              (public / 'artifact-manifest.json').write_bytes(manifest)
+              with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+                  output.write('staged=true\n')
+              print(json.dumps(result, sort_keys=True), flush=True)
+          
+          '@
+          $guardPython = if ($env:CARR_PYTHON -and (Test-Path -LiteralPath $env:CARR_PYTHON)) { $env:CARR_PYTHON } else { 'python' }
+          & $guardPython -I -B -X utf8 -c $publicGuard contracts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve only public contract receipts
+        if: ${{ always() && steps.public_receipts.outputs.staged == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-scale-contracts-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-scale-public/**
+          if-no-files-found: error
+          retention-days: 7
+
+  measured:
+    needs: contracts
+    if: ${{ needs.contracts.result == 'success' }}
+    name: Measured Windows scale / ${{ matrix.profile }}
+    runs-on: windows-2022
+    timeout-minutes: 180
+    env:
+      CARR_TEST_MODE: scale-measured-${{ matrix.profile }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ['1000', '10000', '50000', '2gib']
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Bind every authored gate input to exact committed bytes before execution
+        run: |
+          $boundInputs = @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import stat
+          import subprocess
+          
+          root = Path.cwd().resolve(strict=True)
+          repository = root.parent
+          head = os.environ['GITHUB_SHA']
+          actual = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=repository, check=True,
+              capture_output=True, text=True, timeout=10).stdout.strip()
+          assert actual == head and len(head) == 40
+          names = [
+              '.github/workflows/carr-scale-evaluation.yml',
+              'carr-library/pyproject.toml',
+              'carr-library/packaging/windows-cp311.lock',
+              'carr-library/packaging/windows-semantic-cp311.lock',
+              'carr-library/packaging/source_wheel.py',
+              'carr-library/review/capacity-python-reference-2026-11-28.json',
+              *['carr-library/scripts/' + name for name in (
+                  'benchmark_library_scale.py', 'benchmark_library_catalog.py',
+                  'benchmark_library_backup.py', 'run_scale_measurements.py',
+                  'ci_feature_capacity.py', 'ci_check.py', 'windows_reader_player_smoke.py')],
+              *['carr-library/tests/scale/' + name for name in (
+                  'test_library_scale_contract.py', 'test_library_catalog_benchmark.py',
+                  'test_library_backup_benchmark.py', 'test_library_scale_posix.py')],
+          ]
+          rows = []
+          for name in names:
+              path = repository / name
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and not path.is_symlink()
+              assert path.resolve(strict=True) == path and 0 < info.st_size <= 2 * 1024**2, name
+              reference = head + ':' + name
+              size = int(subprocess.run(['git', 'cat-file', '-s', reference], cwd=repository,
+                  check=True, capture_output=True, text=True, timeout=10).stdout)
+              assert size == info.st_size, name
+              committed = subprocess.run(['git', 'cat-file', 'blob', reference], cwd=repository,
+                  check=True, capture_output=True, timeout=10).stdout
+              current = path.read_bytes()
+              assert len(committed) == size and current == committed, name
+              rows.append({'path': name, 'bytes': size, 'sha256': sha256(committed).hexdigest()})
+          out = root / 'ci-scale-results'
+          out.mkdir(exist_ok=True)
+          receipt = {'schema': 'carr-scale-committed-inputs/1', 'status': 'PASS',
+                     'head': head, 'files': rows}
+          (out / 'committed-inputs.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True), flush=True)
+          
+          '@
+          python -I -B -X utf8 -c $boundInputs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and install the exact event wheel with existing dependency pins
+        id: installed
+        timeout-minutes: 8
+        run: |
+          New-Item -ItemType Directory -Force ci-scale-results | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }
+          $sourceCommit | Set-Content ci-scale-results/tested-commit.txt
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-scale-python'
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-scale-wheel'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment $(if ($IsWindows) { 'Scripts/python.exe' } else { 'bin/python' })
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $dependencyFile = Join-Path $env:RUNNER_TEMP 'carr-scale-dependencies.txt'
+          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-scale-verification.lock'
+          $pins = @'
+          import hashlib, json, pathlib, re, sys
+          lock = pathlib.Path('packaging/windows-cp311.lock')
+          raw = lock.read_text(encoding='utf-8')
+          records = re.findall(r'(?m)^([A-Za-z0-9_.-]+)==([^\s]+)[^\n]*(?:\n[ \t]+[^\n]+)*', raw)
+          assert len(records) == 19 and len(records) == len({name.lower() for name, _ in records})
+          excluded = set() if sys.platform == 'win32' else {'comtypes', 'wxpython'}
+          assert excluded <= {name.lower() for name, _ in records}
+          pins = {name: version for name, version in records if name.lower() not in excluded}
+          # The Windows lock includes platform-specific wheel hashes. Linux
+          # reuses its exact package versions, not those Windows-only hashes.
+          effective = raw if sys.platform == 'win32' else ''.join(
+              name + '==' + version + '\n' for name, version in pins.items())
+          pathlib.Path(sys.argv[1]).write_text(effective, encoding='utf-8')
+          semantic = pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(encoding='utf-8')
+          packaging = re.findall(r'(?m)^packaging==[^\n]*(?:\n[ \t]+[^\n]+)*', semantic)
+          assert len(packaging) == 1 and '--hash=sha256:' in packaging[0]
+          pathlib.Path(sys.argv[2]).write_text(packaging[0] + '\n', encoding='utf-8')
+          receipt = dict(platform=sys.platform, pins=pins, excluded=sorted(excluded),
+                         repository_lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(),
+                         effective_requirements_sha256=hashlib.sha256(effective.encode()).hexdigest(),
+                         windows_dependency_hashes_required=sys.platform == 'win32',
+                         pytest='9.0.2',
+                         build_support={'setuptools':'84.2.1','wheel':'0.48.0','zstandard':'0.25.0'},
+                         verification_support=packaging[0].split()[0])
+          pathlib.Path('ci-scale-results/dependency-selection.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True))
+          '@
+          & $python -I -B -X utf8 -c $pins $dependencyFile $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            & $python -m pip install --only-binary=:all: --require-hashes -r $dependencyFile
+          } else {
+            & $python -m pip install --only-binary=:all: --no-deps -r $dependencyFile
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 setuptools==84.2.1 wheel==0.48.0 zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip wheel --no-build-isolation --no-deps --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          & $python -I -B -X utf8 -c "import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))" $wheels[0].FullName | Tee-Object ci-scale-results/wheel-identity.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_TEST_WHEEL=$($wheels[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove complete source wheel and installed Python identity
+        id: inventory
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        run: |
+          $inventory = @'
+          import ast, hashlib, importlib.metadata as metadata, json, os, pathlib, re, runpy, sys, zipfile
+          import carr_library
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          owner = runpy.run_path('scripts/windows_reader_player_smoke.py')['_installed_package_root']
+          installed = owner(metadata.distributions(name='universal-research-library'), carr_library.__file__, checkout)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True))
+          with zipfile.ZipFile(os.environ['CARR_TEST_WHEEL']) as archive:
+              expected = {name: archive.read(name) for name in archive.namelist()
+                          if name.startswith('carr_library/') and name.endswith('.py')}
+          actual = {'carr_library/' + path.relative_to(installed).as_posix()
+                    for path in installed.rglob('*.py')}
+          source_names = {'carr_library/' + path.relative_to(checkout / 'src/carr_library').as_posix()
+                          for path in (checkout / 'src/carr_library').rglob('*.py')}
+          assert expected and actual == source_names == set(expected), 'Python namespace differs.'
+          rows = []
+          for name, data in sorted(expected.items()):
+              source, target = checkout / 'src' / name, installed.parent / name
+              assert source.stat().st_size == target.stat().st_size == len(data), name
+              assert source.read_bytes() == target.read_bytes() == data, name
+              rows.append(dict(path=name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
+          declared = json.loads(pathlib.Path('ci-scale-results/dependency-selection.json').read_text(encoding='utf-8'))
+          assert {name: metadata.version(name) for name in declared['pins']} == declared['pins']
+          assert metadata.version('pytest') == declared['pytest']
+          assert {name: metadata.version(name) for name in declared['build_support']} == declared['build_support']
+          support_name, support_version = declared['verification_support'].split('==')
+          assert metadata.version(support_name) == support_version
+          if sys.platform == 'win32':
+              assert metadata.version('wxPython') == '4.2.4'
+          counts = {"tests/scale/test_library_scale_contract.py": 24,
+                    "tests/scale/test_library_catalog_benchmark.py": 13,
+                    "tests/scale/test_library_backup_benchmark.py": 18}
+          if sys.platform != 'win32':
+              counts["tests/scale/test_library_scale_posix.py"] = 2
+          suites = list(counts)
+          acceptance = runpy.run_path('scripts/ci_feature_capacity.py')
+          reference_path = checkout / 'review/capacity-python-reference-2026-11-28.json'
+          reference = json.loads(reference_path.read_text(encoding='utf-8'))
+          mapping = {row['path'].removeprefix('carr_library/'): row['sha256'] for row in rows}
+          assert len(mapping) == 398 and mapping == reference['compact_mapping']
+          assert acceptance['inventory'](installed) == mapping
+          record_sha256 = acceptance['installed_record'](installed, mapping)
+          scripts = ['benchmark_library_scale.py', 'benchmark_library_catalog.py',
+                     'benchmark_library_backup.py', 'run_scale_measurements.py',
+                     'ci_feature_capacity.py', 'ci_check.py']
+          script_proof = {}
+          for name in scripts:
+              path = checkout / 'scripts' / name
+              assert path.is_file() and not path.is_symlink() and path.stat().st_size <= 2 * 1024**2, name
+              ast.parse(path.read_text(encoding='utf-8'))
+              script_proof[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+          for name in suites:
+              path = checkout / name
+              assert path.is_file() and path.stat().st_size <= 2 * 1024 * 1024, name
+              ast.parse(path.read_text(encoding='utf-8'))
+          print(json.dumps(dict(status='PASS', source_commit=os.environ['GITHUB_SHA'],
+              mode=os.environ['CARR_TEST_MODE'], python=sys.version, executable=sys.executable,
+              prefix=sys.prefix, installed_package=str(installed),
+              source_package=str(checkout / 'src/carr_library'), python_files=rows,
+              required_suites=counts, dependency_selection=declared,
+              source_reference_sha256=hashlib.sha256(reference_path.read_bytes()).hexdigest(),
+              record_sha256=record_sha256, scripts=script_proof), sort_keys=True))
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-scale-results/source-installed-python-inventory.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Measure the selected synthetic scale through the installed package
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 170
+        run: |
+          foreach ($name in @('PYTHONPATH','PYTEST_ADDOPTS','PYTEST_PLUGINS')) {
+            Remove-Item ("Env:" + $name) -ErrorAction SilentlyContinue
+          }
+          $profile = '${{ matrix.profile }}'
+          $work = Join-Path $env:RUNNER_TEMP ('carr-scale-' + $profile + '-${{ github.run_id }}-${{ github.run_attempt }}')
+          if (Test-Path -LiteralPath $work) { throw 'Measured scale requires a fresh private work root.' }
+          $reports = 'ci-scale-results/measured-' + $profile
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/run_scale_measurements.py --head '${{ github.sha }}' --profile $profile --work-root $work --report-dir $reports --seconds 9600 2>&1 | Tee-Object ('ci-scale-results/measured-' + $profile + '-driver.txt')
+          $driverExit = $LASTEXITCODE
+          # Genuine host/policy NOT_RUN (3) and missing cancellation qualification (4)
+          # remain non-successful receiving outcomes, distinct from an actual failure (1).
+          if ($driverExit -ne 0) { exit $driverExit }
+
+      - name: Bound and stage only allowed public receipts
+        id: public_receipts
+        if: ${{ always() }}
+        run: |
+          $publicGuard = @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import stat
+          import sys
+          
+          mode = sys.argv[1]
+          profile = sys.argv[2] if len(sys.argv) > 2 else None
+          assert mode in ('contracts', 'measured')
+          assert (profile in ('1000', '10000', '50000', '2gib')) == (mode == 'measured')
+          root = Path.cwd().resolve(strict=True)
+          source = root / 'ci-scale-results'
+          public = root / 'ci-scale-public'
+          public.mkdir()
+          MIB = 1024**2
+          ordinary = {'tested-commit.txt', 'dependency-selection.json', 'wheel-identity.json',
+                      'source-installed-python-inventory.json', 'committed-inputs.json'}
+          if mode == 'contracts':
+              ordinary |= {'source.xml', 'installed.xml', 'source-contracts.json',
+                           'installed-contracts.json', 'source-contracts.txt', 'installed-contracts.txt'}
+          else:
+              ordinary.add('measured-' + profile + '-driver.txt')
+          fixed = {'scale-measurement.json', 'identity-before.json', 'identity-after.json',
+                   'application-admission.json', 'fixture-preflight.json', 'fixture-generation.json',
+                   'fixture-verified-generation.json', 'import-cancellation.json',
+                   'authored-postcommit-exit.json', 'catalog-verification.json',
+                   'search-measurements.json', 'backup-restore.json'}
+          stages = ('01-generate', '02-initialize', '03-cancel', '04-postcommit-exit',
+                    '05-resume', '06-verify', '07-search', '08-backup')
+          measured_names = fixed | {stage + '-' + suffix for stage in stages
+              for suffix in ('request.json', 'result.json', 'stdout.log', 'stderr.log')}
+          rows = []
+          totals = {'ordinary_bytes': 0, 'measured_bytes': 0, 'ordinary_files': 0, 'measured_files': 0}
+          def stamp(info):
+              return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+          def directory(path):
+              info = path.lstat()
+              assert stat.S_ISDIR(info.st_mode) and not path.is_symlink(), 'Nonordinary report directory.'
+          def admit(path, relative, measured):
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink(), 'Nonordinary public receipt.'
+              if measured:
+                  name = path.name
+                  assert name in measured_names, 'Unexpected measured receipt name.'
+                  limit = 64 * 1024 if name.endswith(('-request.json', '-result.json')) else 4*MIB if name.endswith('.log') else 2*MIB
+                  total_key, count_key, maximum_total, maximum_files = 'measured_bytes', 'measured_files', 96*MIB, 64
+              else:
+                  assert relative in ordinary, 'Unexpected surrounding receipt name.'
+                  limit = 2*MIB if relative.endswith('.json') else 4*MIB
+                  total_key, count_key, maximum_total, maximum_files = 'ordinary_bytes', 'ordinary_files', 16*MIB - 128*1024, 16
+              assert 0 <= info.st_size <= limit, 'Public receipt exceeds its byte cap.'
+              assert totals[total_key] + info.st_size <= maximum_total, 'Public receipts exceed their total byte cap.'
+              assert totals[count_key] < maximum_files, 'Public receipts exceed their file-count cap.'
+              with path.open('rb') as stream:
+                  assert stamp(os.fstat(stream.fileno())) == stamp(info), 'Receipt identity changed before read.'
+                  raw = stream.read(limit + 1)
+                  assert stamp(os.fstat(stream.fileno())) == stamp(info), 'Receipt identity changed during read.'
+              assert len(raw) == info.st_size and stamp(path.lstat()) == stamp(info), 'Receipt changed after read.'
+              if relative.endswith('.json'):
+                  value = json.loads(raw.decode('utf-8-sig'))
+                  assert isinstance(value, dict), 'A public JSON receipt must be an object.'
+                  if measured and path.name == 'scale-measurement.json':
+                      assert value.get('schema') == 'carr-measured-scale-run/1', 'Unexpected measurement schema.'
+              destination = public / relative
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              try:
+                  with destination.open('xb') as stream:
+                      assert stream.write(raw) == len(raw)
+              except BaseException:
+                  destination.unlink(missing_ok=True)
+                  raise
+              totals[total_key] += len(raw)
+              totals[count_key] += 1
+              rows.append({'path': relative, 'bytes': len(raw), 'sha256': sha256(raw).hexdigest()})
+          try:
+              directory(source)
+              scanned = 0
+              with os.scandir(source) as entries:
+                  for entry in entries:
+                      scanned += 1
+                      assert scanned <= 32, 'Unexpected surrounding report population.'
+                      path = Path(entry.path)
+                      if mode == 'contracts' and entry.name == 'check.py':
+                          assert path.is_file() and not path.is_symlink() and path.stat().st_size <= 128*1024
+                          continue
+                      if mode == 'measured' and entry.name == 'measured-' + profile:
+                          directory(path)
+                          inner = 0
+                          with os.scandir(path) as children:
+                              for child in children:
+                                  inner += 1
+                                  assert inner <= 64, 'Measured receipt inventory exceeds its bound.'
+                                  admit(Path(child.path), entry.name + '/' + child.name, True)
+                      else:
+                          admit(path, entry.name, False)
+              result = {'schema': 'carr-scale-public-receipts/1', 'status': 'BOUNDED_PUBLIC_RECEIPTS',
+                        'head': os.environ['GITHUB_SHA'], 'job_mode': mode, 'profile': profile,
+                        'files': sorted(rows, key=lambda row: row['path']), **totals,
+                        'scope': 'Artifact validation only; prior FAILED/NOT_RUN statuses are unchanged.'}
+          except BaseException as error:
+              result = {'schema': 'carr-scale-public-receipts/1', 'status': 'RECEIPT_GUARD_FAILED',
+                        'head': os.environ['GITHUB_SHA'], 'job_mode': mode, 'profile': profile,
+                        'error_type': type(error).__name__, 'message': str(error)[:2000],
+                        'files': sorted(rows, key=lambda row: row['path']), **totals}
+              raise
+          finally:
+              manifest = (json.dumps(result, sort_keys=True, indent=2) + '\n').encode('utf-8')
+              assert len(manifest) <= 128*1024 and totals['ordinary_bytes'] + len(manifest) <= 16*MIB
+              (public / 'artifact-manifest.json').write_bytes(manifest)
+              with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+                  output.write('staged=true\n')
+              print(json.dumps(result, sort_keys=True), flush=True)
+          
+          '@
+          $guardPython = if ($env:CARR_PYTHON -and (Test-Path -LiteralPath $env:CARR_PYTHON)) { $env:CARR_PYTHON } else { 'python' }
+          & $guardPython -I -B -X utf8 -c $publicGuard measured '${{ matrix.profile }}'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve only bounded public measurement receipts
+        if: ${{ always() && steps.public_receipts.outputs.staged == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-scale-measured-${{ matrix.profile }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-scale-public/**
+          if-no-files-found: error
+          retention-days: 7

@@ -130,3 +130,41 @@ def unit_range(text, position, unit, *, direction=0, cancelled=lambda: False):
     return previous if direction <= 0 and not after_current else None
 
 
+
+
+def speech_boundaries(text, *, cancelled=lambda: False):
+    """Yield explicit reading-copy breaks, never inferred headings or language.
+
+    Reuse the current sentence/newline and blank-line paragraph rules. A form
+    feed is an explicit section break. Co-located breaks choose the most
+    specific kind; whitespace stays in the preceding exact text slice.
+    """
+    from heapq import merge
+
+    text_value(text)
+    check_cancelled(cancelled)
+
+    def positions(pattern, priority, kind):
+        whitespace_end = 0
+        for match in pattern.finditer(text):
+            check_cancelled(cancelled)
+            end = max(match.end(), whitespace_end)
+            while end < len(text) and text[end].isspace():
+                if end % 1024 == 0:
+                    check_cancelled(cancelled)
+                end += 1
+            whitespace_end = end
+            if end < len(text):
+                yield end, priority, kind
+
+    selected = None
+    for boundary in merge(positions(_SENTENCE_END, 0, 'sentence'),
+                          positions(_PARAGRAPH_GAP, 1, 'paragraph'),
+                          positions(re.compile(r'\f+'), 2, 'section')):
+        check_cancelled(cancelled)
+        if selected is not None and boundary[0] != selected[0]:
+            yield selected[0], selected[2]
+        selected = boundary
+    if selected is not None:
+        yield selected[0], selected[2]
+    check_cancelled(cancelled)

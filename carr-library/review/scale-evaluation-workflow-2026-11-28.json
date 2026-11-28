@@ -1,0 +1,131 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "date_utc": "2026-11-28",
+  "scope": "New finite scale contract and measured synthetic-profile acceptance workflow only; no existing workflow or repository reference mutation.",
+  "source": {
+    "base_commit": "69214167a42e69855cce08cf414c186115b62cca",
+    "path": ".github/workflows/carr-scale-evaluation.yml",
+    "blob": "1a4eaf4b481fb79841af14cb60c770c127f72aa6",
+    "sparse_tree": "08ff6792202e563460a90f305d71d328bab39991",
+    "sha256": "871967b967ca8bfea5c1d1d9f8b26a08c5a7c5bccd5b1c95333c8c32922767e9",
+    "bytes": 59196
+  },
+  "reuse": {
+    "prerequisite_workflow_blob": "9a017150e77c935deaeaa391e8d591985e591e2a",
+    "source_wheel": "existing packaging/source_wheel.py verify_application_wheel",
+    "installed_inventory": "existing scripts/windows_reader_player_smoke.py unique RECORD owner and scripts/ci_feature_capacity.py whole Python inventory",
+    "identity_helper_blob": "3c05f97c43036b044bd4b29e9e5ff3aff79cba3c",
+    "offline_policy_blob": "801ae3d91b0bb287bcb10d987c4af37d234db722",
+    "policy": "The unchanged PYTEST_CHILD executes socket denial, telemetry and expected-failure policy. Only the additional Proof plugin is injected into its one pytest.main call."
+  },
+  "contract_scope": {
+    "operating_systems": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "modes": [
+      "source",
+      "isolated installed"
+    ],
+    "modules": {
+      "tests/scale/test_library_scale_contract.py": 24,
+      "tests/scale/test_library_catalog_benchmark.py": 13,
+      "tests/scale/test_library_backup_benchmark.py": 18
+    },
+    "linux_additional": {
+      "tests/scale/test_library_scale_posix.py": 2
+    },
+    "windows_cases": 55,
+    "linux_cases": 57,
+    "expected_failures_errors_skips_xfails": 0,
+    "job_minutes": 35,
+    "setup_minutes": 8,
+    "source_minutes": 12,
+    "installed_minutes": 12,
+    "committed_inputs": 17,
+    "python_inventory": 398,
+    "dependency_pins_windows": 19,
+    "dependency_pins_linux": 17
+  },
+  "measured_scope": {
+    "needs": "Both operating-system contract jobs, including source and installed modes",
+    "platform": "windows-2022",
+    "profiles": [
+      "1000",
+      "10000",
+      "50000",
+      "2gib"
+    ],
+    "job_minutes": 180,
+    "step_minutes": 170,
+    "operation_seconds": 9600,
+    "cli": "python -I -B -X utf8 scripts/run_scale_measurements.py --head SHA --profile PROFILE --work-root FRESH --report-dir FRESH --seconds 9600",
+    "driver_reviewed_interface_blob": "a6147b5bc73673a024ed303175c43b4103d0f950",
+    "benchmark_component_tree": "c2c590563b44a4789315cfd4141def589dc08ecc",
+    "driver_review": "Root and Locate own the implementation review. The final public interface is byte-identical to43957165; its one-constant successor adds the two dependency locks and installed-owner probe to measured before/after source bindings.",
+    "resume": "Phase05 uses separately owned public one-slice invocations (at most128); receipts/logs aggregate within the same fixed per-file caps. It is not one outer 50k-worker Job.",
+    "exit_status": {
+      "0": "Every required stage measured with cancellation proof",
+      "1": "Actual failure",
+      "3": "Measured policy/host refusal or NOT_RUN",
+      "4": "Measurements complete, cancellation boundary unqualified"
+    },
+    "all_nonzero_fail_workflow": true,
+    "driver_reviewed_interface_tree": "8ae861669314ed7a089ffe591d403adb1824d983"
+  },
+  "identity_guards": [
+    "Exact event checkout and HEAD; all17 authored gate inputs equal committed Git blob bytes before helper execution.",
+    "Complete source/wheel/installed .py namespace equality and installed unique RECORD owner; committed398-module reference.",
+    "Source and isolated installed module origin checks before and after the gate.",
+    "All17 authored inputs plus committed-input receipt and generated checker are hashed before and after; starting hashes equal committed receipt.",
+    "Strict exact per-module collection and JUnit totals; process verdict, no failure/error/skip/XFAIL; pending cleanup drained before final success."
+  ],
+  "artifact_guards": {
+    "destination": "Fresh ci-scale-public staging only",
+    "upload_condition": "Guard completed and set staged=true; valid failed/NOT_RUN reports remain eligible without being promoted to PASS.",
+    "ordinary_total_bytes": 16777216,
+    "ordinary_manifest_reserve_bytes": 131072,
+    "measured_files_max": 64,
+    "measured_total_bytes": 100663296,
+    "logs_max_bytes": 4194304,
+    "json_max_bytes": 2097152,
+    "stage_request_result_max_bytes": 65536,
+    "measured_allowlist": "12 fixed public JSON files plus exactly8 stages x4 request/result/stdout/stderr names.",
+    "copy": "Regular non-link single-link files only, bounded read, handle/path stamp and source identity checks, strict JSON object parsing, create-only copies and partial-copy removal.",
+    "excluded": [
+      "Synthetic source corpora",
+      "Imported libraries and databases",
+      "Backups and archives",
+      "Private model or user files",
+      "Binaries or wheels"
+    ]
+  },
+  "static_checks": {
+    "no_placeholder": true,
+    "no_old_word_selector": true,
+    "no_audio_or_ocr_prep": true,
+    "unchanged_policy_adapter": true,
+    "no_continue_on_error": true,
+    "measured_depends_all_contracts": true,
+    "all17_tracked": true,
+    "driver_cli": true,
+    "safe_artifact_root": true,
+    "full_readback": true
+  },
+  "review": {
+    "author": "audio_render",
+    "independent_peer": "voice_reading",
+    "peer_verdict": "CLEAR",
+    "peer_tree": "d36475e2fe543ba2d134673fb2d6db35198d67da",
+    "peer_blob": "709d30edfeaf551a95a1b920e300d7c0a05f55b1",
+    "tracking_successor_inverse": "Two harness hunks inverse-recover the complete9961336a77a54664869df9da39d8978cde813d0c predecessor; no other workflow bytes change.",
+    "preceding_manifest_blob": "95b2b571e4362a40fe894ce5532b72ec145839bb"
+  },
+  "limits": [
+    "No actual scale or performance result is asserted by this source review.",
+    "Contract success does not qualify 1000/10000/50000/2GiB measurements.",
+    "This workflow does not replace ordinary MAIN/V3/bundle/capacity acceptance or human accessibility/quality checks."
+  ]
+}

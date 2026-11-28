@@ -245,10 +245,13 @@ def _make(store, workspace, cursor, *, session_id, index, previous,
             return store._reconcile(existing)
         # This is the same existing journal budget, not a file-count ceiling.
         journals, discovered = 0, 0
+        cancellation_requested = False
         with os.scandir(store._directory()) as entries:
             for entry in entries:
-                if cancelled():
-                    raise InterruptedError('Import scan cancelled before source admission.')
+                # An initial cancellation still records one inert start cursor.
+                # Finish this bounded private inventory before any journal write;
+                # cancellation cannot bypass journal, entry or time allowances.
+                cancellation_requested = bool(cancelled()) or cancellation_requested
                 if time.monotonic() - started >= limits['timeout']:
                     raise InterruptedError('Import scan admission exceeded its selected time allowance.')
                 discovered += 1
@@ -266,7 +269,8 @@ def _make(store, workspace, cursor, *, session_id, index, previous,
                     ResourceRequest(cpu_slots=1, memory_bytes=(source_profile.import_budget.memory_bytes
                         if source_profile is not None and source_profile.import_budget is not None
                         else 256 * 1024**2)),
-                    operation_id='import-scan:' + identity, cancelled=cancelled,
+                    operation_id='import-scan:' + identity,
+                    cancelled=lambda: cancellation_requested or cancelled(),
                     timeout=limits['timeout']))
             except (ResourceCancelled, ResourceTimeout):
                 pass  # Persist an inert start cursor; no source was opened.

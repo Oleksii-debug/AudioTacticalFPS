@@ -209,3 +209,63 @@ def test_legacy_registered_identity_keeps_its_zero_argument_contract_inside_admi
         assert not broker.snapshot()['leases']
     finally:
         reader.close()
+
+
+def test_actual_registered_flite_pacing_keeps_exact_voice_controls_and_pcm(registration):
+    root, _, _, direct, selected = registration
+    reader = voice_registry(root / 'state')
+    text = 'First. Second.'
+    options = SpeechSettings(rate=1, volume=63, sentence_pause_ms=250)
+    try:
+        result = reader.synthesize(text, selected.id, root / 'paced-reader.wav', settings=options)
+    finally:
+        reader.close()
+    first = direct.synthesize('First. ', root / 'first.wav', voice_id=selected.id,
+                              rate=2 ** .1, volume=.63, language=selected.languages[0])
+    second = direct.synthesize('Second.', root / 'second.wav', voice_id=selected.id,
+                               rate=2 ** .1, volume=.63, language=selected.languages[0])
+    a, b, actual = pcm(first.path), pcm(second.path), pcm(result.path)
+    assert a[:2] == b[:2] == actual[:2]
+    extra_frames = (250 * actual[0] + 500) // 1000
+    assert actual[2] == a[2] + b[2] + extra_frames == result.frames
+    assert actual[3] == a[3] + b'\0' * (extra_frames * actual[1] * 2) + b[3]
+    assert len(result.pauses) == 1
+    assert (result.pauses[0].text_offset, result.pauses[0].start_frame, result.pauses[0].end_frame) == (
+        text.index('Second'), a[2], a[2] + extra_frames)
+    assert result.voice_id == selected.id and result.text_sha256 == sha256(text.encode('utf-8')).hexdigest()
+
+
+def test_registered_sapi_control_route_uses_same_reader_pcm_pacing(tmp_path):
+    """Actual adapter/PCM assembly with an explicit modeled SAPI backend, not native inference."""
+    calls, registration_checks = [], []
+    provider = object.__new__(StudioVoiceProvider)
+    source = StudioVoice('sapi5:64:pacing-fixture', 'sapi5', 'SAPI control boundary', ('en-US',),
+                        ('pcm', 'rate', 'volume', 'local'))
+    provider._voices = {source.id: source}
+    provider._verify_registration = lambda **kwargs: registration_checks.append(kwargs)
+    from carr_library.speech import Voice
+    voice = Voice(source.id, source.name, 'SAPI 5 control boundary', 'en-US')
+    provider.voices = lambda: (voice,)
+    def synthesize(text, output, **kwargs):
+        assert not kwargs['cancelled']()
+        calls.append((text, kwargs))
+        with wave.open(str(output), 'wb') as stream:
+            stream.setnchannels(1); stream.setsampwidth(2); stream.setframerate(8000)
+            stream.writeframes(b'\x10\x00' * 80)
+    provider.registry = SimpleNamespace(synthesize=synthesize)
+    registry = VoiceRegistry([provider])
+    try:
+        result = registry.synthesize('First. Second.', voice.id, tmp_path / 'sapi-facade.wav',
+            settings=SpeechSettings(rate=2, volume=25, timeout_seconds=17, max_output_bytes=8192,
+                                    sentence_pause_ms=250))
+    finally:
+        registry.close()
+    assert [row[0] for row in calls] == ['First. ', 'Second.']
+    assert len(registration_checks) == 4
+    assert all(row[1]['voice_id'] == source.id and row[1]['language'] == 'en-US'
+               and row[1]['rate'] == 2 ** (2 / 5) and row[1]['volume'] == .25
+               and row[1]['timeout_seconds'] == 17 and row[1]['max_output_bytes'] == 8192
+               for row in calls)
+    assert result.frames == 2160 and result.chunks == 2
+    assert pcm(result.path)[3] == b'\x10\x00' * 80 + b'\0' * 4000 + b'\x10\x00' * 80
+    assert result.text_sha256 == sha256(b'First. Second.').hexdigest()

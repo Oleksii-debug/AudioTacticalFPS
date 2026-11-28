@@ -1,0 +1,34 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+  "path": "carr-library/scripts/run_scale_measurements.py",
+  "git_blob": "a6147b5bc73673a024ed303175c43b4103d0f950",
+  "sha256": "373fbe74fb06363bdea55ef7c6a1260052e2cfabc975cf0efafa7ddf344482a1",
+  "bytes": 37457,
+  "reviewer": "root",
+  "scope": "Complete37332-byte predecessor read plus125-byte final committed-input binding successor; all37457 bytes received.",
+  "reviewed": [
+    "All398 source/installed Python files and Git reference rows; unique application RECORD owner; complete package payload and entry-point metadata bound to actual committed source.",
+    "All17 exact authored inputs bound before helpers/stages and after operations; interpreter must be isolated, bytecode-free and not optimized.",
+    "Unchanged offline PYTEST_CHILD policy executes with only its one pytest call replaced by the explicit trusted operation; measurement is not called pytest qualification.",
+    "Actual separately owned process stages, bounded diagnostics, deferred-owner drain, timeout refusal; per-slice native owners retain the existing4096 lifetime member limit.",
+    "Eight actual stages: generation, admission, real-worker cancellation, durable postcommit process death, explicit saved-request resume, full catalog verification, bounded search, actual native5 backup/fresh passive restore.",
+    "Fixed receipt allowlist,128 resume calls,64KiB stage JSON/2MiB receipt JSON/4MiB logs/96MiB total, profile9600seconds and finalization90-second reserve.",
+    "Cleanup, identity or evidence failure overrides any earlier success/refusal; exit0 only complete measured cancellation, exit3 host/policy NOT_RUN, exit4 other measurements complete without cancellation proof.",
+    "No change to package runtime, private user data, models, human NVDA/quality or physical-device claims."
+  ],
+  "integration_requirement": "Restore the committed reference status to SOURCE_REFERENCE_NOT_RUNTIME_QUALIFICATION on the successor; the strict schema check is retained.",
+  "final_constant_delta": [
+    {
+      "start": 53,
+      "removed": [
+        "    \"scripts/run_scale_measurements.py\") + tuple(\"scripts/\" + item for item in SCRIPTS) + CONTRACTS"
+      ],
+      "added": [
+        "    \"packaging/windows-cp311.lock\", \"packaging/windows-semantic-cp311.lock\",",
+        "    \"scripts/windows_reader_player_smoke.py\", \"scripts/run_scale_measurements.py\",",
+        "    ) + tuple(\"scripts/\" + item for item in SCRIPTS) + CONTRACTS"
+      ]
+    }
+  ]
+}

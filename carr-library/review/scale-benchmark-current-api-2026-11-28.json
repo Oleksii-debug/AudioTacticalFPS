@@ -1,0 +1,631 @@
+{
+  "schema": "carr-reviewed-capacity-harness/1",
+  "status": "SOURCE_REVIEWED_DISTINCT_PEERS_CLEAR_NOT_RUN",
+  "base": "73010d4b24515296edb43f7f27969641a66d3e7c",
+  "donor": {
+    "head": "1d85bae4c35bd7fedf385b3eeafc9519d770b0c5",
+    "branch": "carr/library-backup-scale-review-20261128",
+    "tree": "b26aa7134ff7ea78ba24b07aba58db5000d1d606"
+  },
+  "source_tree": "5b253ebb4913ccb74d5d74042e491bb54608e709",
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81e569b33a6acc4a64f3ee04176598487f9efc07",
+      "sha256": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d",
+      "bytes": 29853,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_catalog.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff0b4174f3104201ebf2527b6d489345ed2e874f",
+      "sha256": "0ef21c5d7d3722002dda8e021ba89f63c6ee31ac6eac1eb1958a2b0e767ea7b4",
+      "bytes": 59501,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_backup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e8b19c1f4db16c214c0d3a06730e36e04d94bad",
+      "sha256": "3d5b3052eaf308c435d6afcadb26a9cf86cc21cc5b7265da0279f8f8b1ed64a5",
+      "bytes": 35273,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_scale_contract.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38efa826d663671f67867106fb7a85978082b2f8",
+      "sha256": "ace5a5f273b157075b4f02aa8eb148ae89d2e52d2105a89def05c71058995cca",
+      "bytes": 17970,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_scale_posix.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8be4f6315ea0d3af7ae1b62204bfa76d17c815d7",
+      "sha256": "0a6d45808c98d2ec029cd38f1687134626a4e7038e28f21415ed0f6143769243",
+      "bytes": 3781,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_catalog_benchmark.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8edd918daab602452833f44b53efbde861b41366",
+      "sha256": "6ef865f070a5f746dccbab31c7ea4d6584ee28fd32b74c1c95b0018354c11045",
+      "bytes": 25336,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/scale/test_library_backup_benchmark.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "acae6eb09bec318589d89dff72837df5b5a47baa",
+      "sha256": "3955c881b347c98169e751fac9bfa7949adcfbc1875655667175884ebb703b4f",
+      "bytes": 16749,
+      "readback": "EXACT"
+    }
+  ],
+  "inverse_blob": "a3bce6856ed1e11d272077ea0ab4636c99d50a46",
+  "all_seven_paths_absent_from_target": true,
+  "no_product_or_workflow_or_ref_changes": true,
+  "source_dependencies": [
+    {
+      "module": "carr_library.application",
+      "path": "carr-library/src/carr_library/application.py",
+      "git_blob": "7bf626ad0545b64313bf680b14caa3b40f4c67d2"
+    },
+    {
+      "module": "carr_library.catalog.intake",
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "git_blob": "7cdb9471906b1c6a5e5943ab792a4d3d549a09c7"
+    },
+    {
+      "module": "carr_library.catalog.registration",
+      "path": "carr-library/src/carr_library/catalog/registration.py",
+      "git_blob": "337a2573b1483aeef87a1e3fc1fcd1b6f52fb0a9"
+    },
+    {
+      "module": "carr_library.ingest.batches",
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "git_blob": "f9c73a33ff8a819dba086f7cd7dc8b776b670985"
+    },
+    {
+      "module": "carr_library.ingest.batch_pages",
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "git_blob": "0a41bbb7f1a8bd492bbdd26c4392be5b04af1ed2"
+    },
+    {
+      "module": "carr_library.ingest.streamed_text",
+      "path": "carr-library/src/carr_library/ingest/streamed_text.py",
+      "git_blob": "1d1ccc542ee3e75881570a62432ba0dd93686d2a"
+    },
+    {
+      "module": "carr_library.ingest.streamed_ingest",
+      "path": "carr-library/src/carr_library/ingest/streamed_ingest.py",
+      "git_blob": "7c5e798a2e7d25e502211a3473f2bad2ea681834"
+    },
+    {
+      "module": "carr_library.ingest.worker",
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "git_blob": "c94d8828dd0adb595b943e77224d8adc596b6efe"
+    },
+    {
+      "module": "carr_library.ingest.pipeline",
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "git_blob": "c6eb848c3371982adafa020377e3676dabbee4bc"
+    },
+    {
+      "module": "carr_library.ingest.resource_budget",
+      "path": "carr-library/src/carr_library/ingest/resource_budget.py",
+      "git_blob": "fb6c7fcd52cf7aabeaeb8a55a1f7922dee6ea4d2"
+    },
+    {
+      "module": "carr_library.ingest.retained_assets",
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "git_blob": "0778f3f4a9859650940043d970688bdcf979ad4f"
+    },
+    {
+      "module": "carr_library.ingest.session",
+      "path": "carr-library/src/carr_library/ingest/session.py",
+      "git_blob": "e61ef61b4c8a48d2aa9625b4b15856b20794d277"
+    },
+    {
+      "module": "carr_library.storage.revisions",
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "git_blob": "34929b4c6dc9149cf8df2d47fafff083c887976c"
+    },
+    {
+      "module": "carr_library.citations.streamed_text_attestation",
+      "path": "carr-library/src/carr_library/citations/streamed_text_attestation.py",
+      "git_blob": "837f350233cfaad72f8e254cd61f3ceb08b980f9"
+    },
+    {
+      "module": "carr_library.search.pagination",
+      "path": "carr-library/src/carr_library/search/pagination.py",
+      "git_blob": "b05d026156cadb0d1b2b94a965d125b80526bd67"
+    },
+    {
+      "module": "carr_library.search.source_windows",
+      "path": "carr-library/src/carr_library/search/source_windows.py",
+      "git_blob": "380072bc51a0f6cab01efe870f1e2d92530aa2ef"
+    },
+    {
+      "module": "carr_library.search.federated",
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "git_blob": "4fadeb794bf7390ed2463b1b51b8cd393150b87c"
+    },
+    {
+      "module": "carr_library.search.federated_pages",
+      "path": "carr-library/src/carr_library/search/federated_pages.py",
+      "git_blob": "4e26b73f3dc4c1301a31cd638341dfb7fa1dff8e"
+    },
+    {
+      "module": "carr_library.audio.process",
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "git_blob": "2287f6a6423229b5a5c476cff4970bbe108bef5e"
+    },
+    {
+      "module": "carr_library.audio.cleanup",
+      "path": "carr-library/src/carr_library/audio/cleanup.py",
+      "git_blob": "6ea79ccc3e1b87795ed7da19bc9476be1d1b2949"
+    },
+    {
+      "module": "carr_library.durable_state",
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "git_blob": "31537c518245cca6450dc68510c5046f216d6dca"
+    },
+    {
+      "module": "carr_library.backup_budget",
+      "path": "carr-library/src/carr_library/backup_budget.py",
+      "git_blob": "37997d492d6c2319d76c409d3c458a86700acdf8"
+    },
+    {
+      "module": "carr_library.library_backup",
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "git_blob": "24b48d439cbad63367856695ae429ab9809681d8"
+    },
+    {
+      "module": "carr_library.pending_backup",
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "git_blob": "5e1c48533eaae23cca140825ae4c734aaa3ed558"
+    },
+    {
+      "module": "carr_library.backup_sidecars",
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "git_blob": "49744786bed06387efd623b923219a9d27c5763c"
+    },
+    {
+      "module": "carr_library.backup_compat",
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "git_blob": "2f7e74ba379febfa0753bc27380dc421381f76ad"
+    },
+    {
+      "module": "carr_library.backup_producers",
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "git_blob": "71e29fd2172583fae6daa15d45e590a04ae55b55"
+    },
+    {
+      "module": "carr_library.backup_transcription",
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "git_blob": "6f533c83019508c0a4ba40db7f75be1928f118f6"
+    },
+    {
+      "module": "carr_library.ingest.catalog_asset_copy",
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "git_blob": "43c6ae327be908e981c4f43e34594d730765df5b"
+    },
+    {
+      "module": "carr_library.ingest.restore",
+      "path": "carr-library/src/carr_library/ingest/restore.py",
+      "git_blob": "7c752b0203eb3d85bf3dfdeb2dea9a8c76013f37"
+    }
+  ],
+  "tests": {
+    "kind": "PLANNED_NOT_COLLECTED_OR_EXECUTED",
+    "portable": [
+      {
+        "path": "tests/scale/test_library_scale_contract.py",
+        "cases": 24,
+        "donor_bytes_unchanged": true
+      },
+      {
+        "path": "tests/scale/test_library_catalog_benchmark.py",
+        "cases": 13
+      },
+      {
+        "path": "tests/scale/test_library_backup_benchmark.py",
+        "cases": 18
+      }
+    ],
+    "portable_total": 55,
+    "posix_only": {
+      "path": "tests/scale/test_library_scale_posix.py",
+      "cases": 2,
+      "donor_bytes_unchanged": true
+    },
+    "linux_total": 57,
+    "skips_or_xfail_added": 0,
+    "old_target_tests_changed": 0,
+    "notes": [
+      "The POSIX-only module deliberately asserts the POSIX gate; select it only on Linux.",
+      "Donor catalog and backup cases are adapted to the current API and actual fragment/native5 contracts. All donor scenario families remain; three actual cancellation/restart controls are added.",
+      "The positive cancellation fixture alone inserts a scoped bootstrap hold after the real atomic readiness acknowledgment. The measured harness never inserts a delay.",
+      "Existing 60-second slice, 120/180-second test calls and actual child ownership remain. All added cases retain the same existing stage/cancellation limits.",
+      "One additional measured 65 MiB private runtime input checks the real conservative caller accounting against core _copy_allowance. It does not claim that this input was imported or archived.",
+      "The selected-worker exit-7 negative proves that a failed/quarantined row cannot be relabeled as an unmeasured cancellation; no cancellation report is published."
+    ]
+  },
+  "implementation": {
+    "reuse": [
+      "Unchanged bounded donor generator and its two guard suites.",
+      "Current LibraryApp plan_import_page/continue_import_scan/run_import_batch/resume_import, saved TextProfile2 and v3 batch records.",
+      "Current ResourceBroker and exact audio.process.run_process(owned_tree=True), with only per-worker metrics/readiness prefix before the same verified worker entry.",
+      "Current search_page/federated pages and authoritative quote copy; no donor search/index implementation.",
+      "Current native5 typed-sidecar backup with caller-selected BackupBudget, independent original/raw/full-table oracle and passive restore."
+    ],
+    "reconciliation": [
+      "Real 65536-character fragments replace donor whole-field fragment assumptions.",
+      "The current catalog.registration and storage.revisions modules provide publication identity; no nonexistent storage.publication module is imported.",
+      "The large-field tests independently compute all actual fragments and prove exact final-field navigation past the first source window.",
+      "BOM bytes count in the original allowance; decoded field bytes use the actual explicit segment guard.",
+      "No nonexistent LibraryApp.close_search, donor max_items/slice_items, SearchResources or search.paging call remains.",
+      "Current native5 is required using a genuine typed keybinding sidecar; supported flat4 is explicitly a separate existing compatibility gate.",
+      "Cancellable retained-source resolution uses the same outer deadline.",
+      "The complete declared archive-data bound is doubled, alongside two manifests and the existing 64 MiB margin, matching current core _copy_allowance and _staging_requirement before any archive exists.",
+      "Failed, quarantined or excluded cancellation rows remain failures. A completed-before-cancellation reason requires a positive selected-worker completion record; otherwise the boundary is explicitly unproved."
+    ],
+    "measurement_limits": [
+      "Synthetic 1000/10000/50000-book and large-original tiers are requested, never inferred from small tests.",
+      "Current measured disk and available physical/cgroup memory can refuse a tier; generator returns NOT_RUN/code2 and catalog/backup return NOT_RUN/code3.",
+      "Per-worker own-process exit peaks and coordinator peaks are separately labeled. Simultaneous family peak and OS memory enforcement are NOT_MEASURED.",
+      "Killed-child peak is NOT_MEASURED; cancellation requires actual startup acknowledgment, actual native AudioCancelled, saved canceled row and unchanged IDs.",
+      "Global ranking, semantic/private models, physical audio and human/NVDA quality are not qualified.",
+      "Selected script/module hashes are emitted and compared. The existing receiving workflow must separately prove the full 398-module installed/source namespace; this harness does not claim that selected-module hashes prove it.",
+      "Every import/catalog integrity pass remains real. A time-limited or incomplete tier is not capacity acceptance."
+    ]
+  },
+  "result_files": [
+    "owner.json",
+    "preflight.json",
+    "generation.json",
+    "sources.jsonl",
+    "verified-generation.json (generator CLI)",
+    "benchmark/state.json",
+    "benchmark/events/*.json",
+    "benchmark/worker-peaks/*.json",
+    "benchmark/worker-starts/*.json",
+    "benchmark/cancellation.json (when requested)",
+    "benchmark/authored-crash.json (when requested)",
+    "benchmark/catalog-verification.json",
+    "benchmark/search-measurements.json",
+    "benchmark/backup-restore.json"
+  ],
+  "recipes": {
+    "corpus_profiles": [
+      {
+        "books": 1000,
+        "authored_fields_per_book": 40,
+        "field_bytes": 256,
+        "original_bytes": 10279003,
+        "generate": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_scale.py",
+          "--output-dir",
+          "<fresh-work>/books-1000",
+          "--books",
+          "1000",
+          "--segments",
+          "40",
+          "--segment-bytes",
+          "256"
+        ]
+      },
+      {
+        "books": 10000,
+        "authored_fields_per_book": 40,
+        "field_bytes": 256,
+        "original_bytes": 102790003,
+        "generate": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_scale.py",
+          "--output-dir",
+          "<fresh-work>/books-10000",
+          "--books",
+          "10000",
+          "--segments",
+          "40",
+          "--segment-bytes",
+          "256"
+        ]
+      },
+      {
+        "books": 50000,
+        "authored_fields_per_book": 40,
+        "field_bytes": 256,
+        "original_bytes": 513950003,
+        "generate": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_scale.py",
+          "--output-dir",
+          "<fresh-work>/books-50000",
+          "--books",
+          "50000",
+          "--segments",
+          "40",
+          "--segment-bytes",
+          "256"
+        ]
+      }
+    ],
+    "large_text_profiles": [
+      {
+        "bytes": 135266304,
+        "fields": 256,
+        "generate": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_scale.py",
+          "--output-dir",
+          "<fresh-work>/large-135266304",
+          "--large-bytes",
+          "135266304",
+          "--segments",
+          "256"
+        ]
+      },
+      {
+        "bytes": 1073741824,
+        "fields": 512,
+        "generate": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_scale.py",
+          "--output-dir",
+          "<fresh-work>/large-1073741824",
+          "--large-bytes",
+          "1073741824",
+          "--segments",
+          "512"
+        ]
+      },
+      {
+        "bytes": 2147483648,
+        "fields": 1000,
+        "generate": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_scale.py",
+          "--output-dir",
+          "<fresh-work>/large-2147483648",
+          "--large-bytes",
+          "2147483648",
+          "--segments",
+          "1000"
+        ]
+      }
+    ],
+    "stages": [
+      {
+        "name": "initialize actual public source page",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_catalog.py",
+          "init",
+          "<fixture>",
+          "--page-files",
+          "1000",
+          "--steps",
+          "1001",
+          "--slice-seconds",
+          "600",
+          "--memory-mib",
+          "1024",
+          "--search-disk-mib",
+          "2048",
+          "--reserve-mib",
+          "1024",
+          "--foreign-libraries",
+          "21"
+        ],
+        "expected_exit": {
+          "success": 0,
+          "measured_refusal": 3
+        }
+      },
+      {
+        "name": "optional actual worker cancellation before any completion",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_catalog.py",
+          "cancel",
+          "<fixture>",
+          "--seconds",
+          "900",
+          "--cancel-after-worker-seconds",
+          "0.5"
+        ],
+        "expected_exit": {
+          "measured_cancellation": 0,
+          "worker_completed_before_cancellation_or_unmeasured": 3
+        }
+      },
+      {
+        "name": "optional authored durable-commit process death",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_catalog.py",
+          "import",
+          "<fixture>",
+          "--seconds",
+          "7200",
+          "--crash-after-first-commit"
+        ],
+        "expected_exit": {
+          "actual_authored_death": 73
+        }
+      },
+      {
+        "name": "explicit import/resume",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_catalog.py",
+          "import",
+          "<fixture>",
+          "--seconds",
+          "21600"
+        ],
+        "expected_exit": {
+          "complete": 0
+        },
+        "note": "Use --stop-after-slices 1 for an explicit durable between-page/slice stop, then invoke this same command again. Do not label a PAUSED result complete. Each source keeps its original 600-second selected slice; failures are retained. When a receiving driver itself owns the adapter process, use a fresh outer owner per --stop-after-slices 1 invocation; the original native lifetime cap is not enlarged."
+      },
+      {
+        "name": "independent all-source/all-raw verification in a fresh process",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_catalog.py",
+          "verify",
+          "<fixture>",
+          "--seconds",
+          "7200"
+        ],
+        "expected_exit": {
+          "verified": 0
+        }
+      },
+      {
+        "name": "current bounded search and verified-copy measurements in a fresh process",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_catalog.py",
+          "search",
+          "<fixture>",
+          "--seconds",
+          "7200",
+          "--query-seconds",
+          "60",
+          "--query-samples",
+          "20"
+        ],
+        "expected_exit": {
+          "measured": 0
+        }
+      },
+      {
+        "name": "actual current native5 backup/verify/fresh passive restore",
+        "argv": [
+          "python",
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "scripts/benchmark_library_backup.py",
+          "backup",
+          "<fixture>",
+          "--seconds",
+          "3600",
+          "--memory-mib",
+          "2048",
+          "--reserve-mib",
+          "1024"
+        ],
+        "expected_exit": {
+          "verified": 0,
+          "measured_refusal": 3
+        }
+      }
+    ],
+    "note": "These are explicit invocation recipes, not executions or a promise that a host can complete a tier. Preserve actual stdout/stderr, exit, elapsed phase and immutable source/installed proof. Never substitute smaller tiers under a larger label or turn a resource/deadline failure into PASS."
+  },
+  "peer_review": {
+    "catalog": {
+      "reviewer": "Locate",
+      "status": "CLEAR_SOURCE_REVIEWED_NOT_RUN",
+      "exact_catalog": "ff0b4174f3104201ebf2527b6d489345ed2e874f",
+      "exact_tests": "8edd918daab602452833f44b53efbde861b41366",
+      "durable_review_tree": "bb06eeb8de592f8b3eee74864ef809530acb4bd4",
+      "durable_review_blob": "ecff3746513ed653f5c75b127b7db011250b8e8f",
+      "scope": "Current public import/search APIs, actual 65536-character geometry, typed retained-source lookup, opaque continuation, federation, actual child cancellation/death/resume, selected-worker failure classification and truthful measurement labels."
+    },
+    "backup": {
+      "reviewer": "Audio",
+      "status": "CLEAR_SOURCE_REVIEWED_NOT_RUN",
+      "exact_backup": "0e8b19c1f4db16c214c0d3a06730e36e04d94bad",
+      "exact_tests": "acae6eb09bec318589d89dff72837df5b5a47baa",
+      "durable_review_tree": "010272b4bd222442e5e2bfb7021fdf523b6336e3",
+      "durable_review_blob": "06f0db3aea04be25b3e3da4041b1b5baaeaca30a",
+      "scope": "Actual current native5 producer/verifier/restore, caller-selected two-copy staging allowance, independent SQL/raw/original/archive invariance, passive v3 restore and actual 65 MiB accounting regression."
+    }
+  },
+  "execution": {
+    "commands_run": [],
+    "unit_tests": "NOT_RUN",
+    "native_capacity": "NOT_RUN by this contribution; separately frozen ff46 probe unchanged",
+    "large_tiers": "NOT_RUN",
+    "performance_acceptance": "NOT_ESTABLISHED",
+    "refs_changed": false
+  },
+  "pre_execution_dependencies": [
+    "Integrate the independently reviewed current Config(**settings) caller repairs: ingest/batch_pages.py 1dfa39b1277a929ecf75d42f50f0f1af9d6281c4 and ingest/batch_cli.py 305bd28e3258ec9f7fcc82140241677a32580be8. This seven-file package leaves both product modules unchanged.",
+    "Receiving workflow supplies the current full source/wheel/installed package proof; all seven new files are hash-bound separately in this source review.",
+    "Python 3.11 or later with the existing installed application/import prerequisites, filelock and pytest; no models, OCR engines, FFmpeg, devices or remote credentials are introduced by these seven files."
+  ],
+  "receiving_driver": {
+    "path": "carr-library/scripts/run_scale_measurements.py",
+    "review": "SEPARATE_SOURCE_REVIEW_PENDING",
+    "note": "The separate root-authorized measured CI driver binds the full exact installed package and each authored input. Its Windows resume loop uses one existing --stop-after-slices 1 call per native owner, preserving the unchanged bounded lifetime inventory; no compound native owner over the full 50k population is introduced. Driver and YAML are outside this seven-file source review."
+  }
+}

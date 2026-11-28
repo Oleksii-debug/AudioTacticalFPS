@@ -165,3 +165,54 @@ def test_explicit_optional_defaults_decode_and_resave_as_legacy_shape(tmp_path):
     restored = ReaderDraftStore.decode(value)
     store.save(restored)
     assert set(json.loads(store.path.read_bytes())) == LEGACY_FIELDS
+
+
+@pytest.mark.parametrize('pauses', [(1, 0, 0), (0, 250, 0), (125, 750, 30000)])
+def test_reading_pauses_roundtrip_passively_with_exact_default_bytes_and_cas(tmp_path, pauses):
+    from dataclasses import replace
+    names = ('sentence_pause_ms', 'paragraph_pause_ms', 'section_pause_ms')
+    store = ReaderDraftStore(tmp_path)
+    document = ReadingDocument('First.\n\nOriginal.\fFinal.')
+    default = ReaderResume(document, 'unavailable:exact', -2, 61, 0, 3.25)
+    token = store.save_with_token(default, expected_token=None)
+    original = store.path.read_bytes()
+    selected = replace(default, **dict(zip(names, pauses)))
+    current = store.save_with_token(selected, expected_token=token)
+    loaded, actual = ReaderDraftStore(tmp_path).load_with_token()
+    assert actual == current != token
+    assert tuple(getattr(loaded, name) for name in names) == pauses
+    assert set(json.loads(store.path.read_bytes())) == LEGACY_FIELDS | {
+        name for name, value in zip(names, pauses) if value}
+    assert loaded.document.to_dict() == document.to_dict()
+    assert loaded.voice_id == 'unavailable:exact' and loaded.audio_seconds == 3.25
+    with pytest.raises(ValueError, match='Another window'):
+        store.save_with_token(default, expected_token=token)
+    store.save_with_token(replace(loaded, **dict.fromkeys(names, 0)), expected_token=current)
+    assert store.path.read_bytes() == original
+
+
+@pytest.mark.parametrize('updates', [
+    {'sentence_pause_ms': True}, {'sentence_pause_ms': -1}, {'paragraph_pause_ms': 30001},
+    {'paragraph_pause_ms': 1.5}, {'section_pause_ms': '500'}, {'section_pause_ms': None},
+    {'section_pause_seconds': 1}, {'sentence_pause_ms': 0, 'autoplay': True},
+])
+def test_malformed_pause_recovery_cannot_rewrite_saved_reader(tmp_path, updates):
+    store = ReaderDraftStore(tmp_path)
+    store.save(ReaderResume(ReadingDocument('Exact original.'), sentence_pause_ms=125))
+    original = store.path.read_bytes()
+    candidate = json.loads(original)
+    candidate.update(updates)
+    with pytest.raises(ValueError):
+        ReaderDraftStore.decode(candidate)
+    assert store.path.read_bytes() == original
+
+
+def test_explicit_zero_pause_record_resaves_as_exact_legacy_bytes(tmp_path):
+    store = ReaderDraftStore(tmp_path)
+    store.save(ReaderResume(ReadingDocument('Legacy original.'), 'missing:voice'))
+    original = store.path.read_bytes()
+    candidate = json.loads(original)
+    candidate.update(sentence_pause_ms=0, paragraph_pause_ms=0, section_pause_ms=0)
+    recovered = ReaderDraftStore.decode(candidate)
+    store.save(recovered)
+    assert store.path.read_bytes() == original

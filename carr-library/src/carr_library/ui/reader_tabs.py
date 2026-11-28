@@ -7,8 +7,10 @@ from ..speech.tabs import MAX_TABS, ReadingTab, ReadingTabs, PreparedTabs, prepa
 
 
 def _snapshot(resume):
-    return (resume.document._signature(), resume.voice_id, resume.rate, resume.volume,
-            resume.pitch, resume.punctuation)
+    value = (resume.document._signature(), resume.voice_id, resume.rate, resume.volume,
+             resume.pitch, resume.punctuation)
+    pauses = (resume.sentence_pause_ms, resume.paragraph_pause_ms, resume.section_pause_ms)
+    return value + pauses if any(pauses) else value
 
 
 @dataclass
@@ -217,7 +219,10 @@ class NativeReaderTabs:
             previous = self.current.resume
             state = TabState(entry, ReaderResume(ReadingDocument('', title=entry.label),
                 previous.voice_id, previous.rate, previous.volume,
-                pitch=previous.pitch, punctuation=previous.punctuation), draft, None)
+                pitch=previous.pitch, punctuation=previous.punctuation,
+                sentence_pause_ms=previous.sentence_pause_ms,
+                paragraph_pause_ms=previous.paragraph_pause_ms,
+                section_pause_ms=previous.section_pause_ms), draft, None)
             state.token = draft.save_with_token(state.resume, expected_token=None)
             # This exact newly created empty document was just saved. Later
             # erasure of an existing copy must never be treated as clean.

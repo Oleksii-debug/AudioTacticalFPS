@@ -111,3 +111,48 @@ def test_rehashed_invalid_native_options_are_rejected_by_both_backup_readers(
     assert (folder / name).read_bytes() == raw
     assert sha256((folder / 'manifest.json').read_bytes()).hexdigest() == checksum
     assert (folder / 'manifest.json').read_bytes() == manifest_before
+
+
+@pytest.mark.parametrize('shape', ['native', 'flat'])
+def test_reader_pause_settings_survive_real_backup_as_passive_exact_bytes(tmp_path, monkeypatch, shape):
+    from dataclasses import replace
+    app, _, imported, raw, store, index, states = library(tmp_path, (73, True))
+    selected = replace(states[0], sentence_pause_ms=125, paragraph_pause_ms=750, section_pause_ms=2000)
+    store.draft(index.tabs[0]).save(selected)
+    original = (app.root / index.tabs[0].filename).read_bytes()
+    def denied(*args, **kwargs):
+        pytest.fail('Restoring extra reading pauses must not discover or launch a voice.')
+    monkeypatch.setattr(VoiceRegistry, 'discover', denied)
+    monkeypatch.setattr(runtime_settings, 'voice_registry', denied)
+    monkeypatch.setattr(subprocess, 'Popen', denied)
+    folder = tmp_path / 'backup'
+    _, checksum = BACKUP['_backup'](app, folder, shape)
+    root = restore_backup(folder, tmp_path / 'restored', checksum)
+    loaded = ReadingTabsStore(root).draft(index.tabs[0]).load()
+    assert (loaded.sentence_pause_ms, loaded.paragraph_pause_ms, loaded.section_pause_ms) == (125, 750, 2000)
+    assert (loaded.pitch, loaded.punctuation, loaded.voice_id) == (73, True, selected.voice_id)
+    assert loaded.document.to_dict() == selected.document.to_dict()
+    assert (root / index.tabs[0].filename).read_bytes() == original
+    assert (folder / index.tabs[0].filename).read_bytes() == original
+    assert LibraryApp(root).assets.resolve(imported['asset']).read_bytes() == raw.encode('utf-8')
+
+
+@pytest.mark.parametrize('shape', ['native', 'flat'])
+@pytest.mark.parametrize('field,value', [
+    ('sentence_pause_ms', True), ('paragraph_pause_ms', 30001), ('section_pause_ms', '1000')])
+def test_rehashed_unbounded_pause_settings_are_refused_before_restore_effects(tmp_path, shape, field, value):
+    app, _, _, _, _, index, _ = library(tmp_path, (73, True))
+    folder = tmp_path / 'backup'
+    manifest, _ = BACKUP['_backup'](app, folder, shape)
+    name = index.tabs[0].filename
+    candidate = read_json(folder / name)
+    candidate[field] = value
+    raw = (json.dumps(candidate, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
+    checksum = BACKUP['_change'](folder, manifest, name, raw=raw)
+    before = (folder / 'manifest.json').read_bytes()
+    destination = tmp_path / 'refused'
+    with pytest.raises((ValueError, RestoreError)):
+        restore_backup(folder, destination, checksum)
+    assert not destination.exists()
+    assert (folder / name).read_bytes() == raw
+    assert (folder / 'manifest.json').read_bytes() == before

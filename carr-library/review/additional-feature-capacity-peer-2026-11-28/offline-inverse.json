@@ -1,0 +1,39 @@
+{
+  "schema": "carr-offline-helper-inverse/1",
+  "before": "545bb445bbf270ea4bd0a198acad8467c6064183",
+  "after": "3c05f97c43036b044bd4b29e9e5ff3aff79cba3c",
+  "method": "Apply line-based edits in reverse order using newLine and exact new/old line arrays; insertion old-empty means zero lines.",
+  "edits": [
+    {
+      "oldLine": 21,
+      "newLine": 21,
+      "old": "",
+      "new": "import runpy"
+    },
+    {
+      "oldLine": 202,
+      "newLine": 203,
+      "old": "",
+      "new": "    policy_path = root / 'scripts/ci_check.py'\n    policy_before = digest(policy_path)\n    # Same interpreter-level offline and telemetry policy as the unchanged source gate.\n    os.environ.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_DISABLE_TELEMETRY='1',\n        HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', DO_NOT_TRACK='1')"
+    },
+    {
+      "oldLine": 208,
+      "newLine": 214,
+      "old": "",
+      "new": "              'offline_policy_source_sha256': policy_before,"
+    },
+    {
+      "oldLine": 271,
+      "newLine": 278,
+      "old": "                    status = pytest.main([*options, '--junitxml', str(report_path),\n                        '--basetemp', str(Path(temporary) / 'pytest'), *SUITES], plugins=[proof])",
+      "new": "                    policy_source = runpy.run_path(str(policy_path))['PYTEST_CHILD']\n                    call = 'status = pytest.main(sys.argv[1:], plugins=[policy])'\n                    assert policy_source.count(call) == 1, 'Existing child policy shape changed; review the adapter.'\n                    # Preserve every original policy statement and verdict; append only\n                    # the exact-origin/collection/timing observer to its pytest call.\n                    execution = policy_source.replace(call,\n                        'status = pytest.main(sys.argv[1:], plugins=[policy, _additional_proof])')\n                    namespace = {'__name__': '__main__', '_additional_proof': proof}\n                    argv_before = sys.argv\n                    sys.argv = ['-c', *options, '--junitxml', str(report_path),\n                        '--basetemp', str(Path(temporary) / 'pytest'), *SUITES]\n                    try:\n                        try:\n                            exec(compile(execution, '<existing-offline-pytest-policy>', 'exec'), namespace)\n                        except SystemExit as error:\n                            status = error.code\n                        else:\n                            raise AssertionError('Existing offline policy did not return its verdict.')\n                    finally:\n                        sys.argv = argv_before\n                    assert not namespace['policy'].seen, 'Existing policy rejected XFAIL/XPASS.'"
+    },
+    {
+      "oldLine": 294,
+      "newLine": 320,
+      "old": "",
+      "new": "        assert digest(policy_path) == policy_before"
+    }
+  ],
+  "verified_exact": true
+}

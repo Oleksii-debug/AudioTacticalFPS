@@ -669,3 +669,80 @@ def test_explicit_resources_reach_authenticated_header_before_new_chain_work(lib
     assert observed == [{'backup_budget': dialogs.selected.budget}]
     assert verify_backup(base, digest)['database']['size_bytes'] > 0
     assert receipt['base_sha256'] == digest
+
+
+@pytest.mark.parametrize('outcome', ['complete', 'review-cancelled', 'worker-cancelled'])
+def test_actual_desktop_backup_callback_keeps_options_policy_and_real_worker(
+        library, tmp_path, monkeypatch, outcome):
+    """Execute the real menu callback and options controller; widget peers are explicit."""
+    import ast
+    from carr_library.backup_options import resource_values
+
+    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    parsed = ast.parse(source.read_text(encoding='utf-8'))
+    desktop = next(node for node in parsed.body
+                   if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
+    callback = next(node for node in desktop.body
+                    if isinstance(node, ast.FunctionDef) and node.name == 'backup')
+    namespace = {'__name__': 'carr_library.ui._backup_callback_test',
+                 '__package__': 'carr_library.ui'}
+    exec(compile(ast.Module(body=[callback], type_ignores=[]), str(source), 'exec'), namespace)
+
+    app, workspace = library
+    frame, wx, events, reviewed, reports = Frame(app), wx_peer(), [], [], []
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    def modal(dialog):
+        events.append('options')
+        assert not frame.queued and frame._backup_review is not None
+        if outcome == 'review-cancelled':
+            dialog.cancel()
+        else:
+            dialog.reviewed.SetValue(True)
+            dialog.include_audio.SetValue(True)
+            for name, value in resource_values(selected()).items():
+                dialog.fields[name].SetValue(value)
+            dialog.confirm()
+            assert dialog.result is not None and dialog.result.budget == selected()
+            reviewed.append(dialog.result)
+        return dialog.modal_result
+    wx.on_show = modal
+    def directory(owner, title, toolkit):
+        assert events == ['options'] and reviewed and toolkit is wx
+        assert owner.frame is frame and owner.app is app and owner.current()
+        events.append('directory')
+        return tmp_path
+    monkeypatch.setattr(actions, 'choose_directory', directory)
+    monkeypatch.setattr(actions, 'show_report',
+        lambda owner, title, body, toolkit: reports.append((title, body)))
+    real, calls = app.backup, []
+    def observed(destination, **kwargs):
+        events.append('worker')
+        calls.append(kwargs)
+        return real(destination, **kwargs)
+    monkeypatch.setattr(app, 'backup', observed)
+
+    assert namespace['backup'](frame, None) is None
+    assert frame._backup_review is None and not frame.messages
+    assert not list(tmp_path.glob('ResearchLibrary-backup-*'))
+    if outcome == 'review-cancelled':
+        assert events == ['options'] and not frame.queued and not calls and not reports
+    else:
+        assert events == ['options', 'directory'] and len(frame.queued) == 1 and not calls
+        if outcome == 'worker-cancelled':
+            frame.cancel_event.set()
+            with pytest.raises(InterruptedError, match='Backup cancelled'):
+                execute(frame)
+            assert not list(tmp_path.glob('ResearchLibrary-backup-*')) and not reports
+        else:
+            checksum, _ = execute(frame)
+            folder, = tmp_path.glob('ResearchLibrary-backup-*')
+            manifest = verify_backup(folder, checksum, backup_budget=reviewed[0].budget)
+            assert manifest['database']['size_bytes'] > 0
+            assert sha256((folder / 'manifest.json').read_bytes()).hexdigest() == checksum
+            assert reports[0][0] == 'Backup complete' and checksum in reports[0][1]
+        assert len(calls) == 1 and events == ['options', 'directory', 'worker']
+        assert calls[0]['include_generated'] is True
+        assert calls[0]['backup_budget'] is reviewed[0].budget
+        assert callable(calls[0]['cancelled'])
+    assert not frame.messages and not frame.queued
+    assert app.edition_metadata(workspace, 'original').title == 'Original'

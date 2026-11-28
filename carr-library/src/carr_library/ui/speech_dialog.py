@@ -176,6 +176,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     synthesis_controls = ReaderSynthesisControls(dialog,
         pitch=recovered.pitch if recovered else None,
         punctuation=recovered.punctuation if recovered else False,
+        pauses=(recovered.sentence_pause_ms, recovered.paragraph_pause_ms, recovered.section_pause_ms)
+               if recovered else (0, 0, 0),
         alive=lambda: alive, busy=lambda: busy, guard=lambda: playback_guard(),
         before_apply=lambda: before_native_options_apply(),
         changed=lambda: native_options_changed(),
@@ -474,16 +476,23 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
         pitch, punctuation = synthesis_controls.snapshot()
+        pauses = synthesis_controls.pause_snapshot()
         synthesis = (voice_id, rate.GetValue(), volume.GetValue(), pitch, punctuation)
+        if any(pauses):
+            synthesis += pauses
         position = (player.position_seconds if last_audio is not None else
                     reader_tabs.saved_audio_position(document, synthesis=synthesis) if reader_tabs is not None else 0)
         cursor_offset = reading_offset(editor, editor.GetInsertionPoint())
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
                      round(position, 1), pitch, punctuation)
+        if any(pauses):
+            signature += pauses
         if not force and signature == last_recovery_signature:
             return True
         resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
-                              cursor_offset, position, pitch=pitch, punctuation=punctuation)
+                              cursor_offset, position, pitch=pitch, punctuation=punctuation,
+                              sentence_pause_ms=pauses[0], paragraph_pause_ms=pauses[1],
+                              section_pause_ms=pauses[2])
         if reader_tabs is not None:
             reader_tabs.save_resume(resume, save_path=save_path)
         else:
@@ -1041,12 +1050,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
         pitch, punctuation = synthesis_controls.snapshot()
+        pauses = synthesis_controls.pause_snapshot()
         synthesis = (voice_id, rate.GetValue(), volume.GetValue(), pitch, punctuation)
+        if any(pauses):
+            synthesis += pauses
         resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
             reading_offset(editor, editor.GetInsertionPoint()),
             player.position_seconds if last_audio is not None else
             reader_tabs.saved_audio_position(document, synthesis=synthesis) if reader_tabs is not None else 0,
-            pitch=pitch, punctuation=punctuation)
+            pitch=pitch, punctuation=punctuation,
+            sentence_pause_ms=pauses[0], paragraph_pause_ms=pauses[1], section_pause_ms=pauses[2])
         if reader_tabs is not None:
             reader_tabs.current.reading_rules = reading_rules
         return resume, save_path
@@ -1068,7 +1081,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         remembered_voice_id, reading_rules = recovered.voice_id, state.reading_rules
         rate.SetValue(recovered.rate)
         volume.SetValue(recovered.volume)
-        synthesis_controls.restore(recovered.pitch, recovered.punctuation)
+        synthesis_controls.restore(recovered.pitch, recovered.punctuation,
+            pauses=(recovered.sentence_pause_ms, recovered.paragraph_pause_ms, recovered.section_pause_ms))
         voice_choice.SetSelection(next((i for i, voice in enumerate(voices)
             if voice.id == remembered_voice_id), -1))
         dialog.reader_editor = editor

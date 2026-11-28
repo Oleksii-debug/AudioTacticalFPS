@@ -156,3 +156,25 @@ def test_identical_text_in_another_tab_cannot_accept_an_old_edit_preview():
     assert first.text == second.text == 'Identical'
     assert preview.apply(first)
     assert first.source_text == second.source_text == 'Identical'
+
+
+@pytest.mark.parametrize('change', ['wrong-offset', 'outside-frames', 'reversed-order', 'untyped'])
+def test_measured_pause_binding_refuses_an_unrelated_or_untyped_map(change):
+    from carr_library.speech.runtime import SpeechPause
+    document = ReadingDocument('First. Second. Third.')
+    text = document.text
+    first = SpeechPause(7, 100, 200, 'sentence')
+    second = SpeechPause(15, 300, 400, 'sentence')
+    pauses = (first, second)
+    if change == 'wrong-offset':
+        pauses = (SpeechPause(len(text), 100, 200, 'sentence'),)
+    elif change == 'outside-frames':
+        pauses = (SpeechPause(7, 100, 1000, 'sentence'),)
+    elif change == 'reversed-order':
+        pauses = (second, first)
+    else:
+        pauses = ({'text_offset': 7, 'start_frame': 100, 'end_frame': 200, 'kind': 'sentence'},)
+    result = SimpleNamespace(path='measured.wav', frames=1000, sample_rate=8000,
+                             text_sha256=sha256(text.encode('utf-8')).hexdigest(), pauses=pauses)
+    with pytest.raises(ValueError, match='pause map'):
+        ReadingAudio.from_render(document, document._signature(), 0, len(text), text, result)

@@ -1,0 +1,59 @@
+{
+  "schema": "carr-scale-workflow-peer-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "reviewer": "voice_reading",
+  "workflow": {
+    "path": ".github/workflows/carr-scale-evaluation.yml",
+    "git_blob": "1a4eaf4b481fb79841af14cb60c770c127f72aa6",
+    "sha256": "871967b967ca8bfea5c1d1d9f8b26a08c5a7c5bccd5b1c95333c8c32922767e9",
+    "bytes": 59196,
+    "source_tree": "08ff6792202e563460a90f305d71d328bab39991"
+  },
+  "target_source_reference": {
+    "python_files": 398,
+    "reference": "carr-library/review/capacity-python-reference-2026-11-28.json",
+    "meaning": "SOURCE_REFERENCE_NOT_RUNTIME_QUALIFICATION",
+    "runtime_results": "NOT_RUN"
+  },
+  "reviewed_contracts": {
+    "windows": 55,
+    "linux": 57,
+    "source": true,
+    "isolated_installed": true,
+    "required_modules_windows": 3,
+    "required_modules_linux": 4,
+    "no_skip": true,
+    "no_xfail": true,
+    "policy": "existing ci_check.PYTEST_CHILD; same rejection policy with an added origin/count/duration observer"
+  },
+  "checked": [
+    "All 17 source/test/helper/reference/lock/workflow inputs are compared with exact Git bytes before executing repository helpers, then retained in contract before/after hashes.",
+    "Existing whole source/wheel/installed Python inventory and unique installed RECORD proof use current helper APIs; full mapping must equal the committed 398-module reference.",
+    "Existing exact dependency and build pins remain; no audio, OCR, model, device or credential prerequisite added.",
+    "Each measured Windows profile depends on the aggregate success of both OS contract jobs; 1000/10000/50000/2gib labels are separate jobs.",
+    "Driver argv matches the frozen public contract; exit 3 refusal and exit 4 missing cancellation qualification remain non-success.",
+    "Artifact staging admits only fixed public receipt names, preserves bounded valid FAILED/NOT_RUN results and cannot copy the synthetic work tree or archives.",
+    "Original ordinary workflows are not changed by this one new path; 35-minute contract job/12+12-minute test steps and new180/170-minute measured allowances remain explicit."
+  ],
+  "artifact_limits": {
+    "logs": 4194304,
+    "json": 2097152,
+    "stage_request_result": 65536,
+    "measured_files": 64,
+    "measured_bytes": 100663296,
+    "surrounding_bytes": 16777216,
+    "measured_names": 44
+  },
+  "driver_crosscheck": {
+    "tree": "cf660442c2f5848a1d3196a987b6ac26342aba4c",
+    "git_blob": "43957165c0ad25cd5acc53c2972ea9c56e0bb57a",
+    "scope": "CLI, fixed report names/schema and artifact bounds only; implementation has separate parent/Locate review"
+  },
+  "execution": {
+    "tests": "NOT_RUN",
+    "workflow": "NOT_RUN",
+    "measurements": "NOT_RUN",
+    "capacity_qualification": "NOT_ESTABLISHED",
+    "refs_changed": false
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "carr-scale-driver-catalog-peer/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "reviewed_driver": {
+    "path": "carr-library/scripts/run_scale_measurements.py",
+    "blob": "a6147b5bc73673a024ed303175c43b4103d0f950",
+    "tree": "8ae861669314ed7a089ffe591d403adb1824d983"
+  },
+  "reviewed_catalog": {
+    "path": "carr-library/scripts/benchmark_library_catalog.py",
+    "blob": "ff0b4174f3104201ebf2527b6d489345ed2e874f",
+    "tree": "5b253ebb4913ccb74d5d74042e491bb54608e709"
+  },
+  "scope": "Catalog adapter calls, actual initialization, cancellation classification, authored postcommit exit, bounded one-slice continuation, independent completion/search receipts.",
+  "verdict": "CLEAR",
+  "findings": [
+    "Initializer arguments match current typed ImportBudget/TextProfile2 APIs and its schema-2 returned receipt; success requires exact saved-state equality. Host refusal remains NOT_RUN.",
+    "The cancellation stage accepts actual0 with owned cancellation/start/identity proof or explicit3/NOT_RUN; final catalog ff0b refuses failed/quarantined rows before emitting that classification.",
+    "Postcommit requires actual exit73 and the saved durable-batch/returned-worker receipt. No worker is fabricated or counted as returned from a process-start observation.",
+    "Repeated import --stop-after-slices1 calls are bounded to128 and each uses a new existing owned native family. The saved current_batch remains authoritative; actual import_complete and scan_complete flags terminate repetition.",
+    "A final no-work invocation may be needed to record completion after the last paused slice; the driver allows it rather than inferring completion from a zero exit.",
+    "Source-slice600 seconds and per-query60 seconds remain. The separate measured-profile receiving duration is finite and does not imply the requested population will complete.",
+    "Independent verify/search receipts require actual source-book/authored-field counts and unchanged implementation. Original-field counts are not relabeled current64Ki Unicode catalog fragment counts.",
+    "Final full-profile status distinguishes measured cancellation, cancellation NOT_RUN, refusal and failure; performance, human NVDA, physical audio and simultaneous-family memory peak remain unqualified."
+  ],
+  "not_reviewed": "Parent owns whole-source/package identity and final failure propagation; Audio owns backup adapter and outer workflow. This record does not replace their reviews or runtime evidence.",
+  "execution": "NOT_RUN",
+  "refs_mutated": false
+}

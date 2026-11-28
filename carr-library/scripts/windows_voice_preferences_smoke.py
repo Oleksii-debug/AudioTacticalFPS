@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import ctypes
 from ctypes import wintypes
 import faulthandler
+from hashlib import sha256
 import importlib
 import importlib.metadata
 import json
@@ -63,7 +64,8 @@ def _module_evidence(args):
     modules = [(name.replace('.', '/') + '.py', importlib.import_module('carr_library.' + name))
                for name in ('runtime_settings', 'speech.runtime', 'ui.voice_preferences',
                             'language_qualification.catalog', 'speech.session', 'ui.reader_synthesis',
-                            'ui.speech_dialog', 'ui.reader_tabs', 'state_recovery', 'backup_producers')]
+                            'ui.speech_dialog', 'ui.reader_tabs', 'state_recovery', 'backup_producers',
+                            'speech.navigation', 'speech.focus')]
     return namespace['_module_evidence'](checkout, package.parent, modules,
         source_mode=not args.expect_installed, distribution=owner)
 
@@ -367,6 +369,114 @@ def _run(args, report):
                   and (controls.snapshot(), len(accepted), len(stops)) == before)
             check('all native settings operations leave the shared worker idle',
                   callback_count[0] == 0 and all(item.done() for item in futures))
+
+            pause_start = len(checks)
+            original_pause_state = (controls.snapshot(), controls.pause_snapshot(), len(accepted), len(stops))
+            pause_values = (125, 250, 500)
+
+            def set_pauses(view):
+                for kind, value in zip(('sentence', 'paragraph', 'section'), pause_values):
+                    control = find(view.window, 'Extra ' + kind + ' pause in milliseconds')
+                    control.SetValue(value - 1)
+                    view.window.Raise()
+                    user32.SetForegroundWindow(view.window.GetHandle())
+                    control.SetFocus()
+                    pump(lambda: user32.GetForegroundWindow() == view.window.GetHandle(),
+                         'Extra pause control lost foreground ownership')
+                    down = simulator.KeyDown(wx.WXK_UP)
+                    try:
+                        app.Yield()
+                    finally:
+                        up = simulator.KeyUp(wx.WXK_UP)
+                    check('native extra ' + kind + ' pause Up down', down)
+                    check('native extra ' + kind + ' pause Up up', up)
+                    pump(lambda: control.GetValue() == value, 'Native pause arrow did not change its field')
+                    check('native extra ' + kind + ' pause accepts exact milliseconds',
+                          control.GetValue() == value)
+
+            def cancel_pauses(view):
+                set_pauses(view)
+                press(find(view.window, 'Cancel native voice options'))
+            check('native extra pause Cancel keeps settings and starts no narration',
+                  not open_options(cancel_pauses)
+                  and (controls.snapshot(), controls.pause_snapshot(), len(accepted), len(stops)) == original_pause_state
+                  and len(calls) == 1)
+
+            def apply_pauses(view):
+                set_pauses(view)
+                press(find(view.window, 'Apply native voice options'))
+            check('native extra pause Apply preserves native voice and waits for explicit Read',
+                  open_options(apply_pauses) and controls.snapshot() == (62, True)
+                  and controls.pause_snapshot() == pause_values
+                  and len(accepted) == original_pause_state[2] + 1
+                  and len(stops) == original_pause_state[3] + 1 and len(calls) == 1)
+
+            pause_text = 'First. Second.\n\nThird.\fLast.'
+            pause_document = ReadingDocument(pause_text)
+            store.save(ReaderResume(pause_document, native_voice.id, -2, 55,
+                pitch=62, punctuation=True, sentence_pause_ms=125, paragraph_pause_ms=250, section_pause_ms=500))
+            recovered_pauses = store.load()
+            check('native extra pause recovery is exact and passive',
+                  (recovered_pauses.sentence_pause_ms, recovered_pauses.paragraph_pause_ms,
+                   recovered_pauses.section_pause_ms) == pause_values
+                  and recovered_pauses.document.source_text == pause_text and len(calls) == 1)
+            pause_settings = controls.settings(-2, 55, native_voice)
+            pause_results = []
+            pause_registry = VoiceRegistry([SettingsProvider()])
+            try:
+                execute(lambda: pause_registry.synthesize(pause_text, native_voice.id,
+                    Path(temporary) / 'native-extra-pauses.wav', settings=pause_settings),
+                    pause_results.append, on_error=lambda error: errors.append(str(error)))
+                pump(lambda: callback_count[0] == 0, 'Native extra pause PCM worker did not settle')
+                check('native extra pauses use the same worker and counted PCM assembly',
+                      len(pause_results) == 1 and pause_results[0].frames == 8600
+                      and pause_results[0].sample_rate == 8000 and pause_results[0].chunks == 4
+                      and len(calls) == 5
+                      and all(row[0] == native_voice.id and row[2] != main_thread
+                              and row[1] == SpeechSettings(rate=-2, volume=55, pitch=62, punctuation=True)
+                              for row in calls[1:]))
+                measured = pause_results[0]
+                with wave.open(str(measured.path), 'rb') as stream:
+                    raw = stream.readframes(stream.getnframes())
+                expected = (b'\x10\x00' * 400 + b'\0' * 2000 + b'\x10\x00' * 400
+                            + b'\0' * 4000 + b'\x10\x00' * 400 + b'\0' * 8000 + b'\x10\x00' * 400)
+                check('native extra pauses are exact sentence paragraph and section PCM', raw == expected)
+                check('native extra pauses retain original text and measured WAV identities',
+                      measured.text_sha256 == sha256(pause_text.encode('utf-8')).hexdigest()
+                      and measured.sha256 == sha256(measured.path.read_bytes()).hexdigest()
+                      and [item.kind for item in measured.pauses] == ['sentence', 'paragraph', 'section']
+                      and pause_document.text == pause_document.source_text == pause_text)
+                from carr_library.speech.focus import FocusPlan, ReadingAudio
+                binding = ReadingAudio.from_render(pause_document, pause_document._signature(),
+                    0, len(pause_text), pause_text, measured)
+                plan = FocusPlan(pause_document)
+                for interval, word in zip(measured.pauses, ('First', 'Second', 'Third')):
+                    _, span = binding.span_at(plan, measured.path,
+                        (interval.start_frame + interval.end_frame) / (2 * measured.sample_rate))
+                    check('native extra pause focus holds prior ' + word,
+                          pause_text[slice(*span)] == word)
+            finally:
+                pause_registry.close()
+
+            def reset_pauses(view):
+                press(find(view.window, 'Reset native voice options'))
+                press(find(view.window, 'Apply native voice options'))
+            check('native pause Reset restores default request without playback',
+                  open_options(reset_pauses) and controls.pause_snapshot() == (0, 0, 0)
+                  and controls.snapshot() == (None, False)
+                  and controls.settings(-2, 55, native_voice) == SpeechSettings(rate=-2, volume=55)
+                  and len(calls) == 5)
+            store.save(ReaderResume(pause_document, native_voice.id, -2, 55))
+            check('native pause defaults keep legacy seven-key recovery',
+                  set(json.loads(store.path.read_text(encoding='utf-8'))) == {
+                      'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'})
+            check('native pause scenario leaves the shared worker idle',
+                  callback_count[0] == 0 and all(item.done() for item in futures))
+            check('native pause scenario retains all fifty-one preceding checks',
+                  len(checks) - pause_start == 51)
+            report['reading_pauses'] = dict(status='PASS', checks=len(checks) - pause_start,
+                sentence_ms=125, paragraph_ms=250, section_ms=500, pcm_frames=8600,
+                pcm_rate=8000, native_keyboard=True, playback='NOT_RUN', nvda='NOT_RUN')
 
         def scenario():
             try:

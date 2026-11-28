@@ -56,6 +56,50 @@ Restoration never starts speech or substitutes an unavailable voice. Named
 voice profiles keep their existing exact voice, rate and volume contract;
 opening or applying a profile does not silently reset native options.
 
+## Extra reading pauses
+
+The same **Native voice options...** modal includes three named spin controls:
+**Extra sentence pause in milliseconds**, **Extra paragraph pause in milliseconds**,
+and **Extra section pause in milliseconds**. Each accepts an integer from 0 to
+30000; 1000 milliseconds is one second. Tab reaches each field; type a value or
+use its arrow keys. Apply confirms the existing playback Stop before changing
+the next synthesis request. Cancel/Escape discards it. Reset also sets all three
+pauses to zero.
+
+These are extra PCM silence intervals in addition to the voice's own pauses.
+They use the existing deterministic reading-copy sentence/newline and blank-line
+paragraph boundaries. A form-feed character is an explicit section boundary;
+headings and linguistic structure are not inferred. At coincident boundaries,
+section takes priority over paragraph, then sentence. Only that setting applies,
+including when it is zero. Leading and trailing whitespace adds no extra pause.
+
+Read and Save WAV use the same measured PCM assembly, including the registered
+Studio/SAPI reader adapter. The engine's native controls and six-field helper
+request remain unchanged. Extra frames use the actual sample rate, rounded to
+the nearest frame with half-frame ties upward; unsigned 8-bit PCM uses its
+silence midpoint. The existing output-byte allowance includes these frames.
+Before an engine call, an opt-in request is limited to 10000 utterances and one
+hour of extra silence. Cancel interrupts preparation, frame copying and silence
+writing through the current request and retained output ownership.
+
+The original reading text and source hash do not change. Exact added-silence
+frame intervals bind to the rendered selection; reading focus holds the
+previous word within them. Word positions inside spoken segments remain
+approximate, with no claim of engine word alignment.
+
+Each tab saves nonzero pause fields in its existing recovery record. Zero values
+are omitted, preserving the legacy default bytes. Recovery and native/flat
+backup restore these settings passively, without selecting a substitute voice
+or starting playback. Named voice profiles keep their current rate/volume
+contract and do not reset these per-tab values.
+
+The pause source and regressions are prepared, not yet executed at this
+checkpoint. The existing Windows voice-preferences probe adds 52 explicitly
+counted keyboard/control/PCM checks and verifies 12 exact module origins.
+Its 90-second watchdog and existing waits are unchanged. Synthetic native PCM
+checks do not qualify actual SAPI/other voice inference, audible playback,
+pronunciation, or human NVDA use; those remain separate acceptance evidence.
+
 ## Saving, cancellation and restoration
 
 Preferences are an optional strictly typed field in the existing schema-1

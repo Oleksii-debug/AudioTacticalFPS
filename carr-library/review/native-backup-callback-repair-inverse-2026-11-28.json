@@ -1,0 +1,31 @@
+{
+  "schema": "carr-exact-inverse/1",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before_blob": "638220343e46ef86aae6d5194980f72e83585690",
+      "after_blob": "64366ef6f477c1d3a1bb82b8edc8553a6245ad25",
+      "hunks": [
+        {
+          "oldLine": 1403,
+          "newLine": 1403,
+          "old": "        from .backup_actions import backup\n        return backup(self)",
+          "new": "        from .backup_actions import create_backup\n        return create_backup(self)"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_backup_resource_actions.py",
+      "before_blob": "cd05fbbb6858d61014e12a4acab53acc9e35ee2d",
+      "after_blob": "861c1bc6a5df79a3bb1b96bb4c94368ec0a3f081",
+      "hunks": [
+        {
+          "oldLine": 673,
+          "newLine": 673,
+          "old": "",
+          "new": "\n@pytest.mark.parametrize('outcome', ['complete', 'review-cancelled', 'worker-cancelled'])\ndef test_actual_desktop_backup_callback_keeps_options_policy_and_real_worker(\n        library, tmp_path, monkeypatch, outcome):\n    \"\"\"Execute the real menu callback and options controller; widget peers are explicit.\"\"\"\n    import ast\n    from carr_library.backup_options import resource_values\n\n    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'\n    parsed = ast.parse(source.read_text(encoding='utf-8'))\n    desktop = next(node for node in parsed.body\n                   if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')\n    callback = next(node for node in desktop.body\n                    if isinstance(node, ast.FunctionDef) and node.name == 'backup')\n    namespace = {'__name__': 'carr_library.ui._backup_callback_test',\n                 '__package__': 'carr_library.ui'}\n    exec(compile(ast.Module(body=[callback], type_ignores=[]), str(source), 'exec'), namespace)\n\n    app, workspace = library\n    frame, wx, events, reviewed, reports = Frame(app), wx_peer(), [], [], []\n    monkeypatch.setitem(sys.modules, 'wx', wx)\n    def modal(dialog):\n        events.append('options')\n        assert not frame.queued and frame._backup_review is not None\n        if outcome == 'review-cancelled':\n            dialog.cancel()\n        else:\n            dialog.reviewed.SetValue(True)\n            dialog.include_audio.SetValue(True)\n            for name, value in resource_values(selected()).items():\n                dialog.fields[name].SetValue(value)\n            dialog.confirm()\n            assert dialog.result is not None and dialog.result.budget == selected()\n            reviewed.append(dialog.result)\n        return dialog.modal_result\n    wx.on_show = modal\n    def directory(owner, title, toolkit):\n        assert events == ['options'] and reviewed and toolkit is wx\n        assert owner.frame is frame and owner.app is app and owner.current()\n        events.append('directory')\n        return tmp_path\n    monkeypatch.setattr(actions, 'choose_directory', directory)\n    monkeypatch.setattr(actions, 'show_report',\n        lambda owner, title, body, toolkit: reports.append((title, body)))\n    real, calls = app.backup, []\n    def observed(destination, **kwargs):\n        events.append('worker')\n        calls.append(kwargs)\n        return real(destination, **kwargs)\n    monkeypatch.setattr(app, 'backup', observed)\n\n    assert namespace['backup'](frame, None) is None\n    assert frame._backup_review is None and not frame.messages\n    assert not list(tmp_path.glob('ResearchLibrary-backup-*'))\n    if outcome == 'review-cancelled':\n        assert events == ['options'] and not frame.queued and not calls and not reports\n    else:\n        assert events == ['options', 'directory'] and len(frame.queued) == 1 and not calls\n        if outcome == 'worker-cancelled':\n            frame.cancel_event.set()\n            with pytest.raises(InterruptedError, match='Backup cancelled'):\n                execute(frame)\n            assert not list(tmp_path.glob('ResearchLibrary-backup-*')) and not reports\n        else:\n            checksum, _ = execute(frame)\n            folder, = tmp_path.glob('ResearchLibrary-backup-*')\n            manifest = verify_backup(folder, checksum, backup_budget=reviewed[0].budget)\n            assert manifest['database']['size_bytes'] > 0\n            assert sha256((folder / 'manifest.json').read_bytes()).hexdigest() == checksum\n            assert reports[0][0] == 'Backup complete' and checksum in reports[0][1]\n        assert len(calls) == 1 and events == ['options', 'directory', 'worker']\n        assert calls[0]['include_generated'] is True\n        assert calls[0]['backup_budget'] is reviewed[0].budget\n        assert callable(calls[0]['cancelled'])\n    assert not frame.messages and not frame.queued\n    assert app.edition_metadata(workspace, 'original').title == 'Original'\n"
+        }
+      ]
+    }
+  ]
+}

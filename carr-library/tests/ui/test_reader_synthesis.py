@@ -686,3 +686,162 @@ def test_reader_outer_audio_survives_future_error_until_all_native_owners_are_qu
         for owner in owners:
             owner.close()
         reader.audio_files.cleanup = original_cleanup
+
+
+@pytest.mark.parametrize('field', [0, 1, 2])
+def test_native_pause_field_applies_atomically_and_retains_pitch_rate_volume(ui, field):
+    ui.controls.restore(23, True)
+    def drive(view):
+        assert [control.name for control in view.pause_fields] == [
+            'Extra sentence pause in milliseconds', 'Extra paragraph pause in milliseconds',
+            'Extra section pause in milliseconds']
+        assert all(control.enabled for control in view.pause_fields)
+        view.pause_fields[field].SetValue(750)
+        view.accept()
+    ui.driver = drive
+    assert ui.controls.show()
+    expected = tuple(750 if index == field else 0 for index in range(3))
+    assert ui.controls.pause_snapshot() == expected and ui.controls.snapshot() == (23, True)
+    assert ui.events == ['before', ('changed', (23, True))]
+    settings = ui.controls.settings(-2, 64, ui.voice)
+    assert (settings.rate, settings.volume, settings.pitch, settings.punctuation) == (-2, 64, 23, True)
+    assert (settings.sentence_pause_ms, settings.paragraph_pause_ms, settings.section_pause_ms) == expected
+
+
+@pytest.mark.parametrize('value', [True, -1, 30001])
+def test_invalid_native_pause_never_partially_applies(ui, value):
+    ui.controls.restore(23, False, pauses=(125, 250, 500))
+    def drive(view):
+        view.pause_fields[1].SetValue(value)
+        view.accept()
+        assert not view.closed and view.result is None
+        assert 'integer milliseconds' in view.status.GetValue()
+        view.close()
+    ui.driver = drive
+    assert not ui.controls.show()
+    assert ui.controls.snapshot() == (23, False) and ui.controls.pause_snapshot() == (125, 250, 500)
+    assert not ui.events
+
+
+@pytest.mark.parametrize('action', ['cancel', 'direct-destroy'])
+def test_pause_cancel_or_native_destroy_preserves_passive_preferences(ui, action):
+    ui.controls.restore(None, False, pauses=(125, 250, 500))
+    def drive(view):
+        view.pause_fields[0].SetValue(3000)
+        if action == 'cancel':
+            view.close()
+        else:
+            view.window.Destroy()
+            view.accept()
+            view.refresh()
+            view.reset_options()
+    ui.driver = drive
+    assert not ui.controls.show()
+    assert ui.controls.pause_snapshot() == (125, 250, 500) and not ui.events
+
+
+def test_pause_request_changed_during_modal_return_cannot_override_newer_settings(ui):
+    def drive(view):
+        view.pause_fields[0].SetValue(125)
+        view.accept()
+        ui.controls.restore(None, False, pauses=(250, 0, 0))
+    ui.driver = drive
+    assert not ui.controls.show()
+    assert ui.controls.pause_snapshot() == (250, 0, 0) and not ui.events
+    assert 'changed' in ui.reports[-1]
+
+
+def test_pause_reset_is_explicit_and_available_for_basic_voices(ui):
+    voice = Voice('fixture:basic-pacing', 'Basic voice', 'Synthetic PCM', 'und')
+    ui.controls.restore(None, False, pauses=(125, 250, 500))
+    assert ui.controls.sync(voice, enabled=True)
+    def drive(view):
+        assert not view.pitch_enabled.enabled and not view.punctuation.enabled
+        assert all(control.enabled for control in view.pause_fields) and view.apply.enabled
+        view.reset_options()
+        assert [control.GetValue() for control in view.pause_fields] == [0, 0, 0]
+        view.accept()
+    ui.driver = drive
+    assert ui.controls.show()
+    assert ui.controls.pause_snapshot() == (0, 0, 0)
+    assert ui.controls.settings(0, 80, voice) == SpeechSettings(volume=80)
+
+
+@pytest.mark.parametrize('save', [False, True], ids=['read-playback', 'save-wav'])
+def test_actual_reader_read_and_save_use_same_counted_pause_pcm(ui, reader, tmp_path, save):
+    original = reader.document.source_text
+    text = 'First. Second.\n\nThird.\fLast.'
+    reader.document.set_text(text)
+    ui.controls.restore(23, True, pauses=(125, 250, 500))
+    destination = tmp_path / 'saved-pauses.wav' if save else None
+    reader.actual.speak(destination=destination)
+    assert len(reader.pending) == 1 and not reader.player.play.called
+    result = reader.finish()
+    assert result.path.is_file() and result.chunks == 4 and result.frames == 1600 + 7000
+    assert len(result.pauses) == 3
+    assert [pause.end_frame - pause.start_frame for pause in result.pauses] == [1000, 2000, 4000]
+    assert ''.join(row[0] for row in reader.calls) == text
+    assert all(row[2] == SpeechSettings(rate=-2, volume=64, pitch=23, punctuation=True)
+               and row[3] != reader.main_thread for row in reader.calls)
+    with wave.open(str(result.path), 'rb') as stream:
+        raw = stream.readframes(stream.getnframes())
+    for pause in result.pauses:
+        assert raw[pause.start_frame * 2:pause.end_frame * 2] == b'\0' * (
+            (pause.end_frame - pause.start_frame) * 2)
+    assert reader.actual.state()[0] == result.path
+    assert reader.actual.state()[1].pauses == result.pauses
+    assert reader.document.source_text == original and reader.document.text == text
+    if save:
+        assert result.path == destination and not reader.player.play.called
+    else:
+        reader.player.play.assert_called_once_with(result.path)
+
+
+@pytest.mark.parametrize('boundary', ['before-admission', 'after-render'])
+def test_pause_freshness_rejects_stale_request_at_both_existing_reader_handoffs(ui, reader, tmp_path, boundary):
+    ui.controls.restore(None, False, pauses=(125, 0, 0))
+    destination = tmp_path / 'reviewed.wav'
+    reader.actual.speak(destination=destination)
+    def changed():
+        ui.controls.restore(None, False, pauses=(250, 0, 0))
+    if boundary == 'before-admission':
+        changed()
+        with pytest.raises(ValueError, match='request changed'):
+            reader.finish()
+        assert not reader.calls and not destination.exists()
+    else:
+        result = reader.finish(before_done=changed)
+        assert result.path == destination and destination.is_file()
+        assert 'not attached' in reader.reports[-1]
+    assert reader.actual.state()[:2] == (None, None)
+    assert not reader.player.play.called and ui.controls.pause_snapshot() == (250, 0, 0)
+
+
+def test_pause_apply_keeps_old_pcm_and_settings_when_owned_stop_fails(ui, reader, tmp_path):
+    reader.actual.speak(destination=tmp_path / 'prior.wav')
+    original = reader.finish()
+    ui.controls.before_apply = reader.actual.before
+    reader.player.stop.side_effect = RuntimeError('The actual prior owner remains pending.')
+    def drive(view):
+        view.pause_fields[0].SetValue(125)
+        view.accept()
+    ui.driver = drive
+    assert not ui.controls.show()
+    assert ui.controls.pause_snapshot() == (0, 0, 0)
+    assert reader.actual.state()[0] == original.path and original.path.is_file()
+    assert not reader.player.play.called
+
+
+def test_pause_only_change_updates_actual_recovery_signature_and_tab_capture(ui, reader):
+    assert reader.actual.save()
+    original = reader.draft.path.read_bytes()
+    ui.controls.restore(None, False, pauses=(125, 750, 2000))
+    assert reader.actual.save()
+    restored = reader.draft.load()
+    captured, path = reader.actual.capture()
+    for value in (restored, captured):
+        assert (value.sentence_pause_ms, value.paragraph_pause_ms, value.section_pause_ms) == (125, 750, 2000)
+        assert value.document.to_dict() == reader.document.to_dict()
+    assert path is None and not reader.calls and not reader.pending and not reader.player.play.called
+    ui.controls.restore(None, False, pauses=(0, 0, 0))
+    assert reader.actual.save() and reader.draft.path.read_bytes() == original

@@ -1,0 +1,81 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "base_commit": "246e6e1cc16c649d2204740cc5ee2d01c2d08646",
+  "base_application_namespace": "69214167a42e69855cce08cf414c186115b62cca",
+  "scope": "Narrow production callback repair for the captured246/692 lineage. No automatic port or verdict transfer to the independently merged canonical7e8f9d2 lineage.",
+  "observed_failure": {
+    "run_id": 46136761335,
+    "job_id": 140953678778,
+    "evidence_tree": "7476c33e4be80ad50392193b5ff6fc9541e39ca0",
+    "raw_log_blob": "56987a47b18158005b4f7293a411ec16e9f47588",
+    "raw_log_sha256": "45accd2dffd36f4ee00b813f08f0deb1335e76c4136040a86aaacb1c7212059d",
+    "trace_blob": "cfb4e60b177b92fdfd4324ee7ecd8841023f89a6",
+    "cause": "DesktopFrame.backup imports a symbol named backup, while the unchanged current backup_actions module exports create_backup. The real native menu callback raises ImportError before Backup options opens; the probe subsequently times out.",
+    "native_result": "FAIL",
+    "worker_result": "12PASS,0failure,error,skip;398 Python identity; this does not qualify the failed native workflow."
+  },
+  "resolution": "Keep the public DesktopFrame.backup event handler and delegate its unchanged frame to existing backup_actions.create_backup. The production delta is only the import and call name.",
+  "unchanged": [
+    "Existing BackupOwner and library/root identity guards",
+    "Actual backup options and caller-selected resource policy",
+    "Chooser and modal ownership/cancellation",
+    "Existing Desktop queue/worker and backup/verification services",
+    "Restore callback and all native assertions/watchdogs/deadlines",
+    "Whole old test file, including74 original assertion lines"
+  ],
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before_blob": "638220343e46ef86aae6d5194980f72e83585690",
+      "after_blob": "64366ef6f477c1d3a1bb82b8edc8553a6245ad25",
+      "before": {
+        "bytes": 77020,
+        "sha256": "cbc634d42ffbf7c6c56914f8c8bdb534d3202437e4e5521138fd40468e781b56"
+      },
+      "after": {
+        "bytes": 77034,
+        "sha256": "6e2f9c359ca5481d24a86ae71ea6966f54f35824db1673018ceb50d459ca364e"
+      }
+    },
+    {
+      "path": "carr-library/tests/ui/test_backup_resource_actions.py",
+      "before_blob": "cd05fbbb6858d61014e12a4acab53acc9e35ee2d",
+      "after_blob": "861c1bc6a5df79a3bb1b96bb4c94368ec0a3f081",
+      "before": {
+        "bytes": 23468,
+        "sha256": "6a00b966f0e649de8226cea3c4fd3415149bfdc9fbf93d5ed6c111513d219936"
+      },
+      "after": {
+        "bytes": 27425,
+        "sha256": "bbee91d65b84062c7327305a9a44b10ca4e05200f9c9574f424981fa440603c7"
+      }
+    }
+  ],
+  "regressions": {
+    "additional_cases": 3,
+    "additional_assertion_lines": 19,
+    "scope": [
+      "Extract and execute the actual DesktopFrame.backup AST with the active package import and actual options controller; controlled widgets are labelled peers.",
+      "Accepted reviewed options retain the exact typed budget, wait for the existing worker and create/verify a real backup with unchanged retained edition.",
+      "Cancelled options never open the destination chooser or queue work.",
+      "Cancellation after queueing reaches the actual backup service and prevents output publication."
+    ],
+    "old_file_exact_prefix": true,
+    "deadlines": "The existing execute helper and all earlier test/native deadlines remain unchanged."
+  },
+  "review": {
+    "author": "audio_render",
+    "peer": "voice_reading",
+    "verdict": "CLEAR",
+    "reviewed_tree": "417b6ab48f8117c7ba3a31dea4652021c48979b4",
+    "source_inverse_exact": true,
+    "full_readback": "EXACT"
+  },
+  "limitations": [
+    "No execution of this source successor has been claimed.",
+    "The original246 native failure and partial222 check emissions remain intact.",
+    "No canonical repository or evaluation reference was moved by this work."
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "carr-capacity-observed-repair-independent-review/1",
+  "status": "SOURCE_REVIEWED/NOT_RUN",
+  "candidate_tree": "1fb242e60f8ac8306ed4b7ed655cee314f8492d8",
+  "reviewer": "audio_render",
+  "observed_run": 46132576738,
+  "observed_job": 140940769223,
+  "changes": [
+    {
+      "path": "pyproject.toml",
+      "before": "5e73dcc7fb68ea22fd7bbd2c65c4eb783badde6a",
+      "after": "bd604ef2f30a7f402ebb1565a96617b308a6b5bc",
+      "hunks": [
+        {
+          "oldLine": 69,
+          "newLine": 69,
+          "old": "",
+          "new": "carr-backup-incremental = \"carr_library.backup_incremental_cli:main\""
+        }
+      ]
+    },
+    {
+      "path": "tests/storage/test_backup_capacity.py",
+      "before": "a3b32ca426f3fc51f4590774fc1eb24ff5246f90",
+      "after": "4984400c403c1177b66f0d203fd64b29de1eb4d4",
+      "hunks": [
+        {
+          "oldLine": 92,
+          "newLine": 92,
+          "old": "",
+          "new": "        # A single multi-MiB page exercises the copy callbacks, but its\n        # validation runs too few SQLite VM operations to exercise the\n        # progress handler. Add real distinct rows for this validation case.\n        storage.publish_revision('workspace', 'validation-edition',\n            'validation-revision', 'b' * 64, 'validation-fixture',\n            [Page(f'Validation row {number}: Railway source bytes.', None)\n             for number in range(2000)])\n        storage.check()"
+        }
+      ]
+    }
+  ],
+  "verified": [
+    "The added console entry resolves to the existing backup_incremental_cli.main and its unchanged installed_entrypoint decorator.",
+    "Only the validation-cancellation fixture adds 2000 actual distinct Page rows through the existing Storage.publish_revision, then performs the ordinary full check.",
+    "The original single multi-MiB page, all assertions/raises, callback exception identity, private-publication refusal and later ordinary validation remain unchanged.",
+    "The production SQLite progress interval stays 10000 VM operations. No timeout or selected resource limit changes."
+  ],
+  "limits": [
+    "Source-only review; the fixture must still execute on the exact receiving candidate.",
+    "The separate OCR Config decoder repair is outside this two-path review."
+  ]
+}
