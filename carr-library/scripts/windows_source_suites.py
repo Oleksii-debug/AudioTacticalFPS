@@ -8,6 +8,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+from pathlib import Path
 import re
 import sys
 
@@ -62,11 +63,66 @@ def partition(suites):
     return {**isolated_plan(), "bulk": bulk, "bulk_occurrences": len(bulk)}
 
 
+
+METADATA_SUITE = "tests/ingest/test_import_metadata_shape.py"
+MAX_REPORT_BYTES = 64 * 1024 * 1024
+_REPORT_START = re.compile(r"(PASS|FAIL): " + re.escape(METADATA_SUITE) + r": ")
+_PROGRESS_PREFIX = re.compile(
+    r"(?:[.F \t]|"
+    r"(?:tests|bootstrap)[\\/](?:[A-Za-z0-9_]+[\\/])*[A-Za-z0-9_]+\.py[ \t]+|"
+    r"\[[ \t]*(?:100|[0-9]{1,2})%\][ \t]*)*"
+)
+_METADATA_COUNTS = "junit_passed=58, failed=0, skipped=0, pytest_exit=0"
+
+
+def metadata_verdict(lines):
+    """Require one complete exact report, permitting only pytest progress prefixes."""
+    records = 0
+    characters = 0
+    for line in lines:
+        characters += len(line)
+        if characters > MAX_REPORT_BYTES:
+            raise ValueError("Source report exceeds its input bound.")
+        match = _REPORT_START.search(line)
+        if match is None:
+            continue
+        prefix = line[:match.start()]
+        # Quoted commands, assertions, ANSI command echoes and arbitrary text
+        # cannot become verdicts just because they mention the expected result.
+        if len(prefix) > 1024 or _PROGRESS_PREFIX.fullmatch(prefix) is None:
+            continue
+        records += 1
+        if (not line.endswith("\n") or match.group(1) != "PASS"
+                or line[match.end():].rstrip("\r\n") != _METADATA_COUNTS):
+            raise ValueError("The metadata suite did not report exactly 58 successful cases.")
+    if records != 1:
+        raise ValueError("Exactly one completed metadata verdict is required.")
+    return {
+        "schema": 1, "suite": METADATA_SUITE, "status": "PASS",
+        "junit_passed": 58, "failed": 0, "skipped": 0, "pytest_exit": 0,
+        "completed_records": records,
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("isolated", "partition"))
+    parser.add_argument("mode", choices=("isolated", "partition", "metadata"))
+    parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
-    if args.mode == "isolated":
+    if args.mode == "metadata":
+        if args.report is None:
+            parser.error("Metadata validation requires the completed source report.")
+        try:
+            with args.report.open("rb") as stream:
+                raw = stream.read(MAX_REPORT_BYTES + 1)
+            if len(raw) > MAX_REPORT_BYTES:
+                raise ValueError("Source report exceeds its input byte bound.")
+            result = metadata_verdict(raw.decode("utf-8-sig").splitlines(keepends=True))
+        except (OSError, ValueError, UnicodeError):
+            parser.error("Exactly one successful completed metadata report is required.")
+    elif args.report is not None:
+        parser.error("--report is only valid for metadata validation.")
+    elif args.mode == "isolated":
         result = isolated_plan()
     else:
         raw = sys.stdin.buffer.read(MAX_MANIFEST_BYTES + 1)
@@ -79,7 +135,6 @@ def main(argv=None):
             parser.error("Source inventory is not the exact required ordered manifest.")
     print(json.dumps(result, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

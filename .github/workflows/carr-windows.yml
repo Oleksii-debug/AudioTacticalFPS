@@ -1654,9 +1654,9 @@ jobs:
             $parallelExit = $LASTEXITCODE
             @{ schema = 1; manifest_sha256 = $plan.manifest_sha256; bulk_occurrences = $parallelSuites.Count; bulk_exit = $parallelExit } | ConvertTo-Json | Set-Content 'ci-results/integrated-source-bulk-verdict.json'
             if ($parallelExit -ne 0) { exit 1 }
-          $sourceSummary = Get-Content 'ci-results/integrated-tests.txt'
-          if ($sourceSummary -notcontains 'PASS: tests/ingest/test_import_metadata_shape.py: junit_passed=58, failed=0, skipped=0, pytest_exit=0') {
-            throw 'All 58 import metadata shape cases must pass in the source checkout.'
+          & $env:CARR_PYTHON scripts/windows_source_suites.py metadata --report 'ci-results/integrated-tests.txt' | Tee-Object 'ci-results/integrated-source-metadata-verdict.json'
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Exactly one completed report must confirm all 58 import metadata shape cases without failures or skips.'
           }
 
           } finally {

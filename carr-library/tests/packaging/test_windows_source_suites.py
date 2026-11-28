@@ -146,4 +146,79 @@ def test_both_phases_keep_common_prerequisites_and_all_required_verdicts():
         assert "$env:PATH = $previousPath" in phase
         assert "$env:CARR_OCR_DIR = $previousOcr" in phase
         assert "$env:TESSDATA_PREFIX = $previousTessdata" in phase
-    assert "junit_passed=58, failed=0, skipped=0, pytest_exit=0" in bulk
+    assert "scripts/windows_source_suites.py metadata --report 'ci-results/integrated-tests.txt'" in bulk
+    assert "if ($LASTEXITCODE -ne 0)" in bulk
+
+
+GOOD_METADATA = ("PASS: tests/ingest/test_import_metadata_shape.py: "
+                 "junit_passed=58, failed=0, skipped=0, pytest_exit=0")
+
+
+@pytest.mark.parametrize("prefix", [
+    "",
+    ".",
+    ".. [100%]",
+    "tests\\operations\\test_worker_start_cleanup.py ",
+    "tests\\studio\\test_studio_controller.py .",
+    "tests/ui/test_reader_playback_actions.py ......",
+    "F",
+])
+def test_metadata_accepts_real_interleaved_progress_prefixes(prefix):
+    result = module.metadata_verdict([prefix + GOOD_METADATA + "\r\n"])
+    assert result == {
+        "schema": 1, "suite": "tests/ingest/test_import_metadata_shape.py",
+        "status": "PASS", "junit_passed": 58, "failed": 0, "skipped": 0,
+        "pytest_exit": 0, "completed_records": 1,
+    }
+
+
+@pytest.mark.parametrize("report", [
+    [],
+    [GOOD_METADATA.replace("test_import_metadata_shape.py", "test_other.py") + "\n"],
+    [GOOD_METADATA.replace("PASS:", "FAIL:") + "\n"],
+    [GOOD_METADATA.replace("junit_passed=58", "junit_passed=57") + "\n"],
+    [GOOD_METADATA.replace("failed=0", "failed=1") + "\n"],
+    [GOOD_METADATA.replace("skipped=0", "skipped=1") + "\n"],
+    [GOOD_METADATA.replace("pytest_exit=0", "pytest_exit=1") + "\n"],
+    [GOOD_METADATA + " unexpected trailing text\n"],
+    [GOOD_METADATA],
+    ["Write-Host '" + GOOD_METADATA + "'\n"],
+    ["\x1b[36;1m" + GOOD_METADATA + "\x1b[0m\n"],
+    [GOOD_METADATA + "\n", GOOD_METADATA + "\n"],
+    [GOOD_METADATA + "\n", "." + GOOD_METADATA + "\n"],
+    ["FAIL: tests/ingest/test_import_metadata_shape.py: "
+     "required suite did not complete cleanly: OSError: cleanup\n"],
+])
+def test_metadata_rejects_missing_failed_incomplete_echoed_or_duplicate_verdicts(report):
+    with pytest.raises(ValueError):
+        module.metadata_verdict(report)
+
+
+def test_command_echoes_cannot_add_or_replace_a_completed_metadata_record():
+    lines = [
+        "assert '" + GOOD_METADATA + "' in text\n",
+        "\x1b[36;1mif ($value -contains '" + GOOD_METADATA + "') {\x1b[0m\n",
+        "tests\\ui\\test_reader_playback_actions.py .." + GOOD_METADATA + "\n",
+    ]
+    assert module.metadata_verdict(lines)["completed_records"] == 1
+    with pytest.raises(ValueError):
+        module.metadata_verdict(lines[:2])
+
+
+@pytest.mark.parametrize("correct", [True, False])
+def test_actual_metadata_cli_validates_the_completed_report_file(tmp_path, correct):
+    report = tmp_path / "integrated-tests.txt"
+    line = GOOD_METADATA if correct else GOOD_METADATA.replace("failed=0", "failed=1")
+    report.write_bytes(("\ufefftests\\studio\\test_studio_controller.py ." + line + "\r\n").encode("utf-8"))
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(SCRIPT), "metadata", "--report", str(report)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10, check=False,
+    )
+    if correct:
+        assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
+        assert json.loads(result.stdout)["completed_records"] == 1
+        assert json.loads(result.stdout)["junit_passed"] == 58
+    else:
+        assert result.returncode != 0
+        assert result.stdout == b""
+        assert len(result.stderr) < 2048
