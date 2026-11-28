@@ -1,0 +1,20 @@
+{
+  "status": "FAILED",
+  "actual_directshow_capture": false,
+  "actual_mci_output": false,
+  "physical_microphone": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "devices": [
+    {
+      "id": "1cd152d9f269e8b67842046c12f5a209096e4315b5b9b5a38c6b89b752ca2814",
+      "name": "CABLE Output (VB-Audio Virtual Cable)"
+    }
+  ],
+  "selected_device": {
+    "id": "1cd152d9f269e8b67842046c12f5a209096e4315b5b9b5a38c6b89b752ca2814",
+    "name": "CABLE Output (VB-Audio Virtual Cable)"
+  },
+  "generated_fixture_sha256": "73ff6162f5829556adb67c90379c419b12ab0d39b4ff7717d6d729d9ec9f2342",
+  "error": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 160, in main\n    run(args, report)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 114, in run\n    future.result()\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 449, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 401, in __get_result\n    raise self._exception\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 552, in capture\n    return self._capture(device, title, options, stop_requested, checked,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 650, in _capture\n    result = run_process(command, budget=budget, cancelled=cancelled,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 512, in run_process\n    raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')\ncarr_library.audio.models.AudioError: Local audio worker failed (exit 4294967291): [in#0 @ 0000022e41ed0700] Could not find output pin from audio only capture device.\r\n[in#0 @ 0000022e41ed0700] Could not enumerate audio only devices (or none found).\r\n[in#0 @ 0000022e41e183c0] Error opening input: I/O error\r\nError opening input file audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{817AB6B8-DB20-464C-8EA0-E6C5E1527769}.\r\nError opening input files: I/O error\n"
+}

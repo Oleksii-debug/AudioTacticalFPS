@@ -1,5 +1,6 @@
 """Desktop launcher and installed-package diagnostic entrypoint."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -62,6 +63,7 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None, *, delivery=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ['delivery']:

@@ -1,5 +1,6 @@
 """Headless entrypoint for the same library transcription service as the UI."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 import json
 from pathlib import Path
 import sys
@@ -229,6 +230,7 @@ def _local_file_main(argv=None):
 
 
 
+@installed_entrypoint
 def main(argv=None):
     """Route published command shapes without ever guessing a receipt decoder."""
     args = list(sys.argv[1:] if argv is None else argv)

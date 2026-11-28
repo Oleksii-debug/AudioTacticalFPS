@@ -1,0 +1,158 @@
+{
+  "schema": "carr.agent-review.standard-installation.v1",
+  "base_commit": "301c32da8dbc2de6060f8cc0972c6e5651abb1bf",
+  "donor_commit": "fd0cca2405f33c813c4cf43c9661edf1f2e93a55",
+  "sparse_tree": "d37cb699cbce0fd3df2294fb09c456351e6cf265",
+  "execution": "NOT_RUN; donor evidence does not qualify this composed source.",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/installation_lease.py",
+      "before": null,
+      "after": "f85b72eaa0aea0ff9d3b741ef44377e08f653da8",
+      "characters": 16263
+    },
+    {
+      "path": "carr-library/src/carr_library/managed_installation.py",
+      "before": null,
+      "after": "d34f3f0c60c9d53f040c2988e927dd58d3af573a",
+      "characters": 4223
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/maintenance.py",
+      "before": null,
+      "after": "0139f2ce5e7024908ab2d0fea0bd65edcdd1a63c",
+      "characters": 38161
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "before": null,
+      "after": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "characters": 11741
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "before": null,
+      "after": "9723721a2f5e7bf3963ee40f441bbf8a0940736a",
+      "characters": 11688
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/toolchain.lock.json",
+      "before": null,
+      "after": "5092ad9c032b5b497f00b841295263a997534f9c",
+      "characters": 478
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/prepare_inno.ps1",
+      "before": null,
+      "after": "8222437089386c87599299d45bf4ea2ce84f2db9",
+      "characters": 1905
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/README.md",
+      "before": null,
+      "after": "16ea4f19ae6bba759902a0f4fdffef528302c927",
+      "characters": 5823
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before": null,
+      "after": "2c99632da01db65a9a452a913148c0138638e688",
+      "characters": 58470
+    },
+    {
+      "path": "carr-library/tests/packaging/test_managed_launch_boundary.py",
+      "before": null,
+      "after": "819e3fcec6c0ca3376a836a159ef3721c501dfcf",
+      "characters": 24392
+    }
+  ],
+  "existing_source_preservation": {
+    "all_paths_absent_on_base": true,
+    "existing_files_modified": 0,
+    "delivery_authority_or_provider_changed": false,
+    "existing_runtime_locks_or_supervisor_changed": false
+  },
+  "dependencies": [
+    {
+      "kind": "root entrypoint and launcher overlay",
+      "tree": "c1351ba24b4d9865c2c9bf8b46d07227490886b8",
+      "note": "13 existing public modules /14 functions; callback bodies retained. Native checks alone opts into allow_bootstrap_native_checks=True (blob1c614fc92b1f7c1e9b5ea55c962f1860ca69b716)."
+    },
+    {
+      "kind": "Audio native probe overlay",
+      "tree": "7ea4a65de9b09fa100a5c6c92e79f5ee3374510f",
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "blob": "9d595e91c994a7d7b208bdaeb83af08541236dc5"
+    },
+    {
+      "kind": "isolated installer workflow",
+      "tree": "61912717a26e93cabad10dfb373573a95f579c95",
+      "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+      "blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+      "note": "Audio/root own workflow; not part of this source tree."
+    }
+  ],
+  "contracts": {
+    "installation_lease": "installation_lease(root, *, exclusive=False, owner=None): same OS shared/exclusive lease; no wait for admission; no PID-based termination.",
+    "entrypoint": "installed_entrypoint(function=None, *, allow_bootstrap_self_test=False, allow_bootstrap_native_checks=False): wraps exact callback signature, argv/arguments and keyword-only service/delivery; actual managed scopes synchronously drain causal/registered cleanup owners before process return and OS lease exit.",
+    "maintenance": "Existing offline install_windows.py runs through unchanged current owned_process; same-package cleanup identity; every causal owner drained before streams, exclusive lease or rollback.",
+    "source_binding": "Existing complete source_wheel verifier binds full wheel to manifest commit. Bounded immutable wheel capture preserves returned digest across reread. Lease, passive protocol and all4 process helper sources/copies must match verified wheel members.",
+    "managed_protocol": "Pure donor schema and semantics retained; docstring refers to existing authenticated delivery provider. No TUF client, entitlement authority, DPAPI anchor or activation is added.",
+    "repair": "Entire previous application retained; failed bootstrap restores old tree and receipts only after native quiescence.",
+    "uninstall": "Only unchanged exact owned program inventory; research data and sibling recovery directories retained.",
+    "bootstrap": "Unchanged offline installer first invokes native_checks --bundle-root <current app directory>, then primary --self-test, then writes .installation-complete. Separate static opt-ins admit only those exact argument shapes in preparing/updating or complete-but-not-ready states. The diagnostic path must be absolute/no-parent-traversal/normcase-identical to current app with plain ancestry. Wrong roots, extras, other entrypoints and ready ordinary invocations retain normal shared-lease admission.",
+    "interruption": "Per-owner announcement/status/cleanup signals are recorded locally; every causal owner must be quiet before KeyboardInterrupt/SystemExit reaches surrounding stream, lease or rollback contexts.",
+    "display_brand": "AppPublisher=Sceneria Innovative Technologies is approved display metadata only. No Authenticode, entitlement or publisher-trust claim is added."
+  },
+  "tests": {
+    "selectors": [
+      {
+        "path": "tests/packaging/test_standard_installer.py",
+        "planned_cases": 130
+      },
+      {
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "planned_cases": 47
+      }
+    ],
+    "skip_or_xfail_markers": 0,
+    "donor_standard": {
+      "original_cases": 94,
+      "retained_cases": 88,
+      "unadopted_cases": 6,
+      "unadopted_function": "test_generated_standard_setup_registration_matches_strict_update_health",
+      "reason": "Requires donor security.WindowsRegistration / authenticated-update health implementation, which is explicitly outside this provider-preserving slice.",
+      "public_entry_parameter_additions": 7,
+      "new_cases": 35
+    },
+    "donor_launch": {
+      "original_cases": 8,
+      "original_source_exact_prefix": true,
+      "new_cases": 39
+    },
+    "new_evidence_scope": [
+      "actual temporary files and native lease interleavings",
+      "real committed Git/wheel/RECORD source verification",
+      "6 stale-helper,12 copy-mutation and wheel-reread negatives",
+      "real child Python and owned worker remain alive while managed lease blocks exclusive maintenance",
+      "actual caught/causal/multiple cleanup owners, original return/errors and initial-status/close signal retention",
+      "all public argv/arguments/service/delivery binding shapes",
+      "17 actual native_checks entry/root/bootstrap-state/shared/exclusive lease cases without DLL/model qualification"
+    ],
+    "native": "Actual Inno/CORE/runtime/registry/shortcuts/lease/data/Repair/Uninstall remain separate exact-source Windows acceptance.",
+    "total_planned_cases": 177
+  },
+  "readbacks": {
+    "ten_files_exact": true
+  },
+  "status": "SOURCE_READY_FOR_ROOT_COMPOSITION; all new source/tests/native remain NOT_RUN; no refs mutated",
+  "peer_reviews": {
+    "locate": "CLEAR on final source binding, lease lifetime, real subprocess/fixture APIs, fixed native bootstrap opt-in and interruption phases; later root-approved brand-only line/assertion changes no ownership semantics.",
+    "audio": "CLEAR on captured owner/bootstrap/streams, private-package identity, actual subprocess/fixture APIs and both-owner announcement/status/close interruption cases; latest native probe inverse readback also CLEAR."
+  },
+  "supersedes": [
+    "6b69a7194e99bd75bee70e88029ab280bde7822e",
+    "eba4c575a7ae46c66721e49e9263b506bb4e447c",
+    "3c92261f8a30b12a108e775b473e2b9ba7dee4c1"
+  ]
+}

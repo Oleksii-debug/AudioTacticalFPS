@@ -237,7 +237,7 @@ jobs:
         if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
         timeout-minutes: 3
         run: |
-          $modeArgs = if ($env:CARR_TEST_MODE -ceq 'source') { @('--source', '.') } else { @('--expect-installed') }
+          $modeArgs = @(if ($env:CARR_TEST_MODE -ceq 'source') { @('--source', '.') } else { @('--expect-installed') })
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_preferences_smoke.py @modeArgs --report ci-reader-voice-results/native-voice-options.json 2>&1 | Tee-Object ci-reader-voice-results/native-voice-options.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B -X utf8 -c "import json,pathlib; r=json.loads(pathlib.Path('ci-reader-voice-results/native-voice-options.json').read_text(encoding='utf-8')); assert r.get('status')=='PASS' and r.get('checks'); print('NATIVE_VOICE_OPTION_CHECKS_PASS',len(r['checks']))"

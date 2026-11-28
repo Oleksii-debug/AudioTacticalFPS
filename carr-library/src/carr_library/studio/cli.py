@@ -1,5 +1,6 @@
 """Headless entry points share the exact native project's local production service."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -18,6 +19,7 @@ def data_directory(selected):
     return selected_directory() or user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
+@installed_entrypoint
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ['book']:
@@ -141,6 +143,7 @@ def main(argv=None):
                 binding.close()
 
 
+@installed_entrypoint
 def assistant_main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
     parser.add_argument('--data-dir', type=Path)

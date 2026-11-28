@@ -1,0 +1,31 @@
+{
+  "device_count": 2,
+  "devices": [
+    {
+      "index": 0,
+      "caps_result": 0,
+      "name": "Speakers (VB-Audio Virtual Cabl",
+      "channels": 2,
+      "format_mask": 1048575
+    },
+    {
+      "index": 1,
+      "caps_result": 0,
+      "name": "CABLE In 16 Ch (VB-Audio Virtua",
+      "channels": 2,
+      "format_mask": 1048575
+    }
+  ],
+  "inventory_truncated": false,
+  "fixture": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "format_query_result": 0,
+  "format_query_message": "The specified command was carried out.",
+  "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+  "scope": "Read-only endpoint and format query; actual MCI playback remains required.",
+  "status": "READY",
+  "actual_playback": "NOT_RUN"
+}

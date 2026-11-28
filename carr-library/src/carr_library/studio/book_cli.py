@@ -1,5 +1,6 @@
 """Explicit headless book reviews over the existing Studio jobs and receipts."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from contextlib import ExitStack
 from dataclasses import asdict
 import json
@@ -99,6 +100,7 @@ def review_summary(batch, plans, review):
                 **asdict(book)} for plan, book in zip(plans, review.books)]}
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Reviewed multi-book audio using existing local Studio jobs')
     parser.add_argument('--data-dir', type=Path)

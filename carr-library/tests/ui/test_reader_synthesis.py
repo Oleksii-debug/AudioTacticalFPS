@@ -452,3 +452,35 @@ def make():
     if not supported:
         assert 'does not support' in reports[-1]
     assert ui.controls.snapshot() == (73, True)
+
+
+
+def test_modal_return_revokes_handlers_before_deferred_native_destroy(ui, monkeypatch):
+    pending = {}
+    original_destroy = ui.wx.Dialog.Destroy
+    def deferred_destroy(window):
+        window.native()
+        window.modal = False
+        # wx schedules a top-level window once; its destruction event is later.
+        pending[id(window)] = window
+    monkeypatch.setattr(ui.wx.Dialog, 'Destroy', deferred_destroy)
+    ui.controls.restore(62, True)
+    before = ui.controls.snapshot()
+    def drive(view):
+        choose(view, pitch=31, punctuation=False)
+        view.window.Destroy()
+        assert not view.destroyed
+    ui.driver = drive
+    assert not ui.controls.show()
+    view = ui.controls.view
+    assert view.closed and not view.destroyed and view.result is None
+    assert ui.controls.snapshot() == before and not ui.events and not ui.reports
+    # A queued callback can run after modal return but before the native event.
+    view.accept()
+    view.refresh()
+    view.reset_options()
+    view.close()
+    assert ui.controls.snapshot() == before and not ui.events and len(pending) == 1
+    original_destroy(pending.pop(id(view.window)))
+    assert view.destroyed and view.closed and view.result is None
+    assert ui.controls.snapshot() == before and not ui.events and not ui.reports

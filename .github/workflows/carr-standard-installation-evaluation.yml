@@ -1,0 +1,391 @@
+name: Resonance standard installation verification
+
+# Isolated standard Install / Repair / Uninstall qualification of one exact core bundle.
+# No managed update, entitlement, private asset or release-signing authority is added.
+on:
+  push:
+    branches: [carr/standard-installation-evaluation-20261128]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-standard-installation-evaluation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-standard-installation-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  standard-installation:
+    name: Standard installation / ${{ matrix.os }} / source and installed
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ matrix.minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            minutes: 25
+          - os: windows-2022
+            minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      CARR_TEST_MODE: source-and-installed
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build and install the exact event wheel with existing dependency pins
+        id: installed
+        timeout-minutes: 8
+        run: |
+          New-Item -ItemType Directory -Force ci-standard-installation-results | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }
+          $sourceCommit | Set-Content ci-standard-installation-results/tested-commit.txt
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-standard-installation-python'
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-standard-installation-wheel'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment $(if ($IsWindows) { 'Scripts/python.exe' } else { 'bin/python' })
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $dependencyFile = Join-Path $env:RUNNER_TEMP 'carr-standard-installation-dependencies.txt'
+          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-standard-installation-verification.lock'
+          $pins = @'
+          import hashlib, json, pathlib, re, sys
+          lock = pathlib.Path('packaging/windows-cp311.lock')
+          raw = lock.read_text(encoding='utf-8')
+          records = re.findall(r'(?m)^([A-Za-z0-9_.-]+)==([^\s]+)[^\n]*(?:\n[ \t]+[^\n]+)*', raw)
+          assert len(records) == 19 and len(records) == len({name.lower() for name, _ in records})
+          excluded = set() if sys.platform == 'win32' else {'comtypes', 'wxpython'}
+          assert excluded <= {name.lower() for name, _ in records}
+          pins = {name: version for name, version in records if name.lower() not in excluded}
+          # The Windows lock includes platform-specific wheel hashes. Linux
+          # reuses its exact package versions, not those Windows-only hashes.
+          effective = raw if sys.platform == 'win32' else ''.join(
+              name + '==' + version + '\n' for name, version in pins.items())
+          pathlib.Path(sys.argv[1]).write_text(effective, encoding='utf-8')
+          semantic = pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(encoding='utf-8')
+          packaging = re.findall(r'(?m)^packaging==[^\n]*(?:\n[ \t]+[^\n]+)*', semantic)
+          assert len(packaging) == 1 and '--hash=sha256:' in packaging[0]
+          pathlib.Path(sys.argv[2]).write_text(packaging[0] + '\n', encoding='utf-8')
+          receipt = dict(platform=sys.platform, pins=pins, excluded=sorted(excluded),
+                         repository_lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(),
+                         effective_requirements_sha256=hashlib.sha256(effective.encode()).hexdigest(),
+                         windows_dependency_hashes_required=sys.platform == 'win32',
+                         pytest='9.0.2',
+                         build_support={'setuptools':'84.2.1','wheel':'0.48.0','zstandard':'0.25.0'},
+                         verification_support=packaging[0].split()[0])
+          pathlib.Path('ci-standard-installation-results/dependency-selection.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True))
+          '@
+          & $python -I -B -X utf8 -c $pins $dependencyFile $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            & $python -m pip install --only-binary=:all: --require-hashes -r $dependencyFile
+          } else {
+            & $python -m pip install --only-binary=:all: --no-deps -r $dependencyFile
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 setuptools==84.2.1 wheel==0.48.0 zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip wheel --no-build-isolation --no-deps --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          & $python -I -B -X utf8 -c "import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))" $wheels[0].FullName | Tee-Object ci-standard-installation-results/wheel-identity.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_TEST_WHEEL=$($wheels[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove complete source wheel and installed Python identity
+        id: inventory
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        run: |
+          $inventory = @'
+          import ast, hashlib, importlib.metadata as metadata, json, os, pathlib, re, runpy, sys, zipfile
+          import carr_library
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          owner = runpy.run_path('scripts/windows_reader_player_smoke.py')['_installed_package_root']
+          installed = owner(metadata.distributions(name='universal-research-library'), carr_library.__file__, checkout)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True))
+          with zipfile.ZipFile(os.environ['CARR_TEST_WHEEL']) as archive:
+              expected = {name: archive.read(name) for name in archive.namelist()
+                          if name.startswith('carr_library/') and name.endswith('.py')}
+          actual = {'carr_library/' + path.relative_to(installed).as_posix()
+                    for path in installed.rglob('*.py')}
+          source_names = {'carr_library/' + path.relative_to(checkout / 'src/carr_library').as_posix()
+                          for path in (checkout / 'src/carr_library').rglob('*.py')}
+          assert expected and actual == source_names == set(expected), 'Python namespace differs.'
+          rows = []
+          for name, data in sorted(expected.items()):
+              source, target = checkout / 'src' / name, installed.parent / name
+              assert source.stat().st_size == target.stat().st_size == len(data), name
+              assert source.read_bytes() == target.read_bytes() == data, name
+              rows.append(dict(path=name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
+          declared = json.loads(pathlib.Path('ci-standard-installation-results/dependency-selection.json').read_text(encoding='utf-8'))
+          assert {name: metadata.version(name) for name in declared['pins']} == declared['pins']
+          assert metadata.version('pytest') == declared['pytest']
+          assert {name: metadata.version(name) for name in declared['build_support']} == declared['build_support']
+          support_name, support_version = declared['verification_support'].split('==')
+          assert metadata.version(support_name) == support_version
+          if sys.platform == 'win32':
+              assert metadata.version('wxPython') == '4.2.4'
+          suites = ["tests/packaging/test_standard_installer.py","tests/packaging/test_managed_launch_boundary.py","tests/packaging/test_native_checks.py","tests/packaging/test_windows_bundle.py","tests/packaging/test_windows_launcher_bundle.py","tests/packaging/test_install_bytecode.py","tests/packaging/test_worker_bytecode.py","tests/packaging/test_source_wheel.py","tests/packaging/test_native_runtime.py","tests/audio/test_local_runtime_cli.py","tests/test_delivery_cli.py"]
+          for name in [*suites, 'scripts/windows_standard_installer_smoke.py']:
+              path = checkout / name
+              assert path.is_file() and path.stat().st_size <= 2 * 1024 * 1024, name
+              ast.parse(path.read_text(encoding='utf-8'))
+          print(json.dumps(dict(status='PASS', source_commit=os.environ['GITHUB_SHA'],
+              mode=os.environ['CARR_TEST_MODE'], python=sys.version, executable=sys.executable,
+              prefix=sys.prefix, installed_package=str(installed),
+              source_package=str(checkout / 'src/carr_library'), python_files=rows,
+              required_suites=suites, dependency_selection=declared), sort_keys=True))
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-standard-installation-results/source-installed-python-inventory.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require source standard installation and existing launcher contracts
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/packaging/test_standard_installer.py',
+            'tests/packaging/test_managed_launch_boundary.py',
+            'tests/packaging/test_native_checks.py',
+            'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_windows_launcher_bundle.py',
+            'tests/packaging/test_install_bytecode.py',
+            'tests/packaging/test_worker_bytecode.py',
+            'tests/packaging/test_source_wheel.py',
+            'tests/packaging/test_native_runtime.py',
+            'tests/audio/test_local_runtime_cli.py',
+            'tests/test_delivery_cli.py'
+          )
+          & $env:CARR_PYTHON -B -X utf8 scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-standard-installation-results/source-contracts.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the same contracts from the installed wheel
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/packaging/test_standard_installer.py',
+            'tests/packaging/test_managed_launch_boundary.py',
+            'tests/packaging/test_native_checks.py',
+            'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_windows_launcher_bundle.py',
+            'tests/packaging/test_install_bytecode.py',
+            'tests/packaging/test_worker_bytecode.py',
+            'tests/packaging/test_source_wheel.py',
+            'tests/packaging/test_native_runtime.py',
+            'tests/audio/test_local_runtime_cli.py',
+            'tests/test_delivery_cli.py'
+          )
+          # Reuse the unchanged existing offline and XFAIL/XPASS policy.
+          # -I plus an empty pytest pythonpath prevent checkout import injection.
+          $installedGate = @'
+          import pathlib, runpy, sys
+          import carr_library
+          source = pathlib.Path.cwd().resolve(strict=True)
+          origin = pathlib.Path(carr_library.__file__).resolve(strict=True)
+          assert not origin.is_relative_to(source), origin
+          assert origin.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True)), origin
+          policy = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
+          assert isinstance(policy, str) and policy
+          exec(compile(policy, 'scripts/ci_check.py:PYTEST_CHILD', 'exec'), {'__name__': '__main__'})
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-standard-installation-results/installed.xml @suites 2>&1 | Tee-Object ci-standard-installation-results/installed-contracts.txt
+          $testExit = $LASTEXITCODE
+          & $env:CARR_PYTHON -I -B -X utf8 -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-standard-installation-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))" 2>&1 | Tee-Object ci-standard-installation-results/installed-verdict.txt
+          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Acquire the existing pinned compiler, original Python and native DLL runtime
+        id: toolchain
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private = Join-Path $env:RUNNER_TEMP 'carr-standard-installation-private'
+          New-Item -ItemType Directory $private -ErrorAction Stop | Out-Null
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $pythonArchive = Join-Path $private 'original-windows-python.tar.gz'
+          Invoke-WebRequest $runtime.download.url -OutFile $pythonArchive
+          if ((Get-FileHash $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant() -cne $runtime.download.sha256) { throw 'Original CPython checksum mismatch.' }
+
+          $zigLock = Get-Content packaging/native-launcher/toolchain.lock.json -Raw | ConvertFrom-Json
+          $zigPin = $zigLock.'x86_64-windows'
+          $zigArchive = Join-Path $private 'zig.zip'
+          Invoke-WebRequest $zigPin.url -OutFile $zigArchive
+          if ((Get-Item $zigArchive).Length -ne $zigPin.bytes -or (Get-FileHash $zigArchive -Algorithm SHA256).Hash.ToLowerInvariant() -cne $zigPin.sha256) { throw 'Native compiler archive mismatch.' }
+          $zigRoot = Join-Path $private 'zig'
+          Expand-Archive $zigArchive -DestinationPath $zigRoot
+          $zig = @(Get-ChildItem $zigRoot -Filter 'zig.exe' -Recurse -File)
+          if ($zig.Count -ne 1) { throw 'Ambiguous native compiler.' }
+
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $private 'native-runtime.conda'
+          Invoke-WebRequest $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item $nativePackage).Length -ne $nativeLock.package.size -or (Get-FileHash $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -cne $nativeLock.package.sha256) { throw 'Original native DLL package mismatch.' }
+          & $env:CARR_PYTHON -I -B -X utf8 packaging/prepare_native_runtime.py --package $nativePackage --output (Join-Path $private 'native-runtime') 2>&1 | Tee-Object ci-standard-installation-results/native-runtime.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory (Join-Path $private 'inno')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_STANDARD_PRIVATE=$private" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_STANDARD_ZIG=$($zig[0].FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Copy-Item (Join-Path $private 'inno/toolchain-receipt.json') ci-standard-installation-results/inno-toolchain.json
+          Copy-Item packaging/windows-python.json ci-standard-installation-results/original-python.json
+          Copy-Item packaging/native-launcher/toolchain.lock.json ci-standard-installation-results/launcher-toolchain.json
+          Copy-Item packaging/native-runtime/source-lock.json ci-standard-installation-results/native-runtime-source.json
+
+      - name: Build one exact current core bundle and its standard setup
+        id: standard_setup
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' && steps.toolchain.outcome == 'success' }}
+        timeout-minutes: 15
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private, $python = $env:CARR_STANDARD_PRIVATE, $env:CARR_PYTHON
+          $source = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $source -cne $env:GITHUB_SHA) { throw 'Source changed before standard bundle preparation.' }
+          $wheel = Get-Item -LiteralPath $env:CARR_TEST_WHEEL
+          $wheelhouse = Join-Path $private 'wheelhouse'
+          New-Item -ItemType Directory $wheelhouse -ErrorAction Stop | Out-Null
+          & $python -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $pins = @(Select-String -Path packaging/windows-cp311.lock -Pattern '^[A-Za-z][A-Za-z0-9_.-]*==')
+          $dependencies = @(Get-ChildItem -LiteralPath $wheelhouse -Filter '*.whl' -File)
+          if ($pins.Count -ne 19 -or $dependencies.Count -ne 19) { throw 'The current core wheelhouse must retain all 19 exact Windows pins.' }
+
+          $launcher = Join-Path $private 'launcher'
+          # The committed launcher builder imports its sibling probe_pe.py.
+          & $python -B -X utf8 packaging/native-launcher/build_launcher.py --zig $env:CARR_STANDARD_ZIG --toolchain-archive (Join-Path $private 'zig.zip') --output-dir $launcher --build-probe 2>&1 | Tee-Object ci-standard-installation-results/launcher-build.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item (Join-Path $launcher 'build-evidence.json') ci-standard-installation-results/launcher-build.json
+          & $python -I -B -X utf8 packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcher 'ResearchLibrary.exe') --child (Join-Path $launcher 'windows_child_probe.exe') --report ci-standard-installation-results/launcher-native.json 2>&1 | Tee-Object ci-standard-installation-results/launcher-native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $base, $bundle = (Join-Path $private 'core-base'), (Join-Path $private 'core-bundle')
+          # One current core bundle with the existing full source/wheel and
+          # runtime inventory verifiers; optional media profiles stay separate.
+          & $python -I -B -X utf8 packaging/build_windows_bundle.py --wheel $wheel.FullName --wheelhouse $wheelhouse --lock packaging/windows-cp311.lock --sbom packaging/windows-sbom.cdx.json --python-archive (Join-Path $private 'original-windows-python.tar.gz') --launcher (Join-Path $launcher 'ResearchLibrary.exe') --launcher-evidence (Join-Path $launcher 'build-evidence.json') --source-commit $source --output $base 2>&1 | Tee-Object ci-standard-installation-results/core-build.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -X utf8 packaging/add_native_runtime.py --bundle $base --native-runtime (Join-Path $private 'native-runtime') --output $bundle 2>&1 | Tee-Object ci-standard-installation-results/core-native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $manifest = (Get-FileHash (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+          $sealedWheel = Join-Path $bundle ('wheelhouse/' + $wheel.Name)
+          $sealedIdentity = @'
+          import hashlib, json, os, pathlib, runpy, subprocess, sys
+          wheel, bundle, original = map(pathlib.Path, sys.argv[1:])
+          verify = runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']
+          receipt = verify(wheel, '..', os.environ['GITHUB_SHA'])
+          raw = (bundle / 'bundle-manifest.json').read_bytes()
+          manifest = json.loads(raw)
+          assert receipt['source_commit'] == manifest['source_commit'] == os.environ['GITHUB_SHA']
+          assert manifest['files']['wheelhouse/' + wheel.name] == receipt['wheel_sha256']
+          assert hashlib.sha256(original.read_bytes()).hexdigest() == receipt['wheel_sha256']
+          assert manifest['bundled_python'] is True and manifest['bundled_native_runtime'] is True
+          assert all(manifest.get(name) is False for name in ('bundled_model', 'bundled_ocr', 'bundled_audio'))
+          receipt['source_tree'] = subprocess.check_output(
+              ['git', 'rev-parse', '--verify', os.environ['GITHUB_SHA'] + '^{tree}'], text=True).strip()
+          receipt['bundle_manifest_sha256'] = hashlib.sha256(raw).hexdigest()
+          receipt['profile'] = 'current-core-19-windows-pins'
+          print(json.dumps(receipt, sort_keys=True))
+          '@
+          & $python -I -B -X utf8 -c $sealedIdentity $sealedWheel $bundle $wheel.FullName 2>&1 | Tee-Object ci-standard-installation-results/sealed-wheel-source.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $setup = Join-Path $private 'setup'
+          & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --output $setup --iscc (Join-Path $private 'inno/tools/ISCC.exe') --toolchain-receipt (Join-Path $private 'inno/toolchain-receipt.json') 2>&1 | Tee-Object ci-standard-installation-results/setup-build.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item (Join-Path $setup 'setup-build.json') ci-standard-installation-results/setup-build.json
+          $built = Get-Content (Join-Path $setup 'setup-build.json') -Raw | ConvertFrom-Json
+          if ($built.status -cne 'BUILT_NOT_INSTALLED' -or $built.source_commit -cne $source -or $built.bundle_manifest_sha256 -cne $manifest -or $built.release_status -cne 'unsigned-private-candidate') { throw 'Compiled setup evidence does not match the exact core source.' }
+          if ($built.authenticode_verified -ne $false -or $built.windows_installation_verified -ne $false -or $built.nvda_verified -ne $false) { throw 'Setup build evidence makes an unsupported execution or signing claim.' }
+
+      - name: Require actual native standard Install Repair and Uninstall
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' && steps.standard_setup.outcome == 'success' }}
+        timeout-minutes: 30
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private = $env:CARR_STANDARD_PRIVATE
+          $setup = Join-Path $private 'setup'
+          $report = Join-Path (Resolve-Path ci-standard-installation-results).Path 'native'
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $setup 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $setup 'setup-build.json') --work (Join-Path $private 'actual-standard-work') --report $report 2>&1 | Tee-Object ci-standard-installation-results/native-standard-installation.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $check = @'
+          import json, os, pathlib, sys
+          result = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          build = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          assert result.get('status') == 'PASS'
+          assert result['source_commit'] == build['source_commit'] == os.environ['GITHUB_SHA']
+          assert result['setup_sha256'] == build['setup_sha256']
+          assert result['bundle_manifest_sha256'] == build['bundle_manifest_sha256']
+          required = ('actual_inno_install', 'actual_offline_runtime_bootstrap',
+              'per_user_start_menu', 'per_user_repair_uninstall_registration',
+              'fresh_shortcut_collision_refused', 'uninstaller_wrapper_removed',
+              'native_launcher_prelaunch_lease', 'live_job_preserved',
+              'repair_retains_modified_and_foreign_files', 'actual_repair',
+              'actual_uninstall', 'populated_library_bytes_preserved')
+          assert all(result.get(field) is True for field in required)
+          assert result.get('authenticode_verified') is False and result.get('nvda_verified') is False
+          assert result.get('unprivileged_account_qualification') == 'NOT_RUN'
+          assert result.get('native_network_trace') == 'NOT_RUN'
+          assert result.get('release_status') == 'unsigned-private-candidate'
+          print(json.dumps(dict(status='PASS', source_commit=os.environ['GITHUB_SHA'],
+              native_standard_assertions=list(required), setup_sha256=result['setup_sha256'],
+              bundle_manifest_sha256=result['bundle_manifest_sha256'],
+              release_status=result['release_status']), sort_keys=True))
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $check (Join-Path $report 'result.json') (Join-Path $setup 'setup-build.json') 2>&1 | Tee-Object ci-standard-installation-results/native-standard-verdict.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve public text receipts and exact source evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-standard-installation-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-standard-installation-results/**/*.json
+            carr-library/ci-standard-installation-results/**/*.txt
+            carr-library/ci-standard-installation-results/**/*.log
+            carr-library/ci-standard-installation-results/**/*.xml
+          if-no-files-found: error
+          retention-days: 7

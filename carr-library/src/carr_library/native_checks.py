@@ -8,6 +8,7 @@ recognition check. No model session, network request or user document is used.
 from __future__ import annotations
 
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from importlib import import_module
 import json
 import os
@@ -155,6 +156,7 @@ def check_native_dependencies(bundle_root):
     return report
 
 
+@installed_entrypoint(allow_bootstrap_native_checks=True)
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-root', required=True, type=Path)

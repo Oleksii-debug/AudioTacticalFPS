@@ -1,11 +1,13 @@
 """Explicit streamed TXT command using the normal import supervisor."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 import json
 import math
 from pathlib import Path
 import re
 
 
+@installed_entrypoint
 def main(arguments=None):
     parser = argparse.ArgumentParser(prog='carr_library import-text',
         description='Import a selected UTF-8 text in bounded logical fragments; keep original bytes.')

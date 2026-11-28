@@ -1,0 +1,447 @@
+{
+  "schema": "resonance-exact-head-checkpoint/1",
+  "observed_at_utc": "2026-11-27T23:43:42Z",
+  "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "source_tree": "ab4bd12008e03e7b7ce6b65755776114ff6a0ffd",
+  "qualification_scope": "Completed GitHub Actions job on this historical source only; no transfer to successors, delivered wheel, private models, microphones, Windows 11 or NVDA.",
+  "log_provenance": "Exact UTF-8 encoding of the decoded completed job log returned by GitHub connector, before ANSI/timestamp normalization. Hash is not an original artifact ZIP/member hash.",
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231946",
+  "job_id": 140761298990,
+  "job_started_at": "2026-11-27T22:15:39Z",
+  "job_completed_at": "2026-11-27T23:40:07Z",
+  "job_conclusion": "failure",
+  "decoded_log_utf8": {
+    "sha256": "9ca136ece720382e630143c8066190ffbfbf0c4b3a041fcea2c456374f63806e",
+    "bytes": 361867
+  },
+  "aggregate": "FAILED",
+  "failed_steps": [
+    {
+      "number": 18,
+      "name": "Validate local services, DSP, integrity and provider permission boundaries"
+    }
+  ],
+  "broad_source_gate": {
+    "passed_cases": 6070,
+    "failed_cases": 14,
+    "skipped_cases": 0,
+    "duration_seconds": 4132,
+    "terminal_summary": "14 failed, 6070 passed in 4132.00s (1:08:51)",
+    "failures": [
+      "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[OSError] - AssertionError: {'created': 1795821399.2908475, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit] - AssertionError: {'created': 1795821430.9387972, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[False] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[True] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_service.py::test_actual_process_receipts_reading_and_subtitle_rollover - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_service.py::test_isolated_worker_preserves_unicode_paths_and_diagnostics - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_service.py::test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_service.py::test_rebind_preserves_accepted_artifact_and_its_original_profile - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+      "FAILED tests/transcription/test_service.py::test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust - AssertionError: assert 'paused' == 'complete'",
+      "FAILED tests/transcription/test_service.py::test_unclean_runner_requires_explicit_review_before_resume - AssertionError: assert 'partial' == 'complete'"
+    ]
+  },
+  "diagnostic": {
+    "events": [
+      {
+        "ended": 3,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "first-run",
+        "started": 0.07800000000042928
+      },
+      {
+        "ended": 3.04700000000048,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "first-run",
+        "started": 3.032000000000153
+      },
+      {
+        "ended": 6.219000000000051,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "first-run",
+        "started": 3.2030000000004293
+      },
+      {
+        "ended": 6.235000000000582,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "first-run",
+        "started": 6.219000000000051
+      },
+      {
+        "ended": 6.235000000000582,
+        "error": null,
+        "name": "process_start",
+        "phase": "first-run",
+        "started": 6.235000000000582
+      },
+      {
+        "ended": 9.875,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "first-run",
+        "started": 6.828000000000429
+      },
+      {
+        "ended": 9.891000000000531,
+        "error": null,
+        "name": "_publish_result",
+        "phase": "first-run",
+        "started": 6.657000000000153
+      },
+      {
+        "ended": 12.813000000000102,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "first-run",
+        "started": 9.907000000000153
+      },
+      {
+        "ended": 12.813000000000102,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "first-run",
+        "started": 6.5
+      },
+      {
+        "ended": 12.92200000000048,
+        "error": "AudioError",
+        "name": "run_process",
+        "phase": "first-run",
+        "started": 6.219000000000051
+      },
+      {
+        "ended": 15.860000000000582,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "first-run",
+        "started": 12.95300000000043
+      },
+      {
+        "ended": 15.985000000000582,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "first-run",
+        "started": 15.860000000000582
+      },
+      {
+        "ended": 16.20300000000043,
+        "error": null,
+        "name": "inspect_runtime",
+        "phase": "register-replacement",
+        "started": 15.985000000000582
+      },
+      {
+        "ended": 19.532000000000153,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "resume",
+        "started": 16.532000000000153
+      },
+      {
+        "ended": 19.57800000000043,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "resume",
+        "started": 19.563000000000102
+      },
+      {
+        "ended": 22.657000000000153,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "resume",
+        "started": 19.70300000000043
+      },
+      {
+        "ended": 22.67200000000048,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "resume",
+        "started": 22.67200000000048
+      },
+      {
+        "ended": 22.67200000000048,
+        "error": null,
+        "name": "process_start",
+        "phase": "resume",
+        "started": 22.67200000000048
+      },
+      {
+        "ended": 26.17200000000048,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "resume",
+        "started": 23.235000000000582
+      },
+      {
+        "ended": 26.188000000000102,
+        "error": null,
+        "name": "_publish_result",
+        "phase": "resume",
+        "started": 23.07800000000043
+      },
+      {
+        "ended": 29.188000000000102,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "resume",
+        "started": 26.21900000000005
+      },
+      {
+        "ended": 29.188000000000102,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "resume",
+        "started": 22.92200000000048
+      },
+      {
+        "ended": 29.313000000000102,
+        "error": "AudioError",
+        "name": "run_process",
+        "phase": "resume",
+        "started": 22.657000000000153
+      },
+      {
+        "ended": 32.29700000000048,
+        "error": null,
+        "name": "_verify_profile",
+        "phase": "resume",
+        "started": 29.34400000000005
+      },
+      {
+        "ended": 32.32800000000043,
+        "error": null,
+        "name": "_admit_results",
+        "phase": "resume",
+        "started": 32.29700000000048
+      }
+    ],
+    "platform": "win32",
+    "process_failures": [
+      {
+        "caught": 12.92200000000048,
+        "error": "AudioError",
+        "original_check": {
+          "observed_exit_at": 12.907000000000153,
+          "started": 6.235000000000582,
+          "worker_until": 12.907000000000153
+        },
+        "phase": "first-run"
+      },
+      {
+        "caught": 29.313000000000102,
+        "error": "AudioError",
+        "original_check": {
+          "observed_exit_at": 29.29700000000048,
+          "started": 22.67200000000048,
+          "worker_until": 29.29700000000048
+        },
+        "phase": "resume"
+      }
+    ],
+    "process_timeout": 5,
+    "processes": [
+      {
+        "first_completed_wait": {
+          "ended": 12.907000000000153,
+          "returncode": 3,
+          "started": 12.907000000000153
+        },
+        "first_exit_poll": {
+          "ended": 12.907000000000153,
+          "returncode": 3,
+          "started": 12.907000000000153
+        },
+        "last_running_poll": {
+          "ended": 6.344000000000051,
+          "started": 6.344000000000051
+        },
+        "owned_tree": true,
+        "phase": "first-run",
+        "poll_calls": 6,
+        "returned": 6.235000000000582,
+        "started": 6.235000000000582,
+        "wait_calls": 3,
+        "wait_timeouts": 1
+      },
+      {
+        "first_completed_wait": {
+          "ended": 29.29700000000048,
+          "returncode": 0,
+          "started": 29.29700000000048
+        },
+        "first_exit_poll": {
+          "ended": 29.29700000000048,
+          "returncode": 0,
+          "started": 29.29700000000048
+        },
+        "last_running_poll": {
+          "ended": 22.782000000000153,
+          "started": 22.782000000000153
+        },
+        "owned_tree": true,
+        "phase": "resume",
+        "poll_calls": 6,
+        "returned": 22.67200000000048,
+        "started": 22.67200000000048,
+        "wait_calls": 3,
+        "wait_timeouts": 1
+      }
+    ],
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "timings": {
+      "first-run:_admit_results": {
+        "calls": 4,
+        "first_started": 3.032000000000153,
+        "last_ended": 15.985000000000582,
+        "maximum_ended": 12.813000000000102,
+        "maximum_seconds": 6.313000000000102,
+        "maximum_started": 6.5,
+        "seconds": 6.46900000000096
+      },
+      "first-run:_control": {
+        "calls": 1442,
+        "first_started": 0.07800000000042928,
+        "last_ended": 15.985000000000582,
+        "maximum_ended": 15.985000000000582,
+        "maximum_seconds": 0.032000000000152795,
+        "maximum_started": 15.95300000000043,
+        "seconds": 14.384999999999309
+      },
+      "first-run:_publish_result": {
+        "calls": 1,
+        "first_started": 6.657000000000153,
+        "last_ended": 9.891000000000531,
+        "maximum_ended": 9.891000000000531,
+        "maximum_seconds": 3.2340000000003783,
+        "maximum_started": 6.657000000000153,
+        "seconds": 3.2340000000003783
+      },
+      "first-run:_verify_profile": {
+        "calls": 5,
+        "first_started": 0.07800000000042928,
+        "last_ended": 15.860000000000582,
+        "maximum_ended": 9.875,
+        "maximum_seconds": 3.0469999999995707,
+        "maximum_started": 6.828000000000429,
+        "seconds": 14.797999999998865
+      },
+      "first-run:process_callback": {
+        "calls": 18,
+        "first_started": 6.219000000000051,
+        "last_ended": 12.92200000000048,
+        "maximum_ended": 12.813000000000102,
+        "maximum_seconds": 6.344000000000051,
+        "maximum_started": 6.469000000000051,
+        "seconds": 6.641000000000531
+      },
+      "first-run:process_start": {
+        "calls": 1,
+        "first_started": 6.235000000000582,
+        "last_ended": 6.235000000000582,
+        "maximum_ended": 6.235000000000582,
+        "maximum_seconds": 0,
+        "maximum_started": 6.235000000000582,
+        "seconds": 0
+      },
+      "first-run:run_process": {
+        "calls": 1,
+        "first_started": 6.219000000000051,
+        "last_ended": 12.92200000000048,
+        "maximum_ended": 12.92200000000048,
+        "maximum_seconds": 6.703000000000429,
+        "maximum_started": 6.219000000000051,
+        "seconds": 6.703000000000429
+      },
+      "register-replacement:inspect_runtime": {
+        "calls": 1,
+        "first_started": 15.985000000000582,
+        "last_ended": 16.20300000000043,
+        "maximum_ended": 16.20300000000043,
+        "maximum_seconds": 0.2179999999998472,
+        "maximum_started": 15.985000000000582,
+        "seconds": 0.2179999999998472
+      },
+      "resume:_admit_results": {
+        "calls": 4,
+        "first_started": 19.563000000000102,
+        "last_ended": 32.32800000000043,
+        "maximum_ended": 29.188000000000102,
+        "maximum_seconds": 6.265999999999622,
+        "maximum_started": 22.92200000000048,
+        "seconds": 6.311999999999898
+      },
+      "resume:_control": {
+        "calls": 1446,
+        "first_started": 16.532000000000153,
+        "last_ended": 32.34400000000005,
+        "maximum_ended": 25.657000000000153,
+        "maximum_seconds": 0.032000000000152795,
+        "maximum_started": 25.625,
+        "seconds": 14.140999999997803
+      },
+      "resume:_publish_result": {
+        "calls": 1,
+        "first_started": 23.07800000000043,
+        "last_ended": 26.188000000000102,
+        "maximum_ended": 26.188000000000102,
+        "maximum_seconds": 3.1099999999996726,
+        "maximum_started": 23.07800000000043,
+        "seconds": 3.1099999999996726
+      },
+      "resume:_verify_profile": {
+        "calls": 5,
+        "first_started": 16.532000000000153,
+        "last_ended": 32.29700000000048,
+        "maximum_ended": 19.532000000000153,
+        "maximum_seconds": 3,
+        "maximum_started": 16.532000000000153,
+        "seconds": 14.813000000000102
+      },
+      "resume:process_callback": {
+        "calls": 18,
+        "first_started": 22.657000000000153,
+        "last_ended": 29.313000000000102,
+        "maximum_ended": 29.188000000000102,
+        "maximum_seconds": 6.296999999999571,
+        "maximum_started": 22.89100000000053,
+        "seconds": 6.5770000000002256
+      },
+      "resume:process_start": {
+        "calls": 1,
+        "first_started": 22.67200000000048,
+        "last_ended": 22.67200000000048,
+        "maximum_ended": 22.67200000000048,
+        "maximum_seconds": 0,
+        "maximum_started": 22.67200000000048,
+        "seconds": 0
+      },
+      "resume:run_process": {
+        "calls": 1,
+        "first_started": 22.657000000000153,
+        "last_ended": 29.313000000000102,
+        "maximum_ended": 29.313000000000102,
+        "maximum_seconds": 6.655999999999949,
+        "maximum_started": 22.657000000000153,
+        "seconds": 6.655999999999949
+      }
+    },
+    "timings_are_inclusive": true
+  },
+  "diagnosis": "Failures are confined to transcription service/admission boundaries in this run. Actual synthetic-worker runs exceeded the unchanged 5-second budget or retained partial/paused state. Timings are inclusive; nested intervals cannot be summed and they do not establish the actual native exit instant.",
+  "comparison": "The separate complete source phase of Windows run46075232185 on the same head reports all28 transcription service and14 admission-boundary cases passing. That does not override this failure or qualify the successor.",
+  "limitations": {
+    "full_v3_aggregate": "FAILED",
+    "runtime_deadline_seconds": 5,
+    "deadline_relaxed": false,
+    "successor_source_tested": false,
+    "real_asr_model": "NOT_RUN",
+    "language_quality": "NOT_RUN"
+  }
+}

@@ -1,0 +1,264 @@
+; Thin per-user wrapper. The existing verified offline installer owns runtime setup.
+[Setup]
+AppId={{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}
+AppName=Resonance
+UninstallDisplayName=Resonance
+AppVersion=@@VERSION@@
+AppPublisher=Sceneria Innovative Technologies
+DefaultDirName={localappdata}\Programs\Resonance
+DefaultGroupName=Resonance
+DisableProgramGroupPage=yes
+UsePreviousAppDir=yes
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+MinVersion=10.0
+OutputDir=@@OUTPUT@@
+OutputBaseFilename=ResonanceSetup
+Compression=lzma2/fast
+SolidCompression=yes
+WizardStyle=modern
+CloseApplications=no
+RestartApplications=no
+AlwaysRestart=no
+UninstallDisplayIcon={app}\app\ResearchLibrary.exe
+SetupLogging=yes
+SetupMutex=Resonance.StandardInstall.v1.Setup
+UninstallFilesDir={app}
+UninstallLogMode=append
+DisableDirPage=no
+
+[Files]
+@@FILES@@
+Source: "{srcexe}"; DestDir: "{app}\maintenance"; DestName: "ResonanceSetup.exe"; Flags: external ignoreversion; Check: CacheNeeded
+
+[Icons]
+Name: "{autoprograms}\Resonance\Resonance"; Filename: "{app}\app\ResearchLibrary.exe"; WorkingDir: "{app}\app"
+Name: "{autoprograms}\Resonance\Repair Resonance"; Filename: "{app}\maintenance\ResonanceSetup.exe"; WorkingDir: "{app}"
+Name: "{autoprograms}\Resonance\Uninstall Resonance"; Filename: "{uninstallexe}"; WorkingDir: "{app}"
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\{{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1"; ValueType: string; ValueName: "ModifyPath"; ValueData: """{app}\maintenance\ResonanceSetup.exe"""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\{{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1"; ValueType: dword; ValueName: "NoModify"; ValueData: "0"; Flags: uninsdeletevalue
+
+[Code]
+type
+  TResonanceHandle = LongWord; { The pinned Inno 6 engine is a 32-bit Win32 process. }
+const
+  BundleHash = '@@BUNDLE_HASH@@';
+  InvalidHandle = $FFFFFFFF;
+var
+  LeaseHandle: TResonanceHandle;
+  SetupHash: String;
+  Bootstrap: String;
+  Prepared: Boolean;
+  UpgradeProof: String;
+  UpgradeProofHash: String;
+  UpgradeOwnerPid: Integer;
+  UpgradeOwnerHandle: Integer;
+
+function CreateFileW(Name: String; Access, Share: LongWord; Security: Integer;
+  Creation, Flags: LongWord; Template: TResonanceHandle): TResonanceHandle;
+  external 'CreateFileW@kernel32.dll stdcall';
+function CloseHandle(Handle: TResonanceHandle): Boolean;
+  external 'CloseHandle@kernel32.dll stdcall';
+function GetCurrentProcessId: LongWord;
+  external 'GetCurrentProcessId@kernel32.dll stdcall';
+function GetCurrentProcess: TResonanceHandle;
+  external 'GetCurrentProcess@kernel32.dll stdcall';
+function OpenProcess(Access: LongWord; Inherit: Boolean; Pid: LongWord): TResonanceHandle;
+  external 'OpenProcess@kernel32.dll stdcall';
+function DuplicateHandle(SourceProcess, SourceHandle, TargetProcess: TResonanceHandle;
+  var TargetHandle: TResonanceHandle; Access: LongWord; Inherit: Boolean;
+  Options: LongWord): Boolean;
+  external 'DuplicateHandle@kernel32.dll stdcall';
+
+function Quote(Value: String): String;
+begin
+  if Pos('"', Value) <> 0 then RaiseException('An installation path contains a quote.');
+  Result := '"' + Value + '"';
+end;
+
+procedure ReleaseLease;
+begin
+  if (LeaseHandle <> 0) and (LeaseHandle <> InvalidHandle) then CloseHandle(LeaseHandle);
+  LeaseHandle := 0;
+end;
+
+function AcquireLease: Boolean;
+var
+  OwnerProcess: TResonanceHandle;
+begin
+  ReleaseLease;
+  if UpgradeProof <> '' then begin
+    Result := False;
+    if (UpgradeOwnerPid <= 0) or (UpgradeOwnerHandle <= 0) then Exit;
+    OwnerProcess := OpenProcess($0040, False, UpgradeOwnerPid);
+    if OwnerProcess = 0 then Exit;
+    try
+      Result := DuplicateHandle(OwnerProcess, UpgradeOwnerHandle, GetCurrentProcess,
+                  LeaseHandle, 0, False, 2);
+      { Before any files or registry entries change, upgrade-check duplicates
+        this live handle again and verifies its exact final lease pathname. }
+    finally
+      CloseHandle(OwnerProcess);
+    end;
+    Exit;
+  end;
+  LeaseHandle := CreateFileW(ExpandConstant('{app}\installation.lease'), $C0000000, 0, 0, 3, $00200080, 0);
+  Result := LeaseHandle <> InvalidHandle;
+end;
+
+function RunHelper(Operation: String; WithLease: Boolean): Boolean;
+var
+  Arguments: String;
+  ExitCode: Integer;
+begin
+  Arguments := '-I -B -X utf8 ' + Quote(Bootstrap + '\helpers\maintenance.py') +
+    ' ' + Operation + ' --root ' + Quote(ExpandConstant('{app}')) +
+    ' --bundle-sha256 ' + BundleHash + ' --setup-sha256 ' + SetupHash;
+  if (Operation = 'install') or (Operation = 'upgrade') or (Operation = 'upgrade-check') then Arguments := Arguments + ' --payload ' + Quote(Bootstrap + '\payload') +
+    ' --setup-source ' + Quote(ExpandConstant('{srcexe}'));
+  if UpgradeProof <> '' then Arguments := Arguments + ' --upgrade-proof ' + Quote(UpgradeProof) +
+    ' --upgrade-proof-sha256 ' + Quote(UpgradeProofHash);
+  if WithLease then Arguments := Arguments + ' --lease-owner ' + IntToStr(GetCurrentProcessId) + ' ' + IntToStr(LeaseHandle);
+  Result := ExecAndLogOutput(Bootstrap + '\payload\runtime\python.exe', Arguments, Bootstrap,
+                 SW_HIDE, ewWaitUntilTerminated, ExitCode, nil) and (ExitCode = 0);
+  if not Result then Log('Resonance maintenance did not complete: ' + Operation + ', code ' + IntToStr(ExitCode));
+end;
+
+function CacheNeeded: Boolean;
+begin
+  Result := CompareText(ExpandConstant('{srcexe}'), ExpandConstant('{app}\maintenance\ResonanceSetup.exe')) <> 0;
+end;
+
+function CheckUserWrapperTargets: String;
+var
+  ExistingDirectory: String;
+begin
+  Result := '';
+  if RegKeyExists(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1') then begin
+    if not RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1',
+        'InstallLocation', ExistingDirectory) or
+        (CompareText(RemoveBackslashUnlessRoot(ExistingDirectory), RemoveBackslashUnlessRoot(ExpandConstant('{app}'))) <> 0) or
+        not FileExists(ExpandConstant('{app}\managed-install.ini')) then
+      Result := 'An existing Resonance registration belongs to another or incomplete program folder. Keep it and choose its matching setup; no registration was replaced.';
+  end else if FileOrDirExists(ExpandConstant('{autoprograms}\Resonance')) then
+    Result := 'The Resonance Start-menu folder already exists without this installation registration. Keep or rename those existing shortcuts before installing; none were replaced.';
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if Prepared then Exit;
+  Result := CheckUserWrapperTargets;
+  if Result <> '' then Exit;
+  Bootstrap := ExpandConstant('{tmp}');
+  ExtractTemporaryFiles('{tmp}\payload\*');
+  ExtractTemporaryFiles('{tmp}\helpers\*');
+  SetupHash := Lowercase(GetSHA256OfFile(ExpandConstant('{srcexe}')));
+  UpgradeProof := ExpandConstant('{param:CARRUPGRADE|}');
+  UpgradeProofHash := ExpandConstant('{param:CARRUPGRADESHA|}');
+  UpgradeOwnerPid := StrToIntDef(ExpandConstant('{param:CARRLEASEPID|0}'), 0);
+  UpgradeOwnerHandle := StrToIntDef(ExpandConstant('{param:CARRLEASEHANDLE|0}'), 0);
+  if UpgradeProof <> '' then begin
+    if (Length(UpgradeProofHash) <> 64) or not AcquireLease then begin
+      Result := 'The reviewed update owner no longer holds this installation. No running application was closed.';
+      Exit;
+    end;
+    if not RunHelper('upgrade-check', True) then begin
+      Result := 'The captured old/new setup identity changed. The update was not admitted.';
+      ReleaseLease;
+      Exit;
+    end;
+    WizardForm.PreparingLabel.Caption := 'Applying the reviewed update while retaining the complete previous installation.';
+    if not RunHelper('upgrade', True) then begin
+      Result := 'The update requires recovery by its trusted owner. Retained files and research data were not removed.';
+      ReleaseLease;
+      Exit;
+    end;
+    Prepared := True;
+    Exit;
+  end;
+  if not RunHelper('preflight', False) then begin
+    Result := 'This folder could not be admitted. Choose a new program folder or the matching original setup. Existing files were retained.';
+    Exit;
+  end;
+  if not AcquireLease then begin
+    Result := 'Close Resonance and its running jobs before installing, repairing, or uninstalling. No application was closed automatically.';
+    Exit;
+  end;
+  if not RunHelper('check', True) then begin
+    Result := 'The installation identity or maintenance files changed. Existing files were retained; use the original verified setup in a new folder.';
+    ReleaseLease;
+    Exit;
+  end;
+  WizardForm.PreparingLabel.Caption := 'Installing the verified offline runtime; waiting for owned processes when needed. Previous files and research data are preserved.';
+  if not RunHelper('install', True) then begin
+    Result := 'Offline installation did not complete. The prior application and research data were retained. Review the setup log.';
+    ReleaseLease;
+    Exit;
+  end;
+  Prepared := True;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssDone then begin
+    RegWriteStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1',
+      'ModifyPath', Quote(ExpandConstant('{app}\maintenance\ResonanceSetup.exe')));
+    RegWriteDWordValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}_is1', 'NoModify', 0);
+  end;
+end;
+
+procedure DeinitializeSetup;
+begin
+  ReleaseLease;
+end;
+
+procedure CopyVerified(Source, Destination, ExpectedHash: String);
+begin
+  if Lowercase(GetSHA256OfFile(Source)) <> ExpectedHash then RaiseException('The uninstall bootstrap changed. Run Repair from the original setup first.');
+  if not ForceDirectories(ExtractFileDir(Destination)) then RaiseException('Cannot create the isolated uninstall helper folder.');
+  if not CopyFile(Source, Destination, True) then RaiseException('Cannot copy the verified uninstall helper.');
+  if Lowercase(GetSHA256OfFile(Destination)) <> ExpectedHash then RaiseException('The uninstall helper changed during copying.');
+end;
+
+procedure PrepareUninstallBootstrap;
+begin
+  Bootstrap := ExpandConstant('{tmp}') + '\resonance-maintenance';
+@@UNINSTALL_BOOTSTRAP@@
+end;
+
+function InitializeUninstall: Boolean;
+begin
+  Result := False;
+  if not AcquireLease then begin
+    SuppressibleMsgBox('Close Resonance and its running jobs before uninstalling. No application was closed automatically.', mbError, MB_OK, IDOK);
+    Exit;
+  end;
+  try
+    SetupHash := GetIniString('installation', 'setup_sha256', '', ExpandConstant('{app}\managed-install.ini'));
+    if (Length(SetupHash) <> 64) or (Lowercase(GetSHA256OfFile(ExpandConstant('{app}\maintenance\ResonanceSetup.exe'))) <> SetupHash) then
+      RaiseException('The cached setup identity changed. No files will be removed.');
+    PrepareUninstallBootstrap;
+    if not RunHelper('check', True) then RaiseException('The owned-file manifest or maintenance tools changed. No files will be removed.');
+    Result := True;
+  except
+    ReleaseLease;
+    SuppressibleMsgBox(GetExceptionMessage, mbError, MB_OK, IDOK);
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    if not RunHelper('uninstall', True) then
+      RaiseException('Program files changed or a job is still using them. Remaining files were retained. Repair with the original setup before trying again.');
+end;
+
+procedure DeinitializeUninstall;
+begin
+  ReleaseLease;
+end;

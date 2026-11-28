@@ -1,4 +1,5 @@
 """Real book-dialog closures with scheduler/widgets stand-ins, not native evidence."""
+from hashlib import sha256
 from pathlib import Path
 import sys
 import threading
@@ -145,7 +146,7 @@ def preview(e):
     e.find('Reviewed output folder').ChangeValue(str(e.output))
     e.press('Preview split and names')
     assert e.state['queue']
-    e.complete()
+    return e.complete()
 
 
 def test_bookmark_choices_use_worker_snapshot_and_refuse_later_rename(handlers, monkeypatch):
@@ -217,11 +218,18 @@ def test_preview_and_prepare_validate_source_on_worker_and_never_start_speech(ha
         assert calls[-1] != e.ui_thread
         return original(*args, **kwargs)
     monkeypatch.setattr(book_audio, 'validate_source', checked)
-    preview(e)
+    plan, review = preview(e)
     assert calls and not e.production.jobs()
     status = e.find('Book split preview and saved job status')
     assert 'UI source' in status.value and 'Revision:' in status.value and status.focused
-    assert '0001---UI-source---Part-1-' in status.value and '0002---UI-source---Part-2-' in status.value
+    expected_titles = ('0001 - UI source - Part 1', '0002 - UI source - Part 2')
+    assert len(review.destinations) == len(expected_titles)
+    for index, (title, destination) in enumerate(zip(expected_titles, review.destinations), 1):
+        assert 'Part title: ' + title in status.value
+        assert 'Output folder: ' + destination in status.value
+        name = Path(destination).name
+        assert len(name) <= 83
+        assert name.endswith('-' + sha256(plan.job_id(index).encode('ascii')).hexdigest())
     previewed_paths = status.value
     e.press('Prepare saved items')
     assert len(e.state['approvals']) == 1 and not e.production.jobs()
@@ -229,6 +237,10 @@ def test_preview_and_prepare_validate_source_on_worker_and_never_start_speech(ha
     e.complete()
     assert len(e.production.jobs()) == 2 and not list(e.output.iterdir())
     assert all(job['destination'] in previewed_paths for job in e.production.jobs())
+    for index, title in enumerate(expected_titles, 1):
+        job = e.production.get(plan.job_id(index))
+        assert job['project']['title'] == title
+        assert job['destination'] == review.destinations[index - 1]
     assert e.find('Run or resume saved items').enabled
     assert 'PREPARED' in status.value
     assert all(thread != e.ui_thread for thread in calls)
@@ -301,12 +313,25 @@ def test_scope_change_after_preview_never_prepares_jobs(handlers):
 
 def test_preview_uses_new_values_even_if_widget_change_emits_no_event(handlers):
     e = handlers
-    preview(e)
+    old_plan, old_review = preview(e)
     old = e.find('Book split preview and saved job status').value
-    e.find('Part name template: index, book, part').ChangeValue('{index:04d} - Explicit new name')
+    template = '{index:04d} - Explicit new name'
+    e.find('Part name template: index, book, part').ChangeValue(template)
     e.press('Preview split and names')
-    e.complete()
-    assert 'Explicit-new-name' in e.find('Book split preview and saved job status').value
+    plan, review = e.complete()
+    status = e.find('Book split preview and saved job status').value
+    assert plan.options.name_template == template
+    assert plan.fingerprint != old_plan.fingerprint
+    assert review.destinations != old_review.destinations
+    assert len(review.destinations) == 2
+    for index, destination in enumerate(review.destinations, 1):
+        title = f'{index:04d} - Explicit new name'
+        assert plan.project(index).title == title
+        assert 'Part title: ' + title in status
+        assert 'Output folder: ' + destination in status
+        assert len(Path(destination).name) <= 83
+        assert Path(destination).name.endswith(
+            '-' + sha256(plan.job_id(index).encode('ascii')).hexdigest())
     assert e.find('Book split preview and saved job status').value != old
     assert not e.production.jobs()
 

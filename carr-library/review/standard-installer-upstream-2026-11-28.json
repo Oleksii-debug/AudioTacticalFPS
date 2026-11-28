@@ -1,0 +1,32 @@
+{
+  "schema": "resonance-standard-installer-upstream-review/1",
+  "reviewed_at_utc": "2026-11-27T23:51:10Z",
+  "adoption_commit": "fd0cca2405f33c813c4cf43c9661edf1f2e93a55",
+  "source": "https://github.com/jrsoftware/issrc",
+  "release": {
+    "tag": "is-6_7_4",
+    "published_at": "2026-10-28T19:24:58Z",
+    "url": "https://github.com/jrsoftware/issrc/releases/tag/is-6_7_4",
+    "asset": {
+      "name": "innosetup-6.7.4.exe",
+      "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe",
+      "bytes": 10604576,
+      "digest": "sha256:a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
+    }
+  },
+  "license": {
+    "git_blob": "ac4dfe9e6543a360c5422b6f1fb88075e8b6073d",
+    "url": "https://github.com/jrsoftware/issrc/blob/is-6_7_4/license.txt",
+    "decoded_utf8": {
+      "sha256": "2e5346868c2a18434489824e11d65c3031620f792fefc415d05f19cd441abf5c",
+      "bytes": 1521
+    },
+    "source_read": "EXACT_BLOB_READ"
+  },
+  "pin_review": "Official release artifact size and SHA-256 match toolchain.lock.json; no pin changed.",
+  "native_execution": "NOT_RUN_ON_RECEIVING_SOURCE",
+  "authenticode_execution": "NOT_RUN_ON_RECEIVING_SOURCE",
+  "resonance_setup_signature": "NOT_CONFIGURED",
+  "binary_uploads": "NONE",
+  "distribution_clearance": "NOT_CLAIMED"
+}

@@ -12,7 +12,7 @@ from carr_library.library_backup import restore_backup
 from carr_library.keybindings import Command, FILENAME as KEYBINDING_FILE, KeybindingStore
 from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
 from carr_library.studio.project import Project, Role
-from carr_library.studio.render import ProductionService
+from carr_library.studio.render import ProductionService, _operation_sha256
 
 
 class SelectedVoice:
@@ -61,6 +61,10 @@ def test_individually_valid_job_cannot_break_its_saved_book_plan(book, tmp_path,
     identity = book.plan.job_id(1)
     path = book.production.jobs_root / identity / 'job.json'
     value = read_json(path)
+    original_operation = value['operation_sha256']
+    assert original_operation == _operation_sha256(value)
+    plan_path = book.service.plans / (book.plan.id + '.json')
+    original_plan = plan_path.read_bytes()
     if changed == 'project':
         project = replace(Project.from_dict(value['project']), title='Another valid project title')
         value.update(project=project.to_dict(), fingerprint=project.fingerprint)
@@ -68,16 +72,22 @@ def test_individually_valid_job_cannot_break_its_saved_book_plan(book, tmp_path,
         value['format'] = 'flac'
     else:
         value['stems'] = True
-    # Each journal is valid in isolation; the retained immutable Book relation
-    # is the additional fact that must refuse the inconsistent backup.
+    # Re-sign the deliberately different, independently valid operation.
+    # The immutable Book relation must still refuse this journal even when
+    # the operation's own project/options checksum is self-consistent.
+    value['operation_sha256'] = _operation_sha256(value)
+    assert value['operation_sha256'] != original_operation
     backup_producers._studio_job(value, identity)
     atomic_json(path, value, replace=True)
+    changed_journal = path.read_bytes()
     with pytest.raises(ValueError, match='immutable reviewed production plan'):
         book.service.review(book.plan, book.output)
     with pytest.raises(ValueError, match='Book job.*immutable reviewed plan'):
         book.app.backup(tmp_path / 'rejected')
     assert not (tmp_path / 'rejected').exists()
     assert not list(book.output.iterdir())
+    assert path.read_bytes() == changed_journal
+    assert plan_path.read_bytes() == original_plan
 
 
 def test_actual_preparation_locks_are_not_restored_and_new_output_requires_review(book, tmp_path):

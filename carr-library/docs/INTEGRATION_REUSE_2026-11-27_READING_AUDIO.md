@@ -10,6 +10,100 @@ Canonical `carr-library` was last checked at
 The existing composition is extended through its current services and persisted
 formats; the canonical service layout is not copied over competing implementations.
 
+## Standard installation and observed Windows corrections — 2026-11-28
+
+This receiving composition extends exact source
+`301c32da8dbc2de6060f8cc0972c6e5651abb1bf`. Every new source/probe correction
+below is **INTEGRATED / NOT_RUN** at composition. The completed predecessor
+results describe their own immutable heads; they cannot qualify this successor.
+
+### Existing standard installer adapted to the composed package
+
+The bounded PR99 adoption at `fd0cca2405f33c813c4cf43c9661edf1f2e93a55`
+adds explicit per-user Install, Repair and Uninstall around the current sealed
+offline bundle. It reuses the current complete source-wheel verifier and
+captures the exact current process/Windows process/model/cleanup helpers as
+one private helper package. Their copied bytes, the lease and passive protocol
+helper are bound to the verified application wheel.
+
+Fourteen existing public Python entrypoints retain their original signatures
+and bodies under the shared installation lease. The native launcher retains
+its existing audio/citation PATH preparation and additionally holds its shared
+prelaunch handle until Python exits. A real managed Python entrypoint waits
+synchronously for its already registered or causal cleanup owners before
+return/SystemExit can release the same handle. Portable behavior remains unchanged. The existing primary --self-test and
+native_checks --bundle-root calls receive separate, exact opt-ins for the
+current incomplete program root; unrelated arguments and ordinary entrypoints
+still require normal readiness and the shared lease.
+
+Maintenance uses the existing owned-process boundary, and retains log streams,
+the exclusive lease and rollback trees until every causal owner is quiet,
+including interruption during the first status check or cleanup attempt.
+Repair preserves the entire former tree; Uninstall removes only the exact
+unchanged owned inventory. Research data and sibling recovery directories
+remain outside deletion targets. The builder and native probe use one real
+local core bundle; no second updater, entitlement authority, process supervisor
+or database migration is introduced. The passive managed-upgrade record is
+data only; signed A-to-B remains a separate private-provider requirement.
+
+The new focused gate verifies source and installed suites on Linux/Windows,
+all Python module bytes and the source-bound wheel. Windows then uses the same
+wheel, all 19 current core pins, original Python/native runtime and pinned
+Zig/Inno to execute actual Install / Repair / Uninstall. The full Windows
+aggregate adds the same lifecycle after its sealed bundle succeeds. Only that
+new phase adds 20 minutes to the enclosing aggregate allowance; all existing
+operation/source-suite deadlines and failure/skip predicates remain intact.
+Public uploads contain text receipts, never compiler/runtime/setup binaries.
+
+### Narrow corrections from completed evidence
+
+- The resource-lock absent-file retry now repeats every fresh ancestor/leaf
+  guard when a file reappears after the final regular-file check. An unchecked
+  recreated hard link cannot inherit an earlier absence; persistent churn and
+  non-ENOENT failures are refused. All old tests remain, with 26 additional
+  filesystem boundary cases.
+- The Book preview now shows the complete selected part title beside the exact
+  bounded output folder. The 83-character destination bound and full job-identity
+  digest remain unchanged. Two tests now assert both the human title and actual
+  retained destinations/jobs. Three Book-backup fixtures recompute the changed
+  job's own operation digest so their intended independent cross-Book rejection
+  is reached; immutable-plan/journal preservation assertions are stronger.
+- The sealed reader probe receives both current hash-bound audio tool paths
+  explicitly from a live AudioRuntimeHandle. This repairs its observed
+  Path(None) setup failure without changing device selection or playback
+  predicates. Exact raw artifact members and provenance are retained in
+  [the Windows bundle/capture evidence](../review/windows-687-bundle-capture-2026-11-27/).
+- The focused native voice probe preserves its real destruction-event assertion
+  but processes native idle after ShowModal returns, under the original bounds.
+  An additive deferred-event test proves queued handlers remain revoked.
+  PowerShell now preserves the one-element installed argument array; no native
+  option, source selector, assertion or watchdog is removed.
+
+Both Ukrainian start guides describe the explicit pitch/punctuation controls
+and conditional standard-setup lifecycle. RW-06 and RW-27 remain Limited;
+source integration does not establish all engine controls, signed delivery,
+authenticated update, physical capture or human accessibility.
+
+### Exact completed results now available
+
+| Exact head and gate | Recorded result | Boundary |
+| --- | --- | --- |
+| 301c32da focused voice selection | All 11 modules / 300 cases passed independently in each Linux/Windows source/installed mode; zero skips/failures in those selections | Windows native source failed its final premature destruction-event predicate; installed native did not start because the conditional argument was splatted as characters. Both corrections above are NOT_RUN. |
+| 301c32da component Linux | Source: 57/57 modules, 1,850 passed, zero failures/skips. Installed: 1,850 passed plus 12 subtests, strict JUnit PASS | Source/installed package inventory contains 377 exact matching Python modules. Windows component results remain separate. |
+| 301c32da component Windows source | 56 modules: 54 passed, 2 failed; 1,833 passed cases, 14 failed, zero skipped | The unchanged ASR service/admission deadlines still fail. All 33 fresh-control and 63 shared-reader cases pass; correctness of those reads is not a timing qualification. Windows installed is separate. |
+| 68777f9f complete Windows source phase | 437 modules: 435 passed, 2 failed; 10,850 passed cases, 5 failed, zero skipped | The two failed modules are the Book preview and cross-Book fixtures corrected above. The Windows aggregate also failed selected capture and sealed-reader setup. |
+| 68777f9f V3 broad source phase | 6,070 passed, 14 failed, zero skipped; 4,132 seconds | Failures are ASR service/admission cases under the unchanged five-second budget. The separate main source phase passed its 28 service and 14 admission cases; this does not override V3 failure. |
+| 68777f9f component Windows | Both jobs cancelled at their 80-minute job limits during oversized pytest parameter handling | Source has only 3 completed module verdicts / 94 cases; installed has no final aggregate total. The bounded parameter-ID fix is already in 301c32da. No missing result is treated as zero or PASS. |
+| 68777f9f native launcher | MSVC and Zig each passed 9 actual native checks | These historical launcher-only probes do not qualify the new lease-enabled launcher or a standard setup. |
+
+Completed log-derived main/V3 records are retained in
+[the final 687 checkpoint](../review/windows-687-final-2026-11-28/).
+The [component cancellation checkpoint](../review/component-followup-68777f9f-windows-2026-11-27/)
+records exact job times and decoded-log hashes without the oversized payload.
+No final wheel is eligible. Full Windows and every required ordinary workflow
+must pass on one exact source, followed by the existing delivery and independent
+runtime/model/language, Windows 11/NVDA and distribution acceptance requirements.
+
 ## Reader synthesis and fresh ASR control successor — 2026-11-27, 23:11 UTC
 
 This successor is based on `68777f9f36b142ed1ce847ee47d82e20d0bdd132`.

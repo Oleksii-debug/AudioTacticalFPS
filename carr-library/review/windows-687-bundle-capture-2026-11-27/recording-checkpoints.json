@@ -1,0 +1,38 @@
+{
+  "source_artifact": 15235060544,
+  "reported_summaries": [
+    {
+      "path": "installed-recording-controls.json",
+      "bytes": 4292,
+      "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+      "status": "PASS",
+      "check_count": 65
+    },
+    {
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "7be83441be5f67dbc9b87a2bc749dbd2c8aeada1e2bc1c67ea86926266a83e4f",
+      "status": "FAILED"
+    },
+    {
+      "path": "native-recording-process.json",
+      "bytes": 2420,
+      "sha256": "e250a4b0daa8fd7392b3876aa492d479cffbdd3a248961c2b86b165d0d9bb368",
+      "status": "PASS",
+      "check_count": 15
+    },
+    {
+      "path": "recording-device-inventory.json",
+      "bytes": 414,
+      "sha256": "c9270127be58f6ac04ab1a4f0bf628dff25e6d7524a8a1d62d180316c281a9cb",
+      "status": "PASS"
+    },
+    {
+      "path": "source-recording-controls.json",
+      "bytes": 4292,
+      "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+      "status": "PASS",
+      "check_count": 65
+    }
+  ]
+}

@@ -351,8 +351,16 @@ def _run(args, report):
             def destroy_options(view):
                 view.pitch.SetValue(31)
                 view.window.Destroy()
+            accepted_after_destroy = open_options(destroy_options)
+            destroyed_view = controls.view
+            def destroyed_after_idle():
+                # Top-level Destroy queues deletion for native idle processing;
+                # ShowModal may return before EVT_WINDOW_DESTROY is delivered.
+                app.ProcessIdle()
+                return destroyed_view.destroyed
+            pump(destroyed_after_idle, 'Native options owner destruction did not settle')
             check('direct native modal destruction cannot publish pending options',
-                  not open_options(destroy_options) and controls.view.destroyed
+                  not accepted_after_destroy and destroyed_view.destroyed
                   and (controls.snapshot(), len(accepted), len(stops)) == before)
             check('all native settings operations leave the shared worker idle',
                   callback_count[0] == 0 and all(item.done() for item in futures))

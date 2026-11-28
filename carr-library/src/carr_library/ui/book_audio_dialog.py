@@ -19,7 +19,8 @@ HELP = (
     'including text without spaces. These are deterministic text conventions, not linguistic analysis. '
     'Character splits count Unicode characters, not bytes or estimated audio duration. '
     'Regular expressions run in the existing isolated one-second worker; matched separators remain in the preceding part.\n\n'
-    'Preview shows exact source revision, voice, part ranges and sanitized output folder names. '
+    'Preview shows exact source revision, voice, part ranges, full part titles and output folder names. '
+    'Folder names may abbreviate titles to stay within path limits; each exact destination is shown. '
     'Prepare saves immutable review metadata plus ordinary Studio jobs and starts no speech. '
     'Run is a separate explicit action. Resume verifies every completed artifact and reuses existing accepted nodes. '
     'To add tags or local artwork to a completed MP3/M4A/M4B, use Audio Studio > Review audio metadata and cover. '
@@ -58,7 +59,9 @@ def review_text(plan, review):
             '%s; character %d; %s' % (row['label'], row['start'], row['id'])
             for row in entries(source, plan.landmarks))))
     for index, (part, output) in enumerate(zip(plan.parts, review.destinations), 1):
-        rows.append(f'{index}. {part.label}; characters {part.start}–{part.end}; {part.end - part.start} characters\n{output}')
+        title = plan.options.title(index, source['title'], part.label)
+        rows.append(f'{index}. {part.label}; characters {part.start}–{part.end}; {part.end - part.start} characters'
+                    f'\nPart title: {title}\nOutput folder: {output}')
     if not review.prepared:
         rows.append('Restored items require New output review; historical job paths are never retargeted.')
     return '\n\n'.join(rows)

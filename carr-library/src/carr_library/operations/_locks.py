@@ -35,25 +35,35 @@ if hasattr(os, 'register_at_fork'):
 
 
 def _checked_lock_path(value):
-    # The pinned backend unlinks a lock file on normal release. Its absence can
-    # race either local_path's leaf check or our regular-file check below.
-    # Validate the still-existing parent; never hide invalid types, links,
-    # access failures, or removal of the resource directory itself.
-    try:
-        path = local_path(value)
-    except FileNotFoundError:
-        candidate = Path(value).absolute()
-        parent = local_path(candidate.parent, exists=True)
+    # Release may remove the unowned leaf between its presence and metadata
+    # checks. A replacement must pass a fresh full validation before opening.
+    path = Path(value).absolute()
+    for _ in range(3):
+        try:
+            checked = local_path(value)
+        except FileNotFoundError:
+            pass
+        else:
+            parent = local_path(checked.parent, exists=True)
+            regular(parent, directory=True)
+            try:
+                regular(checked)
+            except FileNotFoundError:
+                pass
+            else:
+                return checked
+        # Revalidate the parent after the missing-path observation. Keep
+        # missing/invalid parents, links and access failures visible.
+        parent = local_path(path.parent, exists=True)
         regular(parent, directory=True)
-        path = parent / candidate.name
-    parent = local_path(path.parent, exists=True)
-    regular(parent, directory=True)
-    try:
-        regular(path)
-    except FileNotFoundError:
-        regular(parent, directory=True)
-    return path
-
+        checked = parent / path.name
+        try:
+            checked.lstat()
+        except FileNotFoundError:
+            return checked
+        # A contender recreated the leaf; revalidate it instead of returning
+        # an unchecked replacement or rethrowing a stale absence observation.
+    raise ResourceStateError('A resource lock path kept changing before native acquisition.')
 
 class NativeLock:
     def __init__(self, path):

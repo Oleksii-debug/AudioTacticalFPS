@@ -23,7 +23,7 @@ qualify a later composition.
 | Requirement area | Current implementation contribution | Execution and remaining dependency |
 | --- | --- | --- |
 | V3-01/02 | Installed-language OCR controls, review-preserving automatic candidates and finite language-aware reading preparation | P3 native preparation, including current-editor Undo, passed in source and installed modes. The repaired OCR consistency suites are included in the clean 68777f9f Linux component source/installed results. Automatic OCR still requires source review and does not approve quotations. Language and voice quality remain separate. |
-| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard, opt-in global/tray controls, progress, favorites, exact-language defaults and named profiles | P3 native control groups passed. At 68777f9f, source and installed reader/playback probes passed 198 checks each and EPUB/DAISY probes passed 65 each, including the repaired long-path queue and recorded publication playback. The new capability-checked pitch/punctuation controls are integrated but NOT_RUN. Manual Windows 11/NVDA remains open. |
+| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard, opt-in global/tray controls, progress, favorites, exact-language defaults and named profiles | P3 native control groups passed. At 68777f9f, source and installed reader/playback probes passed 198 checks each and EPUB/DAISY probes passed 65 each, including the repaired long-path queue and recorded publication playback. At 301c32da, the capability-checked pitch/punctuation contract selection passed in all four source/installed modes; the two native probe corrections need a composed rerun. Manual Windows 11/NVDA remains open. |
 | V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion and existing clip/player/Director contracts | P3 native source and installed Book controls passed. The real-preview/fixture corrections and publication-owner reconciliation are included in the clean 68777f9f Linux component source/installed results. Full capture and sealed-bundle acceptance remain open, as do neural long-form quality and physical audio review. |
 | V3-06/08 | Incremental backup and authenticated local portable snapshots over the canonical backup formats and schema 6 | Earlier native encrypted review/restore evidence remains retained. Native-format/foreign-flat backup regressions preserve passive restore; the scandir fixture correction is included in the clean 68777f9f Linux component source/installed results. These results do not establish a cloud/WebDAV service or shared live databases. |
 | V3-07 | Explicit streamed UTF-8 originals up to the selected 128 MiB limit, bounded fragments and source authority; scoped/ranked source windows and federated continuation | Actual greater-than-64-MiB suites and earlier native intake/literal/ranked/federated controls are retained. Ranking is local to each source window. Linux measurements through 50,000 pages are retained; the separate Windows 50,000-page source and installed experiment now completed with zero sampled search timeouts. Performance acceptance and multi-gigabyte PDF remain open. |
@@ -39,7 +39,61 @@ application archive excludes the separately set up audio runtime. No eligible
 delivery wheel, final private archive, signed installer or whole-platform
 completion is claimed by this checkpoint.
 
-## Current successor and exact predecessor results — 2026-11-27, 23:11 UTC
+## Current standard installation composition — 2026-11-28
+
+The receiving successor of `301c32da8dbc2de6060f8cc0972c6e5651abb1bf`
+adds standard per-user Install, Repair and Uninstall through the existing sealed
+offline bundle, exact source-wheel verifier and native process owner. The current
+core dependency locks and data schema remain unchanged. Fourteen existing public
+Python entrypoints and the native launcher cooperate through one actual native
+installation lease; registered/causal cleanup owners must become quiet before
+process exit or maintenance replacement. Repair preserves the former program tree,
+and Uninstall refuses modified/foreign files while preserving separate library data.
+
+Its new source/installed contracts and real Inno lifecycle are **NOT_RUN** at
+composition. The ordinary full Windows aggregate also requires this native phase.
+The exact compiler artifact and license were reread from the official pinned
+release; preparing a setup does not establish publisher signing, distribution
+clearance, private authority, authenticated update A-to-B, NVDA or native offline
+qualification. See the [standard lifecycle](../packaging/windows_installer/README.md)
+and [reuse record](REUSE_DECISIONS_V2.md#standard-windows-lifecycle-adoption--2026-11-28).
+
+The same successor fixes the observed full-title Book preview gap, updates
+three independently valid Book-backup fixtures to retain their actual relation
+checks, tightens the final resource-lock absence retry, supplies both actual
+bundled audio tool paths to the sealed reader probe, and repairs native idle
+ordering/PowerShell argument preservation in the focused voice gate. Original
+source selectors, publication/device/consent guards and operation deadlines
+remain mandatory. Every changed source still needs its own exact-head execution.
+
+At 301c32da, the focused voice selection passed 300 cases independently in all
+four Linux/Windows source/installed modes. Its two Windows native probe issues
+prevented the native aggregate from passing. The component Linux source job
+passed 57 modules / 1,850 cases, and its installed companion passed 1,850 cases
+plus 12 subtests, with zero failed or skipped cases. These results establish
+their named scopes only.
+
+At 301c32da the Windows component source selection also completed: 54/56 modules
+passed, with 1,833 passed cases and 14 failures, all in ASR service/admission.
+Its 33 fresh-control and 63 shared-reader tests passed. Repeated fresh control
+reads still dominate the recorded inclusive verification intervals; those
+measurements neither prove the child's true exit time nor justify changing
+its five-second deadline. This remains an active source/runtime failure.
+
+The older 68777f9f complete Windows source gate finished with 435/437 modules
+passing: 10,850 passed cases, five failed, zero skipped. Its failed Book scopes
+are corrected in this successor. The full aggregate still failed selected
+capture and sealed-reader setup. Its V3 source gate finished with 6,070 passed
+and 14 ASR failures under the unchanged five-second budget; its Windows component
+jobs cancelled during oversized parameter handling. These completed outcomes
+replace the earlier pending observations below and do not qualify a successor.
+
+[Exact completed evidence](../review/windows-687-final-2026-11-28/) and the
+[current integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md)
+retain the separate source/pack/head identities. No final delivery wheel or
+whole-platform completion is claimed.
+
+## Historical reader/ASR composition — 2026-11-27, 23:11 UTC
 
 The successor of `68777f9f36b142ed1ce847ee47d82e20d0bdd132` adds native
 reader pitch/punctuation options, exact synthesis identity for saved/tabbed
@@ -440,8 +494,9 @@ The following cannot be labelled DONE by passing the current core tests:
   broker, and measured qualification at the specified platform scale.
   The current broker's declared-capacity tests do not establish those results.
 
-- A signed ResearchLibrary.exe and standard signed installer/uninstall/repair,
-  owner-configured publisher trust and a complete private release review.
+- The newly integrated standard Install / Repair / Uninstall must pass its own
+  actual Windows lifecycle. Signed ResearchLibrary.exe/setup, owner-configured
+  publisher trust and a complete private release review remain required.
 - Compatible private entitlement authority, account-optional perpetual policies,
   signed unattended refresh and offline renewal, and signed update A-to-B,
   interruption/recovery and key-rotation acceptance.

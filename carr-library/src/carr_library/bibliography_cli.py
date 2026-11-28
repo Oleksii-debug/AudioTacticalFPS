@@ -1,5 +1,6 @@
 """Headless import and CSL formatting for the same private academic library."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -15,6 +16,7 @@ def _controller(args):
     return AcademicController(LibraryApp(args.data_dir), args.workspace)
 
 
+@installed_entrypoint
 def main(argv=None):
     from .citations.bibliography_workbench import (
         BibliographyWorkbench, EXPORT_FORMATS, LOCALES, NAME_MODES, load_style_file,

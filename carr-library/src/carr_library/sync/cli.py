@@ -1,5 +1,6 @@
 """Explicit local snapshot commands; secrets never appear in argv or JSON."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 import getpass
 import json
 from pathlib import Path
@@ -31,6 +32,7 @@ def _password(args, parser):
     return value
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='research-library sync',
         description='Checked local portable snapshots of every library in a data folder. No network service is used.')

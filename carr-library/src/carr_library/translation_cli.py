@@ -1,5 +1,6 @@
 """Explicit CLI routes over the same translation, provider and source contracts."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -188,6 +189,7 @@ def execute(args):
     raise ValueError('Unsupported translation command.')
 
 
+@installed_entrypoint
 def main(argv=None):
     args = parser().parse_args(argv)
     native_handle = None

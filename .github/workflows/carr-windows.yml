@@ -24,8 +24,8 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    # Preserve every installed/source case and the additive native reader/platform gates.
-    timeout-minutes: 232
+    # Preserve every installed/source case; add 20 minutes for the actual standard installer lifecycle.
+    timeout-minutes: 252
     defaults:
       run:
         shell: pwsh
@@ -747,6 +747,8 @@ jobs:
             'tests/packaging/test_windows_launcher_bundle.py',
             'tests/packaging/test_windows_audio.py',
             'tests/packaging/test_source_wheel.py',
+            'tests/packaging/test_standard_installer.py',
+            'tests/packaging/test_managed_launch_boundary.py',
             'tests/packaging/test_ci_check.py',
             'tests/e2e/test_offline_startup.py',
             'tests/audio/test_projects.py',
@@ -1474,9 +1476,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'bundle protected voice controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/bundle-source-pagination.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle source continuation failed' }
-          $bundleRecordingFfmpeg = & $installedPython -I -B -X utf8 -c "from carr_library.audio.runtime import activate_bundled_audio_runtime; handle=activate_bundled_audio_runtime(); assert handle is not None; print(handle.directory/'ffmpeg.exe'); handle.close()"
-          if ($LASTEXITCODE -ne 0) { throw 'bundle recording runtime verification failed' }
-          & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --ffmpeg $bundleRecordingFfmpeg --expect-installed --report ci-results/bundle-recording-controls.json
+          $bundleAudioToolsCode = @'
+          import json
+          from carr_library.audio.runtime import activate_bundled_audio_runtime, resolve_active_audio_tool
+          handle = activate_bundled_audio_runtime()
+          if handle is None:
+              raise RuntimeError('The complete bundle has no verified local audio runtime.')
+          with handle:
+              tools = {name: resolve_active_audio_tool(name) for name in ('ffmpeg', 'ffprobe')}
+              if any(not isinstance(path, str) or not path for path in tools.values()):
+                  raise RuntimeError('The verified bundle is missing a required audio executable.')
+              print(json.dumps(tools))
+          '@
+          $bundleAudioToolsJson = & $installedPython -I -B -X utf8 -c $bundleAudioToolsCode
+          if ($LASTEXITCODE -ne 0) { throw 'bundle audio runtime verification failed' }
+          $bundleAudioTools = $bundleAudioToolsJson | ConvertFrom-Json
+          & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --ffmpeg ([string]$bundleAudioTools.ffmpeg) --expect-installed --report ci-results/bundle-recording-controls.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle native Pause/Resume recording controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
@@ -1505,7 +1520,7 @@ jobs:
           if ($selectedOutput.Count -ne 1) { throw 'The reviewed secondary WinMM output is missing or ambiguous in the complete bundle.' }
           & $installedPython -I -B -X utf8 scripts/windows_reader_output_smoke.py --expect-installed --device-index ([int]$selectedOutput[0].index) --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-output.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -X utf8 scripts/windows_reader_player_smoke.py --require-output-device --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-player.json
+          & $installedPython -I -B -X utf8 scripts/windows_reader_player_smoke.py --ffmpeg ([string]$bundleAudioTools.ffmpeg) --ffprobe ([string]$bundleAudioTools.ffprobe) --require-output-device --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-player.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --expect-installed --expected-device-identity ([string]$selectedOutput[0].identity) --output ci-results/bundle-reader-navigation.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1752,6 +1767,8 @@ jobs:
                             'tests/studio/test_production.py',
                             'tests/ui/test_assistant_voice_preview.py',
                             'tests/packaging/test_source_wheel.py',
+                            'tests/packaging/test_standard_installer.py',
+                            'tests/packaging/test_managed_launch_boundary.py',
                             'tests/e2e/test_export_destination.py',
                             'tests/ui/test_academic_actions.py',
                             'tests/ui/test_academic_export_handler.py',
@@ -1998,6 +2015,39 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
 
+      - name: Build pinned standard setup and execute actual install, repair and uninstall
+        id: standard_installer
+        if: ${{ !cancelled() && steps.complete_bundle.outcome == 'success' }}
+        timeout-minutes: 20
+        shell: pwsh
+        working-directory: carr-library
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = $env:CARR_CI_BUNDLE
+          if (-not $bundle -or -not (Test-Path (Join-Path $bundle 'bundle-manifest.json') -PathType Leaf)) { throw 'The previously verified full bundle is required.' }
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          if (-not (Test-Path $python -PathType Leaf)) { throw 'The verified bundle must already be installed.' }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') { throw 'Exact checked-out source identity is unavailable.' }
+          $identity = [Guid]::NewGuid().ToString('N')
+          $compilerRoot = Join-Path $env:RUNNER_TEMP ('carr-inno-' + $identity)
+          $buildRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-setup-' + $identity)
+          $workRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-lifecycle-' + $identity)
+          $report = Join-Path (Resolve-Path 'ci-results').Path 'standard-installer'
+          $manifest = (Get-FileHash -LiteralPath (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory $compilerRoot
+          & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --installed-bundle --output $buildRoot --iscc (Join-Path $compilerRoot 'tools/ISCC.exe') --toolchain-receipt (Join-Path $compilerRoot 'toolchain-receipt.json') 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $buildRoot 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $buildRoot 'setup-build.json') --work $workRoot --report $report 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result = Get-Content (Join-Path $report 'result.json') -Raw | ConvertFrom-Json
+          $build = Get-Content (Join-Path $buildRoot 'setup-build.json') -Raw | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.actual_inno_install -or -not $result.actual_repair -or -not $result.actual_uninstall -or -not $result.live_job_preserved -or -not $result.populated_library_bytes_preserved -or -not $result.fresh_shortcut_collision_refused -or -not $result.uninstaller_wrapper_removed) { throw 'The complete native standard installation lifecycle did not pass.' }
+          if ($result.bundle_manifest_sha256 -ne $manifest -or $result.setup_sha256 -ne $build.setup_sha256 -or $result.source_commit -ne $build.source_commit -or $build.source_commit -ne $sourceCommit) { throw 'Native lifecycle evidence is not bound to this exact setup and source.' }
+          if ($result.authenticode_verified -or $result.nvda_verified -or $result.native_network_trace -ne 'NOT_RUN' -or $result.unprivileged_account_qualification -ne 'NOT_RUN') { throw 'This gate cannot claim unrelated release qualifications.' }
+          Copy-Item (Join-Path $buildRoot 'setup-build.json') (Join-Path $report 'setup-build.json')
+          Copy-Item (Join-Path $compilerRoot 'toolchain-receipt.json') (Join-Path $report 'toolchain-receipt.json')
+
       - name: Require the retained bundle local proposal through actual loopback HTTP
         if: ${{ !cancelled() && steps.complete_bundle.outcome == 'success' }}
         timeout-minutes: 5
@@ -2065,6 +2115,9 @@ jobs:
             carr-library/ci-results/*.txt
             carr-library/ci-results/*.json
             carr-library/ci-results/*.xml
+            carr-library/ci-results/standard-installer/*.json
+            carr-library/ci-results/standard-installer/*.txt
+            carr-library/ci-results/standard-installer/*.log
           if-no-files-found: warn
           retention-days: 7
 

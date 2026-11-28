@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass
 from hashlib import sha1, sha256
 from importlib.resources import files
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 import json
 import os
 from pathlib import Path
@@ -303,6 +304,7 @@ def prepare_offline_pack(source_directory, destination, codes, *, profile='fast'
                         tuple(model.code for model in models), total, sha256(raw).hexdigest())
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)

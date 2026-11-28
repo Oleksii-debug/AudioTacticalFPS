@@ -1,5 +1,6 @@
 """Explicit license/update commands over the same optional desktop service."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -29,6 +30,7 @@ def status_text(value):
     return names[value.state.value] + '. ' + preserved
 
 
+@installed_entrypoint
 def main(argv=None, *, service=None):
     service = DeliveryService() if service is None else service
     parser = argparse.ArgumentParser(description='Explicit private license and update operations')

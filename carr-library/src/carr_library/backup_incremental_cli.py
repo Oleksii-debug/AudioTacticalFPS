@@ -1,5 +1,6 @@
 """Explicit incremental backup commands over the canonical library snapshot APIs."""
 import argparse
+from carr_library.installation_lease import installed_entrypoint
 import json
 from pathlib import Path
 import sqlite3
@@ -9,6 +10,7 @@ from .backup_incremental import (BackupReference, DEFAULT_MAX_BYTES,
     create_incremental_backup, verify_incremental_backup, restore_incremental_backup)
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='carr-library backup-incremental',
         description='Create, verify or restore incremental library backups with explicitly selected bases.')
@@ -56,5 +58,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    from .installation_lease import installed_entrypoint
-    raise SystemExit(installed_entrypoint(main)())
+    raise SystemExit(main())
