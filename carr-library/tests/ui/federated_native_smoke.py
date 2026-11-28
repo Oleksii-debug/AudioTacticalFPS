@@ -50,7 +50,7 @@ def run_native_federated_smoke(frame, completed, failed):
     controller = native.controller
     errors, checks = [], []
     state = {'context_closed': False, 'topic_chosen': False, 'note_entered': False,
-             'completed': False, 'hit': None}
+             'completed': False, 'hit': None, 'selected_libraries': (), 'page_libraries': []}
 
     def later(callback, milliseconds=20):
         wx.CallLater(milliseconds, lambda: guarded(callback))
@@ -109,6 +109,10 @@ def run_native_federated_smoke(frame, completed, failed):
         assert native.status.GetName() == 'Search Center status'
         for index, row in enumerate(native.libraries):
             native.libraries_control.Check(index, row.id in (active[0], workspace))
+        state['selected_libraries'] = tuple(row.id for index, row in enumerate(native.libraries)
+            if native.libraries_control.IsChecked(index))
+        assert len(state['selected_libraries']) == 2
+        assert set(state['selected_libraries']) == {active[0], workspace}
         event = wx.CommandEvent(wx.EVT_CHECKLISTBOX.typeId, native.libraries_control.GetId())
         event.SetEventObject(native.libraries_control)
         native.libraries_control.GetEventHandler().ProcessEvent(event)
@@ -122,7 +126,40 @@ def run_native_federated_smoke(frame, completed, failed):
             later(search_ready)
             return
         assert not controller.running and controller.rows, native.status.GetValue()
-        assert {hit.workspace for hit in controller.rows} == {active[0], workspace}
+        # The current service admits one nonempty library page at a time.
+        # Traverse the real native continuation controls without retaining hits.
+        page_libraries = {hit.workspace for hit in controller.rows}
+        assert len(page_libraries) == 1 and page_libraries <= {active[0], workspace}, page_libraries
+        position = len(state['page_libraries'])
+        assert position < len(state['selected_libraries'])
+        assert controller.paging.page_number == position + 1
+        current_library, = page_libraries
+        assert current_library == state['selected_libraries'][position]
+        state['page_libraries'].append(current_library)
+        assert_scope()
+        if controller.paging.can_next:
+            assert len(state['page_libraries']) < 2, 'Unexpected extra page for the bounded fixture.'
+            later(search_ready)
+            click(native.next_button)
+            assert_busy()
+            return
+        assert set(state['page_libraries']) == {active[0], workspace}
+        assert tuple(state['page_libraries']) == state['selected_libraries']
+        if current_library != workspace:
+            assert state['page_libraries'][0] == workspace and controller.paging.can_previous
+            later(select_current_target)
+            click(native.previous_button)
+            assert_busy()
+            return
+        select_current_target()
+
+    def select_current_target():
+        if frame.working:
+            later(select_current_target)
+            return
+        assert not controller.running and controller.rows, native.status.GetValue()
+        assert {hit.workspace for hit in controller.rows} == {workspace}
+        assert controller.paging.page_number == state['selected_libraries'].index(workspace) + 1
         index = next(index for index, hit in enumerate(controller.rows) if hit.workspace == workspace)
         native.results.SetSelection(index)
         event = wx.CommandEvent(wx.EVT_LISTBOX.typeId, native.results.GetId())
