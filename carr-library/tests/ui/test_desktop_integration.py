@@ -646,3 +646,180 @@ def test_missing_destroy_proxy_still_attempts_owned_cleanup_and_preserves_error(
     assert value.owner.hotkeys._registered == {} and value.owner.tray is None
     assert value.owner.cleanup_error == 'Native destruction owner: native event owner unavailable'
     native_event.Skip.assert_called_once()
+
+
+def watched_save_driver(tmp_path):
+    """Actual Save/close closures and durable drafts, with explicit native input stand-ins."""
+    import ast
+    from pathlib import Path
+    from carr_library.speech import ReadingDocument
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
+
+    source = Path(__file__).resolve().parents[2]
+    probe = source / 'scripts' / 'windows_desktop_integration_smoke.py'
+    native_tree = ast.parse(probe.read_text(encoding='utf-8'), filename=str(probe))
+    ui = source / 'src' / 'carr_library' / 'ui' / 'speech_dialog.py'
+    ui_tree = ast.parse(ui.read_text(encoding='utf-8'), filename=str(ui))
+    reader, = [node for node in ui_tree.body
+               if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader']
+    wanted = {'report', 'sync_document', 'save_recovery', 'save_project', 'confirm_current_close'}
+    functions = [node for node in reader.body
+                 if isinstance(node, ast.FunctionDef) and node.name in wanted]
+    assert {node.name for node in functions} == wanted
+    factory = ast.parse(
+        "def make_save_callbacks():\n"
+        "    save_path = None\n"
+        "    last_recovery_signature = None\n"
+        "    recovered = None\n"
+        "    remembered_voice_id = ''\n").body[0]
+    factory.body.extend(functions)
+    factory.body.append(ast.Return(ast.Dict(
+        keys=[ast.Constant(name) for name in sorted(wanted)],
+        values=[ast.Name(name, ast.Load()) for name in sorted(wanted)])))
+    selected = [node for node in ast.walk(native_tree)
+                if isinstance(node, ast.FunctionDef)
+                and node.name in {'save_watched_reading_copy', 'pump'}]
+    assert {node.name for node in selected} == {'save_watched_reading_copy', 'pump'}
+
+    expected = '😀 Український clipboard snapshot.\nNo quotation authority.'
+    focus, queued, keys, checks, prompts, clock = [None], [], [], [], [], [0.0]
+
+    class Text:
+        def __init__(self, value): self.value = value
+        def GetValue(self): return self.value
+        def ChangeValue(self, value): self.value = value
+        def SetFocus(self): focus[0] = self
+
+    document = ReadingDocument(expected, title='Watched clipboard reading copy')
+    editor, status, source_status = Text(expected), Text('Ready'), Text('')
+    store = ReaderDraftStore(tmp_path, slot='clipboard-watch')
+    dialog = object()
+    wx = SimpleNamespace(MOD_CONTROL=2, YES_NO=1, CANCEL=2, ICON_QUESTION=4, YES=8,
+                         Window=SimpleNamespace(FindFocus=lambda: focus[0]))
+    wx.MessageBox = lambda *args: prompts.append(args) or wx.CANCEL
+
+    def check(label, value):
+        assert value, label
+        checks.append(label)
+
+    def yield_event():
+        if queued:
+            queued.pop(0)()
+
+    def sleep(seconds):
+        assert seconds == .01
+        clock[0] += seconds
+
+    def char(key, modifiers):
+        keys.append((key, modifiers))
+        queued.append(callbacks['save_project'])
+        return True
+
+    simulator = SimpleNamespace(Char=char)
+    values = {'Speech and save status': status, 'Original and reading-copy status': source_status}
+    environment = dict(document=document, editor=editor, status=status, source_status=source_status,
+        alive=True, source_loaded=True, draft_store=store, reader_tabs=None, recovery_notice='',
+        voices=(), voice_choice=SimpleNamespace(GetSelection=lambda: -1),
+        rate=SimpleNamespace(GetValue=lambda: 0), volume=SimpleNamespace(GetValue=lambda: 80),
+        last_audio=None, native_insertion_offset=lambda control, text: 0,
+        ReaderResume=ReaderResume, ReaderDraftStore=ReaderDraftStore,
+        source_guard=lambda: None, dialog=dialog, wx=wx,
+        library=SimpleNamespace(root=tmp_path), simulator=simulator, check=check,
+        foreground=lambda window: None, named=lambda parent, name: values[name],
+        errors=[], app=SimpleNamespace(Yield=yield_event),
+        time=SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    from hashlib import sha256
+    environment['sha256'] = sha256
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
+                 str(ui), 'exec'), environment)
+    callbacks = environment['make_save_callbacks']()
+    exec(compile(ast.fix_missing_locations(ast.Module(body=selected, type_ignores=[])),
+                 str(probe), 'exec'), environment)
+    return SimpleNamespace(run=lambda: environment['save_watched_reading_copy'](dialog, editor, expected),
+        callbacks=callbacks, document=document, store=store, editor=editor, status=status,
+        source_status=source_status, expected=expected, keys=keys, checks=checks,
+        prompts=prompts, simulator=simulator, queued=queued, clock=clock, wx=wx)
+
+
+def test_watched_reader_explicit_native_save_releases_actual_unsaved_close_guard(tmp_path):
+    from carr_library.speech import ReadingDocument
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
+
+    value = watched_save_driver(tmp_path)
+    manual = ReaderDraftStore(tmp_path)
+    manual.save(ReaderResume(ReadingDocument('Unrelated exact manual draft.')))
+    manual_bytes = manual.path.read_bytes()
+    assert value.document.dirty
+    assert value.callbacks['save_recovery'](force=True)
+    assert value.document.dirty  # Autosave does not answer the explicit unsaved-copy question.
+    assert not value.callbacks['confirm_current_close']()
+    assert len(value.prompts) == 1 and value.prompts[0][1] == 'Unsaved reading copy'
+    value.prompts.clear()
+
+    value.run()
+
+    assert value.keys == [(ord('S'), value.wx.MOD_CONTROL)]
+    assert not value.document.dirty
+    assert value.callbacks['confirm_current_close']() and not value.prompts
+    recovered = value.store.load()
+    assert recovered.document.source_text == recovered.document.text == value.expected
+    assert recovered.document.source_sha256 == value.document.source_sha256
+    assert recovered.document.source_anchor is None
+    assert manual.path.read_bytes() == manual_bytes
+
+
+@pytest.mark.parametrize('failure', ['key-refused', 'key-not-delivered', 'write-refused'])
+def test_watched_reader_save_refuses_missing_native_action_or_failed_durable_save(tmp_path, monkeypatch, failure):
+    value = watched_save_driver(tmp_path)
+    if failure == 'key-refused':
+        value.simulator.Char = lambda *args: False
+    elif failure == 'key-not-delivered':
+        value.simulator.Char = lambda *args: True
+    else:
+        def refuse(resume):
+            raise OSError('synthetic durable write refusal')
+        monkeypatch.setattr(value.store, 'save', refuse)
+
+    error = AssertionError if failure == 'key-refused' else TimeoutError
+    with pytest.raises(error):
+        value.run()
+
+    assert value.document.dirty and not value.store.path.exists()
+    assert not any('without quotation authority' in label for label in value.checks)
+    assert not value.callbacks['confirm_current_close']()
+    assert len(value.prompts) == 1
+    if failure == 'write-refused':
+        assert 'Reading copy was not saved.' in value.status.GetValue()
+        assert 'synthetic durable write refusal' in value.status.GetValue()
+    if failure != 'key-refused':
+        assert 12 <= value.clock[0] < 12.02
+
+
+def test_watched_reader_save_refuses_changed_editor_even_if_save_itself_succeeds(tmp_path):
+    value = watched_save_driver(tmp_path)
+    value.editor.value = value.expected + ' Changed copy.'
+    with pytest.raises(AssertionError, match='without changing the editor'):
+        value.run()
+    assert not value.document.dirty
+    assert value.store.load().document.text == value.editor.value
+    assert value.store.load().document.source_text == value.expected
+    assert not value.prompts
+
+
+def test_watched_reader_save_refuses_wrong_retained_bytes_after_real_success(tmp_path):
+    from carr_library.speech import ReadingDocument
+    from carr_library.speech.session import ReaderResume
+
+    value = watched_save_driver(tmp_path)
+    original = value.callbacks['save_project']
+    def replaced_after_save():
+        assert original()
+        value.store.save(ReaderResume(ReadingDocument('A different retained clipboard copy.')))
+    value.callbacks['save_project'] = replaced_after_save
+
+    with pytest.raises(AssertionError, match='retains exact source and copy'):
+        value.run()
+
+    assert value.status.GetValue().startswith('Reading draft, voice settings and current position saved')
+    assert value.store.load().document.source_text != value.expected
+    assert not value.prompts
