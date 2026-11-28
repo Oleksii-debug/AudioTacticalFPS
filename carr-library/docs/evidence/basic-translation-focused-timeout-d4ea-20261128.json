@@ -1,0 +1,364 @@
+{
+  "schema": "carr-basic-translation-focused-timeout-observation/1",
+  "observed_date_utc": "2026-11-28",
+  "status": "FAIL",
+  "qualification": "NOT_QUALIFIED",
+  "scope": "Independent read of completed GitHub run/job metadata and the complete decoded job log. This commit adds evidence only.",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+    "tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
+    "branch": "carr/local-translation-final-d4ea-20261128-d3a",
+    "application_files": 425,
+    "application_blobs_identical_to_previous_424cc": true,
+    "previous_source_commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8"
+  },
+  "execution": {
+    "run_id": 46117284580,
+    "job_id": 140893828731,
+    "run_attempt": 1,
+    "event": "push",
+    "workflow_path": ".github/workflows/carr-local-translation.yml",
+    "job_name": "Windows / Basic native plus eight translation flows / source and installed",
+    "run_created_at": "2026-11-28T06:35:08Z",
+    "job_started_at": "2026-11-28T06:35:31Z",
+    "job_completed_at": "2026-11-28T06:40:18Z",
+    "run_status": "completed",
+    "run_conclusion": "failure",
+    "job_status": "completed",
+    "job_conclusion": "failure",
+    "runner_labels": [
+      "windows-2022"
+    ],
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46117284580",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46117284580/job/140893828731"
+  },
+  "observed_failure": {
+    "step_number": 8,
+    "step_name": "Require installed Basic translation before the complete translation population",
+    "started_at": "2026-11-28T06:36:11Z",
+    "completed_at": "2026-11-28T06:40:11Z",
+    "workflow_time_bound_seconds": 240,
+    "exact_error": "2026-11-28T06:40:11.8352686Z ##[error]The action 'Require installed Basic translation before the complete translation population' has timed out after 4 minutes.",
+    "raw_log_command_group_first_line": 412,
+    "raw_log_command_group_end_line": 486,
+    "raw_log_timeout_line": 487,
+    "runtime_output_lines_between_echo_end_and_timeout": 0,
+    "executed_strict_basic_pass_marker_observed": false,
+    "basic_receipt_observed_in_job_log": false,
+    "runtime_traceback_observed": false,
+    "phase_at_timeout": "UNKNOWN",
+    "cause": "NOT_ESTABLISHED_BY_THIS_OBSERVATION",
+    "root_canonicalization_runtime_result": "NOT_QUALIFIED",
+    "interpretation": "The command and strict verifier source were echoed before invocation. The echoed PASS string is not an executed PASS receipt. No log lines occur after the command/environment group closes and before the workflow timeout. This does not identify the blocked thread, modal owner, filesystem spelling, provider state, or cause, and does not establish that the earlier root correction succeeded."
+  },
+  "unexecuted_population": {
+    "step_number": 9,
+    "status": "SKIPPED",
+    "declared_source_cases": 324,
+    "declared_installed_cases": 324,
+    "declared_existing_cases_per_mode": 286,
+    "declared_local_cases_per_mode": 38,
+    "declared_native_flows": 8,
+    "basic_is_separate_from_eight_native_flows": true,
+    "phases": [
+      "existing-source",
+      "existing-installed",
+      "local-source",
+      "local-installed"
+    ],
+    "native_flow_keys": [
+      "existing-selected-advanced",
+      "existing-document",
+      "existing-chapter",
+      "existing-batch",
+      "local-selected",
+      "local-document",
+      "local-chapter",
+      "local-batch"
+    ],
+    "actual_case_counter": null,
+    "actual_junit_read": false,
+    "actual_native_receipts_read": false,
+    "qualification": "NOT_RUN"
+  },
+  "preparation": {
+    "source_checkout_and_provenance_step": "SUCCESS",
+    "compile_step": "SUCCESS",
+    "build_and_install_step": "SUCCESS",
+    "python": {
+      "implementation": "CPython",
+      "version": "3.11.9",
+      "evidence": "Successfully set up CPython (3.11.9) in the decoded job log."
+    },
+    "runtime_pin_inventory": {
+      "status": "EXACT_PIN_NAMES_AND_VERSIONS_REPORTED_BY_PREPARATION",
+      "timestamp": "2026-11-28T06:36:10.6306217Z",
+      "count": 18,
+      "expected_lock_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "pywin32": "312",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4"
+      },
+      "qualification_limit": "The preparation inventory passed; no translation case or Basic receipt was qualified."
+    },
+    "wheel": {
+      "name": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "version": "0.2.0.dev2",
+      "built_and_installed_step": "SUCCESS",
+      "actual_wheel_bytes_independently_read": false,
+      "wheel_payload_or_source_closure_qualification": "NOT_CLAIMED_BY_THIS_FAILURE_PROOF"
+    }
+  },
+  "cleanup": {
+    "owned_firewall_removal_step": "SUCCESS",
+    "artifact_upload_step": "SUCCESS",
+    "post_checkout_step": "SUCCESS",
+    "basic_gui_worker_cleanup_receipt": "NOT_OBSERVED",
+    "limit": "Successful workflow firewall cleanup is separate from unobserved internal Basic GUI/worker cleanup. The workflow timeout is retained as failure."
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:35:32Z",
+      "completed_at": "2026-11-28T06:35:33Z"
+    },
+    {
+      "number": 2,
+      "name": "Check out exact candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:35:34Z",
+      "completed_at": "2026-11-28T06:35:40Z"
+    },
+    {
+      "number": 3,
+      "name": "Record exact candidate before qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:35:40Z",
+      "completed_at": "2026-11-28T06:35:41Z"
+    },
+    {
+      "number": 4,
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:35:41Z",
+      "completed_at": "2026-11-28T06:35:41Z"
+    },
+    {
+      "number": 5,
+      "name": "Compile all current product and qualification sources",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:35:41Z",
+      "completed_at": "2026-11-28T06:35:44Z"
+    },
+    {
+      "number": 6,
+      "name": "Build and install an exact source-bound wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:35:44Z",
+      "completed_at": "2026-11-28T06:36:10Z"
+    },
+    {
+      "number": 7,
+      "name": "Block external egress during finite local and synthetic translation qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:36:10Z",
+      "completed_at": "2026-11-28T06:36:11Z"
+    },
+    {
+      "number": 8,
+      "name": "Require installed Basic translation before the complete translation population",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T06:36:11Z",
+      "completed_at": "2026-11-28T06:40:11Z"
+    },
+    {
+      "number": 9,
+      "name": "Require exact source and installed cases plus eight actual native flows",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T06:40:11Z",
+      "completed_at": "2026-11-28T06:40:11Z"
+    },
+    {
+      "number": 10,
+      "name": "Remove only the owned qualification firewall rule",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:40:11Z",
+      "completed_at": "2026-11-28T06:40:12Z"
+    },
+    {
+      "number": 11,
+      "name": "Upload all raw scoped and selected translation evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:40:12Z",
+      "completed_at": "2026-11-28T06:40:14Z"
+    },
+    {
+      "number": 21,
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T06:40:14Z",
+      "completed_at": "2026-11-28T06:40:14Z"
+    },
+    {
+      "number": 22,
+      "name": "Post Check out exact candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:40:14Z",
+      "completed_at": "2026-11-28T06:40:16Z"
+    },
+    {
+      "number": 23,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T06:40:16Z",
+      "completed_at": "2026-11-28T06:40:16Z"
+    }
+  ],
+  "decoded_raw_job_log": {
+    "method": "GitHub workflow job-log connector; complete returned decoded string retained for hashing.",
+    "characters": 52890,
+    "utf8_bytes": 52892,
+    "sha256": "3a20a280b78a89b29bbc4dc0821273b192cab29ae7e525176e8ea18d450ac5a7",
+    "raw_bytes_hash_policy": "SHA256 is over UTF-8 encoding of the entire returned decoded log, preserving its line endings and ANSI bytes. It is not a downloaded ZIP hash.",
+    "warnings_observed": 0,
+    "command_echo_not_counted_as_runtime_receipt": true
+  },
+  "uploaded_artifact": {
+    "id": 15252328398,
+    "name": "carr-local-translation-d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+    "size_in_bytes": 991,
+    "sha256": "0b06f4fe798eab4e104fca496b874f90680f5b77dbd40b1ec8891b3f00596ba6",
+    "created_at": "2026-11-28T06:40:14Z",
+    "expires_at": "2026-12-12T06:40:13Z",
+    "expired": false,
+    "workflow_run": {
+      "id": 46117284580,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/local-translation-final-d4ea-20261128-d3a",
+      "head_sha": "d4ea02c32d88d803311c7ae0f454c17dee185c4c"
+    },
+    "uploader_reported_files": 3,
+    "uploader_api_id_size_sha_match": true,
+    "archive_downloaded": false,
+    "archive_decoded": false,
+    "archive_members_independently_inventoried": false,
+    "member_content_claim": "NONE. The uploaded 991-byte ZIP was not downloaded or decoded; no claim is made about the existence or contents of a Basic JSON file within it."
+  },
+  "independently_read_candidate_sources": {
+    "scope": "Expected source bindings independently read from the immutable candidate; these are not completed runtime receipts.",
+    "files": [
+      {
+        "path": ".github/workflows/carr-local-translation.yml",
+        "git_blob": "e4dafee258246fc14f039d72908136434a20465c",
+        "sha256": "83c1f2ff166671f3ee4e0f81af8b88cd0950344b4eb46cb9437ad0cdc14c6d2c",
+        "utf8_bytes": 11326
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_smoke.py",
+        "git_blob": "1b249ab87dee4c1a441dfac46232592e1a88a691",
+        "sha256": "2fd5485bb862fa3af8cae7d1ea9ec0e7c8145bef10a481159315e3da858cd159",
+        "utf8_bytes": 11997
+      },
+      {
+        "path": "carr-library/scripts/local_translation_acceptance.py",
+        "git_blob": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+        "sha256": "e68a36a9b635c21ab45f5721f47ab76ebd7bd65d52a6ed2361822454b148f5a8",
+        "utf8_bytes": 11739
+      },
+      {
+        "path": "carr-library/scripts/translation_scope_acceptance.py",
+        "git_blob": "60d841da5b74fde0ee8491899c12aa516b461851",
+        "sha256": "a27bcea6d5570cab5764828c861c033e75e8906d397b3daed1794add82aa3f82",
+        "utf8_bytes": 16375
+      },
+      {
+        "path": "carr-library/scripts/local_translation_oracles.json",
+        "git_blob": "a954839a9e373b60f13f35b16c57d7160e43750c",
+        "sha256": "2f6dd44568ea2e85e661bcc08f01fbd00a7b1aed446002fd593a7656a77dd9b6",
+        "utf8_bytes": 1926
+      },
+      {
+        "path": "carr-library/scripts/translation_scope_oracles.json",
+        "git_blob": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+        "sha256": "d3a99994e83ccf97eb0dd7228fbfd189a8b98b2be29bafda915acb0abb10b046",
+        "utf8_bytes": 9227
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+        "git_blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd",
+        "sha256": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+        "utf8_bytes": 18845
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_local_smoke.py",
+        "git_blob": "dcb1fb940f078ecd7ff779eb9768056af63d8946",
+        "sha256": "7aa919464804f7acac897379c072a3ad8207eabf7ecc346d908ae399925def2e",
+        "utf8_bytes": 18733
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_scope_smoke.py",
+        "git_blob": "d3b0aa6ad304431863826fda71909fcbf088b651",
+        "sha256": "055f3fccdc166cc0d990a1bd5e5235b978db5985fcd54f5ef1811111223a03fc",
+        "utf8_bytes": 26168
+      },
+      {
+        "path": "carr-library/packaging/windows-cp311.lock",
+        "git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+        "sha256": "4e49bacae7e7b805d5f9219ca4baeb14b413786c3db787d5aba4ab72a48397c5",
+        "utf8_bytes": 34471
+      }
+    ]
+  },
+  "predecessor": {
+    "source_commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "main_run_id": 46109011419,
+    "main_job_id": 140868122250,
+    "result": "FAIL",
+    "observed_boundary": "Installed Basic TranslationController rejected selected library root, followed by the old probe's 45-second timeout.",
+    "retained_source_fix_commit": "a13457e9d4d44f23ab86e828b706184f5246aa34",
+    "retained_early_gate_commit": "e0bc9d2167ee0d2f4a4a8be73dab72b244ab4569",
+    "pass_transferred": false
+  },
+  "limits": [
+    "No application, test, workflow, reference, PR or acceptance-counter mutation in this evidence component.",
+    "No Basic success, repaired-root execution success, translation result, 324/324 case success or eight-native success is established.",
+    "No raw JUnit, native artifact JSON, wheel ZIP, compiled installer, model asset or private payload was downloaded, decoded, imported or executed by this read.",
+    "No actual Google service, credential-vault, local-model translation quality or manual NVDA qualification is claimed.",
+    "All prior failures and source reviews retain their original source identities; no cross-head PASS transfer.",
+    "A later correction requires a new immutable source-bound execution. No timeout increase or acceptance relaxation is authorized by this observation."
+  ]
+}
