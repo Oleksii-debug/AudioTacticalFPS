@@ -119,6 +119,14 @@ jobs:
           "CARR_V3_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Require native driver recovery regression controls
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          $suites = @('tests/ui/test_native_reading_presentation_driver.py', 'tests/ui/test_reader_navigation.py', 'tests/ui/test_operations_dialog.py', 'tests/library_assistant/test_library_workflow_ui.py')
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 @suites 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-driver-recovery-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise independent installed reader Studio and task controls
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         timeout-minutes: 12

@@ -206,3 +206,166 @@ def test_install_hook_adds_one_tools_action_and_preserves_existing_menu(monkeypa
     assert len(frame.menu_bar.menus[1][1].items) == 1
     assert 'library workflow' in first.label
     frame.Bind.assert_called_once()
+
+
+
+def _library_native_driver(state, *, constructor_error=None):
+    """Run the actual probe's owner/readiness closures without native windows."""
+    import ast
+    import json
+    from pathlib import Path
+    import traceback
+
+    path = Path(__file__).resolve().parents[1] / 'ui' / 'native_library_workflow_smoke.py'
+    module = ast.parse(path.read_text(encoding='utf-8'))
+    names = {'_workflow_host_ready', '_workflow_launch_observation', '_require_new_workflow',
+             'wait_for', 'open_when_ready', 'ObservedNativeWorkflow'}
+    nodes = [node for node in ast.walk(module)
+             if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name in names]
+    assert {node.name for node in nodes} == names and len(nodes) == len(names)
+    frame = state.frame
+    topic = state.library.create_topic(state.workspace, 'Existing research')
+    frame.active = state.workspace, topic
+    frame.book = object()
+    frame.evidence = SimpleNamespace(displayed=None)
+    status = ['Research library opened.']
+    frame.status = SimpleNamespace(GetValue=lambda: status[0])
+    frame.report = lambda text: status.__setitem__(0, text)
+    observation = dict(frame=frame, view=None, phase='new')
+    scheduled, opened = [], Mock()
+
+    class NativeOwner:
+        def __init__(self, owner):
+            assert owner is frame
+            if constructor_error is not None:
+                raise constructor_error
+            self.controller = SimpleNamespace(alive=True)
+        def show(self):
+            self.controller.alive = False
+
+    context = dict(json=json, traceback=traceback, frame=frame, library=state.library,
+        original_root=state.library.root, workspace=state.workspace, existing_topic=topic,
+        original_book=frame.book, state=observation, original_view=NativeOwner,
+        deadline=40, monotonic=lambda: 0,
+        later=lambda callback, delay=25: scheduled.append(callback),
+        open_from_menu=opened, prepare_new=Mock(), prepare_resume=Mock())
+    exec(compile(ast.fix_missing_locations(ast.Module(body=nodes, type_ignores=[])),
+                 str(path), 'exec'), context)
+    return context, scheduled, opened, status
+
+
+def test_native_library_menu_waits_for_real_initial_evidence_worker_completion(state, monkeypatch):
+    from carr_library.ui import library_assistant as ui
+
+    context, scheduled, opened, status = _library_native_driver(state)
+    frame = state.frame
+    monkeypatch.setattr(ui, 'NativeLibraryWorkflow', context['ObservedNativeWorkflow'])
+    opened.side_effect = lambda: ui.show_library_assistant(frame)
+    original_root, original_scope, original_book = frame.library.root, frame.active, frame.book
+    # Idle before the scheduled refresh has started is not ready evidence.
+    context['open_when_ready']()
+    opened.assert_not_called()
+    assert len(scheduled) == 1 and not frame.working and not frame.busy
+    frame.deferred = True
+    def loaded(rows):
+        row, = rows
+        frame.evidence.displayed = row
+    frame.run_job('Loading saved evidence', lambda: state.library.topics(state.workspace),
+                  loaded, lambda error: pytest.fail(str(error)))
+    scheduled.pop(0)()
+    opened.assert_not_called()
+    assert frame.working and frame.busy and len(scheduled) == 1
+    frame.finish()  # An actual background library read, then its owner callback.
+    scheduled.pop(0)()
+    opened.assert_called_once_with()
+    assert frame.threads and all(identity != get_ident() for identity in frame.threads)
+    assert frame.evidence.displayed.id == original_scope[1]
+    assert not frame.working and not frame.busy
+    assert frame.library.root == original_root and frame.active == original_scope and frame.book is original_book
+    assert context['state']['constructor_entered'] and not context['state']['view'].controller.alive
+    context['_require_new_workflow'](frame, context['state'], None)
+    assert len(scheduled) == 1  # The real observation class scheduled prepare_new.
+
+
+@pytest.mark.parametrize('changed', ['library', 'root', 'scope', 'notebook', 'closing'])
+def test_native_library_menu_refuses_changed_host_ownership_before_dispatch(state, monkeypatch, changed):
+    context, scheduled, opened, status = _library_native_driver(state)
+    frame = state.frame
+    frame.evidence.displayed = object()
+    if changed == 'library':
+        frame.library = LibraryApp(state.tmp_path / 'other-library-root')
+    elif changed == 'root':
+        monkeypatch.setattr(state.library, 'root', state.tmp_path / 'moved-library-root')
+    elif changed == 'scope':
+        frame.active = state.workspace, state.library.create_topic(state.workspace, 'Another topic')
+    elif changed == 'notebook':
+        frame.book = object()
+    else:
+        frame._closing = True
+    with pytest.raises(AssertionError, match='changed|closing'):
+        context['open_when_ready']()
+    opened.assert_not_called()
+    assert not scheduled and context['state']['view'] is None
+
+
+def test_native_library_initial_refresh_keeps_the_original_total_deadline_and_host_status(state):
+    context, scheduled, opened, status = _library_native_driver(state)
+    state.frame.working = state.frame.busy = True
+    status[0] = 'Loading saved evidence remains active.'
+    context['monotonic'] = lambda: 40
+    with pytest.raises(AssertionError, match='before its deadline') as error:
+        context['open_when_ready']()
+    assert 'Loading saved evidence remains active.' in str(error.value)
+    assert '"working": true' in str(error.value) and '"busy": true' in str(error.value)
+    opened.assert_not_called()
+    assert not scheduled and state.frame.working and state.frame.busy
+
+
+@pytest.mark.parametrize('refusal', ['no-scope', 'working', 'busy', 'closing'])
+def test_native_library_actual_launcher_refusal_is_reported_without_accepting_missing_owner(
+        state, monkeypatch, refusal):
+    from carr_library.ui import library_assistant as ui
+
+    context, scheduled, opened, status = _library_native_driver(state)
+    monkeypatch.setattr(ui, 'NativeLibraryWorkflow', context['ObservedNativeWorkflow'])
+    if refusal == 'no-scope':
+        state.frame.active = None
+    else:
+        setattr(state.frame, '_closing' if refusal == 'closing' else refusal, True)
+    ui.show_library_assistant(state.frame)
+    assert status[0].startswith('Library workflow assistant unavailable:')
+    with pytest.raises(AssertionError, match='without a fresh library workflow owner') as error:
+        context['_require_new_workflow'](state.frame, context['state'], None)
+    assert status[0] in str(error.value)
+    assert '"constructor_entered": false' in str(error.value)
+    assert not scheduled and context['state']['view'] is None
+
+
+def test_native_library_actual_constructor_error_retains_primary_trace_and_status(state, monkeypatch):
+    from carr_library.ui import library_assistant as ui
+
+    context, scheduled, opened, status = _library_native_driver(
+        state, constructor_error=RuntimeError('native constructor boundary'))
+    monkeypatch.setattr(ui, 'NativeLibraryWorkflow', context['ObservedNativeWorkflow'])
+    ui.show_library_assistant(state.frame)
+    assert context['state']['constructor_entered'] and context['state']['view'] is None
+    assert 'RuntimeError: native constructor boundary' in context['state']['constructor_error']
+    assert status[0] == 'Library workflow assistant unavailable: native constructor boundary'
+    with pytest.raises(AssertionError, match='without a fresh library workflow owner') as error:
+        context['_require_new_workflow'](state.frame, context['state'], None)
+    assert 'RuntimeError: native constructor boundary' in str(error.value)
+    assert status[0] in str(error.value)
+    assert not scheduled
+
+
+def test_native_library_reopen_requires_a_fresh_owner_and_never_closes_it_in_the_observer(state):
+    context, scheduled, opened, status = _library_native_driver(state)
+    previous = SimpleNamespace(controller=SimpleNamespace(alive=False))
+    context['state']['view'] = previous
+    with pytest.raises(AssertionError, match='without a fresh library workflow owner'):
+        context['_require_new_workflow'](state.frame, context['state'], previous)
+    current = SimpleNamespace(controller=SimpleNamespace(alive=True))
+    context['state']['view'] = current
+    context['_require_new_workflow'](state.frame, context['state'], previous)
+    assert current.controller.alive and not previous.controller.alive
+    assert not scheduled

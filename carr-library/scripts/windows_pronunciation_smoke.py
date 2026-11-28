@@ -461,7 +461,11 @@ def _run_native():
                   editor.GetStringSelection() == 'Second'
                   and editor.GetValue() == observed['navigation_initial']
                   and original_asset.read_bytes() == asset_bytes)
-            observed['expected_cursor'] = observed['navigation_initial'].rindex('Second') + len('Second')
+            observed['expected_cursor'] = observed['navigation_initial'].rindex('Second')
+            start, _end = editor.GetSelection()
+            check('native insertion point uses the selected-start Unicode prefix',
+                  editor.GetInsertionPoint() == start
+                  and editor.GetRange(0, start) == observed['navigation_initial'][:observed['expected_cursor']])
             def cursor_saved():
                 saved = ReaderDraftStore(library.root, slot='pronunciation-native').load()
                 return saved is not None and saved.cursor == observed['expected_cursor']
