@@ -67,7 +67,8 @@ def test_pdf_and_rtf_screening(tmp_path):
     assert snapshot(tmp_path, 'b.rtf').mime == 'application/rtf'
 
 
-def test_small_default_snapshot_uses_bounded_real_python_memory_and_retains_exact_bytes(tmp_path):
+def test_small_default_snapshot_uses_bounded_real_python_memory_and_retains_exact_bytes(tmp_path, record_property):
+    import json
     import tracemalloc
     from carr_library.catalog.intake import AssetSnapshot, source_snapshot
     from carr_library.ingest.retained_assets import RetainedAssets
@@ -89,6 +90,12 @@ def test_small_default_snapshot_uses_bounded_real_python_memory_and_retains_exac
     finally:
         if not already_tracing:
             tracemalloc.stop()
+    record_property("small_snapshot_python_memory", json.dumps({
+        "source_bytes": len(raw), "baseline_python_bytes": baseline,
+        "peak_python_bytes": peak, "peak_delta_bytes": peak - baseline,
+        "bound_bytes": 4 * 1024 * 1024,
+        "scope": "Actual tracemalloc during warmed source_snapshot; not RSS or elapsed-time evidence.",
+    }, sort_keys=True))
     assert isinstance(measured, AssetSnapshot)
     assert measured.data == raw
     assert measured.manifest() == {
