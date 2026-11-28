@@ -632,3 +632,43 @@ def test_managed_review_uses_private_verified_snapshot_and_admission_rechecks_li
         managed_setup.admit_managed_update(installed, still_original, policy, anchors,
                                           reviewed_sha256=reviewed.package.release.sha256)
     assert anchors.load() == installed.anchor
+
+
+def test_managed_admission_cannot_rebind_an_equal_valued_capability_to_another_owner(
+        managed_admission_fixture):
+    from carr_library.security.managed_setup import (
+        admit_managed_update, authenticate_installed_package, revalidate_managed_admission,
+    )
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    admission = admit_managed_update(installed, reviewed, policy, anchors,
+                                    reviewed_sha256=reviewed.package.release.sha256)
+    other_owner = MemoryAnchor(anchors.load())
+    other_installed = authenticate_installed_package(installed.path, policy, other_owner)
+    # Both are independently valid and semantically equal. They are different
+    # owner capabilities, so the existing review must not migrate between them.
+    assert other_installed == installed and other_installed is not installed
+    assert other_installed._store is other_owner and admission.installed._store is anchors
+    with pytest.raises(TrustError, match='admission boundary'):
+        replace(admission, installed=other_installed)
+    assert revalidate_managed_admission(admission).installed._store is anchors
+    explicit_other_review = admit_managed_update(
+        other_installed, reviewed, policy, other_owner,
+        reviewed_sha256=reviewed.package.release.sha256)
+    assert revalidate_managed_admission(explicit_other_review).installed._store is other_owner
+    other_owner.value = Anchor(3, reviewed.package.release.sha256, other_owner.load().max_utc)
+    with pytest.raises(TrustError, match='identity changed'):
+        revalidate_managed_admission(explicit_other_review)
+    assert revalidate_managed_admission(admission).installed._store is anchors
+    assert anchors.load() == installed.anchor
+
+
+def test_managed_admission_retains_exact_incoming_review_capability(managed_admission_fixture):
+    from carr_library.security.managed_setup import admit_managed_update, review_managed_package
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    admission = admit_managed_update(installed, reviewed, policy, anchors,
+                                    reviewed_sha256=reviewed.package.release.sha256)
+    separate_review = review_managed_package(reviewed.package, policy)
+    assert separate_review == admission.incoming and separate_review is not admission.incoming
+    with pytest.raises(TrustError, match='admission boundary'):
+        replace(admission, incoming=separate_review)
+    assert admission.incoming.package is reviewed.package

@@ -79,7 +79,10 @@ class InstalledManagedPackage:
         if (not isinstance(self.path, Path) or self.path != self.path.absolute()
                 or type(self.setup) is not ManagedSetup or type(self.anchor) is not Anchor
                 or type(self.policy) is not UpdatePolicy
-                or self._proof != (_PROOF, self.path, self.setup, self.anchor, self.policy, id(self._store))):
+                or type(self._proof) is not tuple or len(self._proof) != 6
+                or self._proof[0] is not _PROOF
+                or self._proof[1:5] != (self.path, self.setup, self.anchor, self.policy)
+                or self._proof[5] is not self._store):
             raise TrustError('Authenticate installed bytes against the live protected anchor.')
 
 
@@ -93,7 +96,10 @@ class ManagedAdmission:
     def __post_init__(self):
         if (type(self.installed) is not InstalledManagedPackage
                 or type(self.incoming) is not ReviewedManagedPackage
-                or self._proof != (_PROOF, self.installed, self.incoming)):
+                or type(self._proof) is not tuple or len(self._proof) != 3
+                or self._proof[0] is not _PROOF
+                or self._proof[1] is not self.installed
+                or self._proof[2] is not self.incoming):
             raise TrustError('Use the explicit managed update admission boundary.')
         self.installed.__post_init__()
         self.incoming.__post_init__()
@@ -286,7 +292,7 @@ def authenticate_installed_package(path, policy, anchors, *, cancelled=lambda: F
     if anchors.load() != anchor:
         raise TrustError('Protected installed identity changed during authentication.')
     return InstalledManagedPackage(path, setup, anchor, policy, anchors,
-                                   (_PROOF, path, setup, anchor, policy, id(anchors)))
+                                   (_PROOF, path, setup, anchor, policy, anchors))
 
 
 def admit_managed_update(installed, incoming, policy, anchors, *, reviewed_sha256,
