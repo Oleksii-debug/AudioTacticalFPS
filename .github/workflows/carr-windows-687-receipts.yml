@@ -1,4 +1,4 @@
-name: CARR exact Windows standard installation receipts
+name: CARR exact Windows recording receipts
 on:
   push:
     branches: [carr/windows-687-receipts-20261127]
