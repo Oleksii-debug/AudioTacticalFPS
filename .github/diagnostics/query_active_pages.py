@@ -22,6 +22,9 @@ MAX_STEPS = 20_000_000
 JOINED = (" FROM active a JOIN revision r ON r.id=a.revision "
           "AND r.workspace=a.workspace AND r.edition=a.edition "
           "JOIN page p ON p.revision=r.id ")
+PAGE_JOINED = (" FROM page p CROSS JOIN revision r ON r.id=p.revision "
+               "CROSS JOIN active a ON a.workspace=r.workspace "
+               "AND a.edition=r.edition AND a.revision=r.id ")
 OLD_COLUMNS = "id,workspace,edition,revision,asset,ordinal,physical,printed,verified,raw,digest"
 NEW_COLUMNS = "p.id,r.workspace,r.edition,p.revision,r.asset,p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest"
 
@@ -104,12 +107,13 @@ def measured(db, sql, parameters):
                   "rows": len(rows), "rows_sha256": sha256(encoded).hexdigest(),
                   "progress_interval": 1, "observer_overhead_included": True}
 
-def pair(db, records, label, old, new, params):
+def pair(db, records, label, old, new, params, *, ordered=True):
     first, old_result = measured(db, old, params)
     second, new_result = measured(db, new, params)
-    assert first == second, (label, "Actual result/order differs.")
+    assert (first == second if ordered else sorted(first) == sorted(second)), (label, "Actual result/order differs.")
     records.append({"label": label, "old_sql": old, "new_sql": new,
-                    "old": old_result, "new": new_result, "exact_row_parity": True})
+                    "old": old_result, "new": new_result, "exact_row_parity": True,
+                    "ordered_result_contract": ordered})
     return first
 
 def sql_diagnosis(module, directory, state):
@@ -142,7 +146,7 @@ def sql_diagnosis(module, directory, state):
                 parameters += [editions[position], editions[position], ordinal, ordinal, prior[0]]
                 pair(db, records, "cursor_" + label,
                      "SELECT edition,revision,ordinal,id FROM active_page WHERE workspace=? AND id=?",
-                     "SELECT r.edition,p.revision,p.ordinal,p.id" + JOINED +
+                     "SELECT r.edition,p.revision,p.ordinal,p.id" + PAGE_JOINED +
                      "WHERE a.workspace=? AND p.id=?", (workspace, prior[0]))
             old += " ORDER BY edition COLLATE BINARY,ordinal,id LIMIT ?"
             new += " ORDER BY a.edition COLLATE BINARY,p.ordinal,p.id LIMIT ?"
@@ -154,19 +158,26 @@ def sql_diagnosis(module, directory, state):
             pair(db, records, "refetch_" + label,
                  "SELECT " + OLD_COLUMNS + " FROM active_page WHERE workspace=? AND id IN (" +
                  marks + ") ORDER BY edition,ordinal,id",
-                 "SELECT " + NEW_COLUMNS + JOINED + "WHERE a.workspace=? AND p.id IN (" +
+                 "SELECT " + NEW_COLUMNS + PAGE_JOINED + "WHERE a.workspace=? AND p.id IN (" +
                  marks + ") ORDER BY r.edition,p.ordinal,p.id", (workspace, *ids))
-        for edition in (editions[0], editions[-1]):
-            pair(db, records, "replacement_selection",
-                 "SELECT id FROM active_page WHERE workspace=? AND edition=? ORDER BY id",
-                 "SELECT p.id" + JOINED + "WHERE a.workspace=? AND a.edition=? ORDER BY p.id",
-                 (workspace, edition))
+        absent = "0" * 32
+        assert db.execute("SELECT 1 FROM active WHERE workspace=? AND edition=?",
+                          (workspace, absent)).fetchone() is None
+        for label, edition in (("first", editions[0]), ("last", editions[-1]), ("absent", absent)):
+            old = "SELECT id FROM active_page WHERE workspace=? AND edition=?"
+            new = "SELECT p.id" + JOINED + "WHERE a.workspace=? AND a.edition=?"
+            pair(db, records, "replacement_" + label, old, new, (workspace, edition), ordered=False)
+            # EXPLAIN only: never execute a DELETE or mutate the actual source.
+            for key, inner in (("old_delete_plan", old), ("new_delete_plan", new)):
+                records[-1][key] = [tuple(row) for row in db.execute(
+                    "EXPLAIN QUERY PLAN DELETE FROM indexed WHERE id IN (" + inner + ")",
+                    (workspace, edition))]
         foreign = state["foreign_workspaces"][0]
         foreign_id = db.execute("SELECT p.id FROM page p JOIN active a ON a.revision=p.revision "
             "WHERE a.workspace=? ORDER BY p.id LIMIT 1", (foreign,)).fetchone()[0]
         wrong = pair(db, records, "foreign_workspace_id",
              "SELECT " + OLD_COLUMNS + " FROM active_page WHERE workspace=? AND id IN (?) ORDER BY edition,ordinal,id",
-             "SELECT " + NEW_COLUMNS + JOINED +
+             "SELECT " + NEW_COLUMNS + PAGE_JOINED +
              "WHERE a.workspace=? AND p.id IN (?) ORDER BY r.edition,p.ordinal,p.id",
              (workspace, foreign_id))
         assert wrong == []
@@ -289,7 +300,9 @@ def main():
     summary = {key:report[key] for key in ("status","qualification","commit","run","books","segments","ranked")}
     summary["sql"] = [{"label":row["label"],"old_steps":row["old"]["vm_steps"],
                       "new_steps":row["new"]["vm_steps"],"rows":row["old"]["rows"],
-                      "old_plan":row["old"]["plan"],"new_plan":row["new"]["plan"]}
+                      "old_plan":row["old"]["plan"],"new_plan":row["new"]["plan"],
+                      "old_delete_plan":row.get("old_delete_plan"),
+                      "new_delete_plan":row.get("new_delete_plan")}
                      for row in sql["records"]]
     print("CARR_SQL_DIAGNOSIS " + json.dumps(summary, sort_keys=True), flush=True)
 
