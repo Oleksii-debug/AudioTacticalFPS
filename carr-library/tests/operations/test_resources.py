@@ -499,22 +499,21 @@ def test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes(
 
 @pytest.mark.parametrize('phase', ['construction', 'acquisition'])
 def test_lock_leaf_disappears_inside_local_path(tmp_path, monkeypatch, phase):
-    """Exercise the earlier leaf lstat boundary from the Windows traceback."""
-    from carr_library import durable_state
+    """Remove the real unheld leaf at its fresh local_path lstat boundary."""
     from carr_library.operations._locks import NativeLock
     path = tmp_path / 'released.lock'
     lock = NativeLock(path) if phase == 'acquisition' else None
     path.write_bytes(b'')
-    original = durable_state.regular
+    original = Path.lstat
     removed = []
-    def disappear(candidate, **kwargs):
+    def disappear(candidate, *args, **kwargs):
         if Path(candidate) == path and not removed:
             path.unlink()
             removed.append(True)
-        return original(candidate, **kwargs)
+        return original(candidate, *args, **kwargs)
     try:
         with monkeypatch.context() as scoped:
-            scoped.setattr(durable_state, 'regular', disappear)
+            scoped.setattr(Path, 'lstat', disappear)
             if lock is None:
                 lock = NativeLock(path)
             assert lock.acquire()
@@ -530,13 +529,11 @@ def test_lock_leaf_disappears_inside_local_path(tmp_path, monkeypatch, phase):
 @pytest.mark.parametrize('boundary', ['local_path', 'direct'])
 def test_unheld_lock_can_observe_zero_links_during_release(tmp_path, monkeypatch, phase, boundary):
     """Reproduce the observed regular zero-link stat at either unheld check."""
-    from carr_library import durable_state
     from carr_library.operations import _locks
     path = tmp_path / 'released-zero-links.lock'
     lock = _locks.NativeLock(path) if phase == 'acquisition' else None
     path.write_bytes(b'')
-    module = durable_state if boundary == 'local_path' else _locks
-    original = module.regular
+    original = _locks.regular
     lstat = Path.lstat
     observed = []
 
@@ -559,7 +556,10 @@ def test_unheld_lock_can_observe_zero_links_during_release(tmp_path, monkeypatch
     peer = None
     try:
         with monkeypatch.context() as scoped:
-            scoped.setattr(module, 'regular', checked)
+            if boundary == 'local_path':
+                scoped.setattr(Path, 'lstat', released_stat)
+            else:
+                scoped.setattr(_locks, 'regular', checked)
             if lock is None:
                 lock = _locks.NativeLock(path)
             assert lock.acquire()
