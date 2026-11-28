@@ -1,0 +1,355 @@
+name: Redacted diagnostic preview and explicit local export
+on:
+  push:
+    branches: [carr/redacted-diagnostics-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-redacted-diagnostics-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: redacted-diagnostics-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    name: Actual diagnostic privacy, publication and owner lifetime / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      CARR_DIAGNOSTICS_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        run: python -m pip install ".[test,sync]"
+      - name: Prepare exact source and installed acceptance harness
+        run: |
+          mkdir -p ci-redacted-diagnostics
+          cat > ci-redacted-diagnostics/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import subprocess
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-redacted-diagnostics"
+          suites = ["tests/diagnostics/test_support_diagnostics.py","tests/ui/test_diagnostics_dialog.py","tests/operations/test_resources.py","tests/operations/test_resource_backup.py","tests/ui/test_export_destination.py"]
+          if os.name != "nt":
+              suites.append("tests/operations/test_resources_posix.py")
+
+          names = ["carr_library.application","carr_library.support_diagnostics","carr_library.durable_state","carr_library.operations.broker","carr_library.operations.models","carr_library.research.export_file","carr_library.ui.desktop_app","carr_library.ui.diagnostics_dialog","carr_library.ui.command_registry","carr_library.ui.keyboard_settings","carr_library.audio.cleanup","carr_library.audio.process","carr_library.library_backup","carr_library.ui.export_destination"]
+          
+          def checkout_head():
+              value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()
+              assert value == os.environ["CARR_DIAGNOSTICS_HEAD"], (value, os.environ["CARR_DIAGNOSTICS_HEAD"])
+              return value
+
+          commit_before = checkout_head()
+          helper_before = sha256(Path(__file__).read_bytes()).hexdigest()
+          tests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}
+          scripts = ("scripts/windows_diagnostics_smoke.py", "scripts/windows_publishing_smoke.py")
+          scripts_before = {path: sha256((root / path).read_bytes()).hexdigest() for path in scripts}
+          for path in scripts:
+              compile((root / path).read_bytes(), path, "exec")
+
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              return result
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      print("CARR_DIAGNOSTICS_COLLECTION_FAILURE " + str(report.longrepr)[:12000], flush=True)
+
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "-s", "--durations=20", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-redacted-diagnostics-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              assert checkout_head() == commit_before, "The checked-out commit changed."
+              assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, "The executed proof helper changed."
+              assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, "Executed test bytes changed."
+              assert {path: sha256((root / path).read_bytes()).hexdigest() for path in scripts} == scripts_before
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "qualification": "ACTUAL_REDACTED_DIAGNOSTIC_CONTRACTS_ONLY",
+                        "commit": commit_before, "proof_helper_sha256": helper_before,
+                        "test_files": tests_before, "script_files": scripts_before,
+                        "selected_suites": proof.collected, "package_python_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require source privacy, no-clobber and genuine asynchronous owner cases
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -B -X utf8 ci-redacted-diagnostics/check.py source 2>&1 | tee ci-redacted-diagnostics/source.txt
+      - name: Require isolated installed origins and the same diagnostic cases
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-redacted-diagnostics/check.py installed 2>&1 | tee ci-redacted-diagnostics/installed.txt
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-redacted-diagnostics
+          git rev-parse HEAD > ci-redacted-diagnostics/commit.txt
+          git rev-parse HEAD^{tree} > ci-redacted-diagnostics/tree.txt
+          python -m pip freeze > ci-redacted-diagnostics/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: redacted-diagnostics-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-redacted-diagnostics
+          if-no-files-found: error
+
+  native:
+    name: Native diagnostic preview, export and owner withdrawal / installed Windows
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      CARR_DIAGNOSTICS_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the actual pinned standard runtime and composed package
+        run: |
+          New-Item -ItemType Directory -Force ci-diagnostics-native | Out-Null
+          $lock = 'packaging/windows-cp311.lock'
+          python -m pip install --only-binary=:all: --require-hashes -r $lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Bind complete installed source, native probe and selected runtime
+        run: |
+          @'
+          from hashlib import sha256
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import sysconfig
+
+          assert sys.flags.isolated and not os.environ.get("PYTHONPATH")
+          ROOT = Path.cwd().resolve()
+          OUT = ROOT / "ci-diagnostics-native"
+          SOURCE = ROOT / "src" / "carr_library"
+          INSTALLED = Path(sysconfig.get_path("purelib")).resolve() / "carr_library"
+          assert SOURCE.resolve() != INSTALLED.resolve()
+          LOCK = "packaging/windows-cp311.lock"
+          FILES = ("scripts/windows_diagnostics_smoke.py", "scripts/windows_publishing_smoke.py", LOCK)
+          NAMES = ["carr_library.application","carr_library.support_diagnostics","carr_library.durable_state","carr_library.operations.broker","carr_library.operations.models","carr_library.research.export_file","carr_library.ui.desktop_app","carr_library.ui.diagnostics_dialog","carr_library.ui.command_registry","carr_library.ui.keyboard_settings","carr_library.audio.cleanup","carr_library.audio.process"]
+
+          def inventory(root):
+              assert root.is_dir() and not root.is_symlink()
+              value = {}
+              for path in sorted(root.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  value[path.relative_to(root).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert value and "__init__.py" in value
+              return value
+
+          def identity():
+              head = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, timeout=10).stdout.strip()
+              assert head == os.environ["CARR_DIAGNOSTICS_HEAD"]
+              expected = inventory(SOURCE)
+              assert inventory(INSTALLED) == expected
+              origins = {}
+              for name in NAMES:
+                  spec = importlib.util.find_spec(name)
+                  assert spec and spec.origin
+                  path = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert path == (INSTALLED / relative).resolve()
+                  digest = sha256(path.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()]
+                  origins[name] = {"path": str(path), "sha256": digest}
+              return {"head": head, "package": expected, "origins": origins,
+                      "files": {path: sha256((ROOT / path).read_bytes()).hexdigest() for path in FILES},
+                      "helper": sha256(Path(__file__).read_bytes()).hexdigest()}
+
+          current = identity()
+          for path in FILES[:2]:
+              compile((ROOT / path).read_bytes(), path, "exec")
+          if sys.argv[1] == "before":
+              (OUT / "identity-before.json").write_text(json.dumps(current, sort_keys=True) + "\n", encoding="utf-8")
+          elif sys.argv[1] == "after":
+              before = json.loads((OUT / "identity-before.json").read_text(encoding="utf-8"))
+              assert current == before, "Complete implementation/probe/runtime identity changed."
+              raw = (OUT / "native.txt").read_text(encoding="utf-8-sig")
+              reports = [json.loads(line) for line in raw.splitlines() if line.lstrip().startswith("{")]
+              assert reports, "No actual native report."
+              report = reports[-1]
+              assert report["result"] == "PASS" and type(report["checks"]) is int and 1 <= report["checks"] <= 2000
+              statuses = ("native_keyboard", "exact_redacted_preview_export",
+                  "actual_create_only_refusal", "same_desktop_executor",
+                  "actual_cancel_and_three_owner_withdrawals")
+              assert all(report[name] == "PASS" for name in statuses)
+              assert all(report[name] == "NOT_RUN" for name in ("native_file_picker", "NVDA", "physical_keyboard"))
+              assert report["source_identity"] == current["origins"]
+              assert report["probe_and_binding"] == {
+                  str((ROOT / path).resolve()): current["files"][path] for path in FILES[:2]}
+              report.update(source_commit=current["head"],
+                            package_python_files=len(current["package"]),
+                            package_inventory_sha256=sha256(json.dumps(current["package"], sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+                            proof_helper_sha256=current["helper"], selected_file_sha256=current["files"],
+                            qualification="ACTUAL_NATIVE_REDACTED_DIAGNOSTICS_COMPONENT_ONLY",
+                            offline_firewall="NOT_ASSERTED_BY_THIS_COMPONENT; final full bundle gate remains required")
+              (OUT / "identity-after.json").write_text(json.dumps(current, sort_keys=True) + "\n", encoding="utf-8")
+              (OUT / "native-proof.json").write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
+              print("CARR_DIAGNOSTICS_NATIVE_PROOF " + json.dumps(report, sort_keys=True), flush=True)
+          else:
+              raise AssertionError("Unknown proof mode")
+          '@ | Set-Content -Encoding utf8 ci-diagnostics-native/native_binding.py
+          python -I -B -X utf8 ci-diagnostics-native/native_binding.py before
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual native preview, export, cancellation and three owner withdrawals
+        timeout-minutes: 6
+        run: |
+          $proofHelper = 'ci-diagnostics-native/native_binding.py'
+          $beforeReceipt = 'ci-diagnostics-native/identity-before.json'
+          $proofHelperSha = (Get-FileHash -Algorithm SHA256 $proofHelper).Hash
+          $beforeReceiptSha = (Get-FileHash -Algorithm SHA256 $beforeReceipt).Hash
+          python -I -B -X utf8 scripts/windows_diagnostics_smoke.py 2>&1 | Tee-Object ci-diagnostics-native/native.txt
+          $probeExit = $LASTEXITCODE
+          if ((Get-FileHash -Algorithm SHA256 $proofHelper).Hash -ne $proofHelperSha) {
+            throw 'The native proof helper changed while the owned probe ran.'
+          }
+          if ((Get-FileHash -Algorithm SHA256 $beforeReceipt).Hash -ne $beforeReceiptSha) {
+            throw 'The retained pre-native identity receipt changed while the owned probe ran.'
+          }
+          if ($probeExit -ne 0) { exit $probeExit }
+      - name: Require actual native results and unchanged full source
+        if: always()
+        run: |
+          python -I -B -X utf8 ci-diagnostics-native/native_binding.py after
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve actual dependency and commit identity
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force ci-diagnostics-native | Out-Null
+          git rev-parse HEAD | Set-Content ci-diagnostics-native/commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content ci-diagnostics-native/tree.txt
+          python -m pip freeze | Set-Content ci-diagnostics-native/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: diagnostics-native-${{ github.sha }}
+          path: carr-library/ci-diagnostics-native
+          if-no-files-found: error
