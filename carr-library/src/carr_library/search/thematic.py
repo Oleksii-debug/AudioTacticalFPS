@@ -208,10 +208,11 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
         if not allowed:
             return
         placeholders = ','.join('?' for _ in allowed)
+        from .paging import PAGED_ACTIVE_SOURCE, checked_page_ids
+        source = PAGED_ACTIVE_SOURCE if page_ids is not None else 'active_page'
         sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-               'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
+               'verified,raw,digest FROM ' + source + ' WHERE workspace=? AND edition IN ('
                + placeholders + ') ORDER BY edition,ordinal,id')
-        from .paging import checked_page_ids
         page_clause, page_parameters = checked_page_ids(page_ids)
         sql = sql.replace(' ORDER BY edition,ordinal,id', page_clause + ' ORDER BY edition,ordinal,id')
         cursor = db.execute(sql, (workspace, *allowed, *page_parameters))

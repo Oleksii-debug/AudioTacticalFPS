@@ -195,6 +195,7 @@ class PageOriginals:
 
     def validate(self, owner, epoch, budget):
         """Fresh current originals and scope after lookahead, before any grant."""
+        from .paging import PAGED_ACTIVE_SOURCE
         app = self._app
         self._check(app, self.workspace, budget.stopped)
         owner.check(app, epoch)
@@ -206,7 +207,8 @@ class PageOriginals:
                 # This is a fresh authorized read after internal lookahead. The
                 # same owner version is checked again after the whole proof.
                 current = db.execute(
-                    "SELECT 1 FROM active_page WHERE workspace=? AND edition=? "
+                    "SELECT 1 FROM " + PAGED_ACTIVE_SOURCE +
+                    " WHERE workspace=? AND edition=? "
                     "AND revision=? LIMIT 1",
                     (self.workspace, found.identity.edition_id,
                      found.identity.revision)).fetchone()
