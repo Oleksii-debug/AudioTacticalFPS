@@ -465,6 +465,7 @@ jobs:
             tests/extract/test_ocr_language_regions.py \
             tests/extract/test_ocr_stream_identity.py \
             tests/extract/test_raster_pages.py \
+            tests/ingest/test_batch_continuation_cli.py \
             tests/ingest/test_checkpoint_streaming.py \
             tests/ingest/test_import_budget.py \
             tests/ingest/test_import_reconciliation.py \
@@ -486,6 +487,7 @@ jobs:
             tests/storage/test_pending_record_budget.py \
             tests/storage/test_playback_queue_backup.py \
             tests/storage/test_publication_session.py \
+            tests/ui/test_import_resources.py \
             tests/ui/test_playback_queue.py \
             tests/ui/test_search_owner_lifetime.py \
             --junitxml=ci-source-results/source-tests.xml
@@ -621,7 +623,7 @@ jobs:
           names = tuple(dict.fromkeys((*names, 'carr_library.audio.dsp', 'carr_library.audio.process', 'carr_library.audio.recording', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.backup_transcription', 'carr_library.conversion.office', 'carr_library.extract.document_formats_xml', 'carr_library.library_backup', 'carr_library.research.export_file', 'carr_library.speech.pronunciation_formats', 'carr_library.studio.clips', 'carr_library.studio.project', 'carr_library.studio.render', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.recording_dialog', 'carr_library.ui.studio_clips', 'carr_library.ui.studio_dialog')))
           names = tuple(dict.fromkeys((*names, 'carr_library.assistant.llm', 'carr_library.assistant.local_tools', 'carr_library.assistant.models', 'carr_library.assistant.planner', 'carr_library.assistant.player_tools', 'carr_library.assistant.service', 'carr_library.audio.conversion_batch', 'carr_library.audio.dsp', 'carr_library.audio.process', 'carr_library.conversion.service', 'carr_library.reader.live_player', 'carr_library.reader.live_reading', 'carr_library.security._https_worker', 'carr_library.security.download_state', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.updates', 'carr_library.speech._wave_output', 'carr_library.speech.listening', 'carr_library.speech.player', 'carr_library.ui.assistant_dialog', 'carr_library.ui.builtin_keyboard_commands', 'carr_library.ui.live_reading', 'carr_library.ui.playback_navigation', 'carr_library.ui.playback_settings', 'carr_library.ui.save_all', 'carr_library.ui.studio_clips', 'carr_library.ui.studio_dialog', 'carr_library.ui.update_maintenance')))
           names = tuple(dict.fromkeys((*names, 'carr_library.audio.cleanup', 'carr_library.assistant.state')))
-          names = tuple(dict.fromkeys((*names, 'carr_library.__main__', 'carr_library.application', 'carr_library.assistant.profiles', 'carr_library.assistant.providers', 'carr_library.assistant.translation', 'carr_library.assistant.translation_batch', 'carr_library.assistant.translation_batch_cli', 'carr_library.assistant.translation_cli', 'carr_library.audio.windows_job', 'carr_library.backup_current', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.catalog.intake', 'carr_library.citations.pdf_review_attestation', 'carr_library.citations.text_attestation', 'carr_library.extract.document_formats', 'carr_library.extract.language_detection', 'carr_library.extract.language_manager', 'carr_library.extract.ocr_languages', 'carr_library.extract.ocr_regions', 'carr_library.extract.page_ocr', 'carr_library.extract.raster_pages', 'carr_library.extract.runtime_identity', 'carr_library.ingest.batch_pages', 'carr_library.ingest.batch_scan', 'carr_library.ingest.batches', 'carr_library.ingest.catalog_asset_copy', 'carr_library.ingest.pipeline', 'carr_library.ingest.publication_identity', 'carr_library.ingest.reconciliation', 'carr_library.ingest.resource_budget', 'carr_library.ingest.retained_assets', 'carr_library.ingest.session', 'carr_library.ingest.slices', 'carr_library.ingest.worker', 'carr_library.library_backup', 'carr_library.pending_backup', 'carr_library.portable_entry', 'carr_library.search.federated', 'carr_library.search.literal', 'carr_library.search.semantic_windows', 'carr_library.search.thematic', 'carr_library.security.refresh', 'carr_library.semantic', 'carr_library.speech.player', 'carr_library.storage.publication', 'carr_library.storage.revisions', 'carr_library.studio.backup_inputs', 'carr_library.studio.clips', 'carr_library.ui.assistant_dialog', 'carr_library.ui.desktop_app', 'carr_library.ui.federated_search', 'carr_library.ui.ocr_selection', 'carr_library.ui.playback_navigation', 'carr_library.ui.studio_dialog', 'carr_library.ui.translation_batch_dialog', 'carr_library.ui.translation_dialog', 'carr_library.search.paging', 'carr_library.search.ranked_scope', 'carr_library.assistant.translation_local', 'carr_library.backup_budget', 'carr_library.speech.playlist', 'carr_library.ui.playback_queue')))
+          names = tuple(dict.fromkeys((*names, 'carr_library.__main__', 'carr_library.application', 'carr_library.assistant.profiles', 'carr_library.assistant.providers', 'carr_library.assistant.translation', 'carr_library.assistant.translation_batch', 'carr_library.assistant.translation_batch_cli', 'carr_library.assistant.translation_cli', 'carr_library.assistant.translation_local', 'carr_library.audio.windows_job', 'carr_library.backup_budget', 'carr_library.backup_current', 'carr_library.backup_incremental', 'carr_library.backup_incremental_cli', 'carr_library.backup_options', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.catalog.intake', 'carr_library.citations.pdf_review_attestation', 'carr_library.citations.text_attestation', 'carr_library.extract.document_formats', 'carr_library.extract.language_detection', 'carr_library.extract.language_manager', 'carr_library.extract.ocr_languages', 'carr_library.extract.ocr_regions', 'carr_library.extract.page_ocr', 'carr_library.extract.raster_pages', 'carr_library.extract.runtime_identity', 'carr_library.ingest.batch_cli', 'carr_library.ingest.batch_pages', 'carr_library.ingest.batch_scan', 'carr_library.ingest.batches', 'carr_library.ingest.catalog_asset_copy', 'carr_library.ingest.pipeline', 'carr_library.ingest.publication_identity', 'carr_library.ingest.reconciliation', 'carr_library.ingest.resource_budget', 'carr_library.ingest.retained_assets', 'carr_library.ingest.session', 'carr_library.ingest.slices', 'carr_library.ingest.worker', 'carr_library.library_backup', 'carr_library.pending_backup', 'carr_library.portable_entry', 'carr_library.search.federated', 'carr_library.search.literal', 'carr_library.search.paging', 'carr_library.search.ranked_scope', 'carr_library.search.semantic_windows', 'carr_library.search.thematic', 'carr_library.security.refresh', 'carr_library.semantic', 'carr_library.speech.player', 'carr_library.speech.playlist', 'carr_library.storage.publication', 'carr_library.storage.revisions', 'carr_library.studio.backup_inputs', 'carr_library.studio.clips', 'carr_library.ui.assistant_dialog', 'carr_library.ui.backup_actions', 'carr_library.ui.backup_incremental_dialog', 'carr_library.ui.backup_resources', 'carr_library.ui.desktop_app', 'carr_library.ui.federated_search', 'carr_library.ui.import_center', 'carr_library.ui.import_resources', 'carr_library.ui.ocr_selection', 'carr_library.ui.playback_navigation', 'carr_library.ui.playback_queue', 'carr_library.ui.studio_dialog', 'carr_library.ui.translation_batch_dialog', 'carr_library.ui.translation_dialog')))
           for name in names:
               importlib.import_module(name)
           def installed_origins():
@@ -977,6 +979,7 @@ jobs:
               'tests/extract/test_ocr_language_regions.py',
               'tests/extract/test_ocr_stream_identity.py',
               'tests/extract/test_raster_pages.py',
+              'tests/ingest/test_batch_continuation_cli.py',
               'tests/ingest/test_checkpoint_streaming.py',
               'tests/ingest/test_import_budget.py',
               'tests/ingest/test_import_reconciliation.py',
@@ -995,6 +998,7 @@ jobs:
               'tests/storage/test_pending_record_budget.py',
               'tests/storage/test_playback_queue_backup.py',
               'tests/storage/test_publication_session.py',
+              'tests/ui/test_import_resources.py',
               'tests/ui/test_playback_queue.py',
               'tests/ui/test_search_owner_lifetime.py',
           ])
@@ -1079,6 +1083,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $testFfmpeg = Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'
           $testFfprobe = Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe'
+          $nativeOcrRoot = [System.IO.Path]::GetFullPath($env:CARR_CI_OCR_DIR)
+          $testTesseract = Join-Path $nativeOcrRoot 'tesseract.exe'
+          if (!(Test-Path -LiteralPath $testTesseract -PathType Leaf)) { throw 'The exact prepared OCR executable is unavailable for native acceptance.' }
+          $previousNativeOcr = $env:CARR_OCR_DIR
+          @{ status='PASS'; runtime_root=$nativeOcrRoot; executable=$testTesseract; sha256=(Get-FileHash -LiteralPath $testTesseract -Algorithm SHA256).Hash.ToLowerInvariant() } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-v3-results/native-ocr-binding.json'
           @{ schema=1; status='PASS'; bundled=$false; runtime_root=$env:CARR_V3_AUDIO;
              ffmpeg=@{ path=$testFfmpeg; sha256=(Get-FileHash -LiteralPath $testFfmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
              ffprobe=@{ path=$testFfprobe; sha256=(Get-FileHash -LiteralPath $testFfprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
@@ -1087,7 +1096,7 @@ jobs:
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
-            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe'), $testTesseract) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-v3-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -1103,6 +1112,7 @@ jobs:
             profiles = @($profilesBefore | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
           } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath 'ci-v3-results/native-firewall-recovery.json' -Encoding utf8
           try {
+            $env:CARR_OCR_DIR = $nativeOcrRoot
             Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
             foreach ($program in $programs) {
               $ruleName = $rulePrefix + '-' + $ruleNames.Count
@@ -1191,6 +1201,7 @@ jobs:
             & $python -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-installed --report 'ci-v3-results/epub-conformance.json' 2>&1 | Tee-Object 'ci-v3-results/epub-conformance.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual EPUBCheck conformance acceptance failed.' }
           } finally {
+            $env:CARR_OCR_DIR = $previousNativeOcr
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }

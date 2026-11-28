@@ -55,6 +55,15 @@ jobs:
                   compile(raw, relative, 'exec', dont_inherit=True)
                   python_files.append(relative)
                   identities[relative] = sha256(raw).hexdigest()
+          import tomllib
+          project = tomllib.loads((root / 'carr-library/pyproject.toml').read_text(encoding='utf-8'))
+          entrypoints = project['project'].get('scripts', {})
+          assert entrypoints
+          for name, target in entrypoints.items():
+              module, attribute = target.split(':', 1)
+              assert module and attribute, name
+              source = root / 'carr-library/src' / Path(*module.split('.'))
+              assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (name, target)
           for path in sorted((root / '.github/workflows').glob('*.yml')):
               data = yaml.load(path.read_text(encoding='utf-8'), Loader=UniqueLoader)
               assert isinstance(data, dict) and 'on' in data and isinstance(data.get('jobs'), dict), str(path)
@@ -86,7 +95,7 @@ jobs:
           (out / 'powershell.json').write_text(json.dumps(powershell), encoding='utf-8')
           proof = {'status': 'PASS', 'scope': 'Python compile, duplicate-free YAML, current workflow module/native paths',
                    'head': subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip(),
-                   'python_files': len(python_files), 'python_blocks': len(python_blocks),
+                   'python_files': len(python_files), 'python_blocks': len(python_blocks), 'entrypoints': len(entrypoints),
                    'workflows': workflows, 'powershell_blocks_pending': len(powershell), 'source_sha256': identities}
           (out / 'python-yaml.json').write_text(json.dumps(proof, indent=2, sort_keys=True), encoding='utf-8')
           print(json.dumps({k: v for k, v in proof.items() if k != 'source_sha256'}, sort_keys=True))
