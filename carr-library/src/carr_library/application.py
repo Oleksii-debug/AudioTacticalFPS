@@ -955,7 +955,7 @@ class LibraryApp:
         path, mime, size = self._retained_source(db, workspace, identity, cancelled=cancelled)
         if size > MAX_SOURCE_BYTES:
             raise ValueError('This source requires the streamed source-action adapter.')
-        original = snapshot(self.assets_dir, path.name, max_bytes=size)
+        original = snapshot(self.assets_dir, path.name, max_bytes=size, cancelled=cancelled)
         if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -972,16 +972,19 @@ class LibraryApp:
             if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
                 raise ValueError('The original source differs from its catalog manifest.')
             return original
-        original = snapshot(self.assets_dir, path.name, max_bytes=size)
+        original = snapshot(self.assets_dir, path.name, max_bytes=size, cancelled=cancelled)
         if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
         return original.data
 
-    def _loaders(self, db, workspace, *, cancelled=lambda: False):
-        resolve_asset = lambda identity: self._asset_source(db, workspace, identity, cancelled=cancelled)
-        text = strict_text_attestor(db, workspace, resolve_asset, cancelled=cancelled)
+    def _loaders(self, db, workspace, *, cancelled=lambda: False, source_resolver=None,
+                 page_originals=None):
+        resolve_asset = (source_resolver if source_resolver is not None else
+            lambda identity: self._asset_source(db, workspace, identity, cancelled=cancelled))
+        text = strict_text_attestor(db, workspace, resolve_asset, cancelled=cancelled,
+                                   page_originals=page_originals)
 
         def review(identity, physical):
             row = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
@@ -1065,7 +1068,7 @@ class LibraryApp:
             getattr(ranker, 'minimum_similarity', None), str(getattr(ranker, 'directory', '')))
 
     def _search_ranked_page(self, workspace, query, continuation, owner, scope, epoch,
-                            resources, budget, limit, offset, options, model_identity):
+                            resources, budget, limit, offset, options, model_identity, originals):
         """Complete selected-scope order; all quotation authority stays below."""
         from .search.paging import SearchPage
         from .search.ranked_scope import RankedScope
@@ -1101,8 +1104,10 @@ class LibraryApp:
                 hits, more = ranked.read(db, catalog, workspace, query, mode, filters,
                                          offset=offset, limit=limit, budget=active_budget)
                 results, selections = self._search_results(
-                    db, workspace, query, hits, mode, filters['collection'], result_mode, active_budget)
+                    db, workspace, query, hits, mode, filters['collection'], result_mode,
+                    active_budget, originals=originals)
             budget.check()
+            originals.validate(owner, epoch, budget)
             owner.check(self, epoch)
             if self._ranked_model_identity() != model_identity:
                 raise ValueError('The local ranking model changed during retrieval. Restart search.')
@@ -1189,7 +1194,8 @@ class LibraryApp:
                                       mode=mode, limit=limit, offset=offset,
                                       timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
             results, selections = self._search_results(
-                db, workspace, query, hits, mode, collection, result_mode, budget)
+                db, workspace, query, hits, mode, collection, result_mode, budget,
+                originals=getattr(self, '_page_originals', None))
         if _page_info is not None:
             _page_info.update(window=window, raw_hits=len(hits))
         # A stopped or failed operation must neither publish partial selections
@@ -1200,10 +1206,21 @@ class LibraryApp:
         return tuple(results)
 
 
-    def _search_results(self, db, workspace, query, hits, mode, collection, result_mode, budget):
+    def _search_results(self, db, workspace, query, hits, mode, collection, result_mode,
+                        budget, *, originals=None):
         # Catalog selection, active source selection, and metadata materialization
         # all share this read transaction. No cached edition filters cross snapshots.
-        loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
+        resolver = None
+        if originals is not None:
+            from .search.originals import PageOriginals
+            if type(originals) is not PageOriginals:
+                raise ValueError('Invalid private source-page proof.')
+            originals.plan(self, db, workspace, hits, cancelled=budget.stopped)
+            resolver = lambda identity: originals.resolve(
+                self, db, workspace, identity, cancelled=budget.stopped)
+        loader, metadata, attestor = self._loaders(
+            db, workspace, cancelled=budget.stopped, source_resolver=resolver,
+            page_originals=originals)
         results = []
         selections = {}
         shown = set()
@@ -1220,6 +1237,9 @@ class LibraryApp:
             selected, identity, locator, raw, meta = self._resolve_selection(
                 db, workspace, selections[ref], hit['revision_id'],
                 checked_assets=checked_assets, cancelled=budget.stopped)
+            if originals is not None:
+                originals.register(self, db, workspace, identity, checked_assets,
+                                   cancelled=budget.stopped)
             if raw[selected.start:selected.end] != hit['raw_quote']:
                 raise ValueError('Search quotation differs from the original source.')
             if result_mode is not None:
@@ -1290,40 +1310,48 @@ class LibraryApp:
                                'model': model_identity if ranking_scope == 'all' else None})
         budget = _SearchBudget(resources.timeout, lambda: owner.closed or cancelled())
         budget.check()
+        from .search.originals import PageOriginals
         with owner.operation(self, scope, cursor, resources) as (continuation, epoch):
-            if ranking_scope == 'all':
-                return self._search_ranked_page(workspace, query, continuation, owner, scope, epoch,
-                                                resources, budget, limit, offset, options, model_identity)
-            working = copy(self)
-            working._selections = {}
-            info = {}
-            results = working.search(workspace, query, limit=limit, offset=offset,
-                timeout=budget.remaining(), cancelled=budget.stopped,
-                _source_page=continuation, _page_info=info, _resources=resources, **options)
-            window = info['window']
-            more = False
-            if info['raw_hits'] == limit:
-                probe = copy(working)
-                probe._selections = {}
-                probe_info = {}
-                found = probe.search(workspace, query, limit=1, offset=offset + limit,
+            originals = PageOriginals(self, workspace, resources)
+            try:
+                if ranking_scope == 'all':
+                    return self._search_ranked_page(workspace, query, continuation, owner, scope, epoch,
+                                                    resources, budget, limit, offset, options, model_identity,
+                                                    originals)
+                working = copy(self)
+                working._selections = {}
+                working._page_originals = originals
+                info = {}
+                results = working.search(workspace, query, limit=limit, offset=offset,
                     timeout=budget.remaining(), cancelled=budget.stopped,
-                    _source_page=continuation, _page_info=probe_info, _resources=resources, **options)
-                if probe_info['window'].identity != window.identity:
-                    raise ValueError('The source window changed during result lookahead. Restart search.')
-                more = bool(found)
-            budget.check()
-            owner.check(self, epoch)
-            current = owner.issue(scope, epoch, window.cursor, resources)
-            following = owner.issue(scope, epoch, window.next_cursor, resources)
-            # Publication follows every cursor/snapshot check. A failed attempt
-            # neither publishes partial handles nor evicts the previous page.
-            self._selections.update(working._selections)
-            while len(self._selections) > 2000:
-                del self._selections[next(iter(self._selections))]
-            return SearchPage(tuple(results), current, following, more,
-                              offset, len(window.page_ids), window.source_editions,
-                              window.characters, window.identity)
+                    _source_page=continuation, _page_info=info, _resources=resources, **options)
+                window = info['window']
+                more = False
+                if info['raw_hits'] == limit:
+                    probe = copy(working)
+                    probe._selections = {}
+                    probe_info = {}
+                    found = probe.search(workspace, query, limit=1, offset=offset + limit,
+                        timeout=budget.remaining(), cancelled=budget.stopped,
+                        _source_page=continuation, _page_info=probe_info, _resources=resources, **options)
+                    if probe_info['window'].identity != window.identity:
+                        raise ValueError('The source window changed during result lookahead. Restart search.')
+                    more = bool(found)
+                budget.check()
+                originals.validate(owner, epoch, budget)
+                owner.check(self, epoch)
+                current = owner.issue(scope, epoch, window.cursor, resources)
+                following = owner.issue(scope, epoch, window.next_cursor, resources)
+                # Publication follows every cursor/snapshot check. A failed attempt
+                # neither publishes partial handles nor evicts the previous page.
+                self._selections.update(working._selections)
+                while len(self._selections) > 2000:
+                    del self._selections[next(iter(self._selections))]
+                return SearchPage(tuple(results), current, following, more,
+                                  offset, len(window.page_ids), window.source_editions,
+                                  window.characters, window.identity)
+            finally:
+                originals.close()
 
     def close_search(self):
         """Withdraw this owner's cursors; current source action checks remain."""

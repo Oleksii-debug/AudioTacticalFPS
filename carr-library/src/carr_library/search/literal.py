@@ -20,6 +20,7 @@ MAX_CHARS = 5_000_000
 MAX_QUERY = 500
 _LONG_ASCII = 64 * 1024
 _SPACE_RUN = re.compile(r'\s{2,}')
+_ASCII_RUN = re.compile(r'[\x00-\x7f]+')
 
 
 def _fold(text):
@@ -107,6 +108,39 @@ def _mapped(text, check=lambda: None):
         if i >= next_check:
             check()
             next_check = i + 1024
+        # A small Unicode fragment must not turn a long ASCII remainder into
+        # millions of Python normalization/map assignments. Limit every bulk run
+        # to the existing cancellation interval and leave a cross-boundary
+        # whitespace run or base-plus-mark cluster to the canonical path below.
+        if ord(text[i]) < 128:
+            match = _ASCII_RUN.match(text, i, min(len(text), next_check))
+            j = match.end()
+            if (j < len(text) and not text[j - 1].isspace()
+                    and ud.category(text[j]).startswith('M')):
+                j -= 1
+            if j < len(text) and text[j].isspace():
+                while j > i and text[j - 1].isspace():
+                    j -= 1
+            if j > i:
+                part, offsets, _ = _ascii_mapped(text[i:j], check)
+                if compact and not folded.startswith(part, pos):
+                    raise ValueError('unsupported normalization mapping')
+                boundaries = array('i')
+                begin = shift = 0
+                for cut, removed in zip(offsets.cuts, offsets.removed):
+                    boundaries.extend(range(i + begin + shift, i + cut + shift))
+                    begin, shift = cut, removed
+                boundaries.extend(range(i + begin + shift, i + len(part) + 1 + shift))
+                if compact:
+                    starts.values[pos:pos + len(part)] = boundaries[:-1]
+                    ends.values[pos + 1:pos + len(part) + 1] = boundaries[1:]
+                else:
+                    starts.update(zip(range(pos, pos + len(part)), boundaries))
+                    ends.update(zip(range(pos + 1, pos + len(part) + 1), boundaries[1:]))
+                    parts.append(part)
+                pos += len(part)
+                i = j
+                continue
         j = i + 1
         if text[i].isspace():
             while j < len(text) and text[j].isspace():

@@ -72,7 +72,9 @@ def classify(data, suffix):
             decoded = data.decode("utf-8-sig")
         except UnicodeError as exc:
             raise IntakeError("unsupported binary or text encoding") from exc
-        if any(ord(c) < 32 and c not in "\t\r\n\f" for c in decoded):
+        # UTF-8 preserves these ASCII controls as the same single bytes.
+        # Keep DEL/C1 acceptance and the strict decode above unchanged.
+        if _TEXT_CONTROLS.search(data):
             raise IntakeError("binary control character in text")
         mime = "text/plain"
     expected = {".pdf": "application/pdf", ".rtf": "application/rtf", ".txt": "text/plain"}
