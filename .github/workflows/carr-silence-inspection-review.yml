@@ -24,6 +24,7 @@ jobs:
         shell: bash
     env:
       CARR_SILENCE_HEAD: ${{ github.sha }}
+      CARR_CUE_HEAD: ${{ github.sha }}
       PYTHONUTF8: '1'
       PYTHONDONTWRITEBYTECODE: '1'
       HF_HUB_OFFLINE: '1'
@@ -39,11 +40,11 @@ jobs:
           python-version: '3.11'
       - name: Install exact source and declared tests
         run: python -m pip install ".[test,sync]"
-      - name: Prepare actual Linux test audio
+      - name: Prepare actual Linux audio and the independent CUE reader
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ffmpeg
+          sudo apt-get install --no-install-recommends -y ffmpeg flex bison cmake build-essential
       - name: Prepare the already pinned Windows test audio runtime
         if: runner.os == 'Windows'
         shell: pwsh
@@ -197,6 +198,24 @@ jobs:
         run: |
           unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
           python -I -B -X utf8 ci-silence-inspection/check.py installed 2>&1 | tee ci-silence-inspection/installed.txt
+      - name: Read the exact independent upstream CUE parser source
+        if: runner.os == 'Linux'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: lipnitsk/libcue
+          ref: cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea
+          path: .ci-libcue
+          persist-credentials: false
+      - name: Build and require the actual upstream reader
+        if: runner.os == 'Linux'
+        timeout-minutes: 12
+        run: |
+          test "$(git -C ../.ci-libcue rev-parse HEAD)" = cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea
+          cmake -S ../.ci-libcue -B ../.ci-libcue/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build ../.ci-libcue/build --parallel 2
+          ctest --test-dir ../.ci-libcue/build --output-on-failure
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 scripts/probe_cue_interchange.py --libcue ../.ci-libcue/build/libcue.so.2.3.0 --report ci-silence-inspection/libcue-reader.json 2>&1 | tee ci-silence-inspection/libcue-reader.txt
       - name: Preserve exact identity
         if: always()
         run: |

@@ -173,7 +173,13 @@ def test_new_timeline_metadata_requires_its_exact_project_checkpoint(authored, t
     'chapters-1.cue', 'CHAPTERS-0001.cue', 'notes.cue'])
 def test_unknown_private_cue_files_remain_visible_backup_refusals(authored, tmp_path, name):
     app, _, _, _, job_root, _, _, _ = authored
+    if name == 'CHAPTERS-0001.cue':
+        # NTFS preserves the original entry casing when an alternate-case open
+        # overwrites it. Create the actual unknown entry instead of changing
+        # the contents of the existing, recognized private generated file.
+        (job_root / 'chapters-0001.cue').unlink()
     (job_root / name).write_bytes(b'FILE "foreign.wav" WAVE\r\n')
+    assert name in {entry.name for entry in job_root.iterdir()}
     with pytest.raises(ValueError, match='validated backup adapter'):
         create_backup(app, tmp_path / 'refused')
     assert not (tmp_path / 'refused').exists()
