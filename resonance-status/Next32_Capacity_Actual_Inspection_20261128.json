@@ -1,0 +1,400 @@
+{
+  "schema": "carr-exact-capacity-inspection/1",
+  "status": "PREPARED_NOT_RUN",
+  "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "source_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "run": 46084373979,
+  "inspector": "00b04dfbf41912d0803cba122f30e11005ba499b",
+  "previous_inspector": "6fdd66ef88a63b3027197267bc6fa18cec6a5320",
+  "changes": [
+    "Four exact closed artifacts, including observed50k40BudgetExceeded, replace previous baseline evidence only.",
+    "Source origin count21 matches current immutable declared profile.",
+    "Available Windows runner performs read-only ZIP inspection; measured workloads ran separately as recorded.",
+    "All per-member hashes from actual job retention receipts retained; aggregate/configuration/source/phase/ZIP checks and finite bounds unchanged."
+  ],
+  "artifacts": [
+    {
+      "artifact": 15238034244,
+      "job": 140791690854,
+      "books": 1000,
+      "segments_per_book": 20,
+      "zip_bytes": 26789,
+      "zip_sha256": "b5409940411be791e1d49efca02d03b9f5a51fe172d5b2ab6bc772b96d222478",
+      "name": "retained-capacity-large-source-v1-1000x20-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+      "status": "PASS",
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "restart",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "operations",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "backup",
+          "reason": null,
+          "status": "PASS"
+        }
+      ],
+      "retained": {
+        "1000/backup.json": {
+          "bytes": 6938,
+          "sha256": "6fb0f808638e4da5420e8caa9eca609082745a5e064b84d199348579d6a889c2"
+        },
+        "1000/backup.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/backup.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/build.json": {
+          "bytes": 5976,
+          "sha256": "4580c5d16fbcfa3c1e975825562b1456453dd4107434950bb2e76fda89007c37"
+        },
+        "1000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/measure.json": {
+          "bytes": 6997,
+          "sha256": "657dd094589a89654d341183e66c3f42f97005cce4bfaae3f78abe8ff1c34bd1"
+        },
+        "1000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/operations.json": {
+          "bytes": 10140,
+          "sha256": "466bf9926683e02966bb94bd3257b4f24ae737f23813b23c20d99acb36eb6624"
+        },
+        "1000/operations.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/operations.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/restart.json": {
+          "bytes": 6731,
+          "sha256": "d7901e5883389d9287ea0fc0170f5c062363a6b4c06e99d63535c634ee71b118"
+        },
+        "1000/restart.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/restart.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5460,
+          "sha256": "3ecb86ae2f73368976a5a6aeae76c108122544e6e95ce675b12e5b81241c4226"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 44670,
+          "sha256": "2f2971b2d564c5af09959403afa16cb33eca291ef168986e4d98144d8b8452e0"
+        }
+      }
+    },
+    {
+      "artifact": 15238743027,
+      "job": 140791690868,
+      "books": 10000,
+      "segments_per_book": 20,
+      "zip_bytes": 26873,
+      "zip_sha256": "e5dcbc357ddf9cb228c7ad216ff592fdff19b1eaa7d1193df283618a81b5c1d3",
+      "name": "retained-capacity-large-source-v1-10000x20-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+      "status": "PASS",
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "restart",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "operations",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "backup",
+          "reason": null,
+          "status": "PASS"
+        }
+      ],
+      "retained": {
+        "10000/backup.json": {
+          "bytes": 6954,
+          "sha256": "affe402ef3f19a10ecb74e3a83e18a32ad4d238ee7bbefc85163e4a8994f7de7"
+        },
+        "10000/backup.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/backup.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/build.json": {
+          "bytes": 5981,
+          "sha256": "62ba7f7b1e5708e32eef2a9f2b44147f6406efe3ede6e9e4c857b4acd06ee762"
+        },
+        "10000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/measure.json": {
+          "bytes": 7017,
+          "sha256": "af1116726c357a3501f0a3e58fa37ac27c2d30fc134fc3e880b1b644bc70c2da"
+        },
+        "10000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/operations.json": {
+          "bytes": 10140,
+          "sha256": "d6f05ecc27bd03de82192a56ea9546addb7df7a025c5c8317c7581520bc2129d"
+        },
+        "10000/operations.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/operations.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/restart.json": {
+          "bytes": 6753,
+          "sha256": "902c240537bb072ed8a6c11b789a003d95301d38b19de589e840943635718f04"
+        },
+        "10000/restart.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/restart.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5462,
+          "sha256": "4d9f00654f444672b019315f8489429bea710c92bc68cce6d5ae1e4fc4c12750"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 44732,
+          "sha256": "b7d5c3d9cf81d678c4503d8d6b0128edbbbd064ea0f1b6a53cba201b33214677"
+        }
+      }
+    },
+    {
+      "artifact": 15241070554,
+      "job": 140791690869,
+      "books": 50000,
+      "segments_per_book": 20,
+      "zip_bytes": 26961,
+      "zip_sha256": "0cbcb62467f6e73655169ddd7ee08e30520d54f5b0f2e332f403fcab3d44d231",
+      "name": "retained-capacity-large-source-v1-50000x20-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+      "status": "PASS",
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "restart",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "operations",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "backup",
+          "reason": null,
+          "status": "PASS"
+        }
+      ],
+      "retained": {
+        "50000/backup.json": {
+          "bytes": 6982,
+          "sha256": "c7a10bac1aa9e4f4683402b414f262279848e8be67287e1cecf6ee32e289a95f"
+        },
+        "50000/backup.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/backup.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/build.json": {
+          "bytes": 5981,
+          "sha256": "dd41487ba13c3bb926b01397bf6f585748ebafd3bd55fc4bda056ea4841bf633"
+        },
+        "50000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.json": {
+          "bytes": 7027,
+          "sha256": "ec2b2642809c33ffae20e2d464976fb1b8931d1559502e8814160eae3c4cad24"
+        },
+        "50000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/operations.json": {
+          "bytes": 10150,
+          "sha256": "7254c3d44864d75e1d5dd2bc1910c68ab84708345ce96275ad8350ec44b235ec"
+        },
+        "50000/operations.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/operations.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/restart.json": {
+          "bytes": 6759,
+          "sha256": "d68c2b6833dda5650b2730e744f8e833baed2e95f51879a2b0416f0d66d2a3bb"
+        },
+        "50000/restart.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/restart.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5462,
+          "sha256": "c021dd5d4dc866b678dfa504d7dc032103046a81f1223d6c8d461aa142afbb5a"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 44789,
+          "sha256": "e0b7edfaf384473a11006bb47566712011c89e12e0ee6ebbac44ab8a0fa48ab9"
+        }
+      }
+    },
+    {
+      "artifact": 15241261096,
+      "job": 140791690855,
+      "books": 50000,
+      "segments_per_book": 40,
+      "zip_bytes": 13011,
+      "zip_sha256": "eb85bce134c5a5c79af954fd68092b2d140836a6f1183b4b255b8a295254a63c",
+      "name": "retained-capacity-large-source-v1-50000x40-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+      "status": "PARTIAL",
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": "BudgetExceeded",
+          "status": "PARTIAL"
+        }
+      ],
+      "retained": {
+        "50000/build.json": {
+          "bytes": 5987,
+          "sha256": "4878d52765d9fda621ac0997851867e7efe97be1f24ad71035d5cfec437026ee"
+        },
+        "50000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.json": {
+          "bytes": 5596,
+          "sha256": "03c630e8455d32c896c5e74a69e56c99b4b33524245ce01fe133d79da2162f1e"
+        },
+        "50000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5462,
+          "sha256": "75c60e4da42c68aa4adcf837b27764c0075eff68d931c7a2411cdee331a2172e"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 19246,
+          "sha256": "06c47a55ce6af4994b78ef423fcc40f01d0273fd5f8f76361b8c777468daa627"
+        }
+      }
+    }
+  ],
+  "limits": [
+    "No benchmark execution or qualification occurs in the inspector.",
+    "No application or owner source checked out/executed.",
+    "No arbitrary ZIP extraction, credentials to storage, binary artifact publication or new corpus.",
+    "No phase time inferred before actual JSON read."
+  ]
+}
