@@ -405,6 +405,70 @@ def test_ris_full_publication_title_precedes_journal_abbreviation_with_warning(l
     assert any('J. Libr. Stud.' in warning for warning in preview.entries[0].warnings)
 
 
+@pytest.mark.parametrize('operation', ['duplicates', 'preview', 'selected', 'export'])
+def test_bulk_reference_byte_budget_rejects_before_decoding(db, library, monkeypatch, operation):
+    data = b'[{"title":"New reference"}]'
+    preview = library.import_preview(data, format='csl-json')
+    library.create(title='Large note one', notes='Ж' * 10000)
+    library.create(title='Large note two', notes='Ж' * 10000)
+    before = tuple(db.execute('SELECT * FROM academic_reference ORDER BY id'))
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000, raising=False)
+
+    def forbidden_decode(row):
+        pytest.fail('The bulk metadata budget must be checked before decoding full references.')
+
+    monkeypatch.setattr(academic, '_row_reference', forbidden_decode)
+    actions = {
+        'duplicates': library.duplicates,
+        'preview': lambda: library.import_preview(data, format='csl-json'),
+        'selected': lambda: library.import_selected(preview, (0,)),
+        'export': library.export,
+    }
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        actions[operation]()
+    assert tuple(db.execute('SELECT * FROM academic_reference ORDER BY id')) == before
+    assert db.in_transaction
+
+
+def test_reference_byte_budget_counts_utf8_and_allows_exact_threshold(db, library, monkeypatch):
+    row = library.create(title='Українські матеріали', notes='Ж' * 10000)
+    stored = db.execute('SELECT * FROM academic_reference WHERE id=?', (row.id,)).fetchone()
+    stored_bytes = sum(len(str(value).encode('utf-8')) for value in stored if value is not None)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', stored_bytes, raising=False)
+    assert library._all() == (row,)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', stored_bytes - 1)
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library._all()
+
+
+def test_reference_budget_preserves_workspace_archive_and_identity_order(db, library, monkeypatch):
+    first = library.create(title='First', doi='10.1234/a')
+    second = library.create(title='Second', doi='10.1234/a')
+    archived = library.create(title='Archived large note', notes='Ж' * 10000, archived=True)
+    AcademicLibrary(db, 'second').create(title='Foreign large note', notes='Ж' * 10000)
+    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4000, raising=False)
+    assert library._all() == tuple(sorted((first, second), key=lambda row: row.id))
+    group, = library.duplicates()
+    assert group.reference_ids == tuple(sorted((first.id, second.id)))
+    assert archived.id not in group.reference_ids
+    with pytest.raises(ValueError, match='metadata exceeds'):
+        library._all(include_archived=True)
+
+
+def test_reference_count_budget_rejects_before_full_decode(db, library, monkeypatch):
+    library.create(title='First')
+    library.create(title='Second')
+    monkeypatch.setattr(academic, 'MAX_REFERENCES', 1)
+
+    def forbidden_decode(row):
+        pytest.fail('The reference-count limit must precede full decoding.')
+
+    monkeypatch.setattr(academic, '_row_reference', forbidden_decode)
+    with pytest.raises(ValueError, match='at most'):
+        library.duplicates()
+    assert db.execute('SELECT count(*) FROM academic_reference').fetchone()[0] == 2
+
+
 @pytest.mark.parametrize('operation', ['preview', 'duplicates', 'export', 'selected_import'])
 def test_reference_scan_byte_budget_rejects_before_decoding(db, library, monkeypatch, operation):
     preview = library.import_preview(b'[{"title":"Incoming"}]', format='csl-json')
@@ -660,6 +724,48 @@ def test_duplicate_preview_budget_preserves_overlapping_identifier_matches(libra
     with pytest.raises(ValueError, match='Too many duplicate matches'):
         library.import_preview(data, format='csl-json')
     assert len(library.list()) == 2
+
+
+@pytest.mark.parametrize('format', ['ris', 'csl-json'])
+def test_duplicate_preview_fanout_is_bounded_without_writes(db, library, monkeypatch, format):
+    for index in range(12):
+        library.create(title=f'Existing {index}', doi='10.1234/shared')
+    if format == 'ris':
+        data = b'TY  - BOOK\nTI  - Incoming\nDO  - 10.1234/shared\nER  -\n' * 12
+    else:
+        data = json.dumps([{'title': 'Incoming', 'DOI': '10.1234/shared'}] * 12).encode()
+    before = tuple(db.execute('SELECT * FROM academic_reference ORDER BY id'))
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 100, raising=False)
+    with pytest.raises(ValueError, match='Too many duplicate matches'):
+        library.import_preview(data, format=format)
+    assert tuple(db.execute('SELECT * FROM academic_reference ORDER BY id')) == before
+    assert db.in_transaction
+
+
+def test_duplicate_budget_preserves_sorted_deduplicated_overlapping_matches(library, monkeypatch):
+    first = library.create(title='First', doi='10.1234/shared', isbn='0306406152')
+    second = library.create(title='Second', doi='10.1234/shared', isbn='9780306406157')
+    data = json.dumps([{'title': 'Incoming', 'DOI': '10.1234/shared',
+                        'ISBN': '0306406152'}] * 2).encode()
+    # Two keys each visit two existing IDs and two input indices, for each of
+    # two input records. The conservative limit counts before deduplication.
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 16, raising=False)
+    preview = library.import_preview(data, format='csl-json')
+    assert [entry.duplicate_ids for entry in preview.entries] == [tuple(sorted((first.id, second.id)))] * 2
+    assert [entry.duplicate_indices for entry in preview.entries] == [(1,), (0,)]
+    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 15)
+    with pytest.raises(ValueError, match='Too many duplicate matches'):
+        library.import_preview(data, format='csl-json')
+
+
+def test_full_size_distinct_reference_preview_is_not_truncated(library):
+    data = json.dumps([{'title': f'Paper {index}', 'DOI': f'10.1234/{index}'}
+                       for index in range(2000)]).encode()
+    preview = library.import_preview(data, format='csl-json')
+    assert len(preview.entries) == 2000
+    assert [entry.index for entry in preview.entries] == list(range(2000))
+    assert all(not entry.duplicate_ids and not entry.duplicate_indices for entry in preview.entries)
+    assert library.list() == ()
 
 
 @pytest.mark.parametrize('format', ['ris', 'csl-json'])

@@ -1,4 +1,9 @@
-"""The desktop cancellation control covers the complete source search operation."""
+"""The desktop cancellation control covers the complete source search operation.
+
+Busy-lock cases allow two seconds for the operation deadline but independently
+require return within one second. This isolates immediate lock refusal from a
+50 ms deadline racing Windows scheduling; deadline-specific cases remain below.
+"""
 from threading import Event
 from contextlib import closing
 import sqlite3
@@ -288,7 +293,7 @@ def test_busy_search_fails_promptly_and_preserves_previous_selection(research, m
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='library is busy'):
-                app.search(workspace, 'history', mode=mode, timeout=.05)
+                app.search(workspace, 'history', mode=mode, timeout=2)
             assert monotonic() - started < 1.0
             assert app._selections == selections
         finally:
@@ -374,9 +379,126 @@ def test_federated_name_lookup_obeys_busy_search_policy(research):
         try:
             started = monotonic()
             with pytest.raises(RuntimeError, match='library is busy'):
-                service.search((workspace,), 'history', timeout=.05)
+                service.search((workspace,), 'history', timeout=2)
             assert monotonic() - started < 1.0
             assert service.current is previous
         finally:
             writer.rollback()
     assert service.copy(previous.hits[0], 'quote') == 'history'
+
+
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+def test_busy_snapshot_fails_promptly_and_preserves_previous_selection(research, mode):
+    app, workspace = research
+    previous, = app.search(workspace, 'history')
+    selections = dict(app._selections)
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        assert writer.execute('PRAGMA journal_mode=DELETE').fetchone()[0] == 'delete'
+        writer.execute('BEGIN EXCLUSIVE')
+        try:
+            started = monotonic()
+            with pytest.raises(RuntimeError, match='busy.*Retry'):
+                app.search(workspace, 'history', mode=mode, timeout=2)
+            assert monotonic() - started < 1.0
+            assert app._selections == selections
+        finally:
+            writer.rollback()
+    assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'history'
+    assert app.search(workspace, 'archives', mode=mode)
+
+
+def test_federated_name_lookup_obeys_budget_and_retains_completed_session(research):
+    app, workspace = research
+    other = app.create_workspace('Other library')
+    app.add_text(other, 'Other source', 'Railway history in another library.')
+    service = FederatedSearch(app)
+    previous = service.search((workspace, other), 'history')
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        writer.execute('PRAGMA journal_mode=DELETE')
+        writer.execute('BEGIN EXCLUSIVE')
+        try:
+            started = monotonic()
+            with pytest.raises(RuntimeError, match='busy.*Retry'):
+                service.search((workspace, other), 'railway', timeout=2)
+            assert monotonic() - started < 1.0
+            assert service.current is previous
+        finally:
+            writer.rollback()
+    assert service.copy(previous.hits[0], 'quote') == 'history'
+    assert service.search((other, workspace), 'history').workspaces == (other, workspace)
+
+
+@pytest.mark.parametrize('stage', ['schema', 'authorization'])
+@pytest.mark.parametrize('stop', ['cancel', 'deadline'])
+def test_snapshot_setup_is_interruptible_before_result_publication(research, monkeypatch, stage, stop):
+    app, workspace = research
+    previous, = app.search(workspace, 'history')
+    selections = dict(app._selections)
+    state = {'inside': False, 'completed': False, 'now': 100.0}
+
+    def exercise_sql(db):
+        state['inside'] = True
+        if stop == 'deadline':
+            state['now'] = 102.0
+        try:
+            db.execute('WITH RECURSIVE n(v) AS '
+                '(SELECT 1 UNION ALL SELECT v+1 FROM n WHERE v<20000) '
+                'SELECT sum(v) FROM n').fetchone()
+            state['completed'] = True
+        finally:
+            # A transient cancellation during SQL must remain latched after
+            # the schema/authorization callback unwinds.
+            state['inside'] = False
+
+    original_signature = application._schema_signature
+    original_authorize = LibraryApp._authorize
+
+    def signature(db):
+        exercise_sql(db)
+        return original_signature(db)
+
+    def authorize(db, requested):
+        exercise_sql(db)
+        return original_authorize(db, requested)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(application, 'monotonic', lambda: state['now'])
+        if stage == 'schema':
+            patch.setattr(application, '_schema_signature', signature)
+        else:
+            patch.setattr(LibraryApp, '_authorize', staticmethod(authorize))
+        with pytest.raises(TimeoutError, match='cancelled or timed out'):
+            app.search(workspace, 'railway', timeout=1.0,
+                       cancelled=lambda: stop == 'cancel' and state['inside'])
+    assert not state['completed']
+    assert app._selections == selections
+    assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'history'
+    assert app.search(workspace, 'archives')
+
+
+def test_wal_writer_does_not_prevent_authorized_snapshot_search(research):
+    app, workspace = research
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        assert writer.execute('PRAGMA journal_mode=WAL').fetchone()[0] == 'wal'
+        writer.execute('BEGIN EXCLUSIVE')
+        writer.execute('UPDATE workspace_meta SET archived=1 WHERE workspace=?', (workspace,))
+        try:
+            hit, = app.search(workspace, 'history', timeout=.5)
+            assert hit.workspace == workspace and hit.quote == 'history'
+        finally:
+            writer.rollback()
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'history'
+
+
+def test_nonsearch_reads_retain_busy_policy_and_query_only_snapshot(research):
+    app, workspace = research
+    with app.read(workspace) as db:
+        assert db.execute('PRAGMA busy_timeout').fetchone()[0] == 5000
+        assert db.in_transaction
+        with pytest.raises(sqlite3.OperationalError, match='readonly'):
+            db.execute('UPDATE workspace_meta SET archived=1 WHERE workspace=?', (workspace,))
+    with app._search_read(workspace, 1.0, lambda: False) as (db, budget):
+        assert db.execute('PRAGMA busy_timeout').fetchone()[0] == 0
+        assert db.in_transaction
+        budget.check()
+    assert app.workspaces()[0].id == workspace

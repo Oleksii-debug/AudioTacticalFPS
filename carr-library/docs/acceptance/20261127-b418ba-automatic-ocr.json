@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "tested_commit": "b418baf6cd5c4a00cdd9c7337efba053bd3b870b",
+  "tested_tree": "fdec0918f0bb64127435fe8002be8a34f8bc1ae3",
+  "status": "PASS",
+  "run_id": 46041684825,
+  "job_id": 140650696116,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46041684825/job/140650696116",
+  "evidence_source": "Returned completed source job log.",
+  "suites": [
+    {
+      "suite": "tests/extract/test_language_detection.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_language_regions.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_automatic_ocr_native.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_ocr_language_presets.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_ocr_selection.py",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_ocr_native.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 133,
+    "failed": 0,
+    "skipped": 0
+  },
+  "qualification": {
+    "scope": "Source-level automatic OCR, cancellation, controller and pipeline regressions.",
+    "native_ocr_runtime": "NOT_ESTABLISHED_BY_THIS_RECORD"
+  }
+}

@@ -6,6 +6,7 @@ export, then supplies deterministic serialization bytes/text: document rendering
 has its own tests. The file writers, LibraryApp and SQLite are not replaced.
 """
 import ast
+import sys
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
@@ -46,17 +47,19 @@ def research(tmp_path):
 
 @pytest.fixture
 def harness(research, monkeypatch):
-    def create(destination, index, *, cancel_dialog=False):
+    def create(destination, index, *, cancel_dialog=False, real_render=False):
         h = SimpleNamespace(library=research.app, active=(research.workspace, research.topic),
                             cancel_event=Event(), reports=[], jobs=[], dialogs=[],
                             after_render=lambda: None, after_dialog=lambda: None)
         h.report = h.reports.append
         h._topic = Mock(side_effect=lambda: h.active)
         h.run_job = lambda *args: h.jobs.append(args)
-        wx = SimpleNamespace(ID_OK=100, ID_CANCEL=101, YES=102, NO=103,
+        wx = SimpleNamespace(ID_OK=100, ID_CANCEL=101, ID_YES=102, ID_NO=103,
                              FD_SAVE=1, FD_OVERWRITE_PROMPT=2,
                              YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16)
+        wx.YES, wx.NO = wx.ID_YES, wx.ID_NO
         wx.MessageBox = Mock(return_value=wx.YES)
+        monkeypatch.setitem(sys.modules, 'wx', wx)
 
         class FileDialog:
             def __init__(self, *args, **kwargs):
@@ -84,9 +87,9 @@ def harness(research, monkeypatch):
         actual_export = research.app.export_topic
 
         def authorized_payload(workspace, topic, *, format, cancelled):
-            actual_export(workspace, topic, format='text', cancelled=cancelled)
+            content = actual_export(workspace, topic, format=format if real_render else 'text', cancelled=cancelled)
             h.after_render()
-            return PAYLOADS[format]
+            return content if real_render else PAYLOADS[format]
 
         h.backend = Mock(side_effect=authorized_payload)
         monkeypatch.setattr(research.app, 'export_topic', h.backend)
@@ -101,6 +104,7 @@ def harness(research, monkeypatch):
                      'confirm_export_destination': confirm_export_destination,
                      'export_completion': export_file.export_completion}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
+        h.export_namespace = namespace
         h.invoke = lambda: namespace['export_topic'](h, None)
 
         def run():
@@ -121,28 +125,6 @@ def harness(research, monkeypatch):
 def payload_bytes(format):
     value = PAYLOADS[format]
     return value if isinstance(value, bytes) else value.encode('utf-8')
-
-
-@pytest.mark.parametrize('index,format,suffix', FORMATS)
-@pytest.mark.parametrize('when', ['queued', 'rendering'])
-@pytest.mark.parametrize('existing', [False, True])
-def test_chosen_destination_cannot_replace_a_newer_file(
-        harness, tmp_path, index, format, suffix, when, existing):
-    target = tmp_path / ('selected' + suffix)
-    if existing:
-        target.write_bytes(b'Explicitly selected previous export.')
-    h = harness(target, index)
-    h.invoke()
-    assert len(h.jobs) == 1
-    newer = b'Independent work saved after choosing the destination.'
-    if when == 'queued':
-        target.write_bytes(newer)
-    else:
-        h.after_render = lambda: target.write_bytes(newer)
-    h.run()
-    assert target.read_bytes() == newer
-    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
-    assert not list(tmp_path.glob('.research-export-*'))
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
@@ -176,7 +158,7 @@ def test_appended_existing_destination_is_confirmed_before_work(
     target = requested.with_suffix(suffix)
     target.write_bytes(b'Keep the existing document until confirmed.')
     h = harness(requested, index)
-    h.wx.MessageBox.return_value = h.wx.YES if allow else h.wx.NO
+    h.wx.MessageBox.return_value = h.wx.ID_YES if allow else h.wx.ID_NO
     h.invoke()
     h.wx.MessageBox.assert_called_once()
     message, caption, style, parent = h.wx.MessageBox.call_args.args
@@ -227,47 +209,15 @@ def test_invalid_filter_index_does_not_select_another_format(harness, tmp_path, 
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_existing_uppercase_suffix_is_kept_and_confirmation_is_bound_to_it(
+def test_existing_uppercase_suffix_is_kept_and_explicitly_confirmed(
         harness, tmp_path, index, format, suffix):
     target = tmp_path / ('Existing' + suffix.upper())
-    target.write_bytes(b'Explicit replacement confirmation applies to this exact path.')
+    target.write_bytes(b'Explicit confirmation approves replacement of this exact path.')
     h = harness(target, index)
     h.invoke()
     h.wx.MessageBox.assert_called_once()
     h.run()
     assert target.read_bytes() == payload_bytes(format)
-
-
-@pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_file_appearing_when_picker_closes_requires_explicit_confirmation(
-        harness, tmp_path, index, format, suffix):
-    target = tmp_path / ('selected' + suffix)
-    newer = b'Independent work saved while the picker closes.'
-    h = harness(target, index)
-    h.after_dialog = lambda: target.write_bytes(newer)
-    h.wx.MessageBox.return_value = h.wx.NO
-    h.invoke()
-    h.wx.MessageBox.assert_called_once()
-    assert not h.jobs and not h.reports
-    assert target.read_bytes() == newer
-    h.backend.assert_not_called()
-
-
-@pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_file_changed_during_explicit_confirmation_is_preserved(
-        harness, tmp_path, index, format, suffix):
-    target = tmp_path / ('selected' + suffix)
-    target.write_bytes(b'Original selected export.')
-    newer = b'Independent work saved during replacement confirmation.'
-    h = harness(target, index)
-    def confirm(*args):
-        target.write_bytes(newer)
-        return h.wx.YES
-    h.wx.MessageBox.side_effect = confirm
-    h.invoke()
-    h.run()
-    assert target.read_bytes() == newer
-    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
@@ -352,10 +302,57 @@ def test_new_document_cannot_be_written_inside_private_library(
     h = harness(target, index)
     h.invoke()
     assert not h.jobs
+    h.backend.assert_not_called()
     assert not target.exists()
     assert research.app.database.read_bytes() == database
     assert research.original.read_bytes() == original
     assert len(h.reports) == 1 and 'outside the private library folder' in h.reports[0]
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+@pytest.mark.parametrize('existing', [False, True])
+@pytest.mark.parametrize('phase', ['queued', 'rendering'])
+def test_real_document_export_preserves_competing_file_before_writer(
+        harness, tmp_path, index, format, suffix, existing, phase):
+    target = tmp_path / ('concurrent' + suffix)
+    if existing:
+        target.write_bytes(b'Previously approved document')
+    h = harness(target, index, real_render=True)
+    competing = b'Newer document saved after destination selection'
+    if phase == 'rendering':
+        h.after_render = lambda: target.write_bytes(competing)
+    h.invoke()
+    assert len(h.jobs) == 1
+    if phase == 'queued':
+        target.write_bytes(competing)
+    h.run()
+    assert h.backend.call_count == 1
+    assert target.read_bytes() == competing
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_real_document_export_preserves_file_changed_during_confirmation(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('changed-during-question' + suffix)
+    target.write_bytes(b'File originally offered for replacement')
+    h = harness(target, index, real_render=True)
+    competing = b'File saved while the overwrite question is open'
+
+    def competing_save(*args):
+        target.write_bytes(competing)
+        return h.wx.ID_YES
+
+    h.wx.MessageBox.side_effect = competing_save
+    h.invoke()
+    h.backend.assert_not_called()
+    h.run()
+    assert h.backend.call_count == 1
+    assert target.read_bytes() == competing
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
@@ -388,3 +385,79 @@ def test_destination_changed_during_render_preserves_independent_work(
         assert target.read_bytes() == independent
     assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+@pytest.mark.parametrize('when', ['queued', 'rendering'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_chosen_destination_cannot_replace_a_newer_file(
+        harness, tmp_path, index, format, suffix, when, existing):
+    target = tmp_path / ('selected' + suffix)
+    if existing:
+        target.write_bytes(b'Explicitly selected previous export.')
+    h = harness(target, index)
+    h.invoke()
+    assert len(h.jobs) == 1
+    newer = b'Independent work saved after choosing the destination.'
+    if when == 'queued':
+        target.write_bytes(newer)
+    else:
+        h.after_render = lambda: target.write_bytes(newer)
+    h.run()
+    assert target.read_bytes() == newer
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_file_appearing_when_picker_closes_requires_explicit_confirmation(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('selected' + suffix)
+    newer = b'Independent work saved while the picker closes.'
+    h = harness(target, index)
+    h.after_dialog = lambda: target.write_bytes(newer)
+    h.wx.MessageBox.return_value = h.wx.NO
+    h.invoke()
+    h.wx.MessageBox.assert_called_once()
+    assert not h.jobs and not h.reports
+    assert target.read_bytes() == newer
+    h.backend.assert_not_called()
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_file_changed_during_explicit_confirmation_is_preserved(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('selected' + suffix)
+    target.write_bytes(b'Original selected export.')
+    newer = b'Independent work saved during replacement confirmation.'
+    h = harness(target, index)
+    def confirm(*args):
+        target.write_bytes(newer)
+        return h.wx.YES
+    h.wx.MessageBox.side_effect = confirm
+    h.invoke()
+    h.run()
+    assert target.read_bytes() == newer
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_completed_document_export_reports_cleanup_notice_without_retry(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('completed' + suffix)
+    h = harness(target, index)
+    key = 'write_binary_export' if format == 'docx' else 'write_export'
+    actual_writer = h.export_namespace[key]
+    notice = 'The export is saved; temporary cleanup needs attention.'
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return export_file.ExportReceipt(receipt.path, notice)
+
+    h.export_namespace[key] = completed_with_notice
+    h.invoke()
+    h.run()
+    assert target.read_bytes() == payload_bytes(format)
+    assert h.backend.call_count == 1
+    assert len(h.reports) == 1 and notice in h.reports[0]
+    assert h.reports[0].startswith('Research document exported')

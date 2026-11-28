@@ -104,6 +104,8 @@ class AcademicController:
     def export_result(self, destination, *, identity=None, format='text', include_notes=False,
                       approval=None):
         """Return the rendered text and its publication receipt without rereading."""
+        # Preserve the state inspected before confirmation or rendering. Direct
+        # callers still select/approve their destination before invoking this API.
         if approval is None:
             approval = capture_export_destination(destination, private_root=self.library.root)
         content = self.export(identity=identity, format=format, include_notes=include_notes)
@@ -259,6 +261,7 @@ def _native_types():
             super().__init__(parent, title='Edit academic reference' if reference else 'New academic reference',
                              size=(780, 740), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self._window_alive = True
+            self._native_window_id = self.GetId()
             self.save, self.executor = save, executor
             self.confirm_discard = confirm_discard
             self.pending, self.saved = False, None
@@ -340,7 +343,7 @@ def _native_types():
             self.controls['title'].SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_window_id:
                 self._window_alive = False
             event.Skip()
 
@@ -555,6 +558,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
             super().__init__(parent, title='Academic library', size=(960, 820),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self._window_alive = True
+            self._native_window_id = self.GetId()
             self.controller, self.executor = controller, executor
             self.rows, self.offset, self.has_more = (), 0, False
             self.pending = False
@@ -642,7 +646,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.query.SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_window_id:
                 self._window_alive = False
                 self.cancel_event.set()
             event.Skip()
@@ -1010,7 +1014,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 finally:
                     dialog.Destroy()
                 approval = confirm_export_destination(self, path,
-                    private_root=self.controller.library.root, wx_module=wx)
+                    private_root=self.controller.library.root, title='Replace academic bibliography', wx_module=wx)
                 if approval is None:
                     return
                 self.export_to(path, format=format, identity=identity,

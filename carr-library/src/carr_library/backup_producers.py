@@ -19,10 +19,16 @@ TRANSLATION = re.compile(r'state/translation/jobs/([0-9a-f]{32})(\.control)?\.js
 LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
 STUDIO = re.compile(r'state/studio/jobs/(' + ID + r')/(job|control|project|timeline)\.json\Z')
-SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
+SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z')
 
 
 def limit(name):
+    if name == 'state/audio-metadata/choices.json':
+        from .audio.metadata_review import MAX_BYTES
+        return MAX_BYTES
+    if name == 'state/assistant/workflow-templates.json':
+        from .assistant.templates import MAX_BYTES
+        return MAX_BYTES
     if READER.fullmatch(name) or STUDIO.fullmatch(name) or SUBTITLE.fullmatch(name):
         return 32 * 1024 * 1024
     if PROFILE.fullmatch(name):
@@ -85,40 +91,37 @@ def artifacts(values):
 
 def _studio_job(value, identity):
     from .studio.project import Project
+    from .studio.render import _operation_sha256
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'total_disk_bytes'})
+                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'total_disk_bytes',
+                                                   'operation_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
     if value['fingerprint'] != project.fingerprint:
         raise ValueError('Production project fingerprint changed.')
-    if value['status'] not in ('pending', 'queued', 'running', 'paused', 'cancelled',
-                             'attention', 'failed', 'complete'):
+    if value['status'] not in ('pending', 'queued', 'running', 'paused', 'cancelled', 'failed', 'complete', 'attention', 'waiting-input'):
         raise ValueError('Invalid production status.')
-    if 'total_disk_bytes' in value:
-        number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
-    if 'resource_plan' in value:
-        from .operations.models import ResourceRequest
-        plan = value['resource_plan']
-        fields(plan, {'schema', 'request', 'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'})
-        if type(plan['schema']) is not int or plan['schema'] != 1:
-            raise ValueError('Invalid production resource-plan schema.')
-        # A restored estimate is inert. Validate its typed bytes without
-        # opening external paths or creating a runtime coordinator; run()
-        # always recomputes admission from the current explicit policy.
-        ResourceRequest.from_dict(plan['request'])
-        if plan['request']['disk_path'] is not None:
-            path(plan['request']['disk_path'])
-        for directory, _ in plan['request']['additional_disks']:
-            path(directory)
-        for name in ('cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'):
-            text(plan[name], 4096)
     if value['format'] not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
         raise ValueError('Invalid production output format.')
     if type(value['stems']) is not bool or type(value['nodes']) is not dict or len(value['nodes']) > 100000:
         raise ValueError('Invalid production options or nodes.')
-    path(value['destination'])
+    if 'operation_sha256' in value:
+        digest(value['operation_sha256'])
+        if value['operation_sha256'] != _operation_sha256(value):
+            raise ValueError('Production operation options changed.')
+    if 'recovery' in value:
+        _studio_recovery(value['recovery'])
+    if value['destination'] == '':
+        if value['status'] != 'waiting-input' or value.get('recovery', {}).get('requires_output_directory') is not True:
+            raise ValueError('Only an unapproved restored job may have no output directory.')
+    else:
+        path(value['destination'])
+    if 'total_disk_bytes' in value:
+        number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
+    if 'resource_plan' in value:
+        _studio_resource_plan(value['resource_plan'])
     for name in ('created', 'updated'):
         number(value[name])
     for name in ('progress', 'error'):
@@ -135,6 +138,16 @@ def _studio_job(value, identity):
         raise ValueError('Invalid runtime inventory.')
     if 'result' in value:
         _timeline(value['result'])
+        if project.schema >= 3:
+            expected_effects = {
+                'master': [effect.to_dict() for effect in project.effects],
+                'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},
+                'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes},
+                'clips': {scene.id: {cue.id: [effect.to_dict() for effect in cue.effects]
+                          for cue in scene.cues} for scene in project.scenes},
+                'stems': 'Track effects are included. Scene and master effects apply only to their mixed buses.'}
+            if value['result'].get('effects') != expected_effects:
+                raise ValueError('Production effect receipt differs from its typed project.')
         if (value['result']['project'] != project.id or value['result']['revision'] != project.revision
                 or value['result']['source_sha256'] != sha256(project.original_script.encode()).hexdigest()):
             raise ValueError('Production result belongs to another project.')
@@ -143,7 +156,8 @@ def _studio_job(value, identity):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'lrc_notice', 'clips',
+                   'clip_stems_notice', 'effects', 'book_source_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -159,6 +173,7 @@ def _timeline(value):
         text(value[name], 8192)
     if 'music_continuity' in value:
         text(value['music_continuity'], 8192)
+    _timeline_extensions(value)
     for name, required in [('chapters', {'id', 'title', 'start', 'end'}),
                            ('lines', {'scene', 'line', 'role', 'text', 'start', 'end', 'timing', 'source_ref'})]:
         if type(value[name]) is not list or len(value[name]) > 100000:
@@ -170,6 +185,94 @@ def _timeline(value):
             for key in required - {'start', 'end'}:
                 text(row[key], 100000 if key == 'text' else 8192, empty=key in ('text', 'source_ref'))
 
+
+
+def _studio_resource_plan(value):
+    from .operations.models import ResourceRequest
+    fields(value, {'schema', 'request', 'source_sha256', 'estimated_duration',
+                   'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'})
+    if type(value['schema']) is not int or value['schema'] != 1:
+        raise ValueError('Invalid Studio resource plan.')
+    request = ResourceRequest.from_dict(value['request'])
+    for directory, _size in request.disks:
+        path(str(directory))
+    if type(value['source_sha256']) is not dict or len(value['source_sha256']) > 100000:
+        raise ValueError('Invalid Studio input digest inventory.')
+    for source, checksum in value['source_sha256'].items():
+        path(source)
+        digest(checksum)
+    number(value['estimated_duration'], 0, 1e18)
+    for key in ('cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'):
+        text(value[key], 8192)
+
+
+def _studio_recovery(value):
+    fields(value, {'requires_output_directory', 'inputs_retained', 'previous'})
+    if type(value['requires_output_directory']) is not bool or type(value['inputs_retained']) is not bool:
+        raise ValueError('Invalid restored Studio permissions.')
+    previous = value['previous']
+    fields(previous, {'project_fingerprint', 'status', 'destination', 'artifacts'})
+    digest(previous['project_fingerprint'])
+    if previous['status'] not in ('pending', 'queued', 'running', 'paused', 'cancelled',
+                                   'failed', 'complete', 'attention', 'waiting-input'):
+        raise ValueError('Invalid previous Studio status.')
+    if previous['destination'] != '':
+        path(previous['destination'])
+    artifacts(previous['artifacts'])
+
+
+def _timeline_extensions(value):
+    for key in ('lrc_notice', 'clip_stems_notice'):
+        if key in value:
+            text(value[key], 8192)
+    if 'book_source_sha256' in value:
+        digest(value['book_source_sha256'])
+    if 'clips' in value:
+        from .studio.project import Cue
+        clips = value['clips']
+        if type(clips) is not list or len(clips) > 100000:
+            raise ValueError('Invalid retained clip timeline.')
+        for row in clips:
+            fields(row, {'scene', 'id', 'role', 'title', 'source_sha256', 'source_duration',
+                         'trim_start', 'duration', 'start', 'end', 'gain_db', 'pan',
+                         'fade_in', 'fade_out'})
+            text(row['scene'], 80)
+            digest(row['source_sha256'])
+            number(row['source_duration'], 0, 31_536_000)
+            number(row['start'], 0, value['duration'] + 1)
+            number(row['end'], row['start'], value['duration'] + 1)
+            cue = Cue(row['id'], '/inert-backup-source', row['start'], row['gain_db'],
+                row['pan'], row['role'], trim_start=row['trim_start'], duration=row['duration'],
+                fade_in=row['fade_in'], fade_out=row['fade_out'], title=row['title'])
+            if (abs(row['end'] - row['start'] - row['duration']) > 1 / value['sample_rate']
+                    or cue.trim_start + cue.duration > row['source_duration'] + 1 / value['sample_rate']):
+                raise ValueError('Retained clip timing differs from its source selection.')
+    if 'effects' not in value:
+        return
+    from .audio.effect_presets import read_effect
+    from .studio.project import _timeline_effects
+    effect_map = value['effects']
+    fields(effect_map, {'master', 'roles', 'scenes', 'clips', 'stems'})
+    if effect_map['stems'] != 'Track effects are included. Scene and master effects apply only to their mixed buses.':
+        raise ValueError('Invalid Studio effect routing notice.')
+
+    def chain(raw):
+        if type(raw) is not list or len(raw) > 32:
+            raise ValueError('Invalid retained effect chain.')
+        _timeline_effects(tuple(read_effect(item) for item in raw), value['sample_rate'])
+
+    def mapping(raw, nested=False):
+        if type(raw) is not dict or len(raw) > 100000:
+            raise ValueError('Invalid retained effect routing.')
+        for identity, item in raw.items():
+            if type(identity) is not str or not re.fullmatch(ID, identity):
+                raise ValueError('Invalid retained effect target.')
+            mapping(item) if nested else chain(item)
+
+    chain(effect_map['master'])
+    mapping(effect_map['roles'])
+    mapping(effect_map['scenes'])
+    mapping(effect_map['clips'], nested=True)
 
 def _assistant_job(db, value, identity):
     from .assistant.models import Step, canonical
@@ -273,23 +376,42 @@ def _usage(value):
                 raise ValueError('Invalid provider usage.')
             for key, count in row['usage'].items():
                 text(key, 128)
-                number(count, integer=True)
+                if key in ('translation_sha256', 'decoded_translation_sha256'):
+                    if row['operation'] != 'translation.text':
+                        raise ValueError('Decoded translation evidence belongs only to translation usage.')
+                    digest(count)
+                else:
+                    number(count, integer=True)
 
 
 def _translation_languages(value, identity):
     from .assistant.models import canonical
-    from .assistant.profiles import google_v3_parent
     from .assistant.translation import ENDPOINT
+    from .assistant.profiles import google_v3_parent, endpoint
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
-                   'languages_sha256', 'qualification'})
+                   'languages_sha256', 'qualification'}, {'adapter'})
+    if 'adapter' in value:
+        from .assistant.translation_local import ADAPTER, validate_languages
+        if (value['adapter'] != ADAPTER or value['schema'] != 'carr-translation-languages/1'
+                or value['profile'] != identity
+                or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
+            raise ValueError('Invalid local translation language inventory identity.')
+        target = endpoint(value['endpoint'], local=True)
+        if target.path not in ('', '/'):
+            raise ValueError('Local translation language declarations need their exact base endpoint.')
+        text(value['model'], 256)
+        text(value['fetched_at'], 128)
+        rows = validate_languages(value['languages'])
+        if sha256(canonical(rows).encode()).hexdigest() != value['languages_sha256']:
+            raise ValueError('Translation language inventory checksum changed.')
+        return
+    advanced = value['endpoint'] != ENDPOINT
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
+            or value['model'] != ('general/nmt' if advanced else 'nmt')
             or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
         raise ValueError('Invalid translation language inventory identity.')
-    advanced = value['model'] == 'general/nmt'
     if advanced:
         google_v3_parent(value['endpoint'])
-    elif value['endpoint'] != ENDPOINT or value['model'] != 'nmt':
-        raise ValueError('Invalid translation language inventory identity.')
     text(value['fetched_at'], 128)
     rows = value['languages']
     if type(rows) is not list or not 1 <= len(rows) <= 1000:
@@ -297,10 +419,10 @@ def _translation_languages(value, identity):
     seen = set()
     for row in rows:
         fields(row, {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'})
-        _translation_language(row['language'])
-        text(row['name'], 512 if advanced else 1000, empty=advanced)
         if advanced and (type(row['source']) is not bool or type(row['target']) is not bool):
-            raise ValueError('Invalid Advanced translation language direction.')
+            raise ValueError('Invalid declared translation language capability.')
+        _translation_language(row['language'])
+        text(row['name'], 1000)
         if row['language'] in seen:
             raise ValueError('Duplicate translation language.')
         seen.add(row['language'])
@@ -314,14 +436,16 @@ def _translation_language(value, *, auto=False):
         raise ValueError('Invalid translation language code.')
 
 
-def _translation_job(value, identity):
-    from .assistant.models import canonical
+def _translation_job(db, value, identity):
     from .assistant.profiles import ProviderProfile, google_v3_parent
-    from .assistant.providers import Authorization, money, _request
-    from .assistant.translation import split_text, translation_payload
+    from .assistant.providers import translation_authorization_type, translation_receipt_sha256
+    from .assistant.translation import split_text, _approved_requests
+    from .assistant.translation_source import source_context
+
     fields(value, {'schema', 'kind', 'id', 'created', 'updated', 'status', 'profile', 'title',
         'source_text', 'source_sha256', 'source_language', 'target_language', 'chunks', 'receipts',
-        'authorization', 'per_call_cost'}, {'glossary'})
+        'authorization', 'per_call_cost'},
+        {'glossary', 'source_anchor', 'source_metadata', 'source_topic'})
     if (value['schema'] != 'carr-assistant-job/1' or value['kind'] != 'translation/1'
             or value['id'] != identity or value['status'] not in ('queued', 'running', 'paused', 'attention', 'complete')):
         raise ValueError('Invalid translation checkpoint identity or status.')
@@ -335,70 +459,149 @@ def _translation_job(value, identity):
     if type(value['chunks']) is not list or value['chunks'] != list(chunks):
         raise ValueError('Translation chunks no longer bind the original.')
     profile = ProviderProfile(**value['profile'])
-    if profile.adapter not in ('google-translation-v2', 'google-translation-v3'):
-        raise ValueError('Unsupported translation provider declaration.')
-    advanced = profile.adapter == 'google-translation-v3'
-    model = google_v3_parent(profile.endpoint) + '/models/' + profile.model if advanced else None
-    glossary = value.get('glossary')
     _translation_language(value['source_language'], auto=True)
     _translation_language(value['target_language'])
     if value['source_language'] == value['target_language']:
         raise ValueError('Translation needs different source and target languages.')
-    expected = []
-    by_chunk = []
-    for chunk in chunks:
-        if not chunk.strip():
-            by_chunk.append(None)
-            continue
-        payload = translation_payload(chunk, value['source_language'], value['target_language'], glossary)
-        _, body, _ = _request(profile, 'translation.text', payload)
-        checksum = sha256(canonical(body).encode()).hexdigest()
-        expected.append(checksum)
-        by_chunk.append(checksum)
-    approval = Authorization(**value['authorization'])
-    if (approval.id != approval.task_id or tuple(approval.operations) != ('translation.text',)
-            or tuple(approval.data_classes) != ('selected-excerpt',)
-            or tuple(tuple(p) for p in approval.profiles) != ((profile.id, profile.endpoint),)
-            or tuple(approval.request_hashes) != tuple(expected) or approval.max_calls < len(expected)
-            or money(value['per_call_cost']) * len(expected) > money(approval.budget)):
-        raise ValueError('Translation checkpoint no longer matches its approved scope.')
+    context = source_context(value['source_text'], value.get('source_anchor'),
+                             value.get('source_metadata'), value.get('source_topic'))
+    if context is not None:
+        from .backup_studio import validate_source_snapshot
+        if validate_source_snapshot(db, context['source_anchor']) != value['source_text']:
+            raise ValueError('Translation no longer matches its retained source positions.')
+    approval = translation_authorization_type(profile)(**value['authorization'])
+    # The same pure request reconstruction is used for submission and resume.
+    # It does not open a gateway, renew approval or perform a provider request.
+    try:
+        by_chunk, _ = _approved_requests(profile, chunks, value['source_language'],
+            value['target_language'], approval, value['per_call_cost'], value.get('glossary'),
+            **(context or {}))
+    except PermissionError as exc:
+        raise ValueError('Translation checkpoint no longer matches its approved scope.') from exc
     receipts = value['receipts']
     if type(receipts) is not list or len(receipts) > len(chunks):
         raise ValueError('Invalid translation receipt inventory.')
     for index, row in enumerate(receipts):
-        fields(row, {'index', 'source_sha256', 'text', 'translation_sha256', 'detected_source',
-                     'request_sha256', 'response_sha256'} |
-                    ({'reported_model', 'glossary_config'} if advanced and chunks[index].strip() else set()))
+        advanced = profile.adapter == 'google-translation-v3' and by_chunk[index] is not None
+        local = profile.adapter == 'libretranslate-local' and by_chunk[index] is not None
+        required = {'index', 'source_sha256', 'text', 'translation_sha256', 'detected_source',
+                    'request_sha256', 'response_sha256'}
+        if advanced:
+            required |= {'reported_model', 'glossary_config'}
+        if local:
+            required.add('decoded_translation_sha256')
+        fields(row, required)
         if (type(row['index']) is not int or row['index'] != index
                 or row['source_sha256'] != sha256(chunks[index].encode()).hexdigest()
                 or row['request_sha256'] != by_chunk[index]):
             raise ValueError('Translation receipt belongs to another source chunk.')
-        text(row['text'], 200000, empty=True)
+        text(row['text'], 200000, empty=by_chunk[index] is None)
         if row['translation_sha256'] != sha256(row['text'].encode()).hexdigest():
             raise ValueError('Accepted translation text changed.')
         if row['detected_source'] is not None:
             _translation_language(row['detected_source'])
         if by_chunk[index] is not None:
             digest(row['response_sha256'])
-            if advanced:
-                if row['reported_model'] != model:
-                    raise ValueError('Advanced translation receipt model changed.')
-                if glossary is None:
-                    if row['glossary_config'] is not None:
-                        raise ValueError('Advanced translation receipt has an unapproved glossary.')
-                else:
-                    observed = row['glossary_config']
-                    fields(observed, {'glossary', 'ignoreCase'})
-                    if observed['glossary'] != glossary or observed['ignoreCase'] is not False:
-                        raise ValueError('Advanced translation receipt glossary changed.')
-        elif row['response_sha256'] is not None or row['text'] != chunks[index]:
+        elif (row['response_sha256'] is not None or row['text'] != chunks[index]
+              or row['detected_source'] is not None):
             raise ValueError('Whitespace-only translation receipt changed.')
+        if local:
+            from .assistant.translation_local import language
+            if value['source_language'] == 'auto':
+                language(row['detected_source'])
+            elif row['detected_source'] is not None:
+                raise ValueError('The local receipt contains unrequested language detection.')
+            if row['decoded_translation_sha256'] != translation_receipt_sha256(row['text'], row['detected_source']):
+                raise ValueError('The local decoded-output receipt changed.')
+        if advanced:
+            glossary = {'glossary': value['glossary'], 'ignoreCase': False} if value.get('glossary') else None
+            if (row['reported_model'] != google_v3_parent(profile.endpoint) + '/models/' + profile.model
+                    or row['glossary_config'] != glossary):
+                raise ValueError('Advanced translation receipt lost its model or glossary binding.')
     if value['status'] == 'complete' and len(receipts) != len(chunks):
         raise ValueError('Completed translation is missing accepted chunks.')
 
 
+def _translation_batch(db, value, identity):
+    from .assistant.translation_batch import validate_batch
+    manifest = validate_batch(value, identity)
+    for member in manifest['members']:
+        job = member['job']
+        # Templates have no execution state. Reuse the same passive source,
+        # provider/request and quota validation as a normal unstarted child.
+        _translation_job(db, {**job, 'updated': job['created']}, job['id'])
+
+
+def validate_collection(db, stage, entries, *, cancelled):
+    """Bind batch templates, accepted chunks and their preserved usage evidence."""
+    from pathlib import Path
+    from .durable_state import read_json
+    from .assistant.models import canonical
+    from .assistant.providers import money, translation_authorization_type, translation_receipt_sha256
+    from .assistant.profiles import ProviderProfile
+
+    inventory = {entry['filename'] for entry in entries}
+    for name in sorted(inventory):
+        if cancelled():
+            raise InterruptedError('Producer checkpoint verification cancelled.')
+        match = TRANSLATION.fullmatch(name)
+        if match is None or match[2]:
+            continue
+        job = read_json(Path(stage) / name)
+        if job.get('kind') == 'translation-batch/1':
+            from .assistant.translation_batch import validate_batch, validate_member
+            manifest = validate_batch(job, match[1])
+            for index, member in enumerate(manifest['members']):
+                if cancelled():
+                    raise InterruptedError('Translation batch verification cancelled.')
+                child_name = 'state/translation/jobs/' + member['job']['id'] + '.json'
+                if child_name in inventory:
+                    validate_member(manifest, index, read_json(Path(stage) / child_name))
+                # Missing children are an unfinished local preparation. The
+                # exact validated templates remain; restore grants no replay.
+            continue
+        accepted = [row for row in job['receipts'] if row['request_sha256'] is not None]
+        if not accepted:
+            continue
+        approval = translation_authorization_type(ProviderProfile(**job['profile']))(**job['authorization'])
+        names = ('state/translation/provider/usage/' + approval.id + '.usage.json',
+                 'state/providers/usage/' + approval.id + '.usage.json')
+        candidates = [item for item in names if item in inventory]
+        if len(candidates) != 1:
+            raise ValueError('Translation has no unique retained usage evidence.')
+        usage = read_json(Path(stage) / candidates[0])
+        if (usage['authorization'] != sha256(canonical(job['authorization']).encode()).hexdigest()
+                or usage['currency'] != approval.currency):
+            raise ValueError('Translation authority differs from its retained usage evidence.')
+        profile = job['profile']
+        profile_hash = sha256(canonical(profile).encode()).hexdigest()
+        for row in accepted:
+            recorded = usage['operations'].get(job['id'] + '_' + str(row['index']))
+            if (type(recorded) is not dict or recorded.get('status') != 'complete'
+                    or recorded.get('profile') != profile['id'] or recorded.get('model') != profile['model']
+                    or recorded.get('profile_sha256') != profile_hash
+                    or recorded.get('operation') != 'translation.text'
+                    or recorded.get('request_sha256') != row['request_sha256']
+                    or recorded.get('output_sha256') != row['response_sha256']
+                    or money(recorded.get('reserved_cost')) != money(job['per_call_cost'])):
+                raise ValueError('Translation receipt differs from its accepted provider usage.')
+            if profile['adapter'] == 'libretranslate-local':
+                decoded = translation_receipt_sha256(row['text'], row['detected_source'])
+                retained = recorded.get('usage')
+                if (type(retained) is not dict or retained.get('translation_sha256') != row['translation_sha256']
+                        or retained.get('decoded_translation_sha256') != decoded
+                        or row.get('decoded_translation_sha256') != decoded):
+                    raise ValueError('Local translation decoded-output differs from its retained provider usage.')
+
+
 def validate(db, name, value):
-    if READER.fullmatch(name):
+    if name == 'state/audio-metadata/choices.json':
+        from .audio.metadata_review import validate_choices
+        validate_choices(value)
+    elif name == 'state/assistant/workflow-templates.json':
+        from .assistant.templates import validate_catalog
+        validate_catalog(value)
+    elif READER.fullmatch(name):
         from .speech.reading import ReadingDocument
         from .speech.session import ReaderResume
         fields(value, {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'})
@@ -422,8 +625,10 @@ def validate(db, name, value):
             fields(value, {'command'})
             if value['command'] not in ('run', 'pause', 'cancel'):
                 raise ValueError('Invalid translation control.')
+        elif type(value) is dict and value.get('kind') == 'translation-batch/1':
+            _translation_batch(db, value, match[1])
         else:
-            _translation_job(value, match[1])
+            _translation_job(db, value, match[1])
     elif match := ASSISTANT.fullmatch(name):
         if match[2]:
             fields(value, {'command'})

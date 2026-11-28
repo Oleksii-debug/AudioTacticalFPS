@@ -29,6 +29,13 @@ partial output. Registry disposal releases owned workers, including failed or
 superseded provider instances. Reader closure waits for its bounded cancellation
 before removing temporary audio.
 
+Stop also cancels initial voice discovery. Different local installations keep
+distinct voice identities even when their profile and language names match.
+The utterance time budget includes asset verification and cold discovery;
+final stream cleanup and deadline checks happen before the completed WAV is
+published. Model-byte fingerprints and the existing shared registry remain the
+authority for cache reuse. These controls do not add a second speech engine.
+
 ## What has been executed
 
 The primary103 source initially failed two actual shared-runtime integration

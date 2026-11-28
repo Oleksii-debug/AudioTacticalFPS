@@ -1,0 +1,1142 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-11-27 21:11:40 UTC",
+  "source_commit": "14c823bcd1c7c07dc4f768be955a972c445c4469",
+  "source_tree": "e459438d442a4a4aabfb9c4e0d4a1eb512a9ed31",
+  "qualification": "Exact completed source and hosted-Windows component evidence with explicit failures; not an all-gates or distribution PASS.",
+  "counts_overlap": true,
+  "source_identity_note": "All gate records were parsed or checked against fetched full logs containing this exact commit. Later source-reviewed corrections have NOT_RUN status until their own candidate executes.",
+  "gates": [
+    {
+      "id": "quick",
+      "run_id": 46055675789,
+      "job_id": 140697451800,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675789/job/140697451800",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 102,
+      "junit": {
+        "passed": 2421,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": [
+        "100 offline suites and exactly 2 isolated local-loopback suites; local translation newline cases both pass."
+      ]
+    },
+    {
+      "id": "production",
+      "run_id": 46055675638,
+      "job_id": 140697450925,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675638/job/140697450925",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 109,
+      "junit": {
+        "passed": 2107,
+        "failed": 0,
+        "skipped": 0
+      },
+      "records": [
+        {
+          "status": "PASS",
+          "passed": 987,
+          "actual_provider_calls": "NOT_RUN",
+          "windows_nvda": "NOT_RUN"
+        },
+        {
+          "schema": 1,
+          "status": "PASS",
+          "epub_specification": "3.3",
+          "validator_version": "5.3.0",
+          "validator_archive_sha256": "6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5",
+          "publisher_module_sha256": "13bdf18a6727c21bcab92b59abffef122ea92145fd0d7cf5d8266de8e57ba3e2",
+          "audio_binaries": {
+            "ffmpeg": "/usr/bin/ffmpeg",
+            "ffprobe": "/usr/bin/ffprobe"
+          },
+          "audio_sha256": {
+            "ffmpeg": "856d2b220ec4e6c84ec5d428b121e216cf6508806818cd93bf7c0722f7cf49f5",
+            "ffprobe": "d7fe41ea9bee52ca58a94428c7ab00f36dc7267d3f32506ac5fac99329acbd83"
+          },
+          "publications": [
+            {
+              "file": "narrated-from-wav.epub",
+              "sha256": "769a8628552bc1377f9ce762e90beda2e11392f8720b95fa3e5f7a7924a50751",
+              "checker_version": "5.3.0",
+              "exit_code": 0,
+              "counts": {
+                "nFatal": 0,
+                "nError": 0,
+                "nWarning": 0,
+                "nUsage": 0
+              },
+              "expected_valid": true,
+              "messages": []
+            },
+            {
+              "file": "reused-job-mp3.epub",
+              "sha256": "12a6e2ecb6e922227df1d5708b44e4c91b3d432223a587c556d1f19567c39af4",
+              "checker_version": "5.3.0",
+              "exit_code": 0,
+              "counts": {
+                "nFatal": 0,
+                "nError": 0,
+                "nWarning": 0,
+                "nUsage": 0
+              },
+              "expected_valid": true,
+              "messages": []
+            },
+            {
+              "file": "audio-only.epub",
+              "sha256": "55720603ed77da15edec08338cf6aa8ceb8422e6526dd189c991fc77c67efdf6",
+              "checker_version": "5.3.0",
+              "exit_code": 0,
+              "counts": {
+                "nFatal": 0,
+                "nError": 0,
+                "nWarning": 0,
+                "nUsage": 0
+              },
+              "expected_valid": true,
+              "messages": []
+            }
+          ],
+          "deliberately_invalid_rejected": {
+            "file": "deliberately-invalid.epub",
+            "sha256": "8560faa4c231a699a516d6be86cc78321b09882bdcd7217c17ad877eb096a08c",
+            "checker_version": "5.3.0",
+            "exit_code": 1,
+            "counts": {
+              "nFatal": 0,
+              "nError": 1,
+              "nWarning": 0,
+              "nUsage": 0
+            },
+            "expected_valid": false,
+            "messages": [
+              {
+                "ID": "PKG-007",
+                "severity": "ERROR",
+                "message": "Mimetype file should only contain the string \"application/epub+zip\" and should not be compressed.",
+                "additionalLocations": 0,
+                "locations": [
+                  {
+                    "url": {
+                      "opaque": false,
+                      "hierarchical": true
+                    },
+                    "path": "/tmp/resonance-epubcheck-9o7h9pkr/deliberately-invalid.epub",
+                    "line": -1,
+                    "column": -1,
+                    "context": null
+                  }
+                ],
+                "suggestion": null
+              }
+            ]
+          },
+          "audio_fixture": "Synthetic PCM tones through actual FFmpeg",
+          "reader_interoperability": "NOT_RUN",
+          "nvda": "NOT_RUN",
+          "wcag_conformance": "NOT_CLAIMED"
+        },
+        {
+          "schema": 1,
+          "status": "PASS",
+          "publications": [
+            {
+              "schema": 1,
+              "status": "PASS",
+              "publication_sha256": "37c89c6ac420a0a03e9eea188c521170208a2a45b52ab805f1cc45f3df1867d7",
+              "publisher_module_sha256": "13bdf18a6727c21bcab92b59abffef122ea92145fd0d7cf5d8266de8e57ba3e2",
+              "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+              "lxml_version": [
+                6,
+                2,
+                0,
+                0
+              ],
+              "libxml_version": [
+                2,
+                14,
+                6
+              ],
+              "schema_sha256": {
+                "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+                "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+                "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+                "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+                "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+              },
+              "documents": [
+                {
+                  "file": "ncc.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "content.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "source.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "book.smil",
+                  "dtd_valid": true
+                }
+              ],
+              "invalid_xhtml_rejected": true,
+              "original_script_sha256": "5caff6883682071d272fb27018f877d0cad5c6cf112983f228b66ee6f3a353ad",
+              "full_daisy_rule_conformance": "NOT_RUN",
+              "reader_interoperability": "NOT_RUN",
+              "nvda": "NOT_RUN",
+              "case": "narrated-from-wav"
+            },
+            {
+              "schema": 1,
+              "status": "PASS",
+              "publication_sha256": "403faa711a1a4235ece5224f249adad3e5d34d8620000f8df105f0906b351172",
+              "publisher_module_sha256": "13bdf18a6727c21bcab92b59abffef122ea92145fd0d7cf5d8266de8e57ba3e2",
+              "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+              "lxml_version": [
+                6,
+                2,
+                0,
+                0
+              ],
+              "libxml_version": [
+                2,
+                14,
+                6
+              ],
+              "schema_sha256": {
+                "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+                "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+                "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+                "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+                "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+              },
+              "documents": [
+                {
+                  "file": "ncc.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "content.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "source.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "book.smil",
+                  "dtd_valid": true
+                }
+              ],
+              "invalid_xhtml_rejected": true,
+              "original_script_sha256": "5caff6883682071d272fb27018f877d0cad5c6cf112983f228b66ee6f3a353ad",
+              "full_daisy_rule_conformance": "NOT_RUN",
+              "reader_interoperability": "NOT_RUN",
+              "nvda": "NOT_RUN",
+              "case": "reused-job-mp3"
+            },
+            {
+              "schema": 1,
+              "status": "PASS",
+              "publication_sha256": "b70da071c7a5a1694a5c3a50d9af01a193b601dd1fb66c342fb47f0fd6372820",
+              "publisher_module_sha256": "13bdf18a6727c21bcab92b59abffef122ea92145fd0d7cf5d8266de8e57ba3e2",
+              "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+              "lxml_version": [
+                6,
+                2,
+                0,
+                0
+              ],
+              "libxml_version": [
+                2,
+                14,
+                6
+              ],
+              "schema_sha256": {
+                "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+                "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+                "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+                "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+                "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+              },
+              "documents": [
+                {
+                  "file": "ncc.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "content.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "source.html",
+                  "dtd_valid": true
+                },
+                {
+                  "file": "book.smil",
+                  "dtd_valid": true
+                }
+              ],
+              "invalid_xhtml_rejected": true,
+              "original_script_sha256": "e61dd242bd1531000f28a48d6b03d4b57d80630d9557023ca2f2590b3b09bdde",
+              "full_daisy_rule_conformance": "NOT_RUN",
+              "reader_interoperability": "NOT_RUN",
+              "nvda": "NOT_RUN",
+              "case": "untranscribed-retained-clip"
+            }
+          ],
+          "audio_binaries": {
+            "ffmpeg": {
+              "path": "/usr/bin/ffmpeg",
+              "sha256": "856d2b220ec4e6c84ec5d428b121e216cf6508806818cd93bf7c0722f7cf49f5"
+            },
+            "ffprobe": {
+              "path": "/usr/bin/ffprobe",
+              "sha256": "d7fe41ea9bee52ca58a94428c7ab00f36dc7267d3f32506ac5fac99329acbd83"
+            }
+          },
+          "installed_required": true,
+          "audio_fixture": "Synthetic PCM tones through actual canonical Studio and FFmpeg",
+          "publisher_module_sha256": "13bdf18a6727c21bcab92b59abffef122ea92145fd0d7cf5d8266de8e57ba3e2",
+          "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+          "full_daisy_rule_conformance": "NOT_RUN",
+          "reader_interoperability": "NOT_RUN",
+          "speech_quality": "NOT_RUN",
+          "nvda": "NOT_RUN"
+        }
+      ],
+      "artifact": {
+        "id": 15226573129,
+        "sha256": "c4d250f408c64bb7f48073805d686e2098afce5826820163b29df0c9e51ff236"
+      },
+      "notes": [
+        "Separate direct selection: 987 passed, 1 deliberately deselected Windows-only case in 72.66 seconds.",
+        "All 35 packaging test methods passed, including 15 added strict SBOM profile/negative/real-file methods.",
+        "Official EPUBCheck 5.3.0 validated 3 actual EPUB 3.3 publications and rejected the malformed control; 3 local DAISY DTD controls passed within the explicit recorded limits."
+      ]
+    },
+    {
+      "id": "reconciled",
+      "run_id": 46055675638,
+      "job_id": 140697451313,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675638/job/140697451313",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 95,
+      "junit": {
+        "passed": 3207,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": [
+        "185 typed transcription-backup cases passed in 9.27 seconds."
+      ]
+    },
+    {
+      "id": "asr_linux",
+      "run_id": 46055675748,
+      "job_id": 140697478996,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675748/job/140697478996",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 16,
+      "junit": {
+        "passed": 721,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": [
+        "All 16 suites passed, including bridge 65, runtime inventory 195, V5 40, UI 43, CLI 9 and typed backup 185."
+      ]
+    },
+    {
+      "id": "asr_windows",
+      "run_id": 46055675748,
+      "job_id": 140697479397,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675748/job/140697479397",
+      "scope": "windows_source_and_native",
+      "status": "FAIL",
+      "completed_suites": 16,
+      "junit": {
+        "passed": 720,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": [
+        "All 16 source suites passed; one POSIX-only case is excluded at collection, with zero skipped cases.",
+        "Six additional actual Windows native JSON publication/handle barriers passed in 0.27 seconds.",
+        "The later native transcription probe failed before profile registration: the passive runtime list required the absent state/transcription root. Its outer cleanup then failed the real frame-destruction assertion. Subsequent native incremental-backup probe was not reached.",
+        "The 12-minute job and 600-second suite limits were unchanged; completed source UI and CLI timings were 8.50 and 10.25 seconds."
+      ],
+      "failure_excerpt": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_smoke.py\", line 270, in <module>\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_smoke.py\", line 152, in drive\n    trust_inspected('whisper-v5-manifest-v1')\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_smoke.py\", line 133, in trust_inspected\n    count = len(service.list_runtimes())\n                ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription.py\", line 532, in list_runtimes\n    root = self._profiles_root()\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription.py\", line 503, in _profiles_root\n    return local_path(self.root / 'profiles', root=self.root)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py\", line 46, in local_path\n    if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):\n                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\pathlib.py\", line 993, in resolve\n    s = os.path.realpath(self, strict=strict)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen ntpath>\", line 696, in realpath\nFileNotFoundError: [WinError 3] The system cannot find the path specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\transcription-native-2qb2bij9\\\\library\\\\state\\\\transcription'\n\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_smoke.py\", line 283, in <module>\n    assert destroyed, 'The real desktop window did not complete destruction.'\n           ^^^^^^^^^\nAssertionError: The real desktop window did not complete destruction.\n##[error]Process completed with exit code 1.\nPost job cleanup.\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" version\ngit version 2.56.1.windows.1\nTemporarily overriding HOME='D:\\a\\_temp\\e023b31e-c7f5-44a4-a1bd-bc2f3b7ab7f8' before making global git config changes\nAdding repository directory to the temporary git global config as a safe directory\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" config --global --add safe.directory D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\nRemoving SSH command configuration\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" config --local --name-only --get-regexp core\\.sshCommand\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" submodule foreach --recursive \"sh -c \\\"git config --local --name-only --get-regexp 'core\\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\\\"\"\nRemoving HTTP extra header\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" config --local --name-only --get-regexp http\\.https\\:\\/\\/github\\.com\\/\\.extraheader\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" submodule foreach --recursive \"sh -c \\\"git config --local --name-only --get-regexp 'http\\.https\\:\\/\\/github\\.com\\/\\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\\\"\"\nRemoving includeIf entries pointing to credentials config files\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" config --local --name-only --get-regexp ^includeIf\\.gitdir:\n[command]\"C:\\Program Files\\Git\\bin\\git.exe\" submodule foreach --recursive \"git config --local --show-origin --name-only --get-regexp remote.origin.url\"\nCleaning up orphan processes\n"
+    },
+    {
+      "id": "v3",
+      "run_id": 46055675548,
+      "job_id": 140697465783,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675548/job/140697465783",
+      "scope": "windows_source_and_installed",
+      "status": "FAIL",
+      "completed_suites": 28,
+      "junit": {
+        "passed": 463,
+        "failed": 0,
+        "skipped": 0
+      },
+      "records": [
+        {
+          "status": "PASS",
+          "checks": [
+            "Actual desktop Help exposes the signed client status",
+            "Native Help event reaches the status action",
+            "Default status is a named native read-only multiline control",
+            "Private default shows perpetual operation and no fake authority actions",
+            "Terms and profile are readable before accepting",
+            "Import requires explicit native checkbox acceptance",
+            "Native acceptance event enables import",
+            "Reviewed signed grant is durably verified",
+            "Configured polling uses an actual running wx.Timer",
+            "Native idle timer holds metadata checks while the frame is working",
+            "Native idle transition verifies signed metadata on the background thread",
+            "Automatic native checks leave payloads and existing signed permission untouched",
+            "Configured update status retains the explicit native repository review action",
+            "Accepted native Close stops the polling timer before owner destruction",
+            "Native owner destruction stops the metadata worker",
+            "Native owner destruction stops or destroys the actual timer"
+          ],
+          "nvda": "NOT_RUN",
+          "production_authority": "NOT_CONFIGURED",
+          "production_installer_upgrade": "NOT_RUN",
+          "ui_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+          "polling_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\security\\polling.py"
+        },
+        {
+          "status": "PASS",
+          "checks": [
+            "exact selected native library hash",
+            "actual C API, UTF-8 dictionary and affix expansion",
+            "exact Unicode/CRLF reading offsets",
+            "selected-text scope with original character positions",
+            "overlong tokens are explicitly uncheckable",
+            "actual native result remains review-only",
+            "explicit correction preserves source and one undo",
+            "external dictionary bytes remain unchanged",
+            "declared legacy encoding with no replacement decoding",
+            "same-size changed dictionary is rejected before use",
+            "malformed dictionary cannot report a complete review",
+            "actual mid-staging/check cancellation reaps and removes private copies",
+            "actual worker deadline reaps and removes private copies",
+            "native engine bytes remain unchanged"
+          ],
+          "native_library_sha256": "e5e275279b78fc8b9d89f6988ba9f8c1583707b3696c99938f3e14fd84a0d410",
+          "native_library_bytes": 822272,
+          "application_modules": {
+            "carr_library.speech.spelling": "68610a425ada45d4d821e5ba6f27b781389a41789f556e996e3aaeb92816aae1",
+            "carr_library.speech.spelling_worker": "25cd33e7d6ffeaffee7e6bb12a3880293064fd324ee3c4a4667e8cc8a9321b9b",
+            "carr_library.ui.spelling_dialog": "f2df60215e500aaa7767c312682a557f261d42f0f81de0c94d5d4dc314ef1795"
+          },
+          "dictionaries": "Original synthetic fixtures; no language-quality qualification",
+          "native_windows": "EXECUTED",
+          "manual_nvda": "NOT_RUN",
+          "distribution_clearance": "NOT_GRANTED"
+        },
+        {
+          "status": "PASS",
+          "checks": 14,
+          "installed_modules": {
+            "carr_library.speech.spelling": "68610a425ada45d4d821e5ba6f27b781389a41789f556e996e3aaeb92816aae1",
+            "carr_library.speech.spelling_worker": "25cd33e7d6ffeaffee7e6bb12a3880293064fd324ee3c4a4667e8cc8a9321b9b",
+            "carr_library.ui.spelling_dialog": "f2df60215e500aaa7767c312682a557f261d42f0f81de0c94d5d4dc314ef1795"
+          },
+          "dll_sha256": "e5e275279b78fc8b9d89f6988ba9f8c1583707b3696c99938f3e14fd84a0d410"
+        },
+        {
+          "status": "PASS",
+          "passed": 289,
+          "network": "synthetic loopback TLS only",
+          "actual_provider_calls": "NOT_RUN"
+        },
+        {
+          "status": "FAIL",
+          "passed": 803,
+          "failed": 5,
+          "skipped": 0,
+          "pytest_exit": 1,
+          "expected_failures": false,
+          "origins": {
+            "carr_library": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__init__.py",
+            "carr_library.state_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_backup.py",
+            "carr_library.ingest.worker": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\worker.py",
+            "carr_library.application": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+            "carr_library.pending_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\pending_backup.py",
+            "carr_library.library_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "carr_library.speech.reading": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\reading.py",
+            "carr_library.speech.source": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\source.py",
+            "carr_library.ui.speech_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+            "carr_library.speech.runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\runtime.py",
+            "carr_library.acquisition.providers": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\acquisition\\providers.py",
+            "carr_library.speech.session": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\session.py",
+            "carr_library.extract.ocr_runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\ocr_runtime.py",
+            "carr_library.storage.revisions": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+            "carr_library.storage.schema_identity": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\schema_identity.py"
+          },
+          "ocr_inventory_cases": [
+            "test_directory_inventory_checks_budget_between_entries",
+            "test_empty_directory_inventory_has_a_bound",
+            "test_unreadable_directory_rejects_entire_inventory"
+          ],
+          "ocr_inventory_exact": true,
+          "manual_nvda": "NOT_RUN"
+        }
+      ],
+      "notes": [
+        "Earlier strict source suites passed 463 cases in 28 suites.",
+        "Installed local provider loopback selection passed 289 cases in 70.00 seconds; actual private provider calls were NOT_RUN.",
+        "Installed recovery selection completed 808 cases in 338.48 seconds within the unchanged 10-minute limit: 803 passed, 5 failed, zero skips/xfail.",
+        "All 185 typed transcription-backup cases passed in this installed recovery run. The five failures are the overbroad passive-backup test import sentinel refusing required pure speech.tabs/speech.playlist validators.",
+        "Hunspell detailed 14-check and installed 14-check reports describe the same probe scope and are not summed as distinct native checks. Later V3 acceptance steps were not reached."
+      ],
+      "failed_test_ids": [
+        "FAILED tests/storage/test_engine_settings_backup.py::test_configured_engines_roundtrip_without_importing_or_running_engines - Failed: A passive settings backup must not import or execute an optional engine.",
+        "FAILED tests/storage/test_engine_settings_backup.py::test_pinned_python_helper_roundtrips_passively[True-C:\\\\Synthetic voice bridge\\\\\\u043c\\u0456\\u0441\\u0442.py] - Failed: Backup must not import or execute the externally installed bridge.",
+        "FAILED tests/storage/test_engine_settings_backup.py::test_pinned_python_helper_roundtrips_passively[True-/synthetic-uninstalled-engines/\\u043c\\u0456\\u0441\\u0442.py] - Failed: Backup must not import or execute the externally installed bridge.",
+        "FAILED tests/storage/test_engine_settings_backup.py::test_pinned_python_helper_roundtrips_passively[False-C:\\\\Synthetic voice bridge\\\\\\u043c\\u0456\\u0441\\u0442.py] - Failed: Backup must not import or execute the externally installed bridge.",
+        "FAILED tests/storage/test_engine_settings_backup.py::test_pinned_python_helper_roundtrips_passively[False-/synthetic-uninstalled-engines/\\u043c\\u0456\\u0441\\u0442.py] - Failed: Backup must not import or execute the externally installed bridge."
+      ]
+    },
+    {
+      "id": "reading_source",
+      "run_id": 46055675575,
+      "job_id": 140697450822,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675575/job/140697450822",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 12,
+      "junit": {
+        "passed": 244,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": []
+    },
+    {
+      "id": "reading_native",
+      "run_id": 46055675575,
+      "job_id": 140697451196,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675575/job/140697451196",
+      "scope": "installed_windows_native",
+      "status": "PASS",
+      "records": [
+        {
+          "result": "PASS",
+          "checks": 55,
+          "check_names": [
+            "installed exact source: carr_library.speech.tabs",
+            "installed exact source: carr_library.speech.session",
+            "installed exact source: carr_library.speech.reading",
+            "installed exact source: carr_library.ui.reader_tabs",
+            "installed exact source: carr_library.ui.speech_dialog",
+            "installed exact source: carr_library.speech.marks",
+            "installed exact source: carr_library.ui.reading_tools",
+            "installed exact source: carr_library.speech.focus",
+            "installed exact source: carr_library.ui.reading_focus",
+            "installed exact source: carr_library.speech.narration",
+            "installed exact source: carr_library.ui.reading_narration",
+            "actual native Windows notebook and text controls",
+            "first native tab contains exact Unicode source with native line endings",
+            "first native keyboard edit is retained",
+            "first copy saves original and independent undo",
+            "actual native bookmark name and list controls are available",
+            "native bookmark action persists exact text and cursor",
+            "native bookmark navigation restores cursor and reader focus",
+            "native paragraph split is undoable and preserves the original",
+            "native paragraph Undo restores the bookmarked text version",
+            "Control T creates and focuses a separate native page",
+            "second copy receives an actual independent keyboard edit",
+            "separate durable identities and originals",
+            "Control Tab restores the first native editor and text",
+            "Control Tab restores the second text and cursor",
+            "actual Control A selects the exact second reading copy",
+            "actual category and Read Skip native choices are accessible",
+            "unmarked content is unclassified and Read by default",
+            "native mark retains explicit selection and unchanged source",
+            "native keyboard selects Skip",
+            "native Skip is a saved reading policy",
+            "fully skipped native preview is explicitly empty with no engine",
+            "native keyboard explicitly re-enables Read",
+            "Read restores every narration character without text edits",
+            "explicit Skip is retained before native restart",
+            "closing category tools restores actual reader keyboard focus",
+            "native End positions the cursor after the reviewed selection",
+            "typed policy is retained in the current existing tab draft",
+            "native Save retains the explicitly positioned saved cursor",
+            "fresh reader recovers both pages and selected identity",
+            "restart restores saved cursor with no installed voice",
+            "restart retains explicit category and Skip without granting audio timing",
+            "restored native policy exposes the exact selected region",
+            "restart retains first edited Unicode text",
+            "restart retains the native-created bookmark and exact version",
+            "first undo is independent after actual reader restart",
+            "first undo preserves second history and original source",
+            "native visual reading opens paused without an engine",
+            "actual native timer advances explicit visual reading",
+            "native visual pause keeps automatic movement stopped",
+            "explicit visual cursor return restores native reader focus",
+            "visual cursor persists through the original reading recovery",
+            "content policy survived native close restart and explicit re-enabling",
+            "both owned reader modal lifetimes completed",
+            "actual native tabs workflow completed twice"
+          ],
+          "source_identity": {
+            "carr_library.speech.tabs": "93f6d4ed84050faba9a4166cb620aa1425349879613495351fa68fb17e3b4ae7",
+            "carr_library.speech.session": "f6626c3778fd5d14df21c9137691734ef690d6cd6f0854d6096ad8153d45a5d6",
+            "carr_library.speech.reading": "6fbd9dd19476765c2bbb8550e7ad299f558207d32d0b4aef7fc0c07c5c2800c5",
+            "carr_library.ui.reader_tabs": "f4003603f56b5d17f9cfc58ca382c974e0bab0ec337e97df60a19e0ddab6da47",
+            "carr_library.ui.speech_dialog": "c8d423f3cf7ad0bfe961a132163f6a7aa5c0b2bd71ead895e9b6eba8640f6c9c",
+            "carr_library.speech.marks": "1ac2b00bdafdc3973d9bc1d003dd6d8f6c7c36a14abb5990de22da0359988c9e",
+            "carr_library.ui.reading_tools": "c05273d89411fab40cc2765a561ead3705ab16705e0000da0688a32a689edeaf",
+            "carr_library.speech.focus": "d268d7f2f9af46ca7c9af24f4544c35efb72d0a07a75b8d9e13c3b99d5548f89",
+            "carr_library.ui.reading_focus": "ad753e40cdfd00d08e20ed5e5826b57302afcd9e7e27462cc9fc5dff7b610a25",
+            "carr_library.speech.narration": "3c329eeaeff1e02f40ba9a728243c73cc18ba09f90ae98b3e4972e9ec74ac330",
+            "carr_library.ui.reading_narration": "3b9ac9d26ed5952f7f2f2b4804169e5026e9562482f3438b612c3ddb159c695a"
+          },
+          "native_reading_tabs": "PASS",
+          "keyboard_and_restart": "PASS",
+          "reading_content_policy": "PASS",
+          "voice_inventory": "EXPLICIT_EMPTY_FIXTURE",
+          "speech_engine": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        }
+      ],
+      "artifact": {
+        "id": 15226667488,
+        "sha256": "09250ff76f630aedaed4448c06e1b8766d0443b4fe80156ce5808450b800cd05"
+      },
+      "notes": []
+    },
+    {
+      "id": "templates_source",
+      "run_id": 46055675610,
+      "job_id": 140697450809,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675610/job/140697450809",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 9,
+      "junit": {
+        "passed": 182,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": [
+        "Separate identity/parser selection passed 12 cases."
+      ]
+    },
+    {
+      "id": "templates_native",
+      "run_id": 46055675610,
+      "job_id": 140697451263,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675610/job/140697451263",
+      "scope": "installed_windows_native",
+      "status": "PASS",
+      "records": [
+        {
+          "result": "PASS",
+          "checks": [
+            "exact source: carr_library.assistant.templates",
+            "installed origin: carr_library.assistant.templates",
+            "exact source: carr_library.assistant.template_bindings",
+            "installed origin: carr_library.assistant.template_bindings",
+            "exact source: carr_library.assistant.planner",
+            "installed origin: carr_library.assistant.planner",
+            "exact source: carr_library.ui.workflow_templates",
+            "installed origin: carr_library.ui.workflow_templates",
+            "exact source: carr_library.ui.assistant_dialog",
+            "installed origin: carr_library.ui.assistant_dialog",
+            "actual wxMSW controls",
+            "macro registered once with no default key",
+            "actual semantic key dispatched",
+            "macro opens empty fresh value review",
+            "loaded macro retains no folder approvals and no Run approval",
+            "separate native Preview validates both explicit items without executing",
+            "native project editor strips stored source references",
+            "native typed project settings accepted",
+            "project reuse has fresh identity and no old source claim",
+            "project and template controls execute no job"
+          ],
+          "errors": [],
+          "source_sha256": {
+            "carr_library.assistant.templates": "ecf5415cca47f08cf45a4169bd871607e5951ac8306cf0f8f2e9b6d1de744563",
+            "carr_library.assistant.template_bindings": "3806f6b955e5adc157ce8cd3600a458bb98d7c3ca09423c6d3d1d79dbbbb8e47",
+            "carr_library.assistant.planner": "7abf582aa26dfb77d26179b2cf34e496e28cf97d8b7f5c586de4b9eb7bd92d07",
+            "carr_library.ui.workflow_templates": "bfef366d489c6a0fc9205e92a24cf9af5341b10fa3c51fd0f1bc551c2e4ef7de",
+            "carr_library.ui.assistant_dialog": "b67ac89b2237c92a416680d34a054094fc8ab653d25199398aa64167dc9fb775"
+          },
+          "manual_nvda": "NOT_RUN",
+          "acoustic_quality": "NOT_RUN"
+        },
+        {
+          "checks": 40,
+          "file_choices": "controlled temporary paths only",
+          "installed_modules": {
+            "carr_library.research.academic_library": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32",
+            "carr_library.research.bibtex_import": "1aa6ba1a25a52ff5df759464de629f30544ee1caa52948a3735fc626d9a19379",
+            "carr_library.research.export_file": "da9912404ed7a8e57ba4e4f7c16454c3d21d67c1fbe57070b3c64d291d5c7747",
+            "carr_library.ui.academic_library_dialog": "0bc2d54ded5abd5077a8b5280fca523214f8881ddcf2156e912fa52c4dd7542d"
+          },
+          "installer": "NOT_RUN",
+          "manual_keyboard": "NOT_RUN",
+          "native_bibtex_import": "PASS",
+          "native_export_options": "PASS",
+          "native_file_pickers": "NOT_RUN",
+          "native_keyboard": "PASS",
+          "native_overwrite_accessible_focus": "NOT_RUN",
+          "native_overwrite_confirmation": "PASS",
+          "nvda": "NOT_RUN",
+          "platform": "Windows-10-10.0.20348-SP0",
+          "python": "3.11.9",
+          "result": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        }
+      ],
+      "artifact": {
+        "id": 15225709234,
+        "sha256": "3ed7165512825818948197adcc888b68d5c98e6775e5e3ff0de6fc2c23fba2bb"
+      },
+      "notes": []
+    },
+    {
+      "id": "keyboard",
+      "run_id": 46055675801,
+      "job_id": 140697457121,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675801/job/140697457121",
+      "scope": "windows_source_and_installed_native",
+      "status": "PASS",
+      "completed_suites": 7,
+      "junit": {
+        "passed": 255,
+        "failed": 0,
+        "skipped": 0
+      },
+      "records": [
+        {
+          "checks": 34,
+          "native_key_backend": "wx.UIActionSimulator",
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+            "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+            "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+          },
+          "platform": "Windows",
+          "settings_controls": "native; command filter and shortcut text supplied by probe",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "checks": 23,
+          "native_key_backend": "wx.UIActionSimulator",
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+            "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+            "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+            "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+          },
+          "platform": "Windows",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "checks": 14,
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+            "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+          },
+          "platform": "Windows",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "result": "PASS",
+          "checks": [
+            "exact source: carr_library.assistant.templates",
+            "installed origin: carr_library.assistant.templates",
+            "exact source: carr_library.assistant.template_bindings",
+            "installed origin: carr_library.assistant.template_bindings",
+            "exact source: carr_library.assistant.planner",
+            "installed origin: carr_library.assistant.planner",
+            "exact source: carr_library.ui.workflow_templates",
+            "installed origin: carr_library.ui.workflow_templates",
+            "exact source: carr_library.ui.assistant_dialog",
+            "installed origin: carr_library.ui.assistant_dialog",
+            "actual wxMSW controls",
+            "macro registered once with no default key",
+            "actual semantic key dispatched",
+            "macro opens empty fresh value review",
+            "loaded macro retains no folder approvals and no Run approval",
+            "separate native Preview validates both explicit items without executing",
+            "native project editor strips stored source references",
+            "native typed project settings accepted",
+            "project reuse has fresh identity and no old source claim",
+            "project and template controls execute no job"
+          ],
+          "errors": [],
+          "source_sha256": {
+            "carr_library.assistant.templates": "ecf5415cca47f08cf45a4169bd871607e5951ac8306cf0f8f2e9b6d1de744563",
+            "carr_library.assistant.template_bindings": "3806f6b955e5adc157ce8cd3600a458bb98d7c3ca09423c6d3d1d79dbbbb8e47",
+            "carr_library.assistant.planner": "7abf582aa26dfb77d26179b2cf34e496e28cf97d8b7f5c586de4b9eb7bd92d07",
+            "carr_library.ui.workflow_templates": "bfef366d489c6a0fc9205e92a24cf9af5341b10fa3c51fd0f1bc551c2e4ef7de",
+            "carr_library.ui.assistant_dialog": "b67ac89b2237c92a416680d34a054094fc8ab653d25199398aa64167dc9fb775"
+          },
+          "manual_nvda": "NOT_RUN",
+          "acoustic_quality": "NOT_RUN"
+        }
+      ],
+      "artifact": {
+        "id": 15225794713,
+        "sha256": "3c66c813611a7f74ed1b1b79ebbbd32bc5615c85564c5faccad6883496ed3d03"
+      },
+      "notes": [
+        "Source counts and 34/23/14/20 native probe checks are separate overlapping scopes."
+      ]
+    },
+    {
+      "id": "ocr",
+      "run_id": 46055675570,
+      "job_id": 140697450967,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675570/job/140697450967",
+      "scope": "linux_source",
+      "status": "PASS",
+      "completed_suites": 8,
+      "junit": {
+        "passed": 133,
+        "failed": 0,
+        "skipped": 0
+      },
+      "notes": []
+    },
+    {
+      "id": "lifetime",
+      "run_id": 46055668807,
+      "job_id": 140697429833,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055668807/job/140697429833",
+      "scope": "windows_source_and_installed_native",
+      "status": "PASS",
+      "records": [
+        {
+          "schema": 1,
+          "status": "passed",
+          "checks": [
+            "unicode-spaces-fixed-argv-offline-optional-runtimes",
+            "read-only-ready-probe",
+            "fixed-installation-check",
+            "child-exit-status-propagated",
+            "extra-arguments-rejected",
+            "incomplete-state-preserved-without-reinstall",
+            "missing-runtime-does-not-search-path",
+            "fresh-package-reuses-fixed-offline-installer",
+            "research-data-sentinel-preserved"
+          ],
+          "check_count": 9,
+          "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+          "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+          "native_launcher_execution_verified": true,
+          "actual_python_installation_verified": false,
+          "nvda_verified": false,
+          "authenticode_verified": false
+        },
+        {
+          "status": "PASS",
+          "passed": 277,
+          "skipped": 0,
+          "scope": "actual filesystem and original retained-data boundaries"
+        },
+        {
+          "status": "PASS",
+          "passed": 26,
+          "skipped": 0,
+          "windows": "actual Job, handles, files and exclusive leases"
+        },
+        {
+          "status": "PASS",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0,
+          "expected_failures": false,
+          "origins": {
+            "carr_library": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\__init__.py",
+            "carr_library.installation_lease": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+            "carr_library.portable_entry": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_entry.py",
+            "carr_library.portable_bootstrap": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_bootstrap.py",
+            "carr_library.audio.windows_process": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+            "carr_library.security.installation": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+            "carr_library.security.handoff": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\handoff.py"
+          }
+        }
+      ],
+      "artifact": {
+        "id": 15226242508,
+        "sha256": "f89fa056da3d303bfdfd65c9e318234332466c4478f9408aac8094f3333e73a1"
+      },
+      "notes": [
+        "Preservation selection: 277 passed plus 37 pytest subtests in 74.89 seconds.",
+        "Actual source Windows lifetime: 26 passed in 13.16 seconds; installed Windows lifetime: the same 26 cases passed in 13.44 seconds.",
+        "The 9 compiled launcher checks are a separate native scope; no human NVDA, actual Python installation or signing qualification is inferred."
+      ]
+    },
+    {
+      "id": "launcher_msvc",
+      "run_id": 46055675676,
+      "job_id": 140697451455,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675676/job/140697451455",
+      "scope": "windows_compiled_launcher",
+      "status": "PASS",
+      "records": [
+        {
+          "schema": 1,
+          "status": "passed",
+          "checks": [
+            "unicode-spaces-fixed-argv-offline-optional-runtimes",
+            "read-only-ready-probe",
+            "fixed-installation-check",
+            "child-exit-status-propagated",
+            "extra-arguments-rejected",
+            "incomplete-state-preserved-without-reinstall",
+            "missing-runtime-does-not-search-path",
+            "fresh-package-reuses-fixed-offline-installer",
+            "research-data-sentinel-preserved"
+          ],
+          "check_count": 9,
+          "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+          "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+          "native_launcher_execution_verified": true,
+          "actual_python_installation_verified": false,
+          "nvda_verified": false,
+          "authenticode_verified": false
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "launcher_zig",
+      "run_id": 46055675676,
+      "job_id": 140697451833,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675676/job/140697451833",
+      "scope": "windows_compiled_launcher",
+      "status": "PASS",
+      "records": [
+        {
+          "schema": 1,
+          "status": "passed",
+          "checks": [
+            "unicode-spaces-fixed-argv-offline-optional-runtimes",
+            "read-only-ready-probe",
+            "fixed-installation-check",
+            "child-exit-status-propagated",
+            "extra-arguments-rejected",
+            "incomplete-state-preserved-without-reinstall",
+            "missing-runtime-does-not-search-path",
+            "fresh-package-reuses-fixed-offline-installer",
+            "research-data-sentinel-preserved"
+          ],
+          "check_count": 9,
+          "launcher_sha256": "34133c81454f438093541c58858f7e7b40a920b868441ae67fae2f4816fd131c",
+          "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+          "native_launcher_execution_verified": true,
+          "actual_python_installation_verified": false,
+          "nvda_verified": false,
+          "authenticode_verified": false
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "bibliography",
+      "run_id": 46055675709,
+      "job_id": 140697451586,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675709/job/140697451586",
+      "scope": "windows_source_and_installed_native",
+      "status": "PASS",
+      "completed_suites": 29,
+      "junit": {
+        "passed": 1252,
+        "failed": 0,
+        "skipped": 0
+      },
+      "records": [
+        {
+          "checks": 69,
+          "custom_style_file_choice": "controlled path only",
+          "installed_modules": {
+            "carr_library.citations.bibliography_workbench": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f",
+            "carr_library.citations.csl": "a2d7a9764d661cec6574e19e9ae51c9a8c80aafe160cc860ee28b9e97011f07b",
+            "carr_library.research.bibtex_import": "1aa6ba1a25a52ff5df759464de629f30544ee1caa52948a3735fc626d9a19379",
+            "carr_library.ui.academic_library_dialog": "0bc2d54ded5abd5077a8b5280fca523214f8881ddcf2156e912fa52c4dd7542d",
+            "carr_library.ui.citation_styles_dialog": "b9b08e6598810d9fa508212fb00a83c5621f57652c271d1d9bd9c18d5c6ebe96"
+          },
+          "installer": "NOT_RUN",
+          "manual_keyboard": "NOT_RUN",
+          "native_clipboard": "PASS",
+          "native_custom_style": "PASS",
+          "native_file_pickers": "NOT_RUN",
+          "native_keyboard": "PASS",
+          "nvda": "NOT_RUN",
+          "platform": "Windows-10-10.0.20348-SP0",
+          "python": "3.11.9",
+          "result": "PASS",
+          "service_exports": [
+            "text",
+            "html",
+            "docx"
+          ],
+          "style": "harvard",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        }
+      ],
+      "artifact": {
+        "id": 15227341615,
+        "sha256": "18260439cea75ce024d25cba477ed63ae0a51040da20caea276163ae4262ad36"
+      },
+      "notes": []
+    },
+    {
+      "id": "integrated_windows",
+      "run_id": 46055675801,
+      "job_id": 140697457531,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055675801/job/140697457531",
+      "scope": "Installed/native/integrated Windows plus extended source acceptance",
+      "status": "CANCELLED_INCOMPLETE",
+      "failed_steps": [
+        26,
+        29,
+        52
+      ],
+      "known_passes": [
+        "Typed SBOM parity and the preceding installed prerequisite phases"
+      ],
+      "source_phase": {
+        "step": 56,
+        "started_at": "2026-11-27T19:35:44Z",
+        "last_observed_active_at": "2026-11-27T20:17:25Z",
+        "configured_step_minutes": 35,
+        "conclusion": "INCOMPLETE",
+        "suite_totals": null
+      },
+      "native_failures": [
+        {
+          "member": "native-import-center.txt",
+          "sha256": "a139c69ac2244c79d22473fbc1d8aa1c6bf8d6127dde1d574b2066ece3699a52",
+          "bytes": 740,
+          "primary": "dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height failed",
+          "correction": "49ef322e98464f3abd7441ae1cedc4fa2181c674",
+          "correction_execution": "NOT_RUN in this checkpoint"
+        },
+        {
+          "member": "installed-native-v3.txt",
+          "sha256": "6b69b040cb720fdd77a33fa5b5bd3ef3f14f84a172d2ae9d389a69ddd58f2b2b",
+          "bytes": 1521,
+          "primary": "combined native Book review assertion for volume55 and raw selected destination spelling failed",
+          "correction": "bef60a58c0565d3595cdd1646b4d861d137e300a",
+          "note": "The combined assertion alone does not identify which clause failed; source review confirms canonical destination contract.",
+          "correction_execution": "NOT_RUN in this checkpoint"
+        },
+        {
+          "member": "native-audio-metadata.txt",
+          "sha256": "fc0ce07c42c31f41a79f158eb313924ae559b59d4194ac11945f7d046edaf7b7",
+          "bytes": 11368,
+          "primary": "Native lifetime path remained in ShowModal;90-second faulthandler stacks repeated. The original failure was suppressed by the old driver.",
+          "correction": "891f95b65a3ae6a84305f1a67868f9aa4bcdc715",
+          "note": "Successor64a makes the original child-destruction assertion visible and unwinds at its120-second watchdog; a later live-modal selector correction requires separate execution."
+        }
+      ]
+    }
+  ],
+  "unfinished": [
+    "Integrated Windows job140697457531 ended cancelled at2026-11-27T20:23:06Z after the source-reviewed64a successor was published through the unchanged ordinary concurrency policy. Required-source step56 had begun19:35:44Z and was still active20:17:25Z. Its coverage is INCOMPLETE; no final suite totals or PASS are inferred.",
+    "Terminal full-job logs returned404 twice. The earlier public phase artifact was independently read through a bounded read-only diagnostic workflow; it contains the three actual native failures but no later source-phase completion report."
+  ],
+  "not_qualified": [
+    "Human Windows11/NVDA and real speech/audio/listening quality",
+    "Private ASR/cloning/music/LLM or live local-translation model quality and rights",
+    "All135languages per feature",
+    "Actual1k/10k/50kcorpus,large-media or multi-GB capacity",
+    "Publisher signing,production activation/update trust anddistribution",
+    "Unsupported format converters or untyped generated ASR-cache inclusion"
+  ],
+  "correction_reviews": [
+    {
+      "commit": "559a79e83803f7f31620ed85720df37a50dcfaa7",
+      "review": "SOURCE_APPROVE",
+      "execution": "64a source regression and fresh native listing passed; later relative-label and observer defects are recorded separately in the64a checkpoint.",
+      "scope": "Passive fresh ASR profile listing retains existing library containment and no-write behavior; actual native ASR driver runs an outer wx loop and observes frame destruction."
+    },
+    {
+      "commit": "bd874a81c1644dbbaf2dd300a7d13de031f8cee1",
+      "review": "SOURCE_APPROVE",
+      "execution": "64a installed recovery809passed/0failed/0skipped, closing the five14c fixture failures.",
+      "scope": "Installed recovery fixture allows only exact pure speech.tabs/speech.playlist validators through the real importer; all engine imports and subprocess starts remain forbidden."
+    },
+    {
+      "commit": "891f95b65a3ae6a84305f1a67868f9aa4bcdc715",
+      "review": "SOURCE_APPROVE",
+      "execution": "64a source metadata lifetime24passed; native watchdog unwound in~122seconds and exposed the original child-destruction assertion. Full native resolution was not proved on64a.",
+      "scope": "Failure-safe watchdog/owned modal cleanup without changing37 functional checks. Successor primary trace and proposed current-modal selection are recorded in the64a checkpoint."
+    }
+  ],
+  "correction_assembly": {
+    "commit": "64aadb94c1d01929c949763fb0d0ed04d372c5d5",
+    "tree": "b400f59453c752bcfca7bbe51cbd8438dcb3ff32",
+    "parents": [
+      "14c823bcd1c7c07dc4f768be955a972c445c4469",
+      "559a79e83803f7f31620ed85720df37a50dcfaa7",
+      "bd874a81c1644dbbaf2dd300a7d13de031f8cee1",
+      "891f95b65a3ae6a84305f1a67868f9aa4bcdc715"
+    ],
+    "review": "Root and independent SOURCE_APPROVE",
+    "full_readback": 7,
+    "total_files": 1339,
+    "unrelated_files_preserved": 1332,
+    "execution": "See separate64a exact checkpoint; source/native component results contain both passes and explicit unresolved failures.",
+    "shared_ref_published": true,
+    "published_at": "2026-11-27T20:18:04Z"
+  },
+  "phase_artifact_readback": {
+    "artifact_verified": true,
+    "artifact_id": 15227122483,
+    "source_run": 46055675801,
+    "source_head": "14c823bcd1c7c07dc4f768be955a972c445c4469",
+    "archive_bytes": 53579,
+    "archive_sha256": "37fd12b50f0bfd9e12257852fe9ea85879cbddc17af63ec142b276d3b218fcd2",
+    "text_members": 60,
+    "text_bytes": 240976,
+    "scope": "SHA256/UTF8 exact verified log members only; no extraction or application execution; invalid local-transport.xml excluded from byte-exact evidence",
+    "reader_commit": "158c03fa1999e57842711f77e0057f6f0f131c84",
+    "reader_run_id": 46065114085,
+    "reader_job_id": 140728441363,
+    "reader_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46065114085/job/140728441363",
+    "verified_text_members": 59,
+    "invalid_members": [
+      {
+        "path": "local-transport.xml",
+        "expected_chars": 12472,
+        "received_chars": 12453,
+        "sha256_match": false
+      }
+    ]
+  }
+}

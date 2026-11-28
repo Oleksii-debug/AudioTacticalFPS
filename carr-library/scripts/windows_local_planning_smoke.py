@@ -18,7 +18,7 @@ def main():
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows is required.', 'nvda': 'NOT_RUN'}))
         return 77
     from carr_library.native_runtime import activate_bundled_runtime
-    activate_bundled_runtime()
+    runtime_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
     from carr_library.assistant import ProfileStore, ProviderProfile

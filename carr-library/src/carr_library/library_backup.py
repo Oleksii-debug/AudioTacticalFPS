@@ -26,6 +26,7 @@ from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
 from .ingest.catalog_asset_copy import catalog_inventory, _checked_path, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
+from .catalog.intake import source_limit
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
@@ -92,7 +93,7 @@ def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cance
     destination.mkdir(mode=0o700)
     for entry in entries:
         backup_sidecars._check_cancelled(cancelled)
-        path = _checked_path(source, entry)
+        path = _checked_path(source, entry, cancelled=cancelled)
         count, digest = 0, sha256()
         with path.open('rb') as incoming, (destination / entry.filename).open('xb') as output:
             while block := incoming.read(min(1024 * 1024, entry.size + 1 - count)):
@@ -107,7 +108,7 @@ def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cance
         if count != entry.size or digest.hexdigest() != entry.digest:
             raise RestoreError('original file changed during backup')
     backup_sidecars._check_cancelled(cancelled)
-    return verify_catalog_assets(db, RetainedAssets(destination), **limits)
+    return verify_catalog_assets(db, RetainedAssets(destination), cancelled=cancelled, **limits)
 
 
 def create_backup(app, destination, *, include_generated=False, max_bytes=None, cancelled=lambda: False):
@@ -143,14 +144,13 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
                 pending = None
-                if any(os.path.lexists(app.root / name) for name in
-                       ('imports.sqlite', 'import-requests', 'import-batches')):
+                roots = pending_backup.pending_roots(app.root)
+                if roots:
                     pending = pending_backup.snapshot_pending(app, stage / 'pending',
                         max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
-                        cancelled=cancelled)
+                        cancelled=cancelled, expected_roots=roots)
                     total += sum(entry['size_bytes'] for entry in pending['files'])
-                state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_transcription.MAX_INPUT_BYTES
-                    + (backup_sidecars.backup_generated.MAX_BYTES
+                state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_studio.MAX_MEDIA_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
                     if include_generated else 0)) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
                     max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
@@ -160,7 +160,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
             if pending is not None:
                 manifest['pending'] = pending
-            backup_sidecars.normalize_manifest(manifest)
+            backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -190,12 +190,14 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
     return sha256(raw).hexdigest()
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    if not {DATABASE, ORIGINALS, MANIFEST} <= {path.name for path in directory.iterdir()}:
-        raise RestoreError('incomplete backup or unexpected files')
+    for name in (DATABASE, ORIGINALS, MANIFEST):
+        backup_sidecars._check_cancelled(cancelled)
+        if not backup_sidecars._optional_present(directory / name):
+            raise RestoreError('incomplete backup or unexpected files')
     size = _plain(directory / MANIFEST).st_size
     if not 0 < size <= MAX_MANIFEST:
         raise RestoreError('manifest size limit')
@@ -210,8 +212,8 @@ def _read_manifest(directory, expected_manifest_sha256):
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
             or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
-    inventory = backup_sidecars.normalize_manifest(manifest)
-    backup_sidecars.check_namespace(directory, inventory)
+    inventory = backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
+    backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)
     if (manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
@@ -230,12 +232,13 @@ def _read_manifest(directory, expected_manifest_sha256):
         raise RestoreError('invalid database manifest')
     filenames, digests, total = set(), set(), 0
     for asset in manifest['assets']:
+        backup_sidecars._check_cancelled(cancelled)
         if (type(asset) is not dict or set(asset) != {'filename','sha256','mime','size_bytes'}
                 or not isinstance(asset['sha256'], str)
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
                 or not isinstance(asset['mime'], str) or asset['mime'] not in SUFFIXES
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
-                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= MAX_BYTES):
+                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= source_limit(asset['mime'])):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')
@@ -244,6 +247,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         total += asset['size_bytes']
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
+    backup_sidecars._check_cancelled(cancelled)
     return manifest
 
 
@@ -278,7 +282,7 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
 
 def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=None, cancelled=lambda: False):
     """Authenticate the common backup format using only a private database copy."""
-    inventory = backup_sidecars.normalize_manifest(manifest)
+    inventory = backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
     _plain(source / ORIGINALS, directory=True)
     snapshot = stage / DATABASE
     _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
@@ -292,6 +296,9 @@ def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=
         if copy_originals:
             _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
         backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
+        if new_root is not None:
+            inventory = backup_sidecars.rebind_restored_inputs(storage.db, stage, new_root,
+                inventory, cancelled=cancelled)
     pending_entries = []
     if inventory.pending is not None:
         recovered = pending_backup.restore_pending(source / 'pending', stage,
@@ -314,7 +321,8 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
     with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
         _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
     return manifest
@@ -332,20 +340,13 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    backup_sidecars._check_cancelled(cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
         inventory, entries, pending_entries = _verify_contents(source, stage, manifest,
             copy_originals=True, new_root=destination, cancelled=cancelled)
-        backup_sidecars._check_cancelled(cancelled)
-        restored_sidecars = inventory.entries
-        if (stage / 'state' / 'transcription').exists():
-            # Authenticate the canonical backup first, then revoke only staged
-            # external execution trust before publishing the restored directory.
-            from .backup_transcription import prepare_restored_inventory
-            restored_sidecars = prepare_restored_inventory(
-                stage, destination, restored_sidecars, cancelled=cancelled)
         backup_sidecars._check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -354,7 +355,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-        backup_sidecars.publish(stage, destination, restored_sidecars, sync_directory=_sync_directory)
+        backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
         backup_sidecars.publish(stage, destination, pending_entries, sync_directory=_sync_directory)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)

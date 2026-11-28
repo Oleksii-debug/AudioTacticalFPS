@@ -84,7 +84,7 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
 def publication_diagnostics(monkeypatch):
     """Observe the actual verification branch without changing its verdict.
 
-    Only these two current-thread frames are recorded, after child cleanup.
+    Only the actual recovery frame is recorded, after child cleanup.
     Keep bounded exception metadata and return locations, never frame locals,
     source bytes, request contents or database rows.
     """
@@ -121,7 +121,7 @@ def publication_diagnostics(monkeypatch):
 
         return observed
 
-    for name in ('_reconcile_publication', '_published_after_stop'):
+    for name in ('_recover_publication',):
         monkeypatch.setattr(worker, name, observer(name, getattr(worker, name)))
     return events
 
@@ -164,7 +164,7 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     assert marker.is_file(), result
     assert result['state'] == 'complete', dict(result=result, publication_verification=diagnostics)
     assert sys.gettrace() is original_trace
-    assert {entry['function'] for entry in diagnostics} == {'_reconcile_publication', '_published_after_stop'}
+    assert {entry['function'] for entry in diagnostics} == {'_recover_publication'}
     assert result['recovered_publication'] is True
     assert outcomes == [{'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]]
     assert result['worker_state'] == {'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]
@@ -314,14 +314,34 @@ def test_other_import_before_child_launch_is_not_this_workers_commit(tmp_path, m
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
 
 
+def stopped_publication_record(app, workspace, source, tmp_path, monkeypatch):
+    """Keep the real child's pre-acknowledgement candidate for adversarial verification."""
+    marker = tmp_path / 'committed-before-acknowledgement'
+    publication_barrier(monkeypatch, marker, crash=True)
+    captured = []
+    recover = worker._recover_publication
+    def observed(root, request_id, attempt, request_digest):
+        record = deepcopy(worker.load_request(root, request_id))
+        assert record['result']['state'] == 'publishing'
+        captured.append((record, attempt, request_digest))
+        return recover(root, request_id, attempt, request_digest)
+    monkeypatch.setattr(worker, '_recover_publication', observed)
+    result = app.import_file(workspace, source)
+    assert result['state'] == 'complete' and result['recovered_publication'] is True
+    assert marker.exists() and len(captured) == 1
+    record, attempt, request_digest = captured[0]
+    monkeypatch.setattr(worker, '_recover_publication', recover)
+    worker._store(app.root, result['request_id'], record)
+    return result, record, attempt, request_digest
+
+
 @pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration'))
-def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, change):
+def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, monkeypatch, change):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Request binding')
     source = source_file(tmp_path, 'docx')
-    result = app.import_file(workspace, source)
-    assert result['state'] == 'complete'
-    initial = worker.load_request(app.root, result['request_id'])
+    result, initial, attempt, request_digest = stopped_publication_record(
+        app, workspace, source, tmp_path, monkeypatch)
     changed = deepcopy(initial)
     if change == 'scope':
         changed['workspace'] = app.create_workspace('Other')
@@ -334,22 +354,22 @@ def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, chan
     worker._store(app.root, result['request_id'], changed)
     assert worker._published_after_stop(app, initial, 0) is None
     with pytest.raises(ValueError, match='publication|Committed'):
-        worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
+        worker._recover_publication(app.root, result['request_id'], attempt, request_digest)
 
 
-def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
+def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path, monkeypatch):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Original binding')
     source = source_file(tmp_path, 'docx')
-    result = app.import_file(workspace, source)
-    initial = worker.load_request(app.root, result['request_id'])
+    result, initial, attempt, request_digest = stopped_publication_record(
+        app, workspace, source, tmp_path, monkeypatch)
     retained = app.assets.resolve(initial['asset_sha256'])
     raw = bytearray(retained.read_bytes())
     raw[-1] ^= 1
     retained.write_bytes(raw)
     assert worker._published_after_stop(app, initial, 0) is None
     with pytest.raises(ValueError):
-        worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
+        worker._recover_publication(app.root, result['request_id'], attempt, request_digest)
 
 
 @pytest.mark.parametrize('binding', ('job', 'configuration'))

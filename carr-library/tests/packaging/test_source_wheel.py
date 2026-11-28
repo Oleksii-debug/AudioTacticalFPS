@@ -164,6 +164,22 @@ def test_path_alias_and_bytecode_rejected(source, tmp_path, extra):
         verifier.verify_application_wheel(candidate, repo, first)
 
 
+def test_raw_backslash_member_remains_hostile_on_windows(source, tmp_path, monkeypatch):
+    repo, first, _, payload = source
+    raw = 'fixture_app\\alias.py'
+    payload[raw] = b'not safe payload\n'
+    # Exercise the stdlib's Windows separator handling even on a Linux review
+    # host. Both ZIP writing and reading must retain the original spelling.
+    with monkeypatch.context() as patch:
+        patch.setattr('zipfile.os.sep', '\\')
+        candidate = wheel(tmp_path, payload)
+        with ZipFile(candidate) as archive:
+            member = next(info for info in archive.infolist() if info.orig_filename == raw)
+            assert member.filename == 'fixture_app/alias.py'
+        with pytest.raises(ValueError, match='Wheel path contains an embedded alias'):
+            verifier.verify_application_wheel(candidate, repo, first)
+
+
 def test_duplicate_zip_member_rejected(source, tmp_path):
     repo, first, _, payload = source
     with pytest.warns(UserWarning, match='Duplicate name'):

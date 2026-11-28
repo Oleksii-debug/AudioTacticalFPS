@@ -1,5 +1,8 @@
 """Full-backup reading recovery against actual LibraryApp and immutable sources."""
 from errno import ENOSPC
+from contextlib import closing
+import runpy
+import wave
 from hashlib import sha256
 import json
 import os
@@ -15,6 +18,7 @@ from carr_library.ingest.writer_guard import WriterBusy, exclusive_writer
 from carr_library.library_backup import create_backup, restore_backup, verify_backup, INCOMPLETE
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import FILENAME, MAX_BYTES, ReadingState
+from carr_library.storage.revisions import Page, Storage
 
 
 @pytest.fixture
@@ -543,3 +547,243 @@ def test_exact_v3_reading_shape_remains_read_only_compatible(reading_library, tm
         assert state.resume(page.location.workspace, page.location.edition) == page.location
     assert {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
             for p in folder.rglob('*') if p.is_file()} == before
+
+
+def test_epub_bookmarks_restore_logical_sections_without_quotation_authority(tmp_path):
+    synthetic_epub = runpy.run_path(str(
+        Path(__file__).parents[1] / 'e2e' / 'test_epub_library.py'))['synthetic_epub']
+    source = tmp_path / 'source.epub'
+    source.write_bytes(synthetic_epub())
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Logical EPUB reading')
+    book = app.import_file(workspace, source, title='EPUB reading fixture')
+    assert book['state'] == 'complete'
+    page = ReadingDesk(app, workspace, book['edition']).page(2)
+    assert page.location.kind == 'logical_segment' and page.location.index == 2
+    assert page.verified is False
+    state = ReadingState(app.root)
+    state.remember(page.location)
+    bookmark = state.add_bookmark(page.location, 'Exact chapter after the cover')
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    source.unlink()
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
+    copied = ReadingState(restored.root)
+    assert copied.bookmarks(workspace, book['edition']) == (bookmark,)
+    assert ReadingDesk(restored, workspace, book['edition']).validate(
+        copied.resume(workspace, book['edition'])) == page
+    hit, = restored.search(workspace, 'Залізнична історія')
+    with pytest.raises(ValueError, match='unverified'):
+        restored.copy(workspace, hit.ref, hit.revision, 'quote')
+
+
+def test_sparse_physical_pdf_bookmark_keeps_its_actual_page_and_unverified_state(tmp_path):
+    from reportlab.pdfgen.canvas import Canvas
+    source = tmp_path / 'source.pdf'
+    canvas = Canvas(str(source), invariant=1, pageCompression=0)
+    for number in (1, 2):
+        canvas.drawString(50, 700, f'Synthetic physical PDF page {number}.')
+        canvas.showPage()
+    canvas.save()
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Physical-page reading')
+    book = app.import_file(workspace, source, title='PDF reading fixture')
+    assert book['state'] == 'complete'
+    # A retained partial extraction can have reading ordinal 1 at PDF page 2.
+    with closing(Storage(app.database)) as storage:
+        with storage.transaction():
+            raw = storage.db.execute('SELECT raw FROM page WHERE revision=? AND physical=2',
+                                     (book['id'],)).fetchone()[0]
+            storage.stage_revision(workspace, book['edition'], 'sparse-pdf-revision', book['asset'],
+                                   'synthetic-sparse-extraction', [Page(raw, 2)])
+            storage.db.execute('''INSERT INTO source_metadata
+                SELECT workspace,edition,?,author,title,volume,edition_label
+                FROM source_metadata WHERE workspace=? AND edition=? AND revision=?''',
+                ('sparse-pdf-revision', workspace, book['edition'], book['id']))
+    page = ReadingDesk(app, workspace, book['edition']).page(1)
+    assert page.location.kind == 'physical_page' and page.location.index == 2
+    assert page.ordinal == 1 and page.verified is False
+    state = ReadingState(app.root)
+    state.remember(page.location)
+    bookmark = state.add_bookmark(page.location, 'Actual PDF page two')
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    source.unlink()
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
+    copied = ReadingState(restored.root)
+    assert copied.bookmarks(workspace, book['edition']) == (bookmark,)
+    assert ReadingDesk(restored, workspace, book['edition']).validate(
+        copied.resume(workspace, book['edition'])) == page
+    hit, = restored.search(workspace, 'Synthetic')
+    with pytest.raises(ValueError, match='unverified'):
+        restored.copy(workspace, hit.ref, hit.revision, 'quote')
+
+def _legacy_complete_manifest(folder):
+    """Retain the exact historical v5 layout as a reader compatibility case."""
+    document = read_manifest(folder)
+    assert document['version'] == 4
+    entries = document.pop('sidecars')
+    saved = [entry for entry in entries if entry['filename'] == FILENAME]
+    assert len(saved) <= 1
+    state = [dict(entry, filename=entry['filename'][6:])
+             for entry in entries if entry['filename'].startswith('state/')]
+    assert len(entries) == len(saved) + len(state)
+    document.update(version=5, reading_state=saved[0] if saved else None, state=state)
+    document.setdefault('pending', None)
+    (folder / 'state').mkdir(exist_ok=True)
+    return document
+
+
+def _typed_composite_state(app):
+    from carr_library.runtime_settings import load_settings, save_settings
+    from carr_library.durable_state import atomic_json
+    state = app.root / 'state'
+    save_settings(state, load_settings(state))
+    settings = state / 'audio/engines.json'
+    key = sha256(b'composite reading recovery PCM').hexdigest()
+    cache = state / 'studio/cache' / (key + '-0123456789.wav')
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(cache), 'wb') as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(8000)
+        stream.writeframes(b'\x00\x00' * 800)
+    atomic_json(cache.with_name(key + '.json'), {
+        'schema': 1, 'key': key, 'file': cache.name, 'sha256': sha256(cache.read_bytes()).hexdigest(),
+        'duration': .1, 'sample_rate': 8000, 'channels': 1})
+    return settings, cache
+
+
+@pytest.mark.parametrize('version', [4, 5])
+@pytest.mark.parametrize('include_generated', [False, True])
+def test_complete_recovery_preserves_reading_settings_and_exact_pending_originals(
+        reading_library, tmp_path, version, include_generated):
+    app, workspaces, books, pages, bookmarks = reading_library
+    settings, cache = _typed_composite_state(app)
+    topic = app.create_topic(workspaces[0], 'Independent research notes')
+    hit, = app.search(workspaces[0], 'First')
+    app.save_hit(workspaces[0], topic, hit.ref, hit.revision, 'Keep the research note separate.')
+    evidence = app.evidence(workspaces[0], topic)
+    sources = [tmp_path / f'pending-{number}.txt' for number in range(2)]
+    for number, source in enumerate(sources):
+        source.write_text(f'Original pending railway source {number}.', encoding='utf-8')
+    planned = app.plan_import_batch(workspaces[0], sources)
+    stop = False
+    def progress(value):
+        nonlocal stop
+        stop = value['counts']['complete'] == 1
+    partial = app.run_import_batch(workspaces[0], planned['batch_id'],
+        cancelled=lambda: stop, progress=progress)
+    assert partial['counts']['complete'] == 1 and partial['counts']['queued'] == 1
+    before = (app.root / FILENAME).read_bytes()
+    folder = tmp_path / 'complete-backup'
+    checksum = create_backup(app, folder, include_generated=include_generated)
+    manifest = read_manifest(folder)
+    if version == 5:
+        manifest = _legacy_complete_manifest(folder)
+        checksum = write_manifest(folder, manifest)
+    assert manifest['version'] == version
+    assert manifest['generated_audio_included'] is include_generated
+    saved_reading = manifest['reading_state'] if version == 5 else reading_entry(manifest)
+    assert saved_reading['sha256'] == sha256(before).hexdigest()
+    assert manifest['pending'] is not None
+    originals = {entry['filename']: entry for entry in manifest['assets'] + manifest['pending']['assets']}
+    assert len(originals) == 3
+    for source in sources:
+        source.unlink()
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'complete-restore', checksum))
+    assert restored.evidence(workspaces[0], topic) == evidence
+    assert (restored.root / FILENAME).read_bytes() == before
+    assert (restored.root / 'state/audio/engines.json').read_bytes() == settings.read_bytes()
+    restored_cache = restored.root / cache.relative_to(app.root)
+    assert restored_cache.exists() is include_generated
+    if include_generated:
+        assert restored_cache.read_bytes() == cache.read_bytes()
+    assert not (restored.root / 'pending').exists()
+    assert {path.name for path in restored.assets_dir.iterdir()} == set(originals)
+    for name, entry in originals.items():
+        retained = restored.assets_dir / name
+        assert sha256(retained.read_bytes()).hexdigest() == entry['sha256']
+        assert retained.stat().st_size == entry['size_bytes'] and retained.stat().st_nlink == 1
+    saved = ReadingState(restored.root)
+    for workspace, book, page, bookmark in zip(workspaces, books, pages, bookmarks):
+        assert saved.resume(workspace, book['edition']) == page.location
+        assert saved.bookmarks(workspace, book['edition']) == (bookmark,)
+        assert ReadingDesk(restored, workspace, book['edition']).validate(page.location) == page
+    final = restored.run_import_batch(workspaces[0], planned['batch_id'])
+    assert final['state'] == 'complete' and final['counts']['complete'] == 2
+    for previous, current in zip(planned['rows'], final['rows']):
+        for key in ('row_id', 'work_id', 'edition_id', 'request_id', 'manifest'):
+            assert current[key] == previous[key]
+    assert not (restored.root / INCOMPLETE).exists()
+    assert (folder / FILENAME).read_bytes() == before
+
+
+@pytest.mark.parametrize('component', ['reading', 'state'])
+def test_both_historical_v3_shapes_restore_only_their_declared_component(
+        reading_library, tmp_path, component):
+    from carr_library.runtime_settings import load_settings, save_settings
+    app, workspaces, books, pages, bookmarks = reading_library
+    save_settings(app.root / 'state', load_settings(app.root / 'state'))
+    settings = app.root / 'state/audio/engines.json'
+    folder = tmp_path / 'historical-v3'
+    create_backup(app, folder)
+    manifest = _legacy_complete_manifest(folder)
+    manifest['version'] = 3
+    if manifest.pop('pending', None) is not None:
+        shutil.rmtree(folder / 'pending')
+    if component == 'reading':
+        del manifest['state'], manifest['generated_audio_included']
+        shutil.rmtree(folder / 'state')
+    else:
+        del manifest['reading_state']
+        (folder / FILENAME).unlink()
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'historical-restore',
+                                        write_manifest(folder, manifest)))
+    if component == 'reading':
+        saved = ReadingState(restored.root)
+        assert saved.path.read_bytes() == (app.root / FILENAME).read_bytes()
+        for workspace, book, page, bookmark in zip(workspaces, books, pages, bookmarks):
+            assert saved.resume(workspace, book['edition']) == page.location
+            assert saved.bookmarks(workspace, book['edition']) == (bookmark,)
+        assert not (restored.root / 'state').exists()
+    else:
+        assert (restored.root / 'state/audio/engines.json').read_bytes() == settings.read_bytes()
+        assert not (restored.root / FILENAME).exists()
+    assert restored.search(workspaces[0], 'First')[0].quote == 'First'
+
+
+@pytest.mark.parametrize('component', ['state', 'pending'])
+def test_legacy_v5_missing_declared_component_never_publishes_partial_restore(
+        reading_library, tmp_path, component):
+    app, *_ = reading_library
+    _typed_composite_state(app)
+    folder = tmp_path / 'legacy-v5'
+    create_backup(app, folder)
+    manifest = _legacy_complete_manifest(folder)
+    assert manifest['pending'] is not None
+    checksum = write_manifest(folder, manifest)
+    shutil.rmtree(folder / component)
+    target = tmp_path / 'rejected'
+    with pytest.raises(ValueError, match='incomplete|missing'):
+        restore_backup(folder, target, checksum)
+    assert not target.exists()
+    assert (folder / FILENAME).read_bytes() == (app.root / FILENAME).read_bytes()
+
+
+@pytest.mark.parametrize('present', [False, True])
+def test_absent_and_explicit_empty_reading_state_remain_distinct(tmp_path, present):
+    from carr_library.reader.reading_state import _encode
+    app = LibraryApp(tmp_path / 'empty')
+    workspace = app.create_workspace('No saved places')
+    source = app.root / FILENAME
+    if present:
+        source.write_text(_encode({}, {}), encoding='utf-8')
+    folder = tmp_path / 'backup'
+    checksum = create_backup(app, folder)
+    assert bool(read_manifest(folder)['sidecars']) is present
+    target = restore_backup(folder, tmp_path / 'restored', checksum)
+    assert (target / FILENAME).exists() is present
+    if present:
+        assert (target / FILENAME).read_bytes() == source.read_bytes()
+    assert ReadingState(target).resume(workspace, 'unused') is None

@@ -7,6 +7,8 @@ import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
+from .installation_lease import installed_entrypoint
+
 
 def self_test():
     """Exercise real SQLite and retained originals without touching user data."""
@@ -62,23 +64,33 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
-    if arguments[:1] == ['translation']:
+    if arguments and arguments[0] == 'workflow-templates':
+        from .assistant.templates_cli import main as templates_main
+        return templates_main(arguments[1:])
+    if arguments and arguments[0] == 'import-batches':
+        from .ingest.batch_cli import run as import_batches_main
+        return import_batches_main(arguments[1:])
+    if arguments and arguments[0] == 'backup-incremental':
+        from .backup_incremental_cli import main as incremental_main
+        return incremental_main(arguments[1:])
+    if arguments and arguments[0] == 'operations':
+        from .operations.cli import main as operations_main
+        return operations_main(arguments[1:])
+    if arguments and arguments[0] in ('transcribe', 'transcription'):
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
+    if arguments and arguments[0] in ('translate', 'translation'):
         from .assistant.translation_cli import main as translation_main
         return translation_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
-    if arguments[:1] == ['transcription']:
-        from .transcription_cli import main as transcription_main
-        return transcription_main(arguments[1:])
-    if arguments[:1] == ['operations']:
-        from .operations_cli import main as operations_main
-        return operations_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
@@ -116,8 +128,8 @@ def main(argv=None):
     from .acquisition.cli import add_arguments, validate_arguments
     add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
-                        help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+                        help='Library ID for search or identifier lookup; only search accepts multiple libraries')
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -127,13 +139,24 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    parser.add_argument('--offset-per-library', type=int, default=0,
+                        help='Nonnegative result offset within this bounded source window')
+    parser.add_argument('--library-offset', type=int, default=0,
+                        help='Continue the selected-library list, 20 libraries per invocation')
+    parser.add_argument('--source-cursors', default='{}',
+                        help='Exact next_source_cursors JSON from the previous search; passive navigation only')
+    parser.add_argument('--search-timeout', type=float, default=300,
+                        help='Cooperative search allowance in seconds, at most 86400')
     args = parser.parse_args(argv)
     validate_arguments(parser, args)
+    identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
+    if (args.document_formats or args.list_libraries or args.search is not None or identifier_lookup) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, or ISBN lookup.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore)):
-        parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
+    if ocr_operation and any((args.document_formats, args.list_libraries, args.search is not None, args.self_test,
+                              args.backup, args.restore, identifier_lookup)):
+        parser.error('Choose one OCR model, library, search, DOI/ISBN lookup, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -145,12 +168,12 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, or DOI lookup.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None and args.lookup_doi is None:
-        parser.error('--workspace is used with --search or --lookup-doi.')
+    if args.workspaces and args.search is None and not identifier_lookup:
+        parser.error('--workspace is used with --search, --lookup-doi or --lookup-isbn.')
+    if (args.offset_per_library or args.library_offset or args.source_cursors != '{}' or args.search_timeout != 300) and args.search is None:
+        parser.error('Search navigation and time-budget arguments require --search.')
     native_handle = None
     try:
         if args.document_formats:
@@ -218,7 +241,7 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
-        if args.lookup_doi is not None:
+        if identifier_lookup:
             from .acquisition.cli import run
             return run(app, args)
         if args.list_libraries:
@@ -227,13 +250,27 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
+            if len(args.source_cursors.encode('utf-8')) > 1024 * 1024:
+                raise ValueError('Source continuation exceeds its navigation budget.')
+            source_cursors = json.loads(args.source_cursors)
+            if type(source_cursors) is not dict:
+                raise ValueError('Source continuation must be a workspace-to-cursor JSON object.')
             session = FederatedSearch(app).search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, offset_per_library=args.offset_per_library,
+                on_status=notices.append, paged=True, source_cursors=source_cursors,
+                library_offset=args.library_offset, timeout=args.search_timeout)
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
-                'ordering': 'Selected libraries in selection order; relevance is local to each library.',
+                'offset_per_library': session.offset_per_library,
+                'has_more': session.has_more,
+                'ordering': 'Selected libraries in selection order; relevance is local to the current source window.',
+                'library_offset': session.library_offset, 'selected_library_count': len(session.selected_workspaces),
+                'has_more_libraries': session.has_more_libraries,
+                'next_source_cursors': dict(session.next_source_cursors),
+                'source_windows': [dict(workspace=row[0], source_pages=row[1], editions=row[2], characters=row[3])
+                                   for row in session.source_windows],
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}

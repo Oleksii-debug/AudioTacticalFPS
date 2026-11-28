@@ -35,10 +35,12 @@ def run_native(source, timeout):
         import wx
     except (ImportError, OSError) as exc:
         return not_run('Native wxPython is unavailable: ' + str(exc))
-    sys.path.insert(0, str(source / 'src'))
+    if source is not None:
+        sys.path.insert(0, str(source / 'src'))
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui.catalog_tools_dialog import LibraryToolsDialog
+    from carr_library.ui import catalog_tools_dialog as tools_module
 
     try:
         app = wx.App(False)
@@ -52,6 +54,11 @@ def run_native(source, timeout):
             raise AssertionError(name)
         checks.append(name)
         print('PASS:', name, flush=True)
+
+    module_path = Path(tools_module.__file__).resolve()
+    if source is None:
+        check('library tools load from the installed distribution',
+              'site-packages' in [part.casefold() for part in module_path.parts])
 
     with TemporaryDirectory(prefix='carr-native-library-tools-', ignore_cleanup_errors=True) as temporary:
         folder = Path(temporary)
@@ -216,7 +223,8 @@ def run_native(source, timeout):
                   result == wx.ID_CANCEL and dialog._closed and not frame.working)
             print(json.dumps({'result': 'PASS', 'checks': len(checks), 'wx': wx.version(),
                 'sqlite': sqlite3.sqlite_version, 'native_platform': platform.system(),
-                'source_sha256': sha256((source / 'src/carr_library/ui/catalog_tools_dialog.py').read_bytes()).hexdigest(),
+                'source_sha256': sha256(module_path.read_bytes()).hexdigest(),
+                'source_override': str(source) if source is not None else None,
                 'file_chooser_interaction': 'NOT_RUN; synthetic destination supplied',
                 'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
         except Exception as exc:
@@ -243,12 +251,13 @@ def run_native(source, timeout):
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--native', action='store_true', help='Run on the existing authorized native desktop.')
-    parser.add_argument('--source', type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument('--source', type=Path, default=None,
+                        help='Explicit checkout override; installed package is the default.')
     parser.add_argument('--timeout', type=float, default=45.0, help='Native event-loop deadline, 5 to 90 seconds.')
     args = parser.parse_args()
     if not 5 <= args.timeout <= 90:
         parser.error('--timeout must be between 5 and 90 seconds')
-    return run_native(args.source.resolve(), args.timeout)
+    return run_native(args.source.resolve() if args.source is not None else None, args.timeout)
 
 
 if __name__ == '__main__':

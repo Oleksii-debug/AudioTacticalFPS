@@ -262,3 +262,97 @@ def test_completion_summary_preserves_the_callback_focus_target(host, target_nam
     if target_name is not None:
         assert target.GetValue() == 'Readable source result'
     assert frame.progress_panel.active_task.snapshot().percent == 100
+
+
+@pytest.mark.parametrize('scenario,state', [
+    ('missing', 'failed'), ('cancelled', 'cancelled'),
+    ('imported', 'succeeded'), ('resumed', 'succeeded'),
+])
+def test_actual_library_import_and_resume_receipts_keep_their_outcome(host, tmp_path, scenario, state):
+    """Retain actual import/replay evidence while using the canonical reporter."""
+    from carr_library.application import LibraryApp
+
+    frame, callbacks = host
+    library = LibraryApp(tmp_path / 'library')
+    workspace = library.create_workspace('Actual progress outcomes')
+    source = tmp_path / 'manuscript.txt'
+    if scenario != 'missing':
+        source.write_text('Exact retained manuscript for progress verification.')
+    if scenario == 'resumed':
+        from carr_library.extract.page_ocr import Config
+        from carr_library.ingest.worker import load_request, prepare_request, record_progress
+        metadata = dict(title='Retained manuscript', authors=[], language=None,
+                        edition=None, volume=None, collections=[])
+        request = prepare_request(library.root, workspace, source, metadata, Config())
+        def cancel_after_job_binding():
+            # Cancellation now reaches source intake too. Wait for the actual
+            # durable request/job binding, so this fixture has something to resume.
+            return bool(load_request(library.root, request['request_id']).get('job'))
+        stopped = library._import_file(workspace, source, **request['metadata'],
+            _request_id=request['request_id'], cancelled=cancel_after_job_binding)
+        assert stopped['state'] == 'cancelled'
+        bound = load_request(library.root, request['request_id'])
+        assert bound['job'] == stopped['id'] and stopped['completed'] == 0
+        assert library.assets.resolve(bound['asset_sha256']).read_bytes() == source.read_bytes()
+        assert library.browse(workspace) == ()
+        record_progress(library.root, request['request_id'], state='cancelled', result=stopped)
+        source.unlink()
+        operation = lambda: library.resume_import(workspace, request['request_id'])
+    else:
+        operation = lambda: library.import_files(workspace, [source], cancelled=lambda: scenario == 'cancelled')
+    receipts = []
+    frame.run_job('Actual source import', operation, receipts.append)
+    callbacks.get(timeout=30)()
+    assert len(receipts) == 1
+    actual = receipts[0] if scenario == 'resumed' else receipts[0][0]
+    assert actual['state'] == {'failed': 'failed', 'cancelled': 'cancelled', 'succeeded': 'complete'}[state]
+    if scenario == 'resumed':
+        assert actual['id'] == stopped['id']
+    snapshot = frame.progress_panel.active_task.snapshot()
+    assert snapshot.state == state and not frame.working
+    assert (snapshot.percent == 100) == (state == 'succeeded')
+    assert bool(library.search(workspace, 'manuscript')) == (state == 'succeeded')
+
+
+def test_receipt_classifier_failure_preserves_successful_publication(host, monkeypatch):
+    import carr_library.progress as progress_module
+    frame, callbacks = host
+    done, failed = Mock(), Mock()
+    monkeypatch.setattr(progress_module, 'operation_outcome',
+        Mock(side_effect=ValueError('Unclassifiable receipt')))
+    frame.run_job('Export', lambda: 'committed', done, failed)
+    finish(callbacks)
+    done.assert_called_once_with('committed')
+    failed.assert_not_called()
+    assert not frame.working and not frame.busy
+    snapshot = frame.progress_panel.active_task.snapshot()
+    assert snapshot.state == 'unavailable' and snapshot.percent != 100
+    assert 'Progress reporting is unavailable' in frame.progress_panel._reporting_failure[2]
+
+
+def test_late_measurements_do_not_replace_the_callback_started_job(host):
+    frame, callbacks = host
+    release = Event()
+    observers = []
+    def first(report):
+        observers.append(report)
+        report(1, 1, 'First retained result')
+        return {'state': 'complete'}
+    def second():
+        assert release.wait(3), 'Fixture release timed out.'
+    frame.run_job('First', first,
+        lambda result: frame.run_job('Second', second), with_progress=True)
+    try:
+        finish(callbacks)
+        current = frame.progress_panel.active_task
+        assert frame.working and current.snapshot().title == 'Second'
+        before = current.snapshot()
+        observers[0](1, 1, 'Late first-operation observer')
+        assert frame.progress_panel.active_task is current
+        assert current.snapshot() == before
+        assert before.state == 'running' and before.percent is None
+    finally:
+        release.set()
+    finish(callbacks)
+    assert frame.progress_panel.active_task is current
+    assert current.snapshot().state == 'succeeded'

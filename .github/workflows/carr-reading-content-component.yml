@@ -1,0 +1,116 @@
+name: CARR reading content controls acceptance
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-reading-content-component.yml']
+  push:
+    branches: [carr/reading-content-policy-2aa-20261127, carr/reading-content-policy-2aa-20261127-*]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-reading-content-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  reading-content-source:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the current product and test dependencies
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+      - name: Require exact narration selection and existing reading recovery
+        run: |
+          set -euo pipefail
+          python -m compileall -q src scripts
+          python scripts/ci_check.py --jobs 2 \
+            tests/speech/test_narration_policy.py \
+            tests/ui/test_reading_narration.py \
+            tests/ui/test_reading_tools.py \
+            tests/ui/test_reader_focus_hook.py \
+            tests/speech/test_reading.py \
+            tests/speech/test_source.py \
+            tests/speech/test_session.py \
+            tests/speech/test_reading_tabs.py \
+            tests/ui/test_reader_tabs.py \
+            tests/ui/test_reader_navigation.py \
+            tests/ui/test_reader_voice_recovery.py \
+            tests/ui/test_native_reading_presentation_driver.py
+  native-reading-content-controls:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      CARR_TEST_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact pinned native desktop package
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-reading-content-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'reading-content-native-results' | Out-Null
+          $source = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $source -ne $env:CARR_TEST_COMMIT) { throw 'Native reading checkout differs from requested source.' }
+          $source | Set-Content 'reading-content-native-results/tested-commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'reading-content-native-results/tested-tree.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual reading content keyboard review and recovery
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_reading_tabs_smoke.py 2>&1 | Tee-Object 'reading-content-native-results/native-reading-content.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve exact native reading content evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-reading-content-native-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/reading-content-native-results/
+          retention-days: 7

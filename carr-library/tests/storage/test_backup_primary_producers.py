@@ -78,7 +78,18 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     checksum = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     names = {entry['filename'] for entry in manifest['sidecars']}
-    assert len(names) == 8
+    receipt_name = 'state/studio/backup-inputs.json'
+    job_name = f'state/studio/jobs/{job}/job.json'
+    original_job = json.loads((app.root / job_name).read_bytes())
+    project_name = f"state/studio/projects/{original_job['project']['id']}/project.json"
+    assert len(names) == 9 and receipt_name in names
+    receipt = json.loads((folder / receipt_name).read_bytes())
+    assert receipt['schema'] == 1 and receipt['inputs'] == {}
+    assert {row['filename'] for row in receipt['projects']} == {
+        job_name.removeprefix('state/'), project_name.removeprefix('state/')}
+    for row in receipt['projects']:
+        assert row['project_fingerprint'] == original_job['fingerprint']
+        assert row['source_sha256'] == sha256((folder / 'state' / row['filename']).read_bytes()).hexdigest()
     assert 'state/providers/envelope.usage.json' not in names
     assert 'state/providers/usage/envelope.usage.json' in names
     assert not any(name.endswith('.lock') for name in names)
@@ -98,8 +109,24 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
         checksum = resign(folder, manifest)
     before = {p.relative_to(folder): p.read_bytes() for p in folder.rglob('*') if p.is_file()}
     target = restore_backup(folder, tmp_path / 'restored', checksum)
-    for name in names:
+    for name in names - {receipt_name, job_name}:
         assert (target / name).read_bytes() == (app.root / name).read_bytes()
+    # The immutable backup receipt is consumed only after its original bytes
+    # validate. User job contents remain; source-machine output authority does not.
+    assert not (target / receipt_name).exists()
+    restored_job = json.loads((target / job_name).read_bytes())
+    projected = {'status', 'destination', 'artifacts', 'nodes', 'runtime', 'progress', 'error', 'result'}
+    assert {key: value for key, value in original_job.items() if key not in projected} == {
+        key: value for key, value in restored_job.items() if key not in projected | {'recovery'}}
+    assert restored_job['status'] == 'waiting-input' and restored_job['destination'] == ''
+    assert restored_job['artifacts'] == [] and restored_job['nodes'] == {} and restored_job['runtime'] is None
+    assert restored_job['error'] == '' and 'result' not in restored_job
+    assert 'Choose a new output directory before rendering.' in restored_job['progress']
+    assert restored_job['recovery'] == {
+        'requires_output_directory': True, 'inputs_retained': True,
+        'previous': {'project_fingerprint': original_job['fingerprint'],
+                     'status': original_job['status'], 'destination': original_job['destination'],
+                     'artifacts': original_job['artifacts']}}
     assert {p.relative_to(folder): p.read_bytes() for p in folder.rglob('*') if p.is_file()} == before
     restored = ReaderDraftStore(target).load()
     assert restored.document.text == 'Reading exact words.'

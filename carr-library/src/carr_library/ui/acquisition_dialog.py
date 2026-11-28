@@ -1,4 +1,4 @@
-"""Explicit DOI lookup, metadata review and lawful source acquisition.
+"""Explicit DOI/ISBN lookup, metadata review and lawful source acquisition.
 
 The application owns network policy, immutable preview tokens, authorization,
 download validation and the existing import quarantine. This native dialog
@@ -6,16 +6,18 @@ only captures an explicit request and presents its complete result. Opening it
 never makes a network request or sends private source text.
 """
 from pathlib import Path
+import sqlite3
 from uuid import uuid4
 
 import wx
 
+from ..research.topic_tree import TopicTree
 from .catalog_tools_dialog import _collection_choices, _workspace
 
 
 MAX_PREVIEW_CHARACTERS = 2_000_000
 PROVIDERS = (('crossref', 'Crossref'), ('europe_pmc', 'Europe PMC'),
-             ('unpaywall', 'Unpaywall'))
+             ('unpaywall', 'Unpaywall'), ('openalex', 'OpenAlex'))
 
 
 def _value(value):
@@ -26,12 +28,20 @@ def _downloadable(source):
     return source is not None and source.format == 'pdf' and source.reported_open_access is True
 
 
+def _preview_identity(preview):
+    kind = getattr(preview, 'identifier_kind', 'doi')
+    if kind not in ('doi', 'isbn'):
+        raise ValueError('The metadata preview has an unsupported identifier type.')
+    return kind, getattr(preview, 'identifier', '') or preview.doi
+
+
 def metadata_text(preview):
     """Render provider claims separately from local source verification."""
     metadata = preview.metadata
+    kind, identifier = _preview_identity(preview)
     lines = [
-        'DOI metadata proposal',
-        f'DOI: {preview.doi}',
+        f'{kind.upper()} metadata proposal',
+        f'{kind.upper()}: {identifier}',
         f'Retrieved at UTC: {_value(preview.fetched_utc)}',
         'Result: ' + ('cached response' if preview.cached else 'fresh lookup'),
         'Provider metadata does not verify quotations or grant download rights.',
@@ -50,7 +60,9 @@ def metadata_text(preview):
     lines.extend(('ISBN: ' + (', '.join(metadata.isbn) or 'Not supplied'),
                   'Abstract: ' + _value(metadata.abstract), '', 'Provider provenance:'))
     for record in preview.provider_records:
-        lines.extend((f'Provider: {record.provider}', f'DOI: {record.doi}',
+        record_identifier = (f'DOI: {record.doi}' if record.doi else
+                             'ISBN: ' + (', '.join(record.isbn) or 'Not supplied'))
+        lines.extend((f'Provider: {record.provider}', record_identifier,
                       f'Record title: {_value(record.title)}',
                       f'Source URL: {_value(record.source_url)}',
                       f'Response SHA-256: {_value(record.raw_sha256)}'))
@@ -61,7 +73,7 @@ def metadata_text(preview):
     result = '\n'.join(lines)
     if len(result) > MAX_PREVIEW_CHARACTERS:
         raise ValueError('The complete metadata preview is too large to display. '
-                         'Look up this DOI using fewer providers.')
+                         'No metadata action was enabled; for DOI lookup, select fewer providers.')
     return result
 
 
@@ -96,7 +108,7 @@ def _set_complete(control, text):
 class AcquisitionDialog(wx.Dialog):
     def __init__(self, frame, workspace, collections=(), *, collection=None,
                  selected_metadata=None, selected_panel=None, selected_selection=None):
-        super().__init__(frame, title='Find a source by DOI', size=(820, 720))
+        super().__init__(frame, title='Find a source by DOI or ISBN', size=(820, 720))
         self.frame, self.library, self.workspace = frame, frame.library, workspace
         self.host_scope = getattr(frame, 'active', None)
         self.selected_metadata, self.selected_panel = selected_metadata, selected_panel
@@ -108,18 +120,27 @@ class AcquisitionDialog(wx.Dialog):
         self._online_allowed = False
         self._network_job = False
         self._applied_token = None
+        self._identifier_kind = 'doi'
         rows = _collection_choices(collections)
         self.collection_ids = [None, *(row[0] for row in rows)]
         if collection not in self.collection_ids:
-            raise ValueError('The selected collection changed. Open DOI lookup again.')
+            raise ValueError('The selected collection changed. Open identifier lookup again.')
 
         layout = wx.BoxSizer(wx.VERTICAL)
         explanation = wx.StaticText(self, label=(
-            'Look up a DOI, review provider metadata, then choose whether to save a reference,\n'
+            'Look up a DOI or ISBN, review metadata, then choose whether to save a reference,\n'
             'update the selected book, or download a source you have permission to use.'))
         layout.Add(explanation, 0, wx.EXPAND | wx.ALL, 8)
-        layout.Add(wx.StaticText(self, label='DOI or https://doi.org/ link'), 0,
-                   wx.LEFT | wx.RIGHT, 8)
+        kind_row = wx.BoxSizer(wx.HORIZONTAL)
+        kind_row.Add(wx.StaticText(self, label='Identifier type'), 0, wx.ALL, 4)
+        self.identifier_kind = wx.Choice(self, choices=['DOI', 'ISBN'])
+        self.identifier_kind.SetName('Identifier type: DOI or ISBN')
+        self.identifier_kind.SetSelection(0)
+        self.identifier_kind.Bind(wx.EVT_CHOICE, self.on_identifier_kind_changed)
+        kind_row.Add(self.identifier_kind, 0, wx.ALL, 4)
+        layout.Add(kind_row, 0, wx.LEFT | wx.RIGHT, 4)
+        self.identifier_label = wx.StaticText(self, label='DOI or https://doi.org/ link')
+        layout.Add(self.identifier_label, 0, wx.LEFT | wx.RIGHT, 8)
         self.doi = wx.TextCtrl(self)
         self.doi.SetName('DOI or DOI resolver link')
         self.doi.SetMaxLength(2100)
@@ -130,10 +151,10 @@ class AcquisitionDialog(wx.Dialog):
         self.online.SetValue(False)
         self.online.Bind(wx.EVT_CHECKBOX, self.on_online_changed)
         layout.Add(self.online, 0, wx.EXPAND | wx.ALL, 8)
-        layout.Add(wx.StaticText(self, label=(
+        self.network_notice = wx.StaticText(self, label=(
             'Only the entered DOI and, for Unpaywall, your email are sent to the selected providers.\n'
-            'Private documents, notes and saved quotations are never uploaded.')), 0,
-            wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            'Private documents, notes and saved quotations are never uploaded.'))
+        layout.Add(self.network_notice, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         provider_row = wx.BoxSizer(wx.HORIZONTAL)
         self.providers = {}
         for identity, label in PROVIDERS:
@@ -248,11 +269,25 @@ class AcquisitionDialog(wx.Dialog):
         except (AttributeError, IndexError, ValueError, RuntimeError):
             return False
 
+    def _current_scope(self):
+        """Reauthorize UI publication without querying SQLite in cancel polling."""
+        if not self._same_host():
+            return False
+        try:
+            with self.library.read(self.workspace) as db:
+                if self.host_scope is not None and self.host_scope[1] is not None:
+                    TopicTree(db, self.workspace)._visible(self.host_scope[1])
+            return True
+        except (OSError, ValueError, sqlite3.Error):
+            return False
+
     def _enabled(self):
         idle = not self.pending and not self._closed
-        for control in (self.doi, *self.providers.values(), self.collection, self.sources):
+        for control in (self.identifier_kind, self.doi, self.collection, self.sources):
             control.Enable(idle)
-        self.email.Enable(idle and self.providers['unpaywall'].GetValue())
+        for control in self.providers.values():
+            control.Enable(idle and self._identifier_kind == 'doi')
+        self.email.Enable(idle and self._identifier_kind == 'doi' and self.providers['unpaywall'].GetValue())
         # Consent can be revoked even during a network request.
         self.online.Enable(not self._closed)
         self.lookup_button.Enable(idle)
@@ -276,6 +311,49 @@ class AcquisitionDialog(wx.Dialog):
         self.sources.Set([])
         self.source_preview.SetValue('')
         self.rights.SetValue(False)
+
+
+    def _selected_kind(self):
+        index = self.identifier_kind.GetSelection()
+        if index not in (0, 1):
+            raise ValueError('Choose DOI or ISBN as the identifier type.')
+        return ('doi', 'isbn')[index]
+
+    def on_identifier_kind_changed(self, event=None):
+        try:
+            kind = self._selected_kind()
+        except ValueError as exc:
+            self.on_request_changed()
+            self._message(str(exc))
+            return
+        if kind == self._identifier_kind:
+            return
+        self._identifier_kind = kind
+        self._online_allowed = False
+        self.online.SetValue(False)
+        if kind == 'isbn':
+            self.identifier_label.SetLabel('ISBN-10 or ISBN-13; hyphens and spaces are allowed')
+            self.doi.SetName('ISBN-10 or ISBN-13')
+            consent = 'Allow online ISBN metadata lookup from Open Library for this dialog'
+            self.network_notice.SetLabel(
+                'Only the entered ISBN is sent to Open Library. DOI providers and email are not used.\n'
+                'This returns book metadata; it does not establish download rights or upload private text.')
+        else:
+            self.identifier_label.SetLabel('DOI or https://doi.org/ link')
+            self.doi.SetName('DOI or DOI resolver link')
+            consent = 'Allow online DOI lookup and source download for this dialog'
+            self.network_notice.SetLabel(
+                'Only the entered DOI and, for Unpaywall, your email are sent to the selected providers.\n'
+                'Private documents, notes and saved quotations are never uploaded.')
+        self.online.SetLabel(consent)
+        self.online.SetName(consent)
+        self.lookup_button.SetLabel('&Look up ' + kind.upper())
+        self.metadata_preview.SetName(f'Complete {kind.upper()} metadata and provider provenance preview')
+        self.status.SetName(kind.upper() + ' acquisition status')
+        self.doi.SetValue('')
+        self.on_request_changed()
+        self.status.SetValue(f'Offline. Enter the {kind.upper()} and explicitly enable its online lookup.')
+        self.Layout()
 
     def on_request_changed(self, event=None):
         self._generation += 1
@@ -328,16 +406,17 @@ class AcquisitionDialog(wx.Dialog):
         if self.pending or self.frame.working or getattr(self.frame, 'busy', False):
             self._message('An operation is running. Wait or choose Cancel operation.')
             return False
-        if not self._same_host():
+        if not self._current_scope():
             self._clear_preview()
             self._enabled()
-            self._message('The selected library or research topic changed. Close DOI lookup and open it again.')
+            self._message('The selected library or research topic changed. Close identifier lookup and open it again.')
             return False
         return True
 
     def _require_preview(self):
-        if self.preview is None or self.preview.workspace != self.workspace:
-            raise ValueError('Look up the DOI again before using its metadata or source locations.')
+        if (self.preview is None or self.preview.workspace != self.workspace or
+                _preview_identity(self.preview)[0] != self._selected_kind()):
+            raise ValueError('Look up the selected identifier again before using its metadata or source locations.')
         return self.preview
 
     def _start(self, title, operation, complete, *, network=False, mutation=False):
@@ -370,9 +449,9 @@ class AcquisitionDialog(wx.Dialog):
                 error = InterruptedError('Operation cancelled; the result was not displayed.')
             if mutation and error is None:
                 self.changed = True
-            if not self._same_host() or generation != self._generation:
+            if not self._current_scope() or generation != self._generation:
                 self._clear_preview()
-                self._message('The library, topic or DOI request changed. Open DOI lookup again before another action.')
+                self._message('The library, topic or identifier request changed. Open lookup again before another action.')
             elif error is not None:
                 self._message(f'{title} was not completed: {error}')
             else:
@@ -400,17 +479,20 @@ class AcquisitionDialog(wx.Dialog):
             return False
         self._online_allowed = bool(self.online.GetValue())
         try:
+            kind = self._selected_kind()
             if not self._online_allowed:
-                raise ValueError('Enable online access explicitly before looking up a DOI.')
-            doi = self.doi.GetValue().strip()
-            if not doi or len(doi) > 2100:
-                raise ValueError('Enter a DOI or DOI resolver link.')
-            providers = tuple(identity for identity, _ in PROVIDERS if self.providers[identity].GetValue())
-            if not providers:
-                raise ValueError('Choose at least one metadata provider.')
-            email = self.email.GetValue().strip() if 'unpaywall' in providers else ''
-            if 'unpaywall' in providers and not email:
-                raise ValueError('Enter your email to query Unpaywall, or deselect Unpaywall.')
+                raise ValueError(f'Enable online access explicitly before looking up the {kind.upper()}.')
+            identifier = self.doi.GetValue().strip()
+            if not identifier or len(identifier) > 2100:
+                raise ValueError('Enter an ISBN-10 or ISBN-13.' if kind == 'isbn' else 'Enter a DOI or DOI resolver link.')
+            providers, email = (), ''
+            if kind == 'doi':
+                providers = tuple(identity for identity, _ in PROVIDERS if self.providers[identity].GetValue())
+                if not providers:
+                    raise ValueError('Choose at least one metadata provider.')
+                email = self.email.GetValue().strip() if 'unpaywall' in providers else ''
+                if 'unpaywall' in providers and not email:
+                    raise ValueError('Enter your email to query Unpaywall, or deselect Unpaywall.')
         except ValueError as exc:
             self._message(str(exc))
             return False
@@ -419,6 +501,8 @@ class AcquisitionDialog(wx.Dialog):
         def show(preview):
             if preview.workspace != self.workspace:
                 raise ValueError('The lookup returned a preview for another library.')
+            if _preview_identity(preview)[0] != kind:
+                raise ValueError('The lookup returned a different identifier type. Review the request again.')
             rendered = metadata_text(preview)
             _set_complete(self.metadata_preview, rendered)
             self.preview = preview
@@ -430,12 +514,16 @@ class AcquisitionDialog(wx.Dialog):
             else:
                 self.source_preview.SetValue('No source locations were reported by the selected providers.')
             self.tabs.SetSelection(0)
-            self.status.SetValue('Complete DOI proposal loaded. Review it before saving metadata or downloading a source.')
+            self.status.SetValue(f'Complete {kind.upper()} proposal loaded. Review it before saving metadata or downloading a source.')
             self.metadata_preview.SetFocus()
 
-        return self._start('Looking up DOI', lambda cancelled: self.library.lookup_doi(
-            self.workspace, doi, online_allowed=True, providers=providers,
-            unpaywall_email=email, cancelled=cancelled), show, network=True)
+        def request(cancelled):
+            if kind == 'isbn':
+                return self.library.lookup_isbn(self.workspace, identifier, online_allowed=True, cancelled=cancelled)
+            return self.library.lookup_doi(self.workspace, identifier, online_allowed=True,
+                providers=providers, unpaywall_email=email, cancelled=cancelled)
+
+        return self._start('Looking up ' + kind.upper(), request, show, network=True)
 
     def save_reference(self, event=None):
         if not self._available():
@@ -447,7 +535,8 @@ class AcquisitionDialog(wx.Dialog):
             return False
 
         def saved(reference):
-            self._message(f'Bibliographic reference saved or reused for DOI {preview.doi}.\n'
+            kind, identifier = _preview_identity(preview)
+            self._message(f'Bibliographic reference saved or reused for {kind.upper()} {identifier}.\n'
                           f'Reference ID: {reference.id}\nNo document was downloaded.')
 
         return self._start('Saving bibliographic reference', lambda cancelled:
@@ -460,12 +549,13 @@ class AcquisitionDialog(wx.Dialog):
         try:
             preview = self._require_preview()
             if not self._same_selected_book():
-                raise ValueError('The selected book changed. Close DOI lookup, select a book and open it again.')
+                raise ValueError('The selected book changed. Close identifier lookup, select a book and open it again.')
             if self._applied_token is not None:
-                raise ValueError('Metadata was already applied in this dialog. Close it and reopen DOI lookup to review another update.')
+                raise ValueError('Metadata was already applied in this dialog. Close it and reopen lookup to review another update.')
             current = self.selected_metadata
             proposed_title = preview.metadata.title or current.title
-            message = (f'Apply DOI {preview.doi} metadata to this exact selected book?\n\n'
+            kind, identifier = _preview_identity(preview)
+            message = (f'Apply {kind.upper()} {identifier} metadata to this exact selected book?\n\n'
                        f'Current title: {_value(current.title)}\n'
                        f'Proposed title: {_value(proposed_title)}\n'
                        + ('The provider supplied no title; the current title is preserved.\n' if not preview.metadata.title else '') +
@@ -475,7 +565,7 @@ class AcquisitionDialog(wx.Dialog):
                        'The current edition label is preserved.\n\n'
                        'Title and authors are shared by editions of the same work.\n'
                        'Original source bytes and previously saved quotations are preserved.')
-            dialog = wx.MessageDialog(self, message, 'Apply DOI metadata',
+            dialog = wx.MessageDialog(self, message, f'Apply {kind.upper()} metadata',
                                       style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
             try:
                 approved = dialog.ShowModal() == wx.ID_YES
@@ -486,17 +576,17 @@ class AcquisitionDialog(wx.Dialog):
                 self.apply_button.SetFocus()
                 return False
             if not self._same_host() or not self._same_selected_book() or self.preview is not preview:
-                raise ValueError('The selected book or DOI proposal changed. Review it again.')
+                raise ValueError('The selected book or metadata proposal changed. Review it again.')
         except Exception as exc:
             self._message(str(exc))
             return False
 
         def applied(result):
             self._applied_token = preview.token
-            self._message('DOI metadata applied to the selected book. Original source bytes and saved quotations were preserved. '
+            self._message(f'{kind.upper()} metadata applied to the selected book. Original source bytes and saved quotations were preserved. '
                           'Close this dialog to refresh the catalog.')
 
-        return self._start('Applying DOI metadata', lambda cancelled:
+        return self._start(f'Applying {kind.upper()} metadata', lambda cancelled:
             self.library.apply_doi_metadata(self.workspace, current.edition_id, preview,
                                            expected_metadata=current, cancelled=cancelled),
             applied, mutation=True)
@@ -562,7 +652,9 @@ class AcquisitionDialog(wx.Dialog):
                 f'Downloaded source: {result.path}', f'Provenance receipt: {result.receipt_path}',
                 f'File SHA-256: {result.sha256}', f'Reference ID: {_value(result.reference_id)}',
                 f'Edition ID: {_value(result.edition_id)}',
-                'Use Import Center to inspect pending or quarantined imports.')))
+                ('Use the academic library to review or link the already imported edition.'
+                 if result.state == 'imported_reference_pending'
+                 else 'Use Import Center to inspect pending or quarantined imports.'))))
 
         return self._start('Downloading and importing selected PDF', lambda cancelled:
             self.library.acquire_doi_source(self.workspace, preview, index, destination,
@@ -597,11 +689,11 @@ class AcquisitionDialog(wx.Dialog):
 
 
 def show_acquisition_dialog(frame):
-    """Open DOI lookup without networking and retain the existing Books scope."""
+    """Open identifier lookup without networking and retain the Books scope."""
     dialog = panel = library = workspace = selection = None
     try:
         if frame.working or getattr(frame, 'busy', False) or getattr(frame, '_closing', False):
-            raise ValueError('Wait for the current operation before opening DOI lookup.')
+            raise ValueError('Wait for the current operation before opening identifier lookup.')
         workspace, library = _workspace(frame), frame.library
         collections = _collection_choices(library.collections(workspace))
         collection = current = None
@@ -615,17 +707,17 @@ def show_acquisition_dialog(frame):
                     current = library.edition_metadata(workspace, selection[2])
                     panel = candidate
         if frame.library is not library or _workspace(frame) != workspace:
-            raise ValueError('The selected library changed. Open DOI lookup again.')
+            raise ValueError('The selected library changed. Open identifier lookup again.')
         dialog = AcquisitionDialog(frame, workspace, collections, collection=collection,
                                    selected_metadata=current, selected_panel=panel,
                                    selected_selection=selection)
         dialog.ShowModal()
-        if dialog.changed and dialog._same_host() and not frame.working and frame.book is not None:
+        if dialog.changed and dialog._current_scope() and not frame.working and frame.book is not None:
             catalog = frame.book.GetPage(1)
             if catalog.workspace == workspace:
                 catalog.refresh(selection=selection)
     except Exception as exc:
-        frame.report(f'DOI lookup could not be completed: {exc}')
+        frame.report(f'Identifier lookup could not be completed: {exc}')
     finally:
         if dialog is not None:
             dialog.dispose()

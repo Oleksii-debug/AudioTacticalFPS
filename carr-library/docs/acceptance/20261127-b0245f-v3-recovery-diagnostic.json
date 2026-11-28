@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T16:01:17Z",
+  "evidence_source": "Returned completed exact GitHub Actions job logs.",
+  "unique_test_count": "Selections overlap; do not add as unique coverage.",
+  "tested_commit": "b0245fe9bc949d14bb4a8407d7c7d6e858db8bed",
+  "tested_tree": "8c390f4a05f36cbb6934c1138fbfb72942189c10",
+  "status": "FAIL_TIMEOUT",
+  "run_id": 46015620986,
+  "job_id": 140564039194,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46015620986/job/140564039194",
+  "step": "Verify installed backup and import publication integrity",
+  "step_budget_seconds": 600,
+  "completed_report_counts": {
+    "passed": 302,
+    "failed": 9,
+    "skipped": 0
+  },
+  "asr_backup": {
+    "cases": [
+      {
+        "outcome": "passed",
+        "seconds": 25.988,
+        "test": "tests/storage/test_backup_transcription.py::test_actual_completed_roundtrip_keeps_receipts_edits_and_missing_engine_passive[receipts-v1-True-False]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 30.806,
+        "test": "tests/storage/test_backup_transcription.py::test_actual_completed_roundtrip_keeps_receipts_edits_and_missing_engine_passive[whisper-v5-manifest-v1-True-False]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 29.723,
+        "test": "tests/storage/test_backup_transcription.py::test_actual_completed_roundtrip_keeps_receipts_edits_and_missing_engine_passive[whisper-v5-manifest-v1-False-False]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 30.829,
+        "test": "tests/storage/test_backup_transcription.py::test_actual_completed_roundtrip_keeps_receipts_edits_and_missing_engine_passive[whisper-v5-manifest-v1-True-True]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 113.504,
+        "test": "tests/storage/test_backup_transcription.py::test_real_v5_stop_keeps_unaccepted_bound_outputs_without_restoring_run_authority"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 25.076,
+        "test": "tests/storage/test_backup_transcription.py::test_resigned_outer_manifest_cannot_override_typed_inner_authority[source]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 25.103,
+        "test": "tests/storage/test_backup_transcription.py::test_resigned_outer_manifest_cannot_override_typed_inner_authority[result]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 25.022,
+        "test": "tests/storage/test_backup_transcription.py::test_resigned_outer_manifest_cannot_override_typed_inner_authority[edit]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 25.122,
+        "test": "tests/storage/test_backup_transcription.py::test_resigned_outer_manifest_cannot_override_typed_inner_authority[unbound]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 24.052,
+        "test": "tests/storage/test_backup_transcription.py::test_resigned_outer_manifest_cannot_override_typed_inner_authority[unknown]"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 29.637,
+        "test": "tests/storage/test_backup_transcription.py::test_current_v5_manifest_remains_bound_even_after_outer_manifest_is_resigned"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 25.05,
+        "test": "tests/storage/test_backup_transcription.py::test_archived_scope_is_retained_but_missing_or_retargeted_scope_refuses"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 25.928,
+        "test": "tests/storage/test_backup_transcription.py::test_empty_plain_transcript_is_retained_and_originals_use_separate_media_budget"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 0,
+        "test": "tests/storage/test_backup_transcription.py::test_only_exact_known_transient_names_are_excluded"
+      },
+      {
+        "outcome": "passed",
+        "seconds": 3.274,
+        "test": "tests/storage/test_backup_transcription.py::test_ready_job_needs_no_engine_and_collection_cancel_never_publishes"
+      }
+    ],
+    "total_seconds": 439.114,
+    "source_analysis": "The standard-library-only synthetic peer selected application Python, repeatedly inspecting unrelated installed NumPy at each unchanged runtime boundary.",
+    "fixture_successor": "03ab8b2020745bad9018fe4b7d370e560dc188ab",
+    "successor_scope": "Select a real isolated no-pip/no-system-site peer environment; retain all actual inspections, all15 test bodies and the600-second gate.",
+    "successor_performance": "NOT_RUN. Before/after performance must come from actual Windows."
+  },
+  "last_started": {
+    "utc": "2026-11-27T15:41:30.1729737Z",
+    "test": "tests/e2e/test_import_worker_publication.py::test_stopped_child_before_commit_never_reports_completion[crash-pdf]"
+  },
+  "subsequent_native_product_steps": "SKIPPED after deadline; not a partial PASS.",
+  "failure_note": "Nine old common4 fixture failures remain recorded for this exact b024 tree. Subsequent composed Linux source passes do not constitute this timed-out Windows run passing."
+}

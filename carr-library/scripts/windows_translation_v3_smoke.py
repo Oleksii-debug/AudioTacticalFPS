@@ -6,7 +6,6 @@ Run: python -I -B scripts/windows_translation_v3_smoke.py
 """
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
-import http.client
 import json
 import os
 from pathlib import Path
@@ -26,10 +25,11 @@ def main():
     native_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
-    from carr_library.assistant import profiles, translation, providers
+    from carr_library.assistant import profiles, translation, providers, translation_batch
     from carr_library.assistant.credentials import WindowsCredentialVault
     from carr_library.speech.reading import ReadingDocument
     from carr_library.ui import translation_dialog as ui
+    from carr_library.ui import translation_batch_dialog as batch_ui
 
     checks, errors, calls = [], [], []
     def check(label, condition):
@@ -72,7 +72,7 @@ def main():
         check('native Space up: ' + name, simulator.KeyUp(wx.WXK_SPACE))
         app.Yield()
 
-    for module in (profiles, translation, providers, ui):
+    for module in (profiles, translation, providers, translation_batch, ui, batch_ui):
         check('installed module: ' + module.__name__, 'site-packages' in Path(module.__file__).resolve().parts)
     check('native Windows wx', wx.Platform == '__WXMSW__')
     parent = 'projects/123456789/locations/us-central1'
@@ -84,6 +84,9 @@ def main():
         def __init__(self, host, port, **options):
             check('fixed official authority', host == 'translation.googleapis.com' and port in (None, 443))
             self.position = 0
+            self.deadline, self.cancelled = options['deadline'], options['cancelled']
+        def check(self):
+            providers._check_request(self.deadline, self.cancelled)
         def request(self, method, path, body, headers):
             calls.append((method, path))
             check('OAuth bearer, never API-key header', headers.get('Authorization', '').startswith('Bearer SYNTHETIC_') and 'X-goog-api-key' not in headers)
@@ -106,7 +109,14 @@ def main():
             return block
         def close(self): pass
 
-    actual_connection, actual_message, actual_directory = http.client.HTTPSConnection, wx.MessageBox, wx.DirDialog
+    def configured_connection(target, *, local, deadline, cancelled):
+        check('explicit remote test seam', not local)
+        return SyntheticHTTPS(target.hostname, target.port, deadline=deadline, cancelled=cancelled)
+
+    actual_connection, actual_message, actual_directory = providers._Connection, wx.MessageBox, wx.DirDialog
+    actual_dns = providers.socket.getaddrinfo
+    def no_dns(*args, **kwargs):
+        raise AssertionError('The native Advanced smoke must not resolve or contact any provider.')
     vault, reference, frame = WindowsCredentialVault(), None, None
     executor = ThreadPoolExecutor(max_workers=1)
     with TemporaryDirectory(prefix='resonance-translation-native-') as temporary:
@@ -118,7 +128,8 @@ def main():
             store = profiles.ProfileStore(library.root / 'state' / 'providers')
             profile = profiles.save_google_token(store, vault, profile, 'SYNTHETIC_NATIVE_TOKEN', time() + 1800)
             reference = profile.credential_ref
-            http.client.HTTPSConnection = SyntheticHTTPS
+            providers._Connection = configured_connection
+            providers.socket.getaddrinfo = no_dns
             approvals = []
             def approve(message, *args, **kwargs):
                 approvals.append(message)
@@ -189,6 +200,80 @@ def main():
                     glossary_input.ChangeValue(glossary + '-changed-after-review')
                     press(find('Translate / resume'))
                     check('changed glossary requires fresh review without transfer', 'Preview this exact' in status.GetValue() and len(calls) == before)
+                    glossary_input.ChangeValue(glossary)
+                    selected.ChangeValue(original)
+                    press(find('Add current source to batch'))
+                    requested_second = 'Second explicitly reviewed document.\r\nУкраїнський оригінал.'
+                    selected.ChangeValue(requested_second)
+                    second_original = selected.GetValue()
+                    check('native multiline batch selection retains visible Unicode lines',
+                          second_original.splitlines() == requested_second.splitlines())
+                    press(find('Add current source to batch'))
+                    before_batch = len(calls)
+                    batch_checks = []
+                    def exercise_batch():
+                        child = None
+                        try:
+                            child = next(window for window in wx.GetTopLevelWindows()
+                                         if window.GetName() == 'Translation document batch')
+                            check('real modal document batch', child.IsModal())
+                            def batch_control(name):
+                                control = wx.FindWindowByName(name, child)
+                                check('named native batch control: ' + name, control is not None)
+                                return control
+                            batch_status = batch_control('Translation batch review and existing checkpoints')
+                            check('two explicit immutable document rows',
+                                  batch_control('Ordered translation documents').GetCount() == 2)
+                            press(batch_control('Review entire translation batch'))
+                            pump(lambda: not frame.working and 'REVIEW ONLY' in batch_status.GetValue(), 'Batch review')
+                            check('batch review makes no provider call', len(calls) == before_batch)
+                            check('batch review retains native status focus', wx.Window.FindFocus() is batch_status)
+                            check('batch review contains exact provider and both sources',
+                                  address in batch_status.GetValue() and '"documents": 2' in batch_status.GetValue())
+                            press(batch_control('Prepare approved batch'))
+                            pump(lambda: not frame.working and 'PREPARED' in batch_status.GetValue(), 'Batch preparation')
+                            check('preparation starts no translation', len(calls) == before_batch)
+                            check('exact native batch confirmation includes transfer and total reservation',
+                                  'these 2 documents' in approvals[-1] and '2 USD' in approvals[-1]
+                                  and glossary in approvals[-1] and address in approvals[-1])
+                            check('prepared batch order is immutable', not batch_control('Move document up').IsEnabled())
+                            batch_service = translation_batch.TranslationBatchService(
+                                translation.TranslationService(library.root / 'state' / 'translation', library=library))
+                            saved, = batch_service.list()
+                            check('ordinary child jobs are queued', saved['status'] == 'queued' and saved['total'] == 2)
+                            press(batch_control('Run or resume batch'))
+                            pump(lambda: not frame.working and '"status": "complete"' in batch_status.GetValue(), 'Batch translation')
+                            check('batch made exactly one bounded request per short document', len(calls) == before_batch + 2)
+                            accepted = len(calls)
+                            press(batch_control('Run or resume batch'))
+                            pump(lambda: not frame.working, 'Verified batch reuse')
+                            check('completed batch makes no repeat paid request', len(calls) == accepted)
+                            press(batch_control('Export completed batch'))
+                            pump(lambda: not frame.working and batch_status.GetValue().startswith('Saved new batch files in:'),
+                                 'Batch export')
+                            exported, = root.glob('TranslationBatch-*')
+                            for index, expected in enumerate((original, second_original), 1):
+                                child_output = exported / f'{index:04d}-translation'
+                                check(f'batch original bytes {index}', (child_output / 'original.txt').read_bytes()
+                                      == expected.encode('utf-8'))
+                                copy = ReadingDocument.load(child_output / 'translation.reading.json')
+                                check(f'batch derivative has no quotation authority {index}',
+                                      copy.source_text == expected and not copy.source_span(0, len(copy.text)).exact)
+                            batch_report = json.loads((exported / 'batch-provenance.json').read_bytes())
+                            check('batch provenance binds original child jobs', batch_report['batch_id'] == saved['id']
+                                  and [item['job_id'] for item in batch_report['items']]
+                                      == [item['id'] for item in saved['items']])
+                            check('batch export completion focus', wx.Window.FindFocus() is batch_status)
+                            batch_checks.append(True)
+                            press(batch_control('Close batch'))
+                        except Exception:
+                            errors.append(traceback.format_exc())
+                            if child is not None and child.IsModal():
+                                child.EndModal(wx.ID_CANCEL)
+                    wx.CallLater(200, exercise_batch)
+                    press(find('Document batches...'))
+                    check('native batch scenario completed', batch_checks == [True])
+                    check('batch collection leaves current original unchanged', selected.GetValue() == second_original)
                     press(find('Close'))
                 except Exception:
                     errors.append(traceback.format_exc())
@@ -207,7 +292,8 @@ def main():
             app.MainLoop()
         finally:
             executor.shutdown(wait=True, cancel_futures=True)
-            http.client.HTTPSConnection, wx.MessageBox, wx.DirDialog = actual_connection, actual_message, actual_directory
+            providers._Connection, wx.MessageBox, wx.DirDialog = actual_connection, actual_message, actual_directory
+            providers.socket.getaddrinfo = actual_dns
             if reference:
                 vault.delete('native_translation', reference)
             if frame is not None:

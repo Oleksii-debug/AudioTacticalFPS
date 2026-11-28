@@ -4,11 +4,14 @@ These tests cover lifecycle, privacy boundaries, cancellation and derivatives.
 They do not claim native screen-reader or recognition-quality acceptance.
 """
 from copy import deepcopy
+from contextlib import nullcontext
+import os
 from pathlib import Path
 import sys
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
+import venv
 
 import pytest
 
@@ -31,14 +34,15 @@ class Control:
     def SetFocus(self): self.focused = True
 
 
-def saved_job(status='pending', done=0):
-    return {'id': 'job-one', 'profile_id': 'runtime-one', 'title': 'Synthetic recording',
-            'status': status, 'done': done, 'total': 2, 'error': '',
-            'sources': [{'id': 'source-one', 'original_path': '/synthetic/one.wav'},
-                        {'id': 'source-two', 'original_path': '/synthetic/two.wav'}],
-            'settings': {'language': 'uk', 'task': 'transcribe', 'device': 'cpu',
-                         'compute_type': 'int8', 'output_txt': True, 'output_json': True},
-            'results': [{'source_id': 'source-one'}] if done else []}
+def saved_job(status='ready', done=0):
+    return {'id': 'job-one', 'runtime_profile_id': 'runtime-one', 'title': 'Synthetic recording',
+            'status': status, 'done': done, 'total': 2, 'last_error': '', 'protocol': 'receipts-v1',
+            'sources': [{'filename': 'source-one', 'original_name': 'one.wav', 'sha256': 'a' * 64},
+                        {'filename': 'source-two', 'original_name': 'two.wav', 'sha256': 'b' * 64}],
+            'settings': {'language': 'uk', 'task': 'transcribe', 'device': 'cpu', 'model': 'small',
+                         'compute_type': 'int8', 'output_txt': True, 'output_json': True,
+                         'output_srt': True, 'output_vtt': True},
+            'artifacts': [{'source': 'source-one'}] if done else []}
 
 
 class Service:
@@ -46,30 +50,34 @@ class Service:
         self.calls = []
         self.job = saved_job()
         self.runtimes = [{'id': 'runtime-one', 'name': 'Reviewed runtime', 'trusted': True,
-                          'model_name': 'existing-model', 'qualification': 'unqualified'}]
-        self.edits = {}
+                          'configuration': {'protocol': 'receipts-v1'},
+                          'qualification': 'unqualified'}]
+        self.edit_rows = {}
         self.on_run = None
 
     def list_runtimes(self): return deepcopy(self.runtimes)
-    def list_jobs(self): return [deepcopy(self.job)]
-    def get_job(self, identity):
+    def list(self): return [deepcopy(self.job)]
+    def get(self, identity):
         assert identity == self.job['id']
         return deepcopy(self.job)
 
-    def create_job(self, profile, sources, **options):
-        self.calls.append(('create', profile, sources, options))
-        if options['cancel']():
+    def submit_sources(self, sources, *, profile_id, protocol, title, options, recursive, cancelled):
+        self.calls.append(('create', profile_id, sources,
+                           {'settings': options, 'recursive': recursive, 'protocol': protocol,
+                            'title': title, 'cancelled': cancelled}))
+        if cancelled():
             raise InterruptedError('Synthetic preparation cancelled.')
-        self.job['settings'] = deepcopy(options['settings'])
-        return deepcopy(self.job)
+        self.job['settings'] = deepcopy(options)
+        self.job['protocol'] = protocol
+        return {'id': self.job['id'], 'files': len(sources), 'excluded_files': 0}
 
     def _perform(self, name, identity, **options):
         self.calls.append((name, identity, options))
-        options['progress']({'phase': 'Transcribing', 'done': 1, 'total': 2, 'current': 'one.wav'})
+        options['progress'](1, 2, 'Transcribing')
         if self.on_run:
             self.on_run(options)
-        if not options['cancel']():
-            self.job.update(status='complete', done=2)
+        if not options['cancelled']():
+            self.job.update(status='completed', done=2)
         return deepcopy(self.job)
 
     def run(self, identity, **options): return self._perform('run', identity, **options)
@@ -78,38 +86,57 @@ class Service:
     def pause(self, identity):
         self.calls.append(('pause', identity))
         self.job.update(status='paused', done=1)
+        return deepcopy(self.job)
 
     def cancel(self, identity):
         self.calls.append(('cancel', identity))
         self.job.update(status='cancelled', done=1)
+        return deepcopy(self.job)
 
     def inspect_runtime(self, *paths, **options):
         self.calls.append(('inspect', paths, options))
-        return {'fingerprint': 'exact-inspected-fingerprint', 'model_name': 'existing-model'}
+        return {'fingerprint': 'exact-inspected-fingerprint', 'models_dir': paths[2],
+                'protocol': options['protocol'], 'inference_qualified': False}
 
     def register_runtime(self, name, *paths, **options):
         self.calls.append(('register', name, paths, options))
-        return deepcopy(self.runtimes[0])
+        profile = deepcopy(self.runtimes[0])
+        profile['configuration']['protocol'] = options['protocol']
+        return profile
 
-    def read_transcript(self, identity, source, *, edited=False):
-        self.calls.append(('read', identity, source, edited))
-        if edited and source not in self.edits:
-            raise FileNotFoundError('No saved edit.')
-        return {'text': self.edits[source] if edited else 'Original recognition text.',
-                'source_id': source, 'edited': edited,
-                'provenance': {'job_id': identity, 'source_id': source, 'derivative': True}}
+    def text(self, identity, source, *, cancelled=lambda: False):
+        self.calls.append(('read', identity, source))
+        if cancelled():
+            raise InterruptedError('Synthetic transcript reading cancelled.')
+        return 'Original recognition text.'
 
-    def save_edit(self, identity, source, text):
+    def edits(self, identity):
+        return [{'id': 'revision-one', 'source': source, 'text': value}
+                for source, value in self.edit_rows.items()]
+
+    def save_edit(self, identity, source, text, *, cancelled=lambda: False):
         self.calls.append(('save', identity, source, text))
-        self.edits[source] = text
-        return {'text': text, 'edited': True, 'provenance': {'source_id': source, 'derivative': True}}
+        if cancelled():
+            raise InterruptedError('Synthetic derivative save cancelled.')
+        self.edit_rows[source] = text
+        return 'revision-one'
 
     def export(self, identity, directory, **options):
         self.calls.append(('export', identity, directory, options))
-        return {'status': 'exported', 'directory': str(directory), 'files': ['one.txt']}
+        assert not directory.exists(), 'The UI must leave create-only publication to the service.'
+        directory.mkdir()
+        (directory / 'one.txt').write_text('Original recognition text.', encoding='utf-8')
+        return directory
 
-    def rebind_runtime(self, identity, profile):
+    def rebind_runtime(self, identity, profile, *, cancelled, progress):
         self.calls.append(('rebind', identity, profile))
+        assert callable(cancelled) and callable(progress)
+        return deepcopy(self.job)
+
+    def copy_job(self, identity, *, profile_id, cancelled):
+        self.calls.append(('copy', identity, profile_id))
+        assert not cancelled()
+        self.job = {**deepcopy(self.job), 'id': 'job-two', 'status': 'ready', 'done': 0, 'artifacts': []}
         return deepcopy(self.job)
 
     def acknowledge_interruption(self, identity, **options):
@@ -123,7 +150,9 @@ def view(tmp_path):
     service, operations = Service(), []
     root = tmp_path / 'library'
     root.mkdir()
-    frame = SimpleNamespace(library=SimpleNamespace(root=root), working=False, _closing=False,
+    from carr_library.ui.save_all import SaveCoordinator
+    frame = SimpleNamespace(library=SimpleNamespace(root=root, read=lambda workspace: nullcontext()), active=('workspace-one', None),
+                            _save_coordinator=SaveCoordinator(), working=False, _closing=False,
                             cancel_event=Event(), progress_hub=ProgressHub())
     def run_job(title, operation, done, failed):
         frame.working = True
@@ -136,10 +165,11 @@ def view(tmp_path):
     frame.run_job = Mock(side_effect=run_job)
     result = TranscriptionActions()
     for name in ('status', 'jobs', 'result_source', 'editor', 'provenance', 'runtime_details',
-                 'start_button', 'pause_button', 'cancel_button'):
+                 'start_button', 'pause_button', 'cancel_button', 'save_edits_button'):
         setattr(result, name, Control())
     result.runtime = Control(selection=0)
     result.language, result.title = Control('uk'), Control('Selected title')
+    result.model, result.words, result.protocol = Control('small'), Control(True), Control(selection=0)
     result.task, result.device = Control(selection=0), Control(selection=0)
     result.beam, result.parallel = Control(5), Control(1)
     result.vad, result.context, result.multilingual = Control(True), Control(True), Control(False)
@@ -154,9 +184,10 @@ def view(tmp_path):
     result.new_controls, result.read_buttons = [result.language, result.title], [Control()]
     result.confirm_discard = Mock(return_value=True)
     result.confirm_rebind = Mock(return_value=True)
+    result.confirm_copy = Mock(return_value=True)
     result.confirm_worker_stopped = Mock(return_value=True)
     result.finish_close = Mock()
-    result.configure(frame, TranscriptionController(root, service=service))
+    result.configure(frame, TranscriptionController(frame.library, frame.active[0], service=service))
     result.profiles = deepcopy(service.runtimes)
     result.sources = (Path('/synthetic/selected.wav'),)
     result.operations, result.fake_service = operations, service
@@ -187,19 +218,19 @@ def test_start_snapshots_exact_choices_and_routes_to_isolated_service(view):
     assert create[0:3] == ('create', 'runtime-one', (Path('/synthetic/selected.wav'),))
     assert create[3]['settings']['language'] == 'uk'
     assert create[3]['settings']['output_mode'] == 'separate'
+    assert all(create[3]['settings']['output_' + name] for name in ('txt', 'srt', 'vtt', 'json'))
     assert create[3]['recursive'] is False
     assert run[0:2] == ('run', 'job-one')
-    assert view.current_job['status'] == 'complete'
-    assert 'complete' in view.status.value and not view.start_button.enabled
+    assert view.current_job['status'] == 'completed'
+    assert 'completed' in view.status.value and not view.start_button.enabled
     assert not view.editor.focused
 
 
-@pytest.mark.parametrize('change', ['untrusted', 'language', 'format', 'device', 'sources'])
+@pytest.mark.parametrize('change', ['untrusted', 'language', 'task', 'device', 'sources'])
 def test_invalid_or_untrusted_choices_never_start_runtime(view, change):
     if change == 'untrusted': view.profiles[0]['trusted'] = False
     if change == 'language': view.language.SetValue('not a code')
-    if change == 'format':
-        for control in view.formats.values(): control.SetValue(False)
+    if change == 'task': view.task.SetSelection(1)
     if change == 'device': view.device.SetSelection(-1)
     if change == 'sources': view.sources = ()
     view.start()
@@ -239,7 +270,7 @@ def test_pause_records_service_intent_and_preserves_partial_results(view):
     view.start()
     finish(view)
     assert view.fake_service.calls[-1][0] == 'resume'
-    assert view.current_job['status'] == 'complete'
+    assert view.current_job['status'] == 'completed'
 
 
 def test_cancel_records_cancellation_and_does_not_claim_success(view):
@@ -267,7 +298,7 @@ def test_progress_is_coalesced_without_moving_focus(view):
     view.start()
     finish(view)
     view.flush_progress()
-    assert 'complete' in view.status.value
+    assert 'completed' in view.status.value
 
 
 def test_incomparable_phase_units_and_observer_cancellation_do_not_fail_asr(view):
@@ -279,7 +310,7 @@ def test_incomparable_phase_units_and_observer_cancellation_do_not_fail_asr(view
     view.fake_service.on_run = progress
     view.start()
     result = finish(view)
-    assert result['status'] == 'complete'
+    assert result['status'] == 'completed'
     assert view.operations[-1].task.snapshot().total is None
 
 
@@ -289,8 +320,8 @@ def test_failed_global_observer_preserves_real_completed_result(view, monkeypatc
         raise RuntimeError('Synthetic unavailable observer')
     monkeypatch.setattr(view.operations[-1].task, 'update', unavailable)
     result = finish(view)
-    assert result['status'] == 'complete'
-    assert view.current_job['status'] == 'complete'
+    assert result['status'] == 'completed'
+    assert view.current_job['status'] == 'completed'
 
 
 def test_transcription_menu_registers_searchable_configurable_command(monkeypatch):
@@ -302,10 +333,10 @@ def test_transcription_menu_registers_searchable_configurable_command(monkeypatc
     frame = SimpleNamespace(Bind=Mock())
     install_transcription_menu(frame, menu)
     [(command, registered_item)] = frame._pending_keyboard_commands
-    assert command.command_id == 'tools.transcription' and registered_item is item
+    assert command.command_id == 'transcription.open' and registered_item is item
     registry = CommandRegistry((command,))
-    assert registry.shortcut('tools.transcription', {}) == ''
-    assert registry.shortcut('tools.transcription', {'tools.transcription': 'Ctrl+Alt+F11'}) == 'Ctrl+Alt+F11'
+    assert registry.shortcut('transcription.open', {}) == ''
+    assert registry.shortcut('transcription.open', {'transcription.open': 'Ctrl+Alt+F11'}) == 'Ctrl+Alt+F11'
     assert frame.Bind.call_args.args[2] is item
 
 
@@ -327,9 +358,9 @@ def test_old_callbacks_and_root_changes_cannot_publish_results(view, tmp_path):
 def test_closed_window_ignores_late_progress_and_completion(view):
     view.start()
     job = view.operations[-1]
+    value = job.operation()  # The real work finished before the view closed.
     view.closed = True
     original = view.status.value
-    value = job.operation()
     job.done(value)
     view.flush_progress()
     assert view.current_job is None and view.status.value == original
@@ -379,7 +410,7 @@ def test_inspection_completion_does_not_trust_paths_changed_while_pending(view):
 
 
 def test_loading_editing_undo_and_save_preserve_original_and_source_identity(view):
-    view.publish_job(saved_job('complete', 2))
+    view.publish_job(saved_job('completed', 2))
     view.load_transcript()
     finish(view)
     assert view.document.source_text == view.editor.value == 'Original recognition text.'
@@ -399,8 +430,8 @@ def test_loading_editing_undo_and_save_preserve_original_and_source_identity(vie
 
 
 def test_saved_edit_load_and_declined_discard_preserve_reading_copy(view):
-    view.fake_service.edits['source-one'] = 'Saved correction.'
-    view.publish_job(saved_job('complete', 2))
+    view.fake_service.edit_rows['source-one'] = 'Saved correction.'
+    view.publish_job(saved_job('completed', 2))
     view.load_transcript()
     finish(view)
     assert view.editor.value == 'Saved correction.'
@@ -414,7 +445,7 @@ def test_saved_edit_load_and_declined_discard_preserve_reading_copy(view):
     assert view.editor.value == 'Unsaved correction.' and not view.closed
 
 
-def test_export_uses_job_formats_and_blocks_unsaved_derivative(view, tmp_path):
+def test_export_subset_preserves_all_saved_job_formats_and_blocks_unsaved_derivative(view, tmp_path):
     view.publish_job(saved_job('partial', 1))
     view.load_transcript()
     finish(view)
@@ -424,13 +455,15 @@ def test_export_uses_job_formats_and_blocks_unsaved_derivative(view, tmp_path):
     assert len(view.operations) == count
     assert 'Save the edited' in view.status.value
     view.editor.SetValue(view.saved_text)
-    view.formats['vtt'].SetValue(True)  # new-job options cannot change the durable job's formats
+    saved_options = deepcopy(view.current_job['settings'])
+    view.formats['vtt'].SetValue(True)  # This changes only the explicit export subset.
     view.export_to(tmp_path / 'new-export')
     finish(view)
     exported = view.fake_service.calls[-1]
     assert exported[:3] == ('export', 'job-one', tmp_path / 'new-export')
-    assert exported[3]['formats'] == ('txt', 'json') and exported[3]['include_edits'] is True
-    assert callable(exported[3]['cancel']) and (tmp_path / 'new-export').is_dir()
+    assert exported[3]['formats'] == ('txt', 'vtt', 'json')
+    assert callable(exported[3]['cancelled']) and (tmp_path / 'new-export').is_dir()
+    assert view.current_job['settings'] == saved_options
 
 
 def test_restore_rebind_requires_explicit_confirmation_and_trusted_profile(view):
@@ -470,18 +503,18 @@ def test_interrupted_job_requires_explicit_worker_stop_review(view):
 
 
 def test_restored_complete_job_is_readable_without_reclassifying_it_as_pending(view):
-    job = saved_job('complete', 2)
+    job = saved_job('completed', 2)
     job.update(restored=True, recovery_review_required=True)
     view.publish_job(job)
     view.review_interruption()
-    assert view.current_job['status'] == 'complete' and not view.operations
+    assert view.current_job['status'] == 'completed' and not view.operations
     view.confirm_worker_stopped.assert_not_called()
     assert not view.start_button.enabled
 
 
 @pytest.mark.parametrize('existing', [False, True])
 def test_export_rejects_private_or_preexisting_destination(view, tmp_path, existing):
-    view.publish_job(saved_job('complete', 2))
+    view.publish_job(saved_job('completed', 2))
     target = tmp_path / 'export' if existing else view.library.root / 'inside-private-data'
     if existing:
         target.mkdir()
@@ -495,40 +528,345 @@ def test_export_rejects_private_or_preexisting_destination(view, tmp_path, exist
 
 
 def test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives(view, tmp_path):
-    """Real protocol process and files, synthetic recognition only; no model inference."""
+    """Real existing protocol process and receipts; no acoustic inference."""
     import runpy
-    from carr_library.transcription import TranscriptionService
-    from carr_library.operations import ResourceBroker
-    fixture = runpy.run_path(str(Path(__file__).parents[1] / 'transcription' / 'fixture_runtime.py'))
-    runtime = fixture['make_runtime'](tmp_path / 'synthetic-runtime')
-    service = TranscriptionService(view.library.root / 'state' / 'transcription',
-                                   broker=ResourceBroker.for_app(view.library.root))
-    profile = fixture['register'](service, runtime)
+    from carr_library.application import LibraryApp
+    from carr_library.durable_state import read_json
+    fixture = runpy.run_path(str(Path(__file__).parents[1] / 'transcription' / 'test_supplied_worker_bridge.py'))
+    app = LibraryApp(tmp_path / 'real-library')
+    workspace = app.create_workspace('Native action protocol fixture')
+    service = app.transcription(workspace)
+    models = tmp_path / 'models'
+    models.mkdir()
+    worker = tmp_path / 'synthetic-worker.py'
+    worker.write_text(fixture['SYNTHETIC_WORKER'].replace('__MODE__', repr('complete')), encoding='utf-8')
+    # This existing protocol peer is standard-library-only. Review an owned
+    # interpreter instead of the application's unrelated installed packages.
+    environment = tmp_path / 'selected-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                    symlinks=os.name != 'nt').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    inspection = service.inspect_runtime(python, worker, models)
+    profile = service.register_runtime('Synthetic protocol only', python, worker, models,
+        protocol='receipts-v1', owner_trusted=True, expected_fingerprint=inspection['fingerprint'])
+    inventory = profile['configuration']['runtime_inventory']
+    assert inventory['python_executable'] == str(python.absolute())
+    assert inventory['python_configuration']
+    assert all(row == {'present': False}
+               for row in inventory['runtime_distributions'].values())
     source = tmp_path / 'synthetic-input.wav'
     original = b'Synthetic protocol bytes; this fixture performs no audio recognition.'
     source.write_bytes(original)
-    view.controller = TranscriptionController(view.library.root, service=service)
+    view.frame.library, view.frame.active = app, (workspace, None)
+    view.library = app
+    view.controller = TranscriptionController(app, workspace, service=service)
     view.profiles = [profile]
     view.sources = (source,)
-    view.formats['srt'].SetValue(True)
+    view.prepare()
+    prepared = finish(view)
+    assert isinstance(prepared, tuple), prepared
+    assert view.current_job['status'] == 'ready' and view.current_job['artifacts'] == []
+    identity = view.current_job['id']
     view.start()
     result = finish(view)
-    assert isinstance(result, dict) and result['status'] == 'complete', result
-    assert result['done'] == 1 and len(result['results']) == 1
+    assert isinstance(result, dict) and result['status'] == 'completed', result
+    assert result['done'] == 1 and len(result['artifacts']) == 6
     assert source.read_bytes() == original
-    identity = result['id']
     view.load_transcript()
     finish(view)
-    assert view.editor.GetValue() == 'Синтетичний протокольний результат.'
+    retained_source = result['sources'][0]['filename']
+    recognized = service.text(identity, retained_source)
+    assert view.editor.GetValue() == recognized
+    assert recognized.startswith('Synthetic transcript.')
     view.editor.SetValue('Відредагована копія протокольного результату.')
     view.save_edits()
     finish(view)
-    assert service.read_transcript(identity)['text'] == 'Синтетичний протокольний результат.'
-    assert service.read_transcript(identity, edited=True)['text'] == view.editor.GetValue()
+    assert service.text(identity, retained_source) == recognized
+    assert service.edits(identity)[-1]['text'] == view.editor.GetValue()
     destination = tmp_path / 'new-transcript-export'
     view.export_to(destination)
     receipt = finish(view)
-    assert receipt['status'] == 'complete' and receipt['citation_authority'] is False
-    assert {row['format'] for row in receipt['files']} == {'txt', 'srt', 'json'}
-    assert any(row['edited'] for row in receipt['files'])
-    assert all(Path(row['path']).is_file() for row in receipt['files'])
+    assert receipt == {'exported_to': str(destination)}
+    manifest = read_json(destination / 'transcription-manifest.json')
+    assert manifest['status'] == 'completed'
+    assert len(manifest['artifacts']) == 2
+    assert {Path(row['filename']).suffix for row in manifest['artifacts']} == {'.txt', '.json'}
+    assert manifest['edits'][-1]['text'] == view.editor.GetValue()
+    assert all((destination / row['filename']).is_file() for row in manifest['artifacts'])
+    assert not list(destination.rglob('*.vtt')) and not list(destination.rglob('*.srt'))
+    assert len(service.verify(identity)['artifacts']) == 6
+    assert source.read_bytes() == original
+
+
+def test_closed_before_worker_admission_never_reads_or_starts_service(view):
+    view.start()
+    job = view.operations[-1]
+    view.closed = True
+    with pytest.raises(ValueError, match='closed'):
+        job.operation()
+    assert view.fake_service.calls == []
+
+
+@pytest.mark.parametrize('change', ['workspace', 'root-identity', 'closing'])
+def test_saved_actions_recheck_exact_workspace_and_root_before_worker(view, tmp_path, change):
+    view.start()
+    if change == 'workspace':
+        view.frame.active = ('another-workspace', None)
+    elif change == 'root-identity':
+        root = view.library.root
+        root.rename(tmp_path / 'old-library')
+        root.mkdir()
+    else:
+        view.frame._closing = True
+    result = finish(view)
+    assert isinstance(result, ValueError)
+    assert view.fake_service.calls == [] and view.current_job is None
+
+
+def test_prepare_retains_without_running_and_idle_pause_cancel_are_durable(view):
+    view.prepare()
+    finish(view)
+    assert [row[0] for row in view.fake_service.calls] == ['create']
+    assert view.current_job['status'] == 'ready'
+    assert 'No inference has run' in view.status.GetValue()
+    view.pause()
+    finish(view)
+    assert view.current_job['status'] == 'paused'
+    view.cancel()
+    finish(view)
+    assert view.current_job['status'] == 'cancelled'
+    assert not any(row[0] in ('run', 'resume') for row in view.fake_service.calls)
+
+
+def test_empty_export_subset_is_rejected_without_a_worker_or_target(view, tmp_path):
+    view.publish_job(saved_job('completed', 2))
+    for control in view.formats.values():
+        control.SetValue(False)
+    destination = tmp_path / 'uncreated-export'
+    view.export_to(destination)
+    assert not view.operations and not destination.exists()
+    assert 'at least one format' in view.status.GetValue()
+
+
+def test_protocol_change_invalidates_inspected_trust_and_v5_headers(view):
+    from carr_library.transcription import PROTOCOLS, V5_PROTOCOL
+    view.inspect_runtime()
+    finish(view)
+    view.trust.SetValue(True)
+    view.protocol.SetSelection(PROTOCOLS.index(V5_PROTOCOL))
+    view.register_runtime()  # Even a programmatic change without EVT_CHOICE is rejected.
+    assert len(view.operations) == 1
+    view.runtime_changed()
+    assert view.inspection is None and not view.trust.GetValue()
+    view.inspect_runtime()
+    finish(view)
+    view.trust.SetValue(True)
+    view.headers.SetValue(True)
+    view.register_runtime()
+    finish(view)
+    assert view.fake_service.calls[-1][3]['protocol'] == V5_PROTOCOL
+    assert not view.headers.enabled and not view.headers.GetValue()
+    view.start()
+    finish(view)
+    created = next(row for row in view.fake_service.calls if row[0] == 'create')
+    assert created[3]['protocol'] == V5_PROTOCOL
+    assert created[3]['settings']['max_attempts'] == 3
+    assert not created[3]['settings']['include_headers']
+
+
+def test_saved_attempts_display_real_effective_options(view):
+    job = saved_job('completed', 2)
+    job['effective_runs'] = [{'source': 'source-one', 'attempt': 2,
+        'settings': {'beam_size': 3, 'vad_filter': False, 'condition_on_previous_text': False}}]
+    view.publish_job(job)
+    message = view.status.GetValue()
+    assert 'one.wav: attempt 2; beam=3, VAD=False, context=False' in message
+    assert 'receipts-v1' in message
+
+
+def test_save_all_waits_for_derivative_commit_and_preserves_newer_edits(view):
+    view.publish_job(saved_job('completed', 2))
+    view.load_transcript()
+    finish(view)
+    view.editor.SetValue('Captured correction.')
+    completed = []
+    coordinator = view.frame._save_coordinator
+    assert coordinator.save_all(completed.append)
+    assert coordinator.busy and not completed and view.is_dirty()
+    view.editor.SetValue('Newer correction while save was queued.')
+    finish(view)
+    assert view.fake_service.edit_rows['source-one'] == 'Captured correction.'
+    assert not coordinator.busy and len(completed) == 1
+    assert completed[0].saved == ('Transcription reading copy',)
+    assert not completed[0].complete
+    assert view.is_dirty() and view.saved_text == 'Captured correction.'
+    assert view.document.source_text == 'Original recognition text.'
+
+
+def test_save_all_failure_retains_dirty_editor_and_close_unregisters(view, monkeypatch):
+    view.publish_job(saved_job('completed', 2))
+    view.load_transcript()
+    finish(view)
+    view.editor.SetValue('Unsaved correction.')
+    completed = []
+    def failure(*args, **kwargs):
+        raise OSError('Synthetic durable save failure.')
+    monkeypatch.setattr(view.fake_service, 'save_edit', failure)
+    coordinator = view.frame._save_coordinator
+    coordinator.save_all(completed.append)
+    finish(view)
+    assert len(completed) == 1 and not completed[0].complete
+    assert 'Synthetic durable save failure' in completed[0].message()
+    assert not coordinator.busy and view.is_dirty()
+    view.confirm_discard.return_value = True
+    view.close()
+    assert not coordinator.participants and view.closed
+
+
+def test_save_all_old_scope_completion_is_not_confirmed(view):
+    view.publish_job(saved_job('completed', 2))
+    view.load_transcript()
+    finish(view)
+    view.editor.SetValue('Captured correction.')
+    completed = []
+    view.frame._save_coordinator.save_all(completed.append)
+    operation = view.operations[-1]
+    value = operation.operation()
+    view.frame.working = False
+    view.frame.active = ('another-workspace', None)
+    operation.done(value)
+    assert len(completed) == 1 and not completed[0].complete
+    assert view.is_dirty() and view.saved_text == 'Original recognition text.'
+
+
+def test_archived_scope_after_worker_cannot_publish_transcript(view):
+    view.publish_job(saved_job('completed', 2))
+    view.load_transcript()
+    operation = view.operations[-1]
+    value = operation.operation()
+    view.frame.working = False
+    def denied(workspace):
+        raise PermissionError('The selected workspace is archived.')
+    view.library.read = denied
+    operation.done(value)
+    assert view.document is None and not view.editor.GetValue()
+    assert 'archived' in view.status.GetValue()
+
+
+def test_save_all_refused_second_admission_settles_instead_of_hanging(view, monkeypatch):
+    view.publish_job(saved_job('completed', 2))
+    view.load_transcript()
+    finish(view)
+    view.editor.SetValue('Unsaved correction.')
+    monkeypatch.setattr(view, 'submit', lambda *args, **kwargs: False)
+    completed = []
+    view.frame._save_coordinator.save_all(completed.append)
+    assert len(completed) == 1 and not completed[0].complete
+    assert not view.frame._save_coordinator.busy and view.is_dirty()
+
+
+def test_copy_requires_explicit_trusted_same_protocol_profile_without_running(view):
+    job = saved_job('failed')
+    view.publish_job(job)
+    view.confirm_copy.return_value = False
+    view.copy_job()
+    assert not view.operations
+    view.confirm_copy.return_value = True
+    view.profiles[0]['configuration']['protocol'] = 'whisper-v5-manifest-v1'
+    view.copy_job()
+    assert not view.operations and 'keeps the saved worker protocol' in view.status.GetValue()
+    view.profiles[0]['configuration']['protocol'] = 'receipts-v1'
+    view.profiles[0]['trusted'] = False
+    view.copy_job()
+    assert not view.operations
+    view.profiles[0]['trusted'] = True
+    view.copy_job()
+    finish(view)
+    assert view.fake_service.calls == [('copy', 'job-one', 'runtime-one')]
+    assert view.current_job['id'] == 'job-two' and view.current_job['status'] == 'ready'
+    assert view.current_job['settings'] == job['settings'] and not view.current_job['artifacts']
+    assert 'no inference has run' in view.status.GetValue()
+
+
+def test_fresh_library_refresh_adopts_empty_profiles_without_runtime_or_state(view, tmp_path, monkeypatch):
+    from carr_library.application import LibraryApp
+    import carr_library.transcription as transcription
+    app = LibraryApp(tmp_path / 'fresh-real-library')
+    workspace = app.create_workspace('Fresh transcription controls')
+    service = app.transcription(workspace)
+    view.frame.library, view.frame.active = app, (workspace, None)
+    view.configure(view.frame, TranscriptionController(app, workspace, service=service))
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('An empty profile refresh inspected or started a runtime.')
+
+    monkeypatch.setattr(transcription, 'inspect_python', forbidden)
+    monkeypatch.setattr(transcription, 'inspect_models', forbidden)
+    monkeypatch.setattr(transcription, 'run_process', forbidden)
+    assert not service.root.exists()
+    view.refresh()
+    assert view.pending and view.frame.working
+    assert finish(view) == {'profiles': (), 'jobs': ()}
+    assert not view.pending and not view.frame.working
+    assert view.profiles == view.job_rows == ()
+    assert view.runtime.items == view.jobs.items == []
+    assert view.runtime.GetSelection() == -1
+    assert view.current_job is None and not view.trust.GetValue()
+    assert '0 registered runtimes; 0 saved jobs.' in view.status.value
+    assert not service.root.exists()
+
+
+@pytest.mark.parametrize('delivered_id,same_wrapper,wrapper_live,accepted', [
+    pytest.param(-31994, False, False, True, id='native-id-new-python-wrapper'),
+    pytest.param(-31994, True, False, True, id='native-id-same-python-wrapper'),
+    pytest.param(-31995, False, False, False, id='child-destroy-is-not-frame-destroy'),
+    pytest.param(None, False, False, False, id='dead-wrapper-without-native-event'),
+    pytest.param(-31994, False, True, False, id='native-event-with-still-live-wrapper'),
+])
+def test_actual_native_destroy_observer_requires_frame_event_and_dead_wrapper(
+        delivered_id, same_wrapper, wrapper_live, accepted):
+    import ast
+
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_transcription_smoke.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    observers = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == 'observe_destroy']
+    checks = [node for node in ast.walk(tree)
+              if isinstance(node, ast.Assert) and ast.unparse(node.test) in {'destroyed', 'not frame'}]
+    assert len(observers) == 1 and len(checks) == 2
+
+    class Frame:
+        def __bool__(self):
+            return wrapper_live
+
+    frame, observed, scheduled = Frame(), [], []
+    exit_loop = Mock()
+    namespace = {
+        'frame': frame, 'captured_frame_id': -31994, 'destroyed': [],
+        'record_close': lambda stage, window, **details: observed.append((stage, window, details)),
+        'wx': SimpleNamespace(CallAfter=scheduled.append),
+        'desktop': SimpleNamespace(ExitMainLoop=exit_loop),
+    }
+    exec(compile(ast.Module(body=observers, type_ignores=[]), str(path), 'exec'), namespace)
+    if delivered_id is not None:
+        target = frame if same_wrapper else object()
+        event = SimpleNamespace(GetId=lambda: delivered_id, GetEventObject=lambda: target, Skip=Mock())
+        namespace['observe_destroy'](event)
+        event.Skip.assert_called_once_with()
+        assert observed[0][0] == 'destroy-event' and observed[0][1] is frame
+        assert observed[0][2]['captured_frame_id'] == -31994
+        assert observed[0][2]['event_id'] == delivered_id
+        assert observed[0][2]['event_object_is_frame'] is same_wrapper
+    else:
+        assert not observed
+    matches = delivered_id == -31994
+    assert bool(namespace['destroyed']) is matches
+    assert scheduled == ([exit_loop] if matches else [])
+    exit_loop.assert_not_called()  # The real observer schedules the outer loop; it never forces destruction.
+    final_checks = compile(ast.Module(body=checks, type_ignores=[]), str(path), 'exec')
+    if accepted:
+        exec(final_checks, namespace)
+    else:
+        message = ('still live' if matches else 'did not complete destruction')
+        with pytest.raises(AssertionError, match=message):
+            exec(final_checks, namespace)

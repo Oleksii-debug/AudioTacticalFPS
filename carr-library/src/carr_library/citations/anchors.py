@@ -42,8 +42,8 @@ class Locator:
         if self.kind == 'logical_segment':
             return f'Segment {self.index} (unpaginated)'
         if self.verified:
-            return f'p. {self.printed} (PDF page {self.index})'
-        return f'PDF page {self.index} (printed page unverified)'
+            return f'p. {self.printed} (physical page {self.index})'
+        return f'Physical page {self.index} (printed page unverified)'
 
 
 def pdf_label_candidates(reader):

@@ -1,13 +1,29 @@
 """Real service/export boundaries with headless desktop action protocols."""
 import threading
+import sys
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.ui import academic_tools
 from carr_library.ui.academic_tools import AcademicActions, AcademicScope
 from carr_library.ui.literature_matrix import MatrixCommand
+
+
+@pytest.fixture(autouse=True)
+def confirmation(monkeypatch):
+    """Exercise the native message-box protocol with a controlled answer."""
+    wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4,
+                         YES=10, NO=11, ID_YES=10, ID_NO=11, answer=10, questions=[])
+    def message_box(message, title, style, parent):
+        wx.questions.append(SimpleNamespace(parent=parent, message=message, title=title, style=style))
+        return wx.answer
+    wx.MessageBox = Mock(side_effect=message_box)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    return wx
+
 
 
 @pytest.fixture
@@ -23,18 +39,6 @@ def research(tmp_path):
     child_evidence = app.save_hit(workspace, child, hit.ref, hit.revision, 'Child note')
     app.set_evidence_tags(workspace, topic, evidence, ('Theme',))
     return app, workspace, other, topic, child, evidence, child_evidence
-
-
-@pytest.fixture(autouse=True)
-def export_confirmation(monkeypatch):
-    from carr_library.ui import academic_tools
-    from carr_library.ui.export_destination import confirm_export_destination
-
-    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
-    native.MessageBox = Mock(return_value=native.YES)
-    monkeypatch.setattr(academic_tools, 'confirm_export_destination',
-        lambda *args, **kwargs: confirm_export_destination(*args, **kwargs, wx_module=native))
-    return native
 
 
 class Frame:
@@ -92,6 +96,37 @@ def test_closed_frame_does_not_receive_comparison_result(research):
     frame._closing = True
     frame.complete()
     dialogs.matrix.assert_not_called()
+
+
+@pytest.mark.parametrize('change', ['archive_topic', 'archive_workspace', 'cancel'])
+def test_comparison_completion_rechecks_real_scope_after_worker_returns(research, change):
+    frame, actions, dialogs = make_actions(research)
+    actions.compare_sources()
+    _, operation, done, _ = frame.jobs[0]
+    snapshot = operation()
+    assert snapshot.sources and snapshot.sources[0].evidence
+    # The actual worker has finished; the GUI callback is still queued. A second
+    # instance may archive this scope without changing this frame's selection.
+    if change == 'archive_topic':
+        with frame.library.topic_transaction(research[1]) as tree:
+            tree.archive(research[3])
+    elif change == 'archive_workspace':
+        frame.library.archive_workspace(research[1])
+    else:
+        frame.cancel_event.set()
+    done(snapshot)
+    assert frame.active == (research[1], research[3])
+    dialogs.matrix.assert_not_called()
+    assert len(frame.jobs) == 1
+
+
+def test_new_comparison_after_previous_cancellation_is_available(research):
+    frame, actions, dialogs = make_actions(research)
+    frame.cancel_event.set()
+    actions.compare_sources()
+    assert not frame.cancel_event.is_set()
+    snapshot = frame.complete()
+    dialogs.matrix.assert_called_once_with(frame, snapshot, include_descendants=True, tag_filter=None)
 
 
 def test_matrix_export_reloads_notes_after_display_instead_of_exporting_cache(research, tmp_path):
@@ -183,6 +218,103 @@ def test_scope_change_after_queuing_export_writes_nothing(research, tmp_path):
     assert not output.exists()
 
 
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+@pytest.mark.parametrize('stage', ['queued', 'rendered'])
+@pytest.mark.parametrize('change', ['created', 'modified', 'replaced', 'removed'])
+def test_export_preserves_destination_changed_since_confirmation(
+        research, tmp_path, monkeypatch, kind, stage, change):
+    output = tmp_path / 'research.md'
+    if change != 'created':
+        output.write_bytes(b'Existing approved research export')
+    frame, actions, _ = make_actions(research, save_path=output)
+    newer = b'Newer independent work must survive'
+
+    def change_destination():
+        if change == 'removed':
+            output.unlink()
+        elif change == 'replaced':
+            replacement = tmp_path / 'replacement.md'
+            replacement.write_bytes(newer)
+            replacement.replace(output)
+        else:
+            output.write_bytes(newer)
+
+    name = 'export_outline' if kind == 'outline' else 'export_matrix'
+    actual_export = getattr(academic_tools, name)
+
+    def render(*args, **kwargs):
+        content = actual_export(*args, **kwargs)
+        if stage == 'rendered':
+            change_destination()
+        return content
+
+    monkeypatch.setattr(academic_tools, name, render)
+    actions._export(AcademicScope(frame.library, *frame.active), kind=kind,
+                    format='markdown', include_descendants=True, tag_filter=None)
+    assert len(frame.jobs) == 1
+    if stage == 'queued':
+        change_destination()
+    with pytest.raises(ValueError, match='destination changed'):
+        frame.complete()
+    if change == 'removed':
+        assert not output.exists()
+    else:
+        assert output.read_bytes() == newer
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+def test_declined_export_replacement_never_queues_or_renders(
+        research, tmp_path, monkeypatch, confirmation, kind):
+    output = tmp_path / 'research.md'
+    output.write_bytes(b'Existing work')
+    frame, actions, _ = make_actions(research, save_path=output)
+    confirmation.answer = confirmation.ID_NO
+    render = Mock(side_effect=AssertionError('Declined export must not render.'))
+    monkeypatch.setattr(academic_tools, 'export_outline' if kind == 'outline' else 'export_matrix', render)
+    actions._export(AcademicScope(frame.library, *frame.active), kind=kind,
+                    format='markdown', include_descendants=True, tag_filter=None)
+    assert not frame.jobs
+    render.assert_not_called()
+    question, = confirmation.questions
+    assert question.style & confirmation.NO_DEFAULT
+    assert output.name in question.message
+    assert output.read_bytes() == b'Existing work'
+
+
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+def test_confirmed_unchanged_destination_receives_real_research_export(
+        research, tmp_path, confirmation, kind):
+    output = tmp_path / 'research.md'
+    output.write_bytes(b'Existing work')
+    frame, actions, _ = make_actions(research, save_path=output)
+    actions._export(AcademicScope(frame.library, *frame.active), kind=kind,
+                    format='markdown', include_descendants=True, tag_filter=None)
+    question, = confirmation.questions
+    assert question.style & confirmation.NO_DEFAULT
+    assert output.read_bytes() == b'Existing work'
+    frame.complete()
+    assert 'Exact original quotation.' in output.read_text(encoding='utf-8')
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_library_change_during_replacement_question_does_not_queue_export(
+        research, tmp_path, confirmation, monkeypatch):
+    output = tmp_path / 'research.md'
+    output.write_bytes(b'Existing work')
+    frame, actions, _ = make_actions(research, save_path=output)
+
+    def switch_scope(*args):
+        frame.active = research[2], None
+        return confirmation.ID_YES
+
+    monkeypatch.setattr(confirmation, 'MessageBox', switch_scope)
+    actions.outline()
+    assert not frame.jobs
+    assert 'changed' in frame.report.call_args.args[0]
+    assert output.read_bytes() == b'Existing work'
+
+
 @pytest.mark.parametrize('busy', ['working', 'busy', '_closing'])
 def test_comparison_does_not_start_during_another_operation(research, busy):
     frame, actions, dialogs = make_actions(research)
@@ -248,10 +380,10 @@ def test_queued_academic_export_preserves_changed_destination(
 
 
 def test_declined_academic_replacement_never_starts_render(
-        research, tmp_path, export_confirmation):
+        research, tmp_path, confirmation):
     output = tmp_path / 'approved.md'
     output.write_bytes(b'Keep existing work')
-    export_confirmation.MessageBox.return_value = export_confirmation.NO
+    confirmation.answer = confirmation.NO
     frame, actions, _ = make_actions(research, save_path=output)
     actions.outline()
     assert not frame.jobs

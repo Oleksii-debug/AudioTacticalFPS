@@ -15,6 +15,7 @@ dependencies = [
   "platformdirs==4.10.0",
   "filelock==3.29.0",
   "Pillow==13.0.0",
+  "py3langid==0.4.0",
   "defusedxml==0.7.1",
   "comtypes==1.5.0; sys_platform == 'win32'",
   "bibtexparser==2.1.0",
@@ -34,10 +35,17 @@ license-files = [
   "src/carr_library/citations/_vendor_citeproc/AGPLv3",
   "src/carr_library/extract/TESSDATA_FAST_LICENSE",
   "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+  "src/carr_library/extract/PY3LANGID_LICENSE",
 ]
 
 [project.optional-dependencies]
 desktop = ["wxPython==4.2.4"]
+trust = [
+  "cryptography==50.0.2",
+  "tuf==7.0.1",
+  "securesystemslib==1.6.0",
+  "urllib3==2.8.0",
+]
 semantic = [
   "fastembed==0.9.1",
   "onnxruntime==1.32.0",
@@ -63,6 +71,7 @@ test = [
 research-library = "carr_library.__main__:main"
 research-library-bibliography = "carr_library.bibliography_cli:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
+research-library-trust = "carr_library.security.__main__:main"
 
 [project.gui-scripts]
 research-library-desktop = "carr_library.__main__:main"
@@ -80,6 +89,7 @@ packages = [
   "carr_library.citations",
   "carr_library.extract",
   "carr_library.ingest",
+  "carr_library.operations",
   "carr_library.integrations",
   "carr_library.language_qualification",
   "carr_library.reader",
@@ -89,6 +99,7 @@ packages = [
   "carr_library.search._vendor",
   "carr_library.search._vendor.rifflux",
   "carr_library.storage",
+  "carr_library.security",
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",
@@ -96,9 +107,8 @@ packages = [
   "carr_library.speech",
   "carr_library.studio",
   "carr_library.assistant",
-  "carr_library.operations",
-  "carr_library.transcription",
   "carr_library.conversion",
+  "carr_library.academic_integration",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",
@@ -113,9 +123,10 @@ bootstrap = "bootstrap"
 "carr_library.speech" = ["COMTYPES_LICENSE.txt"]
 "carr_library.language_qualification" = ["data/*.md"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
-"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
+"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE",
+  "ocr-language-detector.json", "PY3LANGID_LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
-markers = ["requires_loopback: exercises a synthetic local HTTP server; requires a separately declared loopback-enabled gate"]
+markers = ["requires_loopback: requires an actual local socket; run outside the offline-network gate"]

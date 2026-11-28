@@ -1,567 +1,1118 @@
-"""Passive, bounded backup format for retained local transcription work.
+"""Passive, receipt-bound transcription sidecars for the canonical backup.
 
-Only the workstation's declared data files are accepted. Runtime paths remain
-inert references: this module never opens an interpreter, worker, model or
-credential store. Recognition cache is optional; accepted receipts and the
-retained source audio are always part of the ordinary backup.
+Only producer-owned declarations and retained data are accepted. No worker,
+model, media decoder, credential, or external path is opened. The caller first
+copies and hashes the staged files; this adapter checks their typed relationships.
+Restoring these bytes never starts recognition or turns a stopped job complete.
 """
 from hashlib import sha256
 import json
-from pathlib import PurePosixPath
+import os
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 
-from .backup_producers import fields, text, number, digest, path
-from .ingest.restore import RestoreError
-from .transcription.models import (AUDIO_EXTENSIONS, DEFAULT_SETTINGS, FORMATS,
-                                   encoded_outputs, fingerprint, settings,
-                                   validated_result)
+from .backup_producers import fields, text, number, digest, path as external_path
+from .ingest.bundle import _unique_object
+from .transcription import (
+    MAX_FILES, MAX_SOURCE_BYTES, MAX_BATCH_BYTES, MAX_TEXT_BYTES, MEDIA_SUFFIXES,
+    RECEIPTS_PROTOCOL, V5_PROTOCOL, V5_SOURCES, V5_PROVENANCE,
+    RECOGNITION_KEYS, EXPORT_KEYS, V5_RECOGNITION_KEYS,
+    settings, _identity, _bound, _v5_settings, _v5_attempts, _v5_digest,
+    _v5_timing, _word_subtitles, configuration_fingerprint,
+)
 
 PREFIX = 'state/transcription/'
-MAX_INPUT_BYTES = 64 * 1024**3
-MAX_SOURCE_BYTES = 32 * 1024**3
-MAX_METADATA_BYTES = 32 * 1024**2
-MAX_JOBS = 4096
-MAX_PROFILES = 1024
-MAX_SOURCES = 512
-MAX_HISTORY = 1024
-ID = r'[0-9a-f]{32}'
-HEX = r'[0-9a-f]{64}'
-PROFILE = re.compile(PREFIX + r'profiles/(' + ID + r')\.json\Z')
-JOB = re.compile(PREFIX + r'jobs/(' + ID + r')/(job|control)\.json\Z')
-INPUT = re.compile(PREFIX + r'jobs/(' + ID + r')/inputs/(' + ID + r')/source(\.[a-z0-9]+)\Z')
-ARTIFACT = re.compile(PREFIX + r'jobs/(' + ID + r')/artifacts/(' + ID + r')/(' + ID +
-                      r')/(receipt\.json|transcript\.(?:txt|json|srt|vtt))\Z')
-EDIT = re.compile(PREFIX + r'jobs/(' + ID + r')/edits/(' + ID + r')/(' + ID + r')\.json\Z')
-WORKER = re.compile(PREFIX + r'jobs/(' + ID + r')/(worker|worker-history/' + ID + '-' + ID + r')/(.+)\Z')
-CACHE = re.compile(r'logs/cache/(?:verified-v1/)?(?:[0-9a-f]{2}/)?(' + HEX + r')\.(cache\.json|receipt\.json|json|txt)\Z')
-RESULT = re.compile(r'results/(' + ID + r')/source\.(txt|json|srt|vtt)\Z')
-_PACKAGES = {'faster-whisper', 'ctranslate2', 'av', 'onnxruntime', 'numpy', 'huggingface-hub', 'tokenizers'}
-_CONTROL = {'job_config.json', 'settings_live.json', 'job_status.json', 'pause.flag', 'stop.flag'}
+MAX_MEDIA_BYTES = 32 * 1024**3
+MAX_METADATA_BYTES = 512 * 1024**2
+_HEX = r'[0-9a-f]{64}'
+_ID = r'[0-9a-f]{32}'
+_JOB = re.compile(PREFIX + r'(' + _HEX + r')/jobs/(' + _ID + r')/(.+)\Z')
+_SOURCE = re.compile(r'[0-9]{3}-' + _ID + r'\.[a-z0-9]+\Z')
+_RECEIPT = re.compile(r'receipts/(' + _HEX + r')\.result\.json\Z')
+_EDIT = re.compile(r'edits/(' + _ID + r')\.json\Z')
+_V5_RESULT = re.compile(r'runs/(' + _ID + r')/Whisper_V5/(' + _ID + r')/(.+)\Z')
+_BASE = frozenset(('job.json', 'job_config.json', 'job_status.json', 'host_status.json',
+                   'control.json', 'rejected-execution.json'))
+_PROFILE = re.compile(PREFIX + r'profiles/(' + _ID + r')\.json\Z')
+_REVIEW = re.compile(PREFIX + r'(' + _HEX + r')/reviews/(' + _ID + r')\.json\Z')
+_FORMATS = ('words.srt', 'words.vtt', 'words.txt', 'txt', 'srt', 'vtt', 'json')
 
 
-def is_input(name):
-    match = INPUT.fullmatch(name)
-    return bool(match and match[3] in AUDIO_EXTENSIONS)
+def _relative(value, *, depth=6, hidden=False):
+    text(value, 1024)
+    path = PurePosixPath(value)
+    reserved = {'con', 'prn', 'aux', 'nul', 'conin$', 'conout$',
+                *(prefix + digit for prefix in ('com', 'lpt') for digit in '123456789\u00b9\u00b2\u00b3')}
+    if (path.is_absolute() or str(path) != value or len(path.parts) > depth
+            or any(character in '<>:"\\|?*' or ord(character) < 32 for character in value)
+            or any(part in ('.', '..') or (not hidden and part.startswith('.')) or part.endswith((' ', '.'))
+                   or part.split('.')[0].rstrip(' ').casefold() in reserved for part in path.parts)):
+        raise ValueError('Invalid retained transcription filename.')
+    return path
 
 
-def is_cache_directory(name):
-    match = WORKER.fullmatch(name)
-    return bool(match and match[3] == 'logs/cache')
-
-
-def is_cache_file(name):
-    """Recognize the same optional current/history cache subtree as capture."""
-    match = WORKER.fullmatch(name)
-    return bool(match and CACHE.fullmatch(match[3]))
-
-
-def ignored(name):
-    if not name.startswith(PREFIX):
-        return False
-    leaf = PurePosixPath(name).name
-    return (leaf in ('.run.lock', '.control.lock', '.profiles.lock')
-            or leaf.startswith('.pending-')
-            or bool(re.fullmatch(r'\.v43-[A-Za-z0-9_-]+\.tmp', leaf)))
-
-
-def limit(name):
-    if is_input(name):
-        return MAX_SOURCE_BYTES
-    if PROFILE.fullmatch(name) or JOB.fullmatch(name) or ARTIFACT.fullmatch(name) or EDIT.fullmatch(name):
-        return MAX_METADATA_BYTES
-    match = WORKER.fullmatch(name)
-    if match and (match[3] in _CONTROL or match[3] in ('logs/progress.log', 'logs/failed.log')
-                  or RESULT.fullmatch(match[3]) or CACHE.fullmatch(match[3])):
-        return MAX_METADATA_BYTES
-    return None
-
-
-def allows_empty(name):
-    return bool(limit(name) and not is_input(name)
-                and name.endswith(('.txt', '.srt', '.log', '.flag')))
-
-
-def _id(value):
-    if type(value) is not str or not re.fullmatch(ID, value):
-        raise ValueError('Invalid transcription identity.')
-
-
-def _bool(value):
-    if type(value) is not bool:
-        raise ValueError('Invalid transcription boolean.')
-
-
-def _relative(value):
-    # Same portable path rules as the archive, without resolving external data.
-    from .backup_sidecars import portable_name
-    portable_name(value)
-
-
-def _identity(value, *, maximum=MAX_INPUT_BYTES):
-    fields(value, {'sha256', 'size'})
-    digest(value['sha256'])
-    number(value['size'], 0, maximum, integer=True)
-
-
-def _inventory(value, *, external=False, maximum=100000):
-    if type(value) is not dict or len(value) > maximum:
-        raise ValueError('Excessive transcription identity inventory.')
-    for name, identity in value.items():
-        (path if external else _relative)(name)
-        _identity(identity)
-
-
-def _packages(value):
-    if type(value) is not dict or set(value) != _PACKAGES:
-        raise ValueError('Invalid reviewed transcription distribution inventory.')
-    for entry in value.values():
-        fields(entry, {'version', 'file_count', 'installed_files_sha256'})
-        text(entry['version'], 1024)
-        number(entry['file_count'], 1, 100000, integer=True)
-        digest(entry['installed_files_sha256'])
-
-
-def _settings(value, *, worker=False, partial=False):
-    if type(value) is not dict:
-        raise ValueError('Invalid transcription settings.')
-    extras = {'model', 'translation_target'} if worker else set()
-    if set(value) - set(DEFAULT_SETTINGS) - extras:
-        raise ValueError('Unknown transcription setting.')
-    public = {key: item for key, item in value.items() if key in DEFAULT_SETTINGS}
-    normalized = settings(public)
-    if not partial and normalized != public:
-        raise ValueError('Incomplete transcription settings.')
-    if worker:
-        if not partial and not extras <= value.keys():
-            raise ValueError('Missing worker model/task settings.')
-        if 'model' in value:
-            text(value['model'], 512)
-        if 'translation_target' in value and value['translation_target'] != 'en':
-            raise ValueError('Unsupported worker translation target.')
-
-
-def _profile(value, identity):
-    fields(value, {'schema', 'protocol', 'python_executable', 'python_resolved', 'python_identity',
-        'python_configuration', 'runtime_distributions', 'runtime_auxiliary', 'runtime_capability',
-        'worker_path', 'worker_identity', 'model_directory', 'model_name', 'model_files', 'model_bytes',
-        'model_content_fingerprint', 'fingerprint', 'id', 'name', 'trusted', 'qualification',
-        'registered', 'restored'}, {'python_support'})
-    if (value['schema'] != 'resonance-transcription-runtime/1' or value['protocol'] != 'local-file-job/1'
-            or value['id'] != identity or identity != value['fingerprint'][:32]
-            or value['qualification'] != 'unqualified'
-            or value['runtime_capability'] != 'installed-files-reviewed; execution-and-quality-unqualified'):
-        raise ValueError('Invalid transcription runtime declaration.')
-    for name in ('python_executable', 'python_resolved', 'worker_path', 'model_directory'):
-        path(value[name])
-    for name in ('python_identity', 'worker_identity'):
-        _identity(value[name])
-    for name in ('python_configuration', 'runtime_auxiliary', 'python_support'):
-        _inventory(value.get(name, {}), external=True)
-    _inventory(value['model_files'], maximum=4096)
-    if not {'model.bin', 'config.json', 'tokenizer.json'} <= value['model_files'].keys():
-        raise ValueError('Incomplete reviewed model declaration.')
-    _packages(value['runtime_distributions'])
-    for name in ('trusted', 'restored'):
-        _bool(value[name])
-    for name in ('name', 'model_name'):
-        text(value[name], 512)
-    number(value['registered'])
-    number(value['model_bytes'], 1, MAX_INPUT_BYTES, integer=True)
-    if (value['model_bytes'] != sum(item['size'] for item in value['model_files'].values())
-            or value['model_content_fingerprint'] != fingerprint(value['model_files'])):
-        raise ValueError('Model declaration fingerprint changed.')
-    admission = {key: item for key, item in value.items() if key not in
-                 {'fingerprint', 'id', 'name', 'trusted', 'qualification', 'registered', 'restored'}}
-    if value['fingerprint'] != fingerprint(admission):
-        raise ValueError('Reviewed runtime declaration fingerprint changed.')
-
-
-def _job(value, identity):
-    fields(value, {'schema', 'id', 'title', 'status', 'profile_id', 'profile_fingerprint', 'sources',
-        'settings', 'results', 'edits', 'done', 'total', 'error', 'created', 'updated',
-        'recovery_review_required', 'restored', 'plan_fingerprint'}, {'current', 'worker_cache_rejected'})
-    if (value['schema'] != 'resonance-transcription-job/1' or value['id'] != identity
-            or value['status'] not in ('pending', 'preparing', 'running', 'pausing', 'paused', 'cancelling',
-                                      'cancelled', 'interrupted', 'failed', 'partial', 'complete')):
-        raise ValueError('Invalid transcription job.')
-    _id(value['profile_id'])
-    digest(value['profile_fingerprint'])
-    text(value['title'], 512)
-    text(value['error'], MAX_METADATA_BYTES, empty=True)
-    if 'current' in value:
-        text(value['current'], 32768, empty=True)
-    for name in ('created', 'updated'):
-        number(value[name])
-    for name in ('recovery_review_required', 'restored', 'worker_cache_rejected'):
-        if name in value:
-            _bool(value[name])
-    _settings(value['settings'])
-    sources = value['sources']
-    if type(sources) is not list or not 1 <= len(sources) <= MAX_SOURCES:
-        raise ValueError('Invalid retained-source inventory.')
-    seen = set()
-    for source in sources:
-        fields(source, {'id', 'original_path', 'name', 'retained_path', 'sha256', 'size'})
-        _id(source['id'])
-        path(source['original_path'])
-        text(source['name'], 32768)
-        digest(source['sha256'])
-        number(source['size'], 1, MAX_SOURCE_BYTES, integer=True)
-        name = PREFIX + 'jobs/' + identity + '/' + source['retained_path']
-        match = INPUT.fullmatch(name)
-        if not is_input(name) or match[2] != source['id'] or source['id'] in seen:
-            raise ValueError('Retained source path/identity mismatch.')
-        seen.add(source['id'])
-    if sum(source['size'] for source in sources) > MAX_INPUT_BYTES:
-        raise ValueError('Transcription source batch exceeds its byte budget.')
-    if type(value['results']) is not list or len(value['results']) > len(sources):
-        raise ValueError('Invalid accepted-result inventory.')
-    completed = set()
-    for result in value['results']:
-        fields(result, {'source_id', 'receipt', 'sha256', 'formats', 'language', 'duration', 'segments'})
-        if result['source_id'] not in seen or result['source_id'] in completed:
-            raise ValueError('Invalid accepted-result source.')
-        completed.add(result['source_id'])
-        match = ARTIFACT.fullmatch(PREFIX + 'jobs/' + identity + '/' + result['receipt'])
-        if not match or match[2] != result['source_id'] or match[4] != 'receipt.json':
-            raise ValueError('Invalid accepted receipt path.')
-        digest(result['sha256'])
-        if (type(result['formats']) is not list or not result['formats']
-                or len(set(result['formats'])) != len(result['formats']) or set(result['formats']) - set(FORMATS)):
-            raise ValueError('Invalid accepted export formats.')
-        if type(result['language']) is not str or not re.fullmatch('[a-z]{2,3}', result['language']):
-            raise ValueError('Invalid accepted language.')
-        number(result['duration'], 0, 30 * 86400)
-        number(result['segments'], 0, 250000, integer=True)
-    if type(value['edits']) is not dict or len(value['edits']) > len(sources):
-        raise ValueError('Invalid edited-transcript inventory.')
-    for source_id, edit in value['edits'].items():
-        fields(edit, {'id', 'path', 'sha256'})
-        _id(edit['id'])
-        digest(edit['sha256'])
-        if source_id not in completed or edit['path'] != f'edits/{source_id}/{edit["id"]}.json':
-            raise ValueError('Invalid edited-transcript path.')
-    if (type(value['done']) is not int or value['done'] != len(completed)
-            or type(value['total']) is not int or value['total'] != len(sources)
-            or value['status'] == 'complete' and len(completed) != len(sources)):
-        raise ValueError('Transcription completion disagrees with its accepted results.')
-    plan = {name: value[name] for name in ('id', 'profile_id', 'profile_fingerprint', 'sources', 'settings')}
-    if value['plan_fingerprint'] != fingerprint(plan):
-        raise ValueError('Transcription job plan fingerprint changed.')
-
-
-def _provenance(value, *, edited=False):
-    required = {'citation_authority', 'derived', 'diarization', 'effective_settings',
-        'model_content_fingerprint', 'profile_fingerprint', 'profile_id', 'python_sha256', 'quality',
-        'runtime_identity_sha256', 'settings', 'source_bytes', 'source_sha256', 'translation_target',
-        'worker_checkpoint_sha256', 'worker_sha256'}
-    if edited:
-        required |= {'revision_kind', 'original_transcript_sha256'}
-    fields(value, required)
-    if (value['citation_authority'] is not False or value['derived'] is not True
-            or value['diarization'] is not False or value['quality'] != 'unqualified'):
-        raise ValueError('A derived transcript cannot acquire source/quality authority.')
-    for name in required:
-        if name.endswith(('_sha256', '_fingerprint')):
-            digest(value[name])
-    _id(value['profile_id'])
-    number(value['source_bytes'], 1, MAX_SOURCE_BYTES, integer=True)
-    _settings(value['settings'])
-    _settings(value['effective_settings'], worker=True)
-    if (value['effective_settings']['language'] != value['settings']['language']
-            or value['effective_settings']['task'] != value['settings']['task']
-            or value['translation_target'] != ('en' if value['settings']['task'] == 'translate' else None)):
-        raise ValueError('Transcription provenance changes the selected language/task.')
-    if edited and value['revision_kind'] != 'user-edited-transcript':
-        raise ValueError('Invalid transcript revision kind.')
-
-
-def _result(value):
-    fields(value, {'language', 'duration', 'segments', 'text'})
-    if validated_result(value, value['text']) != value:
-        raise ValueError('Transcript result is not normalized.')
-
-
-def _receipt(value, match):
-    fields(value, {'schema', 'source_id', 'result', 'provenance', 'files', 'created', 'status'})
-    if (value['schema'] != 'resonance-transcription-result/1' or value['status'] != 'complete'
-            or value['source_id'] != match[2]):
-        raise ValueError('Invalid accepted transcript receipt.')
-    _result(value['result'])
-    _provenance(value['provenance'])
-    number(value['created'])
-    if type(value['files']) is not dict or not value['files'] or set(value['files']) - set(FORMATS):
-        raise ValueError('Invalid accepted transcript files.')
-    expected = encoded_outputs(value['result'], value['provenance'])
-    for extension, record in value['files'].items():
-        fields(record, {'path', 'sha256', 'size'})
-        _identity({key: record[key] for key in ('sha256', 'size')}, maximum=MAX_METADATA_BYTES)
-        if (record['path'] != f'artifacts/{match[2]}/{match[3]}/transcript.{extension}'
-                or record['size'] != len(expected[extension])
-                or record['sha256'] != sha256(expected[extension]).hexdigest()):
-            raise ValueError('Accepted export bytes disagree with their typed result.')
-
-
-def _worker_identity(value):
-    fields(value, {'schema', 'source', 'group', 'relative', 'model', 'runtime', 'settings'})
-    if value['schema'] not in ('whisper-v43-local-integrity-1', 'synthetic-file-job/1'):
-        raise ValueError('Unsupported inert worker checkpoint schema.')
-    fields(value['source'], {'path', 'sha256', 'size'})
-    path(value['source']['path'])
-    _identity({key: value['source'][key] for key in ('sha256', 'size')})
-    text(value['group'], 512)
-    _relative(value['relative'])
-    fields(value['model'], {'name', 'root', 'files'})
-    text(value['model']['name'], 512)
-    path(value['model']['root'])
-    _inventory(value['model']['files'], maximum=4096)
-    runtime = value['runtime']
-    fields(runtime, {'worker', 'executable', 'packages'}, {'python', 'implementation', 'platform', 'machine', 'fixture'})
-    _identity(runtime['worker'])
-    _identity(runtime['executable'])
-    _packages(runtime['packages'])
-    for name in ('python', 'implementation', 'platform', 'machine'):
-        if name in runtime:
-            text(runtime[name], 4096)
-    if 'fixture' in runtime:
-        _bool(runtime['fixture'])
-    _settings(value['settings'], worker=True)
-
-
-def _worker_meta(value):
-    fields(value, {'text', 'duration', 'segments'}, {'language', 'detected_language', 'settings',
-        'effective_settings', 'created', 'group', 'local_integrity', 'relative', 'requested_settings',
-        'selected_language', 'source', 'v43_attempt', 'v43_attempt_no'})
-    validated_result(value, value['text'])
-    for key in ('settings', 'effective_settings', 'requested_settings'):
-        if key in value:
-            _settings(value[key], worker=True)
-    for key in ('source',):
-        if key in value:
-            path(value[key])
-    for key in ('group', 'selected_language', 'v43_attempt'):
-        if key in value:
-            text(value[key], 4096)
-    if 'relative' in value:
-        _relative(value['relative'])
-    if 'created' in value:
-        if isinstance(value['created'], str):
-            text(value['created'], 128)
-        else:
-            number(value['created'])
-    if 'v43_attempt_no' in value:
-        number(value['v43_attempt_no'], 0, 1000000, integer=True)
-    if 'local_integrity' in value:
-        fields(value['local_integrity'], {'schema', 'identity_sha256', 'selected_backend'})
-        text(value['local_integrity']['schema'], 128)
-        digest(value['local_integrity']['identity_sha256'])
-        backend = value['local_integrity']['selected_backend']
-        fields(backend, {'device', 'compute_type', 'num_workers'})
-        text(backend['device'], 128)
-        text(backend['compute_type'], 128)
-        number(backend['num_workers'], 1, 4, integer=True)
-
-
-def validate(name, raw):
-    """Validate one declared file; return JSON only for collection checks."""
-    from .backup_sidecars import _json
-    if not limit(name) or is_input(name):
-        raise ValueError('Unsupported transcription metadata path.')
-    if not name.endswith('.json'):
-        value = raw.decode('utf-8')
-        if '\x00' in value or name.endswith('.vtt') and not value.startswith('WEBVTT\n'):
-            raise ValueError('Invalid inert transcript/log text.')
-        return None
-    value = _json(raw)
-    if match := PROFILE.fullmatch(name):
-        _profile(value, match[1])
-    elif match := JOB.fullmatch(name):
-        if match[2] == 'job':
-            _job(value, match[1])
-        else:
-            fields(value, {'action'})
-            if value['action'] not in ('run', 'pause', 'cancel'):
-                raise ValueError('Invalid transcription control.')
-    elif match := ARTIFACT.fullmatch(name):
-        if match[4] == 'receipt.json':
-            _receipt(value, match)
-        else:
-            fields(value, {'schema', 'language', 'duration', 'segments', 'text', 'provenance'})
-            if value['schema'] != 'resonance-transcript/1':
-                raise ValueError('Invalid transcript export schema.')
-            _result({key: value[key] for key in ('language', 'duration', 'segments', 'text')})
-            _provenance(value['provenance'])
-    elif match := EDIT.fullmatch(name):
-        fields(value, {'id', 'source_id', 'text', 'edited', 'provenance', 'created', 'path'})
-        if (value['id'] != match[3] or value['source_id'] != match[2] or value['edited'] is not True
-                or value['path'] != f'edits/{match[2]}/{match[3]}.json'):
-            raise ValueError('Invalid edited transcript identity.')
-        text(value['text'], MAX_METADATA_BYTES, empty=True)
-        _provenance(value['provenance'], edited=True)
-        number(value['created'])
-    else:
-        relative = WORKER.fullmatch(name)[3]
-        if relative == 'job_config.json':
-            fields(value, {'folders', 'job_name', 'models_dir', 'results_root', 'settings'})
-            if type(value['folders']) is not list or not 1 <= len(value['folders']) <= MAX_SOURCES:
-                raise ValueError('Invalid worker input-folder declarations.')
-            for folder in value['folders']:
-                path(folder)
-            path(value['models_dir'])
-            path(value['results_root'])
-            text(value['job_name'], 512)
-            _settings(value['settings'], worker=True)
-        elif relative == 'settings_live.json':
-            _settings(value, worker=True, partial=True)
-        elif relative == 'job_status.json':
-            fields(value, {'state', 'done', 'failed', 'total'}, {'active_count', 'active_files', 'current',
-                   'job_name', 'results_dir', 'updated'})
-            text(value['state'], 128)
-            for key in ('done', 'failed', 'total', 'active_count'):
-                if key in value:
-                    number(value[key], 0, MAX_SOURCES, integer=True)
-            for key in ('current', 'job_name', 'results_dir'):
-                if key in value:
-                    text(value[key], 32768, empty=True)
-            if 'updated' in value:
-                if type(value['updated']) is str:
-                    text(value['updated'], 128)
-                else:
-                    number(value['updated'])
-            if 'active_files' in value:
-                active = value['active_files']
-                if type(active) not in (list, dict) or len(active) > MAX_SOURCES:
-                    raise ValueError('Invalid worker active-file inventory.')
-                if isinstance(active, dict):
-                    for key in active:
-                        if not re.fullmatch(r'[0-9]{1,3}', key) or not 1 <= int(key) <= MAX_SOURCES:
-                            raise ValueError('Invalid worker active-file index.')
-                for item in (active.values() if isinstance(active, dict) else active):
-                    if type(item) is str:
-                        text(item, 32768)
-                    else:
-                        fields(item, {'index', 'total', 'group', 'relative', 'source', 'phase', 'percent'})
-                        for key in ('index', 'total'):
-                            number(item[key], 1, MAX_SOURCES, integer=True)
-                        number(item['percent'], 0, 100)
-                        for key in ('group', 'phase'):
-                            text(item[key], 1024)
-                        _relative(item['relative'])
-                        path(item['source'])
-        elif (cache := CACHE.fullmatch(relative)) and cache[2] in ('cache.json', 'receipt.json'):
-            if cache[2] == 'cache.json':
-                fields(value, {'identity', 'text', 'meta'})
-                _identity(value['text'], maximum=MAX_METADATA_BYTES)
-                _identity(value['meta'], maximum=MAX_METADATA_BYTES)
-            else:
-                fields(value, {'schema', 'identity', 'state', 'outputs', 'required_outputs', 'errors'})
-                if value['schema'] != 'whisper-v43-local-integrity-1':
-                    raise ValueError('Invalid inert worker receipt schema.')
-                text(value['state'], 128)
-                _inventory(value['outputs'], external=True, maximum=MAX_SOURCES * 4)
-                for key in ('required_outputs', 'errors'):
-                    if type(value[key]) is not list or len(value[key]) > MAX_SOURCES * 4:
-                        raise ValueError('Excessive inert worker receipt records.')
-                    for item in value[key]:
-                        text(item, 32768)
-            _worker_identity(value['identity'])
-            encoded = json.dumps(value['identity'], ensure_ascii=False, sort_keys=True,
-                                 separators=(',', ':'), allow_nan=False).encode('utf-8')
-            if sha256(encoded).hexdigest() != cache[1]:
-                raise ValueError('Worker checkpoint filename disagrees with its identity.')
-        else:
-            _worker_meta(value)
+def _source_name(value):
+    if (type(value) is not str or not _SOURCE.fullmatch(value)
+            or PurePosixPath(value).suffix not in MEDIA_SUFFIXES):
+        raise ValueError('Invalid retained transcription source name.')
     return value
 
 
-def validate_collection(entries, records):
-    """Bind retained bytes, result receipts and edits without opening externals."""
-    inventory = {entry['filename']: entry for entry in entries if entry['filename'].startswith(PREFIX)}
-    profiles = {PROFILE.fullmatch(name)[1]: value for name, value in records.items() if PROFILE.fullmatch(name)}
-    jobs = {JOB.fullmatch(name)[1]: value for name, value in records.items()
-            if JOB.fullmatch(name) and JOB.fullmatch(name)[2] == 'job'}
-    if len(profiles) > MAX_PROFILES or len(jobs) > MAX_JOBS:
-        raise RestoreError('Transcription backup exceeds its profile/job budget.')
-    history, by_job = {}, {}
-    for name, value in records.items():
-        if name.startswith(PREFIX + 'jobs/'):
-            by_job.setdefault(name.split('/')[3], {})[name] = value
-    def exact(name, identity):
-        entry = inventory.get(name)
-        if entry is None or entry['sha256'] != identity['sha256'] or ('size' in identity and entry['size_bytes'] != identity['size']):
-            raise RestoreError('Missing or changed transcription source/result: ' + name)
-    for name in inventory:
-        if name.startswith(PREFIX + 'jobs/'):
-            identity = name.split('/')[3]
-            if identity not in jobs:
-                raise RestoreError('Transcription data has no owning job.')
-        if match := WORKER.fullmatch(name):
-            if match[2].startswith('worker-history/'):
-                history.setdefault(match[1], set()).add(match[2])
-    if any(len(values) > MAX_HISTORY for values in history.values()):
-        raise RestoreError('Transcription backup exceeds its worker-history budget.')
-    for identity, job in jobs.items():
-        base = PREFIX + 'jobs/' + identity + '/'
-        profile = profiles.get(job['profile_id'])
-        if profile is None or profile['fingerprint'] != job['profile_fingerprint']:
-            raise RestoreError('Transcription job has no matching runtime declaration.')
-        sources = {source['id']: source for source in job['sources']}
-        for source in sources.values():
-            exact(base + source['retained_path'], source)
-        accepted = {}
-        for result in job['results']:
-            exact(base + result['receipt'], result)
-            receipt = records[base + result['receipt']]
-            accepted[result['source_id']] = receipt
-            if (set(result['formats']) != set(receipt['files']) or result['language'] != receipt['result']['language']
-                    or result['duration'] != receipt['result']['duration']
-                    or result['segments'] != len(receipt['result']['segments'])):
-                raise RestoreError('Accepted transcript summary changed.')
-        for name, value in by_job.get(identity, {}).items():
-            if (ARTIFACT.fullmatch(name) and name.endswith('/receipt.json')) or EDIT.fullmatch(name):
-                source = sources.get(value['source_id'])
-                provenance = value['provenance']
-                if source is None or (provenance['source_sha256'], provenance['source_bytes']) != (source['sha256'], source['size']):
-                    raise RestoreError('Transcript provenance disagrees with its retained source.')
-                if name.endswith('/receipt.json'):
-                    for record in value['files'].values():
-                        exact(base + record['path'], record)
-                elif value['source_id'] in accepted:
-                    original = accepted[value['source_id']]['result']['text']
-                    if provenance['original_transcript_sha256'] != sha256(original.encode('utf-8')).hexdigest():
-                        raise RestoreError('Edited transcript lost its original result identity.')
-        for edit in job['edits'].values():
-            exact(base + edit['path'], edit)
-    for name, checkpoint in records.items():
-        if name.endswith('.cache.json'):
-            for kind, suffix in (('text', '.txt'), ('meta', '.json')):
-                exact(name[:-len('.cache.json')] + suffix, checkpoint[kind])
+def _kind(value):
+    return next((kind for kind in _FORMATS if value.endswith('.' + kind)), None)
 
 
-def prepare_restored_inventory(stage, destination, entries, *, cancelled):
-    """Revoke trust only after source-manifest verification, before publication."""
-    from . import backup_sidecars
-    from .transcription.service import prepare_restored_state
-    backup_sidecars._check_cancelled(cancelled)
-    prepare_restored_state(stage / 'state', destination, cancelled=cancelled)
-    output, records = [], {}
-    names = {entry['filename'] for entry in entries}
-    names.update(path.relative_to(stage).as_posix()
-                 for path in (stage / PREFIX).glob('jobs/*/control.json'))
-    original = {entry['filename']: entry for entry in entries}
-    for name in sorted(names):
-        backup_sidecars._check_cancelled(cancelled)
+def _member(name):
+    if type(name) is not str:
+        return None
+    if name == PREFIX + 'engine.json':
+        return ('engine', None, None, 'engine.json')
+    if profile := _PROFILE.fullmatch(name):
+        return ('profile', None, profile[1], name[len(PREFIX):])
+    if review := _REVIEW.fullmatch(name):
+        return ('review', review[1], review[2], 'execution-review.json')
+    match = _JOB.fullmatch(name)
+    if not match:
+        return None
+    scope, identity, tail = match.groups()
+    if tail in _BASE:
+        return (tail, scope, identity, tail)
+    if _RECEIPT.fullmatch(tail):
+        return ('receipt', scope, identity, tail)
+    if _EDIT.fullmatch(tail):
+        return ('edit', scope, identity, tail)
+    if tail.startswith('input/'):
+        try:
+            _source_name(tail[6:])
+        except ValueError:
+            return None
+        return ('input', scope, identity, tail)
+    if tail.startswith('results/'):
+        relative = tail[8:]
+        try:
+            _relative(relative)
+        except ValueError:
+            return None
+        v5 = _V5_RESULT.fullmatch(relative)
+        if relative.startswith('runs/'):
+            if v5 is None or v5[2] != identity:
+                return None
+            suffix = v5[3]
+            if (len(PurePosixPath(suffix).parts) > 2
+                    or suffix.startswith('host-derived/') and _kind(suffix) not in ('words.srt', 'words.vtt')):
+                return None
+        if relative.endswith('/result_manifest.json'):
+            if v5 is None or v5[3] != 'result_manifest.json':
+                return None
+            return ('manifest', scope, identity, tail)
+        if _kind(relative) is not None:
+            return ('result', scope, identity, tail)
+    return None
+
+
+def limit(name):
+    member = _member(name)
+    if member is None:
+        return None
+    kind = member[0]
+    if kind == 'input':
+        return MAX_SOURCE_BYTES
+    if kind in ('engine', 'profile'):
+        return 32 * 1024**2
+    if kind in ('control.json', 'rejected-execution.json', 'review'):
+        return 16384
+    if kind in ('job_status.json', 'host_status.json', 'job_config.json'):
+        return 4 * 1024**2
+    if kind == 'edit':
+        return 32 * 1024**2
+    if kind in ('job.json', 'receipt', 'manifest'):
+        return 32 * 1024**2
+    return MAX_METADATA_BYTES
+
+
+def is_media(name):
+    member = _member(name)
+    return member is not None and member[0] == 'input'
+
+
+def allow_empty(name):
+    member = _member(name)
+    return member is not None and (
+        member[0] == 'input' or member[0] == 'result' and not member[3].endswith('.json'))
+
+
+
+def is_cache_directory(name):
+    """Recognize only optional logs caches owned by this flat job layout.
+
+    This is an omission boundary, not an admission schema. Accepted results and
+    V5 manifests remain required even when their payload records cache identity.
+    """
+    match = _JOB.fullmatch(name) if type(name) is str else None
+    return bool(match and match[3] in ('logs/cache', 'logs/cache_v5'))
+
+
+def is_cache_file(name):
+    """Identify optional cache entries without reading or accepting their data."""
+    match = _JOB.fullmatch(name) if type(name) is str else None
+    return bool(match and match[3].startswith(('logs/cache/', 'logs/cache_v5/')))
+
+
+def ignored(name):
+    """Only transient ownership/commands, never arbitrary worker files or caches."""
+    if name == PREFIX + '.engine.lock':
+        return True
+    if re.fullmatch(PREFIX + _HEX + r'/jobs/\.submit\.lock', name):
+        return True
+    if name == PREFIX + 'profiles/.profiles.lock':
+        return True
+    match = _JOB.fullmatch(name) if type(name) is str else None
+    return bool(match and match[3] in ('.transcribe.lock', '.control.lock', 'stop.flag', 'pause.flag',
+                                      'settings_live.json'))
+
+
+def _json(raw):
+    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object,
+                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid transcription number.')))
+
+
+def _scope(db, value, scope):
+    text(value, 128)
+    if (sha256(value.encode('utf-8')).hexdigest() != scope
+            or db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?', (value,)).fetchone() is None):
+        raise ValueError('Transcription checkpoint does not match its saved library scope.')
+
+
+def _stat_values(value):
+    if type(value) is not list or len(value) != 5:
+        raise ValueError('Invalid transcription executable binding.')
+    for item in value:
+        number(item, integer=True, maximum=2**64)
+
+
+def _engine(value):
+    fields(value, {'version', 'python', 'worker', 'models_dir', 'python_sha256',
+                   'worker_sha256', 'network', 'inference_qualified'},
+           {'protocol', 'python_binding', 'wrapper_sources_sha256', 'retry_policy',
+            'runtime_inventory', 'models_inventory', 'fingerprint', 'profile_id',
+            'execution_review_required'})
+    if (type(value['version']) is not int or value['version'] != 1
+            or value['network'] != 'local-files-only; Python network calls denied'
+            or value['inference_qualified'] is not False):
+        raise ValueError('Invalid passive transcription configuration.')
+    protocol = value.get('protocol', RECEIPTS_PROTOCOL)
+    settings(protocol=protocol)
+    for key in ('python', 'worker', 'models_dir'):
+        external_path(value[key])
+    for key in ('python_sha256', 'worker_sha256'):
+        digest(value[key])
+    if 'python_binding' in value:
+        binding = value['python_binding']
+        fields(binding, {'resolved', 'selected', 'binary'})
+        external_path(binding['resolved'])
+        _stat_values(binding['selected'])
+        _stat_values(binding['binary'])
+    if protocol == V5_PROTOCOL:
+        _wrappers(value.get('wrapper_sources_sha256'))
+        if value['wrapper_sources_sha256']['worker.py'] != value['worker_sha256']:
+            raise ValueError('The saved Whisper wrapper identities disagree.')
+        text(value.get('retry_policy'), 512)
+    elif 'wrapper_sources_sha256' in value or 'retry_policy' in value:
+        raise ValueError('A receipt-profile configuration contains V5-only fields.')
+
+    sealed = {'runtime_inventory', 'models_inventory', 'fingerprint'}
+    if sealed & value.keys():
+        if not sealed <= value.keys():
+            raise ValueError('An installed runtime seal is incomplete.')
+        from .transcription_runtime import validate_runtime, validate_models
+        runtime = validate_runtime(value['runtime_inventory'])
+        models = validate_models(value['models_inventory'])
+        if (not _same_path(runtime['python_executable'], value['python'])
+                or runtime['python_identity']['sha256'] != value['python_sha256']
+                or not _same_path(models['root'], value['models_dir'])
+                or value['fingerprint'] != configuration_fingerprint(value)):
+            raise ValueError('Runtime/model inventories disagree with the selected configuration.')
+        if ('python_binding' in value
+                and not _same_path(runtime['python_resolved'], value['python_binding']['resolved'])):
+            raise ValueError('The operational Python and selected executable binding disagree.')
+    if 'execution_review_required' in value and type(value['execution_review_required']) is not bool:
+        raise ValueError('Invalid restored execution review flag.')
+    if 'profile_id' in value:
+        if (not sealed <= value.keys() or type(value['profile_id']) is not str
+                or value['profile_id'] != value['fingerprint'][:32]):
+            raise ValueError('The selected profile identity differs from its runtime seal.')
+
+
+def _profile(value, identity):
+    fields(value, {'schema', 'id', 'name', 'fingerprint', 'trusted', 'restored',
+                   'qualification', 'configuration'})
+    if (value['schema'] != 'carr-transcription-profile/1' or value['id'] != identity
+            or type(value['trusted']) is not bool or type(value['restored']) is not bool
+            or value['qualification'] != 'unqualified'):
+        raise ValueError('Invalid passive named runtime profile.')
+    text(value['name'], 200)
+    digest(value['fingerprint'])
+    _engine(value['configuration'])
+    if (value['configuration'].get('fingerprint') != value['fingerprint']
+            or identity != value['fingerprint'][:32]
+            or 'profile_id' in value['configuration']):
+        raise ValueError('Named runtime profile changed its exact configuration.')
+
+
+def _control(value, identity, scope):
+    fields(value, {'version', 'job', 'workspace', 'action', 'revision'})
+    if (type(value['version']) is not int or value['version'] != 1 or value['job'] != identity
+            or type(value['workspace']) is not str
+            or sha256(value['workspace'].encode('utf-8')).hexdigest() != scope
+            or value['action'] not in ('run', 'pause', 'cancel')
+            or type(value['revision']) is not str or not re.fullmatch(_ID, value['revision'])):
+        raise ValueError('Invalid durable transcription control.')
+
+
+def _rejection(value, identity, scope):
+    fields(value, {'version', 'job', 'workspace', 'attempt', 'configuration', 'reason'})
+    if (type(value['version']) is not int or value['version'] != 1 or value['job'] != identity
+            or type(value['workspace']) is not str
+            or sha256(value['workspace'].encode('utf-8')).hexdigest() != scope
+            or type(value['attempt']) is not str or not re.fullmatch(_ID, value['attempt'])):
+        raise ValueError('Invalid rejected transcription execution identity.')
+    digest(value['configuration'])
+    text(value['reason'], 3000)
+
+
+def _review(value, identity, scope):
+    fields(value, {'schema', 'job', 'workspace', 'attempt', 'configuration'})
+    if (value['schema'] != 'carr-transcription-review/1' or value['job'] != identity
+            or type(value['workspace']) is not str
+            or sha256(value['workspace'].encode('utf-8')).hexdigest() != scope
+            or type(value['attempt']) is not str or not re.fullmatch(_ID, value['attempt'])):
+        raise ValueError('Invalid pending transcription execution review.')
+    digest(value['configuration'])
+
+
+def _wrappers(value):
+    fields(value, set(V5_SOURCES))
+    for item in value.values():
+        digest(item)
+
+
+def _file_identity(value):
+    fields(value, {'path', 'size', 'mtime_ns', 'ctime_ns', 'device', 'inode', 'sha256'})
+    external_path(value['path'])
+    number(value['size'], integer=True, maximum=32 * 1024**3)
+    for key in ('mtime_ns', 'ctime_ns', 'device', 'inode'):
+        number(value[key], integer=True, maximum=2**64)
+    digest(value['sha256'])
+
+
+def _model_identity(value):
+    fields(value, {'path', 'files'})
+    external_path(value['path'])
+    files = value['files']
+    if (type(files) is not dict or not {'model.bin', 'config.json', 'tokenizer.json'} <= files.keys()
+            or len(files) > 4096):
+        raise ValueError('Invalid retained Whisper model identity.')
+    total = 0
+    for name, item in files.items():
+        _relative(name, depth=32, hidden=True)
+        _file_identity(item)
+        if not _same_path(item['path'], _joined(value['path'], name)):
+            raise ValueError('Whisper model identity paths disagree.')
+        total += item['size']
+    if total > 64 * 1024**3:
+        raise ValueError('Whisper model identity exceeds its declared bound.')
+
+
+def _joined(root, name):
+    external_path(root)
+    # Historical Windows paths remain Windows references on a POSIX restore.
+    kind = PureWindowsPath if PureWindowsPath(root).drive else PurePosixPath
+    return str(kind(root).joinpath(*PurePosixPath(name).parts))
+
+
+def _same_path(left, right):
+    external_path(left)
+    external_path(right)
+    if PureWindowsPath(left).drive or PureWindowsPath(right).drive:
+        return PureWindowsPath(left) == PureWindowsPath(right)
+    return PurePosixPath(left) == PurePosixPath(right)
+
+
+def _input_root(value, scope, identity):
+    external_path(value)
+    path = PureWindowsPath(value) if PureWindowsPath(value).drive else PurePosixPath(value)
+    if tuple(part.casefold() for part in path.parts[-6:]) != (
+            'state', 'transcription', scope, 'jobs', identity, 'input'):
+        raise ValueError('Historical transcription input root belongs to another job.')
+
+
+def _context(value, job, scope):
+    if value is None:
+        return
+    common = {'input_root', 'worker_sha256', 'python_sha256'}
+    review = {'configuration_fingerprint', 'model_content_fingerprint'}
+    if review & value.keys():
+        if not review <= value.keys():
+            raise ValueError('The recorded execution review is incomplete.')
+        for name in review:
+            digest(value[name])
+    if job['protocol'] == V5_PROTOCOL:
+        fields(value, common | {'protocol', 'host_run_id', 'wrapper_sources_sha256',
+                               'model_identity', 'worker_settings', 'source_identities',
+                               'result_directory'}, {'manifest_sha256'} | review)
+        if value['protocol'] != V5_PROTOCOL or not re.fullmatch(_ID, value['host_run_id']):
+            raise ValueError('Invalid Whisper host run.')
+        _wrappers(value['wrapper_sources_sha256'])
+        if value['wrapper_sources_sha256']['worker.py'] != value['worker_sha256']:
+            raise ValueError('Whisper wrapper and worker identities disagree.')
+        _model_identity(value['model_identity'])
+        if value['worker_settings'] != _v5_settings(job['settings'], value['model_identity']['path']):
+            raise ValueError('Whisper requested settings changed.')
+        sources = value['source_identities']
+        expected = {item['filename']: item for item in job['sources']}
+        if type(sources) is not dict or set(sources) != set(expected):
+            raise ValueError('Whisper source identity inventory changed.')
+        for name, row in sources.items():
+            _file_identity(row)
+            if (row['size'] != expected[name]['size_bytes'] or row['sha256'] != expected[name]['sha256']
+                    or not _same_path(row['path'], _joined(value['input_root'], name))):
+                raise ValueError('Whisper source identity changed.')
+        if value['result_directory'] != 'runs/' + value['host_run_id'] + '/Whisper_V5/' + job['id']:
+            raise ValueError('Whisper result directory belongs to another run.')
+        if 'manifest_sha256' in value:
+            digest(value['manifest_sha256'])
+    else:
+        fields(value, common, review)
+    _input_root(value['input_root'], scope, job['id'])
+    digest(value['worker_sha256'])
+    digest(value['python_sha256'])
+
+
+def _artifact(value, *, accepted=False):
+    required = {'path', 'size_bytes', 'sha256'}
+    fields(value, required | ({'source', 'format', 'recognition_identity'} if accepted else set()))
+    _relative(value['path'])
+    kind = _kind(value['path'])
+    if kind not in ('txt', 'srt', 'vtt', 'json', 'words.srt', 'words.vtt'):
+        raise ValueError('Unknown retained transcript format.')
+    number(value['size_bytes'], integer=True, maximum=MAX_METADATA_BYTES)
+    digest(value['sha256'])
+    if accepted:
+        _source_name(value['source'])
+        digest(value['recognition_identity'])
+        if value['format'] != kind:
+            raise ValueError('Transcription format and filename disagree.')
+
+
+def _job(db, value, scope, identity):
+    fields(value, {'version', 'id', 'workspace', 'title', 'created', 'updated', 'status',
+                   'sources', 'settings', 'done', 'failed', 'receipts', 'artifacts',
+                   'run_context', 'last_error'}, {'protocol', 'worker_run_id', 'effective_runs',
+                    'runtime_profile_id', 'runtime_profile_fingerprint',
+                    'execution_review_required', 'recovery_review_required'})
+    if type(value['version']) is not int or value['version'] != 1 or value['id'] != identity:
+        raise ValueError('Invalid transcription job identity.')
+    _scope(db, value['workspace'], scope)
+    text(value['title'], 200)
+    for key in ('created', 'updated'):
+        number(value[key])
+    if value['status'] not in ('ready', 'running', 'stopped', 'partial', 'failed', 'completed',
+                               'paused', 'cancelled', 'interrupted'):
+        raise ValueError('Invalid retained transcription status.')
+    for key in ('execution_review_required', 'recovery_review_required'):
+        if key in value and type(value[key]) is not bool:
+            raise ValueError('Invalid transcription recovery review flag.')
+    bindings = {'runtime_profile_id', 'runtime_profile_fingerprint'}
+    if bindings & value.keys():
+        if not bindings <= value.keys():
+            raise ValueError('An explicitly bound runtime profile is incomplete.')
+        digest(value['runtime_profile_fingerprint'])
+        if value['runtime_profile_id'] != value['runtime_profile_fingerprint'][:32]:
+            raise ValueError('The job profile identity changed.')
+    protocol = value.get('protocol', RECEIPTS_PROTOCOL)
+    chosen = settings(value['settings'], protocol=protocol)
+    if chosen != value['settings']:
+        raise ValueError('Incomplete saved transcription settings.')
+    sources = value['sources']
+    if type(sources) is not list or not 1 <= len(sources) <= MAX_FILES:
+        raise ValueError('Invalid retained source inventory.')
+    names, total = set(), 0
+    for row in sources:
+        fields(row, {'filename', 'original_name', 'size_bytes', 'sha256'})
+        name = _source_name(row['filename'])
+        # Original labels are never treated as paths to read on this machine.
+        text(row['original_name'], 32768)
+        number(row['size_bytes'], integer=True, maximum=MAX_SOURCE_BYTES)
+        digest(row['sha256'])
+        total += row['size_bytes']
+        if name in names:
+            raise ValueError('Duplicate retained transcription input.')
+        names.add(name)
+    if total > MAX_BATCH_BYTES:
+        raise ValueError('Retained transcription inputs exceed the batch bound.')
+    for key in ('done', 'failed'):
+        number(value[key], integer=True, maximum=len(sources))
+    if (type(value['receipts']) is not list or len(value['receipts']) > len(sources)
+            or any(type(name) is not str or not _RECEIPT.fullmatch(name) for name in value['receipts'])
+            or len(set(value['receipts'])) != len(value['receipts'])
+            or value['done'] != len(value['receipts'])):
+        raise ValueError('Invalid accepted transcription receipt list.')
+    if type(value['artifacts']) is not list or len(value['artifacts']) > MAX_FILES * 6:
+        raise ValueError('Invalid accepted transcription outputs.')
+    for row in value['artifacts']:
+        _artifact(row, accepted=True)
+    if value['status'] == 'completed' and (value['done'] != len(sources) or value['failed']):
+        raise ValueError('A completed transcription has incomplete counters.')
+    if value['status'] == 'ready' and (value['run_context'] is not None or value['done']
+                                     or value['failed'] or value['receipts'] or value['artifacts']):
+        raise ValueError('An unstarted transcription contains run authority.')
+    text(value['last_error'], 8192, empty=True)
+    if 'worker_run_id' in value and value['worker_run_id'] is not None:
+        if type(value['worker_run_id']) is not str or not re.fullmatch(_ID, value['worker_run_id']):
+            raise ValueError('Invalid saved worker run ID.')
+    if 'effective_runs' in value:
+        rows = value['effective_runs']
+        if type(rows) is not list or len(rows) > len(sources):
+            raise ValueError('Invalid effective recognition inventory.')
+        seen = set()
+        for row in rows:
+            fields(row, {'source', 'attempt', 'settings'})
+            if row['source'] not in names or row['source'] in seen:
+                raise ValueError('Invalid effective recognition source.')
+            seen.add(row['source'])
+            text(row['attempt'], 64)
+            if type(row['settings']) is not dict:
+                raise ValueError('Invalid effective recognition settings.')
+    normalized = {**value, 'protocol': protocol}
+    _context(value['run_context'], normalized, scope)
+    return normalized
+
+
+def _receipt(value, checksum):
+    fields(value, {'version', 'state', 'run_id', 'identity', 'requested_exports',
+                   'outcome', 'artifacts', 'result_metadata_sha256'},
+           {'detected_language', 'language_probability', 'attempt', 'v5_manifest_sha256',
+            'v5_record', 'word_subtitle_provenance'})
+    if (type(value['version']) is not int or value['version'] != 1 or value['state'] != 'complete'
+            or type(value['run_id']) is not str or not re.fullmatch(_ID, value['run_id'])
+            or value['outcome'] not in ('speech', 'no_speech')):
+        raise ValueError('Invalid saved transcription receipt.')
+    identity = value['identity']
+    if _identity(identity) != checksum:
+        raise ValueError('Transcription receipt filename and identity disagree.')
+    fields(identity, {'version', 'source', 'model', 'runtime', 'recognition', 'execution', 'sha256'},
+           {'protocol', 'host_run_id', 'effective_settings', 'attempt'})
+    if type(identity['version']) is not int or identity['version'] != 1:
+        raise ValueError('Invalid recognition identity schema.')
+    source = identity['source']
+    fields(source, {'path', 'root', 'relative', 'size_bytes', 'sha256'}, {'group'})
+    _source_name(source['relative'])
+    external_path(source['root'])
+    if not _same_path(source['path'], _joined(source['root'], source['relative'])):
+        raise ValueError('Recognition source paths disagree.')
+    number(source['size_bytes'], integer=True, maximum=MAX_SOURCE_BYTES)
+    digest(source['sha256'])
+    if 'group' in source:
+        text(source['group'], 32768)
+    for key in ('model', 'runtime'):
+        _identity(identity[key])
+    text(identity['model'].get('selected'), 100)
+    digest(identity['runtime'].get('worker_sha256'))
+    executable = identity['runtime'].get('executable')
+    if type(executable) is not dict:
+        raise ValueError('Invalid receipt interpreter identity.')
+    digest(executable.get('sha256'))
+    if type(identity['recognition']) is not dict or set(identity['recognition']) != set(RECOGNITION_KEYS):
+        raise ValueError('Invalid recognition settings identity.')
+    if type(identity['execution']) is not dict:
+        raise ValueError('Invalid recognition execution identity.')
+    fields(value['requested_exports'], set(EXPORT_KEYS))
+    if type(value['artifacts']) is not list or not 4 <= len(value['artifacts']) <= 6:
+        raise ValueError('Invalid transcription receipt outputs.')
+    kinds, names = set(), set()
+    for row in value['artifacts']:
+        _artifact(row)
+        kind = _kind(row['path'])
+        if kind in kinds or row['path'] in names:
+            raise ValueError('Duplicate receipt output.')
+        kinds.add(kind)
+        names.add(row['path'])
+        if kind == 'json' and row['sha256'] != value['result_metadata_sha256']:
+            raise ValueError('Receipt metadata digest disagrees.')
+    required = {'txt', 'srt', 'vtt', 'json'}
+    if value['requested_exports']['word_timestamps']:
+        required |= {'words.srt', 'words.vtt'}
+    if kinds != required:
+        raise ValueError('A requested transcription format is missing.')
+    digest(value['result_metadata_sha256'])
+    if 'detected_language' in value and value['detected_language'] is not None:
+        text(value['detected_language'], 128, empty=True)
+    if 'language_probability' in value and value['language_probability'] is not None:
+        number(value['language_probability'], maximum=1)
+    if identity.get('protocol') == V5_PROTOCOL:
+        if identity.get('host_run_id') != value['run_id']:
+            raise ValueError('Whisper normalized receipt changed its host run.')
+        digest(value.get('v5_manifest_sha256'))
+        number(value.get('v5_record'), integer=True, maximum=MAX_FILES - 1)
+        _wrappers(identity['runtime'].get('wrapper_sources_sha256'))
+        _model_identity(identity['model'].get('identity'))
+        text(value.get('word_subtitle_provenance'), 512)
+    elif any(key in value for key in ('v5_manifest_sha256', 'v5_record', 'word_subtitle_provenance')):
+        raise ValueError('A receipt contains foreign protocol authority.')
+
+
+def _edit(value, identity, revision):
+    fields(value, {'version', 'id', 'job', 'source', 'source_sha256',
+                   'recognition_identity', 'original_text_sha256', 'created', 'text', 'kind'})
+    if (type(value['version']) is not int or value['version'] != 1 or value['id'] != revision
+            or value['job'] != identity
+            or value['kind'] != 'user-edited derivative; source and timed recognition remain unchanged'):
+        raise ValueError('Invalid transcription edit identity.')
+    _source_name(value['source'])
+    for key in ('source_sha256', 'recognition_identity', 'original_text_sha256'):
+        digest(value[key])
+    number(value['created'])
+    text(value['text'], MAX_TEXT_BYTES, empty=True)
+    if len(value['text'].encode('utf-8')) > MAX_TEXT_BYTES:
+        raise ValueError('Transcription edit exceeds its byte allowance.')
+
+
+def _status(value, *, host=False):
+    if type(value) is not dict:
+        raise ValueError('Invalid transcription status.')
+    for key in ('done', 'total', 'failed'):
+        number(value.get(key), integer=True, maximum=MAX_FILES)
+    if 'run_id' in value:
+        if type(value['run_id']) is not str or not re.fullmatch(_ID, value['run_id']):
+            raise ValueError('Invalid worker status run.')
+        if type(value.get('receipts')) is not list or len(value['receipts']) > MAX_FILES:
+            raise ValueError('Invalid worker status receipts.')
+        if any(type(name) is not str or not _RECEIPT.fullmatch(name) for name in value['receipts']):
+            raise ValueError('Invalid worker status receipt path.')
+        if len(set(value['receipts'])) != len(value['receipts']):
+            raise ValueError('Duplicate worker status receipt.')
+        if value.get('result_state') not in ('running', 'stopped', 'partial', 'completed', 'failed'):
+            raise ValueError('Invalid worker result status.')
+    elif host:
+        raise ValueError('Missing normalized host run identity.')
+    else:
+        external_path(value.get('results_dir'))
+    if 'state' in value:
+        text(value['state'], 4096, empty=True)
+
+
+def _manifest(value):
+    fields(value, {'format', 'version', 'app_version', 'complete', 'total', 'failed',
+                   'runtime_provenance', 'wrapper_sources_sha256', 'records', 'artifacts'})
+    if (value['format'] != 'whisper-result-manifest' or type(value['version']) is not int
+            or value['version'] != 1 or value['app_version'] != '5.0.0'
+            or value['runtime_provenance'] != V5_PROVENANCE or type(value['complete']) is not bool):
+        raise ValueError('Unsupported Whisper result manifest.')
+    number(value['total'], integer=True, minimum=1, maximum=MAX_FILES)
+    number(value['failed'], integer=True, maximum=value['total'])
+    if (value['complete'] != (value['failed'] == 0) or type(value['records']) is not list
+            or len(value['records']) != value['total'] - value['failed']
+            or type(value['artifacts']) is not list or len(value['artifacts']) > MAX_FILES * 5):
+        raise ValueError('Whisper manifest counters disagree.')
+    _wrappers(value['wrapper_sources_sha256'])
+    for row in value['artifacts']:
+        fields(row, {'path', 'bytes', 'sha256'})
+        _relative(row['path'], depth=2)
+        if _kind(row['path']) not in ('txt', 'srt', 'vtt', 'json', 'words.txt'):
+            raise ValueError('Unknown Whisper output format.')
+        number(row['bytes'], integer=True, maximum=MAX_METADATA_BYTES)
+        digest(row['sha256'])
+    for row in value['records']:
+        fields(row, {'source_identity', 'model_identity', 'backend', 'model_runtime', 'fingerprint',
+                     'metadata_sha256', 'requested_settings', 'effective_settings', 'attempt', 'artifacts'})
+        _file_identity(row['source_identity'])
+        _model_identity(row['model_identity'])
+        for key in ('fingerprint', 'metadata_sha256'):
+            digest(row[key])
+        if (type(row['backend']) is not dict or len(row['backend']) > 32
+                or any(type(key) is not str or type(item) is not str or len(item) > 4096
+                       for key, item in row['backend'].items())
+                or type(row['artifacts']) is not list or not 4 <= len(row['artifacts']) <= 5):
+            raise ValueError('Invalid Whisper provenance or outputs.')
+
+
+def validate(db, name, raw):
+    member = _member(name)
+    if member is None or type(raw) is not bytes or len(raw) > limit(name):
+        raise ValueError('Unknown or excessive transcription backup file.')
+    kind, scope, identity, tail = member
+    if not raw and not allow_empty(name):
+        raise ValueError('Empty transcription metadata.')
+    if kind == 'input':
+        return
+    if kind == 'result' and not tail.endswith('.json'):
+        text(raw.decode('utf-8-sig'), MAX_METADATA_BYTES, empty=True)
+        return
+    value = _json(raw)
+    if kind == 'engine':
+        _engine(value)
+    elif kind == 'profile':
+        _profile(value, identity)
+    elif kind == 'control.json':
+        _scope(db, value.get('workspace'), scope)
+        _control(value, identity, scope)
+    elif kind == 'rejected-execution.json':
+        _scope(db, value.get('workspace'), scope)
+        _rejection(value, identity, scope)
+    elif kind == 'review':
+        _scope(db, value.get('workspace'), scope)
+        _review(value, identity, scope)
+    elif kind == 'job.json':
+        _job(db, value, scope, identity)
+    elif kind == 'receipt':
+        _receipt(value, _RECEIPT.fullmatch(tail)[1])
+    elif kind == 'edit':
+        _edit(value, identity, _EDIT.fullmatch(tail)[1])
+    elif kind in ('job_status.json', 'host_status.json'):
+        _status(value, host=kind == 'host_status.json')
+    elif kind == 'job_config.json':
+        fields(value, {'job_name', 'folders', 'results_root', 'models_dir', 'settings'})
+        text(value['job_name'], 200)
+        if type(value['folders']) is not list or len(value['folders']) != 1:
+            raise ValueError('Invalid transcription job configuration sources.')
+        for item in (value['folders'][0], value['results_root'], value['models_dir']):
+            external_path(item)
+        if type(value['settings']) is not dict:
+            raise ValueError('Invalid transcription job configuration settings.')
+    elif kind == 'manifest':
+        _manifest(value)
+    elif kind == 'result':
+        if type(value) is not dict:
+            raise ValueError('Timed transcription JSON must be an object.')
+        _v5_timing(value, False)
+
+
+def _cancel(cancelled):
+    if not callable(cancelled):
+        raise ValueError('A cancellation callback is required.')
+    if cancelled():
+        raise InterruptedError('Transcription backup validation was cancelled.')
+
+
+def _read(stage, entry, cancelled):
+    # The core has copied and hashed all members. Recheck metadata before using
+    # it as a cross-file authority; paths are archive members, never saved paths.
+    from .backup_sidecars import _regular, _identity as stamp
+    target = Path(stage).joinpath(*PurePosixPath(entry['filename']).parts)
+    before = _regular(target)
+    if before.st_size != entry['size_bytes'] or before.st_size > limit(entry['filename']):
+        raise ValueError('Staged transcription metadata changed size.')
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    parts, size, checksum = [], 0, sha256()
+    with os.fdopen(os.open(target, flags), 'rb') as stream:
+        if stamp(os.fstat(stream.fileno())) != stamp(before):
+            raise ValueError('Staged transcription metadata changed before reading.')
+        while block := stream.read(min(1024**2, before.st_size - size + 1)):
+            _cancel(cancelled)
+            size += len(block)
+            if size > before.st_size:
+                raise ValueError('Staged transcription metadata grew.')
+            parts.append(block)
+            checksum.update(block)
+        if stamp(os.fstat(stream.fileno())) != stamp(before):
+            raise ValueError('Staged transcription metadata changed while reading.')
+    if (size != before.st_size or checksum.hexdigest() != entry['sha256']
+            or stamp(_regular(target)) != stamp(before)):
+        raise ValueError('Staged transcription metadata hash changed.')
+    _cancel(cancelled)
+    return b''.join(parts)
+
+
+def _matches(entry, size, checksum):
+    return entry is not None and entry['size_bytes'] == size and entry['sha256'] == checksum
+
+
+def _receipt_source(receipt, job, scope, *, current):
+    identity = receipt['identity']
+    source = identity['source']
+    name = source['relative']
+    original = next((row for row in job['sources'] if row['filename'] == name), None)
+    if (original is None or source['size_bytes'] != original['size_bytes']
+            or source['sha256'] != original['sha256']):
+        raise ValueError('A transcription receipt belongs to another retained source.')
+    _input_root(source['root'], scope, job['id'])
+    if (identity['recognition'] != {key: job['settings'][key] for key in RECOGNITION_KEYS}
+            or receipt['requested_exports'] != {key: job['settings'][key] for key in EXPORT_KEYS}
+            or identity['model']['selected'] != job['settings']['model']
+            or identity.get('protocol', RECEIPTS_PROTOCOL) != job['protocol']):
+        raise ValueError('A transcription receipt changed its requested recognition profile.')
+    if not current:
+        return
+    context = job['run_context']
+    if (context is None or receipt['run_id'] != job.get('worker_run_id')
+            or source['root'] != context['input_root']
+            or identity['runtime']['worker_sha256'] != context['worker_sha256']
+            or identity['runtime']['executable']['sha256'] != context['python_sha256']):
+        raise ValueError('An accepted transcription receipt belongs to another run.')
+    if job['protocol'] == V5_PROTOCOL:
+        effective = next((row for row in job.get('effective_runs', ()) if row['source'] == name), None)
+        if (identity['host_run_id'] != context['host_run_id']
+                or identity['runtime']['wrapper_sources_sha256'] != context['wrapper_sources_sha256']
+                or identity['model']['identity'] != context['model_identity']
+                or receipt['v5_manifest_sha256'] != context.get('manifest_sha256')
+                or effective is None or identity.get('effective_settings') != effective['settings']
+                or identity.get('attempt') != effective['attempt']):
+            raise ValueError('An accepted Whisper receipt changed its current-run provenance.')
+
+
+def _manifest_collection(job, tail, manifest, entry, members, values, receipts, assigned, cancelled):
+    relative_directory = str(PurePosixPath(tail).parent)[len('results/'):]
+    run = _V5_RESULT.fullmatch(relative_directory + '/result_manifest.json')[1]
+    bound = [receipt for receipt in receipts.values()
+             if receipt['identity'].get('protocol') == V5_PROTOCOL
+             and receipt.get('v5_manifest_sha256') == entry['sha256']
+             and receipt['identity']['host_run_id'] == run]
+    current = job['run_context']
+    if current is not None and current.get('result_directory') == relative_directory:
+        context = current
+        if context.get('manifest_sha256', entry['sha256']) != entry['sha256']:
+            raise ValueError('The current Whisper result manifest changed.')
+    elif bound:
+        identity = bound[0]['identity']
+        context = {
+            'host_run_id': run, 'input_root': identity['source']['root'],
+            'model_identity': identity['model']['identity'],
+            'worker_sha256': identity['runtime']['worker_sha256'],
+            'python_sha256': identity['runtime']['executable']['sha256'],
+            'wrapper_sources_sha256': identity['runtime']['wrapper_sources_sha256'],
+            'worker_settings': _v5_settings(job['settings'], identity['model']['identity']['path']),
+        }
+    else:
+        # A stopped attempt can leave a complete file manifest without host
+        # admission. Later explicit runs replace run_context. Keep that typed
+        # history as data, never manufacture a receipt or a completed counter.
+        if not manifest['records']:
+            if manifest['artifacts'] or manifest['total'] != len(job['sources']):
+                raise ValueError('An empty historical Whisper manifest has outputs or changed sources.')
+            assigned.add(tail)
+            return
+        first = manifest['records'][0]
+        source_path = first['source_identity']['path']
+        path_type = PureWindowsPath if PureWindowsPath(source_path).drive else PurePosixPath
+        root = str(path_type(source_path).parent)
+        _input_root(root, sha256(job['workspace'].encode('utf-8')).hexdigest(), job['id'])
+        context = {
+            'host_run_id': run, 'input_root': root, 'model_identity': first['model_identity'],
+            'wrapper_sources_sha256': manifest['wrapper_sources_sha256'],
+            'worker_settings': _v5_settings(job['settings'], first['model_identity']['path']),
+        }
+    if (manifest['total'] != len(job['sources'])
+            or manifest['wrapper_sources_sha256'] != context['wrapper_sources_sha256']):
+        raise ValueError('Whisper manifest changed its retained inputs or wrapper identities.')
+    outputs = {}
+    for row in manifest['artifacts']:
+        name = row['path']
+        target = str(PurePosixPath(tail).parent / name)
+        if name in outputs or not _matches(members.get(target), row['bytes'], row['sha256']):
+            raise ValueError('A Whisper manifest output is missing or changed.')
+        outputs[name] = row
+        assigned.add(target)
+    requested = context['worker_settings']
+    attempts = _v5_attempts(requested)
+    required = {'txt', 'srt', 'vtt', 'json'} | ({'words.txt'} if requested['output_words'] else set())
+    sources = {row['filename']: row for row in job['sources']}
+    seen, used = set(), set()
+    for index, row in enumerate(manifest['records']):
+        _cancel(cancelled)
+        source = row['source_identity']
+        matches = [name for name in sources if _same_path(source['path'], _joined(context['input_root'], name))]
+        if len(matches) != 1:
+            raise ValueError('Whisper manifest source has no retained original.')
+        name = matches[0]
+        if (name in seen or source['size'] != sources[name]['size_bytes']
+                or source['sha256'] != sources[name]['sha256']
+                or row['model_identity'] != context['model_identity']
+                or 'source_identities' in context and source != context['source_identities'][name]):
+            raise ValueError('Whisper manifest source/model identity changed.')
+        selected = attempts.get(row['attempt'])
+        effective = ({key: selected[key] for key in V5_RECOGNITION_KEYS}
+                     | {'word_timestamps': requested['output_words']}) if selected else None
+        runtime = {'device': requested['device'], 'compute_type': requested['compute_type'],
+                   'parallel_files': requested['parallel_files']}
+        if runtime['compute_type'] == 'auto':
+            runtime['compute_type'] = 'float16' if runtime['device'] == 'cuda' else 'int8'
+        if (selected is None or row['requested_settings'] != requested
+                or row['effective_settings'] != effective or row['model_runtime'] != runtime):
+            raise ValueError('Whisper manifest requested/effective settings changed.')
+        kinds = {}
+        for item in row['artifacts']:
+            if type(item) is not str:
+                raise ValueError('Invalid Whisper artifact name.')
+            kind = _kind(item)
+            if item not in outputs or item in used or kind not in required or kind in kinds:
+                raise ValueError('Whisper manifest contains shared or duplicate outputs.')
+            kinds[kind] = outputs[item]
+            used.add(item)
+        if set(kinds) != required:
+            raise ValueError('A requested Whisper export is missing.')
+        meta_name = str(PurePosixPath(tail).parent / kinds['json']['path'])
+        meta = values[meta_name]
+        cache = {'schema': 5, 'content_identity_version': 1,
+                 'source': source, 'model': context['model_identity'],
+                 'recognition': {key: requested[key] for key in V5_RECOGNITION_KEYS},
+                 'backend': row['backend'], 'wrapper_sources_sha256': context['wrapper_sources_sha256'],
+                 'runtime_provenance': V5_PROVENANCE}
+        if (meta.get('cache_identity') != cache or row['fingerprint'] != _v5_digest(cache)
+                or meta.get('fingerprint') != row['fingerprint']
+                or meta.get('metadata_sha256') != row['metadata_sha256']
+                or _v5_digest({key: item for key, item in meta.items() if key != 'metadata_sha256'}) != row['metadata_sha256']
+                or meta.get('cache_schema') != 5 or meta.get('complete') is not True
+                or meta.get('source_identity') != source or meta.get('model_identity') != context['model_identity']
+                or meta.get('requested_settings') != requested or meta.get('settings') != selected
+                or meta.get('attempt') != row['attempt'] or meta.get('model_runtime') != runtime
+                or meta.get('task') != 'transcribe' or meta.get('selected_language') != requested['language']
+                or meta.get('multilingual') is not requested['multilingual']
+                or meta.get('word_timestamps') is not requested['output_words']):
+            raise ValueError('Whisper timed metadata changed its bound source, model or settings.')
+        recognized = meta.get('text')
+        text(recognized, MAX_TEXT_BYTES, empty=True)
+        if len(recognized.encode('utf-8')) > MAX_TEXT_BYTES:
+            raise ValueError('Whisper transcript exceeds its byte allowance.')
+        text_hash = sha256((recognized + ('\n' if recognized else '')).encode('utf-8')).hexdigest()
+        if meta.get('text_sha256') != text_hash or kinds['txt']['sha256'] != text_hash:
+            raise ValueError('Whisper text and timed metadata disagree.')
+        words = _v5_timing(meta, requested['output_words'])
+        candidates = [receipt for receipt in bound if receipt['v5_record'] == index]
+        if len(candidates) > 1:
+            raise ValueError('Duplicate normalized Whisper record receipt.')
+        if candidates:
+            receipt = candidates[0]
+            expected_identity = _bound({
+                'version': 1, 'protocol': V5_PROTOCOL, 'host_run_id': run,
+                'source': {'root': context['input_root'], 'path': source['path'], 'relative': name,
+                           'size_bytes': source['size'], 'sha256': source['sha256']},
+                'model': _bound({'selected': job['settings']['model'], 'identity': context['model_identity']}),
+                'runtime': _bound({'worker_sha256': context['worker_sha256'],
+                    'executable': {'sha256': context['python_sha256']},
+                    'wrapper_sources_sha256': context['wrapper_sources_sha256'],
+                    'backend': row['backend'], 'runtime_provenance': V5_PROVENANCE}),
+                'recognition': {key: job['settings'][key] for key in RECOGNITION_KEYS},
+                'effective_settings': effective, 'attempt': row['attempt'], 'execution': runtime})
+            expected_artifacts = [
+                {'path': relative_directory + '/' + kinds[kind]['path'],
+                 'size_bytes': kinds[kind]['bytes'], 'sha256': kinds[kind]['sha256']}
+                for kind in ('txt', 'srt', 'vtt', 'json')]
+            if requested['output_words']:
+                for kind in ('srt', 'vtt'):
+                    data = _word_subtitles(words, vtt=kind == 'vtt')
+                    output_name = relative_directory + '/host-derived/' + name + '.words.' + kind
+                    expected_artifacts.append({'path': output_name, 'size_bytes': len(data),
+                                               'sha256': sha256(data).hexdigest()})
+            if (receipt['identity'] != expected_identity or receipt['artifacts'] != expected_artifacts
+                    or receipt['outcome'] != ('speech' if recognized.strip() else 'no_speech')
+                    or receipt['result_metadata_sha256'] != kinds['json']['sha256']):
+                raise ValueError('A normalized Whisper receipt disagrees with the original manifest.')
+            for artifact in expected_artifacts:
+                target = 'results/' + artifact['path']
+                if not _matches(members.get(target), artifact['size_bytes'], artifact['sha256']):
+                    raise ValueError('A normalized Whisper derivative changed.')
+                assigned.add(target)
+        seen.add(name)
+    if used != set(outputs) or any(receipt['v5_record'] >= len(manifest['records']) for receipt in bound):
+        raise ValueError('Whisper manifest has unassigned outputs or records.')
+    assigned.add(tail)
+
+
+def validate_collection(db, stage, entries, *, cancelled):
+    """Check a fully staged snapshot without replaying any execution authority."""
+    _cancel(cancelled)
+    groups, profiles, engines, total_media, total_metadata = {}, {}, [], 0, 0
+    for entry in entries:
+        name = entry['filename']
         if not name.startswith(PREFIX):
-            output.append(original[name])
-        elif (stage / name).exists():
-            if is_input(name):
-                output.append(original[name])  # Already copied and byte-verified.
+            continue
+        member = _member(name)
+        if member is None:
+            raise ValueError('Unknown transcription backup member.')
+        kind, scope, identity, tail = member
+        fields(entry, {'filename', 'size_bytes', 'sha256'})
+        number(entry['size_bytes'], integer=True, maximum=limit(name))
+        digest(entry['sha256'])
+        if entry['size_bytes'] == 0 and not allow_empty(name):
+            raise ValueError('Empty transcription backup metadata.')
+        if kind == 'input':
+            total_media += entry['size_bytes']
+        else:
+            total_metadata += entry['size_bytes']
+        if total_media > MAX_MEDIA_BYTES or total_metadata > MAX_METADATA_BYTES:
+            raise ValueError('Transcription backup exceeds its retained data budget.')
+        if kind in ('engine', 'profile'):
+            raw = _read(stage, entry, cancelled)
+            validate(db, name, raw)
+            value = _json(raw)
+            if kind == 'profile':
+                profiles[identity] = value
+                if len(profiles) > 1024:
+                    raise ValueError('Too many passive runtime profiles.')
             else:
-                raw = backup_sidecars.read_regular(stage / name, limit(name), allow_empty=allows_empty(name))
-                value = validate(name, raw)
-                if value is not None:
-                    records[name] = value
-                output.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
-    validate_collection(output, records)
-    backup_sidecars._check_cancelled(cancelled)
-    return tuple(output)
+                engines.append(value)
+            continue
+        members = groups.setdefault((scope, identity), {})
+        if tail in members:
+            raise ValueError('Duplicate transcription backup member.')
+        members[tail] = entry
+    for engine in engines:
+        if 'profile_id' in engine:
+            profile = profiles.get(engine['profile_id'])
+            if profile is None or profile['fingerprint'] != engine['fingerprint']:
+                raise ValueError('The selected runtime lost its exact named declaration.')
+    scopes = {}
+    for scope, _ in groups:
+        scopes[scope] = scopes.get(scope, 0) + 1
+        if scopes[scope] > 10000:
+            raise ValueError('Transcription backup exceeds the per-library job bound.')
+    for (scope, identity), members in groups.items():
+        _cancel(cancelled)
+        if 'job.json' not in members:
+            raise ValueError('Retained transcription data has no owning job.')
+        values = {}
+        for tail, entry in members.items():
+            _cancel(cancelled)
+            kind = _member(entry['filename'])[0]
+            if kind != 'input' and tail.endswith('.json'):
+                raw = _read(stage, entry, cancelled)
+                validate(db, entry['filename'], raw)
+                values[tail] = _json(raw)
+        job = _job(db, values['job.json'], scope, identity)
+        if 'runtime_profile_id' in job:
+            profile = profiles.get(job['runtime_profile_id'])
+            if profile is None or profile['fingerprint'] != job['runtime_profile_fingerprint']:
+                raise ValueError('A saved transcription job lost its named runtime declaration.')
+        sources = {row['filename']: row for row in job['sources']}
+        expected_inputs = {'input/' + name for name in sources}
+        if {tail for tail in members if tail.startswith('input/')} != expected_inputs:
+            raise ValueError('The retained transcription input inventory changed.')
+        for name, source in sources.items():
+            if not _matches(members['input/' + name], source['size_bytes'], source['sha256']):
+                raise ValueError('A retained original changed its exact source hash.')
+        assigned = set(expected_inputs)
+        receipts = {tail: value for tail, value in values.items() if _RECEIPT.fullmatch(tail)}
+        for name, receipt in receipts.items():
+            _receipt_source(receipt, job, scope, current=name in job['receipts'])
+            for artifact in receipt['artifacts']:
+                tail = 'results/' + artifact['path']
+                if _matches(members.get(tail), artifact['size_bytes'], artifact['sha256']):
+                    assigned.add(tail)
+                elif name in job['receipts']:
+                    raise ValueError('An accepted transcription result is missing or changed.')
+        if not set(job['receipts']) <= receipts.keys():
+            raise ValueError('An accepted transcription receipt is missing.')
+        accepted, seen = [], set()
+        for name in job['receipts']:
+            receipt = receipts[name]
+            source = receipt['identity']['source']['relative']
+            if source in seen:
+                raise ValueError('Current receipts share a retained source.')
+            seen.add(source)
+            for artifact in receipt['artifacts']:
+                accepted.append({**artifact, 'source': source, 'format': _kind(artifact['path']),
+                                 'recognition_identity': receipt['identity']['sha256']})
+        if accepted != job['artifacts']:
+            raise ValueError('Saved transcription artifacts disagree with their receipts.')
+        status_name = 'host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'
+        if job['receipts'] or job['status'] in ('partial', 'completed'):
+            status = values.get(status_name)
+            if (status is None or status.get('run_id') != job.get('worker_run_id')
+                    or status.get('receipts') != job['receipts']
+                    or status.get('done') != job['done'] or status.get('total') != len(sources)
+                    or job['status'] == 'completed' and (
+                        status.get('result_state') != 'completed' or status.get('failed') != 0)):
+                raise ValueError('Accepted transcription status changed its verified run.')
+        if 'job_config.json' in values:
+            config, context = values['job_config.json'], job['run_context']
+            if context is None:
+                raise ValueError('An unstarted job contains a worker configuration.')
+            expected_settings = context['worker_settings'] if job['protocol'] == V5_PROTOCOL else job['settings']
+            path_type = PureWindowsPath if PureWindowsPath(context['input_root']).drive else PurePosixPath
+            result_root = _joined(str(path_type(context['input_root']).parent), 'results')
+            if job['protocol'] == V5_PROTOCOL:
+                result_root = _joined(result_root, 'runs/' + context['host_run_id'])
+            if (config['job_name'] != job['title'] or config['folders'] != [context['input_root']]
+                    or config['settings'] != expected_settings
+                    or not _same_path(config['results_root'], result_root)):
+                raise ValueError('Worker configuration changed its saved job or requested settings.')
+        for tail, manifest in values.items():
+            if _member(members[tail]['filename'])[0] == 'manifest':
+                if job['protocol'] != V5_PROTOCOL:
+                    raise ValueError('A receipt-profile job contains a V5 result manifest.')
+                _manifest_collection(job, tail, manifest, members[tail], members, values,
+                                     receipts, assigned, cancelled)
+        for name, receipt in receipts.items():
+            if receipt['identity'].get('protocol') == V5_PROTOCOL:
+                run = receipt['identity']['host_run_id']
+                manifest_name = 'results/runs/' + run + '/Whisper_V5/' + identity + '/result_manifest.json'
+                if not _matches(members.get(manifest_name),
+                                members.get(manifest_name, {}).get('size_bytes'),
+                                receipt['v5_manifest_sha256']):
+                    raise ValueError('A normalized Whisper receipt lost its bound manifest.')
+        for tail, edit in values.items():
+            if _EDIT.fullmatch(tail):
+                source = sources.get(edit['source'])
+                original = receipts.get('receipts/' + edit['recognition_identity'] + '.result.json')
+                transcript = next((row for row in original['artifacts'] if _kind(row['path']) == 'txt'), None) if original else None
+                if (source is None or source['sha256'] != edit['source_sha256']
+                        or original is None or original['identity']['source']['relative'] != edit['source']
+                        or transcript is None or transcript['sha256'] != edit['original_text_sha256']):
+                    raise ValueError('A transcription edit lost its exact original recognition.')
+        if {tail for tail in members if tail.startswith('results/')} - assigned:
+            raise ValueError('Unbound transcription worker results need a supported producer adapter.')
+        _cancel(cancelled)
+
+
+def revoke_restored_execution(db, stage, entries, *, cancelled=lambda: False):
+    """Revoke execution only after the source snapshot was fully authenticated.
+
+    The parent restore publishes new checksums after this transformation. Recorded
+    selectors, model inventories, completed receipts, edits and worker evidence
+    remain passive data; no external path is resolved or opened here.
+    """
+    from .durable_state import atomic_json
+    stage = Path(stage)
+    pending = []
+    rejected, uncertain = set(), set()
+    for entry in entries:
+        _cancel(cancelled)
+        member = _member(entry['filename'])
+        if member is None:
+            continue
+        kind, scope, identity, tail = member
+        if kind not in ('engine', 'profile', 'job.json', 'control.json', 'rejected-execution.json', 'review'):
+            continue
+        raw = _read(stage, entry, cancelled)
+        validate(db, entry['filename'], raw)
+        value = _json(raw)
+        if kind == 'rejected-execution.json':
+            rejected.add((scope, identity))
+            continue
+        if kind == 'review':
+            # Retain this host-owned veto exactly. It grants neither a live
+            # process nor acceptance, and may represent a failed rejection write.
+            uncertain.add((scope, identity))
+            continue
+        pending.append((entry['filename'], kind, scope, identity, value))
+    for name, kind, scope, identity, value in pending:
+        _cancel(cancelled)
+        if kind == 'engine':
+            value['execution_review_required'] = True
+        elif kind == 'profile':
+            value.update(trusted=False, restored=True)
+        elif kind == 'control.json':
+            # Restored intent cannot silently start or keep running a worker.
+            value['action'] = 'pause'
+        else:
+            value['execution_review_required'] = True
+            if value['status'] in ('running', 'interrupted') or (scope, identity) in uncertain:
+                value.update(status='interrupted', recovery_review_required=True)
+            if (scope, identity) in rejected:
+                value.update(status='failed', done=0, failed=len(value['sources']),
+                             receipts=[], artifacts=[],
+                             last_error='Rejected worker evidence was restored without execution authority.')
+        validate(db, name, (json.dumps(value, ensure_ascii=False, sort_keys=True,
+                                      separators=(',', ':'), allow_nan=False) + '\n').encode('utf-8'))
+        atomic_json(stage / name, value, replace=True)
+    _cancel(cancelled)

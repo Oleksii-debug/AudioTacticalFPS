@@ -1,0 +1,100 @@
+{
+  "schema": "carr-exact-acceptance/1",
+  "recorded_utc": "2026-11-27T14:50:00Z",
+  "commit": "8a1a5d2b222df00690a3a765adedea597a52e505",
+  "tree": "e169d5184fec4005c27fb8f8a0418e55ce293e9c",
+  "run_id": 46018468409,
+  "job_id": 140571614328,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46018468409/job/140571614328",
+  "job_conclusion": "success",
+  "suite_count": 9,
+  "suites": [
+    {
+      "suite": "tests/assistant/test_workflow_template_handlers.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_templates.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_template_parameters.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_templates_cli.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_template_editor.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_studio_keyboard_registration.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_planning_handlers.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_binary_file_export.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_academic_library_dialog.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 180,
+    "failed": 0,
+    "skipped": 0
+  },
+  "additional_phase": {
+    "suite": "tests/extract/test_runtime_identity.py",
+    "selection": [
+      "test_missing_engine_and_source_change",
+      "test_resource_limit",
+      "test_model_identifier_rules_are_bound_to_resume_identity",
+      "test_unsafe_model_identifiers_fail_before_engine_discovery",
+      "test_engine_version_change_detected"
+    ],
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0
+  },
+  "boundaries": {
+    "actual_runtime": "Ubuntu26.04 installed package and strict isolated tests",
+    "native_windows_templates": "NOT_RUN",
+    "integrated_candidate_after_component": "NOT_RUN",
+    "private_model_quality": "NOT_RUN"
+  }
+}

@@ -1,4 +1,4 @@
-# Optional selected-text translation: Google Basic v2 and Advanced v3
+# Optional selected-text translation: Google Basic/Advanced and explicit local LibreTranslate
 
 Tools → Translate selected text uses the existing provider profiles, Windows
 Credential Manager, permission envelope, usage ledger, JobStore and reversible
@@ -91,11 +91,52 @@ Requested and reported resources are retained in chunk/export provenance.
 Creating/uploading glossaries and proving their language coverage are separate
 operations; this feature does not do them implicitly.
 
+## Existing library documents, chapters and source ranges
+
+Select an imported book in **Books and Collections**, then open the translation
+workspace and choose **Load library source**. Choose the entire bounded document,
+one source reading position, an existing EPUB chapter, or a first/last position
+range. Positions follow the existing Reading Desk order; PDF page ordinals and
+unpaginated segments are not invented printed-page labels. EPUB chapter labels
+come from its existing contents. The text remains an extracted-text derivative;
+document layout, tables, images and styling are not translated.
+
+Loading a source sends nothing. The workspace shows the exact source snapshot
+read-only. Preview includes the workspace, edition, active revision, retained
+original hash, source-position text hashes and original metadata alongside the
+languages, provider, glossary and cost reservation. Explicit transfer approval
+binds those source identities through the existing authorization task identity.
+**Use pasted text** clears that source selection and starts a separate review.
+
+A source-bound job reopens the existing authorized Reading Desk before submit,
+resume, each HTTP transmission, acceptance of a provider response, and export.
+An archived library/topic, changed revision, damaged retained original or
+different source text stops the operation. Revocation before HTTP is recorded
+as not sent; revocation during a response leaves the paid attempt uncertain,
+without an accepted translation receipt or automatic retry. Reopening a newly
+changed source requires a new explicit review.
+
+Exports retain the canonical non-authorizing reading-copy source anchor,
+original metadata and topic. They are staged privately and source-checked before
+the existing exclusive directory publisher makes the files available. Original
+retained documents, source revisions and quotation evidence are unchanged.
+Canonical library backups already include the jobs, usage evidence and retained
+sources: restoring to a different folder preserves the source IDs and allows
+valid paused jobs to reuse accepted chunks. No absolute source pathname or new
+backup format is added.
+
 ## Command-line workflow
 
 The same service is available without wx through
-`python -m carr_library translation --data-dir LIBRARY COMMAND`.
+`python -m carr_library.assistant.translation_cli --data-dir LIBRARY COMMAND`.
 The library must already exist. No command accepts a secret on argv.
+
+For a library source, replace `--input selected.txt` with
+`--workspace WORKSPACE_ID --edition EDITION_ID`. That selects the entire document
+within the current two-million-character limit. Add `--chapter 2` for one existing
+EPUB chapter, or `--first 2 --last 4` for source reading positions. `--topic TOPIC_ID`
+retains an explicit existing topic scope. Repeat all selectors unchanged for
+`submit`; its review hash includes the exact source revision and metadata.
 
 1. `profiles` lists non-secret configured accounts.
 2. `languages --profile ACCOUNT` reads only the saved language inventory. Add
@@ -108,14 +149,105 @@ The library must already exist. No command accepts a secret on argv.
    `--review-sha256 HASH`. The command rejects changed text/settings before saving
    a job. It saves the approved source snapshot without sending it yet.
 5. `resume JOB_ID` runs that job's existing approval. Ctrl+C requests a pause;
-   an in-flight bounded HTTP call may need to return or time out, and an uncertain
-   charge is not automatically retried. Paused exit status is 2, errors are 1.
+   the shared transport interrupts active reads within its whole-call budget.
+   An uncertain charge is not automatically retried. Paused exit status is 2,
+   errors are 1.
 6. `jobs` lists saved statuses. `export JOB_ID --output NEW_DIRECTORY` publishes
    the same original/translated/bilingual/reading-copy files and provenance as
    the native window, with no overwrite.
 
 This is local bounded chunk scheduling of selected text, not Google's Cloud
 Storage batch service. It does not upload a document directory or buckets.
+
+## Multiple documents with separate reviews and reservations
+
+The translation workspace's **Add current source to batch** captures the current
+exact text or loaded library source, account, languages, glossary and reservation.
+Load the next source and repeat. **Document batches** opens an ordered list.
+Move up/down or remove rows before **Review entire translation batch**. Each
+document keeps its own settings; later edits to the single-document fields do not
+change a collected row. Review displays each original identity, source revision,
+character/call count, endpoint, model, glossary and budget, plus aggregate totals.
+
+**Prepare approved batch** asks explicitly for the exact displayed order and
+transfer reservation. It saves normal translation child jobs and sends no text.
+**Run or resume batch** is a separate explicit action. A pause, stale source or
+uncertain charge stops advancement to the next document. Accepted chunks and
+complete children are verified and reused. Saved batches never mint fresh
+permission or renew expired approvals. Interrupted local preparation can fill
+missing child journals from the retained immutable templates without changing
+their identities or envelopes.
+
+A batch contains 1–32 documents and at most two million selected characters in
+total. Source-bound entries remain in one existing workspace; the native window
+also retains its selected topic. Entire documents, chapters and position ranges
+use the same bounded Reading Desk source checks as individual jobs. Plain-text
+files remain unbound selected text. Duplicate source/settings are refused;
+export the accepted job again when another identical copy is needed.
+
+**Export completed batch** requires every child to be verified complete and a
+new explicitly selected directory. It writes numbered per-document subfolders
+with the existing original/translated/bilingual/reading-copy files, plus
+`batch-provenance.json` binding the child IDs and provenance hashes. Source
+guards run again before publication. Backups use the same typed translation
+producer and retain exact parent/child approvals, usage evidence and source
+identities. Restore starts no request and restores no output-directory approval;
+choose a new destination explicitly.
+
+### Headless document batches
+
+Use `python -m carr_library translate --data-dir LIBRARY COMMAND`, or the
+translation module command above. Create a UTF-8 JSON description of at most
+128 KiB with only explicitly selected input paths or library editions:
+
+```json
+{
+  "schema": "carr-translation-batch-input/1",
+  "title": "Two reviewed documents",
+  "items": [
+    {
+      "profile": "ACCOUNT_ID",
+      "workspace": "WORKSPACE_ID",
+      "edition": "EDITION_ID",
+      "source": "en",
+      "target": "uk",
+      "budget": "1"
+    },
+    {
+      "profile": "ACCOUNT_ID",
+      "input": "second-selected.txt",
+      "source": "auto",
+      "target": "uk",
+      "budget": "1"
+    }
+  ]
+}
+```
+
+Replace the placeholders with your existing IDs and your explicitly chosen
+reservations. The numbers are examples, not prices. File paths may be absolute
+or relative to the description's directory; no directory scanning or implicit
+document upload is performed. Library items also accept `topic`, `chapter`, or
+`first`/`last`; each item may include `title`, `glossary` and `rate_per_million`.
+
+1. `batch-preview --batch-file selection.json` resolves the explicit inputs,
+   rechecks sources and prints the exact aggregate `review_sha256`. No request.
+2. `batch-submit --batch-file selection.json --approve-remote --review-sha256 HASH`
+   rereads those inputs and rejects any changed text, source, settings or order.
+   It saves the existing child approvals without transmitting text.
+3. `batch-review BATCH_ID` displays the retained approval and current child
+   checkpoints. `batch-jobs` lists batches. `batch-prepare BATCH_ID` finishes an
+   interrupted local preparation; these commands do not send selected text.
+4. `batch-resume BATCH_ID` uses only those original child approvals. Ctrl+C
+   requests cancellation through the existing whole-request transport. A paused,
+   partial or attention result exits 2; validation/permission errors exit 1.
+5. `batch-export BATCH_ID --output NEW_DIRECTORY` publishes all completed
+   derivatives into the explicitly selected new directory without overwrite.
+
+Neither the JSON description nor a batch manifest is a second execution queue.
+The ordinary child jobs and their usage ledgers remain the sole authority for
+accepted translations and attempted provider calls. This bounded local batch
+does not use Google's Cloud Storage batch API.
 
 ## Supported boundary and remaining qualification
 
@@ -125,45 +257,50 @@ list establishes declared capability, not translation quality or canonical-135
 coverage. Unknown/absent languages are rejected; similar names are never mapped.
 
 Automatic ADC discovery/token refresh, glossary creation, formatted-document
-preservation, direct chapter or document selection, Cloud Storage batch jobs,
+preservation, Cloud Storage batch jobs,
 local M2M100 inference, canonical-135 translation mapping,
 and independent linguistic quality review remain open. No offline failure causes
 a silent remote fallback or model download. Selected source text and receipts use
 the existing private local state store; this feature does not supply encrypted
 text-at-rest containers. API secrets use the OS vault.
 
-A failed export may leave a partial newly created directory. Export success
-requires the final provenance manifest and matching output hashes. Original
-library quotations remain attached to their source, not the translated revision.
+Exports are staged privately and require final provenance and matching output
+hashes before exclusive publication. Original library quotations remain attached
+to their source, not the translated revision.
 
 ## Validation
 
-The integrated existing-provider plus Basic v2 and Advanced v3 translation suite
-passed **122 tests** on Linux (`test_providers.py`, `test_translation.py` and
-`test_translation_v3.py`) after selective adoption of the reviewed PR112 code,
-with synthetic HTTPS responses. These execute the real Gateway, ledger, JobStore
-and ReadingDocument: exact TLS authority and routes, API-key header, LOCAL_ONLY
-rejection, malformed profiles, request-hash consent, Unicode counts, language
-validation, pause/reopen without repeat billing, source immutability, no-overwrite
-exports, provenance hashes, damaged receipts and uncertain HTTP failures. Additional review
-regressions reject credentials encoded through JSON Unicode escapes or HTML entities
-before receipts/cache publication, and permit exact not-sent cancellation retries
-without allowing changed authority or any reserved/uncertain/completed replay.
+The existing provider and translation suites exercise the canonical transport,
+ledger, jobs and reading-copy exports. They include verified loopback TLS,
+whole-call deadline/cancellation, destination pinning, API-key redaction,
+exact consent, malformed inputs, receipt integrity, source preservation and
+resume without repeat billing. Advanced v3 uses those same transport and
+publication checks.
+
+`tests/assistant/test_translation_source.py` uses actual library imports, EPUB
+spine order, metadata revisions, source authorization and canonical backup/restore.
+It checks source changes before HTTP and during replies, export revocation,
+source-identity tampering, saved-chunk reuse after restore, and CLI/native-handler
+review. Provider replies and native-handler widgets are synthetic.
 
 The Advanced source suite `tests/assistant/test_translation_v3.py` exercises the
 real shared gateway, ledger, jobs, derivative exports, CLI and actual dialog
-handlers with synthetic HTTPS responses and widget/scheduler stand-ins. It
+handlers with synthetic gateway-transport responses and widget/scheduler stand-ins. It
 checks exact project/model/glossary consent, directional language capability,
 expiry and explicit re-entry without duplicate accepted calls, stale CLI/UI
 reviews, disabled controls during queued work and close/cancellation.
 
-The donor commit `8bf411718548809793748ed01f458c79f3692e98` passed its separate
-installed Advanced translation step in Windows run `45929429163`, job
-`140278375920`. Its complete workflow was not green; this component evidence
-does not qualify the integrated build. The required installed Windows probe is
+The batch suites `tests/assistant/test_translation_batch.py`,
+`test_translation_batch_cli.py` and `test_translation_batch_ui.py` cover actual
+library/jobs/ledger/restore boundaries and real worker threads with synthetic
+provider replies and widget stand-ins. Their new source requires execution on the
+exact integrated build; source review alone is not a passing test result.
+
+The required installed Windows probe is
 `python -I -B scripts/windows_translation_v3_smoke.py`. It checks real wx native
 Space/focus, asynchronous completion, temporary Windows Credential Manager
-storage and output bytes. Its REST responses and confirmation/file-picker
+storage, ordered multi-document review/preparation/resume, and exact output bytes.
+Its REST responses and confirmation/file-picker
 results are deliberately synthetic. Linux execution reports NOT_RUN and exits
 77; it is not a portable replacement for the Windows gate.
 
@@ -187,3 +324,100 @@ exact installed build; source tests do not establish it.
 
 The Advanced REST/authentication references above were reviewed on 2026-11-27.
 No live provider pricing or account capability was inferred from them.
+
+
+## Explicit local LibreTranslate profile
+
+The same translation workspace, source selection, document batches, job store
+and provider ledger also support the bounded LibreTranslate client protocol.
+This adds no server process, model installer, fallback provider or separate job
+queue. The selected protocol was reviewed against LibreTranslate v1.10.0,
+commit `29aea44cc80100401497fb62db813a3f3a504e84`.
+
+Create an enabled `libretranslate-local` profile in **AI and API connections**.
+Select an explicit loopback IP base URL, for example the address of your own
+already running service, and a descriptive model-set label. Hostnames, remote
+addresses, URL subpaths, credentials and voice settings are refused. The
+profile permits only `translation.text` and `translation.languages`.
+The label is your declaration; the API does not attest installed model files.
+No language count, offline egress, translation quality or actual LibreTranslate
+installation is qualified by synthetic client tests.
+
+Opening the workspace, saving a profile, previewing, preparing a batch and
+reading existing jobs make no network request. **Fetch languages** asks
+permission to contact the exact local endpoint without selected text.
+The cached response declares directed source/target pairs. **auto** is only
+the source-detection request sentinel; it is never a target or a declared
+language. An automatic response must identify a real declared source that
+supports the chosen target. Glossaries are unavailable for this protocol.
+
+Review the exact selected text or existing source revision and use an explicit
+zero external cost bound. Local transfer needs its own approval; remote
+approval alone does not authorize a local job, and local approval cannot
+authorize a cloud request. A mixed batch requires both approvals for the exact
+reviewed per-document endpoints and settings. The normal bounded requests,
+timeouts, cancellation, source lineage and no-clobber exports remain in force.
+
+Local calls use the existing ledger at zero reserved external cost.
+A response is accepted only after its schema, decoded text/detected-language
+digest, source and current profile have been checked. Paused jobs retain
+accepted chunks. Uncertain or already-attempted calls are not silently sent
+again, including when a local response detects an undeclared translation
+direction. Re-enable or repair a changed profile explicitly; that does not
+erase its existing uncertain-call record.
+
+Typed backup retains local profiles, declared-pair caches, exact source-bound
+jobs, immutable batch templates and their existing usage receipts. Restoring
+does not start a server, obtain credentials or transmit text. Completed reads
+and fresh-directory exports use retained receipts without the profile or
+language cache. A coherently edited job cannot replace decoded output while
+its independent ledger still binds the accepted result. Original source text
+and quotation authority remain unchanged.
+
+The executable client checks are `tests/assistant/test_translation_local.py`
+(no network) and `tests/assistant/test_translation_local_loopback.py` (explicit
+synthetic localhost HTTP and CLI children). The latter must use the existing
+strict direct-pytest loopback gate, never the all-connections-denied
+`ci_check.py` selection. Native control checks and real model/linguistic
+qualification remain separate evidence.
+
+
+### Local CLI and native controls
+
+Use the existing installed entry point, with an existing private library:
+
+```text
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY languages --profile LOCAL_PROFILE --approve-local
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY preview --profile LOCAL_PROFILE --input SELECTED.txt --source en --target uk --budget 0
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY submit --profile LOCAL_PROFILE --input SELECTED.txt --source en --target uk --budget 0 --review-sha256 REVIEW_SHA --approve-local
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY resume JOB_ID
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY export JOB_ID --output NEW_DIRECTORY
+```
+
+`LOCAL_PROFILE` is the explicitly configured enabled profile ID; no command
+accepts a credential or starts a server. Reading a language cache omits the
+approval flag. `--approve-remote` refuses a local discovery or submission.
+Source-bound `--workspace/--edition` and reading-position options remain
+available instead of `--input`; their exact lineage is included in the review.
+A batch uses the existing `carr-translation-batch-input/1` description,
+`batch-preview`, `batch-submit`, `batch-resume` and `batch-export`.
+Pass `--approve-local` for its local rows and `--approve-remote` for any
+remote rows, with the unchanged full batch review hash. Preparation sends no text.
+
+In the existing native workspace, a configured local profile appears in
+**Translation provider profile** alongside enabled Google accounts. Tab and
+Shift+Tab reach the same named text, language, preview, run, pause and export
+controls. Local discovery and selected-text transfer show separate confirmations
+containing the exact loopback endpoint. The existing **Document batches** view
+shows every local/remote endpoint and reservation before its confirmation.
+An unsupported local glossary, nonzero price or **auto** target is rejected;
+it never selects another adapter.
+
+`scripts/windows_translation_local_smoke.py` exercises real native named
+controls, Space/foreground focus, the existing serial worker and ordinary batch
+jobs with synthetic local protocol responses. It checks exported bytes and
+decoded receipts, rejects changed review settings, forbids every DNS lookup
+and credential read, and reports hashes of the actual installed modules.
+Its confirmation/file picker seams are controlled test fixtures; actual
+LibreTranslate models, translation quality, screen-reader listening and
+server egress remain explicitly unqualified.

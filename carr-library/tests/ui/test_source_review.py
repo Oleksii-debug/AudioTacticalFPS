@@ -104,7 +104,7 @@ def test_approval_uses_actual_service_without_approving_printed_numbers(pdf_case
     assert reviews(pdf_case) == (('Synthetic independent reviewer', 1),)
     hit, = pdf_case.app.search(pdf_case.workspace, 'Railway history')
     assert hit.verified is True
-    assert 'PDF page 1' in hit.page and 'printed page unverified' in hit.page
+    assert 'Physical page 1' in hit.page and 'printed page unverified' in hit.page
     assert pdf_case.app.copy(pdf_case.workspace, hit.ref, hit.revision, 'quote') == 'Railway history'
     with pdf_case.app.read(pdf_case.workspace) as db:
         assert db.execute('SELECT verified FROM page WHERE physical=1').fetchone()[0] == 0
@@ -283,7 +283,7 @@ def test_logical_segments_cannot_receive_pdf_review(tmp_path, kind):
         document.save(source)
     assert app._import_file(workspace, source)['state'] == 'complete'
     hit, = app.search(workspace, 'railway')
-    with pytest.raises(ValueError, match='physical PDF page'):
+    with pytest.raises(ValueError, match='physical page'):
         PdfReviewSession(app, workspace, hit.ref, hit.revision)
     with app.read(workspace) as db:
         assert db.execute('SELECT COUNT(*) FROM source_page_review').fetchone()[0] == 0

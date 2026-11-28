@@ -168,15 +168,19 @@ def reader(tmp_path, monkeypatch):
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
     values = dict(parent=parent, progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
-        alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
+        alive=True, playback_generation=0, repeat_scheduled=None,
+        reader_library=parent.library, reader_root=Path(parent.library.root),
+        cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
-        source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
-        source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
-        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
+        source_guard=lambda: None, recovered=None, remembered_voice_id='', recovery_notice='', draft_store=None, editor=Mock(),
+        source_status=Mock(), sync_document=lambda: None, save_project=lambda: True, reader_tabs=None,
+        dialog=Mock(), autosave_timer=Mock(), playback_timer=Mock(),
+        executor=CleanupQueue(), audio_files=Mock(),
+        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set(), owned_listening=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
+        ['reload', 'select_progress_voice', 'playback_scope', 'playback_failed',
+         'start_playback', 'stop_audio', 'confirm_current_close', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
@@ -238,6 +242,7 @@ def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(read
         reader.handlers.cleanup()
         reader.values['player'].close.assert_called_once()
         reader.values['dialog'].Destroy.assert_called_once()
+        reader.values['playback_timer'].Stop.assert_called_once()
         reader.values['audio_files'].cleanup.assert_not_called()
         reader.values['executor'].finish().result()
         reader.values['audio_files'].cleanup.assert_called_once()
@@ -490,3 +495,24 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
     reader.values['audio_files'].cleanup.assert_called_once()
     assert any('Progress observer detached' in message for message in reader.reports)
     assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+def test_reader_reload_keeps_the_explicit_voice_without_speaking(reader):
+    reader.choice.selection = 1
+    chosen = reader.registry.voices()[1].id
+    reader.handlers.reload()
+    reader.work.finish()
+    assert reader.choice.selection == 1
+    assert reader.registry.voices()[reader.choice.selection].id == chosen
+    assert not reader.activations and reader.progress.provider is None
+
+
+def test_reader_reload_of_removed_voice_leaves_no_implicit_replacement(reader):
+    reader.choice.selection = 1
+    removed = reader.registry.voices()[1].id
+    reader.registry._voices.pop(removed)
+    reader.handlers.reload()
+    reader.work.finish()
+    assert reader.choice.selection == -1
+    assert any('No substitute was selected' in message for message in reader.reports)
+    assert not reader.activations and reader.progress.provider is None

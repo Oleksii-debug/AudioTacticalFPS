@@ -1,5 +1,10 @@
 """Enclosing manifest and publication integration for resumable import backups."""
 from uuid import uuid4
+from pathlib import Path
+import os
+
+import pytest
+import sqlite3
 
 from carr_library.application import LibraryApp
 from carr_library.catalog.intake import snapshot
@@ -17,11 +22,14 @@ def test_complete_backup_survives_lost_original_and_resumes_identical_import(tmp
                     collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     planned = snapshot(original.parent, original.name).manifest()
     request = prepare_request(app.root, workspace, original, metadata, Config(), expected_manifest=planned)
-    calls = 0
     def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Stop after an actual durable checkpoint, independently of how often
+        # source hashing and copy loops consult their cancellation callback.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with sqlite3.connect(journal) as observer:
+            return observer.execute('SELECT count(*) FROM checkpoint').fetchone()[0] >= 1
     initial = app._import_file(workspace, original, **metadata, cancelled=cancelled,
                               _request_id=request['request_id'], _expected_manifest=planned)
     assert initial['completed'] == 1
@@ -61,3 +69,31 @@ def test_complete_backup_preserves_prepared_request_before_first_worker_launch(t
     assert completed['state'] == 'complete'
     assert completed['edition'] == metadata['edition_id']
     assert restored.search(workspace, 'relocation')[0].quote == 'relocation'
+
+@pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
+def test_complete_backup_never_omits_pending_root(tmp_path, monkeypatch, failure):
+    app = LibraryApp(tmp_path / 'source')
+    app.create_workspace('Pending root')
+    root = app.root / 'import-batches'
+    root.mkdir(exist_ok=True)
+    destination = tmp_path / 'backup'
+    original = Path.lstat
+    probes = 0
+
+    def probe(path, *args, **kwargs):
+        nonlocal probes
+        if path == root:
+            probes += 1
+            if failure is PermissionError or probes >= 2:
+                raise failure('pending root lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == root else lexists(path))
+    monkeypatch.setattr(Path, 'lstat', probe)
+    expected = PermissionError if failure is PermissionError else ValueError
+    with pytest.raises(expected, match='pending root lookup failed|Pending import roots changed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert probes >= (1 if failure is PermissionError else 2)

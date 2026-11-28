@@ -221,6 +221,12 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetRange(self, start, end):
+            self.native()
+            assert 0 <= start <= end <= len(self.value)
+            return self.value[start:end]
+        def SetEditable(self, value): self.native(); self.editable = bool(value)
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
         def SetFocus(self): self.native(); assert self.enabled
@@ -249,7 +255,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
                     continue
                 callback(*args)
             editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
-            assert editor.GetValue() == expected_editor
+            assert editor.GetValue() == expected_editor and editor.editable
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             scope()
             named('Save &as').handlers['button'](None)
@@ -279,7 +285,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
-            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'WXK_F6', 'WXK_F7', 'WXK_F8'):
+            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT', 'WXK_F6', 'WXK_F7', 'WXK_F8',
+            'WXK_LEFT', 'WXK_HOME', 'WXK_RIGHT', 'WXK_RETURN'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
@@ -288,6 +295,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
 
     ui.show_speech_reader(parent, source_guard=scope,
         source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
+    assert not any('Operation did not complete.' in message for message in statuses), statuses
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
     if recovery_case in ('legacy', 'foreign', 'revision'):

@@ -1,0 +1,98 @@
+{
+  "schema": "carr-exact-acceptance/1",
+  "recorded_utc": "2026-11-27T14:27:09Z",
+  "commit": "b0245fe9bc949d14bb4a8407d7c7d6e858db8bed",
+  "tree": "8c390f4a05f36cbb6934c1138fbfb72942189c10",
+  "run_id": 46015621232,
+  "job_id": 140561858617,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46015621232/job/140561858617",
+  "job_conclusion": "success",
+  "suite_count": 8,
+  "suites": [
+    {
+      "suite": "tests/extract/test_language_detection.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_language_regions.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_automatic_ocr_native.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_ocr_language_presets.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_ocr_selection.py",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_ocr_native.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 133,
+    "failed": 0,
+    "skipped": 0
+  },
+  "runtime": {
+    "platform": "Ubuntu 26.04",
+    "tesseract": "5.5.0",
+    "py3langid": "0.4.0",
+    "detector_model_sha256": "f4f4a2c3465ca1f081541037f9cac23021d68151c2f709c55ae5eedfca522963"
+  },
+  "boundaries": {
+    "detector_sample_languages": [
+      "en",
+      "uk",
+      "sk"
+    ],
+    "actual_ocr_fixture_language": "eng",
+    "actual_ocr_formats": [
+      "PDF",
+      "JPEG",
+      "PNG",
+      "TIFF"
+    ],
+    "native_windows_keyboard": "NOT_RUN",
+    "human_nvda": "NOT_RUN",
+    "all_135_language_quality": "NOT_RUN",
+    "later_source_revisions": "NOT_RUN"
+  }
+}

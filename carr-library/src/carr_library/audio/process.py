@@ -8,10 +8,15 @@ import shutil
 import signal
 import stat
 import subprocess
+import sys
 import threading
 import time
 
 from .models import AudioBudget, AudioCancelled, AudioError
+
+
+class CaptureCleanupError(AudioError):
+    """Capture termination was requested but complete cleanup is unconfirmed."""
 
 
 @dataclass(frozen=True)
@@ -19,6 +24,35 @@ class ProcessResult:
     stdout: bytes
     stderr: bytes
     elapsed: float
+    returncode: int = 0
+    stopped: bool = False
+
+
+# The fixed bootstrap cannot open a device before lifetime admission. One raw
+# byte avoids consuming FFmpeg's later q command from the same owned pipe. EOF
+# before admission exits without starting the selected command. On Windows the
+# wrapper is attached to its kill-on-close Job before admission, so its eventual
+# FFmpeg child inherits that Job. No user-provided Python or shell is evaluated.
+_CAPTURE_BOOTSTRAP = '''import os, subprocess, sys
+if os.read(0, 1) != b"\\x01":
+    raise SystemExit(125)
+raise SystemExit(subprocess.call(sys.argv[1:], stdin=0, stdout=1, stderr=2,
+    shell=False, close_fds=True,
+    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0))
+'''
+
+
+def native_audio_environment(environment=None):
+    """Keep required host settings without ambient FFmpeg report-file writes.
+
+    FFREPORT can write to an arbitrary inherited path even for a read-only
+    inspection. Diagnostic capture belongs to this application's bounded pipes.
+    Work on a copy so callers' explicit environments and the host stay intact.
+    """
+    return {key: value for key, value in
+            (os.environ if environment is None else environment).items()
+            if not ((isinstance(key, str) and key.casefold() == 'ffreport')
+                    or (isinstance(key, bytes) and key.lower() == b'ffreport'))}
 
 
 def _terminate(process):
@@ -41,15 +75,190 @@ def _terminate(process):
         process.wait(timeout=5)
 
 
+def _capture_lifetime(process):
+    """Keep a Windows capture in an owned job, including after a host crash.
+
+    The job handle is not inherited by the child. Windows closes it when this
+    host exits, and KILL_ON_JOB_CLOSE terminates the capture and its children.
+    An unsupported or rejected job fails closed. Ordinary render workers keep
+    their existing process behavior.
+    https://learn.microsoft.com/windows/win32/procthread/job-objects
+    """
+    if os.name != 'nt':
+        return lambda: None
+    import ctypes
+    from ctypes import wintypes
+
+    class BasicLimits(ctypes.Structure):
+        _fields_ = [('PerProcessUserTimeLimit', ctypes.c_longlong),
+            ('PerJobUserTimeLimit', ctypes.c_longlong), ('LimitFlags', wintypes.DWORD),
+            ('MinimumWorkingSetSize', ctypes.c_size_t), ('MaximumWorkingSetSize', ctypes.c_size_t),
+            ('ActiveProcessLimit', wintypes.DWORD), ('Affinity', ctypes.c_size_t),
+            ('PriorityClass', wintypes.DWORD), ('SchedulingClass', wintypes.DWORD)]
+
+    class IoCounters(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_ulonglong) for name in
+            ('ReadOperationCount', 'WriteOperationCount', 'OtherOperationCount',
+             'ReadTransferCount', 'WriteTransferCount', 'OtherTransferCount')]
+
+    class ExtendedLimits(ctypes.Structure):
+        _fields_ = [('BasicLimitInformation', BasicLimits), ('IoInfo', IoCounters),
+            ('ProcessMemoryLimit', ctypes.c_size_t), ('JobMemoryLimit', ctypes.c_size_t),
+            ('PeakProcessMemoryUsed', ctypes.c_size_t), ('PeakJobMemoryUsed', ctypes.c_size_t)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    for name, arguments, result in (
+            ('CreateJobObjectW', [ctypes.c_void_p, wintypes.LPCWSTR], wintypes.HANDLE),
+            ('SetInformationJobObject', [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD], wintypes.BOOL),
+            ('OpenProcess', [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+            ('AssignProcessToJobObject', [wintypes.HANDLE, wintypes.HANDLE], wintypes.BOOL),
+            ('QueryInformationJobObject', [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
+                                           wintypes.DWORD, ctypes.c_void_p], wintypes.BOOL),
+            ('IsProcessInJob', [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)], wintypes.BOOL),
+            ('TerminateProcess', [wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
+            ('TerminateJobObject', [wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
+            ('WaitForSingleObject', [wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD),
+            ('CloseHandle', [wintypes.HANDLE], wintypes.BOOL)):
+        function = getattr(kernel, name)
+        function.argtypes, function.restype = arguments, result
+    job = kernel.CreateJobObjectW(None, None)
+    if not job:
+        raise AudioError('Windows could not protect the microphone process lifetime.')
+    child = None
+    try:
+        limits = ExtendedLimits()
+        limits.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not kernel.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+            raise AudioError('Windows could not configure microphone cleanup.')
+        # Keep the admitted wrapper's exact handle until cleanup. Descendant
+        # handles acquired below use the same query/termination/wait rights.
+        rights = 0x00100000 | 0x1000 | 0x0100 | 0x0001
+        child = kernel.OpenProcess(rights, False, process.pid)
+        if not child or not kernel.AssignProcessToJobObject(job, child):
+            raise AudioError('Windows could not attach microphone cleanup; recording was stopped.')
+    except BaseException:
+        if child:
+            kernel.CloseHandle(child)
+        kernel.CloseHandle(job)
+        raise
+
+    class ProcessIds(ctypes.Structure):
+        _fields_ = [('NumberOfAssignedProcesses', wintypes.DWORD),
+                    ('NumberOfProcessIdsInList', wintypes.DWORD),
+                    ('ProcessIdList', ctypes.c_size_t * 256)]
+
+    released = False
+
+    def release():
+        nonlocal released
+        if released:
+            return
+        released = True
+        handles = {process.pid: child}
+        confirmed = False
+        stop_errors = {}
+        deadline = time.monotonic() + 5
+
+        def members():
+            info = ProcessIds()
+            if not kernel.QueryInformationJobObject(job, 3, ctypes.byref(info), ctypes.sizeof(info), None):
+                raise CaptureCleanupError('Windows could not inspect the owned capture processes.')
+            if (info.NumberOfAssignedProcesses > 256
+                    or info.NumberOfProcessIdsInList > 256
+                    or info.NumberOfProcessIdsInList < info.NumberOfAssignedProcesses):
+                raise CaptureCleanupError('The owned capture process list exceeded its cleanup allowance.')
+            return tuple(info.ProcessIdList[:info.NumberOfProcessIdsInList])
+
+        def status(handle, milliseconds=0):
+            value = kernel.WaitForSingleObject(handle, milliseconds)
+            if value not in (0, 258):  # WAIT_OBJECT_0 / WAIT_TIMEOUT
+                raise CaptureCleanupError('Windows could not confirm capture process termination.')
+            return value
+
+        try:
+            # CloseHandle(Job) and TerminateJobObject request asynchronous
+            # termination. Neither proves that FFmpeg released capture.wav.
+            # Pin members before stopping them, then wait on those exact
+            # process handles. Re-scan before release so a descendant started
+            # during the first snapshot is also stopped and acknowledged.
+            # https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess
+            while True:
+                if time.monotonic() >= deadline:
+                    raise CaptureCleanupError('Capture cleanup exceeded its time allowance.')
+                for identity in members():
+                    if identity in handles:
+                        continue
+                    if len(handles) >= 256:
+                        raise CaptureCleanupError('The capture process tree exceeded its cleanup allowance.')
+                    handle = kernel.OpenProcess(0x00100000 | 0x1000 | 0x0001, False, identity)
+                    if not handle:
+                        if ctypes.get_last_error() == 87:  # Process already disappeared.
+                            continue
+                        raise CaptureCleanupError('Windows could not retain an owned capture process.')
+                    owned = wintypes.BOOL()
+                    if not kernel.IsProcessInJob(handle, job, ctypes.byref(owned)):
+                        kernel.CloseHandle(handle)
+                        raise CaptureCleanupError('Windows could not verify capture process ownership.')
+                    if not owned.value:  # A PID may have been reused; never terminate an unrelated process.
+                        kernel.CloseHandle(handle)
+                        raise CaptureCleanupError('Capture process ownership changed during cleanup.')
+                    handles[identity] = handle
+                for handle in handles.values():
+                    if status(handle) == 258 and not kernel.TerminateProcess(handle, 1):
+                        # A concurrent exit can reject a new termination request
+                        # before the retained process object becomes signaled.
+                        # The request's return is never a cleanup receipt: use
+                        # the same bounded exact-handle wait on either outcome.
+                        stop_errors[handle] = ctypes.get_last_error()
+                for handle in handles.values():
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0 or status(handle, max(1, int(remaining * 1000))) != 0:
+                        detail = (' (WinError ' + str(stop_errors[handle]) + ')'
+                                  if handle in stop_errors else '')
+                        raise CaptureCleanupError('Capture process termination remains unconfirmed.' + detail)
+                remaining_members = members()
+                if all(identity in handles and status(handles[identity]) == 0
+                       for identity in remaining_members):
+                    # A Job may retain an exited member while its process
+                    # handle is open. Require actual termination signals for
+                    # every final member, not disappearance from accounting.
+                    confirmed = True
+                    break
+                # A descendant appeared during the preceding snapshot. The
+                # next pass retains, verifies, stops and waits for its handle.
+        except BaseException as exc:
+            raise CaptureCleanupError(
+                'Windows could not confirm complete microphone cleanup. '
+                'Incomplete output must be retained; close the application before another recording.') from exc
+        finally:
+            if not confirmed:
+                kernel.TerminateJobObject(job, 1)  # Safety request, never a successful-cleanup receipt.
+            closed = True
+            for handle in handles.values():
+                closed = bool(kernel.CloseHandle(handle)) and closed
+            closed = bool(kernel.CloseHandle(job)) and closed
+            if not closed:
+                raise CaptureCleanupError('Windows could not release microphone cleanup ownership.')
+
+    return release
+
+
 def run_process(args, *, budget=None, cancelled=lambda: False,
-                watch=(), progress=None, env=None, cwd=None):
+                watch=(), progress=None, env=None, cwd=None,
+                stop_requested=None, allow_failure=False, retain_cleanup=False):
     """Run an already constructed argument vector, never a shell expression.
 
     Progress callbacks receive rendered seconds from FFmpeg's progress stream.
     Ordinary stdout/stderr have a *total* byte cap, including a fast child which
     finishes between polls. Expected progress is streamed into a single latest
     value rather than accumulated for multi-hour renders.  Callbacks run on the
-    caller's thread. No child inherits stdin.
+    caller's thread. No child inherits stdin. Explicit capture callers may
+    request FFmpeg's fixed ``q`` command through an owned pipe to finalize PCM;
+    cancellation still terminates and discards incomplete output. An unconfirmed
+    capture cleanup is a distinct error, so its staging can be retained safely.
+    Reviewed metadata callers may opt into retain_cleanup: they must transfer
+    their staging and admission to AudioCleanupPending.cleanup_owner. Other
+    producers and the existing capture lifetime retain their current contract.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -58,17 +267,29 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Invalid audio worker argument.')
     if not Path(args[0]).is_absolute():
         raise ValueError('Audio worker must use a resolved executable.')
+    if stop_requested is not None and not callable(stop_requested):
+        raise ValueError('Graceful audio stop requires a callback.')
+    if type(allow_failure) is not bool or type(retain_cleanup) is not bool:
+        raise ValueError('Diagnostic exits and retained cleanup must be explicit.')
+    if retain_cleanup and stop_requested is not None:
+        raise ValueError('Retained metadata cleanup cannot replace capture lifetime ownership.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before starting.')
     watched = tuple(Path(path) for path in watch)
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
-    process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
+    command = args
+    if stop_requested is not None:
+        if not sys.executable or not Path(sys.executable).is_absolute():
+            raise AudioError('Capture admission requires the current isolated Python runtime.')
+        command = [sys.executable, '-I', '-B', '-c', _CAPTURE_BOOTSTRAP, *args]
+    process = subprocess.Popen(command, stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-        cwd=cwd, env=env, start_new_session=os.name == 'posix',
+        cwd=cwd, env=native_audio_environment(env), start_new_session=os.name == 'posix',
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
     started = time.monotonic()
+    stopped_at = None
 
     def read_pipe(pipe, name):
         count = 0
@@ -102,13 +323,24 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         finally:
             pipe.close()
 
-    threads, started_pipes = [], set()
+    threads, reader_pipes = [], []
     last_progress = None
+    release_lifetime = None
 
     def check():
-        nonlocal last_progress
+        nonlocal last_progress, stopped_at
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
+        if stop_requested is not None and stopped_at is None and stop_requested() and process.poll() is None:
+            stopped_at = time.monotonic()
+            try:
+                process.stdin.write(b'q\n')
+                process.stdin.flush()
+                process.stdin.close()
+            except BrokenPipeError:
+                pass  # A concurrent normal exit is checked below.
+        if stopped_at is not None and time.monotonic() - stopped_at > 5 and process.poll() is None:
+            raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         if time.monotonic() - started > budget.timeout:
@@ -143,14 +375,21 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             last_progress = latest[0]
 
     try:
-        # Reader allocation/start can fail after Popen (for example exhausted
-        # thread resources). Keep it inside native-process ownership so that
-        # callers cannot release their reservation while the child survives.
+        if stop_requested is not None:
+            release_lifetime = _capture_lifetime(process)
+            if not callable(release_lifetime):
+                raise AudioError('Capture lifetime admission did not provide an owned cleanup handle.')
+            if cancelled():
+                raise AudioCancelled('Audio capture cancelled before lifetime admission.')
+            process.stdin.write(b'\x01')
+            process.stdin.flush()
+        # Allocation and startup both belong to the already-running child.
+        # A failed Thread constructor must not bypass owned process cleanup.
         for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
             thread = threading.Thread(target=read_pipe, args=(pipe, name), daemon=True)
             threads.append(thread)
+            reader_pipes.append(pipe)
             thread.start()
-            started_pipes.add(pipe)
         while process.poll() is None:
             check()
             try:
@@ -163,23 +402,64 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker did not close its diagnostic streams.')
         # Required even for a child which exited before the first polling tick.
         check()
-        if process.returncode:
+        if process.returncode and not allow_failure:
             message = bytes(buffers['stderr']).decode('utf-8', errors='replace')[-3000:]
             raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
-                             time.monotonic() - started)
+                             time.monotonic() - started, process.returncode, stopped_at is not None)
     finally:
-        try:
-            _terminate(process)
-        finally:
-            for thread in threads:
+        def release_streams():
+            if process.stdin is not None:
+                try:
+                    process.stdin.close()
+                except (BrokenPipeError, OSError):
+                    pass
+            for thread, pipe in zip(threads, reader_pipes):
                 if thread.ident is not None:
                     thread.join(timeout=2)
-            # A reader owns and closes its stream. Streams whose readers never
-            # started still belong to this caller and must be closed here.
-            for pipe in (process.stdout, process.stderr):
-                if pipe not in started_pipes:
+                else:
                     pipe.close()
+            for pipe in (process.stdout, process.stderr):
+                if pipe not in reader_pipes:
+                    pipe.close()
+
+        if retain_cleanup:
+            def cleanup_metadata_process():
+                _terminate(process)
+                for thread in threads:
+                    if thread.ident is not None:
+                        thread.join(timeout=2)
+                if any(thread.is_alive() for thread in threads if thread.ident is not None):
+                    raise AudioError('Metadata worker diagnostic shutdown is not yet confirmed.')
+                return True
+            try:
+                cleanup_metadata_process()
+            except Exception as exc:
+                from .cleanup import pending_cleanup
+                raise pending_cleanup(cleanup_metadata_process,
+                    message='Metadata worker cleanup is pending; its staging and resource reservation remain owned.',
+                    callbacks=(release_streams,)) from exc
+            release_streams()
+        else:
+            try:
+                if os.name == 'nt' and release_lifetime is not None:
+                    # Keep all Job members discoverable until their handles have
+                    # been retained. Killing the wrapper first loses that boundary.
+                    try:
+                        release_lifetime()
+                    finally:
+                        try:
+                            _terminate(process)
+                        except BaseException as exc:
+                            raise CaptureCleanupError('The capture launcher did not acknowledge termination.') from exc
+                else:
+                    try:
+                        _terminate(process)
+                    finally:
+                        if release_lifetime is not None:
+                            release_lifetime()
+            finally:
+                release_streams()
 
 
 def fsync_directory(path):

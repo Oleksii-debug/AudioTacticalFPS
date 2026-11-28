@@ -5,11 +5,13 @@ another library or topic, and exports never trust the displayed matrix cache.
 """
 from dataclasses import dataclass
 from pathlib import Path
+import sqlite3
 
 from ..research.export_file import write_export
-from .export_destination import confirm_export_destination
 from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
-from ..research.outline_export import export_topic_outline as export_outline
+from ..research.outline_export import export_filtered_outline as export_outline
+from ..research.topic_tree import TopicTree
+from .export_destination import confirm_export_destination
 from .literature_matrix import make_matrix_dialog
 
 
@@ -106,8 +108,18 @@ class AcademicActions:
         return AcademicScope(frame.library, *frame.active)
 
     def _current(self, scope):
-        return (not getattr(self.frame, '_closing', False)
-                and self.frame.library is scope.library and self.frame.active == scope.ids)
+        if (getattr(self.frame, '_closing', False)
+                or self.frame.library is not scope.library or self.frame.active != scope.ids):
+            return False
+        # A background result can outlive its authorized read snapshot even when
+        # this frame's selection is unchanged. Recheck external archival too.
+        try:
+            with scope.library.read(scope.workspace) as db:
+                if scope.topic is not None:
+                    TopicTree(db, scope.workspace)._visible(scope.topic)
+            return True
+        except (OSError, ValueError, sqlite3.Error):
+            return False
 
     def _require_current(self, scope):
         if not self._current(scope):
@@ -122,7 +134,7 @@ class AcademicActions:
                     include_descendants=True, cancelled=self.frame.cancel_event.is_set)
 
             def done(snapshot):
-                if not self._current(scope):
+                if self.frame.cancel_event.is_set() or not self._current(scope):
                     return
                 try:
                     command = self.dialogs.matrix(self.frame, snapshot,
@@ -195,7 +207,9 @@ class AcademicActions:
         if destination is None:
             self.frame.report('Export cancelled. No file was written.')
             return
-        approval = confirm_export_destination(self.frame, destination, private_root=scope.library.root)
+        self._require_current(scope)
+        approval = confirm_export_destination(self.frame, destination,
+            private_root=scope.library.root, title='Replace research export')
         if approval is None:
             self.frame.report('Export cancelled. No file was written.')
             return
@@ -261,10 +275,22 @@ def install_academic_actions(frame):
     from .bibliography_import import open_bibliography_import
     from .catalog_quality import open_catalog_quality
 
+    existing = getattr(frame, 'academic_actions', None)
+    if isinstance(existing, AcademicActions):
+        return existing
+
     actions = AcademicActions(frame)
-    academic_index = frame.menu_bar.FindMenu('Academic')
-    menu = (frame.menu_bar.GetMenu(academic_index)
-            if academic_index >= 0 else wx.Menu())
+    menu_index = frame.menu_bar.FindMenu('Academic')
+    if menu_index >= 0:
+        menu = frame.menu_bar.GetMenu(menu_index)
+        if menu.GetMenuItemCount():
+            menu.AppendSeparator()
+    else:
+        menu = wx.Menu()
+        help_index = frame.menu_bar.FindMenu('Help')
+        frame.menu_bar.Insert(
+            help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(),
+            menu, '&Academic')
     commands = (
         ('Compare sources in active topic\tCtrl+Alt+M', actions.compare_sources),
         ('Export research outline with subtopics', actions.outline),
@@ -272,12 +298,17 @@ def install_academic_actions(frame):
         ('Check catalog quality', lambda event: open_catalog_quality(frame,
             edit_edition=lambda workspace, edition: edit_catalog_edition(frame, workspace, edition))),
     )
-    for title, handler in commands:
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    identities = ('academic.compare_sources', 'academic.filtered_outline',
+                  'academic.import_references', 'academic.catalog_quality')
+    for identity, (title, handler) in zip(identities, commands, strict=True):
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
-    # Preserve existing menus and their handlers, including post-merge fixes.
-    if academic_index < 0:
-        help_index = frame.menu_bar.FindMenu('Help')
-        frame.menu_bar.Insert(help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(), menu, '&Academic')
+        caption, _, shortcut = title.partition('\t')
+        register_menu_command(frame, CommandSpec(identity, caption.replace('&', ''),
+                                                'main', shortcut), item)
+    # Extend the existing academic library menu without replacing its entries
+    # or registering a second Alt+A menu. Installation is idempotent.
     frame.academic_actions = actions
     return actions

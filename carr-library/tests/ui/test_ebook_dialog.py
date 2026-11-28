@@ -88,6 +88,9 @@ class Control:
             return -1
         return sum(count(line) + 2 for line in lines[:row]) + column
 
+    def GetLastPosition(self):
+        return len(self.value.replace('\n', '\r\n').encode('utf-16-le')) // 2
+
     def GetRange(self, start, end):
         native = self.value.replace('\n', '\r\n').encode('utf-16-le')
         return native[start * 2:end * 2].decode('utf-16-le').replace('\r\n', '\n')
@@ -314,6 +317,7 @@ def test_unavailable_native_position_keeps_chapter_and_explains_fallback(monkeyp
     def interaction(wx):
         reader = wx.named(NOTICE)
         reader.XYToPosition = lambda column, row: -1
+        reader.GetRange = lambda start, end: ''  # Neither mapping can prove a nonempty prefix.
         contents = wx.named('Book contents (levels and chapter destinations)')
         contents.SetSelection(1)
         contents.handlers[wx.EVT_CHOICE](None)
@@ -581,3 +585,437 @@ def test_menu_installation_is_idempotent_and_binds_keyboard_command(monkeypatch)
     assert install_ebook_actions(frame) is first
     menu.Append.assert_called_once_with(wx.ID_ANY, 'Read electronic book contents\tCtrl+Shift+O')
     assert frame.Bind.call_args.args[1] == first.open
+
+
+
+def _recorded_epub_native_probe_handlers():
+    """Execute the real diagnostic closures without constructing native windows."""
+    import ast
+    from hashlib import sha256
+    import json
+    from pathlib import Path
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_epub_reading_smoke.py'
+    module = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    main = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
+    names = {'remember_failure', 'abort', 'guarded', 'expire', 'trace_highlight', 'trace_failure_state'}
+    functions = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in functions} == names
+    events, pending = [], []
+
+    class Dialog:
+        def __init__(self, name):
+            self.name, self.modal = name, True
+        def IsModal(self):
+            return self.modal
+        def EndModal(self, result):
+            assert result == 5101
+            events.append(('end', self.name))
+            self.modal = False
+
+    class Owner:
+        def __init__(self, name):
+            self.name, self.closed, self.failure = name, False, None
+            self.dialog = Dialog(name)
+        def close(self):
+            events.append(('close', self.name))
+            if self.failure == 'throw':
+                raise RuntimeError(self.name + ' cleanup raised')
+            if self.failure == 'refuse':
+                return
+            self.closed = True
+            if self.dialog.IsModal():
+                self.dialog.EndModal(5101)
+
+    overlay, reader = Owner('overlay'), Owner('reader')
+    reader._audio_dialog = overlay
+    env = {
+        'errors': [], 'finished': False, 'stage': 1, 'key_pending': False,
+        'shutdown': {'requested': False, 'reader_returned': False, 'attempted': set()},
+        'pressed': set(), 'reader': reader, 'overlay': overlay,
+        'wx': SimpleNamespace(ID_CANCEL=5101,
+            CallAfter=lambda callback: pending.append((0, callback)),
+            CallLater=lambda delay, callback: pending.append((delay, callback))),
+        'gui': SimpleNamespace(ExitMainLoop=lambda: events.append(('exit',))),
+        'simulator': SimpleNamespace(KeyUp=lambda key: events.append(('key-up', key)) or True),
+        'traceback': traceback, 'json': json, 'sha256': sha256,
+    }
+    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])),
+                 str(script), 'exec'), env)
+    return SimpleNamespace(env=env, events=events, pending=pending, overlay=overlay, reader=reader)
+
+
+def _recorded_epub_native_step(harness):
+    assert harness.pending, 'The real modal-unwind closure stopped scheduling cleanup.'
+    delay, callback = harness.pending.pop(0)
+    assert delay in (0, 25)
+    callback()
+
+
+def test_recorded_epub_failure_is_printed_before_inside_out_modal_unwind(capsys):
+    harness = _recorded_epub_native_probe_handlers()
+    def fail():
+        raise AssertionError('exact native highlight mismatch')
+    harness.env['guarded'](fail)()
+    assert 'exact native highlight mismatch' in capsys.readouterr().out
+    assert len(harness.env['errors']) == 1 and harness.events == []
+    harness.env['abort']()
+    assert len(harness.pending) == 1, 'Repeated failure must not start another unwind.'
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+    # EndModal is not proof that the containing ShowModal/finally returned.
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+    harness.reader._audio_dialog = None
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay'),
+                              ('close', 'reader'), ('end', 'reader')]
+    assert ('exit',) not in harness.events
+    harness.env['shutdown']['reader_returned'] = True
+    _recorded_epub_native_step(harness)
+    assert harness.events[-1] == ('exit',)
+    assert harness.overlay.closed and harness.reader.closed
+
+
+@pytest.mark.parametrize('owner_name', ['overlay', 'reader'])
+@pytest.mark.parametrize('failure', ['throw', 'refuse'])
+def test_recorded_epub_abort_retains_unconfirmed_owner_and_original_failure(capsys, owner_name, failure):
+    harness = _recorded_epub_native_probe_handlers()
+    failed = getattr(harness, owner_name)
+    failed.failure = failure
+    def fail():
+        raise AssertionError('original selection failure')
+    harness.env['guarded'](fail)()
+    _recorded_epub_native_step(harness)
+    harness.reader._audio_dialog = None
+    _recorded_epub_native_step(harness)
+    harness.env['shutdown']['reader_returned'] = True
+    _recorded_epub_native_step(harness)
+    output = capsys.readouterr().out
+    assert 'original selection failure' in output and 'Native EPUB owner cleanup failed.' in output
+    assert 'original selection failure' in harness.env['errors'][0]
+    assert len(harness.env['errors']) == 2
+    assert not failed.closed, 'Failure-only modal unwind must not claim resource closure.'
+    other = harness.reader if owner_name == 'overlay' else harness.overlay
+    assert other.closed
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay'),
+                              ('close', 'reader'), ('end', 'reader'), ('exit',)]
+
+
+def test_recorded_epub_deadline_survives_error_suppressed_normal_callbacks(capsys):
+    harness = _recorded_epub_native_probe_handlers()
+    harness.env['errors'].append('original failure')
+    callback = Mock()
+    harness.env['guarded'](callback)()
+    callback.assert_not_called()
+    harness.env['expire']()
+    assert harness.env['errors'][0] == 'original failure'
+    assert len(harness.env['errors']) == 2
+    assert 'deadline at stage 1' in capsys.readouterr().out
+    _recorded_epub_native_step(harness)
+    assert harness.events[:2] == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_finished_probe_does_not_restart_deadline_cleanup():
+    harness = _recorded_epub_native_probe_handlers()
+    harness.env['finished'] = True
+    harness.env['expire']()
+    assert harness.env['errors'] == [] and harness.pending == [] and harness.events == []
+
+
+def test_recorded_epub_failed_key_release_does_not_lose_modal_cleanup(capsys):
+    harness = _recorded_epub_native_probe_handlers()
+    harness.env['pressed'].add(32)
+    harness.env['simulator'].KeyUp = lambda key: False
+    harness.env['abort']()
+    assert harness.env['pressed'] == set()
+    assert 'could not release its native key' in capsys.readouterr().out
+    _recorded_epub_native_step(harness)
+    assert harness.events[:2] == [('close', 'overlay'), ('end', 'overlay')]
+    assert len(harness.env['errors']) == 1
+
+
+def test_recorded_epub_highlight_diagnostic_preserves_exact_bounded_observation(capsys):
+    from hashlib import sha256
+    import json
+    harness = _recorded_epub_native_probe_handlers()
+    raw = '😀 line\n' + 'x' * 5000
+    selected = raw[:7] + 'wrong'
+    control = raw.replace('\n', '\r\n')
+    harness.env['expected_page'] = SimpleNamespace(raw_text=raw)
+    harness.overlay.busy, harness.overlay.closed = False, False
+    harness.overlay.session = SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+        chapter=SimpleNamespace(cues=(SimpleNamespace(start=0, end=7),)))
+    harness.overlay.text = SimpleNamespace(GetSelection=lambda: (0, 9),
+        GetStringSelection=lambda: selected, GetValue=lambda: control)
+    harness.overlay.status = SimpleNamespace(GetValue=lambda: 'Mapping unavailable.')
+    harness.env['trace_highlight']()
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0].startswith('EPUB diagnostic: inspecting the unchanged native highlight')
+    value = json.loads(lines[1])['epub_highlight_diagnostic']
+    assert value['selected']['prefix'] == selected
+    assert value['expected_fragment']['prefix'] == raw[:7]
+    assert value['selected']['prefix'] != value['expected_fragment']['prefix']
+    assert value['control']['sha256'] == sha256(control.encode('utf-8')).hexdigest()
+    assert value['expected_source']['sha256'] == sha256(raw.encode('utf-8')).hexdigest()
+    assert value['control']['characters'] == len(control) and len(value['control']['prefix']) == 2048
+    assert value['native_selection'] == [0, 9] and value['session_source_matches']
+    assert value['status']['prefix'] == 'Mapping unavailable.'
+    assert harness.env['errors'] == [] and harness.events == []
+
+
+class _NativeOffsetControl(Control):
+    """Native character units and range clamping, without a line-coordinate oracle."""
+
+    def __init__(self, owner, *, value, utf16=True, newline='\r\n'):
+        super().__init__(owner, value=value)
+        self.utf16, self.newline = utf16, newline
+        self.ranges, self.surrogate_splits = [], []
+
+    def native_length(self, text):
+        native = text.replace('\n', self.newline)
+        return len(native.encode('utf-16-le')) // 2 if self.utf16 else len(native)
+
+    def GetLastPosition(self):
+        return self.native_length(self.value)
+
+    def GetRange(self, start, end):
+        self.ranges.append((start, end))
+        native = self.value.replace('\n', self.newline)
+        try:
+            value = (native.encode('utf-16-le')[start * 2:end * 2].decode('utf-16-le')
+                     if self.utf16 else native[start:end])
+        except UnicodeError:
+            self.surrogate_splits.append((start, end))
+            raise
+        # MSW GetRange translates even a trailing CR; slicing also clamps.
+        return value.replace('\r\n', '\n').replace('\r', '\n')
+
+    def XYToPosition(self, column, row):
+        raise AssertionError('An exact absolute native position must not depend on display rows.')
+
+
+@pytest.mark.parametrize('utf16,newline', [
+    (False, '\n'), (False, '\r\n'), (True, '\n'), (True, '\r\n'),
+], ids=['characters-lf', 'characters-crlf', 'utf16-lf', 'utf16-crlf'])
+def test_native_positions_prove_all_prefixes_without_logical_row_coordinates(utf16, newline):
+    raw = 'Title 😀\n\nExact α 😀 source & words.\nTail 🧪\n'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw, utf16=utf16, newline=newline)
+    for offset in range(len(raw) + 1):
+        before = len(control.ranges)
+        position = native_position(control, raw, offset)
+        assert position == control.native_length(raw[:offset])
+        assert 1 <= len(control.ranges) - before <= 4
+        assert control.GetRange(0, position) == raw[:offset]
+    assert all(0 <= start <= end <= control.GetLastPosition() for start, end in control.ranges)
+    assert control.GetValue() == raw
+
+
+@pytest.mark.parametrize('utf16,newline', [
+    (False, '\n'), (False, '\r\n'), (True, '\n'), (True, '\r\n'),
+], ids=['characters-lf', 'characters-crlf', 'utf16-lf', 'utf16-crlf'])
+def test_native_end_position_cannot_be_proved_by_an_oversized_clamped_range(utf16, newline):
+    raw = '😀\n'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw, utf16=utf16, newline=newline)
+    last = control.GetLastPosition()
+    assert control.GetRange(0, last + 20) == raw  # The real platform may clamp.
+    control.ranges.clear()
+    assert native_position(control, raw, len(raw)) == last
+    assert control.ranges and all(end <= last for _, end in control.ranges)
+
+
+def test_native_position_continues_after_a_surrogate_splitting_candidate():
+    raw = 'a\n😀tail'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw, newline='\n')
+    assert native_position(control, raw, 2) == 2
+    assert control.surrogate_splits == [(0, 3)]
+    assert control.GetRange(0, 2) == 'a\n'
+    assert control.GetValue() == raw
+
+
+def test_native_position_uses_complete_crlf_even_if_lone_cr_reads_as_lf():
+    raw = 'a\nx'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw)
+    assert control.GetRange(0, 2) == 'a\n'  # Mid-CRLF also normalizes to LF.
+    assert native_position(control, raw, 2) == 3
+    assert control.GetRange(3, control.GetLastPosition()) == 'x'
+    assert control.GetValue() == raw
+
+
+def test_native_position_retains_only_a_bounded_proven_xy_fallback():
+    control = SimpleNamespace(GetValue=lambda: 'abc', GetLastPosition=lambda: 8,
+        GetRange=lambda first, last: 'ab' if (first, last) == (0, 7) else '',
+        XYToPosition=lambda column, row: 7)
+    assert native_position(control, 'abc', 2) == 7
+    control.GetLastPosition = lambda: 6
+    with pytest.raises(ValueError, match='could not locate'):
+        native_position(control, 'abc', 2)
+
+
+def test_recorded_overlay_highlight_uses_exact_positions_after_soft_wrapped_provenance():
+    from carr_library.ui.ebook_audio_dialog import EbookAudioDialog
+
+    fragment = 'Exact α 😀 source & words.'
+    raw = ('Title\n\n' + 'Source provenance remains unverified. ' * 18 +
+           '\n\nChapter\n\n' + fragment + '\n\nTail.')
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw)
+    visual_rows, native_start = [], 0
+    for line in raw.split('\n'):
+        for column in range(0, max(1, len(line)), 40):
+            piece = line[column:column + 40]
+            visual_rows.append((native_start + control.native_length(line[:column]),
+                                control.native_length(piece)))
+        native_start += control.native_length(line) + 2
+
+    def visual_xy(column, row):
+        if not 0 <= row < len(visual_rows):
+            return -1
+        first, length = visual_rows[row]
+        return first + column if 0 <= column <= length else -1
+
+    control.XYToPosition = visual_xy
+    first, last = raw.index(fragment), raw.index(fragment) + len(fragment)
+    prefix = raw[:first]
+    old_line_start = visual_xy(0, prefix.count('\n'))
+    assert old_line_start >= 0 and control.GetRange(0, old_line_start) != prefix
+    owner = SimpleNamespace(text=control, transport=SimpleNamespace(index=0),
+        session=SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+            chapter=SimpleNamespace(cues=(SimpleNamespace(start=first, end=last),))))
+    EbookAudioDialog._highlight(owner)
+    assert control.selection == (control.native_length(raw[:first]), control.native_length(raw[:last]))
+    assert control.GetRange(*control.selection) == fragment
+    assert control.position == control.selection[0]
+    assert control.GetValue() == raw
+
+
+def _recorded_epub_playback_observation():
+    from threading import Event
+
+    harness = _recorded_epub_native_probe_handlers()
+    raw = 'Exact α 😀 source & words.'
+    harness.env.update(stage=2, expected_page=SimpleNamespace(raw_text=raw))
+    harness.overlay.busy = False
+    harness.overlay.cancelled = Event()
+    harness.overlay.session = SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+        chapter=SimpleNamespace(cues=(SimpleNamespace(start=0, end=len(raw)),)))
+    harness.overlay.text = SimpleNamespace(GetSelection=lambda: (0, 26),
+        GetStringSelection=lambda: raw, GetValue=lambda: raw)
+    harness.overlay.status = SimpleNamespace(GetValue=lambda: 'Ready. No audio has started.')
+    harness.overlay.player = SimpleNamespace(state='stopped')
+    harness.overlay.transport = SimpleNamespace(ticket=(0, 1), active=False, closed=False,
+                                                 interrupted=False, prepared=None)
+    harness.overlay._pending = None
+    return harness
+
+
+@pytest.mark.parametrize('state', ['ready', 'preparation-error', 'deferred-start'])
+def test_recorded_epub_deadline_reports_exact_playback_state_before_cleanup(capsys, state):
+    import json
+
+    harness = _recorded_epub_playback_observation()
+    if state == 'preparation-error':
+        harness.overlay.cancelled.set()
+        harness.overlay.status.GetValue = lambda: 'The selected audio device refused preparation.'
+    elif state == 'deferred-start':
+        harness.overlay._pending = object()
+        harness.overlay.status.GetValue = lambda: 'Preparing the exact recorded audio interval…'
+    expected_status = harness.overlay.status.GetValue()
+    expected_pending = harness.overlay._pending
+    harness.env['expire']()
+    output = capsys.readouterr().out
+    line = next(line for line in output.splitlines() if line.startswith('{"epub_highlight_diagnostic"'))
+    diagnostic = json.loads(line)['epub_highlight_diagnostic']
+    assert diagnostic['stage'] == 2 and diagnostic['busy'] is False and diagnostic['closed'] is False
+    assert diagnostic['status']['prefix'] == expected_status
+    assert diagnostic['playback'] == {
+        'cancelled': state == 'preparation-error', 'key_pending': False,
+        'player_state': 'stopped', 'transport_ticket': [0, 1], 'transport_active': False,
+        'transport_closed': False, 'transport_interrupted': False,
+        'prepared_present': False, 'pending_present': state == 'deferred-start',
+    }
+    assert output.index(line) < output.index('FAIL: Native EPUB deadline expired.')
+    assert len(harness.env['errors']) == 1 and 'deadline at stage 2' in harness.env['errors'][0]
+    assert harness.overlay._pending is expected_pending and harness.events == []
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_playback_getter_error_is_bounded_without_hiding_status(capsys):
+    import json
+
+    harness = _recorded_epub_playback_observation()
+
+    class UnavailablePlayer:
+        @property
+        def state(self):
+            raise RuntimeError('unavailable-' + 'x' * 3000)
+
+    harness.overlay.player = UnavailablePlayer()
+    harness.env['trace_highlight']()
+    value = json.loads(capsys.readouterr().out.splitlines()[1])['epub_highlight_diagnostic']
+    assert value['playback']['player_state']['unavailable'] == 'RuntimeError'
+    assert len(value['playback']['player_state']['reason']) == 256
+    assert value['status']['prefix'] == 'Ready. No audio has started.'
+    assert harness.events == [] and harness.pending == [] and harness.env['errors'] == []
+
+
+def test_recorded_epub_failed_failure_state_read_does_not_suppress_deadline_or_cleanup(capsys):
+    harness = _recorded_epub_playback_observation()
+    harness.overlay.text.GetSelection = Mock(side_effect=RuntimeError('native text peer is unavailable'))
+    harness.env['expire']()
+    output = capsys.readouterr().out
+    assert 'EPUB failure-state observation unavailable: RuntimeError: native text peer is unavailable' in output
+    assert 'FAIL: Native EPUB deadline expired.' in output
+    assert len(harness.env['errors']) == 1 and 'deadline at stage 2' in harness.env['errors'][0]
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_guarded_failure_observes_live_playback_before_abort(capsys):
+    import json
+
+    harness = _recorded_epub_playback_observation()
+    harness.overlay.status.GetValue = lambda: 'An exact preparation error is still visible.'
+    pending = harness.overlay._pending = object()
+
+    def drive_timeout():
+        raise TimeoutError('original drive deadline at stage 2')
+
+    harness.env['guarded'](drive_timeout)()
+    output = capsys.readouterr().out
+    line = next(line for line in output.splitlines() if line.startswith('{"epub_highlight_diagnostic"'))
+    state = json.loads(line)['epub_highlight_diagnostic']
+    assert state['closed'] is False and state['busy'] is False
+    assert state['playback']['cancelled'] is False
+    assert state['playback']['transport_closed'] is False
+    assert state['playback']['transport_ticket'] == [0, 1]
+    assert state['playback']['pending_present'] is True
+    assert state['status']['prefix'] == 'An exact preparation error is still visible.'
+    assert output.index(line) < output.index('FAIL: Native EPUB driver callback failed at stage 2')
+    assert len(harness.env['errors']) == 1
+    assert 'TimeoutError: original drive deadline at stage 2' in harness.env['errors'][0]
+    assert harness.overlay._pending is pending and not harness.overlay.closed
+    assert harness.events == [] and len(harness.pending) == 1
+    _recorded_epub_native_step(harness)
+    assert harness.overlay.closed
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_guarded_original_exception_survives_failed_state_observation(capsys):
+    harness = _recorded_epub_playback_observation()
+    harness.overlay.text.GetSelection = Mock(side_effect=RuntimeError('state getter unavailable'))
+
+    def original_failure():
+        raise ValueError('original playback admission failure')
+
+    harness.env['guarded'](original_failure)()
+    output = capsys.readouterr().out
+    assert 'EPUB failure-state observation unavailable: RuntimeError: state getter unavailable' in output
+    assert 'FAIL: Native EPUB driver callback failed at stage 2' in output
+    assert len(harness.env['errors']) == 1
+    assert 'ValueError: original playback admission failure' in harness.env['errors'][0]
+    assert 'RuntimeError: state getter unavailable' not in harness.env['errors'][0]
+    assert harness.events == [] and len(harness.pending) == 1
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]

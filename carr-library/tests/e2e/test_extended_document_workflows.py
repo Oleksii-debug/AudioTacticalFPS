@@ -156,32 +156,6 @@ def source_bytes(extension):
 FORMATS = ('.html', '.md', '.eml', '.fb2', '.fb3', '.odt', '.ods', '.odp', '.pptx', '.xlsx')
 
 
-@pytest.mark.parametrize('arguments', (
-    ('--self-test',), ('--backup', 'unused-backup'), ('studio', 'voices'),
-    ('--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'selected'),
-))
-def test_format_listing_rejects_another_operation_before_opening_any_runtime(arguments, monkeypatch):
-    from carr_library.__main__ import main
-    def forbidden(*args, **kwargs):
-        raise AssertionError('Ambiguous command must not initialize an application or native runtime.')
-    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
-    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
-    with pytest.raises(SystemExit) as error:
-        main(['--document-formats', *arguments])
-    assert error.value.code == 2
-
-
-def test_format_listing_does_not_open_a_library_or_native_runtime(monkeypatch, capsys):
-    from carr_library.__main__ import main
-    def forbidden(*args, **kwargs):
-        raise AssertionError('Format listing must not open a library or native runtime.')
-    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
-    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
-    assert main(['--document-formats']) == 0
-    text = capsys.readouterr().out
-    assert 'HTML' in text and '.xlsx' in text
-
-
 @pytest.mark.parametrize('extension', FORMATS)
 def test_extended_source_import_reader_search_and_quote_boundary(tmp_path, extension):
     source = tmp_path / ('Наукове джерело' + extension)
@@ -425,6 +399,73 @@ def test_cancelled_extended_import_can_resume_same_identity(tmp_path):
     assert book.edition_id == resumed['edition']
 
 
+@pytest.mark.parametrize('extension', FORMATS)
+def test_pending_extended_original_survives_complete_backup_and_resume(tmp_path, extension):
+    """Canonical pending recovery retains each format after external input loss."""
+    from carr_library.catalog.intake import snapshot
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest.worker import prepare_request
+    from uuid import uuid4
+
+    source = tmp_path / ('pending' + extension)
+    original = source_bytes(extension)
+    source.write_bytes(original)
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Pending additional document')
+    metadata = dict(title='Pending original', authors=[], language=None, edition=None,
+        volume=None, collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
+    planned = snapshot(source.parent, source.name).manifest()
+    request = prepare_request(app.root, workspace, source, metadata, Config(),
+        expected_manifest=planned)
+    asset = sha256(original).hexdigest()
+    retained_before_decode = []
+    def stop_after_retention():
+        # Logical document formats do not create an ingest page journal. Their
+        # recoverable boundary is the real retained original and its durable
+        # request binding, before decoding/publishing any logical text.
+        saved = load_request(app.root, request['request_id'])
+        if saved.get('asset_sha256') is None:
+            return False
+        assert saved['asset_sha256'] == asset
+        retained = app.assets.resolve(asset)
+        assert retained.read_bytes() == original
+        retained_before_decode.append(retained)
+        return True
+    with pytest.raises(InterruptedError):
+        app._import_file(workspace, source, **metadata, _request_id=request['request_id'],
+            _expected_manifest=planned, cancelled=stop_after_retention)
+    assert retained_before_decode and set(retained_before_decode) == {app.assets.resolve(asset)}
+    assert not (app.root / 'imports.sqlite').exists()
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+    assert app.assets.resolve(asset).read_bytes() == original
+    assert source.read_bytes() == original and app.browse(workspace) == ()
+    source.unlink()
+
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    assert manifest['version'] == 4
+    retained, = manifest['pending']['assets']
+    assert retained['sha256'] == asset and retained['mime'] == planned['mime']
+    assert retained['filename'] == asset + extension
+    assert (backup / 'pending' / 'originals' / retained['filename']).read_bytes() == original
+
+    restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', checksum))
+    assert restored.assets.resolve(asset).read_bytes() == original
+    copied_request = load_request(restored.root, request['request_id'])
+    assert copied_request['data_dir'] == str(restored.root)
+    assert copied_request['source'] == str(restored.assets.resolve(asset))
+    assert copied_request['metadata'] == metadata
+    assert copied_request['expected_manifest'] == planned
+    result = restored.resume_import(workspace, request['request_id'])
+    assert result['state'] == 'complete' and result['isolated'] is True, result
+    assert result['edition'] == metadata['edition_id'] and result['verified'] is False
+    assert result['request_id'] == request['request_id']
+    assert restored.assets.resolve(asset).read_bytes() == original
+    assert restored.search(workspace, 'Librarymarker')
+
+
 @pytest.mark.parametrize('extension', ('.html', '.eml', '.pptx', '.xlsx', '.odt'))
 def test_untrusted_active_source_formats_never_launch_default_viewer(tmp_path, extension):
     source = tmp_path / ('active-capable' + extension)
@@ -470,3 +511,30 @@ def test_malformed_primary_relationship_or_text_leaf_does_not_publish(tmp_path, 
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
     assert source.read_bytes() == malformed
+
+
+@pytest.mark.parametrize('arguments', (
+    ('--self-test',), ('--backup', 'unused-backup'), ('studio', 'voices'),
+    ('--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'selected'),
+))
+def test_format_listing_rejects_another_operation_before_opening_any_runtime(arguments, monkeypatch):
+    from carr_library.__main__ import main
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Ambiguous command must not initialize an application or native runtime.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    with pytest.raises(SystemExit) as error:
+        main(['--document-formats', *arguments])
+    assert error.value.code == 2
+
+
+def test_format_listing_does_not_open_a_library_or_native_runtime(monkeypatch, capsys):
+    from carr_library.__main__ import main
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Format listing must not open a library or native runtime.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    assert main(['--document-formats']) == 0
+    text = capsys.readouterr().out
+    assert 'HTML' in text and '.xlsx' in text
+    assert all(value in text for value in ('JPEG/PNG', 'TIFF', '20 million pixels', 'independent review'))

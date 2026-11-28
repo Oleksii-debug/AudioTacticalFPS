@@ -45,11 +45,11 @@ def unpaywall(**changes):
     return json.dumps(record).encode()
 
 
-def pdf_bytes():
+def pdf_bytes(text='Synthetic public research preserves source wording.'):
     from reportlab.pdfgen.canvas import Canvas
     buffer = io.BytesIO()
     canvas = Canvas(buffer)
-    canvas.drawString(72, 700, 'Synthetic public research preserves source wording.')
+    canvas.drawString(72, 700, text)
     canvas.showPage()
     canvas.save()
     return buffer.getvalue()
@@ -191,6 +191,70 @@ def test_cancelled_reference_save_rolls_back(sample):
     assert references(app, workspace) == ()
 
 
+def test_isbn_book_metadata_and_provenance_survive_existing_backup(sample, tmp_path):
+    app, workspace, transfers = sample
+    isbn = '9780306406157'
+    record = {'title': 'Synthetic ISBN textbook',
+        'authors': [{'name': 'Олена Автор'}], 'publish_date': '2026',
+        'publishers': [{'name': 'Synthetic Academy'}],
+        'identifiers': {'isbn_13': [isbn], 'isbn_10': ['0306406152']},
+        'url': 'https://openlibrary.org/books/OL123M', 'number_of_pages': 400}
+    transfers.payloads['openlibrary'] = json.dumps({'ISBN:' + isbn: record}).encode()
+    preview = app.lookup_isbn(workspace, isbn, online_allowed=True)
+    assert preview.identifier_kind == 'isbn' and preview.identifier == isbn
+    assert preview.doi == '' and preview.metadata.pages == ''
+    saved = app.save_doi_reference(workspace, preview)
+    assert saved.isbn == isbn and saved.doi == ''
+    assert saved.title == record['title'] and saved.authors == ('Олена Автор',)
+    assert not saved.url.startswith('https://doi.org/')
+    assert 'openlibrary' in saved.notes and preview.metadata.raw_sha256 in saved.notes
+    assert 'source_text_verified' in saved.notes and not app.browse(workspace)
+    destination = tmp_path / 'isbn-backup'
+    digest = app.backup(destination)
+    restore_backup(destination, tmp_path / 'isbn-restored', digest)
+    restored = LibraryApp(tmp_path / 'isbn-restored')
+    assert references(restored, workspace) == (saved,)
+
+
+def test_openalex_source_uses_existing_verified_download_and_import(sample, tmp_path):
+    app, workspace, transfers = sample
+    location = {'pdf_url': SOURCE, 'landing_page_url': 'https://open.example.org/article',
+        'is_oa': True, 'version': 'acceptedVersion', 'license': 'cc-by',
+        'source': {'display_name': 'Synthetic Repository', 'type': 'repository'}}
+    record = {'doi': 'https://doi.org/' + DOI, 'title': 'Synthetic OpenAlex record',
+        'type': 'article', 'publication_year': 2026,
+        'authorships': [{'author': {'display_name': 'Олена Автор'}}],
+        'open_access': {'is_oa': True}, 'primary_location': location,
+        'best_oa_location': location, 'locations': [location],
+        'biblio': {'volume': '1', 'issue': '2', 'first_page': '10', 'last_page': '20'}}
+    transfers.payloads['openalex'] = json.dumps(record).encode()
+    preview = app.lookup_doi(workspace, DOI, online_allowed=True, providers=('openalex',))
+    assert preview.metadata.provider == 'openalex' and preview.doi == DOI
+    assert preview.sources and all(s.provider == 'openalex' for s in preview.sources)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'OpenAlex source',
+        online_allowed=True, rights_confirmed=True)
+    assert result.state == 'complete'
+    receipt = json.loads(result.receipt_path.read_text(encoding='utf-8'))
+    assert receipt['source_provider'] == 'openalex' and receipt['provider_license'] == 'cc-by'
+    assert receipt['source_text_verified'] is False
+    assert app.search(workspace, 'source wording')[0].verified is False
+
+
+def test_openalex_metadata_language_never_replaces_source_language(sample):
+    app, workspace, transfers = sample
+    source = app.add_text(workspace, 'Український оригінал', 'Точний український текст.',
+        authors=('Оригінальний Автор',), language='uk')
+    original = app.assets.resolve(source['asset']).read_bytes()
+    transfers.payloads['openalex'] = json.dumps({'doi': 'https://doi.org/' + DOI,
+        'title': 'English metadata title', 'language': 'en', 'authorships': [],
+        'locations': [], 'type': 'article'}).encode()
+    preview = app.lookup_doi(workspace, DOI, online_allowed=True, providers=('openalex',))
+    current = app.edition_metadata(workspace, source['edition'])
+    app.apply_doi_metadata(workspace, source['edition'], preview, expected_metadata=current)
+    assert app.edition_metadata(workspace, source['edition']).language == 'uk'
+    assert app.assets.resolve(source['asset']).read_bytes() == original
+
+
 def test_download_needs_separate_permission_and_new_folder(sample, tmp_path):
     app, workspace, transfers = sample
     preview = lookup(app, workspace, oa=True)
@@ -286,6 +350,43 @@ def test_failed_import_keeps_verified_download_with_truthful_partial_result(samp
     assert result.sha256 == sha256(result.path.read_bytes()).hexdigest()
 
 
+def test_published_pdf_mutation_cannot_change_receipted_import_or_resumed_identity(sample, tmp_path, monkeypatch):
+    from carr_library.ingest.worker import load_request
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    changed_pdf = pdf_bytes('A different document must never inherit the acquisition provenance.')
+    expected = {'sha256': sha256(transfers.pdf).hexdigest(),
+                'mime': 'application/pdf', 'size': len(transfers.pdf)}
+    preview = lookup(app, workspace, oa=True)
+    original_import = app.import_file
+    def replace_after_publication(scope, path, **kwargs):
+        # Real filesystem mutation at the download-to-import boundary; the
+        # existing native worker and PDF parser still perform the actual import.
+        path.write_bytes(changed_pdf)
+        return original_import(scope, path, **kwargs)
+    monkeypatch.setattr(app, 'import_file', replace_after_publication)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'mutated-download',
+        online_allowed=True, rights_confirmed=True)
+    assert result.state == 'failed' and result.edition_id is None, result
+    assert 'changed after import planning' in result.message
+    assert not app.browse(workspace)
+    assert all(reference.edition_id is None for reference in references(app, workspace))
+    request, = app.import_requests(workspace)
+    assert load_request(app.root, request['request_id'])['expected_manifest'] == expected
+    assert json.loads(result.receipt_path.read_text())['sha256'] == expected['sha256']
+    reopened = LibraryApp(app.root)
+    rejected = reopened.resume_import(workspace, request['request_id'])
+    assert rejected['state'] == 'failed' and not reopened.browse(workspace)
+    # Recovery may proceed with the originally approved bytes, under the same
+    # persisted request; changing a path never silently changes that identity.
+    result.path.write_bytes(transfers.pdf)
+    complete = reopened.resume_import(workspace, request['request_id'])
+    assert complete['state'] == 'complete'
+    edition, = reopened.browse(workspace)
+    assert edition.asset == expected['sha256']
+    assert reopened.assets.resolve(edition.asset).read_bytes() == transfers.pdf
+
+
 def test_corrupt_retained_original_is_not_accepted_as_duplicate(sample, tmp_path):
     app, workspace, transfers = sample
     transfers.pdf = pdf_bytes()
@@ -352,3 +453,153 @@ def test_copy_publication_fallback_never_overwrites_and_cancels_cleanly(tmp_path
     with pytest.raises(InterruptedError):
         service._publish_file(source, target, lambda: checks.pop(0))
     assert not target.exists() and source.read_bytes() == b'A' * 200000
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_public_import_manifest_binds_inline_text_bytes_before_retention(tmp_path, changed):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Exact planned input')
+    source = tmp_path / 'planned.txt'
+    approved = b'Exactly the approved local source text.'
+    source.write_bytes(approved)
+    manifest = {'sha256': sha256(approved).hexdigest(), 'mime': 'text/plain', 'size': len(approved)}
+    if changed:
+        source.write_bytes(b'Different text cannot inherit the approved source identity.')
+        with pytest.raises(ValueError, match='changed after import planning'):
+            app.import_file(workspace, source, expected_manifest=manifest)
+        assert not app.browse(workspace) and not tuple(app.assets_dir.iterdir())
+    else:
+        complete = app.import_file(workspace, source, expected_manifest=manifest)
+        assert complete['state'] == 'complete' and complete['asset'] == manifest['sha256']
+        assert app.assets.resolve(complete['asset']).read_bytes() == approved
+
+
+def test_ambiguous_identical_editions_do_not_auto_link_or_assign(sample, tmp_path):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'same-original.pdf'
+    original.write_bytes(transfers.pdf)
+    for identity, title in (('a' * 32, 'Synthetic edition A'), ('b' * 32, 'Synthetic edition B')):
+        imported = app.import_file(workspace, original, title=title,
+            authors=('Synthetic Author',), edition_id=identity)
+        assert imported['state'] == 'complete'
+    before = app.browse(workspace)
+    assert len(before) == 2
+    assert {e.asset for e in before} == {sha256(transfers.pdf).hexdigest()}
+    collection = app.create_collection(workspace, 'Requires explicit edition selection')
+    preview = lookup(app, workspace, oa=True)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'ambiguous-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert result.state == 'downloaded'
+    assert result.edition_id is None and result.reference_id is None
+    assert 'Multiple editions' in result.message
+    assert result.path.read_bytes() == transfers.pdf
+    assert json.loads(result.receipt_path.read_text(encoding='utf-8'))['sha256'] == result.sha256
+    assert app.browse(workspace) == before
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+
+def test_duplicate_match_changes_during_asset_verification(sample, tmp_path, monkeypatch):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'race-original.pdf'
+    original.write_bytes(transfers.pdf)
+    first = app.import_file(workspace, original, title='Synthetic first edition',
+        edition_id='a' * 32)
+    assert first['state'] == 'complete'
+    collection = app.create_collection(workspace, 'Must remain empty after race')
+    preview = lookup(app, workspace, oa=True)
+    resolve = app.assets.resolve
+    armed = True
+
+    def add_competing_edition(digest):
+        nonlocal armed
+        verified = resolve(digest)
+        if armed and digest == sha256(transfers.pdf).hexdigest():
+            armed = False
+            # Another app instance commits after the read snapshot, before
+            # the acquisition publishes a reference or collection membership.
+            competitor = LibraryApp(app.root)
+            second = competitor.import_file(workspace, original,
+                title='Synthetic second edition', edition_id='b' * 32)
+            assert second['state'] == 'complete'
+        return verified
+
+    monkeypatch.setattr(app.assets, 'resolve', add_competing_edition)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'race-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert not armed
+    assert result.state == 'downloaded'
+    assert result.edition_id is None and result.reference_id is None
+    assert result.path.read_bytes() == transfers.pdf
+    assert result.receipt_path.is_file()
+    assert len(app.browse(workspace)) == 2
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+
+
+def test_duplicate_membership_rolls_back_on_reference_failure(sample, tmp_path, monkeypatch):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'rollback-original.pdf'
+    original.write_bytes(transfers.pdf)
+    imported = app.import_file(workspace, original, title='Synthetic retained edition')
+    assert imported['state'] == 'complete'
+    collection = app.create_collection(workspace, 'Must remain empty on rollback')
+    preview = lookup(app, workspace, oa=True)
+
+    def fail(*args, **kwargs):
+        raise ValueError('Synthetic reference update failure')
+
+    monkeypatch.setattr(AcademicLibrary, 'update', fail)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'rollback-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert result.state == 'downloaded' and result.edition_id is None
+    assert result.path.read_bytes() == transfers.pdf and result.receipt_path.is_file()
+    assert len(app.browse(workspace)) == 1
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
+
+
+@pytest.mark.parametrize('failure', ['reference_update', 'cancel_after_reference_update'])
+def test_new_import_remains_committed_when_reference_linking_stops(sample, tmp_path, monkeypatch, failure):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    collection = app.create_collection(workspace, 'Retain completed import')
+    preview = lookup(app, workspace, oa=True)
+    cancelled = [False]
+    original_update = AcademicLibrary.update
+
+    def stop_link(*args, **kwargs):
+        if failure == 'reference_update':
+            raise ValueError('Synthetic reference update failure')
+        reference = original_update(*args, **kwargs)
+        cancelled[0] = True
+        return reference
+
+    with monkeypatch.context() as patch:
+        patch.setattr(AcademicLibrary, 'update', stop_link)
+        result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'committed-download',
+            online_allowed=True, rights_confirmed=True, collection=collection,
+            cancelled=lambda: cancelled[0])
+    assert result.state == 'imported_reference_pending'
+    assert result.reference_id is None and result.edition_id is not None
+    assert result.path.read_bytes() == transfers.pdf
+    assert json.loads(result.receipt_path.read_text(encoding='utf-8'))['sha256'] == result.sha256
+    edition, = app.browse(workspace)
+    assert edition.edition_id == result.edition_id
+    assert app.browse(workspace, collection=collection)[0].edition_id == result.edition_id
+    assert app.assets.resolve(edition.asset).read_bytes() == transfers.pdf
+    assert references(app, workspace) == ()
+    assert 'do not import or download it again' in result.message
+
+    # Existing local reference workflow can link the committed edition without
+    # starting another import or transfer; the original receipt remains intact.
+    reference = app.save_doi_reference(workspace, preview)
+    with app.write(workspace) as db:
+        linked = AcademicLibrary(db, workspace).update(
+            reference.id, expected=reference, edition_id=result.edition_id)
+    assert linked.edition_id == edition.edition_id
+    assert len(references(app, workspace)) == len(app.browse(workspace)) == 1
+    assert transfers.downloads == [SOURCE]
+    assert result.receipt_path.is_file()

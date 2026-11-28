@@ -27,8 +27,9 @@ The only accepted diagnostic options are:
 
 Extra or unknown arguments return 64. Native dialogs explain normal launch errors;
 diagnostic failures use stderr without displaying a blocking dialog. The launcher
-waits for its child and propagates the child's exit status. No process stays behind
-after the application exits.
+waits for its direct child and propagates the child's exit status. Complete child-tree
+ownership is supplied only by the explicitly admitted portable profile described below;
+a legacy unmarked executable does not acquire that capability.
 
 ## Windows build and actual native process acceptance
 
@@ -80,20 +81,50 @@ probe proves its architecture, imports, manifest and mitigation flags; it does n
 prove Windows execution. The portable core test can also be compiled with a local
 C compiler using `-std=c11 -Wall -Wextra -Werror test_launcher_core.c`.
 
-## Minimal private bundle hook
+## Sealed default and explicit ownership profiles
 
-The assembler may copy **only** the verified `ResearchLibrary.exe` into the bundle
-root before generating the bundle checksum manifest. Keep the existing offline
-installer, runtime, wheelhouse and data locations. Never include `windows_child_probe.exe`,
-test outputs, compiler files or caches in the product. No shared bundle-builder
-changes are required by this source addition. A Start-menu shortcut may target the
-same fixed root entry when the existing installer gains that separate feature.
+The canonical assembler keeps its existing `--native-launcher PATH` option for the
+previously qualified pinned PE. That executable remains a supported sealed default;
+it has no `bundled_launcher` flag or new ownership receipt. Its bytes still belong to
+the bundle checksum inventory. This compatibility does not authorize portable
+activation or convert an old launcher into the current ownership implementation.
+
+Use `--launcher-dir DIRECTORY --source-commit FULL_SHA` with a bundled Python
+runtime to select a current build. The builder verifies its PE, build receipt and
+exact committed C/resource identity, then seals `ResearchLibrary.exe` together with
+`native-launcher-build.json`. Do not copy a different executable over that result.
+The synthetic child probe, compilers and private tool outputs are never product files.
+
+Standard setup uses this current owned launcher. A persistent installation lease
+coordinates application use, Repair and Uninstall. Before Python or site initialization,
+the native entry refuses a recorded uncertain bootstrap. Setup writes that record
+under its exclusive lease before starting its bootstrap child and removes only its
+own unchanged record after the exact owned process tree has stopped. An uncertain
+launch or cleanup preserves both program versions and recovery evidence.
+
+The separate `--portable-updates` option additionally seals protocol 2 from
+`PORTABLE_UPDATES.md`. Its fixed `-I -S -B` admission bootstrap verifies the exact Job,
+shared lease and durable owner receipt before site initialization. Every decorated
+public entry retains that ownership, including the fixed local audio setup entry.
+Unknown or stale owner receipts remain a refusal; no elapsed-time or missing-PID
+rule resets them. Standard setup refuses to wrap this portable profile. Managed
+automatic updates still require an authenticated setup handoff.
+
+For current owned bundles, `SetupLocalAudio.cmd` selects the packaged
+`carr_library.local_audio_setup` entry. It holds the same application lifetime and
+loads inventory-verified snapshots of the canonical source-only audio setup helpers.
+The helpers retain their explicit consent, pinned inputs, external runtime output and
+license checks. The unmarked canonical bundle keeps its existing source-tool command.
+
+The component's actual Windows gates separately exercise managed bootstrap,
+portable pre-admission parent death, descendant cleanup, lease exclusion and
+uncertain recovery from both source and installed packages. They do not establish
+GUI/NVDA usability, signing, private runtime acceptance or configured service authority.
 
 Do not commit or attach the native binary to the public repository or public CI
-artifacts. The current build is an **unsigned private candidate**. A real owner-held
-Authenticode certificate, signing/timestamping process, subsequent signature
-verification and separately retained signed binary hash remain release prerequisites.
-This addition alone does not complete all V3-16 installation/update requirements.
+artifacts. Current builds are unsigned candidates. Owner-held Authenticode signing,
+timestamping, verification and a separately retained signed binary hash remain
+release prerequisites.
 
 ## Primary toolchain and platform references
 

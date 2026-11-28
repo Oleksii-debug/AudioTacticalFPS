@@ -104,17 +104,17 @@ class Dialogs:
             callback()
         return next(self.answers)
 
+    def approve_export(self, parent, path, *, private_root):
+        self._main()
+        from carr_library.research.export_file import capture_export_destination
+        return capture_export_destination(path, private_root=private_root)
+
     def destination(self, parent, format):
         self._main()
         self.destinations.append(format)
         if self.during.get('destination'):
             self.during['destination']()
         return self.path
-
-    def approve_export(self, parent, path, *, private_root):
-        self._main()
-        from carr_library.research.export_file import capture_export_destination
-        return capture_export_destination(path, private_root=private_root)
 
     def show(self, parent, title, value):
         self._main()
@@ -126,7 +126,10 @@ class Dialogs:
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
         self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
-        self.wx.MessageBox = Mock(return_value=self.wx.YES)
+        def confirm_overwrite(*args, **kwargs):
+            assert threading.get_ident() == self.frame.main_thread, 'Overwrite dialog used from a worker'
+            return self.wx.YES if self.approve_overwrite else self.wx.NO
+        self.wx.MessageBox = Mock(side_effect=confirm_overwrite)
         confirm = ui.confirm_export_destination
         native = patch.object(ui, 'confirm_export_destination',
             lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
@@ -152,6 +155,24 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.other_workspace = other
         self.frame = Frame(self.library, self.workspace, self.topic)
         self.destination = self.root / 'matrix.csv'
+        self.approve_overwrite = True
+        owner = self
+        class Confirmation:
+            def __init__(self, *args, **kwargs):
+                assert threading.get_ident() == owner.frame.main_thread
+            def ShowModal(self): return 1 if owner.approve_overwrite else 0
+            def Destroy(self): pass
+        wx = SimpleNamespace(MessageDialog=Confirmation, ID_YES=1,
+                             YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8)
+        missing = object()
+        previous_wx = sys.modules.get('wx', missing)
+        sys.modules['wx'] = wx
+        def restore_wx():
+            if previous_wx is missing:
+                sys.modules.pop('wx', None)
+            else:
+                sys.modules['wx'] = previous_wx
+        self.addCleanup(restore_wx)
 
     def actions(self, answers=(0,), *, during=None, destination=None):
         dialogs = Dialogs(self.frame, answers,
@@ -422,6 +443,58 @@ class CatalogInsightsActionsTests(unittest.TestCase):
             actions.export_matrix()
         self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
         self.assertIn('cancelled', self.frame.messages[-1])
+
+    def test_matrix_completion_retains_cleanup_notice_even_after_late_cancel(self):
+        from carr_library.research.export_file import ExportReceipt
+        actual_writer = ui.write_export
+        notice = 'The export is saved; temporary cleanup needs attention.'
+
+        def completed_with_notice(*args, **kwargs):
+            receipt = actual_writer(*args, **kwargs)
+            return ExportReceipt(receipt.path, notice)
+
+        for cancelled in (False, True):
+            with self.subTest(cancelled=cancelled):
+                self.frame.after_worker = self.frame.cancel_event.set if cancelled else None
+                actions, _ = self.actions((0, 0))
+                with patch.object(ui, 'write_export', completed_with_notice):
+                    actions.export_matrix()
+                self.assertEqual(self.frame.errors, [])
+                text = self.destination.read_text(encoding='utf-8')
+                self.assert_private_content_absent(text)
+                self.assertIn(notice, self.frame.messages[-1])
+                self.assertIn('saved before cancellation' if cancelled else 'matrix saved',
+                              self.frame.messages[-1])
+
+    def test_matrix_render_cannot_replace_competing_destination_bytes(self):
+        from carr_library.research import literature_matrix
+        original = literature_matrix.render_literature_matrix
+        def competing(*args, **kwargs):
+            value = original(*args, **kwargs)
+            self.destination.write_bytes(b'Newer independently saved matrix')
+            return value
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                self.destination.unlink(missing_ok=True)
+                if existing:
+                    self.destination.write_bytes(b'Previously approved matrix')
+                actions, _ = self.actions((0, 0))
+                with patch.object(literature_matrix, 'render_literature_matrix', competing):
+                    actions.export_matrix()
+                self.assertEqual(self.destination.read_bytes(), b'Newer independently saved matrix')
+                self.assertIn('destination changed', self.frame.messages[-1])
+                self.assertEqual(list(self.root.glob('.research-export-*')), [])
+
+    def test_matrix_overwrite_decline_prevents_worker_and_restores_focus(self):
+        self.destination.write_bytes(b'Keep existing matrix')
+        self.approve_overwrite = False
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.wx.MessageBox.assert_called_once()
+        self.assertIn(self.destination.name, self.wx.MessageBox.call_args.args[0])
+        self.assertEqual(self.frame.jobs, [])
+        self.assertEqual(self.destination.read_bytes(), b'Keep existing matrix')
+        self.assertTrue(self.frame.origin.focused)
 
     def test_cancellation_after_publication_is_reported_as_saved(self):
         original = ui.write_export

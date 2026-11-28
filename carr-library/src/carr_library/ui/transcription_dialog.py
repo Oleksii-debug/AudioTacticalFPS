@@ -10,10 +10,12 @@ from pathlib import Path
 from threading import Event, Lock
 from uuid import uuid4
 import json
+import os
 import re
 
 from ..speech.reading import ReadingDocument
 from ..durable_state import local_path, regular
+from ..transcription import PROTOCOLS, RECEIPTS_PROTOCOL, V5_PROTOCOL, settings as validate_settings
 
 
 DEVICES = (('cpu', 'int8', 'CPU — int8'), ('cpu', 'float32', 'CPU — float32'),
@@ -21,7 +23,7 @@ DEVICES = (('cpu', 'int8', 'CPU — int8'), ('cpu', 'float32', 'CPU — float32'
            ('cuda', 'int8_float16', 'CUDA GPU — int8 / float16'))
 FORMATS = ('txt', 'srt', 'vtt', 'json')
 MEDIA_FILTER = ('Audio or video|*.wav;*.mp3;*.m4a;*.m4b;*.flac;*.ogg;*.opus;*.aac;'
-                '*.mp4;*.mkv;*.webm;*.wma;*.3gp;*.amr|All files|*.*')
+                '*.mp4;*.mkv;*.webm;*.wma;*.aiff;*.aif;*.mov;*.avi|All files|*.*')
 HELP = (
     'Use an existing local Python runtime, the reviewed transcription worker, and a '
     'concrete local model folder. Inspect checks their identity without running them. '
@@ -30,8 +32,8 @@ HELP = (
     'accuracy or language coverage.\n\n'
     'Choose files or a folder in New transcription. Folder recursion is optional. '
     'Auto asks the selected model to detect the spoken language. An explicit language '
-    'code avoids detection; availability depends on that model. Translate speech means '
-    'English output only. CPU and CUDA are explicit choices; CUDA needs a compatible '
+    'code avoids detection; availability depends on that model. These admitted workers '
+    'retain the source language; speech translation is unsupported. CPU and CUDA are explicit choices; CUDA needs a compatible '
     'installed runtime.\n\n'
     'Start creates a durable job before inference. Pause checkpoints and stops the '
     'worker; Resume uses verified saved work. Cancellation and pause wait for a safe '
@@ -51,24 +53,35 @@ HELP = (
 
 
 class TranscriptionController:
-    """One library binding, with service construction deferred to a worker."""
+    """Bind one exact library/workspace; construct its existing service on the worker."""
 
-    def __init__(self, private_root, *, service=None):
-        self.private_root = Path(private_root).absolute()
-        self._service = service
+    def __init__(self, app, workspace, *, service=None):
+        self.app, self.workspace, self._service = app, workspace, service
+        self.private_root = local_path(app.root, exists=True)
+        info = regular(self.private_root, directory=True)
+        self._root_identity = info.st_dev, info.st_ino
 
     @property
     def service(self):
         if self._service is None:
-            from ..operations import ResourceBroker
-            from ..transcription import TranscriptionService
-            self._service = TranscriptionService(self.private_root / 'state' / 'transcription',
-                broker=ResourceBroker.for_app(self.private_root))
+            self._service = self.app.transcription(self.workspace)
         return self._service
 
     def check_root(self, root):
-        if Path(root).absolute() != self.private_root:
+        current = local_path(root, exists=True)
+        info = regular(current, directory=True)
+        if current != self.private_root or (info.st_dev, info.st_ino) != self._root_identity:
             raise ValueError('The library folder changed. Close and reopen transcription.')
+
+    def check_frame(self, frame):
+        if frame.library is not self.app:
+            raise ValueError('The library folder changed. Reopen transcription.')
+        active = getattr(frame, 'active', None)
+        if not active or active[0] != self.workspace:
+            raise ValueError('The active workspace changed. Reopen transcription.')
+        self.check_root(frame.library.root)
+        with self.app.read(self.workspace):
+            pass
 
 
 class TranscriptionActions:
@@ -77,6 +90,8 @@ class TranscriptionActions:
     def configure(self, frame, controller):
         self.frame, self.controller = frame, controller
         self.library = frame.library
+        self.progress_panel = getattr(frame, 'progress_panel', None)
+        self.desktop_integration = getattr(frame, 'desktop_integration', None)
         self.pending = self.closed = self.close_when_idle = False
         self.cancel_event = Event()
         self._progress_lock = Lock()
@@ -89,6 +104,15 @@ class TranscriptionActions:
         self.current_job = self.document = self.transcript_source_id = None
         self.saved_text = ''
         self.inspection = None
+        self._unregister_save = lambda: None
+        from .save_all import coordinator_for
+        coordinator = coordinator_for(frame)
+        if coordinator is not None:
+            self._unregister_save = coordinator.register(
+                'transcription-' + uuid4().hex, 'Transcription reading copy',
+                dirty=lambda: not self.closed and self.is_dirty(),
+                save=lambda completed: self.save_edits(completed=completed),
+                focus=lambda: self.editor.SetFocus() if not self.closed else None)
         self._enable()
 
     def report(self, message, *, focus=False):
@@ -98,7 +122,9 @@ class TranscriptionActions:
                 self.status.SetFocus()
 
     def _check_root(self):
-        self.controller.check_root(self.frame.library.root)
+        if self.closed or getattr(self.frame, '_closing', False):
+            raise ValueError('This transcription workspace has closed.')
+        self.controller.check_frame(self.frame)
 
     def _enable(self):
         if self.closed:
@@ -112,17 +138,27 @@ class TranscriptionActions:
         self.editor.Enable(have_text)
         for button in self.read_buttons:
             button.Enable(have_text)
+        self.save_edits_button.Enable(have_text and self.is_dirty())
         self.start_button.Enable(not self.pending and
-            (self.current_job is None or self.current_job.get('status') != 'complete'))
-        self.pause_button.Enable(self.pending and self._kind == 'transcribe')
-        self.cancel_button.Enable(self.pending)
+            (self.current_job is None or self.current_job.get('status') != 'completed'))
+        saved_active = bool(self.current_job and self.current_job.get('status') != 'completed')
+        self.pause_button.Enable(self.pending and self._kind == 'transcribe' or
+                                 not self.pending and saved_active)
+        self.cancel_button.Enable(self.pending or saved_active)
+        self.task.Enable(False)  # The admitted worker protocols support transcription only.
+        index = self.runtime.GetSelection()
+        protocol = (self.profiles[index].get('configuration', {}).get('protocol')
+                    if 0 <= index < len(self.profiles) else None)
+        self.headers.Enable(editable and protocol != V5_PROTOCOL)
+        if editable and protocol == V5_PROTOCOL:
+            self.headers.SetValue(False)
 
     def _usable(self):
         if self.closed or self.pending:
             return False
         try:
             self._check_root()
-        except ValueError as exc:
+        except (ValueError, OSError) as exc:
             self.report(str(exc), focus=True)
             return False
         if getattr(self.frame, 'working', False) or getattr(self.frame, '_closing', False):
@@ -131,9 +167,15 @@ class TranscriptionActions:
         return True
 
     def _cancelled(self):
-        return self.cancel_event.is_set() or self.frame.cancel_event.is_set()
+        if self.closed or self.cancel_event.is_set() or self.frame.cancel_event.is_set():
+            return True
+        try:
+            self._check_root()
+        except (ValueError, OSError, RuntimeError):
+            return True
+        return False
 
-    def submit(self, title, operation, complete, *, kind='metadata'):
+    def submit(self, title, operation, complete, *, kind='metadata', settled=None):
         if not self._usable():
             return False
         self._epoch += 1
@@ -151,7 +193,7 @@ class TranscriptionActions:
                 return False
             try:
                 self._check_root()
-            except ValueError as exc:
+            except (ValueError, OSError) as exc:
                 self.report(str(exc), focus=True)
                 return False
             return True
@@ -164,8 +206,11 @@ class TranscriptionActions:
             from ..progress import current_progress
             progress = current_progress()
 
-            def update(event):
-                if self.closed or epoch != self._epoch or not isinstance(event, dict):
+            def update(*values):
+                event = (values[0] if len(values) == 1 and isinstance(values[0], dict) else
+                         {'done': values[0], 'total': values[1], 'phase': values[2]}
+                         if len(values) == 3 else None)
+                if self.closed or epoch != self._epoch or event is None:
                     return
                 phase = str(event.get('phase') or event.get('status') or 'Transcribing')
                 phase = ' '.join(phase.split())[:200] or 'Transcribing'
@@ -193,20 +238,40 @@ class TranscriptionActions:
 
             return operation(self.controller.service, self._cancelled, update)
 
+        settlement_sent = False
+        def settle(result=None, error=None):
+            nonlocal settlement_sent
+            if not settlement_sent:
+                settlement_sent = True
+                if settled is not None:
+                    settled(result, error)
+
         def finished(result):
             if epoch != self._epoch or self.closed:
+                settle(error=RuntimeError('The transcription view closed before save confirmation.'))
                 return
             self.pending = False
             with self._progress_lock:
                 self._latest_progress = None
             self._enable()
-            if current():
-                complete(result)
-            if self.close_when_idle and not self.pending:
-                self.close()
+            try:
+                if current():
+                    complete(result)
+                else:
+                    settle(error=RuntimeError('The library or workspace changed before save confirmation.'))
+                    return
+            except Exception as exc:
+                settle(error=exc)
+                raise
+            else:
+                settle(result=result)
+            finally:
+                if self.close_when_idle and not self.pending:
+                    self.close()
 
         def failed(error):
             if epoch != self._epoch or self.closed:
+                settle(error=error)
                 return
             self.pending = False
             with self._progress_lock:
@@ -216,6 +281,7 @@ class TranscriptionActions:
                 message = ('Operation stopped before completion. ' if isinstance(error, InterruptedError)
                            else 'Operation did not complete. ')
                 self.report(message + str(error) + '\nRefresh saved jobs to inspect retained work.', focus=True)
+            settle(error=error)
             if self.close_when_idle:
                 self.close()
 
@@ -235,10 +301,10 @@ class TranscriptionActions:
         if not self.closed and self.pending and update is not None and update[0] == self._epoch:
             self.report(update[1])
 
-    def refresh(self, event=None):
+    def refresh(self, event=None, *, selected_job=None):
         def loaded(value):
             self.profiles, self.job_rows = tuple(value['profiles']), tuple(value['jobs'])
-            self.runtime.SetItems([f"{row['name']} — {row.get('model_name', 'local model')} — "
+            self.runtime.SetItems([f"{row['name']} — {row.get('configuration', {}).get('protocol', 'unknown protocol')} — "
                 f"{'trusted' if row.get('trusted') else 'not trusted'}; {row.get('qualification', 'unqualified')}"
                 for row in self.profiles])
             if self.profiles:
@@ -246,8 +312,15 @@ class TranscriptionActions:
             self._render_jobs()
             self.report(f'{len(self.profiles)} registered runtimes; {len(self.job_rows)} saved jobs. '
                         'Select local media to start, or load a saved job. No inference starts automatically.')
+            if selected_job is not None:
+                job = next((row for row in self.job_rows if row['id'] == selected_job), None)
+                if job is None:
+                    self.report('The selected job is unavailable in this workspace.', focus=True)
+                else:
+                    self.publish_job(job)
+            self._enable()
         self.submit('Loading local transcription profiles and jobs',
-            lambda service, cancel, progress: {'profiles': service.list_runtimes(), 'jobs': service.list_jobs()}, loaded)
+            lambda service, cancel, progress: {'profiles': service.list_runtimes(), 'jobs': service.list()}, loaded)
 
     def _render_jobs(self):
         self.jobs.SetItems([f"{row.get('title', 'Transcription')} — {row['status']} — "
@@ -267,54 +340,92 @@ class TranscriptionActions:
             raise ValueError('Inspect and explicitly trust this runtime before starting it.')
         return profile
 
-    def _settings(self):
+    def _settings(self, *, protocol):
         language = self.language.GetValue().strip().lower()
         if not re.fullmatch(r'auto|[a-z]{2,3}', language):
             raise ValueError('Enter auto or a language code such as uk or en.')
-        selection = self.task.GetSelection()
-        if selection not in (0, 1):
-            raise ValueError('Choose transcription or translation to English.')
+        if self.task.GetSelection() != 0:
+            raise ValueError('This admitted worker supports original-language transcription only; speech translation is unavailable.')
         index = self.device.GetSelection()
         if not 0 <= index < len(DEVICES):
             raise ValueError('Choose CPU or CUDA and its compute type.')
         device, compute, _ = DEVICES[index]
-        formats = {name: bool(control.GetValue()) for name, control in self.formats.items()}
-        if not any(formats.values()):
-            raise ValueError('Select at least one output format.')
-        return dict(language=language, task=('transcribe', 'translate')[selection], device=device,
-            compute_type=compute, beam_size=self.beam.GetValue(), parallel_files=self.parallel.GetValue(),
-            vad_filter=bool(self.vad.GetValue()), condition_on_previous_text=bool(self.context.GetValue()),
+        options = dict(model=self.model.GetValue().strip(), language=language, task='transcribe',
+            device=device, compute_type=compute, beam_size=self.beam.GetValue(),
+            parallel_files=self.parallel.GetValue(), vad_filter=bool(self.vad.GetValue()),
+            condition_on_previous_text=bool(self.context.GetValue()),
             multilingual=bool(self.multilingual.GetValue()), include_headers=bool(self.headers.GetValue()),
-            output_mode='separate', **{'output_' + key: value for key, value in formats.items()})
+            word_timestamps=bool(self.words.GetValue()))
+        # Recognition always retains all original formats. Export subset choices
+        # never alter the immutable recognition settings or completed receipts.
+        return validate_settings(options, protocol=protocol)
+
+    def _export_formats(self):
+        formats = tuple(name for name in FORMATS if self.formats[name].GetValue())
+        if not formats:
+            raise ValueError('Select at least one format to export.')
+        return formats
+
+    def _new_job_choices(self):
+        profile = self._selected_profile()
+        protocol = profile['configuration']['protocol']
+        sources, options = tuple(self.sources), self._settings(protocol=protocol)
+        if not sources:
+            raise ValueError('Choose at least one local audio file or folder.')
+        return {'profile_id': profile['id'], 'protocol': protocol, 'sources': sources,
+                'options': options, 'title': self.title.GetValue().strip() or 'Transcription',
+                'recursive': bool(self.recursive.GetValue())}
+
+    @staticmethod
+    def _retain(service, choices, cancel, progress):
+        retained = service.submit_sources(choices['sources'], profile_id=choices['profile_id'],
+            protocol=choices['protocol'], options=choices['options'], title=choices['title'],
+            recursive=choices['recursive'], cancelled=cancel)
+        job = service.get(retained['id'])
+        progress({'phase': 'Inputs retained', 'done': retained['files'], 'total': retained['files'],
+                  'current': f"{retained['excluded_files']} unsupported files excluded; saved job {job['id']}"})
+        return job, retained
+
+    def prepare(self, event=None):
+        """Publish an immutable retained job for review without starting inference."""
+        if not self._usable() or self.current_job is not None or not self.confirm_discard():
+            return
+        try:
+            choices = self._new_job_choices()
+            def retained(value):
+                job, intake = value
+                self.publish_job(job)
+                self.report(self.status.GetValue() + f"\nRetained files: {intake['files']}; "
+                            f"unsupported files excluded: {intake['excluded_files']}. No inference has run.")
+            self.submit('Retaining selected local media',
+                lambda service, cancel, progress: self._retain(service, choices, cancel, progress),
+                retained)
+        except Exception as exc:
+            self.report(str(exc), focus=True)
 
     def start(self, event=None):
         if not self._usable() or not self.confirm_discard():
             return
         try:
             if self.current_job is None:
-                profile = self._selected_profile()
-                sources, settings = tuple(self.sources), self._settings()
-                title, recursive = self.title.GetValue().strip() or 'Transcription', bool(self.recursive.GetValue())
-                if not sources:
-                    raise ValueError('Choose at least one local audio file or folder.')
+                choices = self._new_job_choices()
                 def run(service, cancel, progress):
-                    job = service.create_job(profile['id'], sources, settings=settings,
-                        title=title, recursive=recursive, cancel=cancel, progress=progress)
+                    job, _ = self._retain(service, choices, cancel, progress)
                     self._active_job_id = job['id']
                     if cancel():
                         (service.pause if self._stop_intent == 'paused' else service.cancel)(job['id'])
-                        return service.get_job(job['id'])
-                    return service.run(job['id'], cancel=cancel, progress=progress)
+                        return service.get(job['id'])
+                    return service.run(job['id'], cancelled=cancel, progress=progress)
             else:
                 identity = self.current_job['id']
-                if self.current_job['status'] == 'complete':
+                if self.current_job['status'] == 'completed':
                     raise ValueError('This job is complete. Choose New job for another transcription.')
                 def run(service, cancel, progress):
                     self._active_job_id = identity
                     if cancel():
                         (service.pause if self._stop_intent == 'paused' else service.cancel)(identity)
-                        return service.get_job(identity)
-                    return service.resume(identity, cancel=cancel, progress=progress)
+                        return service.get(identity)
+                    return service.resume(identity, cancelled=cancel, progress=progress)
             self.submit('Transcribing local audio', run, self.publish_job, kind='transcribe')
         except Exception as exc:
             self.report(str(exc), focus=True)
@@ -323,7 +434,7 @@ class TranscriptionActions:
         self.current_job = job
         self.job_rows = (job,) + tuple(row for row in self.job_rows if row['id'] != job['id'])
         self._render_jobs()
-        self.result_source.SetItems([Path(row['original_path']).name + ' — ' + row['id']
+        self.result_source.SetItems([row['original_name'] + ' — ' + row['filename']
                                     for row in job.get('sources', ())])
         if job.get('sources'):
             self.result_source.SetSelection(0)
@@ -338,8 +449,16 @@ class TranscriptionActions:
         summary += (f"\nSaved options: {settings.get('language', 'auto')}; {settings.get('task', 'transcribe')}; "
                     f"{settings.get('device', 'cpu')}/{settings.get('compute_type', 'int8')}. "
                     'Resume uses these saved options.')
-        if job.get('error'):
-            summary += '\n' + str(job['error'])
+        summary += '\nWorker contract: ' + job['protocol'] + '; retained outputs: TXT, SRT, VTT, JSON.'
+        originals = {item['filename']: item['original_name'] for item in job.get('sources', ())}
+        for attempt in job.get('effective_runs', ()):
+            effective = attempt.get('settings', {})
+            summary += (f"\n{originals.get(attempt.get('source'), attempt.get('source', 'Source'))}: "
+                        f"attempt {attempt.get('attempt', '?')}; beam={effective.get('beam_size', '?')}, "
+                        f"VAD={effective.get('vad_filter', '?')}, "
+                        f"context={effective.get('condition_on_previous_text', '?')}.")
+        if job.get('last_error'):
+            summary += '\n' + str(job['last_error'])
         self.report(summary)
         self._enable()
 
@@ -352,7 +471,7 @@ class TranscriptionActions:
             return
         identity = self.job_rows[index]['id']
         self.submit('Opening saved transcription job',
-                    lambda service, cancel, progress: service.get_job(identity), self.publish_job)
+                    lambda service, cancel, progress: service.get(identity), self.publish_job)
 
     def new_job(self, event=None):
         if not self._usable() or not self.confirm_discard():
@@ -382,10 +501,20 @@ class TranscriptionActions:
                     'completed files remain saved. Preparation may stop before a new job is created.')
 
     def pause(self, event=None):
-        self.request_stop(pause=True)
+        if self.pending:
+            self.request_stop(pause=True)
+        elif self.current_job is not None and self.current_job.get('status') != 'completed':
+            identity = self.current_job['id']
+            self.submit('Pausing the saved transcription job',
+                lambda service, cancel, progress: service.pause(identity), self.publish_job)
 
     def cancel(self, event=None):
-        self.request_stop()
+        if self.pending:
+            self.request_stop()
+        elif self.current_job is not None and self.current_job.get('status') != 'completed':
+            identity = self.current_job['id']
+            self.submit('Cancelling the saved transcription job',
+                lambda service, cancel, progress: service.cancel(identity), self.publish_job)
 
     def close(self, event=None):
         if self.pending:
@@ -400,11 +529,17 @@ class TranscriptionActions:
                 event.Veto()
             return
         self.closed = True
-        self.finish_close()
+        try:
+            self._unregister_save()
+        finally:
+            self.finish_close()
 
     def _paths(self):
-        return tuple(control.GetValue().strip() for control in
-                     (self.python_path, self.worker_path, self.model_path))
+        index = self.protocol.GetSelection()
+        if not 0 <= index < len(PROTOCOLS):
+            raise ValueError('Choose the exact reviewed worker protocol.')
+        return (*tuple(control.GetValue().strip() for control in
+                       (self.python_path, self.worker_path, self.model_path)), PROTOCOLS[index])
 
     def runtime_changed(self, event=None):
         self.inspection = None
@@ -416,7 +551,11 @@ class TranscriptionActions:
     def inspect_runtime(self, event=None):
         if not self._usable():
             return
-        paths = self._paths()
+        try:
+            paths = self._paths()
+        except (ValueError, OSError) as exc:
+            self.report(str(exc), focus=True)
+            return
         self.inspection = None
         self.trust.SetValue(False)
         def inspected(result):
@@ -424,35 +563,40 @@ class TranscriptionActions:
                 self.runtime_changed()
                 return
             self.inspection = (paths, result)
-            summary = {key: result[key] for key in ('python_executable', 'python_resolved',
-                'python_identity', 'worker_path', 'worker_identity', 'model_directory', 'model_name',
-                'model_bytes', 'model_content_fingerprint', 'fingerprint') if key in result}
-            summary['model_file_count'] = len(result.get('model_files', {}))
+            summary = {key: result[key] for key in ('python', 'worker', 'models_dir', 'protocol',
+                'python_sha256', 'worker_sha256', 'python_binding', 'runtime_inventory',
+                'models_inventory', 'fingerprint', 'inference_qualified') if key in result}
             self.runtime_details.ChangeValue(json.dumps(summary, ensure_ascii=False, indent=2))
             self.report('Files inspected without execution. Review their origin and licence, then explicitly '
                         'trust and register them. Recognition quality remains unqualified.')
         self.submit('Inspecting existing local transcription files',
-            lambda service, cancel, progress: service.inspect_runtime(*paths, cancel=cancel, progress=progress), inspected)
+            lambda service, cancel, progress: service.inspect_runtime(*paths[:3], protocol=paths[3],
+                cancelled=cancel, progress=progress), inspected)
 
     def register_runtime(self, event=None):
         if not self._usable():
             return
-        paths = self._paths()
+        try:
+            paths = self._paths()
+        except (ValueError, OSError) as exc:
+            self.report(str(exc), focus=True)
+            return
         if self.inspection is None or self.inspection[0] != paths or self.trust.GetValue() is not True:
             self.report('Inspect these exact files, then check the explicit trust confirmation.', focus=True)
             return
         name, fingerprint = self.runtime_name.GetValue().strip(), self.inspection[1]['fingerprint']
         def registered(profile):
             self.profiles = tuple(row for row in self.profiles if row['id'] != profile['id']) + (profile,)
-            self.runtime.SetItems([f"{row['name']} — {row.get('model_name', 'local model')} — "
+            self.runtime.SetItems([f"{row['name']} — {row.get('configuration', {}).get('protocol', 'unknown protocol')} — "
                 f"{'trusted' if row.get('trusted') else 'not trusted'}; {row.get('qualification', 'unqualified')}"
                 for row in self.profiles])
             self.runtime.SetSelection(len(self.profiles) - 1)
             self.report('Runtime registered using the verified local files. No inference has run. '
                         'Choose media in New transcription to start.')
+            self._enable()
         self.submit('Registering the reviewed local runtime',
-            lambda service, cancel, progress: service.register_runtime(name, *paths, owner_trusted=True,
-                expected_fingerprint=fingerprint, cancel=cancel, progress=progress), registered)
+            lambda service, cancel, progress: service.register_runtime(name, *paths[:3], protocol=paths[3],
+                owner_trusted=True, expected_fingerprint=fingerprint, cancelled=cancel, progress=progress), registered)
 
     def rebind_runtime(self, event=None):
         if not self._usable() or not self.current_job or not self.confirm_discard():
@@ -462,14 +606,35 @@ class TranscriptionActions:
             if not self.confirm_rebind(profile):
                 return
             self.submit('Binding reviewed runtime to saved job',
-                lambda service, cancel, progress: service.rebind_runtime(identity, profile['id']), self.publish_job)
+                lambda service, cancel, progress: service.rebind_runtime(identity, profile['id'],
+                    cancelled=cancel, progress=progress), self.publish_job)
+        except Exception as exc:
+            self.report(str(exc), focus=True)
+
+    def copy_job(self, event=None):
+        """Use reviewed retained inputs for a separate job; never reuse rejected output."""
+        if not self._usable() or not self.current_job or not self.confirm_discard():
+            return
+        try:
+            profile, identity = self._selected_profile(), self.current_job['id']
+            if profile['configuration']['protocol'] != self.current_job['protocol']:
+                raise ValueError('A copy keeps the saved worker protocol; choose a trusted profile for that protocol.')
+            if not self.confirm_copy(profile):
+                return
+            def copied(job):
+                self.publish_job(job)
+                self.report(self.status.GetValue() + '\nNew job from verified retained originals. '
+                            'Old results remain separate; no inference has run.')
+            self.submit('Copying verified retained transcription inputs',
+                lambda service, cancel, progress: service.copy_job(identity, profile_id=profile['id'],
+                    cancelled=cancel), copied)
         except Exception as exc:
             self.report(str(exc), focus=True)
 
     def review_interruption(self, event=None):
         if not self._usable() or not self.current_job or not self.confirm_discard():
             return
-        if (self.current_job.get('status') == 'complete'
+        if (self.current_job.get('status') == 'completed'
                 or not self.current_job.get('recovery_review_required')):
             self.report('This job does not require an interrupted-worker review.')
             return
@@ -488,16 +653,22 @@ class TranscriptionActions:
         if not 0 <= index < len(sources):
             self.report('Load a saved job and choose a completed source result.', focus=True)
             return
-        identity, source = self.current_job['id'], sources[index]['id']
+        identity, source = self.current_job['id'], sources[index]['filename']
         edited = bool(self.latest_edit.GetValue())
         def read(service, cancel, progress):
-            original = service.read_transcript(identity, source)
-            latest = original
-            if edited:
-                try:
-                    latest = service.read_transcript(identity, source, edited=True)
-                except FileNotFoundError:
-                    pass
+            original_text = service.text(identity, source, cancelled=cancel)
+            job = service.get(identity)
+            retained = next(row for row in job['sources'] if row['filename'] == source)
+            provenance = {'job': identity, 'workspace': self.controller.workspace, 'source': source,
+                          'source_sha256': retained['sha256'], 'protocol': job['protocol'],
+                          'kind': 'unverified recognition derivative'}
+            original = {'text': original_text, 'provenance': provenance}
+            edits = [row for row in service.edits(identity) if row['source'] == source] if edited else []
+            latest = ({'text': edits[-1]['text'],
+                       'provenance': {**provenance, 'edit_revision': edits[-1]['id'],
+                                      'kind': 'separately saved user edit'}} if edits else original)
+            if cancel():
+                raise InterruptedError('Transcript reading cancelled.')
             return {'original': original, 'latest': latest}
         def loaded(value):
             original, latest = value['original'], value['latest']
@@ -522,8 +693,20 @@ class TranscriptionActions:
         self.document.set_text(self.editor.GetValue(), label='Edit transcript reading copy')
         return self.document.text
 
-    def save_edits(self, event=None):
+    def save_edits(self, event=None, *, completed=None):
+        from .save_all import SaveResult
+        replied = False
+        def reply(saved, message=''):
+            nonlocal replied
+            if not replied:
+                replied = True
+                if completed is not None:
+                    completed(SaveResult(saved, message))
         if not self._usable() or self.document is None:
+            reply(False, 'Transcript save is unavailable or another operation is active.')
+            return
+        if not self.is_dirty():
+            reply(True)
             return
         try:
             text = self._capture_edit()
@@ -531,11 +714,17 @@ class TranscriptionActions:
             def saved(receipt):
                 self.saved_text = text
                 self.provenance.ChangeValue('Saved separate edited derivative. Original recognition text unchanged.\n' +
-                    json.dumps(receipt.get('provenance', {}), ensure_ascii=False, indent=2))
+                    json.dumps(receipt, ensure_ascii=False, indent=2))
                 self.report('Edited reading copy saved as a separate derivative.')
-            self.submit('Saving transcript derivative',
-                lambda service, cancel, progress: service.save_edit(identity, source, text), saved)
+                self._enable()
+            accepted = self.submit('Saving transcript derivative',
+                lambda service, cancel, progress: {'revision': service.save_edit(identity, source, text, cancelled=cancel),
+                    'job': identity, 'source': source}, saved,
+                settled=lambda result, error: reply(error is None, str(error) if error else ''))
+            if not accepted:
+                reply(False, 'The host did not admit this transcript save.')
         except Exception as exc:
+            reply(False, str(exc))
             self.report(str(exc), focus=True)
 
     def undo(self, event=None):
@@ -545,6 +734,7 @@ class TranscriptionActions:
             self._capture_edit()
             self.document.undo()
             self.editor.ChangeValue(self.document.text)
+            self._enable()
         except Exception as exc:
             self.report(str(exc), focus=True)
 
@@ -555,6 +745,7 @@ class TranscriptionActions:
             self._capture_edit()
             self.document.redo()
             self.editor.ChangeValue(self.document.text)
+            self._enable()
         except Exception as exc:
             self.report(str(exc), focus=True)
 
@@ -565,8 +756,11 @@ class TranscriptionActions:
             self.report('Save the edited reading copy before exporting, or undo the unsaved edit.', focus=True)
             return
         identity = self.current_job['id']
-        settings = self.current_job['settings']
-        formats = tuple(name for name in FORMATS if settings.get('output_' + name))
+        try:
+            formats = self._export_formats()
+        except (ValueError, OSError) as exc:
+            self.report(str(exc), focus=True)
+            return
         library_root = self.controller.private_root
         def export(service, cancel, progress):
             if cancel():
@@ -576,8 +770,9 @@ class TranscriptionActions:
             regular(destination.parent, directory=True)
             if destination.is_relative_to(root) or root.is_relative_to(destination):
                 raise ValueError('Choose an export folder outside the private library.')
-            destination.mkdir()  # exclusive new folder; never reuse an existing export
-            return service.export(identity, destination, formats=formats, include_edits=True, cancel=cancel)
+            if os.path.lexists(destination):
+                raise FileExistsError('Choose a new transcription export folder.')
+            return {'exported_to': str(service.export(identity, destination, formats=formats, cancelled=cancel))}
         self.submit('Exporting verified transcription results',
             export,
             lambda receipt: self.report('Export saved.\n' + json.dumps(receipt, ensure_ascii=False, indent=2)))
@@ -586,7 +781,9 @@ class TranscriptionActions:
 def build_transcription_dialog(frame, controller=None):
     """Create native controls; callers own ShowModal/Destroy and may inject a service."""
     import wx
-    controller = controller or TranscriptionController(frame.library.root)
+    if getattr(frame, 'active', None) is None:
+        raise ValueError('Select an active workspace before opening transcription.')
+    controller = controller or TranscriptionController(frame.library, frame.active[0])
 
     class Dialog(wx.Dialog, TranscriptionActions):
         def __init__(self):
@@ -646,6 +843,7 @@ def build_transcription_dialog(frame, controller=None):
             button(new, row, 'Add &files…', self.choose_files, new_option=True)
             button(new, row, 'Add f&older…', self.choose_folder, new_option=True)
             button(new, row, 'Clear files', self.clear_sources, new_option=True)
+            button(new, row, 'Prepare saved job', self.prepare, new_option=True)
             box.Add(row)
             self.recursive = wx.CheckBox(new, label='Include subfolders of selected folders')
             self.recursive.SetName('Include subfolders of selected folders')
@@ -653,8 +851,9 @@ def build_transcription_dialog(frame, controller=None):
             self.mutable.append(self.recursive)
             self.new_controls.append(self.recursive)
             self.language = field(new, box, 'Source lan&guage code or auto', value='auto', new_option=True)
-            self.task = field(new, box, 'Transcription task', wx.Choice, new_option=True,
-                choices=['Transcribe in the source language', 'Translate speech to English'])
+            self.model = field(new, box, 'Existing local model name', value='small', new_option=True)
+            self.task = field(new, box, 'Transcription task', wx.Choice,
+                choices=['Original-language transcription; speech translation is unsupported'])
             self.task.SetSelection(0)
             self.device = field(new, box, 'Processing &device and compute type', wx.Choice,
                 choices=[row[2] for row in DEVICES], new_option=True)
@@ -665,8 +864,8 @@ def build_transcription_dialog(frame, controller=None):
             self.beam.SetName('Beam size, one to twenty')
             row.Add(self.beam, 0, wx.ALL, 5)
             row.Add(wx.StaticText(new, label='Parallel files'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
-            self.parallel = wx.SpinCtrl(new, min=1, max=4, initial=1)
-            self.parallel.SetName('Parallel files, one to four')
+            self.parallel = wx.SpinCtrl(new, min=1, max=8, initial=1)
+            self.parallel.SetName('Parallel files, one to eight')
             row.Add(self.parallel, 0, wx.ALL, 5)
             box.Add(row)
             self.mutable.extend((self.beam, self.parallel))
@@ -675,7 +874,8 @@ def build_transcription_dialog(frame, controller=None):
             for attr, label, default in (('vad', 'Voice activity detection', True),
                     ('context', 'Use previous text as context', True),
                     ('multilingual', 'Allow multilingual segments', False),
-                    ('headers', 'Include text headers', False)):
+                    ('headers', 'Include text headers; unsupported by V5', False),
+                    ('words', 'Retain available word timestamps', True)):
                 control = wx.CheckBox(new, label=label)
                 control.SetName(label)
                 control.SetValue(default)
@@ -685,16 +885,16 @@ def build_transcription_dialog(frame, controller=None):
                 self.new_controls.append(control)
             box.Add(row, 0, wx.EXPAND)
             row = wx.BoxSizer(wx.HORIZONTAL)
-            row.Add(wx.StaticText(new, label='Output formats'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+            row.Add(wx.StaticText(new, label='Export formats; all four remain retained in the library'), 0,
+                    wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
             self.formats = {}
             for name in FORMATS:
                 control = wx.CheckBox(new, label=name.upper())
                 control.SetName('Output ' + name.upper())
-                control.SetValue(name in ('txt', 'json'))
+                control.SetValue(True)
                 row.Add(control, 0, wx.ALL, 5)
                 self.formats[name] = control
                 self.mutable.append(control)
-                self.new_controls.append(control)
             box.Add(row)
             new.SetSizer(box)
 
@@ -704,6 +904,8 @@ def build_transcription_dialog(frame, controller=None):
             text.Wrap(880)
             box.Add(text, 0, wx.ALL | wx.EXPAND, 6)
             self.runtime_name = field(runtimes, box, 'Runtime profile name', value='My local Whisper runtime')
+            self.protocol = field(runtimes, box, 'Exact reviewed worker protocol', wx.Choice, choices=list(PROTOCOLS))
+            self.protocol.SetSelection(0)
             for attr, label, directory in (('python_path', 'Python executable', False),
                     ('worker_path', 'Reviewed transcription worker', False),
                     ('model_path', 'Existing local model directory', True)):
@@ -732,6 +934,7 @@ def build_transcription_dialog(frame, controller=None):
             button(results, row, 'Refresh saved jobs', self.refresh)
             button(results, row, 'New job', self.new_job)
             button(results, row, 'Rebind runtime…', self.rebind_runtime)
+            button(results, row, 'New job from retained originals…', self.copy_job)
             button(results, row, 'Review interrupted worker…', self.review_interruption)
             box.Add(row, 0, wx.EXPAND)
             self.result_source = field(results, box, 'Transcription source &result', wx.Choice)
@@ -749,7 +952,7 @@ def build_transcription_dialog(frame, controller=None):
             self.editor = field(results, box, 'Transcript reading cop&y', proportion=1,
                 style=wx.TE_MULTILINE | wx.TE_DONTWRAP)
             row = wx.WrapSizer(wx.HORIZONTAL)
-            button(results, row, 'Sa&ve edits', self.save_edits, reading=True)
+            self.save_edits_button = button(results, row, 'Sa&ve edits', self.save_edits, reading=True)
             button(results, row, '&Undo reading edit', self.undo, reading=True)
             button(results, row, 'Redo reading edit', self.redo, reading=True)
             button(results, row, 'Read &aloud…', self.read_aloud, reading=True)
@@ -779,9 +982,15 @@ def build_transcription_dialog(frame, controller=None):
             self.configure(frame, controller)
             for control in (self.python_path, self.worker_path, self.model_path):
                 control.Bind(wx.EVT_TEXT, self.runtime_changed)
+            self.editor.Bind(wx.EVT_TEXT, lambda event: self._enable())
+            self.protocol.Bind(wx.EVT_CHOICE, self.runtime_changed)
+            self.runtime.Bind(wx.EVT_CHOICE, lambda event: self._enable())
             self.timer = wx.Timer(self)
             self.Bind(wx.EVT_TIMER, self.flush_progress, self.timer)
             self.timer.Start(250)
+            save_id = wx.NewIdRef()
+            self.SetAcceleratorTable(wx.AcceleratorTable([(wx.ACCEL_CTRL, ord('S'), int(save_id))]))
+            self.Bind(wx.EVT_MENU, self.save_edits, id=int(save_id))
             self.runtime.SetFocus()
 
         def confirm_discard(self):
@@ -791,7 +1000,14 @@ def build_transcription_dialog(frame, controller=None):
 
         def confirm_rebind(self, profile):
             return wx.MessageBox('Bind this saved job to the selected reviewed runtime: ' + profile['name'] +
-                '? The service will verify model compatibility before resuming.', 'Rebind saved job',
+                '? The service will verify the saved worker and model identities before resuming.', 'Rebind saved job',
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
+
+        def confirm_copy(self, profile):
+            return wx.MessageBox('Create a separate ready job from the verified retained original inputs using ' +
+                profile['name'] + '? Saved options and protocol are kept. This explicitly allows the newly '
+                'reviewed runtime/model bytes; old output is not reused and no inference starts now.',
+                'New transcription from retained originals',
                 wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
 
         def confirm_worker_stopped(self):
@@ -857,8 +1073,13 @@ def build_transcription_dialog(frame, controller=None):
             if not self._usable() or self.document is None:
                 return
             from .speech_dialog import show_speech_reader
+            identity, source = self.current_job['id'], self.transcript_source_id
+            def guard():
+                self._check_root()
+                if self.current_job is None or self.current_job['id'] != identity or self.transcript_source_id != source:
+                    raise ValueError('The selected transcription source changed. Open its reading copy again.')
             show_speech_reader(self, text=self.editor.GetValue(), title='Unverified transcription reading copy',
-                source_guard=self._check_root, recovery_slot='transcription-' + self.current_job['id'])
+                source_guard=guard, recovery_slot='transcription-' + self.controller.workspace + '-' + identity + '-' + source)
 
         def help(self, event=None):
             with wx.Dialog(self, title='Transcription help', size=(750, 620),
@@ -875,17 +1096,33 @@ def build_transcription_dialog(frame, controller=None):
     return Dialog()
 
 
-def show_transcription_dialog(frame, controller=None):
+def show_transcription_dialog(frame, controller=None, *, selected_job=None):
     import wx
+    if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+        frame.report('Finish or cancel the current operation before opening transcription.')
+        return
     dialog = build_transcription_dialog(frame, controller)
     try:
-        wx.CallAfter(dialog.refresh)
+        wx.CallAfter(lambda: dialog.refresh(selected_job=selected_job) if not dialog.closed else None)
         dialog.ShowModal()
     finally:
         dialog.closed = True
         dialog.cancel_event.set()
-        dialog.timer.Stop()
-        dialog.Destroy()
+        try:
+            dialog._unregister_save()
+        finally:
+            try:
+                dialog.timer.Stop()
+            finally:
+                dialog.Destroy()
+
+
+def show_transcription(frame, *, selected_job=None):
+    """Keep the existing dashboard/native entrypoint and exact workspace binding."""
+    if getattr(frame, 'active', None) is None:
+        frame.report('Select an active workspace before opening transcription.')
+        return
+    return show_transcription_dialog(frame, selected_job=selected_job)
 
 
 def install_transcription_menu(frame, menu):
@@ -898,10 +1135,10 @@ def install_transcription_menu(frame, menu):
             frame.report('Wait for the current operation or cancel it before opening transcription.')
             return
         try:
-            controller = getattr(frame, 'transcription_controller', None)
-            if controller is None or controller.private_root != Path(frame.library.root).absolute():
-                controller = TranscriptionController(frame.library.root)
-                frame.transcription_controller = controller
+            active = getattr(frame, 'active', None)
+            if active is None:
+                raise ValueError('Select an active workspace before opening transcription.')
+            controller = TranscriptionController(frame.library, active[0])
             show_transcription_dialog(frame, controller)
         except Exception as exc:
             frame.report('Transcription could not open: ' + str(exc))
@@ -909,16 +1146,10 @@ def install_transcription_menu(frame, menu):
     frame.Bind(wx.EVT_MENU, open_dialog, item)
     from .command_registry import CommandSpec
     from .keyboard_settings import register_menu_command
-    register_menu_command(frame, CommandSpec('tools.transcription', 'Local transcription'), item)
+    register_menu_command(frame, CommandSpec('transcription.open', 'Transcription: local audio and video'), item)
     return open_dialog
 
 
 def install_transcription_actions(frame):
-    """Use the same native installer convention as the other workstations."""
-    import wx
-    menu = next((frame.menu_bar.GetMenu(i) for i in range(frame.menu_bar.GetMenuCount())
-                 if frame.menu_bar.GetMenuLabel(i).replace('&', '') == 'Tools'), None)
-    if menu is None:
-        menu = wx.Menu()
-        frame.menu_bar.Append(menu, '&Tools')
-    install_transcription_menu(frame, menu)
+    """Keep the existing host menu and semantic shortcut identity."""
+    install_transcription_menu(frame, frame.menu_bar.GetMenu(0))

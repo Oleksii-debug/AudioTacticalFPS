@@ -60,6 +60,23 @@ location and verify the copy before deleting that program folder. Never delete
 a folder containing your only research copy. The application does not silently
 move existing data. The installer refuses to replace an existing environment.
 
+## Signed permission and update status
+
+Open **Help → License and signed updates** to read the installation's status.
+The default private installation remains perpetual and works offline. When
+trusted host configuration supplies a managed client, this window can review
+and import an exact signed permission, check a configured renewal provider, or
+verify and prepare an explicitly selected offline update package. Reading,
+saving, export, backups, recovery and prior outputs remain available.
+
+Import displays the actual matching terms and requires the acceptance checkbox.
+Checks run through the existing background job controls. Automatic renewal is
+off unless explicitly configured, and only admits requests while the host is
+idle. The package preparation action does not replace the running application;
+managed activation still requires an external restart supervisor. See
+[TRUSTED_CLIENT.md](TRUSTED_CLIENT.md) for the supported boundary and remaining
+qualification.
+
 ## Optional local audio setup
 
 The transferable library archive excludes the reviewed FFmpeg binary runtime.
@@ -99,6 +116,59 @@ python -m carr_library --data-dir "D:\Research data"
 
 `--self-test` uses a temporary synthetic library. It does not import or upload
 your documents. Search and library data remain on the local computer.
+
+## Import and read additional document formats
+
+Choose **Library, Import books** or press **Ctrl+I** for individual files.
+**Library, Import Center: files, folders and queues** also prepares folder plans
+and saves queues for continuation after interruption. Supported additional
+inputs are HTML/HTM/XHTML, Markdown, EML, FB2/FB3, ODT/ODS/ODP, PPTX and XLSX.
+Select an imported book and press **Ctrl+R** to read its logical text segments;
+normal library search uses the same stored text.
+
+The import details explain actual omissions, such as email attachments, formulas
+and hidden spreadsheet content. These formats retain byte-exact originals and
+unverified extracted text. They do not enable verified quotation commands or
+invent printed pagination. Active-content originals are not launched in external
+viewers; use Reading Desk. **Help, Document formats** and
+[the format guide](DOCUMENT_FORMATS_V3.md) describe the supported subsets and
+the current 64 MiB source limit. Legacy converters and unsupported formats are
+not downloaded automatically.
+
+## Look up identifiers and obtain an open source
+
+Choose **Academic, DOI and ISBN lookup and open-access sources**. Select one
+identifier and explicitly enable its metadata request; network access starts
+disabled. Review the returned fields and provider provenance before saving a
+reference or applying suggestions to an existing book. ISBN lookup requests
+book metadata only. DOI lookup can also offer a provider-reported open-access
+PDF. Downloading requires separate confirmation of the source and your right
+to obtain it, plus a new local destination folder.
+
+The source download and normal library import have separate results. If import
+needs review or fails, the PDF and provenance remain available for Import
+Center without another download. A metadata record never verifies quotations.
+[The acquisition guide](ACADEMIC_ACQUISITION.md) documents the provider choices,
+headless commands, privacy boundaries and recovery steps.
+
+## Retain audio clips, record a microphone and publish synchronized EPUB3
+
+**Audio Studio, Edit scene audio clips** retains the exact selected audio in the
+current library. Set its scene position, source trim, gain, pan and fades with
+keyboard controls; edits preserve the original file and use versioned projects.
+See [Scene audio editing](STUDIO_CLIP_EDITING.md).
+
+**Audio Studio, Record microphone and manage saved inputs** opens no microphone
+on launch. Refresh devices, explicitly select one, then choose Start. Stop
+finalizes a verified WAV; Cancel discards the unfinished capture. Saved recordings
+can become retained scene clips. The [microphone guide](MICROPHONE_RECORDING.md)
+separates the Windows capture controls from physical-device qualification.
+
+**Audio Studio, Publish synchronized EPUB3** packages a completed job with its
+original script, exact source hashes and measured line media overlays. Choose a
+new file outside the private library; existing files are never overwritten.
+[EPUB publication](STUDIO_EPUB_PUBLISHING.md) explains the CLI, recoverable receipts,
+explicit limits and remaining reader, speech-quality and assistive-technology checks.
 
 ## Open original sources and export research
 
@@ -280,6 +350,17 @@ interchange details.
 
 ## Research from the keyboard
 
+### Find a main-window command
+
+Press **Ctrl+Shift+P**, or choose **Help, Find a command**. Type words from a
+command name, menu path or current shortcut. **Tab** reaches the results;
+**Up** and **Down** change the selection. **Enter** runs an available command
+through its existing menu handler. **Escape** closes the search and returns
+focus without running a command. Disabled commands remain visible with their
+availability stated. **Help, Keyboard shortcuts** changes these keys; a saved
+assignment takes priority over a newly added default. See
+[Find a command](COMMAND_PALETTE.md) for focus and shortcut behavior.
+
 ### Search several libraries and manage saved criteria
 
 Press **Ctrl+Alt+F**, or choose **Research, Research Search Center...**.
@@ -426,7 +507,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev2-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.
@@ -492,3 +573,47 @@ are retained in `native-runtime/licenses` and `native-runtime/provenance`.
 Microsoft DLL bytes are not
 included in the source repository. The private-install permission for this
 prepared package does not establish permission for public binary distribution.
+
+## DAISY 2.02 from completed Studio productions
+
+Audio Studio → Publish DAISY 2.02 opens the existing publication dialog with DAISY selected. Choose a completed job, supply publisher metadata and a new ZIP path. The Studio CLI adds publish-daisy; publications and verify-publication share the same durable receipts as EPUB. See STUDIO_DAISY_PUBLISHING.md for the measured-text contract, recovery, pinned structural checks and native-reader limits. Existing EPUB commands and saved keyboard identities remain valid.
+
+
+## Saved tasks and local resource allowances
+
+Open **Tools → Tasks and resources** to inspect saved Studio, assistant, import,
+translation and transcription checkpoints or edit the local CPU, memory, disk
+and GPU allowances. The view labels stored completion and declared reservations;
+open the original workflow to verify results or resume. A selected transcription
+opens in its original active library and starts no recognition. Existing Studio
+and assistant pause/cancel requests retain their normal acknowledgement rules.
+
+The same view is available through `python -m carr_library operations --data-dir
+<folder> list`; use `resources` to inspect allowances and
+`configure-resources <policy.json>` for an explicit policy file. No Run command
+or automatic provider call is added. See [runtime_resources.md](runtime_resources.md)
+for shared admission, policy backup, workspace filtering and qualification limits.
+
+
+## Reviewed book splits and resumable audio items
+
+Select an existing book, then open **Audio Studio → Book audio: split and render**.
+Load its reading inventory, choose an installed local voice, explicit source
+range, split mode and output folder, then Preview the exact source and names.
+**Prepare** saves ordinary Studio items and starts no speech. **Run or resume**
+is a separate confirmation and verifies completed files before reuse.
+
+Supported boundaries include actual EPUB chapters, physical PDF pages,
+text-line paragraphs, punctuation sentences, character counts, blank-line groups
+and bounded regular expressions. The maximum is two million selected characters
+and 256 parts; duration estimates are unavailable. Source text remains literal,
+including strings that resemble Studio directions. Restored plans require a new
+output review through the existing Studio recovery path. See
+[BOOK_AUDIO_BATCH.md](BOOK_AUDIO_BATCH.md) for limits, provenance and cancellation.
+
+
+## Current completion candidate, 2026-11-27
+
+The current technical authority is [the finalization specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md). See [candidate readiness](V3_RELEASE_READINESS.md) for source/runtime/qualification distinctions and [canonical convergence](CANONICAL_CONVERGENCE_20261127.md) for reconciled branch behavior.
+
+The existing launcher now accepts `transcribe` or `transcription`, and `translate` or `translation`, for the same corresponding service. `operations` retains the shared journal/resource view with explicitly scoped controls. `backup-incremental create|verify|restore` and the Library menu use the [incremental backup workflow](INCREMENTAL_BACKUPS.md). A layer requires its explicitly selected parent chain and is never a standalone replacement for the full base.

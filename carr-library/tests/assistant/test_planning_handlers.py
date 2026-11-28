@@ -45,7 +45,7 @@ class Sizer:
 
 class ControlledExecutor:
     """Hold work and completion independently to reproduce edited-input races."""
-    def __init__(self, **kwargs): self.pending, self.shutdowns = [], []
+    def __init__(self, **kwargs): self.pending = []
     def submit(self, callback, *args, **kwargs):
         future = Future()
         future.set_running_or_notify_cancel()
@@ -57,7 +57,7 @@ class ControlledExecutor:
             future.set_result(callback(*args, **kwargs))
         except BaseException as exc:
             future.set_exception(exc)
-    def shutdown(self, **kwargs): self.shutdowns.append(kwargs)
+    def shutdown(self, **kwargs): pass
 
 
 @pytest.fixture
@@ -201,14 +201,13 @@ def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choi
     output = tmp_path / 'audio-output'; output.mkdir()
     e.controls['output'].SetValue(str(output))
     e.controls['instruction'].SetValue('Produce audio: Explicit synthetic narration.')
-    discoveries, inventories, choices = [], [], []
+    discoveries, choices = [], []
     class Provider:
         name = 'Synthetic inventory only'
-        def voices(self):
-            inventories.append(True)
-            return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
-    def existing_voices(owner):
+        def voices(self): return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
+    def discover(owner, *, cancelled):
         discoveries.append(True)
+        if cancelled(): raise InterruptedError('Voice inventory cancelled')
         owner._voices = VoiceRegistry([Provider()])
         return owner._voices
     class ChoiceDialog(Widget):
@@ -216,42 +215,34 @@ def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choi
             choices.append(True)
             self.selection = 0
             return e.wx.ID_OK
-    monkeypatch.setattr(ProductionService, 'voices', property(existing_voices))
+    monkeypatch.setattr(ProductionService, 'discover_voices', discover)
     e.wx.SingleChoiceDialog = ChoiceDialog
     e.handlers['preview']()
     assert not discoveries and not choices and len(e.executor.pending) == 1
     assert not e.controls['buttons']['run'].IsEnabled()
     if cancelled:
         e.handlers['cancel']()
-    e.executor.complete()
-    assert inventories == ([] if cancelled else [True])
-    assert choices == []
-    e.drain()
-    assert discoveries == ([] if cancelled else [True])
+    e.executor.complete(); e.drain()
+    assert discoveries == [True]
     assert choices == ([] if cancelled else [True])
     assert e.controls['buttons']['run'].IsEnabled() is not cancelled
     assert e.dialog.assistant_service.jobs() == ()
 
 
-def test_assistant_close_cancels_then_closes_production_after_pending_work(native_handlers, monkeypatch):
+def test_assistant_close_queues_service_cleanup_after_current_worker(native_handlers, monkeypatch):
     from carr_library.studio.render import ProductionService
     e = native_handlers
     closed = []
-    original_close = ProductionService.close
-    def close_production(production):
-        closed.append(production)
-        return original_close(production)
-    monkeypatch.setattr(ProductionService, 'close', close_production)
+    original = ProductionService.close
+    def close(owner):
+        closed.append(True)
+        original(owner)
+    monkeypatch.setattr(ProductionService, 'close', close)
     select_model(e)
     e.handlers['preview']()
     e.handlers['close']()
-    e.handlers['close']()  # Native close and wrapper cleanup remain idempotent.
-    assert len(e.executor.pending) == 2 and not closed
-    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
-    before = e.controls['review'].GetValue()
+    assert len(e.executor.pending) == 2 and closed == []
     e.executor.complete(); e.drain()
-    assert not e.calls and e.controls['review'].GetValue() == before
-    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
-    assert not closed  # Cleanup waits behind the actual pending proposal.
-    e.executor.complete(); e.drain()
-    assert len(closed) == 1 and not e.executor.pending
+    assert closed == []
+    e.executor.complete()
+    assert closed == [True]

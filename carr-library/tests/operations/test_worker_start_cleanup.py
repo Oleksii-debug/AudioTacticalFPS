@@ -10,24 +10,33 @@ from carr_library.operations import ResourceBroker, ResourceRequest
 
 
 @pytest.mark.parametrize('failed_reader', [1, 2])
-def test_pipe_reader_start_failure_stops_real_child_before_resource_release(tmp_path, monkeypatch, failed_reader):
+@pytest.mark.parametrize('phase', ['allocation', 'start'])
+def test_pipe_reader_start_failure_stops_real_child_before_resource_release(tmp_path, monkeypatch, failed_reader, phase):
     broker = ResourceBroker.for_app(tmp_path)
     children, readers = [], []
-    native_popen, native_start = process.subprocess.Popen, threading.Thread.start
+    native_popen, native_start, native_thread = process.subprocess.Popen, threading.Thread.start, threading.Thread
+    allocated = []
 
     def popen(*args, **kwargs):
         child = native_popen(*args, **kwargs)
         children.append(child)
         return child
 
+    def allocate(*args, **kwargs):
+        allocated.append(True)
+        if phase == 'allocation' and len(allocated) == failed_reader:
+            raise RuntimeError('Synthetic diagnostic reader startup failure during allocation')
+        return native_thread(*args, **kwargs)
+
     def start(thread):
         readers.append(thread)
-        if len(readers) == failed_reader:
+        if phase == 'start' and len(readers) == failed_reader:
             raise RuntimeError('Synthetic diagnostic reader startup failure')
         return native_start(thread)
 
     monkeypatch.setattr(process.subprocess, 'Popen', popen)
     monkeypatch.setattr(threading.Thread, 'start', start)
+    monkeypatch.setattr(process.threading, 'Thread', allocate)
     with broker.reserve(ResourceRequest(), operation_id='startup-failure'):
         try:
             with pytest.raises(RuntimeError, match='reader startup failure'):

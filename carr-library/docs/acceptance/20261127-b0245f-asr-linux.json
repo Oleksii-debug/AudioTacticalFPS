@@ -1,0 +1,130 @@
+{
+  "schema": "carr-exact-acceptance/1",
+  "recorded_utc": "2026-11-27T14:48:41Z",
+  "commit": "b0245fe9bc949d14bb4a8407d7c7d6e858db8bed",
+  "tree": "8c390f4a05f36cbb6934c1138fbfb72942189c10",
+  "job_conclusion": "success",
+  "run_id": 46015621194,
+  "job_id": 140562053451,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46015621194/job/140562053451",
+  "suite_count": 15,
+  "suites": [
+    {
+      "suite": "tests/transcription/test_supplied_worker_bridge.py",
+      "passed": 65,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/transcription/test_runtime_review.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/transcription/test_profile_controls.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_transcription_review_restore.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/transcription/test_v5_worker_profile.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_transcription_dialog.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_facade.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_transcription_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_backup_incremental_dialog.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_incremental.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_progress_job_review.py",
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_durable_state_read.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_state_replacement.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_durable_state_publication.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_transcription.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 356,
+    "failed": 0,
+    "skipped": 0
+  },
+  "boundaries": {
+    "actual_runtime": "Linux; actual isolated synthetic supplied-protocol workers",
+    "private_whisper_model_inference": "NOT_RUN",
+    "asr_accuracy_or_diarization": "NOT_RUN",
+    "native_windows": "NOT_RUN",
+    "later_source_revisions": "NOT_RUN"
+  }
+}

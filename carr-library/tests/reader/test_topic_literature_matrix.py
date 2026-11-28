@@ -176,7 +176,7 @@ def test_revoked_pdf_review_blocks_fresh_matrix_and_exports(research, tmp_path):
     app.review_pdf_page(workspace, hit.ref, hit.revision, 'Fixture reviewer', confirmed=True)
     app.save_hit(workspace, 'root', hit.ref, hit.revision)
     shown = build_literature_matrix(app, workspace, 'root')
-    assert shown.sources[0].evidence[0].locations == ('PDF page 1 (printed page unverified)',)
+    assert shown.sources[0].evidence[0].locations == ('Physical page 1 (printed page unverified)',)
     app.revoke_pdf_review(workspace, hit.edition_id, hit.revision, 1)
     for action in (build_literature_matrix, export_matrix, export_outline):
         with pytest.raises(ValueError):
@@ -213,7 +213,7 @@ def test_real_two_page_span_keeps_individual_quotes_locations_and_citations(rese
     evidence, = source.evidence
     assert source.evidence_count == 1 and evidence.quotes == tuple(a.quote for a in anchors)
     assert len(evidence.citations) == len(evidence.locations) == 2
-    assert 'PDF page 1' in evidence.citations[0] and 'PDF page 2' in evidence.citations[1]
+    assert 'Physical page 1' in evidence.citations[0] and 'Physical page 2' in evidence.citations[1]
     csv_row, = csv.DictReader(io.StringIO(export_matrix(app, workspace, 'root')))
     assert json.loads(csv_row['quotation_slices_json']) == [[a.quote for a in anchors]]
     text = export_outline(app, workspace, 'root', format='text')

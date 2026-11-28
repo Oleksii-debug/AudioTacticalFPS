@@ -67,14 +67,25 @@ def _run_test_process(command, *, env) -> int:
 PYTEST_CHILD = """
 import sys
 import socket
+import os
+
+# Only a dedicated, unprivileged Linux network namespace can opt into
+# real loopback. The ordinary strict offline runner is unchanged.
+loopback_only = sys.argv[1:2] == ['--carr-loopback-only']
+if loopback_only:
+    del sys.argv[1]
+    if (sys.platform != 'linux' or os.geteuid() == 0
+            or {name for _, name in socket.if_nameindex()} != {'lo'}):
+        raise SystemExit('Loopback acceptance requires an unprivileged loopback-only network namespace.')
 
 def offline_network(*args, **kwargs):
     raise OSError('Network access is disabled during offline verification')
 
-socket.socket.connect = offline_network
-socket.socket.connect_ex = offline_network
-socket.create_connection = offline_network
-socket.getaddrinfo = offline_network
+if not loopback_only:
+    socket.socket.connect = offline_network
+    socket.socket.connect_ex = offline_network
+    socket.create_connection = offline_network
+    socket.getaddrinfo = offline_network
 
 try:
     import onnxruntime
@@ -137,7 +148,16 @@ def _report_directory(suite):
                   f'directory={directory.name}', flush=True)
 
 
-def run_suite(suite: str) -> bool:
+LOOPBACK_SUITES = (
+    'tests/assistant/test_local_planning_loopback.py',
+    'tests/assistant/test_translation_local_loopback.py',
+)
+
+
+def run_suite(suite: str, *, loopback_only: bool = False) -> bool:
+    if loopback_only and suite not in LOOPBACK_SUITES:
+        print('FAIL: loopback-only mode is reserved for the actual local planning and translation protocol suites.', flush=True)
+        return False
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
         print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
@@ -158,7 +178,8 @@ def run_suite(suite: str) -> bool:
         with _report_directory(suite) as tmp:
             report = Path(tmp) / 'junit.xml'
             returncode = _run_test_process([
-                sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
+                sys.executable, '-c', PYTEST_CHILD,
+                *(['--carr-loopback-only'] if loopback_only else []), '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
@@ -185,9 +206,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
+    parser.add_argument('--loopback-only', action='store_true',
+                        help='Run only the local planning and translation protocol suites in an isolated Linux network namespace')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
-    if args.jobs == 1:
+    if args.loopback_only:
+        if args.jobs != 1 or args.suites != list(LOOPBACK_SUITES):
+            parser.error('--loopback-only requires exactly the local planning and translation protocol suites and one worker')
+        results = [run_suite(suite, loopback_only=True) for suite in LOOPBACK_SUITES]
+    elif args.jobs == 1:
         results = [run_suite(suite) for suite in args.suites]
     else:
         # Every suite retains its own interpreter, offline policy, deadline and

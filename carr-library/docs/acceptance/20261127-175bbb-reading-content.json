@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "tested_commit": "175bbb7c6b26763f73170ee4836f718f8ec86b66",
+  "tested_tree": "23957dc179802c08a5b5bd7518d7509db422db09",
+  "status": "PASS",
+  "run_id": 46032268761,
+  "job_id": 140618762030,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46032268761/job/140618762030",
+  "evidence_source": "Returned completed job logs, exact checkout identity and JUnit-derived strict suite summary.",
+  "strict_suite_origin": "Checkout source; ci_check.py sets PYTHONPATH to src.",
+  "suites": [
+    {
+      "suite": "tests/speech/test_narration_policy.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_narration.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_focus_hook.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_session.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_tabs.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_source.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_navigation.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_native_reading_presentation_driver.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_voice_recovery.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 239,
+    "failed": 0,
+    "skipped": 0
+  },
+  "qualification": {
+    "later_composed_candidate": "NOT_ESTABLISHED_BY_THIS_RECORD",
+    "human_nvda": "NOT_RUN",
+    "full_platform_acceptance": "NOT_ESTABLISHED_BY_THIS_COMPONENT"
+  }
+}

@@ -3,7 +3,6 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
-import http.client
 import json
 import ssl
 import signal
@@ -20,7 +19,7 @@ from carr_library.assistant.profiles import (
 from carr_library.assistant.providers import Authorization, Gateway, ProviderError
 from carr_library.assistant.state import read_json
 from carr_library.assistant.translation import TranslationService, translation_approval
-from carr_library.assistant import translation_cli
+from carr_library.assistant import translation_cli, providers as provider_transport
 from carr_library.application import LibraryApp
 from carr_library.ui import translation_dialog as ui
 from carr_library.speech.reading import ReadingDocument
@@ -67,6 +66,10 @@ def transport(monkeypatch):
             assert host == 'translation.googleapis.com' and port in (None, 443)
             assert isinstance(kwargs['context'], ssl.SSLContext)
             self.position = 0
+            self.deadline, self.cancelled = kwargs['deadline'], kwargs['cancelled']
+
+        def check(self):
+            provider_transport._check_request(self.deadline, self.cancelled)
 
         def request(self, method, route, body, headers):
             state['calls'].append({'method': method, 'route': route, 'body': body, 'headers': dict(headers)})
@@ -89,6 +92,11 @@ def transport(monkeypatch):
             if state['response'] is not None:
                 document = state['response'](document) if callable(state['response']) else state['response']
             self.raw = json.dumps(document, ensure_ascii=False).encode('utf-8')
+            if state.get('escape_secret'):
+                secret = state['escape_secret']
+                escaped = ''.join('\\u%04x' % ord(char) for char in secret).encode('ascii')
+                self.raw = self.raw.replace(secret.encode('utf-8'), escaped)
+
 
         def getresponse(self):
             self.status = state['status']
@@ -104,7 +112,18 @@ def transport(monkeypatch):
 
         def close(self):
             state['closed'] += 1
-    monkeypatch.setattr(http.client, 'HTTPSConnection', Connection)
+    def configured(target, *, local, deadline, cancelled):
+        assert not local
+        return Connection(target.hostname, target.port, context=ssl.create_default_context(),
+                          deadline=deadline, cancelled=cancelled)
+
+    # This fixture exercises the canonical gateway/ledger with synthetic replies;
+    # the separate verified loopback TLS suite exercises the actual transport.
+    def no_dns(*args, **kwargs):
+        raise AssertionError('Synthetic Advanced v3 tests must not resolve or contact any provider.')
+
+    monkeypatch.setattr(provider_transport.socket, 'getaddrinfo', no_dns)
+    monkeypatch.setattr(provider_transport, '_Connection', configured)
     return state
 
 
@@ -539,3 +558,136 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
         e.press('Translate / resume')
         assert not e.state['queue'] and len(e.service.list()) == 1
     e.scenario(scenario)
+
+
+@pytest.mark.parametrize('source, expected', [
+    pytest.param('A' * 4498 + '\n\nB', 'Похідний &amp;\n\nПохідний &amp;', id='paragraphs'),
+    pytest.param('A' * 4499 + ' ' * 4501 + '\tB',
+                 'Похідний &amp;' + ' ' * 4501 + '\tПохідний &amp;', id='whitespace-only-chunk'),
+    pytest.param('漢' * 4501, 'Похідний &amp;Похідний &amp;', id='no-space-script'),
+])
+def test_advanced_export_keeps_canonical_chunk_joins_and_raw_receipts(tmp_path, transport, source, expected):
+    service, p, _ = ready(tmp_path, transport)
+    transport['response'] = {'translations': [{'translatedText': 'Похідний &amp;',
+                                              'model': PARENT + '/models/general/nmt'}]}
+    identity, _ = submit(service, p, source)
+    assert service.resume(identity)['status'] == 'complete'
+    saved = service.jobs.path(identity).read_bytes()
+    before = len(transport['calls'])
+    service.export(identity, tmp_path / 'joined-export')
+    output = tmp_path / 'joined-export'
+    assert (output / 'translated.txt').read_bytes().decode('utf-8') == expected
+    assert (output / 'original.txt').read_bytes().decode('utf-8') == source
+    reading = ReadingDocument.load(output / 'translation.reading.json')
+    assert reading.text == expected and reading.source_text == source
+    assert service.jobs.path(identity).read_bytes() == saved
+    assert len(transport['calls']) == before
+
+
+@pytest.mark.parametrize('translated', ['', ' \t\r\n', '\u2003\u00a0'])
+def test_advanced_empty_output_never_publishes_or_rebills(tmp_path, transport, translated):
+    service, p, _ = ready(tmp_path, transport)
+    transport['response'] = {'translations': [{'translatedText': translated,
+                                              'model': PARENT + '/models/general/nmt'}]}
+    identity, approval = submit(service, p)
+    with pytest.raises(ProviderError):
+        service.resume(identity)
+    job = service.jobs.load(identity)
+    assert job['status'] == 'attention' and not job['receipts']
+    row = service.gateway.ledger.get(approval.id)['operations'][identity + '_0']
+    assert row['status'] == 'uncertain' and row['output_sha256'] is None
+    before = len(transport['calls'])
+    with pytest.raises(ProviderError, match='already been attempted'):
+        service.resume(identity)
+    with pytest.raises(ValueError):
+        service.export(identity, tmp_path / 'empty-export')
+    assert len(transport['calls']) == before
+    assert not (tmp_path / 'empty-export').exists()
+
+
+@pytest.mark.parametrize('encoding', ['html', 'json_unicode'])
+@pytest.mark.parametrize('operation', ['translation.text', 'translation.languages'])
+def test_advanced_decoded_credentials_never_reach_local_publication(tmp_path, transport, encoding, operation):
+    service, p, _ = ready(tmp_path, transport)
+    encoded = ''.join('&#%d;' % ord(char) for char in TOKEN) if encoding == 'html' else TOKEN
+    if operation == 'translation.text':
+        transport['response'] = {'translations': [{'translatedText': encoded,
+                                                  'model': PARENT + '/models/general/nmt'}]}
+    else:
+        transport['response'] = {'languages': [{'languageCode': 'uk', 'displayName': encoded,
+                                               'supportTarget': True}]}
+    if encoding == 'json_unicode':
+        transport['escape_secret'] = TOKEN
+    if operation == 'translation.text':
+        identity, approval = submit(service, p)
+        with pytest.raises(ProviderError, match='credential material') as failure:
+            service.resume(identity)
+        assert not service.jobs.load(identity)['receipts']
+    else:
+        before = service._languages_path(p).read_bytes()
+        approval = Authorization('renew_discovery', 'renew_discovery', ((p.id, p.endpoint),),
+            ('translation.languages',), ('user-instruction',), '0', 1, time() + 60)
+        with pytest.raises(ProviderError, match='credential material') as failure:
+            service.refresh_languages(p, authorization=approval)
+        assert service._languages_path(p).read_bytes() == before
+    assert TOKEN not in str(failure.value)
+    assert all(row['status'] == 'uncertain' and row['output_sha256'] is None
+               for row in service.gateway.ledger.get(approval.id)['operations'].values())
+    for path in service.directory.rglob('*.json'):
+        assert TOKEN not in path.read_text(encoding='utf-8')
+
+
+@pytest.mark.parametrize('action', ['resume', 'export'])
+@pytest.mark.parametrize('mutation', ['source', 'target', 'profile', 'credential', 'cost',
+                                     'authorization', 'request', 'response', 'model', 'glossary'])
+def test_advanced_completed_receipts_keep_canonical_authority(tmp_path, transport, action, mutation):
+    service, p, _ = ready(tmp_path, transport)
+    identity, approval = submit(service, p, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    if mutation == 'source':
+        job['source_language'] = 'de'
+    elif mutation == 'target':
+        job['target_language'] = 'fr'
+    elif mutation == 'profile':
+        job['profile']['name'] = 'Different account snapshot'
+    elif mutation == 'credential':
+        job['profile']['credential_ref'] = 'carr/provider/' + p.id + '/' + 'b' * 32
+    elif mutation == 'cost':
+        job['per_call_cost'] = '0.5'
+    elif mutation == 'authorization':
+        job['authorization']['budget'] = '2'
+    elif mutation == 'request':
+        job['receipts'][0]['request_sha256'] = '0' * 64
+    elif mutation == 'response':
+        job['receipts'][0]['response_sha256'] = '0' * 64
+    elif mutation == 'model':
+        job['receipts'][0]['reported_model'] = PARENT.replace('123456789', '987654321') + '/models/general/nmt'
+    else:
+        job['receipts'][0]['glossary_config']['glossary'] += '-different'
+    service.jobs.save(job)
+    saved = service.jobs.path(identity).read_bytes()
+    before = len(transport['calls'])
+    destination = tmp_path / 'changed-export'
+    with pytest.raises((ValueError, PermissionError)):
+        if action == 'resume':
+            service.resume(identity)
+        else:
+            service.export(identity, destination)
+    assert not destination.exists()
+    assert len(transport['calls']) == before
+    assert service.jobs.path(identity).read_bytes() == saved
+    assert service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['status'] == 'complete'
+
+
+@pytest.mark.parametrize('detected', [False, 0, [], {}])
+def test_advanced_rejects_nonstring_detected_language_before_receipt(tmp_path, transport, detected):
+    service, p, _ = ready(tmp_path, transport)
+    identity, approval = submit(service, p)
+    transport['response'] = {'translations': [{'translatedText': 'Valid text',
+        'model': PARENT + '/models/general/nmt', 'detectedLanguageCode': detected}]}
+    with pytest.raises(ProviderError, match='detected translation language'):
+        service.resume(identity)
+    assert not service.jobs.load(identity)['receipts']
+    row = service.gateway.ledger.get(approval.id)['operations'][identity + '_0']
+    assert row['status'] == 'uncertain' and row['output_sha256'] is None

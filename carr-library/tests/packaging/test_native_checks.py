@@ -111,6 +111,39 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+def test_refreshed_v3_manifest_reaches_native_dependency_checks(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest.update(bundled_audio=True, bundled_citation_runtime=True,
+                    bundled_launcher=True, source_tree='c' * 40,
+                    parent_source_commit='d' * 40, parent_manifest_sha256='e' * 64,
+                    use_scope='private-personal-installation')
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert events[-1] == native_checks.NATIVE_MODULES[-1][1]
+    assert report['windows_nvda'] == 'NOT_RUN'
+
+
+@pytest.mark.parametrize('field,value', [
+    ('bundled_audio', 'true'), ('bundled_citation_runtime', 1),
+    ('bundled_launcher', []), ('source_tree', 'HEAD'),
+    ('parent_source_commit', 'a' * 39), ('parent_manifest_sha256', 'b' * 63),
+    ('use_scope', 'unreviewed-public-release'),
+])
+def test_invalid_v3_manifest_provenance_fails_before_loading_extensions(
+        tmp_path, monkeypatch, field, value):
+    manifest = bundle(tmp_path)
+    manifest[field] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL' and not events
+    assert report['failed_component'] == 'installation manifest'
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []

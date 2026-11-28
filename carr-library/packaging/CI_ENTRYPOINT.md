@@ -1,4 +1,39 @@
-# Provider-neutral CI entrypoint (candidate, not an active workflow)
+# Provider-neutral CI entrypoint
+
+## Current completion-candidate use
+
+GitHub Actions is active in the repository's root `.github/workflows/`.
+The current ordinary gates include `carr-windows.yml`, `carr-v3.yml`,
+`carr-academic-reconciliation.yml`, the reader/transcription/component
+workflows, native launchers and portable lifetime recovery. The selected
+candidate and actual results are recorded in
+[release readiness](../docs/V3_RELEASE_READINESS.md) and
+[the convergence ledger](../docs/CANONICAL_CONVERGENCE_20261127.md).
+
+Use the exact complete selector inventory and prerequisites from the matching
+workflow at the commit being tested. The single-suite example below checks
+the runner itself; it does not replace a required product gate. Each strict
+suite retains its isolated process, 600-second bound, offline policy, explicit
+JUnit result and successful cleanup requirement. Missing tests, skips,
+XFAIL/XPASS, failed process cleanup or absent terminal reports remain failures
+or incomplete evidence.
+
+Installed acceptance uses a fresh environment and the workflow's pinned
+dependencies and runtime preparation. The installed package must match the
+tested checkout; a result from an earlier commit does not qualify a successor.
+The native playback probes require actual Windows output capabilities.
+Starting the built-in audio services without obtaining a render endpoint does
+not satisfy that prerequisite. Keep native failures visible; see
+[the terminal and output diagnosis](../docs/acceptance/20261128-7a445c-terminal-and-native-output.json)
+for the exact failed hosted execution and source evidence.
+
+The initial bootstrap record below preserves its original limited execution
+and historical blockers. Its statements that Actions was inactive or root
+workflow work was outside that earlier task's scope do not describe the current
+completion work. Current dependency authority is the selected candidate's
+reviewed lock and matching workflow.
+
+## Initial bootstrap record (historical)
 
 This is a small wrapper around the existing pytest dependency in PR #17. No new test engine or package manager. Run only on reviewed code and synthetic fixtures, in a disposable checkout with no private data, tokens, or production credentials. The runner is not a security sandbox for arbitrary Python tests.
 
@@ -22,21 +57,7 @@ Explicit `xfail(strict=False)` can yield XPASS with pytest exit 0, and JUnit rec
 
 Reproduced against exact old executable blob b0897720de641a636ca799746905b7a1d5c6689e: expanded suite 9 passed, 2 failed (explicit non-strict XPASS and mixed pass/XPASS), exit 1, 20.93s. After correction: `python -m pytest -q tests/packaging/test_ci_check.py` 11 passed, exit 0, 19.84s; `python scripts/ci_check.py tests/packaging/test_ci_check.py` 11 passed, exit 0, 20.34s. Linux Python 3.13.5 / pytest 9.0.2 / pluggy 1.6.0. Tested blobs: scripts/ci_check.py a9743a4f90bbd1f5ec9b26d3c69007274bdde770 and tests/packaging/test_ci_check.py c8b6b6dc0a9507315e2a1b9b657120bb77dd8a71. Windows/actual CI NOT_RUN; independent exact-head review pending. No changes outside carr-library or release status.
 
-## Current citation runtime and source identity
 
-The primary integration uses the existing local citeproc-js payload through the
-hash-locked quickjs-ng Python dependency. It no longer requires or acquires a
-separate Node executable. Installed bibliography, source-integrity and document
-checks run against the same source commit as the retained Windows application
-wheel. Earlier Node-selection diagnostics belong only to the superseded branch.
+## Completion-candidate additions
 
-## Installed translation and local proposal gates
-
-Advanced v3 uses the existing gateway, vault, consent and checkpoint contracts;
-its native probe uses synthetic HTTPS responses with actual installed widgets
-and credentials. Local proposal validation is covered by strict offline suites.
-The separate native/HTTP gate permits loopback for a synthetic local model peer
-while blocking other IPv4/IPv6 destinations for the selected Python and
-PowerShell executables. It verifies each active firewall rule and address filter,
-then restores the prior profiles in `finally`. This is executable-scoped evidence,
-not a whole-machine sandbox or actual-model quality qualification.
+The reader-completion gate runs exact-head reader, owned audio cleanup, measured Book Audio and incremental-backup composition tests with actual FFmpeg. Supplied transcription gates include reviewed runtime/profile, restored-trust, scoped controls and CLI/native regressions. The native incremental backup probe uses real DesktopFrame menu dispatch, its existing background worker, actual canonical files and native completion controls; selected directories are synthetic fixture inputs and manual file-picker/NVDA qualification is NOT_RUN. Record every result against its commit/tree and keep zero-skip checks; a passed earlier source job is not installed-build evidence for a later candidate.

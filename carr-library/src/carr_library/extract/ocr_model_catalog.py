@@ -18,6 +18,7 @@ import sys
 import tempfile
 
 from .ocr_runtime import OcrRuntimeError, _relative, _stamp, _stat, _unique_object
+from ..installation_lease import installed_entrypoint
 
 CATALOGUE = 'ocr-model-catalog.json'
 MAX_CATALOGUE = 2 * 1024 * 1024
@@ -303,6 +304,7 @@ def prepare_offline_pack(source_directory, destination, codes, *, profile='fast'
                         tuple(model.code for model in models), total, sha256(raw).hexdigest())
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)

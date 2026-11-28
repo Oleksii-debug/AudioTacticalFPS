@@ -17,6 +17,8 @@ import re
 import stat
 import sys
 
+from .installation_lease import installed_entrypoint
+
 MAX_MANIFEST = 8 * 1024 * 1024
 MAX_FILES = 50000
 TARGET = 'Windows x64 / CPython 3.11'
@@ -50,22 +52,30 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
+    optional_flags = {'bundled_native_runtime', 'bundled_audio_runtime', 'bundled_audio',
+                      'bundled_citation_runtime', 'bundled_launcher'}
+    provenance = {'source_commit', 'source_tree', 'parent_source_commit',
+                  'parent_manifest_sha256', 'use_scope'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'source_tree',
-                                          'bundled_native_runtime', 'bundled_audio_runtime'}
+            or value.keys() - required - optional_flags - provenance
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    for field in ('bundled_native_runtime', 'bundled_audio_runtime'):
-        if field in value and type(value[field]) is not bool:
-            raise ValueError('The ' + field + ' installation flag must be a boolean.')
-    for field in ('source_commit', 'source_tree'):
-        if field in value and (not isinstance(value[field], str)
-                or not re.fullmatch('[0-9a-f]{40}', value[field])):
-            raise ValueError('Invalid installation ' + field + '.')
+    if any(name in value and type(value[name]) is not bool for name in optional_flags):
+        raise ValueError('Optional runtime installation flags must be booleans.')
+    for name in ('source_commit', 'source_tree', 'parent_source_commit'):
+        if (name in value and (not isinstance(value[name], str)
+                or not re.fullmatch('[0-9a-f]{40}', value[name]))):
+            raise ValueError('Invalid installation source identity.')
+    if ('parent_manifest_sha256' in value and (
+            not isinstance(value['parent_manifest_sha256'], str)
+            or not re.fullmatch('[0-9a-f]{64}', value['parent_manifest_sha256']))):
+        raise ValueError('Invalid parent installation manifest identity.')
+    if 'use_scope' in value and value['use_scope'] != 'private-personal-installation':
+        raise ValueError('Unsupported installation distribution profile.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):
@@ -146,6 +156,7 @@ def check_native_dependencies(bundle_root):
     return report
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-root', required=True, type=Path)

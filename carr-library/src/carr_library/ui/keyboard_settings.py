@@ -46,6 +46,34 @@ def accelerator_tuple(shortcut, identifier):
     return entry.GetFlags(), entry.GetKeyCode(), int(identifier)
 
 
+def resolve_saved_bindings(registry, saved):
+    """Keep explicit prior choices ahead of newly introduced default keys."""
+    explicit = {command.command_id: '' for command in registry.commands()}
+    if not isinstance(saved, dict):
+        raise ValueError('Saved shortcuts must be a command-to-shortcut object.')
+    explicit.update(saved)
+    checked = registry.validate(explicit)  # unknown IDs and duplicate explicit owners refuse
+    restored = {identity: checked[identity] for identity in saved}
+    owners = {(registry.get(identity).context, shortcut): registry.get(identity)
+              for identity, shortcut in restored.items() if shortcut}
+    conflicts = []
+    for command in registry.commands():
+        owner = owners.get((command.context, command.default_shortcut))
+        if command.command_id not in restored and command.default_shortcut and owner is not None:
+            restored[command.command_id] = ''
+            conflicts.append(f'{command.label}: {command.default_shortcut} is used by {owner.label}')
+    registry.validate(restored)
+    return restored, tuple(conflicts)
+
+
+def _legacy_part(label):
+    # This is the exact old menu-path spelling, only for matching an already
+    # registered current native item. It never creates or guesses a command ID.
+    return (label.split('\t', 1)[0].replace('&&', '\x00').replace('&', '')
+            .replace('\x00', '&').strip().removesuffix('...').removesuffix('…')
+            .strip().casefold())
+
+
 class KeyboardManager:
     def __init__(self, frame=None, *, store=None, registry=None):
         self.frame = frame
@@ -57,22 +85,93 @@ class KeyboardManager:
         self._adapters = weakref.WeakSet()
         self._unmanaged = {}
         self._pending_saved = None
+        self._pending_legacy = None
+        self._using_legacy = False
         self._load()
 
     def _load(self):
         self.overrides = {}
         self.load_notice = ''
         self._pending_saved = None
+        self._pending_legacy = None
+        self._using_legacy = False
         if self.store is not None:
             try:
                 loaded = self.store.load()
+                legacy_loader = getattr(self.store, 'load_legacy', None)
+                self._pending_legacy = legacy_loader() if callable(legacy_loader) else None
+                if self._pending_legacy is not None:
+                    return  # Current menu bindings are attached before activation.
                 self._pending_saved = loaded
-                self.overrides = self.registry.validate(loaded)
+                self.overrides, conflicts = resolve_saved_bindings(self.registry, loaded)
+                self.load_notice = self._restored_notice(conflicts)
                 self._pending_saved = None
             except (ValueError, OSError) as exc:
                 self.load_notice = ('Keyboard settings could not be loaded. Default shortcuts are active. '
                                     'The existing file was kept. Open Options, Keyboard shortcuts to repair it. '
                                     + str(exc))
+
+    def _restored_notice(self, conflicts):
+        legacy = ('Earlier shortcuts were matched to the same registered commands. '
+                  'Their original file is unchanged; Save writes the current keymap. '
+                  if self._using_legacy else '')
+        conflict = ('Saved keyboard shortcuts are active. These new defaults remain unassigned '
+                    'to preserve your saved choices: ' + '; '.join(conflicts)
+                    + '. Open Keyboard shortcuts to review the assignments.' if conflicts else '')
+        return (legacy + conflict).strip()
+
+    def _legacy_bindings(self, value):
+        if self.frame is None:
+            raise ValueError('Open the main window to review the earlier shortcut profile.')
+        by_native = {binding.item.GetId(): identity for identity, binding in self.bindings.items()}
+        if len(by_native) != len(self.bindings):
+            raise ValueError('The earlier shortcut profile has ambiguous current menu bindings.')
+        paths = {}
+        def visit(menu, parents):
+            for item in menu.GetMenuItems():
+                if item.IsSeparator():
+                    continue
+                part = _legacy_part(item.GetItemLabel())
+                if not part or '/' in part:
+                    raise ValueError('The current menu has no unambiguous earlier command path.')
+                path = (*parents, part)
+                submenu = item.GetSubMenu()
+                if submenu is not None:
+                    visit(submenu, path)
+                elif item.GetId() in by_native:
+                    action = '/'.join(path)
+                    if action in paths:
+                        raise ValueError('The current menu repeats an earlier command path.')
+                    paths[action] = by_native[item.GetId()]
+        bar = self.frame.GetMenuBar()
+        for index in range(bar.GetMenuCount()):
+            visit(bar.GetMenu(index), (_legacy_part(bar.GetMenuLabel(index)),))
+        result = {}
+        for action, shortcut in value['overrides'].items():
+            identity = paths.get(action)
+            if identity is None:
+                raise ValueError('An earlier shortcut command is unavailable: ' + action
+                                 + '. Its original file was kept; no action was retargeted.')
+            command = self.registry.get(identity)
+            if command.context != 'main' or command.default_shortcut != value['originals'][action]:
+                raise ValueError('An earlier command changed its original shortcut: ' + action
+                                 + '. Review an explicit new assignment.')
+            if identity in result:
+                raise ValueError('Earlier shortcut paths resolve to the same command.')
+            result[identity] = shortcut
+        return result
+
+    def _recover_pending(self):
+        legacy = self._pending_legacy is not None
+        loaded = self._legacy_bindings(self._pending_legacy) if legacy else self._pending_saved
+        if loaded is None:
+            return
+        recovered, conflicts = resolve_saved_bindings(self.registry, loaded)
+        self.validate(recovered)
+        self.overrides = recovered
+        self._using_legacy = self._using_legacy or legacy
+        self.load_notice = self._restored_notice(conflicts)
+        self._pending_saved = self._pending_legacy = None
 
     def change_root(self, root):
         self.store = KeymapStore(Path(root) / 'keyboard-shortcuts.json')
@@ -97,18 +196,17 @@ class KeyboardManager:
         old_registry, old_bindings, old_unmanaged = self.registry, self.bindings, self._unmanaged
         old_overrides = self.overrides
         old_notice = self.load_notice
+        old_pending = self._pending_saved, self._pending_legacy, self._using_legacy
         old_label = item.GetItemLabel()
         self.registry, self.bindings = proposed, dict(self.bindings)
         self.bindings[spec.command_id] = _MenuBinding(item, item.GetItemLabel().split('\t', 1)[0], top_index)
         try:
             self._discover()
-            if self._pending_saved is not None:
+            if self._pending_saved is not None or self._pending_legacy is not None:
                 try:
-                    recovered = self.validate(self._pending_saved)
+                    self._recover_pending()
                 except ValueError:
                     pass  # Other modules may still be registering their IDs.
-                else:
-                    self.overrides = recovered
             try:
                 self.validate(self.overrides)
             except ValueError:
@@ -126,12 +224,10 @@ class KeyboardManager:
             self.registry, self.bindings, self._unmanaged = old_registry, old_bindings, old_unmanaged
             self.overrides = old_overrides
             self.load_notice = old_notice
+            self._pending_saved, self._pending_legacy, self._using_legacy = old_pending
             item.SetItemLabel(old_label)
             self._render()
             raise
-        if self._pending_saved is not None and self.overrides == self._pending_saved:
-            self._pending_saved = None
-            self.load_notice = ''
 
     def _top_index(self, wanted):
         menu_bar = self.frame.GetMenuBar()
@@ -206,6 +302,8 @@ class KeyboardManager:
     def activate_loaded(self):
         """An incompatible saved map must not prevent opening the application."""
         try:
+            self._discover()
+            self._recover_pending()
             self.refresh()
         except ValueError as exc:
             self.overrides = {}
@@ -235,7 +333,8 @@ class KeyboardManager:
             self._render()
             raise
         self.load_notice = ''
-        self._pending_saved = None
+        self._pending_saved = self._pending_legacy = None
+        self._using_legacy = False
         return dict(self.overrides)
 
     def shortcut(self, command_id):
@@ -495,7 +594,7 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
     layout = wx.BoxSizer(wx.VERTICAL)
     layout.Add(wx.StaticText(dialog, label='Search commands. Use Tab to choose a result, then Run command.'),
                0, wx.ALL | wx.EXPAND, 8)
-    search = wx.TextCtrl(dialog)
+    search = wx.TextCtrl(dialog, style=wx.TE_PROCESS_ENTER)
     search.SetName('Search commands by name')
     layout.Add(search, 0, wx.ALL | wx.EXPAND, 8)
     results = wx.ListBox(dialog)
@@ -506,6 +605,7 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
     layout.Add(status, 0, wx.ALL | wx.EXPAND, 8)
     footer = wx.BoxSizer(wx.HORIZONTAL)
     run = wx.Button(dialog, wx.ID_OK, '&Run command')
+    run.SetDefault()
     footer.Add(run, 0, wx.ALL, 4)
     footer.Add(wx.Button(dialog, wx.ID_CANCEL, 'Cancel'), 0, wx.ALL, 4)
     layout.Add(footer, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
@@ -539,7 +639,15 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
             choice[:] = [rows[index].command_id]
             dialog.EndModal(wx.ID_OK)
 
+    def enter(event):
+        if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+            accept()
+        else:
+            event.Skip()
+
     search.Bind(wx.EVT_TEXT, rebuild)
+    search.Bind(wx.EVT_TEXT_ENTER, accept)
+    results.Bind(wx.EVT_KEY_DOWN, enter)
     results.Bind(wx.EVT_LISTBOX, selected)
     results.Bind(wx.EVT_LISTBOX_DCLICK, accept)
     run.Bind(wx.EVT_BUTTON, accept)

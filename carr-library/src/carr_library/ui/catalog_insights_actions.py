@@ -234,7 +234,8 @@ class CatalogInsightsActions:
                 self._cancel(scope)
                 return
             path = Path(path)
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
+            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root,
+                                                   title='Replace source comparison matrix')
             if approval is None:
                 self._cancel(scope)
                 return

@@ -95,6 +95,11 @@ def panel(classes):
     value.collection.GetSelection.return_value = 0
     value.collection_ids = [None]
     value.filters = {}
+    value._search_page = None
+    value._source_history = []
+    value.search_navigation = {}
+    value.search_timeout = Mock()
+    value.search_timeout.GetValue.return_value = '300'
     value.grid,value.details,value.status = Mock(),Mock(),Mock()
     value._load_context,value._refresh_details = Mock(),Mock()
     value.verified_copy_service = Mock(return_value=hit.quote)
@@ -103,22 +108,33 @@ def panel(classes):
 
 
 def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collision(classes, monkeypatch):
+    from carr_library.ui.keyboard_settings import register_menu_command
     env, _ = classes
     value = frame(classes)
     value.host, value.layout, value.Bind, value.SetMenuBar = Mock(), Mock(), Mock(), Mock()
-    menus = {}
+    value.progress_panel = Mock()
+    menus, install_order = {}, []
+    identities = iter(range(200, 1000))
+
+    class Item:
+        def __init__(self, title):
+            self.title, self.identity = title, next(identities)
+        def GetItemLabel(self): return self.title
+        def GetId(self): return self.identity
+        def GetSubMenu(self): return None
+        def IsSeparator(self): return False
 
     class Menu:
-        def __init__(self):
-            self.items = []
-
+        def __init__(self): self.items = []
         def Append(self, identity, title):
-            item = SimpleNamespace(title=title)
+            item = Item(title)
             self.items.append(item)
             return item
+        def GetMenuItems(self): return self.items
 
     env['wx'].Menu = Menu
-    env['wx'].MenuBar = lambda: SimpleNamespace(Append=lambda menu, label: menus.update({label: menu}))
+    env['wx'].MenuBar = lambda: SimpleNamespace(
+        Append=lambda menu, label: menus.update({label: menu}))
     env['wx'].Button = Mock(return_value=Mock())
     env['wx'].ID_ANY, env['wx'].ALL = -1, 1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
@@ -133,26 +149,33 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                         SimpleNamespace(install_ebook_reader=ebook))
     new_installers = []
     for module, installer in [('speech_dialog', 'install_speech_actions'),
-                              ('transcription_dialog', 'install_transcription_actions'),
-                              ('operations_dialog', 'install_operations_actions'),
                               ('studio_dialog', 'install_studio_actions'),
+                              ('book_audio_dialog', 'install_book_audio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('save_actions', 'install_save_actions'),
                               ('document_conversion', 'install_conversion_actions'),
                               ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions')]:
-        callback = Mock()
+                              ('translation_dialog', 'install_translation_actions'),
+                              ('citation_formatting', 'install_citation_actions'),
+                              ('transcription_dialog', 'install_transcription_actions'),
+                              ('trust_status', 'install_trust_actions'),
+                              ('operations_dialog', 'install_operations_actions'),
+                              ('audio_playback', 'install_audio_playback'),
+                              ('backup_incremental_dialog', 'install_incremental_backup_actions')]:
+        callback = Mock(side_effect=lambda frame, name=installer: install_order.append(name))
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
                             SimpleNamespace(**{installer: callback}))
-    keyboard = Mock()
-    register_command = Mock()
+    keyboard = Mock(side_effect=lambda frame: install_order.append('install_keyboard_settings'))
     monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
                         SimpleNamespace(install_keyboard_settings=keyboard,
-                                        register_menu_command=register_command))
-    progress = Mock()
+                                        register_menu_command=register_menu_command))
+    progress = Mock(side_effect=lambda frame: install_order.append('install_progress_panel'))
     monkeypatch.setitem(sys.modules, 'carr_library.ui.progress_panel',
                         SimpleNamespace(install_progress_panel=progress))
+    desktop = Mock(side_effect=lambda frame: install_order.append('install_desktop_integration'))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.desktop_integration',
+                        SimpleNamespace(install_desktop_integration=desktop))
 
     value._menus()
 
@@ -161,15 +184,28 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'Import Center: files, folders and queues' in labels
-    registered_frame, registered_spec, registered_item = register_command.call_args.args
-    assert registered_frame is value
-    assert registered_spec.command_id == 'research.advanced_query'
-    assert registered_spec.default_shortcut == 'Ctrl+Alt+Q'
-    assert registered_item.title.startswith('Build advanced query')
+    registered = {spec.command_id: (spec, item) for spec, item in value._pending_keyboard_commands}
+    assert set(registered) == {'research.advanced_query', 'academic.acquisition'}
+    advanced, advanced_item = registered['research.advanced_query']
+    assert advanced.default_shortcut == 'Ctrl+Alt+Q'
+    assert advanced_item.title.startswith('Build advanced query')
+    acquisition, acquisition_item = registered['academic.acquisition']
+    assert acquisition.default_shortcut == ''
+    assert acquisition_item.title == 'DOI and ISBN lookup and open-access sources...'
+    for registered_item in (advanced_item, acquisition_item):
+        assert any(call.args[2] is registered_item for call in value.Bind.call_args_list)
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress):
+    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress, desktop):
         installer.assert_called_once_with(value)
+    assert install_order[-3:] == ['install_keyboard_settings', 'install_progress_panel', 'install_desktop_integration']
+    assert install_order.index('install_studio_actions') < install_order.index('install_book_audio_actions')
+    assert install_order.index('install_book_audio_actions') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_transcription_actions') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_operations_actions') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_audio_playback') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_incremental_backup_actions') < install_order.index('install_keyboard_settings')
+    assert value.operation_progress is value.progress_panel
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
@@ -178,6 +214,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
     assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
+    assert 'Ctrl+Shift+P opens Help, Find a command' in guide
+    assert 'Book audio Prepare starts no speech' in guide
 
 
 def test_repeated_enter_does_not_clear_an_active_search(classes):
@@ -245,17 +283,20 @@ def test_failed_submit_does_not_leave_application_disabled(classes):
 
 def test_running_job_vetoes_normal_close(classes):
     f = frame(classes)
+    f.desktop_integration = SimpleNamespace(close=Mock())
     f.working = True
     event = close_event(True)
     f.on_close(event)
     assert event.veto and not event.skipped
     assert not f._closing
     f.executor.shutdown.assert_not_called()
+    f.desktop_integration.close.assert_not_called()
 
 
 @pytest.mark.parametrize('already_queued',[False,True])
 def test_forced_close_blocks_late_ui_callbacks(classes,already_queued):
     f = frame(classes)
+    f.desktop_integration = SimpleNamespace(close=Mock())
     future = Future()
     f.executor.submit.return_value = future
     done = Mock()
@@ -264,6 +305,7 @@ def test_forced_close_blocks_late_ui_callbacks(classes,already_queued):
         future.set_result('finished')
     f.on_close(close_event(False))
     assert f._closing and f.cancel_event.is_set()
+    f.desktop_integration.close.assert_called_once_with()
     f.report.reset_mock()
     if not already_queued:
         future.set_result('finished')
@@ -569,7 +611,7 @@ def test_pending_import_review_requires_explicit_approval_of_displayed_page(clas
     display(prepare())
     f.library.pending_review.assert_called_once_with('a','request')
     shown = env['show_text'].call_args.args[2]
-    assert 'Original.pdf' in shown and 'Physical PDF page 2' in shown
+    assert 'Original.pdf' in shown and 'Physical page 2' in shown
     assert page['raw_text'] in shown
     f.library.confirm_import_review.assert_not_called()
     if confirmed and reviewer is not None:
@@ -857,3 +899,38 @@ def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(c
     assert app.evidence(workspace, topics[0].id) == ()
     assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()
+
+
+def test_forced_desktop_close_keeps_registered_cleanup_but_cancels_all_ordinary_submissions(classes):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    f = frame(classes)
+    f.executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    closes, ordinary = [], []
+    ui_thread = threading.get_ident()
+    def hold():
+        entered.set()
+        assert release.wait(5)
+    unregister = f.register_worker_cleanup(lambda: closes.append(threading.get_ident()))
+    running = f.executor.submit(hold)
+    try:
+        assert entered.wait(5)
+        # A metadata editor can submit directly, outside run_job.
+        direct = f.executor.submit(lambda: ordinary.append('direct save'))
+        done = Mock()
+        f.run_job('Queued source operation', lambda: ordinary.append('run_job save'), done=done)
+        f.on_close(close_event(False))
+        assert f._closing and f.cancel_event.is_set()
+        assert direct.cancelled() and not running.done()
+        assert closes == [] and ordinary == [] and classes[1] == []
+        release.set()
+        running.result(5)
+        f.executor.shutdown(wait=True, cancel_futures=True)
+        f.on_close(close_event(False))
+        assert len(closes) == 1 and closes[0] != ui_thread
+        assert ordinary == [] and classes[1] == []
+        done.assert_not_called()
+    finally:
+        release.set()
+        unregister()
+        f.executor.shutdown(wait=True, cancel_futures=True)

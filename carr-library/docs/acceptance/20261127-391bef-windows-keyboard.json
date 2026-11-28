@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T15:31:36Z",
+  "tested_commit": "391beff3b479ed322d0ffa206d03ba2ac9da0aaa",
+  "tested_tree": "908accd8e5f306138b80443d51e30381cbcbf1a1",
+  "evidence_source": "Returned completed exact GitHub Actions job logs.",
+  "unique_test_count": "Selections overlap; do not add as unique coverage.",
+  "status": "PASS",
+  "run_id": 46020539927,
+  "job_id": 140583059554,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46020539927/job/140583059554",
+  "suites": [
+    {
+      "suite": "tests/ui/test_command_registry.py",
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_keyboard_preferences.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_keyboard_manager.py",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_command_dispatch.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_keymap_context.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_evidence_drafts.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_evidence_draft_recovery.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 255,
+    "failed": 0,
+    "skipped": 0
+  },
+  "native_reports": [
+    {
+      "checks": 34,
+      "native_key_backend": "wx.UIActionSimulator",
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+        "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+        "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+      },
+      "platform": "Windows",
+      "settings_controls": "native; command filter and shortcut text supplied by probe",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "checks": 23,
+      "native_key_backend": "wx.UIActionSimulator",
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+        "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+        "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+        "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+      },
+      "platform": "Windows",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "checks": 14,
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+        "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+      },
+      "platform": "Windows",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "result": "PASS",
+      "checks": [
+        "exact source: carr_library.assistant.templates",
+        "installed origin: carr_library.assistant.templates",
+        "exact source: carr_library.assistant.template_bindings",
+        "installed origin: carr_library.assistant.template_bindings",
+        "exact source: carr_library.assistant.planner",
+        "installed origin: carr_library.assistant.planner",
+        "exact source: carr_library.ui.workflow_templates",
+        "installed origin: carr_library.ui.workflow_templates",
+        "exact source: carr_library.ui.assistant_dialog",
+        "installed origin: carr_library.ui.assistant_dialog",
+        "actual wxMSW controls",
+        "macro registered once with no default key",
+        "actual semantic key dispatched",
+        "macro opens empty fresh value review",
+        "loaded macro retains no folder approvals and no Run approval",
+        "separate native Preview validates both explicit items without executing",
+        "native project editor strips stored source references",
+        "native typed project settings accepted",
+        "project reuse has fresh identity and no old source claim",
+        "project and template controls execute no job"
+      ],
+      "errors": [],
+      "source_sha256": {
+        "carr_library.assistant.templates": "ecf5415cca47f08cf45a4169bd871607e5951ac8306cf0f8f2e9b6d1de744563",
+        "carr_library.assistant.template_bindings": "3806f6b955e5adc157ce8cd3600a458bb98d7c3ca09423c6d3d1d79dbbbb8e47",
+        "carr_library.assistant.planner": "7abf582aa26dfb77d26179b2cf34e496e28cf97d8b7f5c586de4b9eb7bd92d07",
+        "carr_library.ui.workflow_templates": "bfef366d489c6a0fc9205e92a24cf9af5341b10fa3c51fd0f1bc551c2e4ef7de",
+        "carr_library.ui.assistant_dialog": "123b1e23394f56964c26f6bb75585d91cd056d5451e17a095bd2b83a8fc750ef"
+      },
+      "manual_nvda": "NOT_RUN",
+      "acoustic_quality": "NOT_RUN"
+    }
+  ],
+  "qualification": {
+    "human_windows11_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN"
+  },
+  "strict_suite_origin": "Windows source checkout: ci_check.py sets PYTHONPATH to ROOT/src. Package installation alone does not qualify these suites as installed-package execution.",
+  "native_probe_origin": "Only native reports with explicit module-origin checks qualify installed-package execution."
+}

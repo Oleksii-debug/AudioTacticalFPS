@@ -65,7 +65,7 @@ def center(monkeypatch, tmp_path):
     library = SimpleNamespace(root=tmp_path, read=Mock(side_effect=read),
         import_batches=Mock(side_effect=lambda workspace: tuple(deepcopy(list(saved.values())))),
         import_batch=Mock(side_effect=lambda workspace, identity: deepcopy(saved[identity])),
-        plan_import_batch=Mock(), run_import_batch=Mock(), set_import_batch_row=Mock())
+        plan_import_page=Mock(), continue_import_scan=Mock(), run_import_batch=Mock(), set_import_batch_row=Mock())
     jobs = []
     frame = SimpleNamespace(library=library, working=False, cancel_event=Event(), book=None)
 
@@ -84,11 +84,12 @@ def center(monkeypatch, tmp_path):
     view.custom_ocr_config = None
     view.ocr_models_button = Control()
     view.recursive = Control(value=True)
+    view.page_files, view.page_entries, view.page_seconds = Control(value=1000), Control(value=20000), Control(value=60)
     view.batches, view.rows = Control(), Control(selection=0)
     view.details, view.status, view.cancel = Control(), Control(), Control()
     view.cancel.Disable()
     view.mutable = [view.collection, view.languages, view.ocr_models_button,
-                    view.recursive, view.batches, Control()]
+                    view.recursive, view.page_files, view.page_entries, view.page_seconds, view.batches, Control()]
     view.EndModal = Mock()
     view.jobs, view.pending, view.saved = jobs, pending, saved
     return view
@@ -99,21 +100,68 @@ def complete(center, job, value):
     job.done(value)
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_import_report_capture_precedes_render_and_protects_competing_file(center, tmp_path, monkeypatch, existing):
+    from carr_library.ui import import_center as ui, export_destination
+    from carr_library.research.export_file import capture_export_destination
+    target = tmp_path / 'report.txt'
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    if existing: target.write_bytes(b'Previously approved report')
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    chooser = SimpleNamespace(ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(target), Destroy=Mock())
+    wx.FileDialog = Mock(return_value=chooser)
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', lambda parent, path, **options:
+        capture_export_destination(path, private_root=options['private_root']))
+    original = ui.batch_report
+    def compete(value):
+        result = original(value)
+        target.write_bytes(b'Newer independent import report')
+        return result
+    monkeypatch.setattr(ui, 'batch_report', compete)
+    center.save_report()
+    assert target.read_bytes() == b'Newer independent import report'
+    assert 'destination changed' in center.status.value and center.status.focused
+    assert wx.FileDialog.call_args.kwargs['style'] == wx.FD_SAVE
+    chooser.Destroy.assert_called_once()
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_import_report_decline_does_not_render_or_write(center, tmp_path, monkeypatch):
+    from carr_library.ui import import_center as ui, export_destination
+    target = tmp_path / 'report.txt'
+    target.write_bytes(b'Keep original report')
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    wx.FileDialog = Mock(return_value=SimpleNamespace(ShowModal=lambda: wx.ID_OK,
+        GetPath=lambda: str(target), Destroy=Mock()))
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', lambda *args, **kwargs: None)
+    monkeypatch.setattr(ui, 'batch_report', lambda *args: pytest.fail('Declined report rendered content'))
+    center.save_report()
+    assert target.read_bytes() == b'Keep original report'
+    assert 'saved' not in center.status.value.lower()
+
+
 def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(center):
     center.plan(('/selected/folder',))
-    center.library.plan_import_batch.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
     assert center.busy and center.cancel.enabled
     assert all(not control.enabled for control in center.mutable)
     center.collection.SetSelection(0)
     center.languages.SetSelection(0)
     center.recursive.SetValue(False)
+    center.page_files.SetValue(1)
+    center.page_entries.SetValue(2)
+    center.page_seconds.SetValue(3)
     center.cancel_operation()
     center.jobs[0].operation()
-    args, kwargs = center.library.plan_import_batch.call_args
+    args, kwargs = center.library.plan_import_page.call_args
     assert args == ('library', ('/selected/folder',))
     assert kwargs['collections'] == ('selected-collection',)
     assert kwargs['config'].languages == 'eng+ukr+slk'
     assert kwargs['recursive'] is True and kwargs['cancelled']()
+    assert (kwargs['max_files'], kwargs['max_entries'], kwargs['timeout']) == (1000, 20000, 60.0)
 
 
 @pytest.mark.parametrize('control,selection', [('collection', -1), ('collection', 2),
@@ -123,7 +171,7 @@ def test_invalid_plan_choices_never_start_a_job(center, control, selection):
     with pytest.raises(ValueError, match='Choose a destination'):
         center.plan(('/selected/folder',))
     center.frame.run_job.assert_not_called()
-    center.library.plan_import_batch.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
 
 
 def test_progress_is_marshaled_and_completion_preserves_quarantine_status(center):
@@ -186,12 +234,13 @@ def test_mismatched_progress_identity_is_ignored(center):
     assert center.batch['batch_id'] == 'first'
 
 
-def test_planning_cancel_and_close_do_not_claim_unsaved_queue_is_saved(center):
+def test_planning_cancel_and_close_keep_prior_pages_without_claiming_current_page_committed(center):
     center.batch = None
     center.plan(('/selected/folder',))
     center.cancel_operation()
     assert center.frame.cancel_event.is_set()
-    assert 'scan' in center.status.value.lower() and 'not saved' in center.status.value.lower()
+    assert 'stopping source review' in center.status.value.lower()
+    assert 'will be saved' in center.status.value.lower() and 'plan saved' not in center.status.value.lower()
     event = SimpleNamespace(CanVeto=lambda: True, Veto=Mock())
     center.close(event)
     event.Veto.assert_called_once()
@@ -281,7 +330,7 @@ def test_custom_fast_script_selection_is_captured_only_for_new_plans(center, mon
     assert not center.ocr_models_button.enabled
     center.custom_ocr_config = Config(languages='eng', model_profile='best')
     center.jobs[-1].operation()
-    assert center.library.plan_import_batch.call_args.kwargs['config'] is chosen
+    assert center.library.plan_import_page.call_args.kwargs['config'] is chosen
 
 
 @pytest.mark.parametrize('with_custom', [False, True])
@@ -323,7 +372,7 @@ def test_text_folder_plan_never_opens_model_selection_automatically(center, monk
     center.plan(('/selected/text-folder',))
     center.jobs[-1].operation()
     chooser.assert_not_called()
-    assert center.library.plan_import_batch.call_args.kwargs['config'] == Config(languages='eng+ukr+slk')
+    assert center.library.plan_import_page.call_args.kwargs['config'] == Config(languages='eng+ukr+slk')
 
 
 def test_saved_batch_resume_does_not_replace_recorded_config_with_current_custom_choice(center):
@@ -367,3 +416,260 @@ def test_model_choice_is_not_applied_after_library_folder_changes(center, monkey
     center.choose_ocr_models()
     assert center.custom_ocr_config is None and center.languages.selection == 3
     assert 'library folder changed' in center.status.value
+
+
+@pytest.mark.parametrize('phase', ['picker', 'confirmation'])
+@pytest.mark.parametrize('change', ['library', 'closing'])
+def test_import_report_rechecks_scope_before_confirmation_and_write(
+        center, tmp_path, monkeypatch, phase, change):
+    from carr_library.ui import import_center as ui, export_destination
+    from carr_library.research.export_file import capture_export_destination
+    target = tmp_path / 'scoped-report.txt'
+    previous = b'Previously selected import report'
+    target.write_bytes(previous)
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+
+    def revoke():
+        if change == 'library':
+            center.frame.library = SimpleNamespace(root=tmp_path / 'another-library')
+        else:
+            center.frame._closing = True
+
+    chooser = SimpleNamespace(ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(target),
+                              Destroy=Mock(side_effect=revoke if phase == 'picker' else None))
+    wx.FileDialog = Mock(return_value=chooser)
+
+    def approve(parent, path, **options):
+        approval = capture_export_destination(path, private_root=options['private_root'])
+        if phase == 'confirmation':
+            revoke()
+        return approval
+
+    confirmation = Mock(side_effect=approve)
+    render = Mock(wraps=ui.batch_report)
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', confirmation)
+    monkeypatch.setattr(ui, 'batch_report', render)
+    center.save_report()
+    assert confirmation.call_count == (0 if phase == 'picker' else 1)
+    render.assert_not_called()
+    assert target.read_bytes() == previous
+    assert 'library folder changed' in center.status.value
+    chooser.Destroy.assert_called_once()
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_import_report_completion_keeps_published_receipt_cleanup_notice(center, tmp_path, monkeypatch):
+    from carr_library.ui import import_center as ui, export_destination
+    from carr_library.research import export_file
+    target = tmp_path / 'completed-report.txt'
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    wx.FileDialog = Mock(return_value=SimpleNamespace(ShowModal=lambda: wx.ID_OK,
+        GetPath=lambda: str(target), Destroy=Mock()))
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', lambda parent, path, **options:
+        export_file.capture_export_destination(path, private_root=options['private_root']))
+    actual_writer = export_file.write_export
+    notice = 'The export is saved; temporary cleanup needs attention.'
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return export_file.ExportReceipt(receipt.path, notice)
+
+    monkeypatch.setattr(export_file, 'write_export', completed_with_notice)
+    center.save_report()
+    assert target.read_text(encoding='utf-8') == ui.batch_report(center.batch)
+    assert 'Import report saved.' in center.status.value and notice in center.status.value
+    assert center.status.focused and center.jobs == []
+
+
+def test_continue_scan_captures_saved_identity_and_page_limits_without_auto_import(center):
+    selected = batch()
+    selected.update(version=2, scan={'page': 0, 'cursor': {'complete': False, 'planned': 1},
+        'next': 'next', 'review_required': False, 'classification_complete': True})
+    center.batch = selected
+    center.page_files.SetValue(37)
+    center.page_entries.SetValue(83)
+    center.page_seconds.SetValue(9)
+    center.continue_scan()
+    center.library.continue_import_scan.assert_not_called()
+    center.batch = batch('other')
+    center.page_files.SetValue(1)
+    center.jobs[-1].operation()
+    args, options = center.library.continue_import_scan.call_args
+    assert args == ('library', 'first')
+    assert (options['max_files'], options['max_entries'], options['timeout']) == (37, 83, 9.0)
+    center.library.run_import_batch.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
+
+
+def test_queued_source_page_refuses_retargeted_library_before_any_scan(center):
+    center.plan(('/selected/folder',))
+    center.frame.library = SimpleNamespace(root='different')
+    with pytest.raises(ValueError, match='library folder changed'):
+        center.jobs[-1].operation()
+    center.library.plan_import_page.assert_not_called()
+    center.library.run_import_batch.assert_not_called()
+
+
+def test_legacy_batch_has_no_invented_scan_continuation(center):
+    center.continue_scan()
+    center.frame.run_job.assert_not_called()
+    center.library.continue_import_scan.assert_not_called()
+    assert 'saved scan page' in center.status.value
+
+
+def test_scan_summary_distinguishes_page_rows_complete_traversal_and_restored_authority():
+    from carr_library.ui.import_center import batch_summary
+    value = batch(states=('complete', 'queued'))
+    value.update(version=2, scan={'page': 6, 'cursor': {'complete': False, 'planned': 6002},
+        'review_required': False, 'classification_complete': True})
+    text = batch_summary(value)
+    assert 'Scan page 7.' in text and '2 files:' in text and '6002 source rows' in text
+    assert 'More source entries remain' in text
+    value['scan']['review_required'] = True
+    text = batch_summary(value)
+    assert 'fresh source selection after restore' in text and 'Choose Continue' not in text
+    value['scan'].update(review_required=False, classification_complete=False)
+    value['scan']['cursor']['complete'] = True
+    text = batch_summary(value)
+    assert 'traversal is complete' in text and 'duplicate checks were paused' in text
+
+
+@pytest.mark.parametrize('control,value', [('page_files', 5001), ('page_files', 0),
+                                         ('page_entries', 20001), ('page_seconds', 601)])
+def test_invalid_page_budget_never_starts_source_review(center, control, value):
+    getattr(center, control).SetValue(value)
+    with pytest.raises(ValueError):
+        center.plan(('/selected/folder',))
+    center.frame.run_job.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
+    center.library.run_import_batch.assert_not_called()
+
+
+
+def _document_format_native_handlers():
+    """Load the real probe lookup and planned callback without importing wx."""
+    import ast
+    from pathlib import Path
+
+    path = Path(__file__).with_name('native_document_formats_smoke.py')
+    source = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    lookup = next(node for node in source.body
+                  if isinstance(node, ast.FunctionDef) and node.name == '_owned_button')
+    native = next(node for node in source.body
+                  if isinstance(node, ast.FunctionDef) and node.name == 'run_native')
+    planned = next(node for node in ast.walk(native)
+                   if isinstance(node, ast.FunctionDef) and node.name == 'planned')
+
+    class Window:
+        def __init__(self, children=()):
+            self.children = list(children)
+
+        def GetChildren(self):
+            return tuple(self.children)
+
+    class Button(Window):
+        def __init__(self, label='&Start queued files', identity=71):
+            super().__init__()
+            self.label, self.identity = label, identity
+            self.handler = Mock()
+
+        def GetLabel(self):
+            return self.label
+
+        def GetId(self):
+            return self.identity
+
+        def GetEventHandler(self):
+            return self.handler
+
+    class CommandEvent:
+        def __init__(self, kind, identity):
+            self.kind, self.identity, self.owner = kind, identity, None
+
+        def SetEventObject(self, owner):
+            self.owner = owner
+
+    checks, scheduled = [], []
+    def check(name, condition):
+        assert condition, name
+        checks.append(name)
+
+    env = {
+        'state': {}, 'check': check,
+        'wx': SimpleNamespace(Button=Button, CommandEvent=CommandEvent,
+                              EVT_BUTTON=SimpleNamespace(typeId=991),
+                              CallLater=lambda *values: scheduled.append(values)),
+        'poll': Mock(), 'imported': Mock(),
+    }
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[lookup, planned], type_ignores=[])),
+                 str(path), 'exec'), env)
+    return SimpleNamespace(env=env, Window=Window, Button=Button,
+                           checks=checks, scheduled=scheduled)
+
+
+@pytest.mark.parametrize('depth', [0, 1, 3])
+def test_document_format_probe_finds_exact_button_in_owned_flat_or_scrolled_tree(depth):
+    probe = _document_format_native_handlers()
+    selected = probe.Button()
+    nested = selected
+    for _ in range(depth):
+        nested = probe.Window((nested,))
+    dialog = probe.Window((probe.Window(), nested))
+    foreign = probe.Window((probe.Button(),))
+    assert probe.env['_owned_button'](dialog, '&Start queued files', probe.Button) is selected
+    assert foreign.GetChildren()[0] is not selected
+    selected.handler.ProcessEvent.assert_not_called()
+    assert probe.scheduled == []
+
+
+@pytest.mark.parametrize('fault', ['missing', 'different-label', 'non-button', 'duplicate'])
+def test_document_format_probe_refuses_missing_wrong_type_or_ambiguous_button(fault):
+    probe = _document_format_native_handlers()
+    foreign = probe.Window((probe.Button(),))
+    children = []
+    if fault == 'different-label':
+        children = [probe.Button('Start queued files')]
+    elif fault == 'non-button':
+        control = probe.Window()
+        control.GetLabel = lambda: '&Start queued files'
+        children = [control]
+    elif fault == 'duplicate':
+        children = [probe.Button(), probe.Window((probe.Button(identity=72),))]
+    dialog = probe.Window((probe.Window(children),))
+    with pytest.raises(AssertionError, match='Expected one owned native button'):
+        probe.env['_owned_button'](dialog, '&Start queued files', probe.Button)
+    foreign.GetChildren()[0].handler.ProcessEvent.assert_not_called()
+    assert probe.scheduled == []
+
+
+def test_document_format_actual_planned_callback_dispatches_the_unique_nested_button():
+    probe = _document_format_native_handlers()
+    selected = probe.Button()
+    dialog = probe.Window((probe.Window((probe.Window((selected,)),)),))
+    dialog.batch = {'counts': {'queued': 2}}
+    dialog.rows = SimpleNamespace(GetCount=lambda: 2)
+    dialog.busy = False
+    probe.env['state']['import'] = dialog
+
+    def dispatch(event):
+        assert event.kind == 991 and event.identity == selected.GetId()
+        assert event.owner is selected
+        dialog.busy = True
+        return True
+
+    selected.handler.ProcessEvent.side_effect = dispatch
+    probe.env['planned']()
+    selected.handler.ProcessEvent.assert_called_once()
+    assert dialog.busy
+    assert probe.checks == [
+        'native queue recognizes HTML and Markdown as two documents',
+        'native Start queued files button event launches work',
+    ]
+    assert probe.scheduled == [(50, probe.env['poll'], probe.env['imported'])]
+    probe.env['imported'].assert_not_called()

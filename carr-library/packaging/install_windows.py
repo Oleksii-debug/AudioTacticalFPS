@@ -30,6 +30,29 @@ def verify(root, *, manifest_bytes=None):
                 "CheckInstallation.cmd", "README.txt"}
     if not expected.issubset(files) or not any(p.startswith("wheelhouse/") for p in files):
         raise ValueError("incomplete installation bundle")
+    launcher_files = {"ResearchLibrary.exe", "native-launcher-build.json"}
+    launcher = manifest.get("bundled_launcher", False)
+    if type(launcher) is not bool:
+        raise ValueError("invalid native launcher installation flag")
+    if launcher:
+        commit = manifest.get("source_commit")
+        if (not manifest.get("bundled_python") or not launcher_files.issubset(files)
+                or not isinstance(commit, str) or len(commit) != 40
+                or any(character not in "0123456789abcdef" for character in commit)):
+            raise ValueError("incomplete native launcher installation inventory")
+    else:
+        # Canonical bundles may seal the previously Windows-qualified pinned
+        # executable without opting into a new ownership profile. Its inventory
+        # is still hashed below; it grants no managed/portable update authority.
+        legacy = ("bundled_launcher" not in manifest and "ResearchLibrary.exe" in files
+                  and "native-launcher-build.json" not in files
+                  and not os.path.lexists(root / "native-launcher-build.json"))
+        if (launcher_files.intersection(files)
+                or any(os.path.lexists(root / name) for name in launcher_files)) and not legacy:
+            raise ValueError("unannounced native launcher files")
+    if any(path.name.casefold() in {name.casefold() for name in launcher_files}
+           and path.name not in launcher_files for path in root.iterdir()):
+        raise ValueError("ambiguous native launcher paths")
     for name, digest in files.items():
         relative = PurePosixPath(name)
         if (relative.is_absolute() or ".." in relative.parts or "\\" in name
@@ -92,6 +115,21 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    for component, flag, required in (
+            ('audio-runtime', 'bundled_audio_runtime', {'audio-runtime/audio-manifest.json',
+                'audio-runtime/bin/ffmpeg.exe', 'audio-runtime/bin/ffprobe.exe', 'audio-runtime/bin/ffplay.exe'}),
+            ('audio', 'bundled_audio', {'audio/bin/ffmpeg.exe', 'audio/bin/ffprobe.exe', 'audio/LICENSE'}),
+            ('citation-runtime', 'bundled_citation_runtime', {'citation-runtime/node.exe', 'citation-runtime/LICENSE'})):
+        included = manifest.get(flag, False)
+        if type(included) is not bool:
+            raise ValueError('invalid optional runtime flag')
+        actual = {p.relative_to(root).as_posix() for p in (root / component).rglob('*') if p.is_file()}
+        expected_component = {p for p in files if p.startswith(component + '/')}
+        if included:
+            if not required <= actual or actual != expected_component:
+                raise ValueError('unexpected or missing ' + component + ' runtime file')
+        elif actual or expected_component:
+            raise ValueError('unannounced ' + component + ' runtime')
 
 
 def main():
@@ -132,15 +170,22 @@ def main():
                     "install", "--no-index", "--only-binary=:all:", "--require-hashes",
                     "--no-cache-dir", "--find-links", str(root / "wheelhouse"),
                     "-r", str(root / "install.lock")], check=True, env=environment)
-    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m",
-                    "carr_library.native_checks", "--bundle-root", str(root)],
+    # Fixed pre-readiness native check only. Ordinary diagnostic CLI entries
+    # retain their application lease and cannot run through maintenance.
+    subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-c",
+                    "import json, sys; from pathlib import Path; "
+                    "from carr_library.native_checks import check_native_dependencies; "
+                    "report = check_native_dependencies(Path(sys.argv[1])); "
+                    "print(json.dumps(report, ensure_ascii=False), flush=True); "
+                    "raise SystemExit(0 if report['status'] == 'PASS' else 1)", str(root)],
                    check=True, env=environment, cwd=root)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "carr_library", "--self-test"],
                    check=True, env=environment, cwd=root)
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entry = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
+    print("Installation complete. Open " + entry + ". Research data has not been changed.")
     return 0
 
 

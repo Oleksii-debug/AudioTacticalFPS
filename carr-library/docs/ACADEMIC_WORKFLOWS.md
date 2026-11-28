@@ -239,3 +239,6 @@ feature parity. RIS parsing reuses the already vendored MIT-licensed
 The original license and source provenance remain in
 [RIS_REUSE.md](../src/carr_library/catalog/RIS_REUSE.md) and
 [EXPORT_REUSE.md](../src/carr_library/research/EXPORT_REUSE.md).
+
+For interactive comparison, tag-filtered outlines, selected RIS updates and
+catalog quality review, see [Academic comparison](ACADEMIC_COMPARISON.md).

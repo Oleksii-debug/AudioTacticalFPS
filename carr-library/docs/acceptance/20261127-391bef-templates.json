@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T15:27:32Z",
+  "tested_commit": "391beff3b479ed322d0ffa206d03ba2ac9da0aaa",
+  "tested_tree": "908accd8e5f306138b80443d51e30381cbcbf1a1",
+  "evidence_source": "Returned completed GitHub Actions job logs; no local execution inferred.",
+  "unique_test_count": "Selections overlap; counts must not be added as unique coverage.",
+  "status": "PASS",
+  "run_id": 46020540069,
+  "source_job_id": 140578730949,
+  "native_job_id": 140578731398,
+  "source": {
+    "suites": [
+      {
+        "suite": "tests/assistant/test_workflow_template_handlers.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/assistant/test_workflow_templates.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/assistant/test_workflow_template_parameters.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/assistant/test_workflow_templates_cli.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/assistant/test_workflow_template_editor.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_studio_keyboard_registration.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/assistant/test_planning_handlers.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_binary_file_export.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_academic_library_dialog.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "totals": {
+      "passed": 180,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "portable_runtime_identity": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0
+  },
+  "native": {
+    "result": "PASS",
+    "checks": [
+      "exact source: carr_library.assistant.templates",
+      "installed origin: carr_library.assistant.templates",
+      "exact source: carr_library.assistant.template_bindings",
+      "installed origin: carr_library.assistant.template_bindings",
+      "exact source: carr_library.assistant.planner",
+      "installed origin: carr_library.assistant.planner",
+      "exact source: carr_library.ui.workflow_templates",
+      "installed origin: carr_library.ui.workflow_templates",
+      "exact source: carr_library.ui.assistant_dialog",
+      "installed origin: carr_library.ui.assistant_dialog",
+      "actual wxMSW controls",
+      "macro registered once with no default key",
+      "actual semantic key dispatched",
+      "macro opens empty fresh value review",
+      "loaded macro retains no folder approvals and no Run approval",
+      "separate native Preview validates both explicit items without executing",
+      "native project editor strips stored source references",
+      "native typed project settings accepted",
+      "project reuse has fresh identity and no old source claim",
+      "project and template controls execute no job"
+    ],
+    "errors": [],
+    "source_sha256": {
+      "carr_library.assistant.templates": "ecf5415cca47f08cf45a4169bd871607e5951ac8306cf0f8f2e9b6d1de744563",
+      "carr_library.assistant.template_bindings": "3806f6b955e5adc157ce8cd3600a458bb98d7c3ca09423c6d3d1d79dbbbb8e47",
+      "carr_library.assistant.planner": "7abf582aa26dfb77d26179b2cf34e496e28cf97d8b7f5c586de4b9eb7bd92d07",
+      "carr_library.ui.workflow_templates": "bfef366d489c6a0fc9205e92a24cf9af5341b10fa3c51fd0f1bc551c2e4ef7de",
+      "carr_library.ui.assistant_dialog": "123b1e23394f56964c26f6bb75585d91cd056d5451e17a095bd2b83a8fc750ef"
+    },
+    "manual_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN"
+  },
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46020540069",
+  "qualification": {
+    "windows_runner": "windows-2022",
+    "manual_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN"
+  }
+}

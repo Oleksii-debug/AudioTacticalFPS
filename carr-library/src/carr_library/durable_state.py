@@ -6,19 +6,33 @@ import os
 from pathlib import Path
 import stat
 import tempfile
-import time
+
+from .windows_state import replace_file
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
-def regular(path, *, directory=False):
-    path = Path(path)
-    value = path.lstat()
+class UnlinkedRegularFile(ValueError):
+    """A stat snapshot of an ordinary file concurrently unlinked."""
+    def __init__(self, path):
+        self.path = Path(path)
+        super().__init__('State must use regular local files, without links.')
+
+
+def _regular_snapshot(path, value, *, directory=False):
     if (stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400
-            or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))
-            or (not directory and value.st_nlink != 1)):
+            or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))):
+        raise ValueError('State must use regular local files, without links.')
+    if not directory and value.st_nlink != 1:
+        if value.st_nlink == 0:
+            raise UnlinkedRegularFile(path)
         raise ValueError('State must use regular local files, without links.')
     return value
+
+
+def regular(path, *, directory=False):
+    path = Path(path)
+    return _regular_snapshot(path, path.lstat(), directory=directory)
 
 
 def local_path(value, *, root=None, exists=False):
@@ -26,11 +40,17 @@ def local_path(value, *, root=None, exists=False):
     if str(value).startswith(('//', '\\\\')) or '\x00' in str(value):
         raise ValueError('Choose a local path.')
     for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
-            if parent != path or parent.is_dir():
-                regular(parent, directory=True)
-            else:
-                regular(parent)
+        try:
+            value = parent.lstat()
+        except (OSError, ValueError):
+            # Preserve the former lexists probe's error boundary. Canonical
+            # resolution below still decides strict existence and containment.
+            continue
+        # Validate this fresh snapshot once, without repeating the same native
+        # filesystem query. Nothing is retained between calls; regular/open
+        # checks at the eventual reader or writer remain independent.
+        _regular_snapshot(parent, value,
+                          directory=parent != path or stat.S_ISDIR(value.st_mode))
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('The path is outside the selected directory.')
@@ -67,16 +87,79 @@ def _unique(pairs):
     return value
 
 
+def _open_windows_read(path):
+    """Allow the native state publisher to replace an open read snapshot."""
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = (wintypes.HANDLE,)
+    close.restype = wintypes.BOOL
+    # GENERIC_READ; share read/write/delete; OPEN_EXISTING. Opening the reparse
+    # point itself prevents a final-component link swap from following a link.
+    handle = create(str(path), 0x80000000, 0x00000007, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(
+            handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+    except BaseException:
+        close(handle)
+        raise
+    # open_osfhandle transfers ownership: only the CRT descriptor may close the
+    # handle now, including when construction of the Python stream fails.
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _open_json_read(path):
+    return _open_windows_read(path) if os.name == 'nt' else path.open('rb')
+
+
 def read_json(path):
+    return read_json_snapshot(path)[0]
+
+
+def read_json_snapshot(path, *, max_bytes=None):
+    """Read one stable JSON snapshot and the digest of its exact encoded bytes."""
+    maximum = MAX_JSON_BYTES if max_bytes is None else max_bytes
+    if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
+        raise ValueError('Use a positive bounded JSON read budget.')
     path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
+    if regular(path).st_size > maximum:
         raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
+    with _open_json_read(path) as stream:
+        opened = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(opened.st_mode)
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or opened.st_nlink not in (0, 1)):
+            raise ValueError('State must use regular local files, without links.')
+        if opened.st_size > maximum:
+            raise ValueError('State exceeds its configured JSON budget.')
+        # Bound the allocation to this opened snapshot, not the configured ceiling.
+        # One extra byte detects growth even if the final size is restored.
+        raw = stream.read(opened.st_size + 1)
+        finished = os.fstat(stream.fileno())
+    if len(raw) > maximum or finished.st_size > maximum:
         raise ValueError('State grew beyond its JSON budget.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
-                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    # A replacement may unlink this old snapshot while it is open. Its path,
+    # link count and change time can change; its bytes and file identity cannot.
+    fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
+    if len(raw) != opened.st_size or any(
+            getattr(opened, name) != getattr(finished, name) for name in fields):
+        raise ValueError('State changed while it was being read.')
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    return value, sha256(raw).hexdigest()
 
 
 def sync_directory(path):
@@ -86,27 +169,6 @@ def sync_directory(path):
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
-
-
-def _replace_state(temporary, path):
-    """Allow a short Windows reader to release its non-delete-sharing handle.
-
-    Reading a tiny control/state file can overlap its atomic replacement on
-    Windows. Retain one fully flushed staging file and retry only the Windows
-    sharing/access errors, with a bounded total delay of 0.63 seconds. A real
-    denial or an unrelated filesystem error still fails without truncating the
-    old state. In particular, never fall back to unlinking the destination.
-    """
-    delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
-    while True:
-        try:
-            os.replace(temporary, path)
-            return
-        except PermissionError as exc:
-            delay = next(delays, None)
-            if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
-                raise
-            time.sleep(delay)
 
 
 def atomic_bytes(path, raw, *, replace=False):
@@ -125,14 +187,31 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            _replace_state(temporary, path)
+            replace_file(temporary, path)
+        elif os.name == 'nt':
+            # Windows rename refuses an existing destination and leaves no
+            # second hard link if the process exits immediately after success.
+            # POSIX rename can overwrite, so it must not use this branch.
+            os.rename(temporary, path)
+            temporary = None
         else:
-            # link is the portable same-filesystem no-replace publication primitive.
-            os.link(temporary, path)
-            temporary.unlink()
+            # The portable create-only fallback is atomic against a competing
+            # destination. Process death between link and unlink can still leave
+            # a residual link; this branch does not claim crash recovery.
+            os.link(temporary, path, follow_symlinks=False)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise OSError('File was published, but its temporary link '
+                                  'could not be removed.') from exc
         sync_directory(path.parent)
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 

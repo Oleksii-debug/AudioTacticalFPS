@@ -34,7 +34,7 @@ def locator_note(format, output):
 def test_quote_page_label_is_a_locator_and_never_publication_extent(format):
     row = source()
     output = export_topic('workspace', 'topic', [row], format=format)
-    assert locator_note(format, output) == 'Source locator: PDF page 4; printed page 137'
+    assert locator_note(format, output) == 'Source locator: Physical page 4; printed page 137'
     assert row.quote not in output and row.note not in output
 
 
@@ -46,8 +46,8 @@ def test_multipage_locator_retains_every_slice_in_order_and_unknown_labels(forma
     third = replace(first, span_index=3, physical_index=6, printed_label='S-9')
     output = export_topic('workspace', 'topic', [first, second, third], format=format)
     assert locator_note(format, output) == (
-        'Source locator: PDF page 4; printed page ix; '
-        'PDF page 5; printed page unknown; PDF page 6; printed page S-9')
+        'Source locator: Physical page 4; printed page ix; '
+        'Physical page 5; printed page unknown; Physical page 6; printed page S-9')
     assert 'unverified-candidate' not in output
     assert first.quote not in output and first.note not in output
 
@@ -58,4 +58,4 @@ def test_unpaginated_segment_remains_a_segment_in_bibliographic_notes(format):
                  printed_label=None, printed_label_verified=False)
     output = export_topic('workspace', 'topic', [row], format=format)
     assert locator_note(format, output) == 'Source locator: Segment 8 (unpaginated)'
-    assert 'PDF page' not in output and 'printed page' not in output
+    assert 'Physical page' not in output and 'printed page' not in output

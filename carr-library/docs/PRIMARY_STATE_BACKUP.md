@@ -65,36 +65,63 @@ compatible older checkpoint formats. Ten translation-backup regressions and the
 35 canonical synthetic transport/authorization tests passed without skips.
 
 
-## Transcription recovery and explicit exclusions
+## Transcription recovery and optional recognition caches
 
-The typed ASR producer retains runtime declarations (not the runtimes),
-job/control metadata, retained source audio, accepted transcript receipts,
-TXT/JSON/SRT/VTT exports and separate edit history. Required source audio is
-included even when generated media are omitted. Original external paths are
-inert provenance. The ordinary backup does not copy external Python/worker
-executables, model weights, credential values, external publication folders
-or operation locks. External copies and licensed model packs require their
-own authorized recovery procedure.
+The single workspace-bound transcription producer preserves runtime declarations,
+job/control metadata, retained source audio, accepted receipts, TXT/JSON/SRT/VTT
+results, V5 manifests and separate edit history. Source audio is required recovery
+data even when generated media are omitted. V5 result metadata may describe a
+recognition cache identity; that does not make the result, manifest or receipt an
+optional cache.
 
-The existing `generated_audio_included` flag also governs optional ASR
-recognition-cache files under current and archived worker workspaces. The
-manifest validator rejects a cache entry that contradicts a false (or absent)
-flag, including legacy state-list shapes. Accepted receipts, retained inputs,
-edits and inert non-cache worker results do not require that flag. Restored
-runtime declarations lose execution trust and unfinished jobs require review;
-absolute worker launch configuration and transient control flags are removed
-during staging. Completed accepted results remain readable without an engine.
+A default backup omits only the exact job-owned directories
+`state/transcription/<workspace-sha256>/jobs/<job-id>/logs/cache` and
+`logs/cache_v5`. Their directory safety checks still run before omission;
+similarly named, foreign-layout or unrecognized state is not silently excluded.
+A current or supported legacy manifest that lists an optional cache file while
+`generated_audio_included` is false or absent is rejected before reading that
+payload. Accepted inputs, receipts, results, manifests and edits never depend on
+this optional flag.
 
-ASR inputs are streamed separately from the metadata budget: 32 GiB per
-source, 64 GiB aggregate, at most 512 sources per job, 4096 jobs, 1024 runtime
-profiles and 1024 worker-history directories per job. ASR metadata/cache
-files are limited to 32 MiB each and count against the shared 512 MiB metadata
-budget; parsed metadata may consume more memory than its serialized size.
-The common 100,000-sidecar inventory, 8 MiB manifest, database/originals and
-optional whole-backup limits still apply. These are safety limits, not
-measured throughput or supported maximum corpus claims. Backup is a stable
-private/cooperative-writer snapshot; if state changes, pause its producer
-and retry. Restore always requires a fresh destination and an independently
-retained manifest digest. This does not establish encrypted backups,
-incremental/multi-device migration or recovery of external credentials,
-engines or published files.
+The current flat supplied-worker adapter has no typed admission format for
+recognition-cache payloads. Consequently, `include_generated=True` does not grant
+permission to copy arbitrary ASR cache JSON or bytes: when such cache files are
+present, the API fails with an explicit unsupported-cache message. Use the default
+backup to preserve retained inputs and verified results without those optional
+caches. The existing typed primary-Studio generated-audio inclusion remains
+available. This limitation does not discard accepted transcription output and
+does not claim compatibility with another producer's worker-history layout.
+
+Restore validates all recorded relationships before revoking execution trust.
+Runtime/model selectors and the typed `job_config.json` remain passive historical
+data; configured Python, worker files and model directories are never opened or
+copied. Restored controls are paused, profiles lose execution trust and jobs
+require a fresh local review before execution. Completed accepted results remain
+readable without an engine. Locks, transient stop/pause files, credentials and
+external publication folders do not acquire restored execution authority.
+
+The current producer permits at most 64 retained sources per job, 8 GiB per
+source and 32 GiB per job. The transcription backup adapter also caps aggregate
+retained source media at 32 GiB, with at most 10,000 jobs per library scope and
+1,024 passive runtime profiles. Metadata keep their existing per-kind limits
+(16 KiB controls, 4 MiB worker configuration/status, 32 MiB job/profile/receipt/edit
+records, and up to 512 MiB for a result), together with the shared 512 MiB
+metadata and 100,000-sidecar inventory bounds. These are validation ceilings,
+not measured throughput or model-quality claims. The complete backup retains its
+manifest, database, original-source and optional whole-backup byte limits.
+
+## Cancellation and pending-import validation boundaries
+
+The same cancellation callback is checked during current and legacy manifest
+normalization, pending file/source binding validation, journal inventory and
+record/checkpoint validation, and immediately before restore publication.
+Malformed non-string membership fields in pending manifests are rejected as
+validation errors before dictionary lookup. This does not change the format,
+retained source identity, allowed filenames or existing aggregate budgets.
+Pending capture scans at most 50,000 total directory entries (including ignored transient files) across request, batch and nested review folders; exceeding the budget rejects the backup before publication. Pending capture scans committed and known transient names incrementally;
+restore copies retained journals by a single pass through the validated file
+inventory. The existing aggregate file/byte limits still apply. JSON decoding,
+individual SQLite queries, bounded source reads and synchronous filesystem
+calls are not preempted; cancellation is cooperative at the next boundary.
+These are correctness and algorithmic bounds, not a measured Windows latency
+or complete crash-recovery qualification.

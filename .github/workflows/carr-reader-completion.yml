@@ -1,0 +1,77 @@
+name: CARR reader completion source acceptance
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-reader-completion.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Distinct source revisions can run while an older runner allocation waits.
+  group: carr-reader-completion-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  reading-composition:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 18
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the package and actual local conversion tools
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg tesseract-ocr tesseract-ocr-eng
+      - name: Require reader, listening ownership and measured publication composition
+        run: |
+          set -euo pipefail
+          python -m compileall -q src scripts
+          python scripts/ci_check.py --jobs 2 \
+            tests/speech/test_reading_marks.py tests/speech/test_reading_focus.py tests/ui/test_reading_focus.py tests/ui/test_reader_focus_hook.py tests/ui/test_reading_tools.py tests/ui/test_native_reading_presentation_driver.py tests/search/test_semantic_cache.py tests/packaging/test_ci_check.py tests/search/test_retrieval_evaluation.py tests/speech/test_narration_policy.py tests/ui/test_reading_narration.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py \
+            tests/ui/test_reader_listening_hook.py tests/operations/test_worker_start_cleanup.py tests/speech/test_listening.py \
+            tests/speech/test_reading_tabs.py tests/ui/test_reader_tabs.py \
+            tests/ui/test_reader_voice_recovery.py tests/ui/test_reader_navigation.py tests/ui/test_reader_playback.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_progress_job_review.py \
+            tests/studio/test_measured_audio.py tests/ui/test_book_duration_dialog.py \
+            tests/studio/test_book_cli.py tests/storage/test_backup_publications.py tests/storage/test_backup_pending_common4.py tests/e2e/test_extended_document_workflows.py \
+            tests/reader/test_export_reconciliation.py tests/storage/test_backup_incremental.py \
+            tests/ui/test_backup_incremental_dialog.py tests/audio/test_recording_monitor.py tests/ui/test_recording_dialog.py tests/audio/test_conversion_batch.py tests/ui/test_audio_conversion_dialog.py tests/studio/test_audio_conversion_cli.py tests/audio/test_dsp.py tests/audio/test_effect_presets.py tests/ui/test_studio_keyboard_registration.py tests/ui/test_studio_output_settings.py tests/ui/test_save_all.py tests/assistant/test_translation_batch.py tests/assistant/test_translation_batch_cli.py tests/assistant/test_translation_batch_ui.py tests/assistant/test_translation_local.py tests/assistant/test_translation_local_ui.py tests/storage/test_backup_translation.py tests/transcription/test_runtime_review.py tests/transcription/test_supplied_worker_bridge.py \
+            tests/assistant/test_local_assistant.py tests/assistant/test_local_tools.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/assistant/test_workflow_template_parameters.py tests/assistant/test_workflow_templates_cli.py tests/assistant/test_workflow_template_editor.py tests/assistant/test_player_tools.py tests/assistant/test_search_paging.py \
+            tests/extract/test_language_detection.py tests/extract/test_ocr_language_regions.py tests/storage/test_ocr_language_presets.py tests/ui/test_ocr_selection.py tests/audio/test_metadata.py tests/audio/test_metadata_cleanup_scope.py tests/audio/test_metadata_publication.py tests/audio/test_metadata_stream_hash.py tests/audio/test_metadata_review.py tests/ui/test_audio_metadata_dialog.py tests/ui/test_audio_metadata_lifetime.py tests/audio/test_audio_process.py tests/e2e/test_source_file.py tests/extract/test_raster_pages.py tests/e2e/test_raster_import.py tests/citations/test_anchors.py tests/catalog/test_streaming_intake.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/ingest/test_large_source_intake.py tests/ingest/test_batch_continuation.py tests/ingest/test_batch_continuation_cli.py tests/e2e/test_import_legacy_config.py tests/e2e/test_import_commit_supervisor.py tests/ui/test_import_center.py tests/search/test_search_paging.py tests/search/test_literal_readonly.py tests/search/test_thematic_budget.py tests/search/test_federated.py tests/search/test_federated_independent.py \
+            tests/ui/test_federated_search.py tests/ui/test_federated_labels.py tests/ui/test_desktop_handlers.py tests/ui/test_desktop_query_jobs.py tests/e2e/test_research_search_cli.py \
+            tests/packaging/test_install_bytecode.py tests/e2e/test_application.py tests/e2e/test_import_batches.py tests/ingest/test_batch_scan.py 2>&1 | tee reader-completion.txt
+      - name: Require actual local planning and translation in isolated loopback namespace
+        if: ${{ always() && !cancelled() }}
+        run: |
+          set -euo pipefail
+          # Native namespace isolation covers pytest and its real CLI children.
+          # No remote interface or route exists; the runner drops root before tests.
+          sudo unshare --net -- bash -c '
+            set -euo pipefail
+            ip link set lo up
+            exec runuser -u "$1" -- "$2" "$3" --loopback-only tests/assistant/test_local_planning_loopback.py tests/assistant/test_translation_local_loopback.py
+          ' bash "$(id -un)" "$(command -v python)" "$PWD/scripts/ci_check.py" 2>&1 | tee reader-loopback.txt

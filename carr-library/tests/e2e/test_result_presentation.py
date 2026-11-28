@@ -71,8 +71,9 @@ def test_lexical_page_or_model_fallback_focuses_on_relevant_tail(library, retrie
 @pytest.mark.parametrize('mode', ['short', 'thematic'])
 @pytest.mark.parametrize('prefix', [
     'a ' * 32760, 'a ' * 32768, 'a \t\n' * 20000, 'a ' * 1000, '\u0457 ' * 1000,
+    '\u0457 ' * 32768,
 ], ids=['threshold-plus-tail', 'long-ascii', 'collapsed-whitespace',
-        'short-ascii', 'unicode'])
+        'short-ascii', 'unicode', 'long-unicode'])
 def test_long_logical_source_focus_keeps_original_offsets(mode, prefix):
     passage = 'Railway\t  archives.'
     raw = 'Intro. ' + prefix + '\n\n' + passage + '\n\n' + 'z ' * 1000
@@ -109,6 +110,27 @@ def test_long_ascii_source_search_copy_and_context_use_exact_tail(library, retri
         assert messages == ['Local model unavailable; keyword search used.']
     else:
         assert messages == []
+
+
+@pytest.mark.parametrize('retrieval', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+def test_long_unicode_source_search_copy_and_context_use_exact_tail(library, retrieval):
+    app, workspace = library
+    target = 'Київський\t  архів зберігає точну історію.'
+    page = 'Непов’язані ботанічні матеріали.\n' * 2500 + target
+    assert not page.isascii() and len(page) >= 65536
+    imported = app.add_text(workspace, 'Довге оригінальне джерело',
+                            page + '\fEXCLUDED OTHER SEGMENT.')
+    query = 'КИЇВСЬКИЙ' if retrieval == 'word' else 'КИЇВСЬКИЙ АРХІВ'
+    hit, = app.search(workspace, query, mode=retrieval, result_mode='short')
+    assert hit.verified and hit.revision == imported['id']
+    assert target in hit.quote and 'EXCLUDED OTHER SEGMENT' not in hit.quote
+    assert len(hit.quote) <= SHORT_CHARS
+    context = app.context(workspace, hit.ref, hit.revision)
+    assert len(context.pages) == 1 and context.pages[0].raw_text == page
+    anchor = context.pages[0].anchor
+    assert anchor.start > 65536 and page[anchor.start:anchor.end] == hit.quote
+    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == hit.quote
+    assert app.copy(workspace, hit.ref, hit.revision, 'citation') == hit.citation
 
 
 def test_exact_legacy_offsets_remain_available_to_existing_callers(library):

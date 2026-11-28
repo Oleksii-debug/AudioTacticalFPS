@@ -41,6 +41,31 @@ def test_sorted_folder_plan_uses_existing_intake_without_writing(tmp_path):
     assert before == {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
 
 
+@pytest.mark.parametrize('policy', [
+    {'supported': ()}, {'supported': frozenset()}, {'supported': frozenset({'.WAV'})},
+    {'supported': frozenset({'wav'})}, {'file_manifest': False},
+    {'max_files': True}, {'max_files': 0}, {'max_files': batch_scan.MAX_FILES + 1},
+    {'skip_unsupported': 'yes'}, {'cancelled': None},
+])
+def test_invalid_scan_policy_is_rejected_before_any_directory_or_file_read(tmp_path, monkeypatch, policy):
+    monkeypatch.setattr(batch_scan.os, 'scandir', lambda *a, **k: pytest.fail('Invalid scan opened a folder.'))
+    monkeypatch.setattr(batch_scan, 'snapshot', lambda *a, **k: pytest.fail('Invalid scan read a source.'))
+    with pytest.raises(ValueError):
+        batch_scan.scan_paths([tmp_path], **policy)
+
+
+@pytest.mark.parametrize('manifest', [None, {'sha256': 'x', 'mime': 'audio/wav', 'size': 3},
+    {'sha256': 'a' * 64, 'mime': 'audio/wav', 'size': True},
+    {'sha256': 'a' * 64, 'mime': 'audio/wav', 'size': 4}])
+def test_custom_policy_cannot_publish_an_invalid_manifest(tmp_path, manifest):
+    source = write(tmp_path / 'audio.wav', b'123')
+    row, = batch_scan.scan_paths([source], supported=frozenset({'.wav'}),
+                                 file_manifest=lambda path: manifest)
+    assert row['state'] == 'rejected' and row['manifest'] is None
+    assert 'invalid source manifest' in row['message']
+    assert source.read_bytes() == b'123'
+
+
 def test_exact_duplicates_are_scoped_and_keep_original_paths(tmp_path):
     first = write(tmp_path / 'a.txt', b'same source')
     second = write(tmp_path / 'b.txt', b'same source')
@@ -65,9 +90,9 @@ def test_nonrecursive_skips_nested_folder_without_opening_file(tmp_path, monkeyp
     real = batch_scan.snapshot
     opened = []
 
-    def capture(root, relative):
+    def capture(root, relative, *, cancelled):
         opened.append(relative)
-        return real(root, relative)
+        return real(root, relative, cancelled=cancelled)
 
     monkeypatch.setattr(batch_scan, 'snapshot', capture)
     rows = batch_scan.scan_paths([tmp_path], recursive=False)
@@ -144,8 +169,8 @@ def test_source_changed_after_intake_is_rejected(tmp_path, monkeypatch, change):
     source = write(tmp_path / 'a.txt')
     real = batch_scan.snapshot
 
-    def changed(root, relative):
-        asset = real(root, relative)
+    def changed(root, relative, *, cancelled):
+        asset = real(root, relative, cancelled=cancelled)
         if change == 'replace':
             replacement = write(tmp_path / 'replacement.txt', b'Changed source bytes.')
             os.replace(replacement, source)
@@ -182,9 +207,9 @@ def test_cancel_after_first_snapshot_never_opens_next_file(tmp_path, monkeypatch
     stopped, opened = [], []
     real = batch_scan.snapshot
 
-    def capture(root, relative):
+    def capture(root, relative, *, cancelled):
         opened.append(relative)
-        asset = real(root, relative)
+        asset = real(root, relative, cancelled=cancelled)
         stopped.append(True)
         return asset
 
@@ -200,9 +225,9 @@ def test_supported_file_bound_stops_before_next_open(tmp_path, monkeypatch):
     monkeypatch.setattr(batch_scan, 'MAX_FILES', 2)
     real, opened = batch_scan.snapshot, []
 
-    def capture(root, relative):
+    def capture(root, relative, *, cancelled):
         opened.append(relative)
-        return real(root, relative)
+        return real(root, relative, cancelled=cancelled)
 
     monkeypatch.setattr(batch_scan, 'snapshot', capture)
     rows = batch_scan.scan_paths([tmp_path])
@@ -298,11 +323,11 @@ def test_explicit_nested_root(tmp_path, monkeypatch, recursive, max_depth):
     for path in (tmp_path / 'a.txt', nested / 'b.txt', deeper / 'c.txt'):
         path.write_text(path.name, encoding='utf-8')
     opened = []
-    def snapshot(root, name):
+    real = batch_scan.snapshot
+    def snapshot(root, name, *, cancelled):
         path = root / name
         opened.append(path)
-        raw = path.read_bytes()
-        return SimpleNamespace(manifest=lambda: {'sha256': sha256(raw).hexdigest(), 'mime': 'text/plain', 'size': len(raw)})
+        return real(root, name, cancelled=cancelled)
     monkeypatch.setattr(batch_scan, 'snapshot', snapshot)
     monkeypatch.setattr(batch_scan, 'MAX_DEPTH', max_depth)
     rows = batch_scan.scan_paths([nested, tmp_path], recursive=recursive)

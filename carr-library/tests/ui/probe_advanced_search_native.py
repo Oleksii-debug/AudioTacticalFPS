@@ -332,7 +332,8 @@ def run_probe(wx, native_active):
             # Windows' generic data view may focus its own native child.
             focused = wx.Window.FindFocus()
             assert focused is panel.grid.control or (
-                focused is not None and panel.grid.control.IsDescendant(focused))
+                focused is not None and panel.grid.control.IsDescendant(focused)), (
+                    'Search result focus was replaced', focused.GetName() if focused else None)
             buttons = [child for child in panel.GetChildren() if isinstance(child, wx.Button)
                        and child.GetLabel().replace('&', '') == 'Copy quote']
             assert len(buttons) == 1

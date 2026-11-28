@@ -117,8 +117,8 @@ def test_real_historical_quotes_locators_notes_and_tags(library):
     assert 'Topics: 5. Evidence records: 3.' in result
     assert 'Original Author' in result and 'Original title' in result
     assert 'Current Author' not in result and 'Changed current' not in result
-    assert 'PDF page 7; printed page iv' in result
-    assert 'PDF page 8; printed page unknown' in result and 'candidate' not in result
+    assert 'Physical page 7; printed page iv' in result
+    assert 'Physical page 8; printed page unknown' in result and 'candidate' not in result
     assert 'Segment 1 (unpaginated)' in result
     assert '**Evidence 1, source slice 1 of 2**' in result
     assert '**Evidence 1, source slice 2 of 2**' in result

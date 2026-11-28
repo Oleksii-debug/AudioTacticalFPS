@@ -42,6 +42,29 @@ def _read(path):
         raise ResourceStateError('Resource policy or lease is invalid; admission stopped.') from exc
 
 
+def _release_reservation_lock(lock):
+    """Release one unique lease lock and its inert file while _gate is held.
+
+    UUID reservation names are allocated only under the coordinator gate.
+    No cooperating owner or waiter can acquire this identity between release
+    and deletion. The shared admission lock must never use this helper.
+    """
+    if not lock.held:
+        raise ResourceStateError('Only an owned reservation lock can be retired.')
+    try:
+        before = regular(lock.path)
+    finally:
+        # Always close the descriptor, including a changed-path failure.
+        # NativeLock validates ownership; Windows may remove the file here.
+        lock.release()
+    if os.path.lexists(lock.path):
+        after = regular(lock.path)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise ResourceStateError('A released reservation lock was replaced; it was not removed.')
+        lock.path.unlink()
+        sync_directory(lock.path.parent)
+
+
 class ResourceLease:
     def __init__(self, broker, record, lock, cancelled, run_timeout):
         self.broker, self.record, self._lock = broker, record, lock
@@ -85,7 +108,7 @@ class ResourceLease:
                         sync_directory(path.parent)
                     # Other callers must not observe a live lock after its
                     # corresponding record has been removed.
-                    self._lock.release()
+                    _release_reservation_lock(self._lock)
             except ResourceTimeout:
                 # Closing the native lock is sufficient to release ownership.
                 # The next admission reaps the now-unlocked stale metadata.
@@ -96,7 +119,7 @@ class ResourceLease:
 
 
 class ResourceBroker:
-    def __init__(self, directory, *, limits=None, policy_path=None):
+    def __init__(self, directory, *, limits=None, policy_path=None, cancelled=lambda: False):
         if limits is not None and not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
         self.root = local_path(directory)
@@ -110,7 +133,7 @@ class ResourceBroker:
         if self.policy_path in (binding, self.root / '.admission.lock') or self.policy_path.is_relative_to(self.leases_root):
             raise ValueError('Resource policy must not replace coordinator or live-lease files.')
         self.policy_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with self._gate(time.monotonic() + 5, lambda: False):
+        with self._gate(time.monotonic() + 5, cancelled):
             location = {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)}
             if not os.path.lexists(binding):
                 atomic_json(binding, location)
@@ -124,11 +147,11 @@ class ResourceBroker:
             self.limits
 
     @classmethod
-    def for_app(cls, root, *, limits=None):
+    def for_app(cls, root, *, limits=None, cancelled=lambda: False):
         root = local_path(root, exists=True)
         regular(root, directory=True)
         return cls(root / 'runtime' / 'resources', limits=limits,
-                   policy_path=root / 'state' / 'operations' / 'resources.json')
+                   policy_path=root / 'state' / 'operations' / 'resources.json', cancelled=cancelled)
 
     @property
     def limits(self):
@@ -190,7 +213,7 @@ class ResourceBroker:
                         regular(path)
                         path.unlink()
                 finally:
-                    probe.release()
+                    _release_reservation_lock(probe)
                 continue
             if not os.path.lexists(path):
                 raise ResourceStateError('A live resource lock has no valid reservation record.')
@@ -268,11 +291,17 @@ class ResourceBroker:
                 return 'actual free disk reserve'
         return None
 
-    def configure(self, limits, *, timeout=5):
+    def configure(self, limits, *, timeout=5, expected_limits=None, cancelled=lambda: False):
         if not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
+        if expected_limits is not None and not isinstance(expected_limits, ResourceLimits):
+            raise TypeError('The reviewed previous resource policy must be typed.')
+        if not callable(cancelled):
+            raise TypeError('Policy admission requires a cancellation callback.')
         deadline = time.monotonic() + _seconds(timeout, 'Policy wait timeout')
-        with self._gate(deadline, lambda: False):
+        with self._gate(deadline, cancelled):
+            if expected_limits is not None and self.limits != expected_limits:
+                raise ResourceConflict('Resource allowances changed. Refresh and review them before saving.')
             active = self._active()
             if len(active) > limits.max_leases or any(self._usage(active)[name] > getattr(limits, name)
                                                      for name in ('cpu_slots', 'memory_bytes', 'disk_bytes')):
@@ -282,6 +311,8 @@ class ResourceBroker:
                     self._fits_policy(ResourceRequest.from_dict(record['request']), limits)
                 except ResourceUnavailable as exc:
                     raise ResourceConflict('New resource limits would invalidate an existing reservation.') from exc
+            if cancelled():
+                raise ResourceCancelled('Saving resource allowances was cancelled before publication.')
             atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1', 'limits': limits.to_dict()}, replace=True)
         return limits
 
@@ -330,7 +361,7 @@ class ResourceBroker:
                         atomic_json(self.leases_root / (identity + '.json'), record)
                         lease = ResourceLease(self, record, lock, cancelled, run_timeout)
                     except BaseException:
-                        lock.release()
+                        _release_reservation_lock(lock)
                         raise
             if lease is None:
                 if cancelled():
@@ -344,8 +375,8 @@ class ResourceBroker:
         finally:
             lease.release()
 
-    def snapshot(self, *, timeout=5):
-        with self._gate(time.monotonic() + _seconds(timeout, 'Snapshot timeout'), lambda: False):
+    def snapshot(self, *, timeout=5, cancelled=lambda: False):
+        with self._gate(time.monotonic() + _seconds(timeout, 'Snapshot timeout'), cancelled):
             active, limits = self._active(), self.limits
             return {'schema': 'carr-resource-snapshot/1', 'limits': limits.to_dict(),
                     'usage': self._usage(active), 'leases': active,

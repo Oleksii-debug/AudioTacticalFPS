@@ -1,0 +1,177 @@
+{
+  "schema": 1,
+  "tested_commit": "5604f19d0481e0879cee28319c1c0654bed4b768",
+  "tested_tree": "0610d4dcec9ca03daa613cbb5b780e55227042a6",
+  "status": "PASS",
+  "run_id": 46027931647,
+  "job_id": 140608164563,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46027931647/job/140608164563",
+  "evidence_source": "Returned completed Windows job logs and explicit installed module origins.",
+  "source_filesystem": {
+    "passed": 262,
+    "failed": 0,
+    "skipped": 0
+  },
+  "source_native": {
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed_native": {
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0
+  },
+  "reports": [
+    {
+      "commit": "5604f19d0481e0879cee28319c1c0654bed4b768",
+      "tree": "0610d4dcec9ca03daa613cbb5b780e55227042a6",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "windows": "Windows-10-10.0.20348-SP0",
+      "modules": {
+        "carr_library.installation_lease": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+          "sha256": "a6e24fd54e491f6bc5cad9da3e1e0394ce6d779becd0fc3e2ed116fd0e712d89"
+        },
+        "carr_library.portable_entry": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_entry.py",
+          "sha256": "ec7783b4b2888b4de86db8498c74027598cc3fc6ade20cbfcf6d60bd8469200e"
+        },
+        "carr_library.portable_bootstrap": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_bootstrap.py",
+          "sha256": "a1dbe4a5d2ddbace742e3baef84403f4e6f31dd36d3b52e4f01804a42316fd8a"
+        },
+        "carr_library.audio.windows_process": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+          "sha256": "9023febfbabfde08b50d499461d541f5b38095201dff221edb086ea4ebd04b4c"
+        },
+        "carr_library.security.installation": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+          "sha256": "ff65d969051fd72d6342c1a5d5d071fb3834d63c7b5bdc72c3196a3728863837"
+        },
+        "carr_library.security.handoff": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\handoff.py",
+          "sha256": "0d7476982ec7eee685b5eaf8da439ea69caf54c7b987eda421d17617b25274bc"
+        },
+        "carr_library.local_audio_setup": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\local_audio_setup.py",
+          "sha256": "aa8e52cdb004437313d64a1d02558ee68888db9adbd94b7ede149c79b4589e9f"
+        },
+        "carr_library.audio_runtime": {
+          "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio_runtime.py",
+          "sha256": "83d345830f456c06b47a685de7578288f3bf899ed2f2c526a2183604d59acf8b"
+        }
+      },
+      "scope": "synthetic local lifetime and preservation; no private release or production activation"
+    },
+    {
+      "source_sha256": {
+        "launcher.c": "052c2d285d6be44013e0da3b9ca1a155e5d6bcf991ba1e9fa30ebde03d1752bd",
+        "probe_pe.py": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+        "windows_child_probe.c": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+        "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+        "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+        "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+        "build_msvc.ps1": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+      },
+      "pe": {
+        "schema": 1,
+        "file": "ResearchLibrary.exe",
+        "bytes": 15872,
+        "sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+        "machine": "x86_64",
+        "subsystem": "windows-gui",
+        "aslr": true,
+        "high_entropy_aslr": true,
+        "dep": true,
+        "timestamp": 3641759729,
+        "imports": [
+          "KERNEL32.dll",
+          "USER32.dll",
+          "SHELL32.dll"
+        ],
+        "reproducible_build_marker": true,
+        "embedded_as_invoker": true,
+        "certificate_table_present": false,
+        "authenticode_signed": false,
+        "windows_execution_verified": false,
+        "nvda_verified": false
+      },
+      "schema": 1,
+      "release_status": "unsigned-private-candidate",
+      "toolchain": {
+        "link.exe": {
+          "version": "14.44.35230.0",
+          "sha256": "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+        },
+        "cl.exe": {
+          "version": "19.44.35230.0",
+          "sha256": "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+        },
+        "rc.exe": {
+          "version": "10.0.26100.9457 (WinBuild.160101.0800)",
+          "sha256": "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+        }
+      },
+      "target": "Windows x64 / MSVC"
+    },
+    {
+      "schema": 1,
+      "status": "passed",
+      "checks": [
+        "unicode-spaces-fixed-argv-offline-optional-runtimes",
+        "read-only-ready-probe",
+        "fixed-installation-check",
+        "child-exit-status-propagated",
+        "extra-arguments-rejected",
+        "incomplete-state-preserved-without-reinstall",
+        "missing-runtime-does-not-search-path",
+        "fresh-package-reuses-fixed-offline-installer",
+        "research-data-sentinel-preserved"
+      ],
+      "check_count": 9,
+      "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+      "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+      "native_launcher_execution_verified": true,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false
+    },
+    {
+      "status": "PASS",
+      "passed": 262,
+      "skipped": 0,
+      "scope": "actual filesystem and original retained-data boundaries"
+    },
+    {
+      "status": "PASS",
+      "passed": 26,
+      "skipped": 0,
+      "windows": "actual Job, handles, files and exclusive leases"
+    },
+    {
+      "status": "PASS",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "expected_failures": false,
+      "origins": {
+        "carr_library": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\__init__.py",
+        "carr_library.installation_lease": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+        "carr_library.portable_entry": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_entry.py",
+        "carr_library.portable_bootstrap": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_bootstrap.py",
+        "carr_library.audio.windows_process": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+        "carr_library.security.installation": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+        "carr_library.security.handoff": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\handoff.py"
+      }
+    }
+  ],
+  "qualification": {
+    "actual_python_installation": "NOT_VERIFIED_BY_SYNTHETIC_LAUNCHER_CHILD",
+    "human_nvda": "NOT_RUN",
+    "authenticode": "NOT_VERIFIED",
+    "later_composed_candidate": "NOT_ESTABLISHED_BY_THIS_RECORD",
+    "full_platform_acceptance": "NOT_ESTABLISHED_BY_THIS_COMPONENT"
+  }
+}

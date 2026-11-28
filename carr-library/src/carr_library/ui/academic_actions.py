@@ -300,7 +300,8 @@ def export_bibliography(frame):
                 raise ValueError('Library selection changed. Open the bibliography command again.')
 
         selected_scope()
-        approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
+        approval = confirm_export_destination(frame, path, private_root=library.root,
+                                               title='Replace bibliography', wx_module=wx)
         if approval is None:
             return
         selected_scope()
@@ -348,7 +349,8 @@ def export_research_outline(frame):
                 raise ValueError('Topic selection changed. Open the outline command again.')
 
         selected_scope()
-        approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
+        approval = confirm_export_destination(frame, path, private_root=library.root,
+                                               title='Replace research outline', wx_module=wx)
         if approval is None:
             return
         selected_scope()

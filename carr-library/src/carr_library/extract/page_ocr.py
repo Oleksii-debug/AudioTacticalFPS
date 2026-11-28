@@ -12,7 +12,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
+from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime, NON_READING_MODELS
 from .ocr_languages import model_ids
 from .ocr_process import run_ocr
 
@@ -26,12 +26,14 @@ class _OcrOutputLimit(ValueError):
     pass
 
 
-def _read_ocr_output(path):
+def _read_ocr_output(path, maximum=_MAX_OCR_OUTPUT_BYTES):
     # Match the ingestion checkpoint ceiling before reading an unbounded file.
     # The journal still checks the size of the complete serialized checkpoint.
+    if type(maximum) is not int or not 1 <= maximum <= _MAX_OCR_OUTPUT_BYTES:
+        raise ValueError('Invalid OCR output budget.')
     with path.open('rb') as stream:
-        data = stream.read(_MAX_OCR_OUTPUT_BYTES + 1)
-    if len(data) > _MAX_OCR_OUTPUT_BYTES:
+        data = stream.read(maximum + 1)
+    if len(data) > maximum:
         raise _OcrOutputLimit('OCR output exceeds checkpoint limit')
     return data.decode('utf-8')
 
@@ -75,22 +77,28 @@ class Config:
     orientation: bool = False
     model_policy: str = 'default'
     model_profile: str = 'installed'
+    automatic_languages: bool = False
 
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
+        if type(self.automatic_languages) is not bool:
+            raise ValueError('automatic language selection must be boolean')
         selected = model_ids(self.languages)
-        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
-            raise ValueError('duplicate or oversized language selection')
+        if self.automatic_languages and len(selected) > 8:
+            raise ValueError('Automatic OCR supports at most eight reviewed bootstrap models.')
+        if NON_READING_MODELS.intersection(selected):
+            raise ValueError('Choose reading languages or scripts; special detectors are separate.')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_profile not in ('installed', 'fast', 'best'):
             raise ValueError('unsupported OCR model profile')
         if self.model_policy == POLICY and self.model_profile == 'best':
             raise ValueError('the pinned Fast policy cannot use the Best model profile')
-        if self.model_policy == POLICY:
-            if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
-                raise ValueError('unsupported pinned OCR language')
+        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
+            raise ValueError('duplicate or oversized language selection')
+        if self.model_policy == POLICY and any(lang not in MODELS for lang in selected):
+            raise ValueError('unsupported pinned OCR language')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 
@@ -102,14 +110,29 @@ def extract_page(asset, physical_index, config=Config()):
     Optional orientation evidence has its own pixel coordinate frame.
     Parser isolation and durable job checkpoints belong to the ingest runner.
     """
+    from ..catalog.intake import MAX_BYTES, file_snapshot
     deadline = time.monotonic() + config.timeout
+    path = Path(asset)
+    if path.stat().st_size > MAX_BYTES:
+        original = file_snapshot(path.parent, path.name)
+        if original.mime != 'application/pdf':
+            raise ValueError('The page adapter requires a PDF source.')
+        with original.open() as stream:
+            result = _extract_page_stream(stream, original.digest, physical_index, config, deadline)
+        original.verify()
+        return result
+    with path.open('rb') as source:
+        data = source.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise ValueError('source changed beyond its byte profile')
+    return _extract_page_stream(BytesIO(data), sha256(data).hexdigest(), physical_index, config, deadline)
+
+
+def _extract_page_stream(data, asset_sha256, physical_index, config, deadline):
+    """The same pinned parsers consume a held, seekable original stream."""
     from pypdf import PdfReader
     import pypdfium2 as pdfium
-    with Path(asset).open('rb') as f:
-        data = f.read(64 * 1024 * 1024 + 1)
-    if len(data) > 64 * 1024 * 1024:
-        raise ValueError('source too large')
-    reader = PdfReader(BytesIO(data))
+    reader = PdfReader(data)
     if reader.is_encrypted or not 1 <= len(reader.pages) <= 1000:
         raise ValueError('encrypted or oversized PDF')
     if type(physical_index) is not int or not 1 <= physical_index <= len(reader.pages):
@@ -118,7 +141,8 @@ def extract_page(asset, physical_index, config=Config()):
     native = source.extract_text() or ''
     result = dict(physical_index=physical_index, printed_label=None,
                   printed_label_verified=False, raw_text=native, blocks=[], warnings=[],
-                  provenance=dict(asset_sha256=sha256(data).hexdigest(), native_text=native,
+                  provenance=dict(asset_sha256=asset_sha256, source_format='PDF', source_unit='PDF page',
+                                  native_text=native,
                                   native_engine='pypdf', native_version=metadata.version('pypdf'),
                                   rotation=source.rotation, config=vars(config).copy()))
     provenance = result['provenance']
@@ -161,71 +185,101 @@ def extract_page(asset, physical_index, config=Config()):
                     result['status'] = 'blank'
                     provenance['method'] = 'render_blank'
                     return result
+                return _recognize_image(result, image, config, deadline,
+                                        native=native, suspect=suspect)
+
+
+def _recognize_image(result, image, config, deadline, *, native='', suspect=False):
+    """Run the existing bounded OCR policy on one caller-owned RGB raster.
+
+    Both PDF renders and retained image frames keep the same exact raw outputs,
+    model/runtime checks, optional orientation candidate and review requirement.
+    Container admission and image lifetime remain with the source adapter.
+    """
+    provenance = result['provenance']
+    try:
+        def remaining():
+            seconds = deadline - time.monotonic()
+            if seconds <= 0:
+                raise subprocess.TimeoutExpired('tesseract', config.timeout)
+            return seconds
+
+        profile_options = ({'model_profile': config.model_profile}
+                           if config.model_profile != 'installed' else {})
+        runtime = discover_ocr_runtime(config.languages, orientation=config.orientation,
+                                       remaining=remaining, **profile_options)
+        if runtime is None:
+            result['status'] = 'review_required'
+            result['warnings'].append('ocr_engine_missing')
+            return result
+        exe = runtime.executable
+        if runtime.portable or getattr(runtime, 'managed', False):
+            provenance['ocr_runtime'] = runtime.fingerprint()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            def run(args, *, budget=None):
+                return run_ocr(runtime, args, remaining=remaining if budget is None else budget)
+
+            model_args = []
+            if config.model_policy == POLICY:
                 try:
-                    def remaining():
-                        seconds = deadline - time.monotonic()
-                        if seconds <= 0:
-                            raise subprocess.TimeoutExpired('tesseract', config.timeout)
-                        return seconds
-
-                    profile_options = ({'model_profile': config.model_profile}
-                                       if config.model_profile != 'installed' else {})
-                    runtime = discover_ocr_runtime(config.languages, orientation=config.orientation,
-                                                   remaining=remaining, **profile_options)
-                    if runtime is None:
-                        result['status'] = 'review_required'
-                        result['warnings'].append('ocr_engine_missing')
-                        return result
-                    exe = runtime.executable
-                    if runtime.portable or getattr(runtime, 'managed', False):
-                        provenance['ocr_runtime'] = runtime.fingerprint()
-
-                    with tempfile.TemporaryDirectory() as tmp:
-                        def run(args):
-                            return run_ocr(runtime, args, remaining=remaining)
-
-                        model_args = []
-                        if config.model_policy == POLICY:
-                            try:
-                                report = run([exe, '--list-langs']).stdout.decode('utf-8')
-                                model_args, model_provenance = stage_pinned_models(
-                                    report, config.languages, Path(tmp) / 'verified-models', remaining)
-                            except (ValueError, OSError, subprocess.SubprocessError):
-                                result['status'] = 'review_required'
-                                result['warnings'].append('pinned_ocr_model_unavailable_or_invalid')
-                                return result
-                            provenance['ocr_model'] = model_provenance
-
-                        def recognize(raster, name):
-                            inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
-                            raster.save(inp, dpi=(config.dpi, config.dpi))
-                            run([exe, str(inp), str(out), '-l', config.languages,
-                                 '--dpi', str(config.dpi), '--psm', '3', *model_args,
-                                 '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'])
-                            return (_read_ocr_output(out.with_suffix('.txt')),
-                                    _read_ocr_output(out.with_suffix('.tsv')))
-
-                        provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
-                        raw, tsv = recognize(image, 'baseline')
-                        provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
-                        if config.orientation:
-                            from .ocr_orientation_bridge import orientation_candidate
-                            provenance['orientation'] = orientation_candidate(
-                                image, config, exe, remaining, run, recognize,
-                                native_cli=runtime.portable or getattr(runtime, 'managed', False))
-                        runtime.assert_unchanged(remaining)
-                except _OcrOutputLimit:
+                    report = run([exe, '--list-langs']).stdout.decode('utf-8')
+                    model_args, model_provenance = stage_pinned_models(
+                        report, config.languages, Path(tmp) / 'verified-models', remaining)
+                except (ValueError, OSError, subprocess.SubprocessError):
                     result['status'] = 'review_required'
-                    result['warnings'].append('ocr_output_limit')
+                    result['warnings'].append('pinned_ocr_model_unavailable_or_invalid')
                     return result
-                except OcrRuntimeError:
-                    result['status'] = 'review_required'
-                    result['warnings'].append('portable_ocr_runtime_unavailable_or_invalid')
-                    return result
-                except (OSError, subprocess.SubprocessError, UnicodeError):
-                    result['status'] = 'review_required'
-                    result['warnings'].append('ocr_failed_or_timed_out')
-                    return result
+                provenance['ocr_model'] = model_provenance
+
+            def recognize(raster, name, *, languages=None, psm=3,
+                          maximum=_MAX_OCR_OUTPUT_BYTES, budget=None):
+                languages = config.languages if languages is None else languages
+                if not set(model_ids(languages)) <= set(model_ids(config.languages)) or psm not in (3, 6):
+                    raise ValueError('A regional OCR pass must use the reviewed model pool.')
+                check = remaining if budget is None else budget
+                check()
+                inp, out = Path(tmp) / (name + '.png'), Path(tmp) / name
+                raster.save(inp, dpi=(config.dpi, config.dpi))
+                run([exe, str(inp), str(out), '-l', languages,
+                     '--dpi', str(config.dpi), '--psm', str(psm), *model_args,
+                     '-c', 'tessedit_create_txt=1', '-c', 'tessedit_create_tsv=1'], budget=check)
+                values = (_read_ocr_output(out.with_suffix('.txt'), maximum),
+                          _read_ocr_output(out.with_suffix('.tsv'), maximum))
+                check()
+                return values
+
+            provenance['ocr_engine'] = run([exe, '--version']).stdout.decode('utf-8', 'replace').splitlines()[0]
+            raw, tsv = recognize(image, 'baseline')
+            if config.automatic_languages:
+                from .ocr_regions import language_candidates
+                observations, candidate = language_candidates(
+                    image, raw, tsv, config, remaining, recognize)
+                provenance['language_detection'] = observations
+                result['warnings'].append('automatic_language_candidates_require_review')
+                if candidate is not None:
+                    raw, tsv = candidate
+            provenance['ocr_coordinate_frame'] = 'source_render_pixels_top_left'
+            if config.orientation:
+                from .ocr_orientation_bridge import orientation_candidate
+                provenance['orientation'] = orientation_candidate(
+                    image, config, exe, remaining, run, recognize,
+                    native_cli=runtime.portable or getattr(runtime, 'managed', False))
+            runtime.assert_unchanged(remaining)
+    except _OcrOutputLimit:
+        result['status'] = 'review_required'
+        result['warnings'].append('ocr_output_limit')
+        return result
+    except OcrRuntimeError:
+        result['status'] = 'review_required'
+        result['warnings'].append('portable_ocr_runtime_unavailable_or_invalid')
+        return result
+    except InterruptedError:
+        raise
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        result['status'] = 'review_required'
+        result['warnings'].append('ocr_failed_or_timed_out')
+        return result
     provenance.update(method='ocr_candidate', ocr_text=raw, ocr_tsv=tsv, psm=3)
     try:
         result['blocks'] = _ocr_blocks(tsv, provenance['render_size'])

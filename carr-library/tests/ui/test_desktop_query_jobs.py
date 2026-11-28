@@ -9,6 +9,12 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.ui.search_model import Hit, SearchModel
+from carr_library.search.paging import SearchPage
+
+
+def empty_page():
+    return SearchPage((), {}, None, False, 0, 0, 0, 0, "synthetic-empty-window")
+
 
 
 @pytest.fixture
@@ -25,6 +31,7 @@ def handlers():
     saved = Mock()
     saved.return_value.list_queries.return_value = queries
     environment = {'PagedSearchPanel': object, 'WorkspaceFrame': object, 'Hit': Hit,
+                   '__name__': 'carr_library.ui._query_probe', '__package__': 'carr_library.ui',
                    'wx': SimpleNamespace(ID_OK=1, SingleChoiceDialog=Mock(return_value=dialog)),
                    'SavedTopicQueries': saved, 'show_text': Mock(),
                    'format_topic_results': Mock(return_value='Readable saved quotations.')}
@@ -49,10 +56,17 @@ def panel(handlers):
     panel.collection_ids = [None]
     panel.filters, panel.results = {}, {}
     panel._context_epoch = 0
+    panel._search_page, panel._source_history, panel.search_navigation = None, [], {}
+    panel.search_timeout = Mock()
+    panel.search_timeout.GetValue.return_value = "300"
     panel.grid, panel.details, panel.status = Mock(), Mock(), Mock()
     panel._refresh_details = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
-        library=SimpleNamespace(search=Mock(), semantic_ranker=object()), report=Mock())
+        library=SimpleNamespace(search_page=Mock(), semantic_ranker=object(),
+            root=Path('/synthetic-library'), database=Path('/synthetic-library/library.sqlite'),
+            assets_dir=Path('/synthetic-library/assets'),
+            assets=SimpleNamespace(root=Path('/synthetic-library/assets'))), report=Mock())
+    panel.bound_library = panel.frame.library
     return panel
 
 
@@ -61,10 +75,10 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     def search(*args, on_status, cancelled, **kwargs):
         assert not cancelled()
         on_status(note)
-        return ()
-    panel.frame.library.search.side_effect = search
+        return empty_page()
+    panel.frame.library.search_page.side_effect = search
     panel.on_search(None)
-    panel.frame.library.search.assert_not_called()
+    panel.frame.library.search_page.assert_not_called()
     _, operation, complete = panel.frame.run_job.call_args.args
     rows = operation()
     panel.status.ChangeValue.assert_not_called()
@@ -72,7 +86,7 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     assert note in panel.status.ChangeValue.call_args.args[0]
     assert 'No results.' in panel.status.ChangeValue.call_args.args[0]
     panel.status.SetFocus.assert_called_once()
-    cancelled = panel.frame.library.search.call_args.kwargs['cancelled']
+    cancelled = panel.frame.library.search_page.call_args.kwargs['cancelled']
     panel.frame.cancel_event.set()
     assert cancelled()
 
@@ -95,12 +109,12 @@ def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(pa
 def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(panel):
     def first(*args, on_status, **kwargs):
         on_status('Old fallback notice.')
-        return ()
-    panel.frame.library.search.side_effect = first
+        return empty_page()
+    panel.frame.library.search_page.side_effect = first
     panel.on_search(None)
     _, old_operation, old_complete = panel.frame.run_job.call_args.args
     old_rows = old_operation()
-    panel.frame.library.search.side_effect = lambda *args, **kwargs: ()
+    panel.frame.library.search_page.side_effect = lambda *args, **kwargs: empty_page()
     panel.on_search(None)
     _, operation, complete = panel.frame.run_job.call_args.args
     complete(operation())

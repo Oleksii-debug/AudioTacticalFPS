@@ -1,4 +1,4 @@
-"""Shared cooperative runtime admission and views over canonical job stores."""
+"""Shared cooperative runtime admission."""
 from .models import (ResourceLimits, ResourceRequest, ResourceError, ResourceCancelled,
                      ResourceTimeout, ResourceUnavailable, ResourceConflict, ResourceStateError)
 from .broker import ResourceBroker, ResourceLease

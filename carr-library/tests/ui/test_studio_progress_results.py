@@ -23,10 +23,14 @@ def harness(*, saved=None, closed=False, reject_submit=False):
     run = next(n for n in studio.body if isinstance(n, ast.FunctionDef) and n.name == 'run')
     # Compile the actual handler in a minimal closure, not a second algorithm.
     factory = ast.parse("""def create(environment):
-    busy, alive = False, not environment.closed
+    busy, alive = False, True
     dialog, cancel, controls = environment.dialog, environment.cancel, environment.controls
     progress, executor, wx = environment.progress, environment.executor, environment.wx
     report, service, current_job = environment.report, environment.service, 'saved-job'
+    def close_owner():
+        nonlocal alive
+        alive = False
+    environment.close_owner = close_owner
 """).body[0]
     factory.body.extend([run, ast.parse('return run').body[0]])
     tree = ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[]))
@@ -51,6 +55,14 @@ def harness(*, saved=None, closed=False, reject_submit=False):
         cancel=Event(), controls=Mock(), progress=panel, executor=Executor(),
         wx=SimpleNamespace(CallAfter=lambda call, *args: call(*args)), report=Mock(),
         service=SimpleNamespace(get=lambda identity: saved))
+    def deliver(callback, *args):
+        # Close after work was admitted, before its native completion callback.
+        # A closed owner must not admit a brand-new operation just to exercise
+        # the late completion path.
+        if closed:
+            environment.close_owner()
+        callback(*args)
+    environment.wx.CallAfter = deliver
     return namespace['create'](environment), environment
 
 
@@ -100,3 +112,14 @@ def test_executor_rejection_does_not_leave_work_running():
     assert env.progress.active_task.snapshot().state == ProgressState.FAILED
     assert env.progress.active_task.snapshot().percent != 100
     assert env.dialog.working is False
+
+
+def test_closed_dialog_refuses_new_work_without_starting_a_shared_progress_task():
+    run, env = harness()
+    env.close_owner()
+    operation, completed = Mock(), Mock()
+    run(operation, completed)
+    operation.assert_not_called()
+    completed.assert_not_called()
+    env.controls.assert_not_called()
+    assert env.progress.active_task is None and not env.dialog.working

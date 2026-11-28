@@ -176,27 +176,6 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
-@pytest.mark.parametrize('existing', [False, True])
-def test_bibliography_preserves_newer_destination_during_render(
-        controller, tmp_path, monkeypatch, existing):
-    target = tmp_path / 'bibliography.txt'
-    if existing:
-        target.write_bytes(b'Explicitly selected old bibliography.')
-    render = controller.export
-    newer = b'Independent work saved while bibliography renders.'
-
-    def render_and_change(**options):
-        value = render(**options)
-        target.write_bytes(newer)
-        return value
-
-    monkeypatch.setattr(controller, 'export', render_and_change)
-    with pytest.raises(ValueError, match='destination changed'):
-        controller.export_to(target)
-    assert target.read_bytes() == newer
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
     with controller.library.write(controller.workspace) as db:
         service = AcademicLibrary(db, controller.workspace)
@@ -277,6 +256,10 @@ class _Control:
     def _touch(self, method, *args):
         assert not self.dead, 'A completion accessed a destroyed control'
         self.calls.append((method, args))
+
+    def GetId(self):
+        self._touch('GetId')
+        return id(self)
 
     def GetValue(self):
         self._touch('GetValue')
@@ -368,6 +351,7 @@ def native_handlers(monkeypatch):
         window = cls.__new__(cls)
         _Window.__init__(window)
         window._window_alive, window.pending = True, False
+        window._native_window_id = window.GetId()
         window.status = _Control()
         window.executor = _DeferredExecutor()
         if kind == 'editor':
@@ -388,11 +372,12 @@ def native_handlers(monkeypatch):
         return window
 
     def destroy(window):
-        event = SimpleNamespace(GetEventObject=lambda: window, Skip=Mock())
-        window.on_destroy(event)
-        event.Skip.assert_called_once()
+        identity, peer = window._native_window_id, object()
         for control in window.all_controls:
             control.dead = True
+        event = SimpleNamespace(GetId=lambda: identity, GetEventObject=lambda: peer, Skip=Mock())
+        window.on_destroy(event)
+        event.Skip.assert_called_once()
 
     def drain():
         while queued:
@@ -503,7 +488,8 @@ def test_live_completion_and_child_destroy_keep_normal_callbacks(controller, nat
         window.on_save()
     else:
         window._run('Loading overview', controller.statistics if outcome == 'success' else Mock(side_effect=error), done)
-    window.on_destroy(SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock()))
+    window.on_destroy(SimpleNamespace(GetId=lambda: window._native_window_id + 1,
+        GetEventObject=lambda: object(), Skip=Mock()))
     assert window._window_alive and window.pending
     if kind == 'academic':
         assert not window.cancel_event.is_set()
@@ -570,6 +556,101 @@ def test_live_academic_completion_reports_done_callback_error(controller, native
     assert 'Visible callback failure' in window.status.value
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_to_preserves_a_competing_save_during_real_render(
+        controller, tmp_path, monkeypatch, existing):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'competing-bibliography.txt'
+    if existing:
+        target.write_bytes(b'Previously approved bibliography')
+    original_export = controller.export
+    competing = b'Newer bibliography saved during rendering'
+
+    def render_with_competing_save(**kwargs):
+        content = original_export(**kwargs)
+        target.write_bytes(competing)
+        return content
+
+    monkeypatch.setattr(controller, 'export', render_with_competing_save)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == competing
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize(('answer', 'competing'), [('no', False), ('yes', False), ('yes', True)])
+def test_export_handler_binds_actual_controller_publication_to_confirmation(
+        controller, native_handlers, tmp_path, monkeypatch, answer, competing):
+    from carr_library.ui.academic_library_dialog import FORMATS
+
+    controller.create(form_values(draft()))
+    target = tmp_path / 'confirmed-bibliography.txt'
+    original_bytes = b'Existing bibliography selected for replacement'
+    competing_bytes = b'Newer bibliography saved while the question is open'
+    target.write_bytes(original_bytes)
+    ui = native_handlers
+    ui.wx.FD_SAVE, ui.wx.FD_OVERWRITE_PROMPT = 4, 8
+    ui.wx.YES, ui.wx.NO = 10, 11
+    ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 16, 32, 64
+    chooser = Mock()
+    chooser.ShowModal.return_value = ui.wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=chooser)
+    def answer_question(message, caption, style, parent):
+        if competing:
+            target.write_bytes(competing_bytes)
+        return ui.wx.YES if answer == 'yes' else ui.wx.NO
+
+    ui.wx.MessageBox = Mock(side_effect=answer_question)
+    window = ui.make('academic', controller)
+    window.controller = controller
+    window._export_options = Mock(return_value=(FORMATS[0], None, False))
+    actual_render = Mock(wraps=controller.export)
+    monkeypatch.setattr(controller, 'export', actual_render)
+    window.on_export()
+
+    assert ui.wx.FileDialog.call_args.kwargs['style'] == ui.wx.FD_SAVE
+    ui.wx.MessageBox.assert_called_once()
+    message, caption, style, parent = ui.wx.MessageBox.call_args.args
+    assert parent is window and target.name in message and caption == 'Replace academic bibliography'
+    assert style == ui.wx.YES_NO | ui.wx.NO_DEFAULT | ui.wx.ICON_QUESTION
+    chooser.Destroy.assert_called_once()
+    if answer == 'no':
+        actual_render.assert_not_called()
+        assert target.read_bytes() == original_bytes
+    elif competing:
+        actual_render.assert_called_once()
+        assert target.read_bytes() == competing_bytes
+        assert 'Bibliography export:' in window.status.value
+        assert 'destination changed' in window.status.value
+    else:
+        actual_render.assert_called_once()
+        assert target.read_text(encoding='utf-8') == controller.export()
+        assert window.status.value == f'Bibliography exported to {target}. Personal notes were not included.'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_bibliography_preserves_newer_destination_during_render(
+        controller, tmp_path, monkeypatch, existing):
+    target = tmp_path / 'bibliography.txt'
+    if existing:
+        target.write_bytes(b'Explicitly selected old bibliography.')
+    render = controller.export
+    newer = b'Independent work saved while bibliography renders.'
+
+    def render_and_change(**options):
+        value = render(**options)
+        target.write_bytes(newer)
+        return value
+
+    monkeypatch.setattr(controller, 'export', render_and_change)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == newer
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_native_export_handler_retains_text_return_and_cleanup_notice(
         controller, native_handlers, monkeypatch, tmp_path):
     from carr_library.ui import academic_library_dialog as ui
@@ -590,3 +671,110 @@ def test_native_export_handler_retains_text_return_and_cleanup_notice(
     assert result.encode('utf-8') == destination.read_bytes()
     assert len(controller.preview(result.encode('utf-8'), 'ris').entries) == 1
     assert 'Completed; temporary cleanup needs attention.' in window.status.value
+
+
+def test_controller_can_return_the_publication_receipt_without_rereading(controller, tmp_path):
+    from carr_library.research.export_file import ExportReceipt
+    controller.create(form_values(draft()))
+    target = tmp_path / 'receipt-bibliography.ris'
+    receipt = controller.export_to(target, format='ris', return_receipt=True)
+    assert isinstance(receipt, ExportReceipt) and receipt.path == target
+    assert len(controller.preview(target.read_bytes(), 'ris').entries) == 1
+
+
+@pytest.mark.parametrize('changed_after_confirmation', [False, True])
+def test_native_interchange_observer_tracks_actual_receipt_export_entry(
+        controller, native_handlers, tmp_path, changed_after_confirmation):
+    """The native probe observes the actual handler's receipt-bearing entrypoint."""
+    from pathlib import Path
+    from carr_library.ui import academic_library_dialog as ui
+
+    probe = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_bibliography_interchange_smoke.py'
+    definition = next(node for node in ast.walk(ast.parse(probe.read_text(encoding='utf-8')))
+                      if isinstance(node, ast.ClassDef) and node.name == 'ObservedController')
+    namespace = {'ui': ui, '__name__': 'native_interchange_observer_regression'}
+    exec(compile(ast.Module(body=[definition], type_ignores=[]), str(probe), 'exec'), namespace)
+    observed = namespace['ObservedController'](controller.library, controller.workspace)
+    reference = observed.create(form_values(draft(title='Observed real bibliography export')))
+    window = native_handlers.make('academic', observed)
+    window.controller = observed
+    destination = tmp_path / 'native-observer.bib'
+    destination.write_bytes(b'Explicitly selected previous bibliography')
+    approval = ui.capture_export_destination(destination, private_root=controller.library.root)
+    assert observed.export_attempts == []
+
+    if changed_after_confirmation:
+        newer = b'Independent work saved after confirmation'
+        destination.write_bytes(newer)
+        with pytest.raises(ValueError, match='destination changed'):
+            window.export_to(destination, format='bibtex', approval=approval)
+        assert destination.read_bytes() == newer
+    else:
+        text = window.export_to(destination, format='bibtex', approval=approval)
+        assert text.encode('utf-8') == destination.read_bytes()
+        restored, = observed.preview(destination.read_bytes(), 'bibtex').entries
+        assert restored.title == reference.title
+        assert window.status.value.startswith(f'Bibliography exported to {destination}.')
+    assert observed.export_attempts == [{'path': str(destination), 'format': 'bibtex'}]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+def test_academic_native_owner_id_filters_child_even_when_python_object_matches(controller, native_handlers, kind):
+    ui = native_handlers
+    window = ui.make(kind, controller)
+    skipped = Mock()
+    window.on_destroy(SimpleNamespace(GetId=lambda: window._native_window_id + 1,
+                                     GetEventObject=lambda: window, Skip=skipped))
+    skipped.assert_called_once()
+    assert window._window_alive
+    if kind == 'academic':
+        assert not window.cancel_event.is_set()
+    ui.destroy(window)  # Same captured native ID, dead old wrapper, different event object.
+    assert not window._window_alive and all(control.dead for control in window.all_controls)
+    if kind == 'academic':
+        assert window.cancel_event.is_set()
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+def test_dead_academic_owner_releases_held_real_result_without_ui_access_or_rollback(
+        controller, native_handlers, kind):
+    ui = native_handlers
+    window, done = ui.make(kind, controller), Mock()
+    entered, release = Event(), Event()
+    saved = []
+
+    def operation(values=None):
+        if kind == 'editor':
+            saved.append(controller.create(values))
+            result = saved[-1]
+        else:
+            result = controller.statistics()
+        entered.set()
+        assert release.wait(5)
+        return result
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        window.executor = executor
+        if kind == 'editor':
+            window.save = operation
+            window.on_save()
+        else:
+            window._run('Actual held statistics result', operation, done)
+        try:
+            assert entered.wait(5) and window.pending
+            if kind == 'editor':
+                assert controller.list() == tuple(saved)
+            ui.destroy(window)
+            before = [control.calls[:] for control in window.all_controls]
+        finally:
+            release.set()
+    assert ui.queued  # Real completion is held until the UI owner dispatches it.
+    ui.drain()
+    assert not window.pending and not window._window_alive
+    assert [control.calls for control in window.all_controls] == before
+    done.assert_not_called()
+    if kind == 'editor':
+        assert window.saved == saved[0] and controller.list() == tuple(saved)
+    else:
+        assert window.cancel_event.is_set() and controller.list() == ()

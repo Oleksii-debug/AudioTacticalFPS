@@ -5,6 +5,10 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import subprocess
+import sys
+from types import SimpleNamespace
+from unittest.mock import Mock
 import threading
 import wave
 
@@ -285,3 +289,172 @@ def test_actual_registry_notification_runs_on_existing_feedback_worker():
         sound.close()
         sound._worker.join(3)
     assert not sound._worker.is_alive()
+
+
+class OwnedProcessProvider(PCMProvider):
+    """Real owned child and registry; PCM and the playback device remain fixtures."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.process = None
+        self.close_calls = 0
+        self.closed = threading.Event()
+
+    def render(self, *args, **kwargs):
+        if self.process is None:
+            self.process = subprocess.Popen(
+                [sys.executable, '-I', '-B', '-c', 'import sys; sys.stdin.buffer.read()'],
+                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        super().render(*args, **kwargs)
+
+    def close(self):
+        self.close_calls += 1
+        if self.process is not None:
+            self.process.stdin.close()
+            try:
+                self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=3)
+                raise
+        self.closed.set()
+
+
+def owned_selection(root, provider):
+    registry = VoiceRegistry((provider,))
+    selected = activate_progress_voice(root, provider.voice.id,
+        _registry_factory=lambda _: registry)
+    selected._player_factory = PrivatePlayer
+    return selected, registry
+
+
+@pytest.mark.parametrize('invalid', ['missing-id', 'unsupported-language', 'settings-changed'])
+def test_failed_activation_releases_its_new_registry(tmp_path, invalid):
+    provider = OwnedProcessProvider(language='de' if invalid == 'unsupported-language' else 'en')
+    registry = VoiceRegistry((provider,))
+
+    def configured(state_root):
+        if invalid == 'settings-changed':
+            values = load_settings(state_root)
+            unused = tmp_path / 'unused'
+            unused.write_text('Never executed.', encoding='utf-8')
+            values['voice_helpers'] = [{'executable': str(unused), 'enabled': False}]
+            save_settings(state_root, values)
+        return registry
+
+    try:
+        with pytest.raises(ValueError):
+            activate_progress_voice(tmp_path, 'absent' if invalid == 'missing-id' else provider.voice.id,
+                                    _registry_factory=configured)
+        assert provider.closed.wait(3), 'Owned registry cleanup did not finish'
+        assert provider.close_calls == 1
+        assert registry.voices() == ()
+    finally:
+        registry.close()
+
+
+def test_owned_selection_copies_release_real_child_only_after_final_close(tmp_path):
+    provider = OwnedProcessProvider()
+    selected, registry = owned_selection(tmp_path, provider)
+    copied = selected.copy_selection()
+    try:
+        assert selected.speak_progress('First native view.', volume=.2, cancelled=lambda: False)
+        child = provider.process
+        assert child.poll() is None
+        selected.close()
+        selected.close()
+        assert provider.close_calls == 0 and child.poll() is None
+        assert copied.speak_progress('Second native view.', volume=.2, cancelled=lambda: False)
+        copied.close()
+        copied.close()
+        assert provider.closed.wait(3), 'Owned child cleanup did not acknowledge exit'
+        assert child.poll() is not None and provider.close_calls == 1
+        assert registry.voices() == ()
+        with pytest.raises(RuntimeError, match='closed'):
+            copied.copy_selection()
+    finally:
+        registry.close()
+
+
+def test_final_close_during_synthesis_waits_for_worker_acknowledgement(tmp_path):
+    provider = OwnedProcessProvider()
+    provider.entered, provider.release = threading.Event(), threading.Event()
+    selected, registry = owned_selection(tmp_path, provider)
+    copied = selected.copy_selection()
+    result, failures = [], []
+
+    def synthesize():
+        try:
+            result.append(selected.speak_progress('Pending notification.', volume=.2,
+                                                   cancelled=lambda: False))
+        except BaseException as exc:
+            failures.append(exc)
+
+    worker = threading.Thread(target=synthesize)
+    worker.start()
+    try:
+        assert provider.entered.wait(2)
+        child = provider.process
+        selected.close()
+        copied.close()
+        assert provider.close_calls == 0 and child.poll() is None
+        provider.release.set()
+        worker.join(3)
+        assert not worker.is_alive() and not failures and result == [False]
+        assert provider.closed.wait(3), 'Owned child cleanup did not acknowledge exit'
+        assert child.poll() is not None and provider.close_calls == 1
+    finally:
+        provider.release.set()
+        worker.join(3)
+        registry.close()
+
+
+def test_progress_voice_reselection_releases_old_owned_child(tmp_path):
+    from carr_library.ui.progress_panel import NativeProgressPanel
+    first_provider, second_provider = OwnedProcessProvider(), OwnedProcessProvider()
+    first, first_registry = owned_selection(tmp_path, first_provider)
+    second, second_registry = owned_selection(tmp_path, second_provider)
+    sound = ProgressFeedback(ProgressPreferences(mode='speech', volume=20))
+    panel = object.__new__(NativeProgressPanel)
+    panel.frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path))
+    panel.store = SimpleNamespace(path=tmp_path / 'progress-preferences.json')
+    panel.preferences, panel.feedback = sound.preferences, sound
+    panel.closed, panel.speech_provider = False, None
+    panel.timer, panel.media = Mock(), Mock()
+    panel._effective_preferences = lambda value: value
+    panel.refresh_audio_state = Mock()
+    try:
+        panel.set_speech_provider(first, root=tmp_path)
+        assert isinstance(panel.speech_provider, SnapshotProgressSpeech)
+        assert panel.speech_provider.provider is first
+        assert sound.update(ProgressHub().start('Old selected voice.').snapshot())
+        with sound._condition:
+            assert sound._condition.wait_for(lambda: sound.quiescent, timeout=3)
+        assert sound.last_error == ''
+        child = first_provider.process
+        assert child is not None and child.poll() is None
+        panel.set_speech_provider(second, root=tmp_path)
+        assert first_provider.closed.wait(3), 'Reselection did not close its old owned child'
+        assert child.poll() is not None and first_provider.close_calls == 1
+        assert second_provider.close_calls == 0
+        panel.close()
+        assert second_provider.closed.wait(3), 'Panel close did not release its selected registry'
+        assert second_provider.close_calls == 1
+    finally:
+        panel.close()
+        if sound._worker is not None:
+            sound._worker.join(3)
+            assert not sound._worker.is_alive()
+        first_registry.close()
+        second_registry.close()
+
+
+def test_direct_selection_does_not_close_a_borrowed_registry():
+    provider = OwnedProcessProvider()
+    registry = VoiceRegistry((provider,))
+    selected = LocalProgressSpeech(registry, provider.voice.id, _player_factory=PrivatePlayer)
+    try:
+        selected.close()
+        assert provider.close_calls == 0 and registry.voices()
+    finally:
+        registry.close()

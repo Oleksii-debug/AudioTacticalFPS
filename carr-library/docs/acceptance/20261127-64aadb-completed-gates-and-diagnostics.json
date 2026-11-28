@@ -1,0 +1,696 @@
+{
+  "schema": 1,
+  "kind": "actual_completed_gates_and_diagnostics",
+  "source_commit": "64aadb94c1d01929c949763fb0d0ed04d372c5d5",
+  "source_tree": "b400f59453c752bcfca7bbe51cbd8438dcb3ff32",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "date": "2026-11-27",
+  "counting_policy": "Gates overlap. Counts are reported separately and must not be summed as unique tests. Source review and component follow-up results do not qualify a later composed commit.",
+  "evidence_origin": "Completed job logs were fetched and reviewed by root and assigned reviewers; exact job IDs below identify those logs.",
+  "completed_gates": [
+    {
+      "gate": "quick",
+      "run": 46062692568,
+      "job": 140720502210,
+      "conclusion": "success",
+      "strict": {
+        "passed": 2426,
+        "suites": 102,
+        "failed": 0,
+        "skipped": 0
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692568/job/140720502210"
+    },
+    {
+      "gate": "academic_production",
+      "run": 46062692221,
+      "job": 140720501514,
+      "conclusion": "success",
+      "strict": {
+        "passed": 2107,
+        "suites": 109,
+        "failed": 0,
+        "skipped": 0
+      },
+      "additional_direct": {
+        "passed": 987,
+        "deselected": 1,
+        "deselection": "intended Windows-only case"
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692221/job/140720501514"
+    },
+    {
+      "gate": "academic_reconciled",
+      "run": 46062692221,
+      "job": 140720501168,
+      "conclusion": "success",
+      "strict": {
+        "passed": 3212,
+        "suites": 95,
+        "failed": 0,
+        "skipped": 0
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692221/job/140720501168"
+    },
+    {
+      "gate": "asr_linux",
+      "run": 46062692330,
+      "job": 140720542861,
+      "conclusion": "success",
+      "strict": {
+        "passed": 727,
+        "suites": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692330/job/140720542861"
+    },
+    {
+      "gate": "reading_source",
+      "run": 46062692238,
+      "job": 140720501459,
+      "conclusion": "success",
+      "strict": {
+        "passed": 244,
+        "failed": 0,
+        "skipped": 0,
+        "suites": 12
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692238/job/140720501459"
+    },
+    {
+      "gate": "reading_installed_native",
+      "run": 46062692238,
+      "job": 140720501851,
+      "conclusion": "success",
+      "native_checks": 55,
+      "installed_origin_hashes": 11,
+      "scope": [
+        "both read/skip policy rounds",
+        "saved cursor after restart",
+        "focus and keyboard dispatch",
+        "owned modal and timer cleanup"
+      ],
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692238/job/140720501851"
+    },
+    {
+      "gate": "templates_source",
+      "run": 46062692207,
+      "job": 140720501700,
+      "conclusion": "success",
+      "strict": {
+        "passed": 182,
+        "suites": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      "identity_checks": 12,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692207/job/140720501700"
+    },
+    {
+      "gate": "templates_installed_native",
+      "run": 46062692207,
+      "job": 140720501314,
+      "conclusion": "success",
+      "native_check_groups": [
+        20,
+        40
+      ],
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692207/job/140720501314"
+    },
+    {
+      "gate": "bibliography",
+      "run": 46062692244,
+      "job": 140720501473,
+      "conclusion": "success",
+      "strict": {
+        "passed": 1252,
+        "suites": 29,
+        "failed": 0,
+        "skipped": 0
+      },
+      "installed_checks": 69,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692244/job/140720501473"
+    },
+    {
+      "gate": "ocr",
+      "run": 46062692220,
+      "job": 140720501525,
+      "conclusion": "success",
+      "strict": {
+        "passed": 133,
+        "suites": 8,
+        "failed": 0,
+        "skipped": 0
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692220/job/140720501525"
+    },
+    {
+      "gate": "launcher_zig",
+      "run": 46062692320,
+      "job": 140720502275,
+      "conclusion": "success",
+      "native_checks": 9,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692320/job/140720502275"
+    },
+    {
+      "gate": "launcher_msvc",
+      "run": 46062692320,
+      "job": 140720502643,
+      "conclusion": "success",
+      "native_checks": 9,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692320/job/140720502643"
+    },
+    {
+      "gate": "portable_lifetime",
+      "run": 46062683690,
+      "job": 140720474331,
+      "conclusion": "success",
+      "filesystem": {
+        "passed": 277,
+        "subtests": 37
+      },
+      "actual_windows_source_barriers": 26,
+      "installed_isolated_barriers": 26,
+      "native_launcher_checks": 9,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062683690/job/140720474331"
+    },
+    {
+      "gate": "desktop_keyboard",
+      "run": 46062692271,
+      "job": 140722366840,
+      "conclusion": "success",
+      "strict": {
+        "passed": 255,
+        "suites": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      "native_checks": 91,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692271/job/140722366840"
+    }
+  ],
+  "failed_or_incomplete_gates": [
+    {
+      "gate": "asr_windows",
+      "run": 46062692330,
+      "job": 140720542534,
+      "conclusion": "failure",
+      "completed_strict": {
+        "passed": 726,
+        "suites": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "native_handle_checks_passed": 6,
+      "failure": "Production submit_sources discarded the scanner's folder-relative labels. The native probe then masked the functional assertion with a Python-wrapper-identity destruction observation. The separate406/e6 diagnostics establish the latter observer defect.",
+      "correction_refs": [
+        "543d74ed7cb0546e09b0a5a22002f58917a579f4",
+        "c9761d1905b3c2f5c26eeaf9f086be63053cb795"
+      ],
+      "qualification": "Passing source suites do not convert the failed native job into PASS.",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692330/job/140720542534"
+    },
+    {
+      "gate": "v3",
+      "run": 46062692512,
+      "job": 140720534620,
+      "conclusion": "failure",
+      "installed_recovery": {
+        "passed": 809,
+        "failed": 0,
+        "skipped": 0
+      },
+      "provider_boundaries": {
+        "passed": 289,
+        "failed": 0,
+        "skipped": 0
+      },
+      "canonical_source": {
+        "passed": 2245,
+        "failed": 3,
+        "reports_completed": 100,
+        "reports_required": 139,
+        "status": "incomplete",
+        "deadline_minutes": 12,
+        "skipped": 0,
+        "reports_missing": 39,
+        "note": "No 600-second per-suite hang is established by the actual 12-minute step timeout.",
+        "failed_cases": [
+          {
+            "suite": "tests/catalog/test_streaming_intake.py",
+            "case": "test_source_changed_after_genuine_final_hash_is_rejected",
+            "passed": 10,
+            "failed": 1,
+            "reason": "Expected IntakeError not raised after genuine post-hash source mutation."
+          },
+          {
+            "suite": "tests/ingest/test_large_source_intake.py",
+            "case": "test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear",
+            "passed": 5,
+            "failed": 1,
+            "reason": "WinError32 deletingimports.sqlite while the fixture observer connection remained open."
+          },
+          {
+            "suite": "tests/audio/test_recording_controls.py",
+            "case": "test_segment_changed_immediately_after_genuine_hash_cannot_mint_new_frame_receipt",
+            "passed": 23,
+            "failed": 1,
+            "reason": "Expected ValueError not raised after genuine post-hash recording mutation."
+          }
+        ]
+      },
+      "progress": {
+        "passed": 274,
+        "failed": 6,
+        "suites": 14,
+        "skipped": 0,
+        "failed_suites": [
+          {
+            "suite": "tests/ui/test_progress_job_results.py",
+            "passed": 22,
+            "failed": 1
+          },
+          {
+            "suite": "tests/ui/test_progress_voice_actions.py",
+            "passed": 19,
+            "failed": 5
+          }
+        ]
+      },
+      "correction_refs": [
+        "5195d00187960428bf90d8d292f7430e46057c17",
+        "03b36e65d86031657499ea75aedec6371a919e5b",
+        "7f2a07746793c78f20ed06eca844b48de4a5ce85",
+        "ea6b81294e698d9e54ff3cb8e85c62b8dc7e02f3"
+      ],
+      "qualification": "No complete canonical source acceptance result; the unchanged 12-minute step expired.",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692512/job/140720534620",
+      "earlier_strict": {
+        "passed": 463,
+        "failed": 0,
+        "skipped": 0,
+        "suites": 28
+      }
+    },
+    {
+      "gate": "integrated_windows",
+      "run": 46062692271,
+      "job": 140722367205,
+      "status": "in_progress",
+      "conclusion": null,
+      "observed_at": "2026-11-27T21:17:51Z",
+      "active_step": {
+        "number": 56,
+        "name": "Run required integrated source workflows",
+        "started_at": "2026-11-27T20:34:47Z",
+        "status": "incomplete",
+        "counts": null
+      },
+      "earlier_failed_steps": [
+        {
+          "number": 26,
+          "phase": "native Import Center",
+          "correction_ref": "49ef322e98464f3abd7441ae1cedc4fa2181c674"
+        },
+        {
+          "number": 29,
+          "phase": "native audio metadata",
+          "correction_ref": "17cfe7ed832284ed6c7dbf612022db0c156ed43c"
+        },
+        {
+          "number": 52,
+          "phase": "complete bundle native Book review",
+          "correction_ref": "bef60a58c0565d3595cdd1646b4d861d137e300a"
+        }
+      ],
+      "qualification": "No terminal job outcome or complete source counts were available at observation; no full Windows PASS is inferred.",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46062692271/job/140722367205"
+    }
+  ],
+  "artifacts": [
+    {
+      "scope": "reading_source_and_native",
+      "id": 15229149501,
+      "sha256": "d030bf15fa4166a8d7bfc89e225e5189138ef143fb78f876fa2361cfd3b33fb3"
+    },
+    {
+      "scope": "portable_lifetime",
+      "id": 15229224775,
+      "sha256": "cd99761e290695dfba1dbb87722ccf284f13368c0b83c167fbc33927b7b53947"
+    },
+    {
+      "scope": "64a_early_public_phase_diagnostics",
+      "id": 15230416894,
+      "run": 46062692271,
+      "bytes": 53896,
+      "sha256": "0b3b29912b4869bf6c97323cd53ee61acf0e00b8b485089996345d2bea181f37"
+    },
+    {
+      "scope": "academic_production",
+      "id": 15230670339,
+      "sha256": "3cb059e7aa90c1ca4437929e40c3c64d01bb9890962e444d9eff2c21c6ca60ad"
+    },
+    {
+      "scope": "templates",
+      "id": 15229039564,
+      "sha256": "a9ed040260b6ac23c6e44a5bd8d6ce11608861a51416f278899073e4d344bc5a"
+    },
+    {
+      "scope": "bibliography",
+      "id": 15229692239,
+      "sha256": "1d0d13e5ced8f7aa302e4275f907e37305dc69345b9a231feb4112b30914630d"
+    },
+    {
+      "scope": "keyboard",
+      "id": 15229412790,
+      "sha256": "3a77145b54d83f1a56015d4a4ea7e40ba0be6ba8eedde0c73e1e5d0336d2585c"
+    },
+    {
+      "scope": "v3_diagnostics",
+      "id": 15231330749,
+      "sha256": "a904477f75f23ea95af12ac699c0b3d805e31bf3099c8f04b1ead9ad6a5a78bc"
+    }
+  ],
+  "phase_readback": {
+    "reader_commit": "e1ee5aa500ef0d507dfc43bad86d4ec88d42718e",
+    "reader_run": 46066044436,
+    "reader_job": 140731485419,
+    "conclusion": "success",
+    "completed_at": "2026-11-27T20:49:05Z",
+    "scope": "Fixed owned artifact read-only verification and bounded ZIP member readback; no application execution.",
+    "members": 60,
+    "exactly_verified_members": 59,
+    "excluded": [
+      {
+        "member": "local-transport.xml",
+        "reason": "Reconstructed decoded log text is 19 characters shorter than the archived member; SHA256 does not match. Excluded from exact member evidence."
+      }
+    ],
+    "exact_members": [
+      {
+        "member": "native-audio-metadata.txt",
+        "bytes": 13115,
+        "sha256": "4f168f23bd90b5dea650824f01bc499ab1921261ab409dbc957b552a44a78b4b",
+        "first_error": "AssertionError: child destruction preserves live metadata owner",
+        "location": "windows_audio_metadata_smoke.py:522 begin",
+        "preceding_checks": "Native edits, explicit review, actual save, independent ffprobe/audio/chapter/original-source checks and adjacent receipt verification passed.",
+        "subsequent_behavior": "The retained first error is followed by the 120-second watchdog; correction891 unwinds the owned modal and exits with failure.",
+        "interpretation": "The first failure matches the stale prior-owner selection seam. The log does not record selected-window identity; successor native execution is still required."
+      },
+      {
+        "member": "native-import-center.txt",
+        "bytes": 740,
+        "sha256": "a139c69ac2244c79d22473fbc1d8aa1c6bf8d6127dde1d574b2066ece3699a52",
+        "first_error": "AssertionError: dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height",
+        "location": "native_import_center_smoke.py:99"
+      },
+      {
+        "member": "installed-native-v3.txt",
+        "bytes": 1521,
+        "sha256": "6b69b040cb720fdd77a33fa5b5bd3ef3f14f84a172d2ae9d389a69ddd58f2b2b",
+        "first_error": "AssertionError: '; volume 55' in status.GetValue() and str(second_output) in status.GetValue()",
+        "location": "windows_v3_smoke.py:582 reviewed"
+      }
+    ],
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46066044436/job/140731485419"
+  },
+  "correction_map": [
+    {
+      "ref": "17cfe7ed832284ed6c7dbf612022db0c156ed43c",
+      "scope": "Metadata probe selects the exact live modal/open controller; five behavioral selector cases. All prior native checks and budgets retained.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "ref": "7f2a07746793c78f20ed06eca844b48de4a5ce85",
+      "scope": "Progress tests arm cancellation after real durable request/job binding and supply the real owned_listening closure; original outcome/cleanup assertions retained.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "ref": "49ef322e98464f3abd7441ae1cedc4fa2181c674",
+      "scope": "Import Center layout correction preserving the native minimum-size assertion.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "ref": "bef60a58c0565d3595cdd1646b4d861d137e300a",
+      "scope": "Book native review compares canonical prepared parent and every destination while preserving volume55 and explicit Run.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "ref": "5195d00187960428bf90d8d292f7430e46057c17",
+      "scope": "Initial file-backed receipt reuses bounded cancellable reopened-byte verification; large-source fixture explicitly closes its SQLite observer.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "ref": "03b36e65d86031657499ea75aedec6371a919e5b",
+      "scope": "Assemble captured PCM from the same bounded private temporary descriptor whose complete size/hash and PCM parameters were verified. Keep real mutation regressions, cancellation, disk reserve and exact output-range hashes.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "ref": "543d74ed7cb0546e09b0a5a22002f58917a579f4",
+      "scope": "Production submit_sources preserves the scanner's accepted folder-relative labels through the existing validated source-label submission path; real single-folder and mixed duplicate-basename cases added.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "See isolated component follow-up; no composed-head result."
+    },
+    {
+      "ref": "c9761d1905b3c2f5c26eeaf9f086be63053cb795",
+      "same_source_as": "0d379a187aad124301e4f56fc025477fb90e43d6",
+      "scope": "Native ASR destroy observer requires the captured native frame ID and the dead original wrapper; no production close change or diagnostic-workflow ancestry.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "See isolated component follow-up; no composed-head result."
+    },
+    {
+      "ref": "ea6b81294e698d9e54ff3cb8e85c62b8dc7e02f3",
+      "scope": "Schedule the same 139 canonical suite selectors in the same order using three existing isolated ci_check workers instead of two within the same job. Keep the 12-minute phase, 600-second suite and 45-minute job limits plus strict zero-failure/skip rules.",
+      "review": "SOURCE_APPROVED",
+      "successor_execution": "NOT_RUN"
+    }
+  ],
+  "separate_component_followups": [
+    {
+      "source_commit": "e6e7ee59189330896f13a1414c65e77ad40d3c05",
+      "source_tree": "ec83141f262214a32eb8943142a95b4db1f5c520",
+      "run_id": 46068567199,
+      "job_id": 140739732047,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46068567199/job/140739732047",
+      "status": "PASS",
+      "completed_at": "2026-11-27T21:19:16Z",
+      "scope": "Isolated corrected ASR and unchanged incremental-backup component; not the full assembled successor",
+      "source": {
+        "suites": [
+          {
+            "suite": "tests/transcription/test_profile_controls.py",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ui/test_transcription_dialog.py",
+            "passed": 49,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          }
+        ],
+        "totals": {
+          "passed": 63,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      "native": [
+        {
+          "status": "PASS",
+          "checks": [
+            "actual named wx controls",
+            "shared background operation",
+            "actual native protocol choices and explicit trust registration",
+            "V5 three-source binding",
+            "two exact named profiles without global substitution",
+            "actual named folder action",
+            "background folder intake before inference",
+            "relative source and exclusion count",
+            "durable native pause/cancel/resume",
+            "actual isolated child protocol",
+            "six verified formats",
+            "separate edit revision and Undo/Redo",
+            "original unchanged",
+            "subset export after engine removal",
+            "real desktop close and destruction"
+          ],
+          "folder_picker_interaction": "NOT_RUN",
+          "folder_picker_answer": "controlled synthetic directory",
+          "profile_picker_interaction": "programmatic real wx.Choice selection; manual interaction NOT_RUN",
+          "whisper_acoustic_inference": "NOT_RUN",
+          "manual_NVDA": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": [
+            "exact installed origin: carr_library.backup_incremental",
+            "exact installed origin: carr_library.backup_incremental_cli",
+            "exact installed origin: carr_library.library_backup",
+            "exact installed origin: carr_library.ui.backup_incremental_dialog",
+            "registered native Library command: Create incremental backup...",
+            "native action choices stay on UI thread",
+            "native action choices stay on UI thread",
+            "actual native menu dispatch: Create incremental backup...",
+            "native completion returns to UI thread",
+            "real readable completion text",
+            "real completion focus",
+            "actual incremental layer published",
+            "registered native Library command: Verify incremental backup chain...",
+            "native action choices stay on UI thread",
+            "native action choices stay on UI thread",
+            "actual native menu dispatch: Verify incremental backup chain...",
+            "native completion returns to UI thread",
+            "real readable completion text",
+            "real completion focus",
+            "actual required chain verified",
+            "registered native Library command: Restore incremental backup to a new folder...",
+            "native action choices stay on UI thread",
+            "native action choices stay on UI thread",
+            "native action choices stay on UI thread",
+            "actual native menu dispatch: Restore incremental backup to a new folder...",
+            "native completion returns to UI thread",
+            "real readable completion text",
+            "real completion focus",
+            "actual independent library restored",
+            "actual reader bookmark and exact missing voice retained",
+            "all heavy operations used existing background worker"
+          ],
+          "windows_nvda": "NOT_RUN",
+          "manual_file_picker": "NOT_RUN",
+          "power_loss": "NOT_RUN"
+        }
+      ],
+      "close_observations": {
+        "captured_frame_id": -31994,
+        "destroyed": true,
+        "observations": [
+          {
+            "stage": "cleanup-enter",
+            "working": false,
+            "busy": false,
+            "_closing": false,
+            "wrapper_live": true,
+            "dirty": false
+          },
+          {
+            "stage": "before-Close",
+            "working": false,
+            "busy": false,
+            "_closing": false,
+            "wrapper_live": true,
+            "dirty": false
+          },
+          {
+            "stage": "handler-enter",
+            "working": false,
+            "busy": false,
+            "_closing": false,
+            "wrapper_live": true,
+            "dirty": false,
+            "event_id": -31994,
+            "event_object_is_frame": true,
+            "can_veto": true,
+            "vetoed": false
+          },
+          {
+            "stage": "handler-exit",
+            "working": false,
+            "busy": false,
+            "_closing": true,
+            "wrapper_live": true,
+            "dirty": false,
+            "can_veto": true,
+            "vetoed": false,
+            "skipped": true
+          },
+          {
+            "stage": "after-Close",
+            "working": false,
+            "busy": false,
+            "_closing": true,
+            "wrapper_live": true,
+            "dirty": false,
+            "returned": true
+          },
+          {
+            "stage": "destroy-event",
+            "working": false,
+            "busy": false,
+            "_closing": true,
+            "wrapper_live": false,
+            "captured_frame_id": -31994,
+            "event_id": -31994,
+            "event_object_is_frame": false
+          },
+          {
+            "stage": "loop-exit",
+            "working": false,
+            "busy": false,
+            "_closing": true,
+            "wrapper_live": false
+          }
+        ]
+      },
+      "source_components": [
+        "543d74ed7cb0546e09b0a5a22002f58917a579f4",
+        "fe7527ac261e08e8f0f98f7bbdf7f343c0359174",
+        "c9761d1905b3c2f5c26eeaf9f086be63053cb795"
+      ],
+      "source_blobs": {
+        "carr-library/src/carr_library/transcription.py": "9a7079b460042e350e643501cea23d9f972145a4",
+        "carr-library/tests/transcription/test_profile_controls.py": "b3002a6ba013c553603acc652340143ed0791abf",
+        "carr-library/scripts/windows_transcription_smoke.py": "8c892d70f050ce78d6c482c141682da91aa45398",
+        "carr-library/tests/ui/test_transcription_dialog.py": "a848229b5172e11ee57aaafa8c1ef38127c97e1b"
+      },
+      "not_qualified": [
+        "Acoustic inference",
+        "Manual native picker interaction",
+        "Human NVDA",
+        "Disk power-loss behavior"
+      ],
+      "root_full_log_read": true,
+      "independent_full_log_read": [
+        "qa011_recovery",
+        "spec_audit"
+      ],
+      "workflow_conclusion": "success"
+    }
+  ],
+  "not_qualified": [
+    "Unfinished integrated Windows source acceptance",
+    "Native metadata current-modal successor until actual rerun",
+    "A later composed commit merely because ancestor/component gates passed",
+    "Manual NVDA/accessibility qualification",
+    "Private engine/model/voice quality or private service authority",
+    "Production signing, Authenticode, release/activation qualification",
+    "Reading speech synthesis: native reading probe used its explicit empty-voice fixture"
+  ],
+  "recorded_at": "2026-11-27T21:24:11Z",
+  "source_composition": {
+    "commit": "0936a7f0e54ab74d10f779a2a8fbb7baf17a0f07",
+    "tree": "2ea51c5445ff8e9ebe94b8d511b732dc33adad0a",
+    "primary_parent": "64aadb94c1d01929c949763fb0d0ed04d372c5d5",
+    "review": "Root and independent SOURCE_APPROVE",
+    "full_bodies_read_back": 18,
+    "source_files": 1339,
+    "modified": 18,
+    "unrelated_preserved": 1321,
+    "additions": 0,
+    "deletions": 0,
+    "mode_changes": 0,
+    "diagnostic_workflows_included": false,
+    "execution": "NOT_RUN at record creation"
+  },
+  "observation_policy": "Every status is bound to the exact source/job and stated observation. The later assembled head and any superseded terminal status are recorded in PR152; incomplete reports are never treated as PASS."
+}

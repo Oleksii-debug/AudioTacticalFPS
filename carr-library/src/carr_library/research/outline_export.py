@@ -10,6 +10,7 @@ from .anchored_export import export_saved
 from .evidence_export import _block, _encoded
 from .saved_evidence import SavedEvidenceStore
 from .topic_tree import Topic, TopicTree, _id, _name, _position
+from .topic_literature_matrix import _bounded_export, _inline as _matrix_inline, build_literature_matrix
 
 MAX_TOPICS = 1000
 MAX_EVIDENCE = 10000
@@ -197,10 +198,6 @@ def export_outline(db, workspace, topic_id, *, load_page, attest_metadata,
     return result
 
 
-"""Hierarchical outlines from freshly authorized, immutable research evidence."""
-from .topic_literature_matrix import _bounded_export, _inline as _matrix_inline, build_literature_matrix
-
-
 def export_topic_outline(app, workspace, topic, *, format='markdown', include_descendants=True,
                    tag_filter=None, cancelled=lambda: False):
     """Return Markdown/text with topic order, exact slices and separate user notes.
@@ -262,3 +259,7 @@ def export_topic_outline(app, workspace, topic, *, format='markdown', include_de
             yield 'No matching saved evidence in the selected topic scope.\n'
 
     return _bounded_export(chunks(), cancelled)
+
+
+# Existing callers retain the same freshly authorized renderer.
+export_filtered_outline = export_topic_outline

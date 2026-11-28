@@ -602,3 +602,130 @@ def test_confirmed_keymap_export_keeps_the_live_shortcuts_unchanged(manager, tmp
     assert snapshot(manager) == before
     assert dialog.wx.MessageBox.call_count == int(existing)
     assert 'was exported' in dialog.messages[-1]
+
+
+def test_saved_explicit_binding_survives_a_new_registered_default_and_actual_reload(tmp_path, registry, monkeypatch):
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identifier: (0, 0, identifier))
+    path = tmp_path / 'keyboard-shortcuts.json'
+    KeymapStore(path).save({'library.import': 'Ctrl+K'}, registry)
+    original = path.read_bytes()
+    added = CommandSpec('extension.future', 'Future action', default_shortcut='Ctrl+K')
+    current = CommandRegistry((*registry.commands(), added))
+    frame = Frame()
+    item = MenuItem(93, 'Future action\tCtrl+K')
+    frame.items.append(item)
+    manager = KeyboardManager(frame, store=KeymapStore(path), registry=current)
+    manager.register_menu_command(added, item)
+    manager.activate_loaded()
+    assert manager.shortcut('library.import') == 'Ctrl+K'
+    assert manager.shortcut('extension.future') == ''
+    assert manager.shortcut('library.new') == 'Ctrl+N'
+    assert frame.items[1].GetItemLabel() == 'Import books\tCtrl+K'
+    assert item.GetItemLabel() == 'Future action'
+    assert 'preserve your saved choices' in manager.load_notice
+    assert path.read_bytes() == original
+    # Saving is explicit; a real later load preserves both the chosen owner and
+    # the reviewed unassigned new command, without an ambiguous live binding.
+    manager.apply_overrides(manager.overrides)
+    reopened = KeyboardManager(store=KeymapStore(path), registry=current)
+    assert reopened.overrides == {'library.import': 'Ctrl+K', 'extension.future': ''}
+    with pytest.raises(ValueError):
+        reopened.store.save({'library.import': 'Ctrl+K', 'extension.future': 'Ctrl+K'}, current)
+
+
+@pytest.mark.parametrize('bindings', [
+    {'library.new': 'Ctrl+K', 'library.import': 'Ctrl+K'},
+    {'old.missing_command': 'Ctrl+K'},
+])
+def test_invalid_explicit_saved_maps_are_not_repaired_by_disabling_an_explicit_owner(
+        tmp_path, registry, bindings):
+    import json
+    path = tmp_path / 'keyboard-shortcuts.json'
+    raw = json.dumps({'version': 1, 'bindings': bindings}).encode()
+    path.write_bytes(raw)
+    manager = KeyboardManager(Frame(), store=KeymapStore(path), registry=registry)
+    manager.activate_loaded()
+    assert manager.overrides == {} and manager.load_notice
+    assert path.read_bytes() == raw
+    with pytest.raises(ValueError):
+        manager.apply_overrides(bindings)
+    assert path.read_bytes() == raw
+
+
+def _earlier_profile(manager, overrides, originals):
+    import json
+    path = manager.store.path.parent / 'state' / 'ui' / 'shortcuts.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = json.dumps({'schema': 1, 'overrides': overrides, 'originals': originals}).encode()
+    path.write_bytes(raw)
+    return path, raw
+
+
+def test_earlier_menu_profile_maps_only_the_same_registered_action_and_keeps_original_bytes(manager):
+    legacy, raw = _earlier_profile(manager, {'library/import books': 'Ctrl+K'},
+                                   {'library/import books': 'Ctrl+I'})
+    manager._load()
+    manager.activate_loaded()
+    assert manager.overrides == {'library.import': 'Ctrl+K'}
+    assert manager.frame.items[1].GetItemLabel() == 'Import books\tCtrl+K'
+    assert 'original file is unchanged' in manager.load_notice
+    assert legacy.read_bytes() == raw and not manager.store.path.exists()
+    manager.apply_overrides(manager.overrides)
+    assert legacy.read_bytes() == raw
+    reopened = KeyboardManager(store=KeymapStore(manager.store.path), registry=manager.registry)
+    assert reopened.overrides == {'library.import': 'Ctrl+K'}
+
+
+@pytest.mark.parametrize('overrides,originals', [
+    ({'library/renamed old action': 'Ctrl+K'}, {'library/renamed old action': 'Ctrl+I'}),
+    ({'library/import books': 'Ctrl+K'}, {'library/import books': 'Ctrl+J'}),
+    ({'library/new library': 'Ctrl+K', 'library/import books': 'Ctrl+K'},
+     {'library/new library': 'Ctrl+N', 'library/import books': 'Ctrl+I'}),
+])
+def test_earlier_unknown_changed_or_duplicate_explicit_bindings_remain_inert(manager, overrides, originals):
+    legacy, raw = _earlier_profile(manager, overrides, originals)
+    manager._load()
+    manager.activate_loaded()
+    assert manager.overrides == {} and manager.load_notice
+    assert manager.frame.items[1].GetItemLabel() == 'Import books\tCtrl+I'
+    assert legacy.read_bytes() == raw and not manager.store.path.exists()
+
+
+def test_earlier_profile_change_prevents_saving_a_stale_migration(manager):
+    legacy, raw = _earlier_profile(manager, {'library/import books': 'Ctrl+K'},
+                                   {'library/import books': 'Ctrl+I'})
+    manager._load()
+    manager.activate_loaded()
+    previous = dict(manager.overrides)
+    changed = raw.replace(b'Ctrl+K', b'Ctrl+J')
+    legacy.write_bytes(changed)
+    with pytest.raises(KeymapError, match='earlier shortcut profile changed'):
+        manager.apply_overrides(previous)
+    assert manager.overrides == previous
+    assert legacy.read_bytes() == changed and not manager.store.path.exists()
+
+
+def test_existing_semantic_map_takes_priority_without_reading_a_legacy_profile(manager, monkeypatch):
+    manager.apply_overrides({'library.import': 'Ctrl+J'})
+    legacy, raw = _earlier_profile(manager, {'library/import books': 'Ctrl+K'},
+                                   {'library/import books': 'Ctrl+I'})
+    import carr_library.keyboard_preferences as storage
+    read = storage._read
+    def observed(path, **options):
+        assert path != legacy, 'An existing semantic map must not consult legacy authority.'
+        return read(path, **options)
+    monkeypatch.setattr(storage, '_read', observed)
+    manager._load()
+    manager.activate_loaded()
+    assert manager.overrides == {'library.import': 'Ctrl+J'}
+    assert legacy.read_bytes() == raw
+
+
+def test_new_default_conflicts_are_scoped_to_the_same_command_context(tmp_path, registry):
+    path = tmp_path / 'keyboard-shortcuts.json'
+    KeymapStore(path).save({'library.import': 'Ctrl+PageDown'}, registry)
+    manager = KeyboardManager(store=KeymapStore(path), registry=registry)
+    assert manager.shortcut('library.import') == 'Ctrl+PageDown'
+    assert manager.shortcut('reader.next') == 'Ctrl+PageDown'
+    assert not manager.load_notice

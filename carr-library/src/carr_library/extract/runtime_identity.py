@@ -37,7 +37,7 @@ def _hash(path, limit=256 * 1024 * 1024, remaining=lambda: None):
 
 def _source_hashes():
     root = Path(__file__).parent
-    names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
+    names = ('page_ocr.py', 'raster_pages.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py',
              'model_catalog.py', 'ocr_model_store.py', 'managed_ocr.py',
              'ocr_model_catalog.py', 'ocr-model-catalog.json', 'ocr_process.py')
@@ -61,6 +61,16 @@ def runtime_identity(config):
         if seconds <= 0:
             raise IdentityError('OCR fingerprint timed out')
         return seconds
+
+    if getattr(config, 'automatic_languages', False):
+        from .language_detection import detector_identity, DetectorUnavailable
+        identity['source_sha256'].update({
+            name: _hash(Path(__file__).parent / name, remaining=remaining)
+            for name in ('language_detection.py', 'ocr_regions.py')})
+        try:
+            identity['language_detector'] = detector_identity(remaining)
+        except DetectorUnavailable as exc:
+            identity['language_detector'] = {'state': 'unavailable', 'detail': str(exc)[:500]}
 
     try:
         selected = model_ids(config.languages)

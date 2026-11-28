@@ -397,7 +397,7 @@ class SuppliedTranscriptionAdapter:
 
     @staticmethod
     def _result(artifacts, binding):
-        return {'artifacts': [item['path'] for item in artifacts], 'source_sha256': binding['sha256'],
+        return {'artifacts': [dict(item) for item in artifacts], 'source_sha256': binding['sha256'],
             'runtime_manifest_sha256': binding['manifest_sha256'], 'status': 'complete',
             'backup': {'included': 'Assistant plan, source/output identities and checkpoints',
                 'external': ['source audio', 'transcript exports', 'private worker', 'runtime', 'model'],

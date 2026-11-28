@@ -18,6 +18,8 @@ from ._io import check_cancelled, digest, local_file, new_output, run_process, t
 
 MAX_HISTORY = 500
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
+MAX_DICTIONARY_BYTES = 8_000_000
+MAX_DICTIONARY_RULES = 1000
 
 
 @dataclass(frozen=True)
@@ -184,6 +186,9 @@ class ReadingDocument:
         self._anchor_signature = json.dumps(self._source_anchor, sort_keys=True, ensure_ascii=False)
         self._states = [_original_runs(self._source, self._source_anchor)]
         self._edits = []
+        self._bookmarks = ()
+        self._narration_policy = None
+        self._narration_policy_sha256 = None
         self._position = 0
         self._saved_path = None
         self._saved_digest = None
@@ -229,9 +234,104 @@ class ReadingDocument:
     def dirty(self):
         return self._signature() != self._saved_signature
 
-    def _signature(self):
-        return (self.title, self._source_hash, self._anchor_signature, self._position,
+    def _text_signature(self):
+        base = (self.title, self._source_hash, self._anchor_signature, self._position,
                 tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
+        return base + (('narration', self._narration_policy_sha256),) if self._narration_policy else base
+
+    def _signature(self):
+        base = self._text_signature()
+        return base + (self._bookmarks,) if self._bookmarks else base
+
+    @property
+    def narration_policy(self):
+        """Passive reviewed categories; absence preserves the legacy wire."""
+        return deepcopy(self._narration_policy)
+
+    @property
+    def narration_policy_sha256(self):
+        return self._narration_policy_sha256
+
+    @property
+    def narration_skips_enabled(self):
+        return bool(self._narration_policy and self._narration_policy['skip'])
+
+    def set_narration_policy(self, value, *, expected_signature=None):
+        """Commit on the document owner; worker previews use private copies."""
+        from .narration import check_current_regions, policy_digest, validate_policy
+        if expected_signature is not None and self._signature() != expected_signature:
+            raise ValueError('The reading text or Read/Skip policy changed. Review it again.')
+        checked = validate_policy(value) if value is not None else None
+        check_current_regions(checked, self.text)
+        if expected_signature is not None and self._signature() != expected_signature:
+            raise ValueError('The reading text or Read/Skip policy changed. Review it again.')
+        self._narration_policy = checked
+        self._narration_policy_sha256 = policy_digest(checked)
+
+    def mark_narration_region(self, start, end, category, label, *, cancelled=lambda: False):
+        from .narration import MAX_REGIONS, SCHEMA, NarrationRegion
+        value = self.narration_policy or {'schema': SCHEMA, 'regions': [], 'skip': []}
+        if len(value['regions']) >= MAX_REGIONS:
+            raise ValueError('Keep at most 256 reviewed reading-content ranges.')
+        region = NarrationRegion.create(self.text, start, end, category, label, cancelled=cancelled)
+        value['regions'].append(region.to_dict())
+        check_cancelled(cancelled)
+        self.set_narration_policy(value)
+        return region
+
+    def remove_narration_region(self, identity):
+        value = self.narration_policy
+        if value is None or not any(row['id'] == identity for row in value['regions']):
+            raise ValueError('Choose an existing reviewed reading-content range.')
+        value['regions'] = [row for row in value['regions'] if row['id'] != identity]
+        available = {row['category'] for row in value['regions']}
+        value['skip'] = [category for category in value['skip'] if category in available]
+        self.set_narration_policy(value if value['regions'] else None)
+
+    def set_narration_read(self, category, read):
+        from .narration import CATEGORIES
+        value = self.narration_policy
+        if (type(read) is not bool or type(category) is not str or category not in CATEGORIES
+                or value is None or not any(row['category'] == category for row in value['regions'])):
+            raise ValueError('Choose Read or Skip for an available reviewed category.')
+        skipped = set(value['skip'])
+        if read:
+            skipped.discard(category)
+        else:
+            skipped.add(category)
+        value['skip'] = [item for item in CATEGORIES if item in skipped]
+        self.set_narration_policy(value)
+
+    def narration_selection(self, first=0, last=None, *, cancelled=lambda: False):
+        from .narration import select_narration
+        return select_narration(self, first, last, cancelled=cancelled)
+
+    @property
+    def bookmarks(self):
+        return self._bookmarks
+
+    def add_bookmark(self, label, offset):
+        from .marks import MAX_MARKS, ReadingBookmark
+        if len(self._bookmarks) >= MAX_MARKS:
+            raise ValueError('Keep at most 256 bookmarks in one reading copy.')
+        bookmark = ReadingBookmark.create(label, self.text, offset)
+        self._bookmarks = (*self._bookmarks, bookmark)
+        return bookmark
+
+    def remove_bookmark(self, identity):
+        if not any(item.id == identity for item in self._bookmarks):
+            raise ValueError('Choose an existing reading-copy bookmark.')
+        self._bookmarks = tuple(item for item in self._bookmarks if item.id != identity)
+
+    def bookmark_position(self, identity):
+        from .marks import text_digest
+        bookmark = next((item for item in self._bookmarks if item.id == identity), None)
+        if bookmark is None:
+            raise ValueError('Choose an existing reading-copy bookmark.')
+        if bookmark.text_sha256 != text_digest(self.text):
+            raise ValueError('The reading text changed since this bookmark. Undo to that version or create a new bookmark.')
+        self._range(bookmark.offset, bookmark.offset)
+        return bookmark.offset
 
     def _range(self, start, end):
         if type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(self.text):
@@ -353,6 +453,12 @@ class ReadingDocument:
         if self._source_anchor is not None:
             data['schema'] = 'carr.reading-copy.v2'
             data['source_anchor'] = self.source_anchor
+        if self._bookmarks:
+            data['schema'] = 'carr.reading-copy.v3'
+            data['bookmarks'] = [bookmark.to_dict() for bookmark in self._bookmarks]
+        if self._narration_policy:
+            data['schema'] = 'carr.reading-copy.v4'
+            data['narration'] = self.narration_policy
         return data
 
     def save(self, path, *, cancelled=lambda: False):
@@ -415,7 +521,35 @@ class ReadingDocument:
             raise ValueError('Invalid reading-project fields.')
         version = data.get('schema')
         pre_release = False
-        if version == 'carr.reading-copy.v1' and set(data) == fields:
+        bookmarks = ()
+        narration = None
+        if (version == 'carr.reading-copy.v4' and 'narration' in data
+                and set(data) in (fields | {'narration'}, fields | {'narration', 'bookmarks'},
+                                  fields | {'narration', 'source_anchor'},
+                                  fields | {'narration', 'bookmarks', 'source_anchor'})):
+            from .narration import validate_policy
+            narration = validate_policy(data['narration'])
+            if 'bookmarks' in data:
+                from .marks import validate_bookmarks
+                bookmarks = validate_bookmarks(data['bookmarks'])
+            anchor = data.get('source_anchor')
+            if 'source_anchor' in data and type(anchor) is not dict:
+                raise ValueError('Invalid reading-project source anchor.')
+            if isinstance(anchor, dict) and 'schema' in anchor:
+                anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                pre_release = True
+        elif (version == 'carr.reading-copy.v3'
+                and set(data) in (fields | {'bookmarks'}, fields | {'bookmarks', 'source_anchor'})):
+            from .marks import validate_bookmarks
+            bookmarks = validate_bookmarks(data['bookmarks'])
+            anchor = data.get('source_anchor')
+            if 'source_anchor' in data:
+                if type(anchor) is not dict:
+                    raise ValueError('Invalid reading-project source anchor.')
+                if 'schema' in anchor:
+                    anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                    pre_release = True
+        elif version == 'carr.reading-copy.v1' and set(data) == fields:
             anchor = None
         elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_anchor'}
                 and type(data['source_anchor']) is dict):
@@ -438,6 +572,8 @@ class ReadingDocument:
         if type(data['revision']) is not int or not 0 <= data['revision'] <= len(data['edits']):
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']
+        document._bookmarks = bookmarks
+        document.set_narration_policy(narration)
         document._pre_release_format = pre_release
         return document
 
@@ -453,7 +589,7 @@ class ReadingDocument:
 
 def export_dictionary(rules, path):
     rules = tuple(rules)
-    if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
+    if len(rules) > MAX_DICTIONARY_RULES or any(not isinstance(rule, PronunciationRule) for rule in rules):
         raise ValueError('Use at most 1000 validated pronunciation rules.')
     payload = json.dumps({'schema': 'carr.pronunciations.v1', 'rules': [asdict(rule) for rule in rules]}, ensure_ascii=False)
     with new_output(path) as temporary:
@@ -462,12 +598,17 @@ def export_dictionary(rules, path):
 
 def import_dictionary(path):
     source = local_file(path)
-    if source.stat().st_size > 8_000_000:
+    if source.stat().st_size > MAX_DICTIONARY_BYTES:
         raise ValueError('The pronunciation dictionary exceeds its size budget.')
     data = json.loads(source.read_text(encoding='utf-8'), object_pairs_hook=_unique)
+    return validate_dictionary(data)
+
+
+def validate_dictionary(data):
+    """Decode passive rule data without executing substitutions or voice engines."""
     if not isinstance(data, dict) or set(data) != {'schema', 'rules'} or data['schema'] != 'carr.pronunciations.v1':
         raise ValueError('Unsupported pronunciation dictionary.')
-    if not isinstance(data['rules'], list) or len(data['rules']) > 1000:
+    if not isinstance(data['rules'], list) or len(data['rules']) > MAX_DICTIONARY_RULES:
         raise ValueError('Invalid pronunciation rule count.')
     try:
         return tuple(PronunciationRule(**row) for row in data['rules'])

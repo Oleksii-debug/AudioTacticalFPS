@@ -1,0 +1,151 @@
+{
+  "commit": "ad679edd1b326f00d073e8994b0e2b2158a374ca",
+  "run": 45995072764,
+  "job": 140492318859,
+  "suites": [
+    {
+      "suite": "tests/speech/test_reading_focus.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_marks.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_focus.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_focus_hook.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/operations/test_worker_start_cleanup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_listening_hook.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_tabs.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_voice_recovery.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_navigation.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_playback.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_progress_job_review.py",
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/speech/test_listening.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_book_duration_dialog.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/studio/test_book_cli.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/studio/test_measured_audio.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/reader/test_export_reconciliation.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_incremental.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_publications.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_monitor.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tests/ui/test_backup_incremental_dialog.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "passed": 396,
+  "failed": 0,
+  "skipped": 0,
+  "tree": "5ca9f32acc354e3b44b39a8d6a5ddcb062f639e0",
+  "workflow_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45995072764",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45995072764/job/140492318859",
+  "environment": "GitHub Actions ubuntu-24.04; source package and actual FFmpeg",
+  "execution": "PASS",
+  "native_windows": "NOT_RUN in this job",
+  "manual_nvda": "NOT_RUN",
+  "private_models": "NOT_RUN",
+  "note": "Suite counts are from complete job logs. Do not sum overlapping executions or transfer this result to later changed files."
+}

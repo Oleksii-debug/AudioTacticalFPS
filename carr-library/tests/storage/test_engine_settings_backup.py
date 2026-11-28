@@ -14,6 +14,28 @@ from carr_library.library_backup import create_backup, restore_backup
 NAME = 'state/audio/engines.json'
 
 
+_COLLECTION_MODELS = frozenset({
+    ('.speech.tabs', 'carr_library'),
+    ('.speech.playlist', 'carr_library'),
+})
+
+
+def guard_collection_imports(monkeypatch, forbidden):
+    """Allow the two typed collection validators, never optional engine imports."""
+    actual_import = backup_sidecars.import_module
+    observed = []
+
+    def checked(name, package=None):
+        identity = name, package
+        if identity not in _COLLECTION_MODELS:
+            return forbidden(name, package)
+        observed.append(identity)
+        return actual_import(name, package)
+
+    monkeypatch.setattr(backup_sidecars, 'import_module', checked)
+    return observed
+
+
 def configuration():
     # Deliberately nonexistent Windows/POSIX references, never executables or
     # model fixtures. Restoring settings must not inspect the other machine.
@@ -80,7 +102,7 @@ def test_configured_engines_roundtrip_without_importing_or_running_engines(tmp_p
     def forbidden(*args, **kwargs):
         pytest.fail('A passive settings backup must not import or execute an optional engine.')
 
-    monkeypatch.setattr(backup_sidecars, 'import_module', forbidden)
+    collection_imports = guard_collection_imports(monkeypatch, forbidden)
     monkeypatch.setattr(subprocess, 'Popen', forbidden)
     folder = tmp_path / 'backup'
     checksum = create_backup(app, folder)
@@ -94,6 +116,7 @@ def test_configured_engines_roundtrip_without_importing_or_running_engines(tmp_p
     assert json.loads((target / NAME).read_bytes()) == configuration()
     assert LibraryApp(target).edition_metadata(workspace, 'edition').title == 'Source remains intact'
     assert snapshot_files(folder) == before
+    assert set(collection_imports) == _COLLECTION_MODELS
 
 
 def test_legacy_generic_helper_settings_keep_exact_bytes_and_defaults(tmp_path):
@@ -204,3 +227,92 @@ def test_settings_collection_and_json_boundaries(change):
         raw = raw.replace(b'"schema": 1', b'"schema": 1, "schema": 1', 1)
     with pytest.raises(ValueError):
         backup_sidecars.validate_sidecar(None, NAME, raw)
+
+
+@pytest.mark.parametrize('script', [r'C:\Synthetic voice bridge\міст.py', '/synthetic-uninstalled-engines/міст.py'])
+@pytest.mark.parametrize('enabled', [True, False])
+def test_pinned_python_helper_roundtrips_passively(tmp_path, monkeypatch, script, enabled):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Pinned helper backup')
+    value = configuration()
+    value['voice_helpers'][0].update(script=script, script_sha256='1' * 64, enabled=enabled)
+    raw = write_settings(app.root, value)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Backup must not import or execute the externally installed bridge.')
+
+    collection_imports = guard_collection_imports(monkeypatch, forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    folder = tmp_path / 'backup'
+    checksum = create_backup(app, folder)
+    before = snapshot_files(folder)
+    restored = restore_backup(folder, tmp_path / 'restored', checksum)
+    assert (restored / NAME).read_bytes() == raw
+    assert (app.root / NAME).read_bytes() == raw
+    assert snapshot_files(folder) == before
+    assert set(collection_imports) == _COLLECTION_MODELS
+
+
+@pytest.mark.parametrize('fields', [
+    {'script': '/synthetic-uninstalled-engines/bridge.py'},
+    {'script_sha256': '1' * 64},
+    {'script': 'https://example.invalid/bridge.py', 'script_sha256': '1' * 64},
+    {'script': r'\\server\share\bridge.py', 'script_sha256': '1' * 64},
+    {'script': r'C:\Synthetic\bridge.py:stream', 'script_sha256': '1' * 64},
+    {'script': '/synthetic-uninstalled-engines/bridge.py', 'script_sha256': 'A' * 64},
+    {'script': '/synthetic-uninstalled-engines/bridge.py', 'script_sha256': True},
+    {'script': '', 'script_sha256': '1' * 64},
+])
+def test_invalid_pinned_python_helper_fails_closed(tmp_path, fields):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Invalid pinned helper')
+    value = configuration()
+    value['voice_helpers'][0].update(fields)
+    raw = write_settings(app.root, value)
+    target = tmp_path / 'must-not-publish'
+    with pytest.raises(ValueError):
+        create_backup(app, target)
+    assert not target.exists()
+    assert (app.root / NAME).read_bytes() == raw
+
+
+def test_resigned_pinned_helper_restore_rejects_missing_script_identity(tmp_path):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Pinned helper restore validation')
+    value = configuration()
+    value['voice_helpers'][0].update(script='/synthetic-uninstalled-engines/bridge.py', script_sha256='1' * 64)
+    original = write_settings(app.root, value)
+    folder = tmp_path / 'backup'
+    create_backup(app, folder)
+    value['voice_helpers'][0].pop('script_sha256')
+    raw = write_settings(folder, value)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    manifest['sidecars'][0].update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    checksum = resign(folder, manifest)
+    before = snapshot_files(folder)
+    target = tmp_path / 'must-not-publish'
+    with pytest.raises(ValueError):
+        restore_backup(folder, target, checksum)
+    assert not target.exists()
+    assert snapshot_files(folder) == before
+    assert (app.root / NAME).read_bytes() == original
+    assert not list(tmp_path.glob('.carr-library-restore-*'))
+
+
+def test_collection_import_allowlist_keeps_runtime_and_process_sentinels_fatal(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail('A passive backup must not import an optional engine or start a process.')
+
+    collection_imports = guard_collection_imports(monkeypatch, forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    for identity in (
+            ('.speech.runtime', 'carr_library'),
+            ('.audio.music', 'carr_library'),
+            ('faster_whisper', None),
+            ('.speech.tabs', 'unrelated_package'),
+            ('.speech.tabs.extra', 'carr_library')):
+        with pytest.raises(pytest.fail.Exception, match='must not import'):
+            backup_sidecars.import_module(*identity)
+    with pytest.raises(pytest.fail.Exception, match='must not import'):
+        subprocess.Popen(['/synthetic-uninstalled-engines/must-not-start'])
+    assert collection_imports == []

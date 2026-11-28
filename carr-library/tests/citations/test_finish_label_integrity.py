@@ -73,7 +73,7 @@ def test_pdf_label_candidate_cannot_be_promoted_with_citation_controls(label):
 
     context = open_context(identity.workspace, [anchor], load_page)
     assert context.clipboard(identity.workspace, 0, 'both', load_page) == (
-        raw + '\n\nCitation: Author, Title, PDF page 1 (printed page unverified)')
+        raw + '\n\nCitation: Author, Title, Physical page 1 (printed page unverified)')
     # Even a trusted reviewer cannot turn presentation controls into a label.
     with pytest.raises(ValueError, match='invalid printed label'):
         Locator('physical_page', 1, label, True)
@@ -92,7 +92,7 @@ def test_valid_verified_labels_and_original_quote_copy_unchanged(label):
     context = open_context(identity.workspace, [anchor], load_page)
     assert context.clipboard(identity.workspace, 0, 'quote', load_page) == raw
     assert context.clipboard(identity.workspace, 0, 'both', load_page) == (
-        raw + f'\n\nCitation: Author, Title, p. {label} (PDF page 1)')
+        raw + f'\n\nCitation: Author, Title, p. {label} (physical page 1)')
 
 
 @pytest.mark.parametrize('label', ['\ud800', 'iv\udfff'])

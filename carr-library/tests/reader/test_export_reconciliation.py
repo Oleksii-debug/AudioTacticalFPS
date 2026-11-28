@@ -52,9 +52,9 @@ def test_default_creation_does_not_clobber_at_publication(publication, monkeypat
     previous = b'Independent work'
     original = e._destination
     count = 0
-    def race(*args):
+    def race(*args, **kwargs):
         nonlocal count
-        state = original(*args)
+        state = original(*args, **kwargs)
         count += 1
         if count == 2:
             target.write_bytes(previous)
@@ -165,7 +165,13 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
             replace_destination()
         monkeypatch.setattr(e.os, 'fsync', competing_writer)
 
-    opened = []
+    opened, native_metadata = [], []
+    real_native = e._windows_change_time
+    def observe_native(path):
+        if changed and Path(path) == target:
+            native_metadata.append(path)
+        return real_native(path)
+    monkeypatch.setattr(e, '_windows_change_time', observe_native)
     real_open = os.open
     def observe(path, *args, **kwargs):
         if changed and Path(path) == target:
@@ -175,6 +181,6 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert changed
-    assert not opened
+    assert not opened and not native_metadata
     assert target.read_bytes() == unrelated
     assert not list(target.parent.glob('.research-export-*'))

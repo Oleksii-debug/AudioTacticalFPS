@@ -1,0 +1,436 @@
+{
+  "schema": "carr-focused-acceptance/1",
+  "date": "2026-11-28",
+  "status": "INCOMPLETE_REVIEWED_SUCCESSOR_WITH_NATIVE_EPUB_UNRESOLVED",
+  "evidence_scope": "Exact source commits and actual completed jobs below; suite counts overlap and are not a unique aggregate.",
+  "ordinary_source": {
+    "commit": "95efc7d06a82f19e9d247acadd027894608d7891",
+    "tree": "57ddba1c0771af6c3b398d38590ca64c7ab747cd"
+  },
+  "successful_jobs": [
+    {
+      "name": "quick",
+      "run_id": 46078579707,
+      "job_id": 140771992908,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579707/job/140771992908",
+      "conclusion": "success",
+      "passed": 2449,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 102
+    },
+    {
+      "name": "academic-production",
+      "run_id": 46078579644,
+      "job_id": 140771992614,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579644/job/140771992614",
+      "conclusion": "success",
+      "passed": 2165,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 109,
+      "additional_direct_pytest": {
+        "passed": 987,
+        "failed": 0,
+        "skipped": 0,
+        "deselected": 1,
+        "deselection": "Existing Windows-only case intentionally deselected on Linux."
+      }
+    },
+    {
+      "name": "academic-reconciled",
+      "run_id": 46078579644,
+      "job_id": 140771992875,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579644/job/140771992875",
+      "conclusion": "success",
+      "passed": 3219,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 95
+    },
+    {
+      "name": "asr-linux",
+      "run_id": 46078579724,
+      "job_id": 140771995732,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579724/job/140771995732",
+      "conclusion": "success",
+      "passed": 734,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 16
+    },
+    {
+      "name": "asr-windows",
+      "run_id": 46078579724,
+      "job_id": 140771995398,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579724/job/140771995398",
+      "conclusion": "success",
+      "passed": 733,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 16,
+      "additional_native": {
+        "json_handle_barriers": 6,
+        "asr_groups": 15,
+        "incremental_backup_checks": 31
+      }
+    },
+    {
+      "name": "v3-source-shard-2",
+      "run_id": 46078579632,
+      "job_id": 140771996248,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579632/job/140771996248",
+      "conclusion": "success",
+      "passed": 1671,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 69,
+      "partition_guard_cases": 18,
+      "required_selectors": 69,
+      "completed_selectors": 69
+    },
+    {
+      "name": "v3-service-boundaries",
+      "run_id": 46078579632,
+      "job_id": 140771996283,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579632/job/140771996283",
+      "conclusion": "success",
+      "passed": 3114,
+      "failed": 0,
+      "skipped": 20,
+      "pytest_seconds": 2513.05,
+      "job_seconds": 2697,
+      "existing_job_budget_seconds": 2700,
+      "skips": {
+        "optional_flite": 18,
+        "prepared_ocr_not_exposed_to_existing_test_guards": 2
+      }
+    },
+    {
+      "name": "reading-source",
+      "run_id": 46078579638,
+      "job_id": 140771992677,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579638/job/140771992677",
+      "conclusion": "success",
+      "passed": 246,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 12
+    },
+    {
+      "name": "reading-native",
+      "run_id": 46078579638,
+      "job_id": 140771992903,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579638/job/140771992903",
+      "conclusion": "success",
+      "native_checks": 55,
+      "installed_origin_hashes": 11
+    },
+    {
+      "name": "templates-source",
+      "run_id": 46078579719,
+      "job_id": 140771992936,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579719/job/140771992936",
+      "conclusion": "success",
+      "passed": 186,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 9,
+      "identity_checks": 12
+    },
+    {
+      "name": "templates-native",
+      "run_id": 46078579719,
+      "job_id": 140771993314,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579719/job/140771993314",
+      "conclusion": "success",
+      "native_check_groups": [
+        20,
+        40
+      ]
+    },
+    {
+      "name": "automatic-ocr",
+      "run_id": 46078579654,
+      "job_id": 140771992562,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579654/job/140771992562",
+      "conclusion": "success",
+      "passed": 133,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 8,
+      "tesseract": "5.5.0"
+    },
+    {
+      "name": "launcher-msvc",
+      "run_id": 46078579639,
+      "job_id": 140771992777,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579639/job/140771992777",
+      "conclusion": "success",
+      "native_checks": 9
+    },
+    {
+      "name": "launcher-zig",
+      "run_id": 46078579639,
+      "job_id": 140771992409,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579639/job/140771992409",
+      "conclusion": "success",
+      "native_checks": 9
+    },
+    {
+      "name": "portable-managed-lifetime",
+      "run_id": 46078574598,
+      "job_id": 140771976345,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078574598/job/140771976345",
+      "conclusion": "success",
+      "passed": 277,
+      "failed": 0,
+      "skipped": 0,
+      "event": "push",
+      "additional_subtests": 37,
+      "native_source": 26,
+      "native_installed": 26,
+      "launcher_checks": 9
+    },
+    {
+      "name": "keyboard",
+      "run_id": 46078579722,
+      "job_id": 140773513822,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579722/job/140773513822",
+      "conclusion": "success",
+      "passed": 255,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 7,
+      "native_checks": 91
+    },
+    {
+      "name": "bibliography",
+      "run_id": 46078579818,
+      "job_id": 140771992958,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579818/job/140771992958",
+      "conclusion": "success",
+      "passed": 1256,
+      "failed": 0,
+      "skipped": 0,
+      "strict_suites": 29,
+      "native_checks": 69
+    }
+  ],
+  "incomplete_or_failed_ordinary_jobs": [
+    {
+      "name": "v3-source-shard-1",
+      "run_id": 46078579632,
+      "job_id": 140771996182,
+      "conclusion": "failure",
+      "required_selectors": 70,
+      "completed_selectors": 69,
+      "passed": 1312,
+      "failed": 0,
+      "skipped": 0,
+      "partition_guard_cases": 18,
+      "missing": [
+        "tests/studio/test_book_batch.py"
+      ],
+      "reason": "The unchanged twelve-minute phase expired before the final suite completed; no terminal result for that selector.",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579632/job/140771996182"
+    },
+    {
+      "name": "v3-native",
+      "run_id": 46078579632,
+      "job_id": 140771996015,
+      "conclusion": "failure",
+      "reason": "Recorded EPUB native probe hung after opening without autoplay; existing eighteen-minute chain deadline expired.",
+      "completed_strict": {
+        "prelude_suites": 28,
+        "prelude_passed": 463,
+        "provider_passed": 289,
+        "recovery_passed": 809,
+        "recovery_seconds": 388.05,
+        "recovery_origin_hashes": 15,
+        "always_progress_suites": 14,
+        "always_progress_passed": 280
+      },
+      "completed_native_before_epub": {
+        "clip": 118,
+        "recording": 57,
+        "publishing": 35,
+        "planning": 10,
+        "translation_v3": 122,
+        "translation_local": 128
+      },
+      "later_native_steps": "NOT_RUN",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579632/job/140771996015"
+    },
+    {
+      "name": "integrated-full-windows",
+      "run_id": 46078579722,
+      "job_id": 140773513562,
+      "conclusion": null,
+      "last_checked_status": "in_progress",
+      "last_checked_at": "2026-11-28T00:17:54Z",
+      "required_source_phase_started_at": "2026-11-27T23:31:51Z",
+      "required_source_phase": "NO_TERMINAL_RESULT",
+      "known_failed_phases": [
+        35,
+        52
+      ],
+      "earlier_saved_phase": {
+        "artifact_id": 15236849980,
+        "archive_bytes": 88847,
+        "archive_sha256": "652105ad652e36db2c251d3aed402e87b12c7f8c1d1ff3c4cca951851441e99e",
+        "reader_run": 46084095140,
+        "reader_job": 140789519891,
+        "verified_members": 87,
+        "unusable_member": "local-transport.xml (retrieved text was nineteen bytes shorter and failed hash verification; excluded)",
+        "book": {
+          "member": "installed-native-v3.txt",
+          "bytes": 4624,
+          "sha256": "ed03219c7dc4a7ac35bb0cade4bd670eac435dd5ce5170e93d74d8a8e4ba828b",
+          "native_v3_groups_passed": 16,
+          "groups_scope": "Whole installed native V3 probe, including Book workflows.",
+          "first_result_seconds": 65.468,
+          "explicit_approvals": 2,
+          "books": 2,
+          "parts": 3,
+          "verified_reuse": "Exact retained hashes and mtimes; native cleanup event IDs and dead wrappers."
+        },
+        "document_formats": {
+          "member": "full-bundle-document-formats-native.txt",
+          "bytes": 2033,
+          "sha256": "0ffa1fb902209013b84fe44983570dc47998f5109052a6f4666f6a54d086c8f7",
+          "result": "FAIL",
+          "error": "Old immediate-child Start-button lookup raised StopIteration after the Import Center moved controls into a ScrolledPanel."
+        }
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078579722/job/140773513562"
+    }
+  ],
+  "broad_raw_evidence": {
+    "artifact_id": 15238365533,
+    "archive_bytes": 62876,
+    "archive_sha256": "114e229344d241952adccb3f9a18a72d10b3c6f5743b8984bfbf59a71a67f22d",
+    "structured_reader_commit": "35f25b49d5fe30afb395baed55f70e5b6273bd8f",
+    "reader_run": 46084871080,
+    "reader_job": 140791982930,
+    "xml_bytes": 516942,
+    "xml_sha256": "3c3b2d04ab8e45571fa8f27f413fb4addb23eaf055381fb71647fb4dab1e6be0",
+    "validation": "Statistics parsed inside the SHA-verified reader from the exact raw XML; no reconstruction of the earlier redacted XML.",
+    "testcase_count": 3134,
+    "selectors": 20,
+    "unmapped": 0,
+    "ambiguous": 0,
+    "skips": {
+      "optional_flite": {
+        "runtime": 6,
+        "studio_production": 11,
+        "studio_hardening": 1
+      },
+      "unexposed_prepared_ocr": [
+        "tests/storage/test_pending_backup.py::test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes",
+        "tests/extract/test_language_manager.py::test_actual_installed_tesseract_inventory"
+      ]
+    },
+    "historical_measured_partition_seconds": [
+      1480.037,
+      1023.941
+    ]
+  },
+  "source_corrections": [
+    {
+      "commit": "db5d7af5acc6956d7773e9b2362b617db5244f21",
+      "status": "SOURCE_APPROVED_NOT_RUN",
+      "change": "Preserve all139 ordered strict source selectors in required69/69/1 partitions; isolate the measured long BookBatch suite; preserve all deadlines."
+    },
+    {
+      "commit": "8706a80468a6d641f615b14be7f537f819e1aea1",
+      "status": "SOURCE_APPROVED_NOT_RUN",
+      "change": "Preserve all20 original broad selectors/options in two required4/16 partitions, expose the same prepared verified OCR runtime to both existing guards, retain45-minute jobs and all native/source139 contents."
+    },
+    {
+      "commit": "d2c940f40a918b4c886efd253e791d2c35c38231",
+      "status": "SOURCE_APPROVED_FOCUSED_MAPPING_PASSED",
+      "change": "Verify exact native text prefixes across Unicode/newline models before bounded fallback; actual bbf highlight passed, later playback remained incomplete."
+    },
+    {
+      "commit": "9deeebfb2112c8e387adfe6b2f77183d877c470a",
+      "status": "SOURCE_APPROVED_FOCUSED_FLAT_INSTALLED_PROBE_PASSED",
+      "change": "Find one native Button with the exact label among the selected dialog descendants; actual bbf document28checks passed; sealed-bundle successor remains unexecuted."
+    },
+    {
+      "commit": "b11e49948cfe3b2584fc95a301116ccc342836a7",
+      "status": "SOURCE_APPROVED_NOT_RUN",
+      "change": "At the existing EPUB120-second expiry, emit bounded actual playback/status/cancellation observations before retaining the same error and modal cleanup. All original native check calls remain."
+    }
+  ],
+  "focused": {
+    "commit": "bbf26d4d967c4ee1523b1fe4bb617a2bd4b4e7dd",
+    "tree": "293cea8f6c78c49d88f4c191a3c5c5d6d1bf3338",
+    "run_id": 46085600568,
+    "job_id": 140794313318,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085600568/job/140794313318",
+    "conclusion": "failure",
+    "started_at": "2026-11-28T00:03:59Z",
+    "completed_at": "2026-11-28T00:07:18Z",
+    "log_chars": 84238,
+    "log_sha256": "a2a7e693acfdf5d1586c8cc61958b2c5887b1b4f15158eced88e607027d87d90",
+    "installed_identity": {
+      "checkout_files_checked": 341,
+      "every_checkout_python_file_has_byte_equal_installed_counterpart": true
+    },
+    "source": {
+      "passed": 160,
+      "failed": 0,
+      "skipped": 0,
+      "suites": {
+        "tests/ui/test_ebook_dialog.py": 53,
+        "tests/ui/test_import_center.py": 52,
+        "tests/reader/test_ebook_audio.py": 55
+      }
+    },
+    "native_document_formats": {
+      "checks": 28,
+      "result": "PASS"
+    },
+    "native_epub": {
+      "result": "FAIL",
+      "corrected_highlight": "PASS",
+      "native_selection": [
+        533,
+        559
+      ],
+      "selected_python_characters": 25,
+      "opening_does_not_autoplay": "PASS",
+      "last_success": "Owned Play-button focus and native space key down/release.",
+      "failure": "Unchanged120-second deadline expired at stage2 awaiting playing; no direct button-event receipt or post-Play UI status was logged.",
+      "stack_observations": 4,
+      "stack_scope": "At30-second intervals the two worker queues were idle and the main thread was in the actual nested modal loop; this does not prove whether the Play event was delivered or a preparation/playback error was shown in the status control.",
+      "later_acceptance": "NOT_RUN"
+    },
+    "artifact": {
+      "id": 15239236368,
+      "bytes": 22005,
+      "sha256": "a8048bdff968f2f7f4188e3e726fd0dc1053e6dd876cda3998e691709c71aff5"
+    }
+  },
+  "limits": [
+    "No aggregate unique test count is claimed.",
+    "No PASS is transferred to the unpublished ordinary union or to a later source head.",
+    "Actual model/acoustic quality, optional Flite availability, manual NVDA and native picker interaction remain unqualified where not explicitly executed."
+  ],
+  "recorded_at": "2026-11-28T00:17:54Z",
+  "unpublished_source_base": {
+    "commit": "597630014b3f72e23d8e8e4c6137fcf564d26c74",
+    "tree": "4043a9e2ad96f35f80bba3e0466e74b45b5abbb3",
+    "result": "NOT_RUN"
+  },
+  "queued_focused_followup": {
+    "commit": "f4195b58c263f72bd9cb59bba5a0a253311ee443",
+    "run_id": 46086968802,
+    "job_id": 140798687069,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46086968802/job/140798687069",
+    "status": "queued",
+    "checked_at": "2026-11-28T00:17:54Z",
+    "scope": "Full reviewed597 source plus exactb11 observations; preserves all native deadlines, adds the five observed-failure source suites. No outcome is claimed."
+  }
+}

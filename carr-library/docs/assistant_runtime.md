@@ -121,8 +121,8 @@ running server exposes. Opening either dialog does not contact or start a server
 Choose a local profile and **Preview plan** to request a proposal. Only the goal
 text is sent; selected folder contents and library documents are not added.
 The shared provider gateway uses a 120-second request budget and an 8 MiB response
-limit for planning. Cancellation or a reached deadline may wait for the pending
-network read, whose timeout is at most 30 seconds. The result must pass the same typed tool, argument, workspace
+limit for planning. The shared gateway applies a whole-call deadline and interrupts its owned
+connection when the request is cancelled or its budget expires. The result must pass the same typed tool, argument, workspace
 and path checks as a guided plan. The request is cancellable in the background.
 Editing the goal, selected scope or profile discards a pending response and
 invalidates a reviewed plan. **Run / resume** is a separate action that records
@@ -206,23 +206,6 @@ operation. No real paid or external provider call is part of the automated tests
 
 ## Verification scope
 
-The selectively adopted PR112 local-planning slice passed 41 integrated tests
-across `test_local_planning.py`, `test_local_planning_loopback.py` and
-`test_planning_handlers.py`. The loopback cases use actual HTTP and CLI subprocesses
-with a synthetic server bound to127.0.0.1; other cases use transport/widget
-stand-ins. They verify local-profile selection, typed permission/path validation,
-separate preview and execution, cancellation, changed-input/profile rejection,
-background voice inventory and the current production service's lifecycle.
-They neither execute an LLM nor load its weights.
-
-Donor head `8bf411718548809793748ed01f458c79f3692e98` passed the native planning
-step19 and explicit loopback step24 in Windows run45929429163, job140278375920.
-The donor workflow as a whole was not green. The installed integrated build must
-run `python -I -B scripts/windows_local_planning_smoke.py` and its required source
-suites again. This probe uses real wx widgets/focus and the shared gateway/service
-with synthetic loopback responses; button command events do not establish manual
-keyboard or NVDA acceptance.
-
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create
 reconciliation, output tampering, queue substitution, parallel-run locking,
@@ -237,3 +220,100 @@ On Windows the credential test creates, reads and deletes only a new synthetic
 credential. On other hosts it verifies the vault refuses storage. Local tests
 do not establish native Windows/NVDA interaction, actual vendor acceptance,
 real local-LLM inference quality or voice/music listening quality.
+
+
+## Typed local reader, evidence, voice and DSP commands
+
+These commands extend the same reviewed Plan, Scope and assistant JobStore.
+Preview and Submit do not enumerate a voice engine, start FFmpeg, open a reader
+source or publish an output. Run uses the existing assistant worker and the
+shared resource broker where a native engine is needed.
+
+| Tool | Explicit arguments | Existing boundary |
+| --- | --- | --- |
+| reader.read | edition, revision, first, last; optional topic | ReadingDesk and retained source positions; at most 128 selected positions |
+| evidence.search | query; optional field, tag, limit | Authenticated saved notebook quotations and separately labelled notes |
+| evidence.read | topic, evidence | One existing saved evidence ID, never a newly approved quotation |
+| evidence.export | topic, ordered evidence_ids, name; optional format | Existing research exporter and no-clobber writer; 1–32 selected IDs |
+| voice.list | optional exact language, limit | Actually configured VoiceRegistry; owned discovery closes after the result |
+| audio.effects | none | Measured installed FFmpeg capabilities plus existing numeric DSP control bounds |
+| audio.inspect | path | Existing measured audio information and exact source SHA-256 |
+| audio.convert | sources, name; optional format, settings | Existing AudioConversionBatch, resource admission and per-file publication receipts |
+| audio.render | text or structured script, with the existing production options | The same ProductionService callback as audio.produce |
+
+Guided commands include `List voices`, `Покажи голоси`, `Audio effects`,
+`Покажи аудіоефекти`, `Inspect audio "C:/Audio/source.wav"` and
+`Search evidence "railway"`. Exact source IDs, revisions, ranges and selected
+evidence IDs use the versioned JSON plan shown by Preview. The reader's `first`
+and `last` are 1-based reading positions in the retained document; they do not
+assert verified printed page labels.
+
+For conversion, first run audio.inspect under the selected input scope. Review
+its actual source hash, then provide the explicit conversion input as
+`{"path":"C:/Audio/source.wav","sha256":"<the measured 64-character hash>"}`.
+The placeholder is explanatory and is rejected as input. `sources` is an
+ordered array of 1–64 such objects, and `name` selects a new child directory
+under the reviewed output directory. Optional settings are only the existing
+numeric `sample_rate`, `channels`, `start`, `duration`, `bit_depth`, `bitrate`
+and typed `effects` objects (`kind`, `parameters`, `enabled`). There is no
+arbitrary FFmpeg filter, command, URL, hidden input scan or new renderer.
+
+Source reading and saved evidence are reauthenticated on completed-job reuse.
+A changed revision, retained original, topic permission or saved note refuses
+reuse; originals and previous outputs remain untouched. Research export creates
+a new file only. An interrupted export with unknown publication outcome requires
+a fresh explicit output review, rather than inferring ownership from a pathname.
+A committed export remains accepted if cancellation arrives afterward.
+
+Conversion uses the existing external conversion manifest as its per-file
+authority. An explicit resume can reuse only the exact reviewed source/tool/
+settings plan and verified completed output receipts. It does not re-encode
+completed files or overwrite unrelated destinations. A late stop preserves
+committed items and prevents the next item from starting. The assistant stores
+the same plan and receipt references in its existing checkpoint.
+
+Passive backup preserves these typed plans and reading/evidence results without
+starting any engine. A restored assistant checkpoint keeps its original data
+directory binding and cannot automatically replay output or provider authority.
+Review and submit a new plan in the restored library.
+
+The local planner may propose these allowlisted shapes but cannot invent source
+revisions, evidence identities, voice IDs or source hashes. Its proposal still
+passes the same scoped validator and the user approves Run separately. Voice
+inventory is not a pronunciation or quality qualification; audio capabilities
+report the actual selected runtime, not a guaranteed hardware resource ceiling.
+
+
+## Current reader player and search continuation
+
+Open **Assistant playback...** from the current reader to bind this assistant
+window to that exact existing player. Run **Player status** to obtain a captured
+status receipt, including its opaque session and source signature. To pause or
+stop, explicitly review a typed `player.control` step with that receipt's
+`session` and `source_sha256` and `action` equal to `pause` or `stop`.
+
+The worker dispatches through the existing native UI queue. Pause is idempotent:
+a paused player is never toggled into Resume. These commands cannot create a
+player, open a recording, Play, Resume, Seek or synthesize. Changing the reader,
+visible copy, opened recording or library selection invalidates the reviewed
+identity. Closing the assistant withdraws queued authority and leaves all player
+resources owned by the reader. An uncertain dispatched action is never repeated
+on resume; inspect the current state and submit a new explicit action. Completed
+receipts describe the acknowledged historical state, not continuous monitoring.
+
+`library.search` now uses the same canonical `LibraryApp.search_page` interface
+as desktop search. Its result keeps the existing `results` array and adds the
+opaque `cursor`, `next_source_cursor`, `has_more_results`, `offset`, bounded source
+counts and `window_identity`. For more result rows, pass the same cursor and the
+next explicit offset. To visit the next source window, copy `next_source_cursor`
+and reset offset to zero. A missing next source cursor means traversal is
+complete. Ranking is local to each visited window; a saved cursor grants no
+source authorization and is checked against the current selected scope.
+
+The source suite exercises real threaded handoff, cancelled and expired queued
+callbacks, lost acknowledgements, foreign or changed owners, idempotent controls
+and actual source search beyond 100 segments. The existing Windows desktop probe
+additionally opens the actual reader's assistant button, uses its actual worker
+and native controls, and pauses/stops that same WavePlayer while it plays an
+explicit silent synthetic PCM fixture. This is native lifecycle evidence when
+executed, not a speech-quality, physical audio routing or manual NVDA claim.

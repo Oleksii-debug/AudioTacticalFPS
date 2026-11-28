@@ -235,15 +235,15 @@ class Dialogs:
             callback, self.during = self.during, None
             callback()
         return self.answer
+    def approve_export(self, parent, path, *, private_root):
+        from carr_library.research.export_file import capture_export_destination
+        return capture_export_destination(path, private_root=private_root)
+
     def path(self, *args, **kwargs):
         if self.during:
             callback, self.during = self.during, None
             callback()
         return self.chosen_path
-
-    def approve_export(self, parent, path, *, private_root):
-        from carr_library.research.export_file import capture_export_destination
-        return capture_export_destination(path, private_root=private_root)
 
 
 def test_open_selected_book_preserves_unsaved_notes_and_restores_focus(source):
@@ -306,6 +306,42 @@ def test_state_export_does_not_overwrite_private_database(source):
     assert 'outside' in frame.messages[-1]
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_reading_export_uses_captured_destination_before_state_render(source, tmp_path, monkeypatch, existing):
+    from carr_library.ui import reading_desk as ui
+    from carr_library.research.export_file import capture_export_destination
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'competing-reading.json'
+    if existing: target.write_bytes(b'Previously approved reading state')
+    # Only the user's approval decision is a double. Capture and publication
+    # both use the real filesystem guard, and state rendering remains real.
+    monkeypatch.setattr(ui, 'confirm_export_destination', lambda parent, path, **options:
+        capture_export_destination(path, private_root=options['private_root']))
+    original = ReadingState.export_state
+    def compete(state, scope):
+        value = original(state, scope)
+        target.write_bytes(b'Newer reading state saved independently')
+        return value
+    monkeypatch.setattr(ReadingState, 'export_state', compete)
+    frame = Frame(app, workspace)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_bytes() == b'Newer reading state saved independently'
+    assert 'destination changed' in frame.messages[-1]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_reading_export_decline_stops_before_state_render(source, tmp_path, monkeypatch):
+    from carr_library.ui import reading_desk as ui
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'declined-reading.json'
+    target.write_bytes(b'Preserved reading state')
+    monkeypatch.setattr(ui, 'confirm_export_destination', lambda *args, **kwargs: None)
+    monkeypatch.setattr(ReadingState, 'export_state', lambda *args: pytest.fail('Declined export rendered state'))
+    frame = Frame(app, workspace)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert not frame.jobs and target.read_bytes() == b'Preserved reading state'
+
+
 def test_reading_export_preserves_file_created_while_job_is_queued(source, tmp_path):
     app, workspace, _, _, _ = source
     target = tmp_path / 'reading.json'
@@ -333,3 +369,25 @@ def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_pat
     ReadingActions(frame, dialogs=Dialogs(path=target)).import_state()
     assert 'archived' in frame.messages[-1]
     assert state.bookmarks(workspace, book['edition']) == ()
+
+
+def test_reading_state_export_keeps_publication_cleanup_notice(source, tmp_path, monkeypatch):
+    from carr_library.ui import reading_desk as ui
+    from carr_library.research.export_file import ExportReceipt
+    app, workspace, _, desk, _ = source
+    ReadingState(app.root).remember(desk.page(2).location)
+    target = tmp_path / 'completed-reading.json'
+    frame = Frame(app, workspace)
+    actual_writer = ui.write_export
+    notice = 'The export is saved; temporary cleanup needs attention.'
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return ExportReceipt(receipt.path, notice)
+
+    monkeypatch.setattr(ui, 'write_export', completed_with_notice)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_text(encoding='utf-8') == ReadingState(app.root).export_state(workspace)
+    assert len(frame.jobs) == 1
+    assert len(frame.messages) == 1 and notice in frame.messages[0]
+    assert frame.evidence.note == 'Unsaved private note'

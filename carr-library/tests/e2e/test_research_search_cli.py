@@ -7,10 +7,54 @@ import sys
 
 import pytest
 
+from bootstrap.vendor.cairn_extractors import hasher as bootstrap_hasher
+import carr_library
 from carr_library.application import LibraryApp
 
 
-ROOT = Path(__file__).resolve().parents[2]
+PACKAGE = Path(carr_library.__file__).resolve()
+BOOTSTRAP_HASHER = Path(bootstrap_hasher.__file__).resolve()
+
+
+def cli_command(*arguments):
+    # -B is not inherited from pytest by a newly launched interpreter. These
+    # real CLI children must preserve the hash-sealed base runtime as the
+    # supplied application launchers do. Keep source and installed runs bound
+    # to the same distribution that their parent pytest process imported.
+    return [sys.executable, '-B', '-s', '-P', '-X', 'utf8', *arguments]
+
+
+def cli_environment():
+    environment = dict(os.environ)
+    # Source trees split src/carr_library and bootstrap across two roots;
+    # wheels install both into the same site-packages directory. Derive both
+    # trusted roots from imported modules instead of relying on cwd or an
+    # unrelated package already installed in the test interpreter.
+    roots = dict.fromkeys((PACKAGE.parent.parent, BOOTSTRAP_HASHER.parents[3]))
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, roots))
+    environment['PYTHONUTF8'] = '1'
+    return environment
+
+
+def test_cli_child_uses_current_distribution_without_writing_runtime_bytecode(tmp_path):
+    environment = cli_environment()
+    cache = tmp_path / 'private-runtime-cache'
+    environment['PYTHONPYCACHEPREFIX'] = str(cache)
+    result = subprocess.run(cli_command('-c',
+        'from __future__ import annotations\n'
+        'import carr_library,json,pathlib,sys\n'
+        'from bootstrap.vendor.cairn_extractors import hasher\n'
+        'print(json.dumps({"package":str(pathlib.Path(carr_library.__file__).resolve()),'
+        '"bootstrap_hasher":str(pathlib.Path(hasher.__file__).resolve()),'
+        '"dont_write_bytecode":sys.dont_write_bytecode,"safe_path":sys.flags.safe_path,'
+        '"no_user_site":sys.flags.no_user_site}))'),
+        cwd=tmp_path, env=environment, capture_output=True, text=True,
+        encoding='utf-8', timeout=30, check=True)
+    actual = json.loads(result.stdout)
+    assert Path(actual['package']).samefile(PACKAGE)
+    assert Path(actual['bootstrap_hasher']).samefile(BOOTSTRAP_HASHER)
+    assert actual['dont_write_bytecode'] and actual['safe_path'] and actual['no_user_site']
+    assert not list(cache.rglob('*.pyc'))
 
 
 @pytest.fixture
@@ -23,12 +67,10 @@ def cli(tmp_path):
         imported = app.add_text(workspace, 'Synthetic source', 'Railway history — Straße.',
                                 authors=(author,), language=language, edition='First')
         assert imported['state'] == 'complete'
-    env = dict(os.environ)
-    env['PYTHONPATH'] = os.pathsep.join((str(ROOT / 'src'), str(ROOT)))
-    env['PYTHONUTF8'] = '1'
+    env = cli_environment()
     def run(*arguments, expected=0):
-        result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(app.root),
-                                 *map(str, arguments)], cwd=tmp_path, env=env, text=True,
+        result = subprocess.run(cli_command('-m', 'carr_library', '--data-dir', str(app.root),
+                                 *map(str, arguments)), cwd=tmp_path, env=env, text=True,
                                 encoding='utf-8', capture_output=True, timeout=30)
         assert result.returncode == expected, (result.stdout, result.stderr, result.returncode)
         assert 'Traceback' not in result.stderr
@@ -50,7 +92,7 @@ def test_list_libraries_and_search_only_explicit_selection_without_desktop(cli):
     assert 'Unselected author' not in json.dumps(result)
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
 def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli, mode):
     _, ids, run = cli
     result = json.loads(run('--search', 'history', '--workspace', ids[0], '--workspace', ids[1],
@@ -64,10 +106,10 @@ def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli,
 
 
 def test_missing_library_selection_is_an_error_and_does_not_create_data(tmp_path):
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(ROOT / 'src'), str(ROOT))))
+    env = cli_environment()
     destination = tmp_path / 'must-not-exist'
-    result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(destination),
-                             '--search', 'history'], env=env, capture_output=True, text=True, timeout=30)
+    result = subprocess.run(cli_command('-m', 'carr_library', '--data-dir', str(destination),
+                             '--search', 'history'), env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 2 and '--workspace' in result.stderr
     assert not destination.exists()
 
@@ -101,3 +143,44 @@ def test_corrupt_library_database_fails_clearly_without_partial_json_or_replacin
     assert result.stderr.startswith('Research Library: ')
     assert 'file is not a database' in result.stderr
     assert app.database.read_bytes() == damaged
+
+
+def test_advanced_cli_pages_keep_originals_and_selected_libraries(cli):
+    app, ids, run = cli
+    source = "\f".join(f"Memory and identity, section {index}." for index in range(5))
+    imported = app.add_text(ids[0], 'Paged source', source)
+    query = ('--search', 'memory NEAR/2 identity', '--search-mode', 'advanced',
+             '--workspace', ids[0], '--workspace', ids[1], '--limit-per-library', '2')
+    pages = [json.loads(run(*query, '--offset-per-library', str(offset)).stdout)
+             for offset in (0, 2, 4)]
+    assert [page['has_more'] for page in pages] == [True, True, False]
+    assert [page['offset_per_library'] for page in pages] == [0, 2, 4]
+    quotes = [hit['quote'] for page in pages for group in page['libraries']
+              for hit in group['results']]
+    assert quotes == source.split('\f')
+    assert all(page['libraries'][1]['results'] == [] for page in pages)
+    assert app.assets.resolve(imported['asset']).read_bytes() == source.encode('utf-8')
+    invalid = run('--search', 'NOT memory', '--search-mode', 'advanced',
+                  '--workspace', ids[0], expected=1)
+    assert not invalid.stdout.strip()
+    continued = json.loads(run('--search', 'memory', '--workspace', ids[0],
+                  '--offset-per-library', '1').stdout)
+    assert continued['offset_per_library'] == 1
+    assert continued['libraries'][0]['results'][0]['quote'] == source.split('\f')[1]
+
+
+def test_cli_passive_source_cursor_continues_beyond_one_hundred_segments(cli):
+    app, ids, run = cli
+    text = '\f'.join(f'Continuation segment {number:03d}.' for number in range(105))
+    app.add_text(ids[0], 'CLI source continuation', text, edition_id='cursor-source')
+    args = ('--search', 'Continuation', '--workspace', ids[0], '--search-mode', 'terms',
+            '--limit-per-library', '100', '--search-timeout', '300')
+    first = json.loads(run(*args).stdout)
+    cursor = json.dumps(first['next_source_cursors'])
+    second = json.loads(run(*args, '--source-cursors', cursor).stdout)
+    records = first['libraries'][0]['results'] + second['libraries'][0]['results']
+    assert len(records) == 105 and len({row['page'] for row in records}) == 105
+    assert second['next_source_cursors'][ids[0]] is None
+    stale = run('--search', 'Different query', '--workspace', ids[0],
+                '--search-mode', 'terms', '--source-cursors', cursor, expected=1)
+    assert not stale.stdout.strip() and 'cursor' in stale.stderr.lower()

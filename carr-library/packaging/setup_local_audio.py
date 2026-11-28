@@ -16,6 +16,7 @@ import sys
 from uuid import uuid4
 
 from carr_library import audio_runtime
+from carr_library.installation_lease import installed_entrypoint
 from carr_library.durable_state import local_path, regular
 
 HERE = Path(__file__).absolute().parent
@@ -123,6 +124,7 @@ def _show_result(report):
     print('Зберігайте папку runtime разом із її бібліотеками, повідомленнями про ліцензії та джерелами.')
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, help='New local work folder outside the installation.')

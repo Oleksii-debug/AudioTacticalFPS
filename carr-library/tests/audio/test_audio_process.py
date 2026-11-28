@@ -1,9 +1,12 @@
 """Real subprocess lifecycle and no-clobber publication regression tests."""
 from pathlib import Path
 import os
+import json
+import shutil
 import stat
 import sys
 import time
+import wave
 
 import pytest
 
@@ -114,3 +117,36 @@ def test_audio_publication_flushes_a_writable_handle(tmp_path, monkeypatch):
     monkeypatch.setattr(os, 'fsync', require_write_access)
     publish_file(staged, target)
     assert flushed and target.read_bytes() == staged.read_bytes() == b'Exact unchanged audio bytes'
+
+
+@pytest.mark.parametrize('explicit', [False, True])
+def test_real_ffmpeg_cannot_overwrite_an_inherited_report_destination(tmp_path, monkeypatch, explicit):
+    executable = shutil.which('ffmpeg')
+    if executable is None:
+        pytest.skip('Actual native report-file regression requires installed FFmpeg.')
+    source, sentinel = tmp_path / 'input.wav', tmp_path / 'unrelated-private.txt'
+    sentinel.write_bytes(b'Unchanged unrelated private file')
+    with wave.open(str(source), 'wb') as audio:
+        audio.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
+        audio.writeframes(b'\0\0' * 2400)
+    report = 'file=unrelated-private.txt:level=48'
+    monkeypatch.setenv('FFREPORT', report)
+    environment = dict(os.environ) if explicit else None
+    before = dict(environment) if explicit else None
+    run_process([str(Path(executable).resolve()), '-v', 'error', '-nostdin',
+                 '-i', str(source), '-f', 'null', '-'], cwd=tmp_path, env=environment)
+    assert sentinel.read_bytes() == b'Unchanged unrelated private file'
+    assert os.environ['FFREPORT'] == report
+    assert environment == before
+
+
+def test_process_preserves_device_locale_and_explicit_environment_without_report_keys():
+    environment = dict(os.environ, FFREPORT='file=not-allowed', ffreport='also-not-allowed',
+                       SDL_AUDIODRIVER='dummy', LANG='C', CARR_HOST_SENTINEL='kept')
+    before = dict(environment)
+    result = execute('import json,os; print(json.dumps(dict(os.environ)))', env=environment)
+    received = json.loads(result.stdout)
+    assert not any(key.casefold() == 'ffreport' for key in received)
+    assert received['SDL_AUDIODRIVER'] == 'dummy'
+    assert received['LANG'] == 'C' and received['CARR_HOST_SENTINEL'] == 'kept'
+    assert environment == before

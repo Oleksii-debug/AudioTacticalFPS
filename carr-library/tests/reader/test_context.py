@@ -25,7 +25,7 @@ def test_exact_navigation_and_copy(sample):
     assert context.page(1).raw_text == raw[1]
     assert context.clipboard('A', 0, 'quote', load) == 'Київ\n'
     assert context.clipboard('A', 1, 'quote', load) == 'Čas'
-    assert 'p. iv (PDF page 3)' in context.clipboard('A', 0, 'citation', load)
+    assert 'p. iv (physical page 3)' in context.clipboard('A', 0, 'citation', load)
     assert 'printed page unverified' in context.clipboard('A', 1, 'citation', load)
     assert 'Original author' in context.clipboard('A', 1, 'both', load)
     for invalid in (-1, 2, True):
@@ -86,7 +86,7 @@ def test_unpaginated_single_page(sample):
     load = lambda i, l: (i, l, raw, True)
     context = open_context('A', [anchor], load)
     assert 'Segment 1 (unpaginated)' in context.clipboard('A', 0, 'citation', load)
-    assert 'PDF page' not in context.clipboard('A', 0, 'citation', load)
+    assert 'Physical page' not in context.clipboard('A', 0, 'citation', load)
 
 
 def test_copy_revalidates_scope_and_revision(sample):

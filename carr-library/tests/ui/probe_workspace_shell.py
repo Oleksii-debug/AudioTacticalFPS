@@ -14,6 +14,7 @@ class Control:
         self.destroyed = self.focused = self.hidden = False
     def SetSizer(self, x): pass
     def SetName(self, x): pass
+    def Wrap(self, x): pass
     def Bind(self, *args): pass
     def Layout(self): pass
     def Add(self, *args): pass

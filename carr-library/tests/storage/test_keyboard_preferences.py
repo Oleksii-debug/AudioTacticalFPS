@@ -238,3 +238,31 @@ def test_external_edit_during_temporary_write_is_preserved(tmp_path, registry, m
         store.save({'library.import': 'Ctrl+J'}, registry)
     assert path.read_bytes() == external
     assert not list(tmp_path.glob('.*.tmp'))
+
+
+def test_passive_legacy_validation_keeps_old_f24_and_unknown_actions_without_io(monkeypatch):
+    import json
+    import carr_library.keyboard_preferences as storage
+    raw = json.dumps({'schema': 1, 'overrides': {'old module/old command': 'Ctrl+F24'},
+                      'originals': {'old module/old command': 'F12'}}).encode()
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Passive validation must not open a path.')
+    monkeypatch.setattr(storage.os, 'open', forbidden)
+    assert storage.validate_legacy_keymap(raw) == {
+        'schema': 1, 'overrides': {'old module/old command': 'Ctrl+F24'},
+        'originals': {'old module/old command': 'F12'}}
+
+
+@pytest.mark.parametrize('raw', [
+    b'{"schema":true,"overrides":{},"originals":{}}',
+    b'{"schema":1,"overrides":{"old/a":"Ctrl+K"},"originals":{}}',
+    b'{"schema":1,"overrides":{"old/a":"Ctrl+C"},"originals":{"old/a":"Ctrl+I"}}',
+    b'{"schema":1,"overrides":{"old/a":"Ctrl+K","old/b":"Ctrl+K"},'
+    b'"originals":{"old/a":"Ctrl+I","old/b":"Ctrl+N"}}',
+    b'{"schema":1,"schema":1,"overrides":{},"originals":{}}',
+    b' ' * (128 * 1024 + 1),
+], ids=['boolean-version', 'missing-original', 'reserved-key', 'duplicate-key', 'duplicate-field', 'oversized'])
+def test_passive_legacy_validation_rejects_invalid_shape_or_unsafe_explicit_keys(raw):
+    from carr_library.keyboard_preferences import validate_legacy_keymap
+    with pytest.raises(ValueError):
+        validate_legacy_keymap(raw)

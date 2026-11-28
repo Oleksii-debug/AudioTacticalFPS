@@ -113,7 +113,7 @@ def test_actual_extract_preserves_unicode_and_authentication(environment):
     assert source.read_bytes() == raw.encode('utf-8')
     (outputs / 'reading.txt').write_text('tampered', encoding='utf-8')
     result = service.resume(identity)
-    assert result.status == 'failed' and 'changed' in result.message
+    assert result.status == 'failed' and 'declared receipt' in result.message
     assert (outputs / 'reading.txt').read_text() == 'tampered'
 
 
@@ -307,7 +307,7 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
                 if isinstance(node, ast.FunctionDef) and node.name in ('report', 'run')]
     assert len(handlers) == 2
     factory = ast.parse('def make_run(identity):\n'
-                        '    busy, job_id, plan, alive = None, identity, None, True\n').body[0]
+                        '    busy, job_id, plan, alive = False, identity, None, True\n').body[0]
     factory.body.extend(handlers)
     factory.body.append(ast.Return(value=ast.Name(id='run', ctx=ast.Load())))
 
@@ -334,7 +334,8 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
         namespace = {
             'executor': SimpleNamespace(submit=submit), 'service': SimpleNamespace(resume=resume),
             'cancel': Event(), 'review': review, 'buttons': buttons, 'json': json,
-            'frame': SimpleNamespace(library=app), 'library_root': app.root, 'folder_buttons': [],
+            'frame': SimpleNamespace(library=app, _closing=False), 'library_root': app.root,
+            'folder_buttons': (Control(), Control()),
             'wx': SimpleNamespace(CallAfter=lambda function, *args: callbacks.put((function, args))),
             **{name: Control() for name in
                ('scope_choice', 'instruction', 'input_folder', 'output_folder', 'full_backup', 'planning_source')},

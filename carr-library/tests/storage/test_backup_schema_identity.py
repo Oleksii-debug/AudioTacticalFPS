@@ -203,3 +203,34 @@ def test_duplicate_json_keys_are_rejected(backup, tmp_path, monkeypatch, duplica
         restore_backup(directory, destination, sha256(encoded).hexdigest())
     assert not destination.exists()
     assert bundle_bytes(directory) == original
+
+
+@pytest.mark.parametrize('shape', ['mixed-v3', 'partial-reading-v3',
+                                  'reading-added-to-v4', 'v5-without-reading'])
+def test_component_version_shapes_are_unambiguous_before_writable_open(
+        backup, tmp_path, monkeypatch, shape):
+    _, _, _, directory, manifest = backup
+    if shape == 'mixed-v3':
+        manifest.update(version=3, reading_state=None)
+        # A reading-only v3 must not also declare common-v4 sidecars.
+    elif shape == 'partial-reading-v3':
+        manifest.update(version=3, reading_state=None)
+        manifest.pop('sidecars')
+        if manifest.pop('pending', None) is not None:
+            shutil.rmtree(directory / 'pending')
+        # A reading-only v3 never declared this leftover generated-audio flag.
+    elif shape == 'reading-added-to-v4':
+        manifest['reading_state'] = None
+    else:
+        manifest.update(version=5, state=[])
+        manifest.pop('sidecars')
+        manifest.setdefault('pending', None)
+        (directory / 'state').mkdir(exist_ok=True)
+        # Legacy v5 always declares reading_state, including explicit absence.
+    raw = (json.dumps(manifest, sort_keys=True) + '\n').encode('utf-8')
+    (directory / 'manifest.json').write_bytes(raw)
+    forbid_writable_storage(monkeypatch)
+    target = tmp_path / 'rejected'
+    with pytest.raises(RestoreError):
+        restore_backup(directory, target, sha256(raw).hexdigest())
+    assert not target.exists()

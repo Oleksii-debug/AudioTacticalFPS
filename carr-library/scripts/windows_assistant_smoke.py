@@ -19,7 +19,8 @@ import traceback
 SOURCE_FILES = (
     'assistant/__init__.py', 'assistant/models.py', 'assistant/planner.py',
     'assistant/service.py', 'assistant/state.py', 'assistant/backup_receipt.py',
-    'ui/assistant_dialog.py',
+    'assistant/templates.py', 'assistant/template_bindings.py',
+    'ui/assistant_dialog.py', 'ui/workflow_templates.py',
 )
 EXPECTED_CHECKS = (
     'native preview is non-executing and shows exact operations',
@@ -60,6 +61,7 @@ def exercise_controls(root, wx, *, timeout=60):
     library.add_text(other, 'Excluded source', 'Railway transport belongs to another library.')
     baseline_ids = tuple(row.edition_id for row in library.browse(other))
     checks, progress, completed_state = [], [], {}
+    template_checks = []
 
     def descendants(window):
         for child in window.GetChildren():
@@ -152,6 +154,27 @@ def exercise_controls(root, wx, *, timeout=60):
                         window.EndModal(wx.ID_CANCEL)
                 wx.CallAfter(close)
 
+        def select_named_template():
+            try:
+                if monotonic() - started > timeout:
+                    raise RuntimeError('The native template selector did not open.')
+                choices = [window for window in wx.GetTopLevelWindows()
+                           if isinstance(window, wx.SingleChoiceDialog)
+                           and window.IsModal() and window.IsShown()
+                           and window.GetTitle() == 'Named assistant templates']
+                if not choices:
+                    wx.CallLater(25, select_named_template)
+                    return
+                choice = choices[0]
+                choice.SetSelection(0)
+                click(choice.FindWindowById(wx.ID_OK))
+            except BaseException:
+                failures.append(traceback.format_exc())
+                for window in wx.GetTopLevelWindows():
+                    if isinstance(window, wx.SingleChoiceDialog) and window.IsModal():
+                        window.EndModal(wx.ID_CANCEL)
+                wx.CallAfter(close)
+
         def poll():
             try:
                 if monotonic() - started > timeout:
@@ -192,6 +215,18 @@ def exercise_controls(root, wx, *, timeout=60):
                         assert [row.id for row in frame.library.workspaces()] == [other]
                         assert not observer.jobs() and source.read_bytes() == raw
                         checks.append(EXPECTED_CHECKS[0])
+                        from carr_library.assistant.templates import TemplateStore
+                        controls['Workflow template name (saved steps carry no permissions)'].SetValue(
+                            'Native repeated import')
+                        controls['Template category'].SetSelection(1)
+                        click(button(dialog, 'Save reviewed template'))
+                        record, = TemplateStore(frame.library.root).list()[0]
+                        assert record.name == 'Native repeated import' and record.kind == 'batch-preset'
+                        assert 'scope' not in record.proposal()
+                        assert [step.tool for step in record.steps] == [
+                            'library.create', 'library.import', 'library.search']
+                        assert not observer.jobs() and source.read_bytes() == raw
+                        template_checks.append('native template save persists typed steps without executing')
                         trace_phase('preview-verified', reopened=reopened)
                     trace_phase('run-reviewed-plan', reopened=reopened)
                     click(button(dialog, 'Run / resume'))
@@ -227,6 +262,27 @@ def exercise_controls(root, wx, *, timeout=60):
                         checks.append(EXPECTED_CHECKS[4])
                         assert source.read_bytes() == raw
                         checks.append(EXPECTED_CHECKS[5])
+                        dialog.assistant_controls['full_backup'].SetValue(True)
+                        wx.CallLater(25, select_named_template)
+                        click(button(dialog, 'Named templates...'))
+                        if failures:
+                            close()
+                            return
+                        assert not button(dialog, 'Run / resume').IsEnabled()
+                        assert controls['Allowed input folder (optional; no other folders are readable)'].GetValue() == ''
+                        assert controls['Chosen output folder (required for audio, extraction or backup)'].GetValue() == ''
+                        proposal = json.loads(controls['Goal — guided English/Ukrainian commands or typed JSON plan'].GetValue())
+                        assert 'scope' not in proposal
+                        assert dialog.assistant_controls['full_backup'].GetValue() is False
+                        assert len(observer.jobs()) == 1 and source.read_bytes() == raw
+                        click(button(dialog, 'Run / resume'))
+                        assert len(observer.jobs()) == 1
+                        controls['Allowed input folder (optional; no other folders are readable)'].SetValue(str(inputs))
+                        controls['Chosen output folder (required for audio, extraction or backup)'].SetValue(str(outputs))
+                        click(button(dialog, 'Preview plan'))
+                        assert button(dialog, 'Run / resume').IsEnabled()
+                        assert len(observer.jobs()) == 1
+                        template_checks.append('native restored template requires fresh scope preview and separate Run')
                     else:
                         completed_state.update(id=job.id, editions=imported, results=job.results)
                         observed = [row for row in progress if not row['reopened']]
@@ -291,8 +347,11 @@ def exercise_controls(root, wx, *, timeout=60):
         raise RuntimeError('; '.join(failures))
     if tuple(checks) != EXPECTED_CHECKS:
         raise RuntimeError('Native assistant did not complete every required operation.')
-    trace_phase('all-required-checks-passed', check_count=len(checks))
-    return {'checks': checks, 'check_count': len(checks), 'progress_observations': progress,
+    if len(template_checks) != 2:
+        raise RuntimeError('Native assistant template checks did not complete.')
+    trace_phase('all-required-checks-passed', check_count=len(checks) + len(template_checks))
+    return {'checks': checks, 'check_count': len(checks), 'template_checks': template_checks,
+            'template_check_count': len(template_checks), 'progress_observations': progress,
             'saved_job_reopened': True, 'unrelated_workspace_unchanged': True}
 
 

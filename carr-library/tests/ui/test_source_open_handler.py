@@ -11,7 +11,7 @@ import pytest
 def viewing_copy():
     return SimpleNamespace(path=Path('/viewing/source.txt'),ref='selected',
         identity=SimpleNamespace(workspace='library',revision='historical'),title='Book',
-        locator=SimpleNamespace(display=lambda: 'PDF page 7 (printed page unverified)'))
+        locator=SimpleNamespace(display=lambda: 'Physical page 7 (printed page unverified)'))
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_source_is_only_prepared_and_launched_after_explicit_action(panel):
         authorized_topic='topic',cancelled=obj.frame.cancel_event.is_set)
     scope['wx'].LaunchDefaultApplication.assert_called_once_with(str(source.path))
     text = obj.status.ChangeValue.call_args.args[0]
-    assert 'viewing copy' in text and 'PDF page 7' in text and 'external viewer to navigate' in text
+    assert 'viewing copy' in text and 'Physical page 7' in text and 'external viewer to navigate' in text
     obj.status.SetFocus.assert_called_once()
 
 

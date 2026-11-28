@@ -251,6 +251,14 @@ class ReadingState:
             snapshot_locations(raw)
         return raw
 
+    def _read_validated(self):
+        """Compatibility for callers retaining an exact validated snapshot."""
+        raw, identity = self._snapshot()
+        if raw is None:
+            return None, {}, {}, None
+        positions, bookmarks, _ = _decode_bytes(raw)
+        return raw, positions, bookmarks, identity
+
     def _read(self):
         raw, identity = self._snapshot()
         if raw is None:
