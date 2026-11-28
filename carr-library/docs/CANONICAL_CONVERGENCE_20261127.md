@@ -1,8 +1,12 @@
 # Canonical convergence — 2026-11-27
 
-[Latest focused source correction proof: 6b67 cohort and 6daa Studio follow-through](acceptance/20261128-6b67-source-recovery-follow-through.json). All thirteen previously failing source files now have a passing corrected focused result. Final ordinary successor gates remain required; required native output is still unqualified.
+[Latest completed ordinary and native follow-through](acceptance/20261128-f186-and-native-ci-follow-through.json). The exact f186 ordinary head finished all 22 jobs: 20 successful and two failed. Canonical V3 source passed all 139 suites; broad source completed with zero failures and 18 individually verified optional-Flite skips. Required playback and incomplete full Windows source coverage prevent whole-head acceptance.
 
-[Latest completed ordinary checkpoint: 7a terminal gates and actual native-output diagnosis](acceptance/20261128-7a445c-terminal-and-native-output.json). All 22 ordinary jobs are terminal (17 successful, five failed). The reviewed source successor has no whole-head acceptance; the tested hosted Windows runner still exposes no render endpoint after its audio services start.
+[Latest complete Tasks proof](acceptance/20261128-f186-and-native-ci-follow-through.json): actual `5b5e` verifies the reviewed `0f43` product source, passes all 229 strict cases and all 28 distinct required native checks. All eight corrected native components now have separately bound passing results. The prepared ordinary successor still requires its own 28 jobs and complete 405-report source coverage.
+
+[Earlier focused source correction proof: 6b67 cohort and 6daa Studio follow-through](acceptance/20261128-6b67-source-recovery-follow-through.json). All thirteen previously failing source files now have a passing corrected focused result. Final ordinary successor gates remain required; required native output is still unqualified.
+
+[Earlier ordinary checkpoint: 7a terminal gates and actual native-output diagnosis](acceptance/20261128-7a445c-terminal-and-native-output.json). All 22 ordinary jobs are terminal (17 successful, five failed). The reviewed source successor has no whole-head acceptance; the tested hosted Windows runner still exposes no render endpoint after its audio services start.
 
 ## Reviewed identities and authority
 
@@ -872,3 +876,81 @@ The ordinary reviewed source at `c232eff` includes that correction and the
 reviewed documentation. Its full successor gates are still required. The
 nineteen-suite failed run is not relabeled as a pass, and its thirty previously
 passing Studio cases overlap the later thirty-two-case follow-through.
+
+## f186 terminal evidence and native/Windows CI follow-through
+
+The [exact evidence record](acceptance/20261128-f186-and-native-ci-follow-through.json) binds every historical result
+to its own source identity, terminal job and full-log hash. f186 completed
+139 canonical V3 suites with 3015 passes, and all 20 broad selectors with
+3116 passes, zero failures and 18 skips. The exact saved JUnit classifies six
+runtime skips for the unavailable optional Flite filter, eleven production
+skips requiring three Flite voices, and one hardening skip requiring Flite slt.
+The bounded derived report is hash-verified against the original validated
+ZIP member. A transported XML copy whose byte count/hash differs is excluded;
+it is not reconstructed or used as acceptance evidence.
+
+The f186 full Windows source phase produced 296 of 405 required final reports:
+7603 cases passed, none of the completed reports failed or skipped, and
+109 reports are missing. The original paging suite reached its 600-second
+bound during that run. The unchanged suite then passed all 27 cases in
+204.55 seconds on isolated `9909`, preserving the real 501 retained imports,
+continuations and all original assertions. This is separate evidence of
+isolated completion, with no retrospective PASS or unsupported capacity claim.
+
+Reviewed source `7716` retains all 404 original ordered occurrences, including the
+OCR-selection duplicate at positions 62 and 74 and the bootstrap compatibility
+suite. The first academic/federated/portable/guard phase is byte-identical.
+The remaining 401 occurrences now run serially across six independent required
+Windows VMs, with 67/67/67/67/67/66 occurrences. Every VM installs the complete
+pinned dependencies and verified audio/OCR runtime, verifies all 341 installed
+Python sources, and emits a head-bound ordered receipt. Missing, reordered,
+failed or skipped reports fail the receipt; the metadata suite must still
+report its exact 58 cases. All 99 helper controls passed on actual Windows `1d71`.
+Complete execution of the six-VM ordinary successor remains required.
+
+Reviewed source `c405` requires a sealed verified bundle before acceptance and
+records the exact ordered outcomes of 20 native and eight independent checks.
+A native failure remains a failure while independent installed validators,
+pytest, final sealing, source-wheel proof, transfer and Inno work continue
+where their own prerequisites are satisfied. A tested wheel is adopted only
+after the complete successful aggregate. All 110 installer/ledger source cases,
+including actual PowerShell controlled-child regressions, passed at `1d71`.
+They do not substitute for actual Inno install, repair and uninstall.
+
+Native follow-through preserves the original controls and deadlines.
+The appearance driver advances its phase before deliberately moving focus;
+pronunciation uses the actual MSW selected-start and GetRange; Library waits
+for the completed exact startup scope; effects create fixtures below a
+canonical Windows root and print Unicode-safe diagnostic JSON. The corrected
+components have exact passing results in `1d71` and `535f`. Effects completed all 147
+checks, including two real durable batch receipts, measured outputs, original
+preservation and unchanged bytes/mtimes on explicit resume.
+
+Actual `535f` confirmed that native command-search Return needs TE_PROCESS_ENTER
+and EVT_TEXT_ENTER with the pinned wxWidgets 3.2.8. It then exposed a driver
+retry that repeated the old policy-value assertion after editing the control.
+Source `942d` separates that one-time edit from retryable Save focus. Actual `06f8`
+passed all 227 source cases and the corrected refresh/save sequence, then
+proved a separate product defect: actual Tab reached the results ListBox,
+but Return produced neither the result key event nor invocation; the palette
+remained modal with no default item. The final product correction and its
+unchanged real native follow-through are bound below.
+
+Source `0f43c6e8b0f53f7103c39823597d41705f89c2a2` adds only `run.SetDefault()` to the existing Run button. Actual `5b5e3ce9917dfcacc3e98d296f2941ca3f2e8bf9` completed 229 strict passes and 42 successful native check calls covering all 28 required labels. Both original search-Return rounds, actual Tab-to-results Return, the same loaded policy/job, normal close, real held-lock cancellation, native child/owner destruction and late-callback refusal passed. All 341 installed Python files matched the diagnostic checkout; its 1356 product/source files are identical to the ordinary source checkpoint. The 15-second phase and 120-second overall guards are unchanged. Manual keyboard/NVDA, hardware capacity and model inference remain NOT_RUN.
+
+Five explicit UTF-8 arguments in existing formatting/voice fixtures match the
+packaged Unicode CPAL and real saved-state encoding without changing assertions
+or case counts. The reviewed source composition excludes diagnostic workflows
+and their ancestry. Its ordinary head still requires all 28 jobs, all 405 source
+reports, the complete installed tail, transfer and actual Inno lifecycle;
+those later outcomes belong to the exact PR head and are not predicted here.
+
+A working Windows render endpoint remains necessary for mandatory EPUB,
+reader/player and desktop playback. Actual `2ed` started both audio services but
+observed no canonical, CIM or WinMM output devices; six PCM queries returned
+BADDEVICEID (2) and MCI returned 326. f186 repeated the playback error without
+remeasuring the endpoint inventory. Human Windows/NVDA use, audible quality,
+private engine/model quality, large-corpus capacity and signed distribution
+retain their separate qualifications.
+
+A later completed donor run `10e3be9` demonstrates an actionable hosted endpoint setup: two real signed-driver virtual outputs accept the unchanged 16000 Hz mono PCM16 fixture, and its own MCI/recorded-EPUB probes pass. That different whole job still fails selected capture and a bundle observer. Its product code and success verdict are not transferred to this source. A separate finite test-first evaluation of the current unchanged playback probes is being prepared with the exact vendor package, signatures and a dated branch guard. Recurring CI use or distribution requires its own licensing basis; the vendor driver is not part of this ordinary source or application bundle.

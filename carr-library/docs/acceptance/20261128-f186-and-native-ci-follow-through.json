@@ -1,0 +1,2289 @@
+{
+  "schema": 1,
+  "title": "f186 terminal ordinary gates and reviewed native/Windows CI follow-through",
+  "scope": "Exact historical executions and reviewed source components. No whole-candidate, signed-distribution, manual accessibility or audible-output acceptance is inferred.",
+  "authority": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "canonical_branch": "carr-library",
+    "canonical_head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "finalization_spec_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "detailed_v3_spec_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "issue_1_updated": "2026-11-27T16:44:15Z",
+    "pull_request": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/152",
+    "last_verified_utc": "2026-11-28 04:45:45 UTC"
+  },
+  "ordinary": {
+    "head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+    "tree": "95e4a03a0d2ed4452c136760dc2397ac03796349",
+    "terminal_jobs": 22,
+    "successful_jobs": 20,
+    "failed_jobs": 2,
+    "whole_head_acceptance": "NOT_ESTABLISHED",
+    "selected_event": "PR event except the portable component push run; superseded duplicate push jobs are not additional failures",
+    "jobs": [
+      {
+        "run_id": 46097465441,
+        "job_id": 140832021961,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465441/job/140832021961",
+        "scope": "OCR",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:23:40Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 69171,
+        "log_sha256_utf8": "865ba4e3d8da1ab8c5fd3ebff7481c874655c03141b054e36ac1303d06fbf542",
+        "strict_suite_reports": 8,
+        "strict_cases": {
+          "passed": 133,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465473,
+        "job_id": 140832022448,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465473/job/140832022448",
+        "scope": "reading-source",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:23:02Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 64855,
+        "log_sha256_utf8": "41b2de56eaf56b47eff18a9fc289f025f65c3e0c06447cec85a07f8ef56e2b2b",
+        "strict_suite_reports": 12,
+        "strict_cases": {
+          "passed": 246,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465443,
+        "job_id": 140832022047,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465443/job/140832022047",
+        "scope": "native-launcher-MSVC",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:24:14Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 34205,
+        "log_sha256_utf8": "ab602397e94b48faae8c937363f6bd708062aa8d1881142260ca03f48d82f107",
+        "strict_suite_reports": 0,
+        "strict_cases": {
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465453,
+        "job_id": 140832024867,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465453/job/140832024867",
+        "scope": "native-keyboard-and-drafts",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:25:40Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 62240,
+        "log_sha256_utf8": "6bdb26e4edbddfcfca12d33096591f505660f06af31ccb30036e28a813bd6512",
+        "strict_suite_reports": 7,
+        "strict_cases": {
+          "passed": 255,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465521,
+        "job_id": 140832022330,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465521/job/140832022330",
+        "scope": "native-template-controls",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:26:31Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 74766,
+        "log_sha256_utf8": "4e582a3be7cdc4f8dd1d28f7b13485d2c87ecc6d97200a1b334c123f849f36f9",
+        "strict_suite_reports": 0,
+        "strict_cases": {
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465443,
+        "job_id": 140832022346,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465443/job/140832022346",
+        "scope": "pinned-zig-native-launcher",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:27:00Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 30913,
+        "log_sha256_utf8": "99534656a1f9cc9f4c891145cf5c6d3c971182278f1e28f0078723dd5da6c2f4",
+        "strict_suite_reports": 0,
+        "strict_cases": {
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465473,
+        "job_id": 140832022101,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465473/job/140832022101",
+        "scope": "native-reading-content-controls",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:26:57Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 46799,
+        "log_sha256_utf8": "c14905e1d866d6f960c154c6893ec5efc7bde11eab4702a17576131e5e4dff53",
+        "strict_suite_reports": 0,
+        "strict_cases": {
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465521,
+        "job_id": 140832022074,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465521/job/140832022074",
+        "scope": "typed-template-acceptance",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:29:54Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 64145,
+        "log_sha256_utf8": "c4a8c64dc5b11df810ede65d100e2bfa5fd23117d5930b86f48d3cf683976d84",
+        "strict_suite_reports": 9,
+        "strict_cases": {
+          "passed": 186,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465487,
+        "job_id": 140832022274,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465487/job/140832022274",
+        "scope": "reading-composition",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:29:19Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 208927,
+        "log_sha256_utf8": "60b75e600958e3543508ff1ceb370e1db8166796bb4c98cfef0dbe9ae893b60a",
+        "strict_suite_reports": 106,
+        "strict_cases": {
+          "passed": 2556,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097457754,
+        "job_id": 140831997526,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097457754/job/140831997526",
+        "scope": "Exact component / Windows x64 / CPython 3.11",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:29:02Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 67945,
+        "log_sha256_utf8": "d8c9b192b19c830a6d1f21cbfa3a3ae467bfea53ec01a957c31ad7d736c50c74",
+        "strict_suite_reports": 0,
+        "strict_cases": {
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465506,
+        "job_id": 140832022503,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465506/job/140832022503",
+        "scope": "Windows x64 / CPython 3.11 / installed bibliography",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:31:33Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 141150,
+        "log_sha256_utf8": "f7b3f76513535a8dee7c7e405ac6824904f9981d5d8c4bcd42377db31172392d",
+        "strict_suite_reports": 29,
+        "strict_cases": {
+          "passed": 1256,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465420,
+        "job_id": 140832021760,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465420/job/140832021760",
+        "scope": "reconciled-source",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:35:06Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 202241,
+        "log_sha256_utf8": "0a6065475446bee6eb93ea5cb8def3427e4b766ae4d329fb39671ab391061f27",
+        "strict_suite_reports": 95,
+        "strict_cases": {
+          "passed": 3227,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465420,
+        "job_id": 140832021957,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465420/job/140832021957",
+        "scope": "canonical-production",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:39:51Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 244445,
+        "log_sha256_utf8": "376948eaf7f1a5ca3aa03a3b90a173a6dce9255e97f460a921b8700fd0120ea2",
+        "strict_suite_reports": 109,
+        "strict_cases": {
+          "passed": 2172,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465426,
+        "job_id": 140832023887,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465426/job/140832023887",
+        "scope": "V3 required source shard 2/3",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:40:37Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 129775,
+        "log_sha256_utf8": "c8ccc93f816b68ad29a365c3dac2edf0fbb9ca78730fb8598db3cfdee3c310c3",
+        "strict_suite_reports": 70,
+        "strict_cases": {
+          "passed": 1701,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465511,
+        "job_id": 140832024830,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465511/job/140832024830",
+        "scope": "protocol (ubuntu-24.04)",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:53:30Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 70757,
+        "log_sha256_utf8": "50b0b3709c3f21ca995dc924af3e0fc58d9fb6b9d47f6dd23fc18016b7b0087e",
+        "strict_suite_reports": 16,
+        "strict_cases": {
+          "passed": 734,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465426,
+        "job_id": 140832024155,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465426/job/140832024155",
+        "scope": "V3 required source shard 1/3",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T02:55:39Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 128523,
+        "log_sha256_utf8": "7fac2673d401362cfdb5e6ab2263b7168c586e45c4cf2a6923fab361728d568d",
+        "strict_suite_reports": 70,
+        "strict_cases": {
+          "passed": 1341,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465511,
+        "job_id": 140832025036,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465511/job/140832025036",
+        "scope": "protocol (windows-2022)",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T03:00:11Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 91175,
+        "log_sha256_utf8": "224a4714714b73469fd7bac6c180143f8435fb131dcaf8ccf8a7b0b20ff3a575",
+        "strict_suite_reports": 16,
+        "strict_cases": {
+          "passed": 733,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465426,
+        "job_id": 140832024116,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465426/job/140832024116",
+        "scope": "V3 broad local service shard 2/2",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T03:00:45Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 63691,
+        "log_sha256_utf8": "24c9cdc065916f9efb9849a7fcd17670591aada1fdb50acec76f08b1e4b2d7a3",
+        "strict_suite_reports": 1,
+        "strict_cases": {
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465426,
+        "job_id": 140832024199,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465426/job/140832024199",
+        "scope": "V3 broad local service shard 1/2",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T03:00:40Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 65433,
+        "log_sha256_utf8": "1fdd66b1ba061bdef33d8f81d01b4209c873ea9455e4fc962f9a8e580171b12b",
+        "strict_suite_reports": 1,
+        "strict_cases": {
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465426,
+        "job_id": 140832024142,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465426/job/140832024142",
+        "scope": "native-studio",
+        "conclusion": "failure",
+        "completed_at": "2026-11-28T03:06:24Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 500523,
+        "log_sha256_utf8": "f8b230821eb9952e93e133b7edd2e1d8bbdc912ff34d142e36dc28ee3f51d663",
+        "strict_suite_reports": 42,
+        "strict_cases": {
+          "passed": 743,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465426,
+        "job_id": 140832024173,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465426/job/140832024173",
+        "scope": "V3 required source shard 3/3",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T03:03:43Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 62242,
+        "log_sha256_utf8": "99599af58355a5500f2a202d469ecf7f0af11cd725e906123b3a4357ef58ee8c",
+        "strict_suite_reports": 2,
+        "strict_cases": {
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "run_id": 46097465453,
+        "job_id": 140832025166,
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097465453/job/140832025166",
+        "scope": "Windows x64 / CPython 3.11 / integrated desktop",
+        "conclusion": "failure",
+        "completed_at": "2026-11-28T03:25:03Z",
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "log_characters": 1145309,
+        "log_sha256_utf8": "8910fcc0f192b9c6778942d8fcc92cdff4dfaee702416213b1837d4c3096c4f6",
+        "strict_suite_reports": 308,
+        "strict_cases": {
+          "passed": 7933,
+          "failed": 0,
+          "skipped": 0
+        }
+      }
+    ],
+    "canonical_v3": {
+      "manifest_sha256": "0b3e555199d8716d33c4f8287285a677aed7faf2688c19c47856f3e4ee47fff9",
+      "selected_occurrences": 139,
+      "partitions": [
+        {
+          "job": 140832024155,
+          "suites": 69,
+          "passed": 1319
+        },
+        {
+          "job": 140832023887,
+          "suites": 69,
+          "passed": 1679
+        },
+        {
+          "job": 140832024173,
+          "suites": 1,
+          "passed": 17,
+          "book_seconds": 463.9
+        }
+      ],
+      "passed": 3015,
+      "failed": 0,
+      "skipped": 0,
+      "additional_partition_guard_cases": 66
+    },
+    "broad_v3": {
+      "selectors": 20,
+      "partitions": [
+        {
+          "job": 140832024199,
+          "selectors": 4,
+          "passed": 2315,
+          "failed": 0,
+          "skipped": 18,
+          "seconds": 1317.76
+        },
+        {
+          "job": 140832024116,
+          "selectors": 16,
+          "passed": 801,
+          "failed": 0,
+          "skipped": 0,
+          "seconds": 923.86
+        }
+      ],
+      "passed": 3116,
+      "failed": 0,
+      "skipped": 18,
+      "additional_partition_guard_cases": 52,
+      "skip_identities": "EXACT_SAVED_JUNIT_VERIFIED",
+      "overlap_note": "These selections overlap canonical and other workflow tests; counts are not a unique global total.",
+      "skip_cases": [
+        {
+          "classname": "tests.speech.test_runtime",
+          "name": "test_actual_local_pcm_speech_and_three_distinct_voices",
+          "reason": "The installed FFmpeg does not include the optional Flite filter.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.speech.test_runtime",
+          "name": "test_actual_volume_reduction_and_source_invariance",
+          "reason": "The installed FFmpeg does not include the optional Flite filter.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.speech.test_runtime",
+          "name": "test_no_overwrite_existing_audio",
+          "reason": "The installed FFmpeg does not include the optional Flite filter.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.speech.test_runtime",
+          "name": "test_cancel_synthesis_leaves_no_partial_audio",
+          "reason": "The installed FFmpeg does not include the optional Flite filter.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.speech.test_runtime",
+          "name": "test_actual_chunked_synthesis_and_budget",
+          "reason": "The installed FFmpeg does not include the optional Flite filter.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.speech.test_runtime",
+          "name": "test_unsupported_native_controls_do_not_silently_apply",
+          "reason": "The installed FFmpeg does not include the optional Flite filter.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_actual_three_role_music_chapters_stems_and_text_invariance",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_actual_left_center_right_routing_and_two_second_pause",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_measured_line_subtitles_and_music_stem_alignment",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_actual_music_ducking_recovers_during_deliberate_silence",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_completed_operation_is_idempotent_and_outputs_are_reverified",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_pause_restart_and_one_corrupt_speech_chunk_repaired",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_completed_output_tampering_is_not_silently_overwritten",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_corrupt_receipt_is_recoverable_like_corrupt_audio",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_actual_selected_local_sfx_routing_and_source_audio_invariance",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production",
+          "name": "test_unselected_cue_directory_is_denied_before_publication",
+          "reason": "This actual production acceptance requires three installed Flite voices.",
+          "type": "pytest.skip"
+        },
+        {
+          "classname": "tests.studio.test_production_hardening",
+          "name": "test_completed_actual_speech_is_receipted_before_cancellation",
+          "reason": "Actual speech requires the installed Flite slt voice.",
+          "type": "pytest.skip"
+        }
+      ],
+      "skip_groups": [
+        {
+          "suite": "tests/speech/test_runtime.py",
+          "cases": 6,
+          "reason": "The installed FFmpeg does not include the optional Flite filter."
+        },
+        {
+          "suite": "tests/studio/test_production.py",
+          "cases": 11,
+          "reason": "This actual production acceptance requires three installed Flite voices."
+        },
+        {
+          "suite": "tests/studio/test_production_hardening.py",
+          "cases": 1,
+          "reason": "Actual speech requires the installed Flite slt voice."
+        }
+      ],
+      "skip_qualification": "All18 skips are actual saved-JUnit observations. They are not passes and do not qualify actual Flite speech or production behavior."
+    },
+    "required_windows_source": {
+      "job": 140832025166,
+      "expected_occurrences": 405,
+      "original_manifest_occurrences": 404,
+      "additional_coverage_guard": 1,
+      "completed_occurrences": 296,
+      "passed": 7603,
+      "reported_failed_cases": 0,
+      "reported_skipped_cases": 0,
+      "missing_occurrences": 109,
+      "complete": false,
+      "first_phase": [
+        {
+          "suite": "tests/research/test_academic_library.py",
+          "passed": 118,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/security/test_portable_handoff.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_windows_source_suites.py",
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/search/test_federated_advanced.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "bulk_completed_occurrences": 292,
+      "bulk_passed": 7367,
+      "paging_suite_timeout_seconds": 600,
+      "bulk_phase_timeout_minutes": 35,
+      "missing": [
+        {
+          "zero_based_original_occurrence": 186,
+          "suite": "tests/search/test_search_paging.py"
+        },
+        {
+          "zero_based_original_occurrence": 294,
+          "suite": "tests/transcription/test_supplied_worker_bridge.py"
+        },
+        {
+          "zero_based_original_occurrence": 295,
+          "suite": "tests/transcription/test_v5_worker_profile.py"
+        },
+        {
+          "zero_based_original_occurrence": 296,
+          "suite": "tests/audio/test_recording.py"
+        },
+        {
+          "zero_based_original_occurrence": 297,
+          "suite": "tests/audio/test_conversion_batch.py"
+        },
+        {
+          "zero_based_original_occurrence": 298,
+          "suite": "tests/ui/test_audio_conversion_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 299,
+          "suite": "tests/studio/test_audio_conversion_cli.py"
+        },
+        {
+          "zero_based_original_occurrence": 300,
+          "suite": "tests/audio/test_capture_admission.py"
+        },
+        {
+          "zero_based_original_occurrence": 301,
+          "suite": "tests/audio/test_capture_windows_lifetime.py"
+        },
+        {
+          "zero_based_original_occurrence": 302,
+          "suite": "tests/ui/test_recording_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 303,
+          "suite": "tests/studio/test_clip_editing.py"
+        },
+        {
+          "zero_based_original_occurrence": 304,
+          "suite": "tests/studio/test_clip_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 305,
+          "suite": "tests/studio/test_project_effects.py"
+        },
+        {
+          "zero_based_original_occurrence": 306,
+          "suite": "tests/studio/test_book_audio.py"
+        },
+        {
+          "zero_based_original_occurrence": 307,
+          "suite": "tests/ui/test_book_audio_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 308,
+          "suite": "tests/ui/test_worker_lifetime.py"
+        },
+        {
+          "zero_based_original_occurrence": 309,
+          "suite": "tests/ui/test_trust_lifetime.py"
+        },
+        {
+          "zero_based_original_occurrence": 310,
+          "suite": "tests/speech/test_player_controls.py"
+        },
+        {
+          "zero_based_original_occurrence": 311,
+          "suite": "tests/speech/test_wave_output.py"
+        },
+        {
+          "zero_based_original_occurrence": 312,
+          "suite": "tests/speech/test_playlist.py"
+        },
+        {
+          "zero_based_original_occurrence": 313,
+          "suite": "tests/speech/test_playlist_recovery.py"
+        },
+        {
+          "zero_based_original_occurrence": 314,
+          "suite": "tests/ui/test_audio_playback.py"
+        },
+        {
+          "zero_based_original_occurrence": 315,
+          "suite": "tests/ui/test_reader_playback.py"
+        },
+        {
+          "zero_based_original_occurrence": 316,
+          "suite": "tests/ui/test_reader_playback_actions.py"
+        },
+        {
+          "zero_based_original_occurrence": 317,
+          "suite": "tests/studio/test_publishing.py"
+        },
+        {
+          "zero_based_original_occurrence": 318,
+          "suite": "tests/studio/test_publishing_boundaries.py"
+        },
+        {
+          "zero_based_original_occurrence": 319,
+          "suite": "tests/studio/test_publishing_cli.py"
+        },
+        {
+          "zero_based_original_occurrence": 320,
+          "suite": "tests/studio/test_publishing_handlers.py"
+        },
+        {
+          "zero_based_original_occurrence": 321,
+          "suite": "tests/studio/test_daisy_publishing.py"
+        },
+        {
+          "zero_based_original_occurrence": 322,
+          "suite": "tests/studio/test_daisy_boundaries.py"
+        },
+        {
+          "zero_based_original_occurrence": 323,
+          "suite": "tests/reader/test_ebook_audio.py"
+        },
+        {
+          "zero_based_original_occurrence": 324,
+          "suite": "tests/speech/test_pronunciation_review.py"
+        },
+        {
+          "zero_based_original_occurrence": 325,
+          "suite": "tests/speech/test_pronunciation_handlers.py"
+        },
+        {
+          "zero_based_original_occurrence": 326,
+          "suite": "tests/speech/test_pronunciation_reader_hook.py"
+        },
+        {
+          "zero_based_original_occurrence": 327,
+          "suite": "tests/studio/test_pronunciation.py"
+        },
+        {
+          "zero_based_original_occurrence": 328,
+          "suite": "tests/studio/test_pronunciation_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 329,
+          "suite": "tests/studio/test_pronunciation_render.py"
+        },
+        {
+          "zero_based_original_occurrence": 330,
+          "suite": "tests/assistant/test_translation_source.py"
+        },
+        {
+          "zero_based_original_occurrence": 331,
+          "suite": "tests/assistant/test_translation_batch.py"
+        },
+        {
+          "zero_based_original_occurrence": 332,
+          "suite": "tests/assistant/test_translation_batch_cli.py"
+        },
+        {
+          "zero_based_original_occurrence": 333,
+          "suite": "tests/assistant/test_translation_batch_ui.py"
+        },
+        {
+          "zero_based_original_occurrence": 334,
+          "suite": "tests/packaging/test_installer_process.py"
+        },
+        {
+          "zero_based_original_occurrence": 335,
+          "suite": "tests/packaging/test_standard_installer.py"
+        },
+        {
+          "zero_based_original_occurrence": 336,
+          "suite": "tests/packaging/test_prepare_publication_tools.py"
+        },
+        {
+          "zero_based_original_occurrence": 337,
+          "suite": "tests/assistant/test_local_planning.py"
+        },
+        {
+          "zero_based_original_occurrence": 338,
+          "suite": "tests/assistant/test_planning_handlers.py"
+        },
+        {
+          "zero_based_original_occurrence": 339,
+          "suite": "tests/assistant/test_translation_v3.py"
+        },
+        {
+          "zero_based_original_occurrence": 340,
+          "suite": "tests/assistant/test_translation_local.py"
+        },
+        {
+          "zero_based_original_occurrence": 341,
+          "suite": "tests/assistant/test_translation_local_ui.py"
+        },
+        {
+          "zero_based_original_occurrence": 342,
+          "suite": "tests/audio/test_audiobook.py"
+        },
+        {
+          "zero_based_original_occurrence": 343,
+          "suite": "tests/audio/test_effect_presets.py"
+        },
+        {
+          "zero_based_original_occurrence": 344,
+          "suite": "tests/studio/test_audiobook_publication.py"
+        },
+        {
+          "zero_based_original_occurrence": 345,
+          "suite": "tests/speech/test_navigation.py"
+        },
+        {
+          "zero_based_original_occurrence": 346,
+          "suite": "tests/ui/test_reader_navigation.py"
+        },
+        {
+          "zero_based_original_occurrence": 347,
+          "suite": "tests/speech/test_find_replace.py"
+        },
+        {
+          "zero_based_original_occurrence": 348,
+          "suite": "tests/speech/test_find_replace_reader_hook.py"
+        },
+        {
+          "zero_based_original_occurrence": 349,
+          "suite": "tests/speech/test_player_transport.py"
+        },
+        {
+          "zero_based_original_occurrence": 350,
+          "suite": "tests/ui/test_find_replace_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 351,
+          "suite": "tests/operations/test_facade.py"
+        },
+        {
+          "zero_based_original_occurrence": 352,
+          "suite": "tests/operations/test_import_admission.py"
+        },
+        {
+          "zero_based_original_occurrence": 353,
+          "suite": "tests/operations/test_production_admission.py"
+        },
+        {
+          "zero_based_original_occurrence": 354,
+          "suite": "tests/operations/test_resources.py"
+        },
+        {
+          "zero_based_original_occurrence": 355,
+          "suite": "tests/operations/test_transcription_admission.py"
+        },
+        {
+          "zero_based_original_occurrence": 356,
+          "suite": "tests/transcription/test_runtime_review.py"
+        },
+        {
+          "zero_based_original_occurrence": 357,
+          "suite": "tests/transcription/test_runtime_record_inventory.py"
+        },
+        {
+          "zero_based_original_occurrence": 358,
+          "suite": "tests/transcription/test_profile_controls.py"
+        },
+        {
+          "zero_based_original_occurrence": 359,
+          "suite": "tests/storage/test_transcription_review_restore.py"
+        },
+        {
+          "zero_based_original_occurrence": 360,
+          "suite": "tests/ui/test_transcription_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 361,
+          "suite": "tests/e2e/test_transcription_cli.py"
+        },
+        {
+          "zero_based_original_occurrence": 362,
+          "suite": "tests/ui/test_operations_dialog.py"
+        },
+        {
+          "zero_based_original_occurrence": 363,
+          "suite": "tests/ui/test_operations_policy.py"
+        },
+        {
+          "zero_based_original_occurrence": 364,
+          "suite": "tests/e2e/test_operations_cli.py"
+        },
+        {
+          "zero_based_original_occurrence": 365,
+          "suite": "tests/storage/test_state_replacement.py"
+        },
+        {
+          "zero_based_original_occurrence": 366,
+          "suite": "tests/security/test_anchor_locking.py"
+        },
+        {
+          "zero_based_original_occurrence": 367,
+          "suite": "tests/security/test_canonical_boundary.py"
+        },
+        {
+          "zero_based_original_occurrence": 368,
+          "suite": "tests/security/test_controller.py"
+        },
+        {
+          "zero_based_original_occurrence": 369,
+          "suite": "tests/security/test_entitlements.py"
+        },
+        {
+          "zero_based_original_occurrence": 370,
+          "suite": "tests/security/test_idle_renewal.py"
+        },
+        {
+          "zero_based_original_occurrence": 371,
+          "suite": "tests/security/test_independent_review_boundaries.py"
+        },
+        {
+          "zero_based_original_occurrence": 372,
+          "suite": "tests/security/test_installation.py"
+        },
+        {
+          "zero_based_original_occurrence": 373,
+          "suite": "tests/security/test_publication_integrity.py"
+        },
+        {
+          "zero_based_original_occurrence": 374,
+          "suite": "tests/security/test_refresh.py"
+        },
+        {
+          "zero_based_original_occurrence": 375,
+          "suite": "tests/security/test_updates.py"
+        },
+        {
+          "zero_based_original_occurrence": 376,
+          "suite": "tests/security/test_update_polling.py"
+        },
+        {
+          "zero_based_original_occurrence": 377,
+          "suite": "tests/ui/test_progress_job_review.py"
+        },
+        {
+          "zero_based_original_occurrence": 378,
+          "suite": "tests/extract/test_runtime_identity.py"
+        },
+        {
+          "zero_based_original_occurrence": 379,
+          "suite": "tests/packaging/test_native_checks.py"
+        },
+        {
+          "zero_based_original_occurrence": 380,
+          "suite": "tests/packaging/test_native_launcher_bundle.py"
+        },
+        {
+          "zero_based_original_occurrence": 381,
+          "suite": "tests/catalog/test_ris_apply_v4.py"
+        },
+        {
+          "zero_based_original_occurrence": 383,
+          "suite": "tests/storage/test_studio_input_backup.py"
+        },
+        {
+          "zero_based_original_occurrence": 384,
+          "suite": "tests/storage/test_studio_input_authority.py"
+        },
+        {
+          "zero_based_original_occurrence": 385,
+          "suite": "tests/storage/test_composed_recovery.py"
+        },
+        {
+          "zero_based_original_occurrence": 386,
+          "suite": "tests/storage/test_backup_v4_review.py"
+        },
+        {
+          "zero_based_original_occurrence": 387,
+          "suite": "tests/speech/test_discovery_cancellation.py"
+        },
+        {
+          "zero_based_original_occurrence": 388,
+          "suite": "tests/e2e/test_import_commit_supervisor.py"
+        },
+        {
+          "zero_based_original_occurrence": 389,
+          "suite": "tests/e2e/test_import_legacy_config.py"
+        },
+        {
+          "zero_based_original_occurrence": 390,
+          "suite": "tests/e2e/test_import_publication_receipt_integrity.py"
+        },
+        {
+          "zero_based_original_occurrence": 391,
+          "suite": "tests/ingest/test_initial_publication_completion.py"
+        },
+        {
+          "zero_based_original_occurrence": 392,
+          "suite": "tests/ui/test_export_destination.py"
+        },
+        {
+          "zero_based_original_occurrence": 393,
+          "suite": "tests/storage/test_durable_state_publication.py"
+        },
+        {
+          "zero_based_original_occurrence": 394,
+          "suite": "tests/storage/test_durable_state_read.py"
+        },
+        {
+          "zero_based_original_occurrence": 395,
+          "suite": "tests/storage/test_durable_state_windows_read.py"
+        },
+        {
+          "zero_based_original_occurrence": 396,
+          "suite": "tests/audio/test_music.py"
+        },
+        {
+          "zero_based_original_occurrence": 397,
+          "suite": "tests/packaging/test_local_audio_setup_owned.py"
+        },
+        {
+          "zero_based_original_occurrence": 398,
+          "suite": "tests/packaging/test_packaging_profile_compatibility.py"
+        },
+        {
+          "zero_based_original_occurrence": 400,
+          "suite": "tests/packaging/test_portable_entry.py"
+        },
+        {
+          "zero_based_original_occurrence": 401,
+          "suite": "tests/packaging/test_audio_acquisition.py"
+        },
+        {
+          "zero_based_original_occurrence": 402,
+          "suite": "tests/packaging/test_audio_bundle.py"
+        },
+        {
+          "zero_based_original_occurrence": 403,
+          "suite": "tests/packaging/test_audio_runtime.py"
+        }
+      ],
+      "unexpected_reports": [],
+      "case_count_mismatches": [],
+      "ocr_duplicate_one_based_occurrences": [
+        62,
+        74
+      ],
+      "log_sha256_utf8": "8910fcc0f192b9c6778942d8fcc92cdff4dfaee702416213b1837d4c3096c4f6",
+      "qualification": "A missing terminal report is not a passing result. Source completeness remains failed despite no reported assertion failures."
+    },
+    "native_boundaries": {
+      "failed_jobs": [
+        140832024142,
+        140832025166
+      ],
+      "failure": "Actual EPUB MCI playback reports code 326 at stage 2; source selection and exact Unicode highlighting complete before the playback failure.",
+      "current_endpoint_inventory": "NOT_REMEASURED",
+      "prior_endpoint_diagnostic": {
+        "head": "2ed50a1e5236f19efbfc755a59baf356fd7ca072",
+        "run": 46091381260,
+        "job": 140812835954,
+        "services": "AudioEndpointBuilder and Audiosrv started successfully",
+        "winmm_output_devices": 0,
+        "cim_sound_devices": 0,
+        "canonical_output_devices": 0,
+        "pcm_queries": 6,
+        "pcm_query_result": "BADDEVICEID (2)",
+        "actual_mci_result": 326
+      },
+      "main_step_35": "FAIL",
+      "full_bundle_step_52": "FAIL",
+      "transferable_step_53": "SKIPPED",
+      "standard_inno_step_54": "SKIPPED",
+      "installed_validators_and_pytest_tail": "NOT_RUN after serial native EPUB failure"
+    }
+  },
+  "phase_readback": {
+    "reader_head": "78e05a2530d989bf2027445837eb0a1b2d3d6a8e",
+    "reader_run": 46099595753,
+    "reader_job": 140838784245,
+    "artifact": {
+      "artifact_verified": true,
+      "artifact_id": 15244469110,
+      "source_run": 46097465453,
+      "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+      "archive_bytes": 103668,
+      "archive_sha256": "9f10eeb90ec939c7035c33c9895c6a90b683cb7c3822c0a3e2df3f3031a142ab",
+      "text_members": 98,
+      "text_bytes": 445659,
+      "scope": "readback of saved public diagnostics; no application execution"
+    },
+    "verified_text_members": 97,
+    "total_text_members": 98,
+    "excluded_member": [
+      {
+        "path": "local-transport.xml",
+        "reason": "Transported text length/hash differs from archived member; whole member excluded",
+        "expected_bytes": 12472,
+        "received_bytes": 12453
+      }
+    ],
+    "source_wheel": {
+      "payload_files": 429,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 356,
+      "source_commit": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+      "source_tree": "95e4a03a0d2ed4452c136760dc2397ac03796349",
+      "status": "PASS",
+      "wheel_sha256": "aae5cb72103fff723afa0adcb33650ca2470781b36d9c75cf4e0b6c61c876655"
+    },
+    "full_bundle_build": {
+      "target": "Windows x64 / CPython 3.11",
+      "wheels": 58,
+      "output": "D:\\a\\_temp\\carr-bundle-ci\\base bundle",
+      "manifest_sha256": "94daa7baf8fa54240d6fd019c04131d06786d8675e377eeb9ca1bec6e793c0c2"
+    },
+    "important_native_results": [
+      {
+        "file": "installed-native-v3.txt",
+        "status": "PASS",
+        "groups": 16,
+        "scope": "Actual installed SAPI synthesis, Unicode roles, WAV/FLAC artifacts, CSL/document output, two-book/three-part approved queue, resume hashes and mtimes, owner cleanup; no audible render endpoint qualification"
+      },
+      {
+        "file": "full-bundle-document-formats-native.txt",
+        "status": "PASS",
+        "checks": 28,
+        "scope": "Actual HTML/Markdown imports and Unicode async UI/source preservation; no manual NVDA or file-picker qualification"
+      }
+    ]
+  },
+  "source_followthrough": {
+    "base": "90b2d2307433875bf633717673618ba1d8471fb5",
+    "composed_head": "0b846af487a7334b3f4e7b70630aceb92560150f",
+    "composed_tree": "fc55b6cc4f2337a502bbf44830efe8faa8cd12c7",
+    "files": 1356,
+    "delta_from_base": 8,
+    "added_files": 1,
+    "unrelated_blobs_unchanged": 1348,
+    "diagnostic_ancestry": false,
+    "components": [
+      {
+        "head": "086aafa2a431f76b0f0a500205ec0a67c94eeb5c",
+        "correction": "Advance the appearance driver stage before deliberately moving focus; retain the first required real editor-focus check and all deadlines."
+      },
+      {
+        "head": "50b29e60d51eecf1cb37d57fa97c33f6da5644ad",
+        "correction": "Match actual Windows selected-start position with exact native GetRange; use current semantic keyboard registry and actual named palette controls."
+      },
+      {
+        "head": "973c83f04c6c7fbf3d3f38e54223393041ddc86c",
+        "correction": "Canonicalize the effect fixture root before creation to match production local-path resolution; retain source hashes, sample counts and resume checks.",
+        "diagnosis_scope": "The original858 failure did not capture alias spelling. At535f, the raw fixture TEMP path uses RUNNER~1 while the actual canonical review paths use runneradmin; the complete147-check effects sequence passes."
+      },
+      {
+        "head": "3218882761585d6a75731c6a7b5b877879e45de3",
+        "correction": "Wait within existing deadlines for actual completed Library refresh and exact source/scope state before menu activation; retain refusal evidence and owner closure."
+      },
+      {
+        "head": "67f2aadd0f50a0affd190597bcaa70672f331a78",
+        "correction": "Added generic Return/NumPadEnter handlers and bounded failure cleanup; all 48 source controls passed in 1d71, but actual native search activation remained failed. The Windows text-entry preprocessing requirement was subsequently identified in the matching wxWidgets source and requires the next native correction.",
+        "expected_existing_file_cases": 48,
+        "old_native_checks": 25,
+        "stage_timeout_seconds": 15,
+        "total_timeout_seconds": 120
+      },
+      {
+        "head": "c40536446fc9afcbd897666dccb7146886d7b66a",
+        "correction": "After sealed build verification, run all 20 native and eight independent installed checks while retaining exact failures; require complete ordered successful ledger before tested-wheel adoption. Independent transfer and Inno checks require verified build readiness.",
+        "expected_existing_file_cases": 110,
+        "old_commands_preserved": 133,
+        "old_here_documents_preserved": 4,
+        "aggregate_required_checks": 28
+      },
+      {
+        "head": "771665e8386a4e2e43500a31acb8c54d62a63993",
+        "correction": "Move 401 bulk occurrences to six required Windows VMs with unchanged exact inventory, original per-suite and phase limits, complete prerequisites and exact ordered completion receipts.",
+        "manifest_sha256": "f5895a418aa852aa56d4a820c6abf17f6d787767919710f97d4519697b44a2c5",
+        "partition_sizes": [
+          67,
+          67,
+          67,
+          67,
+          67,
+          66
+        ],
+        "workers_per_vm": 1,
+        "suite_timeout_seconds": 600,
+        "phase_timeout_minutes": 35,
+        "expected_existing_file_cases": 99,
+        "main_first_phase": "byte-identical"
+      },
+      {
+        "head": "fcd7e5d81e21edfdeb9727114126f809e4154262",
+        "correction": "Use native TE_PROCESS_ENTER and EVT_TEXT_ENTER on command search; preserve results routing, live availability and the original accept path. Bound passive native event diagnostics and use islice for wx.WindowList.",
+        "actual_535f_cases": 54,
+        "actual_search_enter": "PASS",
+        "whole_operations_sequence": "FAIL in later driver policy-edit phase"
+      },
+      {
+        "head": "347995ebe58f5f452e917cfc45d6a11e1538bbb8",
+        "correction": "Emit both diagnostic JSON records with ASCII escapes while retaining Unicode fixture comparison and all43 original static checks.",
+        "actual_535f_native_checks": 147,
+        "status": "PASS"
+      },
+      {
+        "head": "942d244e7810563a89f231b77a652bd021e5a2ea",
+        "correction": "Separate one-time reviewed policy edit from retryable Save-key focus; add real Tab/results-focus/Return round before the original held-lock search-Return sequence.",
+        "old_source_cases_preserved": 54,
+        "new_source_cases": 8,
+        "expected_source_cases": 62,
+        "old_native_checks_preserved": 25,
+        "new_native_checks": 3,
+        "stage_timeout_seconds": 15,
+        "total_timeout_seconds": 120,
+        "product_unchanged": true,
+        "execution": "All62 Operations cases pass in06f8; its real Save-focus correction passes there. The complete unchanged native sequence subsequently passes5b5e after the separate0f43 native default-button product fix."
+      },
+      {
+        "head": "c1614273b1023e041fe4a3bb0d50182744abba6a",
+        "correction": "Five explicit UTF-8 read/write arguments in two existing test files; assertions and test cardinalities unchanged.",
+        "product_and_workflows_unchanged": true,
+        "execution": "NOT_RUN"
+      },
+      {
+        "head": "0f43c6e8b0f53f7103c39823597d41705f89c2a2",
+        "tree": "574049bce7afcfd20fe70f619072915b3b756658",
+        "correction": "Set the existing Run button as the native dialog default. Preserve original accept and post-close live availability. Model the Windows default-button path and once-only invocation in existing routing cases; add numpad disabled/revoked controls.",
+        "product_added_lines": 1,
+        "changed_files": 2,
+        "old_assert_statements_retained": 183,
+        "old_pytest_raises_contexts_retained": 5,
+        "expected_operations_cases": 64,
+        "native_probe_unchanged": true,
+        "execution": "PASS: all64 Operations cases and complete native Tasks sequence in5b5e."
+      }
+    ],
+    "latest_source": {
+      "head": "0f43c6e8b0f53f7103c39823597d41705f89c2a2",
+      "tree": "574049bce7afcfd20fe70f619072915b3b756658",
+      "parent": "fb3239e8b822d75d9ade37ce64a96c52b2a2c5a7",
+      "files": 1356,
+      "changes_from_parent": 2,
+      "unrelated_blobs_unchanged": 1354,
+      "diagnostic_ancestry": false,
+      "source_review": "Root and Spec independently SOURCE_APPROVE",
+      "execution": "PASS: exact5b5e installed source executed229 strict cases and the complete Tasks native sequence; all28 distinct required native checks pass across42 successful calls. Ordinary successor gates remain required."
+    },
+    "intermediate_source_fb3239": {
+      "head": "fb3239e8b822d75d9ade37ce64a96c52b2a2c5a7",
+      "tree": "079fb177d80b74506211d3aba49b29816d9937d9",
+      "parents": [
+        "c1614273b1023e041fe4a3bb0d50182744abba6a",
+        "942d244e7810563a89f231b77a652bd021e5a2ea"
+      ],
+      "files": 1356,
+      "changes_from_753a": 4,
+      "unrelated_blobs_unchanged": 1352,
+      "diagnostic_ancestry": false,
+      "source_review": "Root and Spec independently SOURCE_APPROVE exact fb3239 source tree and06f8 diagnostic composition",
+      "execution": "Focused06f8 completes227 source passes and exposes actual results Return failure; ordinary successor not yet published."
+    }
+  },
+  "diagnostic_173f": {
+    "head": "173f314843381dca9889c77bf900c08e38a6daeb",
+    "run": 46102380921,
+    "job": 140847486709,
+    "conclusion": "failure",
+    "completed_at": "2026-11-28T03:34:09Z",
+    "log_sha256_utf8": "0a0b5f2d27456af552a6bc485307e2fe05bdad8cfc7e8067f4caf80af02ffa47",
+    "strict": {
+      "suites": [
+        {
+          "suite": "tests/ui/test_native_reading_presentation_driver.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_reader_navigation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/library_assistant/test_library_workflow_ui.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "native": [
+      {
+        "name": "reader pronunciation",
+        "status": "PASS",
+        "checks": 146
+      },
+      {
+        "name": "Studio pronunciation",
+        "status": "PASS",
+        "checks": 79
+      },
+      {
+        "name": "Tasks and resources",
+        "status": "FAIL",
+        "reason": "Original Return-on-search does not activate the launcher; loaded-stage 15s timeout is followed by failure cleanup hang and12-minute step termination."
+      },
+      {
+        "name": "effect chain",
+        "status": "NOT_RUN"
+      },
+      {
+        "name": "reading appearance",
+        "status": "NOT_RUN"
+      },
+      {
+        "name": "voice preferences",
+        "status": "PASS",
+        "checks": 31
+      },
+      {
+        "name": "academic comparison",
+        "status": "PASS",
+        "checks": 63
+      },
+      {
+        "name": "reviewed Library workflow",
+        "status": "PASS",
+        "report_groups": 6
+      }
+    ],
+    "qualification": "Five native components passed, one failed, two did not execute. The later source correction does not relabel this run."
+  },
+  "paging_diagnostic": {
+    "head": "990961681a57b959f07f11c3f5051fefd853f111",
+    "run": 46103205088,
+    "job": 140850083748,
+    "status": "PASS",
+    "completed_at": "2026-11-28T03:36:51Z",
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 204.55,
+    "workers": 1,
+    "suite_timeout_seconds": 600,
+    "step_timeout_minutes": 12,
+    "source_byte_identities": {
+      "scripts/ci_check.py": "70281591d047dbe5f464db95457c35604b988b2aa0994e0706e4b317385a6ca6",
+      "src/carr_library/application.py": "a5aeac86640cb3221de726b452f9e8e2094a6035cc53f30775fdd173b5f0ee9f",
+      "src/carr_library/catalog/intake.py": "9a22419d2fe245806c501f59024d850083648dc7228c1ea92dab642332bf8a28",
+      "src/carr_library/search/federated.py": "f74e715c65dfae9435591af1a0e664762ff64104f8e2c08c5aa7d5df543eb79a",
+      "src/carr_library/search/paging.py": "c5620c77d45dbe48d93b646b40bf8e46129b43d9b76c833aef7b85a1dfc67055",
+      "tests/search/test_search_paging.py": "9d18eddc611f67e426bb59a16c0475d703eba8fe4b2826c0926fbfb2541a8b4a"
+    },
+    "log_sha256_utf8": "0bf54a020a315808b159305c853c80e68c7240fdb93e3198a6e7e5372664b7b6",
+    "artifacts": [
+      {
+        "id": 15246443883,
+        "size": 19223,
+        "digest": "sha256:41cfa17c5cdd4010c2aae011c922311dbf07a06dc0241d518e27bd55e2138922"
+      }
+    ],
+    "qualification": "The unchanged original suite completes within its limit in isolation. This does not retrospectively pass f186 or establish a paging defect or production capacity claim."
+  },
+  "composed_diagnostic": {
+    "head": "1d718d6774ac90cd53754ed4e5f5a71268077e7e",
+    "run": 46104822811,
+    "job": 140855097501,
+    "source_head": "0b846af487a7334b3f4e7b70630aceb92560150f",
+    "source_files_equal": 1356,
+    "only_added_file": ".github/workflows/native-audio-diagnostic.yml",
+    "status": "FAIL",
+    "completed_at": "2026-11-28T04:00:08Z",
+    "log_characters": 136757,
+    "log_sha256_utf8": "d898aeaec28fb3f4391e0070316746a91d6c90af5cdab9f1b0d10165aff6c6af",
+    "strict": {
+      "suites": [
+        {
+          "suite": "tests/ui/test_native_reading_presentation_driver.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_reader_navigation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/library_assistant/test_library_workflow_ui.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_standard_installer.py",
+          "passed": 110,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_windows_source_suites.py",
+          "passed": 99,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 313,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "native_passed": 6,
+    "native_failed": 2,
+    "native_not_run": 0,
+    "native_results": [
+      {
+        "name": "reader pronunciation",
+        "status": "PASS",
+        "checks": 146
+      },
+      {
+        "name": "Studio pronunciation",
+        "status": "PASS",
+        "checks": 79
+      },
+      {
+        "name": "Tasks and resources",
+        "status": "FAIL",
+        "reason": "Loaded-stage15s timeout persists; cleanup returns and laterstepsrun. Snapshot itself failed because wx.WindowList does not support slicing; activationcause remains unobserved."
+      },
+      {
+        "name": "effect chain",
+        "status": "FAIL",
+        "reason": "New diagnostic print cannot encode Unicode fixture paths to isolated Windows cp1252 stdout; previous batch review assertion was not reached."
+      },
+      {
+        "name": "reading appearance",
+        "status": "PASS",
+        "checks": 24
+      },
+      {
+        "name": "voice preferences",
+        "status": "PASS",
+        "checks": 31
+      },
+      {
+        "name": "academic comparison",
+        "status": "PASS",
+        "checks": 63
+      },
+      {
+        "name": "reviewed Library workflow",
+        "status": "PASS",
+        "report_groups": 6
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 15246814074,
+        "size": 32667,
+        "digest": "sha256:ddbb3d0e3067477ed3fce8da9590b07756c2c87dca8db177937ea7dd1b21cd8c",
+        "contents_decoded": false
+      }
+    ],
+    "qualification": "Actual source helpers and Enter routing controls pass. Operations and full effect-batch acceptance remain failed, with no acceptance inferred for unexecuted later assertions."
+  },
+  "remaining_acceptance": [
+    "All28 ordinary successor jobs,405 required source reports, installed validator/pytest tail, transfer and actual Inno install/repair/uninstall must complete on the exact successor.",
+    "Mandatory EPUB/reader/player/desktop playback still requires actual current-source execution with a working render endpoint. A separate finite test-first evaluation is being prepared; other-head playback is not current-source acceptance.",
+    "Human Windows/NVDA, audible quality, actual private engine/model quality, language-feature coverage, large-corpus capacity, rights/licences and signed final-delivery identity remain separately qualified requirements."
+  ],
+  "remaining_native_source_evidence": {
+    "windows_text_control": {
+      "repository": "wxWidgets/wxWidgets",
+      "ref": "v3.2.8",
+      "path": "src/msw/textctrl.cpp",
+      "blob": "cc49eb05018917fb07e206aef1e9cc544eb593ba",
+      "url": "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/msw/textctrl.cpp",
+      "finding": "The Windows single-line control requests Return messages and emits the native text-enter command only with wxTE_PROCESS_ENTER. The earlier generic key-down binding lacks this required native preprocessing style.",
+      "followthrough": "The fcd7 native TE_PROCESS_ENTER style and EVT_TEXT_ENTER binding were source reviewed and executed at535f: real KEY_DOWN13, TEXT_ENTER, live available invocation, and the owned Tasks dialog were observed.",
+      "actual_runtime": "wxPython 4.2.4 msw (phoenix), wxWidgets 3.2.8",
+      "comparison": "The full MSW text-control file is byte-identical in v3.2.8 and previously inspected v3.2.8.1."
+    },
+    "effect_output": {
+      "head": "347995ebe58f5f452e917cfc45d6a11e1538bbb8",
+      "tree": "11a966b9615f1ed2f79061913d9b26167038b08e",
+      "path": "carr-library/scripts/windows_effect_chain_smoke.py",
+      "blob": "0ab0d9c6291feee145648867169fb1e5390e767e",
+      "change": "Both stdout JSON records use ensure_ascii=True; both Unicode sourcepath comparison expressions remain ensure_ascii=False.",
+      "execution": "PASS: exact component executed at535f with147 actual native checks; see remaining_native_diagnostic_535f."
+    },
+    "windows_results_control": {
+      "repository": "wxWidgets/wxWidgets",
+      "ref": "v3.2.8",
+      "path": "src/msw/button.cpp",
+      "blob": "e5a99eff275a90244f28489e4bb321d22b0da517",
+      "url": "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/msw/button.cpp",
+      "finding": "wxButton::SetDefault registers the permanent default with wxWidgets and native Windows. Button construction alone does not call this method. Actual06f8 results-focus diagnostics show a null default item while Return fails to reach the result key handler.",
+      "followthrough": "Actual5b5e passes real Tab, native ID/HWND focus, Return from results, owned loaded Tasks, normal close, original held-lock search round and complete native destruction sequence. run.SetDefault is the sole product addition in0f43."
+    }
+  },
+  "remaining_native_diagnostic_535f": {
+    "head": "535f9691e2006da6a5e988d4958cc4a1c765df4c",
+    "source_head": "753a6c274f74077c77cd9999483408ca2acbcf2e",
+    "run": 46106875923,
+    "job": 140861496053,
+    "status": "FAIL",
+    "completed_at": "2026-11-28T04:27:36Z",
+    "log_characters": 89229,
+    "log_sha256_utf8": "8dcfcb2a3ba880b193991c90f3ff1b4073c7bb36a7f1eac7e31eb25a9755b2ae",
+    "strict": {
+      "suites": [
+        {
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_keyboard_manager.py",
+          "passed": 47,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_command_registry.py",
+          "passed": 107,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_reader_keymap_context.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 219,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "native": [
+      {
+        "component": "effect chain and audio batch resume",
+        "status": "PASS",
+        "checks": 147,
+        "scope": "Real Windows controls, pinned FFmpeg, exact Unicode original paths, two complete durable receipts, measured audio output, original hashes and resumed output bytes/mtimes retained; no audible-listening or manual-picker qualification."
+      },
+      {
+        "component": "Tasks and resources",
+        "status": "FAIL",
+        "search_enter": "ACTUAL_PASS: KEY_DOWN13 then TEXT_ENTER then live invoke available=true and actual owned Tasks dialog",
+        "failure": "Repeated refreshed_policy tick reasserts cpu==3 after its prior tick changed cpu to2 and foreground acquisition deferred the Save key.",
+        "precleanup": {
+          "stage": "refreshed_policy",
+          "stage_seconds": 0.1879999999998745,
+          "frame_identity": {
+            "id": -31994,
+            "handle": 197118
+          },
+          "frame_working": false,
+          "frame_closing": false,
+          "focus_id": -31774,
+          "focus_name": "Save allowances",
+          "active_loop": "<wx._core.EventLoopBase object at 0x000001FE230FDE10>",
+          "active_loop_running": true,
+          "owner_loop": "<wx._core.EventLoopBase object at 0x000001FE230D1630>",
+          "owner_loop_running": false,
+          "native_events": [
+            {
+              "kind": "palette-ready",
+              "stage": "palette",
+              "run_enabled": true,
+              "status": "Ready to run.",
+              "selected": 0,
+              "count": 1,
+              "first_row": "Tasks and resources — Not assigned",
+              "frame_working": false,
+              "frame_enabled": false
+            },
+            {
+              "kind": "native-key-down",
+              "stage": "loaded",
+              "control_id": -31806,
+              "key": 13
+            },
+            {
+              "kind": "native-text-enter",
+              "stage": "loaded",
+              "control_id": -31806,
+              "key": null
+            },
+            {
+              "kind": "invoke-before",
+              "stage": "loaded",
+              "command": "operations.open",
+              "available": true,
+              "frame_enabled": true,
+              "frame_working": false
+            }
+          ],
+          "windows": [
+            {
+              "id": -31994,
+              "title": "Resonance",
+              "handle": 197118,
+              "shown": true,
+              "parent_id": null,
+              "parent_handle": null
+            },
+            {
+              "id": -31803,
+              "title": "Tasks and resources",
+              "handle": 66248,
+              "shown": true,
+              "parent_id": -31994,
+              "parent_handle": 197118,
+              "modal": true,
+              "busy": false,
+              "closed": false,
+              "policy_loaded": true,
+              "status": "Showing 1 saved operations (view limit 1000); 0 active resource reservations. Saved completion is a journal observation. Open the original workflow to verify results."
+            }
+          ]
+        },
+        "qualification": "Pause, Cancel request, stale-policy refusal and first Refresh observation pass; remaining native stages are unqualified."
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 15248600285,
+        "size": 23741,
+        "digest": "sha256:374101b3c51ce0fd5208baa5c989129f45c8fb6af854c1504aaee9c2494d38e3",
+        "contents_decoded": false
+      }
+    ]
+  },
+  "explicit_utf8_fixture_followthrough": {
+    "head": "c1614273b1023e041fe4a3bb0d50182744abba6a",
+    "tree": "a6b33ff566defbd070a759e147faab09215709d2",
+    "parent": "753a6c274f74077c77cd9999483408ca2acbcf2e",
+    "changed_files": 2,
+    "encoding_arguments": 5,
+    "product_and_workflows_unchanged": true,
+    "test_cardinality_unchanged": true,
+    "current_cpal": {
+      "blob": "ff98dbf084cd8e8428976d84e9056e9876a4bec1",
+      "sha256_utf8": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+      "bytes": 28740,
+      "firstUndefinedCp1252": {
+        "value": 157,
+        "index": 77
+      },
+      "undefinedCp1252ByteCount": 37
+    },
+    "voice_scope": "Current installed tail selects the voice preference suite. Its saved Ukrainian profile is written as UTF-8; fixture reads must use that encoding.",
+    "formatting_scope": "Portability correction for canonical CSL asset reads; not a claim that current installed-tail selection contains the formatting suite.",
+    "execution": "NOT_RUN"
+  },
+  "saved_broad_junit_readback": {
+    "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+    "source_run": 46097465426,
+    "artifact_id": 15245590335,
+    "archive_bytes": 49370,
+    "archive_sha256": "7153213594c9434f610b90b81f69e6bb44f6bab0082354d86e925c22ad708f65",
+    "raw_readback": {
+      "head": "bca353bccae2f866f41927dea1d7aed52dc5db67",
+      "run": 46104926876,
+      "job": 140855418500,
+      "status": "SUCCESS",
+      "log_sha256_utf8": "c5576b6fcb9fda853842f4c62f7fa66d099d781d9664ddbc1d860fcd0c2b8746",
+      "verified_members": 8,
+      "total_members": 9,
+      "excluded_member": {
+        "name": "v3-tests.xml",
+        "expected_bytes": 386836,
+        "received_bytes": 386817,
+        "expected_sha256": "74b589217b6476961e7d9f01f6782bfefbc1204be988b32d37b0d8f7c242fad4",
+        "received_sha256": "bb0fbeeda7f517c0972d9f3aca1f1c14e7c800e5c222ead1001e3e59ef15ec92",
+        "decision": "Whole transported XML excluded; no repair or reconstruction."
+      }
+    },
+    "first_structured_reader": {
+      "head": "f85ac0520a5e9992fd5ec8ff955dca05cfdf6e53",
+      "run": 46105531802,
+      "job": 140857309778,
+      "status": "FAIL",
+      "completed_at": "2026-11-28T04:30:48Z",
+      "log_sha256_utf8": "5121b9547b3404ca0a13141a86f0f48954b0876b4ad328d79d64b6921643647b",
+      "failure": "All testcase names were validated before outcome classification; an unused or emitted identity exceeded the2048-character bound, so no individual skip facts were accepted."
+    },
+    "corrected_structured_reader": {
+      "head": "1b8bc09cf2250615df151ead2ac794809f68c580",
+      "tree": "4a372407b6c68387454c23543ed2fe853a380ec1",
+      "workflow_blob": "9eab1eea86ed5b08aa8e9a2c0931fc018a30af8b",
+      "correction": "Count passing cases without constructing unused identities; preserve all bounds for actually emitted skip/failure records and contradictory outcome refusal.",
+      "source_review": "Root and Spec SOURCE_APPROVE",
+      "execution": "SUCCESS",
+      "run": 46108493198,
+      "job": 140866511591,
+      "completed_at": "2026-11-28T04:41:16Z",
+      "log_characters": 444168,
+      "log_sha256_utf8": "d247b5090dcdcbfbd60629a611b988e007476d93e524e1c88ab6e8860ea0624b",
+      "archive_header": {
+        "artifact_verified": true,
+        "artifact_id": 15245590335,
+        "source_run": 46097465426,
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "archive_bytes": 49370,
+        "archive_sha256": "7153213594c9434f610b90b81f69e6bb44f6bab0082354d86e925c22ad708f65",
+        "text_members": 9,
+        "text_bytes": 393131,
+        "scope": "readback of saved public diagnostics; no application execution"
+      },
+      "report_bytes": 4204,
+      "report_sha256": "f2d3933d7e7ab6b75b49eaa1056e54028f3988420e5c4db612464a4c9e9b2802",
+      "report": {
+        "artifact_id": 15245590335,
+        "failed": 0,
+        "failed_cases": [],
+        "member": "v3-tests.xml",
+        "member_bytes": 386836,
+        "member_sha256": "74b589217b6476961e7d9f01f6782bfefbc1204be988b32d37b0d8f7c242fad4",
+        "passed": 2315,
+        "scope": "derived from the exact saved JUnit member; no new application execution",
+        "skip_cases": [
+          {
+            "classname": "tests.speech.test_runtime",
+            "name": "test_actual_local_pcm_speech_and_three_distinct_voices",
+            "reason": "The installed FFmpeg does not include the optional Flite filter.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.speech.test_runtime",
+            "name": "test_actual_volume_reduction_and_source_invariance",
+            "reason": "The installed FFmpeg does not include the optional Flite filter.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.speech.test_runtime",
+            "name": "test_no_overwrite_existing_audio",
+            "reason": "The installed FFmpeg does not include the optional Flite filter.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.speech.test_runtime",
+            "name": "test_cancel_synthesis_leaves_no_partial_audio",
+            "reason": "The installed FFmpeg does not include the optional Flite filter.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.speech.test_runtime",
+            "name": "test_actual_chunked_synthesis_and_budget",
+            "reason": "The installed FFmpeg does not include the optional Flite filter.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.speech.test_runtime",
+            "name": "test_unsupported_native_controls_do_not_silently_apply",
+            "reason": "The installed FFmpeg does not include the optional Flite filter.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_actual_three_role_music_chapters_stems_and_text_invariance",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_actual_left_center_right_routing_and_two_second_pause",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_measured_line_subtitles_and_music_stem_alignment",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_actual_music_ducking_recovers_during_deliberate_silence",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_completed_operation_is_idempotent_and_outputs_are_reverified",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_pause_restart_and_one_corrupt_speech_chunk_repaired",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_completed_output_tampering_is_not_silently_overwritten",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_corrupt_receipt_is_recoverable_like_corrupt_audio",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_actual_selected_local_sfx_routing_and_source_audio_invariance",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production",
+            "name": "test_unselected_cue_directory_is_denied_before_publication",
+            "reason": "This actual production acceptance requires three installed Flite voices.",
+            "type": "pytest.skip"
+          },
+          {
+            "classname": "tests.studio.test_production_hardening",
+            "name": "test_completed_actual_speech_is_receipted_before_cancellation",
+            "reason": "Actual speech requires the installed Flite slt voice.",
+            "type": "pytest.skip"
+          }
+        ],
+        "skipped": 18,
+        "source_head": "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357",
+        "source_run": 46097465426,
+        "testcases": 2333
+      },
+      "independent_review": "Root and Pending independently verified exact terminal log and payload; raw transported XML remains excluded"
+    }
+  },
+  "remaining_native_diagnostic_06f8": {
+    "head": "06f8e24c2b8722c4bc7850f7eb596d0043c2bcaf",
+    "source_head": "fb3239e8b822d75d9ade37ce64a96c52b2a2c5a7",
+    "run": 46108533297,
+    "job": 140866638902,
+    "status": "FAIL",
+    "completed_at": "2026-11-28T04:41:12Z",
+    "log_characters": 66148,
+    "log_sha256_utf8": "4600de351d9bfeb2cde5670056605e1f1218619b8dfe483395fcf6915961260f",
+    "strict": {
+      "suites": [
+        {
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_keyboard_manager.py",
+          "passed": 47,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_command_registry.py",
+          "passed": 107,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_reader_keymap_context.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 227,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "native": {
+      "status": "FAIL",
+      "policy_refresh_save": "ACTUAL_PASS",
+      "results_tab_focus": "ACTUAL_PASS: ID and HWND checked before Return",
+      "results_enter": "FAIL: results_loaded deadline15.031s; palette remains modal, default_item_id null, no result key-down or subsequent invoke observed",
+      "precleanup": {
+        "stage": "results_loaded",
+        "stage_seconds": 15.031000000000006,
+        "frame_identity": {
+          "id": -31994,
+          "handle": 393778
+        },
+        "frame_working": false,
+        "frame_closing": false,
+        "focus_id": -31770,
+        "focus_name": "Matching commands and shortcuts",
+        "active_loop": "<wx._core.EventLoopBase object at 0x00000287C2705870>",
+        "active_loop_running": true,
+        "owner_loop": "<wx._core.EventLoopBase object at 0x00000287C26D1630>",
+        "owner_loop_running": false,
+        "native_events": [
+          {
+            "kind": "palette-ready",
+            "stage": "palette",
+            "run_enabled": true,
+            "status": "Ready to run.",
+            "selected": 0,
+            "count": 1,
+            "first_row": "Tasks and resources — Not assigned",
+            "frame_working": false,
+            "frame_enabled": false
+          },
+          {
+            "kind": "native-key-down",
+            "stage": "loaded",
+            "control_id": -31806,
+            "key": 13
+          },
+          {
+            "kind": "native-text-enter",
+            "stage": "loaded",
+            "control_id": -31806,
+            "key": null
+          },
+          {
+            "kind": "invoke-before",
+            "stage": "loaded",
+            "command": "operations.open",
+            "available": true,
+            "frame_enabled": true,
+            "frame_working": false
+          },
+          {
+            "kind": "invoke-return",
+            "stage": "closed",
+            "command": "operations.open",
+            "result": true
+          },
+          {
+            "kind": "palette-ready",
+            "stage": "palette_results",
+            "run_enabled": true,
+            "status": "Ready to run.",
+            "selected": 0,
+            "count": 1,
+            "first_row": "Tasks and resources — Not assigned",
+            "frame_working": false,
+            "frame_enabled": false
+          },
+          {
+            "kind": "native-key-down",
+            "stage": "results_focus",
+            "control_id": -31771,
+            "key": 9
+          },
+          {
+            "kind": "results-enter-ready",
+            "stage": "results_focus",
+            "focus_id": -31770,
+            "focus_handle": 131920,
+            "selected": 0,
+            "default_item_supported": true,
+            "default_item_id": null
+          }
+        ],
+        "windows": [
+          {
+            "id": -31994,
+            "title": "Resonance",
+            "handle": 393778,
+            "shown": true,
+            "parent_id": null,
+            "parent_handle": null
+          },
+          {
+            "id": -31773,
+            "title": "Find a command",
+            "handle": 131850,
+            "shown": true,
+            "parent_id": -31994,
+            "parent_handle": 393778,
+            "modal": true
+          }
+        ]
+      },
+      "retained_original_last_lock_sequence": "NOT_RUN"
+    },
+    "artifacts": [
+      {
+        "id": 15247774817,
+        "size": 20988,
+        "digest": "sha256:bb2c8f36b4761dd2ef36d4a8ff30508cf8f80bf95e126730471eb650b2ff4d70",
+        "contents_decoded": false
+      }
+    ]
+  },
+  "remaining_native_diagnostic_5b5e": {
+    "head": "5b5e3ce9917dfcacc3e98d296f2941ca3f2e8bf9",
+    "source_head": "0f43c6e8b0f53f7103c39823597d41705f89c2a2",
+    "source_files_equal": 1356,
+    "workflow_blob": "52d17f3d32132d26ba4105a55a95cea2393190e3",
+    "run": 46109149552,
+    "job": 140868553154,
+    "status": "PASS",
+    "completed_at": "2026-11-28T04:58:12Z",
+    "log_characters": 65710,
+    "log_sha256_utf8": "7a9851f93ef245a6a8f99e043f2671cad44fe029e51cbda3f87a3874eed9a0b0",
+    "strict": {
+      "suites": [
+        {
+          "suite": "tests/ui/test_operations_dialog.py",
+          "passed": 64,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_keyboard_manager.py",
+          "passed": 47,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_command_registry.py",
+          "passed": 107,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_reader_keymap_context.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 229,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "installed_python_files": 341,
+    "native": {
+      "status": "PASS",
+      "checks": [
+        "Tasks UI and facade load from the installed wheel",
+        "native Windows wx is active",
+        "Tasks action belongs to the existing native command inventory",
+        "actual wx main event loop is active",
+        "native palette resolves only the existing Tasks action",
+        "canonical journals load on the host executor",
+        "native job controls have readable accessible names",
+        "stored completion is not presented as verified output",
+        "actual saved assistant job is selected",
+        "original pause action is available",
+        "canonical journals load on the host executor",
+        "native job controls have readable accessible names",
+        "stored completion is not presented as verified output",
+        "actual saved assistant job is selected",
+        "original pause action is available",
+        "native Space records original assistant Pause without resubmission",
+        "native Space records original assistant Pause without resubmission",
+        "native Space records original Cancel without claiming acknowledgement",
+        "native Space records original Cancel without claiming acknowledgement",
+        "native Ctrl+Tab reaches resource allowances",
+        "native Ctrl+Tab reaches resource allowances",
+        "stale native policy cannot overwrite a newer owner edit",
+        "stale native policy cannot overwrite a newer owner edit",
+        "native Refresh shows the actual current policy",
+        "reviewed native policy save commits through the shared broker",
+        "reviewed native policy save commits through the shared broker",
+        "native palette resolves only the existing Tasks action",
+        "native Tab moves command-search focus to the actual results list",
+        "native results Enter opens the same loaded Tasks view",
+        "native results Enter opens the same loaded Tasks view",
+        "results-launched Tasks closes normally before reservation testing",
+        "a real native admission lock is held for the responsiveness case",
+        "native palette resolves only the existing Tasks action",
+        "native close remains available during actual admission waiting",
+        "native close remains available during actual admission waiting",
+        "native close cancels only the waiting task-view operation",
+        "native child destruction does not dispose its parent controller",
+        "controller detaches before deferred native destruction",
+        "matching native task-view event and original wrapper deletion are both observed",
+        "queued callback cannot touch a destroyed native view",
+        "job identity and original queued result survive every task-view action",
+        "all native Tasks/resources stages completed"
+      ],
+      "errors": [],
+      "native_keyboard": "PASS",
+      "nvda": "NOT_RUN",
+      "manual_keyboard": "NOT_RUN",
+      "measured_hardware_capacity": "NOT_RUN",
+      "model_inference": "NOT_RUN"
+    },
+    "distinct_native_labels": 28,
+    "required_native_labels": [
+      "Tasks action belongs to the existing native command inventory",
+      "actual wx main event loop is active",
+      "native palette resolves only the existing Tasks action",
+      "native Tab moves command-search focus to the actual results list",
+      "native results Enter opens the same loaded Tasks view",
+      "canonical journals load on the host executor",
+      "native job controls have readable accessible names",
+      "stored completion is not presented as verified output",
+      "actual saved assistant job is selected",
+      "original pause action is available",
+      "native Space records original assistant Pause without resubmission",
+      "native Space records original Cancel without claiming acknowledgement",
+      "native Ctrl+Tab reaches resource allowances",
+      "stale native policy cannot overwrite a newer owner edit",
+      "native Refresh shows the actual current policy",
+      "reviewed native policy save commits through the shared broker",
+      "results-launched Tasks closes normally before reservation testing",
+      "a real native admission lock is held for the responsiveness case",
+      "native close remains available during actual admission waiting",
+      "native close cancels only the waiting task-view operation",
+      "native child destruction does not dispose its parent controller",
+      "controller detaches before deferred native destruction",
+      "matching native task-view event and original wrapper deletion are both observed",
+      "queued callback cannot touch a destroyed native view",
+      "job identity and original queued result survive every task-view action",
+      "Tasks UI and facade load from the installed wheel",
+      "native Windows wx is active",
+      "all native Tasks/resources stages completed"
+    ],
+    "stage_timeout_seconds": 15,
+    "total_timeout_seconds": 120,
+    "artifacts": [
+      {
+        "id": 15248583084,
+        "size": 20507,
+        "digest": "sha256:bc7521903ab09bb331b891758257fb7e4d0976b393af666e7646b88830de3f11",
+        "contents_decoded": false
+      }
+    ]
+  },
+  "latest_native_component_summary": {
+    "components_with_corrected_passing_results": 8,
+    "binding": [
+      {
+        "head": "1d718d6774ac90cd53754ed4e5f5a71268077e7e",
+        "components": [
+          "reader pronunciation",
+          "Studio pronunciation",
+          "reading appearance",
+          "voice preferences",
+          "academic comparison",
+          "reviewed Library workflow"
+        ]
+      },
+      {
+        "head": "535f9691e2006da6a5e988d4958cc4a1c765df4c",
+        "components": [
+          "effects and audio batch resume"
+        ]
+      },
+      {
+        "head": "5b5e3ce9917dfcacc3e98d296f2941ca3f2e8bf9",
+        "components": [
+          "Tasks and resources"
+        ]
+      }
+    ],
+    "qualification": "Separate exact component executions; no global unique case total or whole ordinary-head acceptance is inferred."
+  },
+  "external_endpoint_followthrough": {
+    "source_head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+    "source_tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+    "run": 46103182988,
+    "job": 140850017588,
+    "status": "FAIL",
+    "completed_at": "2026-11-28T04:56:27Z",
+    "log_characters": 1929173,
+    "log_sha256_utf8": "3a5fccac4eb0620febba98bdf4ab9ecae9b34bd15e6f391066c31c9b16b81259",
+    "observed_render": {
+      "device_count": 2,
+      "devices": [
+        {
+          "index": 0,
+          "name": "Speakers (VB-Audio Virtual Cabl"
+        },
+        {
+          "index": 1,
+          "name": "CABLE In 16 Ch (VB-Audio Virtua"
+        }
+      ],
+      "fixture": {
+        "sample_rate": 16000,
+        "channels": 1,
+        "bits": 16
+      },
+      "format_query_result": 0,
+      "actual_mci_playback": "Observed in donor source/installed/bundle reader-player reports;198 checks per report",
+      "actual_recorded_epub": "Observed in donor windows_ebook_daisy_smoke.py; this is not our current windows_epub_reading_smoke.py"
+    },
+    "failures": [
+      "Selected DirectShow capture output-pin/I/O error",
+      "Complete-bundle pytest observer CP1252 UnicodeEncodeError"
+    ],
+    "endpoint_artifact": {
+      "id": 15246751161,
+      "size": 3945,
+      "digest": "sha256:85e25f2103a6b6c55999933f8861da2c02fa1628cf9b6f3978cd677d020e78d8",
+      "contents_decoded": false
+    },
+    "scope": "Different source architecture. No donor product/workflow or playback verdict is imported. A separate finite test-first evaluation on the exact current product is being prepared; ordinary workflows remain unchanged.",
+    "vendor": {
+      "url": "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip",
+      "size": 1324680,
+      "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90",
+      "product_page": "https://vb-audio.com/Cable/",
+      "licensing_page": "https://vb-audio.com/Services/licensing.htm",
+      "review": "Official pages verified. Vendor permits install/test first and specifies paid licensing for professional/organizational use; no recurring-use or redistribution entitlement is inferred. Vendor requires reboot; an observed no-reboot disposable-VM endpoint is not full vendor installation qualification."
+    }
+  },
+  "checkpoint_created_utc": "2026-11-28 05:05:29 UTC"
+}
