@@ -346,20 +346,30 @@ def select_window(db, catalog, *, scope, cursor=None, check=lambda: None, resour
     previous = current['after_page']
     if previous is not None:
         edition, revision, ordinal, page_id = previous
-        row = db.execute('SELECT edition,revision,ordinal,id FROM active_page '
-                         'WHERE workspace=? AND id=?', (catalog.workspace, page_id)).fetchone()
+        row = db.execute(
+            'SELECT r.edition,p.revision,p.ordinal,p.id FROM page p '
+            'CROSS JOIN revision r ON r.id=p.revision '
+            'CROSS JOIN active a ON a.workspace=r.workspace '
+            'AND a.edition=r.edition AND a.revision=r.id '
+            'WHERE a.workspace=? AND p.id=?', (catalog.workspace, page_id)).fetchone()
         if edition not in allowed or row is None or tuple(row) != tuple(previous):
             raise ValueError('The active source changed since this cursor. Restart search.')
     placeholders = ','.join('?' for _ in allowed)
-    sql = ('SELECT id,edition,revision,ordinal,length(raw),digest FROM active_page '
-           'WHERE workspace=? AND edition IN (' + placeholders + ')')
+    # Bind the existing active key before scanning one ordered source window.
+    # The view's revision-only join can scan unrelated active editions and sort
+    # large raw pages before the caller's character budget can stop iteration.
+    sql = ('SELECT p.id,r.edition,p.revision,p.ordinal,length(p.raw),p.digest '
+           'FROM active a JOIN revision r ON r.id=a.revision '
+           'AND r.workspace=a.workspace AND r.edition=a.edition '
+           'JOIN page p ON p.revision=r.id '
+           'WHERE a.workspace=? AND a.edition IN (' + placeholders + ')')
     parameters = [catalog.workspace, *allowed]
     if previous is not None:
         edition, revision, ordinal, page_id = previous
-        sql += (' AND (edition COLLATE BINARY>? OR (edition=? AND '
-                '(ordinal>? OR (ordinal=? AND id>?))))')
+        sql += (' AND (a.edition COLLATE BINARY>? OR (a.edition=? AND '
+                '(p.ordinal>? OR (p.ordinal=? AND p.id>?))))')
         parameters += [edition, edition, ordinal, ordinal, page_id]
-    sql += ' ORDER BY edition COLLATE BINARY,ordinal,id LIMIT ?'
+    sql += ' ORDER BY a.edition COLLATE BINARY,p.ordinal,p.id LIMIT ?'
     parameters.append(MAX_SOURCE_PAGES + 1)
     rows, characters, more_pages = [], 0, False
     source = db.execute(sql, parameters)

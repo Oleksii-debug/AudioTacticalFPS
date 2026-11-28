@@ -298,7 +298,11 @@ class Storage:
                 raise ValueError('empty revision')
             self._check_locators(revision)
             db.execute('INSERT INTO sealed VALUES(?)',(revision,))
-            db.execute('DELETE FROM indexed WHERE id IN (SELECT id FROM active_page WHERE workspace=? AND edition=?)',(workspace,edition))
+            db.execute(
+                'DELETE FROM indexed WHERE id IN (SELECT p.id FROM active a '
+                'JOIN revision r ON r.id=a.revision AND r.workspace=a.workspace '
+                'AND r.edition=a.edition JOIN page p ON p.revision=r.id '
+                'WHERE a.workspace=? AND a.edition=?)', (workspace, edition))
             db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
             db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
         except BaseException:

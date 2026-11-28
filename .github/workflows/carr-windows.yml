@@ -1364,6 +1364,7 @@ jobs:
               'tests/storage/test_playback_queue_backup.py',
               'tests/storage/test_publication_session.py',
               'tests/ui/test_import_resources.py',
+              'tests/ui/test_backup_menu_binding.py',
               'tests/ui/test_backup_resource_actions.py',
               'tests/ui/test_playback_queue.py',
               'tests/ui/test_search_owner_lifetime.py',
@@ -2019,6 +2020,7 @@ jobs:
             'tests/storage/test_playback_queue_backup.py',
             'tests/storage/test_publication_session.py',
             'tests/ui/test_import_resources.py',
+            'tests/ui/test_backup_menu_binding.py',
             'tests/ui/test_backup_resource_actions.py',
             'tests/ui/test_playback_queue.py',
             'tests/ui/test_search_owner_lifetime.py'

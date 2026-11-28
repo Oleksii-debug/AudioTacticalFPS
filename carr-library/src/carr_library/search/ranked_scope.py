@@ -37,7 +37,13 @@ _BASE_SCHEMA = (
     """CREATE VIRTUAL TABLE scoped USING fts5(text,content='source',content_rowid='id',
         tokenize="unicode61 remove_diacritics 0 categories 'L* N* Co M*'")""",
 )
-_ROW_COLUMNS = "id,workspace,edition,revision,asset,ordinal,physical,printed,verified,raw,digest"
+_ROW_COLUMNS = ("p.id,r.workspace,r.edition,p.revision,r.asset,p.ordinal,"
+                "p.physical,p.printed,p.verified,p.raw,p.digest")
+# These reads already have at most 100 exact page IDs, or one exact page.
+# Preserve that bounded outer loop instead of revisiting the whole workspace.
+_CURRENT_PAGE_JOIN = (" FROM page p CROSS JOIN revision r ON r.id=p.revision "
+                      "CROSS JOIN active a ON a.workspace=r.workspace "
+                      "AND a.edition=r.edition AND a.revision=r.id ")
 
 
 def _stamp(value):
@@ -276,8 +282,9 @@ def _sync(index, source_db, catalog, workspace, scope, resources, filters, check
         window = select_window(source_db, catalog, scope=scope, cursor=current,
                                resources=resources, check=check, **filters)
         if window.page_ids:
-            sql = "SELECT " + _ROW_COLUMNS + " FROM active_page WHERE workspace=? AND id IN (" + \
-                  ",".join("?" for _ in window.page_ids) + ") ORDER BY edition,ordinal,id"
+            sql = "SELECT " + _ROW_COLUMNS + _CURRENT_PAGE_JOIN + \
+                  "WHERE a.workspace=? AND p.id IN (" + \
+                  ",".join("?" for _ in window.page_ids) + ") ORDER BY r.edition,p.ordinal,p.id"
             cursor = source_db.execute(sql, (workspace, *window.page_ids))
             try:
                 count = 0
@@ -410,8 +417,8 @@ def _semantic(index, source_db, workspace, query, ranker, cache, budget, report)
     try:
         for page_id, edition, revision, digest in rows:
             budget.check()
-            row = source_db.execute("SELECT raw,digest FROM active_page WHERE workspace=? "
-                                    "AND id=? AND edition=? AND revision=?",
+            row = source_db.execute("SELECT p.raw,p.digest" + _CURRENT_PAGE_JOIN +
+                                    "WHERE a.workspace=? AND p.id=? AND a.edition=? AND p.revision=?",
                                     (workspace, page_id, edition, revision)).fetchone()
             if row is None or row[1] != digest or sha256(row[0].encode("utf-8")).hexdigest() != digest:
                 raise ValueError("An authorized source changed before model scoring.")
@@ -654,8 +661,8 @@ class RankedScope:
             try:
                 for page_id, score, a, b, lexical in rows:
                     budget.check()
-                    row = source_db.execute("SELECT " + _ROW_COLUMNS + " FROM active_page "
-                                            "WHERE workspace=? AND id=?", (workspace, page_id)).fetchone()
+                    row = source_db.execute("SELECT " + _ROW_COLUMNS + _CURRENT_PAGE_JOIN +
+                                            "WHERE a.workspace=? AND p.id=?", (workspace, page_id)).fetchone()
                     if row is None:
                         raise ValueError("A ranked source is no longer active.")
                     page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = row
