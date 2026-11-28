@@ -40,6 +40,12 @@ manifest schemas, inventory membership, expected hashes, pinned dependencies,
 runtime archives, product flags and deadlines are unchanged. Every original
 byte remains subject to the existing post-copy and final integrity checks.
 
+The FULL workflow also repeats its existing complete sealed-file verification
+immediately after the installed sync probe, before the long installed bulk
+suite. This uses the same isolated -I -B runtime and verifier as the final
+check. It localizes any test-dependency, focused-test, loopback or sync cache
+mutation before the bulk suite; the original final verifier remains mandatory.
+
 Two regression cases exercise the actual native-supplement and setup staging
 functions. Each compiles a real timestamp-mode cache from a synthetic module
 whose source has a fixed old modification time, seals both files, copies the
