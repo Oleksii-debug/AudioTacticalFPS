@@ -98,7 +98,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = 'fbb5941c2c8fb73861f0ea28469c33717080059c'
+          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -194,7 +194,7 @@ jobs:
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required source aggregate has no exact tree.' }
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = 'fbb5941c2c8fb73861f0ea28469c33717080059c'
+          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -524,8 +524,26 @@ jobs:
             "tests/language_qualification/test_evidence_backup.py",
             "tests/language_qualification/test_evidence_ui.py"
           )
-          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Keep the two observed heavy wholes separate from the remaining pool.
+          # Each real group retains its own strict ci_check aggregate and 600-second children.
+          $completionUnique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+          foreach ($suite in $completionSuites) {
+            if (-not $completionUnique.Add($suite)) { throw 'A required completion suite is duplicated.' }
+          }
+          $isolatedCompletionNames = @(
+            'tests/studio/test_book_batch.py',
+            'tests/audio/test_voice_package_management.py'
+          )
+          $isolatedCompletionSuites = @($completionSuites | Where-Object { $isolatedCompletionNames -ccontains $_ })
+          $parallelCompletionSuites = @($completionSuites | Where-Object { $isolatedCompletionNames -cnotcontains $_ })
+          if ($completionSuites.Count -ne 185 -or $isolatedCompletionSuites.Count -ne 2 -or $parallelCompletionSuites.Count -ne 183) { throw 'The complete 185-suite source groups differ from review.' }
+          Write-Output ('Reviewed isolated completion suites: ' + ($isolatedCompletionSuites -join ', '))
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 1 @isolatedCompletionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
+          $isolatedCompletionExit = $LASTEXITCODE
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @parallelCompletionSuites 2>&1 | Tee-Object -Append 'ci-completion-results/source-regressions.txt'
+          $parallelCompletionExit = $LASTEXITCODE
+          if ($isolatedCompletionExit -ne 0 -or $parallelCompletionExit -ne 0) { throw 'Required whole completion source suites failed.' }
           $reviewedCompletionExpected = @{
             'tests/speech/test_reading_marks.py' = 36
             'tests/ui/test_reading_tools.py' = 14
@@ -694,8 +712,11 @@ jobs:
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
             if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -Pattern $pattern).Count -ne 1) { throw ('Required exact source case inventory differs: ' + $entry.Key) }
           }
-          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'
-          if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }
+          foreach ($groupCount in @($isolatedCompletionSuites.Count, $parallelCompletionSuites.Count)) {
+            $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'
+            $pattern = '^' + [regex]::Escape($summary) + '$'
+            if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -Pattern $pattern).Count -ne 1) { throw 'A real completion group lacks its exact complete summary.' }
+          }
       - name: Retain source-only composition diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -3839,7 +3860,7 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has no exact tree.' }
           $languagePath = '.github/workflows/carr-language-evidence.yml'
           $languageBlob = (& git rev-parse ('HEAD:' + $languagePath)).Trim()
-          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne 'de0ffa6a26dffdcc91bcb1284550f75d704f032d') { throw 'The required language evidence workflow differs from its reviewed source.' }
+          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne '5fb36eda5c859af0d8a4c304fafb1680feb4e3dc') { throw 'The required language evidence workflow differs from its reviewed source.' }
           $configuredPath = '.github/workflows/carr-configured-update-native.yml'
           $configuredBlob = (& git rev-parse ('HEAD:' + $configuredPath)).Trim()
           if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '14517f2e4018942a2a0a4c56ce6c59f38de861a4') { throw 'The required configured native workflow differs from its reviewed source.' }

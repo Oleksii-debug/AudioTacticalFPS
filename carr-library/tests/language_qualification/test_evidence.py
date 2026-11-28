@@ -37,7 +37,8 @@ def status(snapshot, value):
 def test_passive_import_and_zero_default_never_execute_or_accept_reviews(tmp_path, monkeypatch, outcome):
     from carr_library import runtime_settings
     forbidden = lambda *a, **k: pytest.fail('Passive evidence attempted execution or discovery.')
-    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    # Preserve the class used by Windows asyncio while forbidding process creation.
+    monkeypatch.setattr(subprocess.Popen, '__init__', forbidden)
     monkeypatch.setattr(socket, 'create_connection', forbidden)
     monkeypatch.setattr(runtime_settings, 'voice_registry', forbidden)
     value = fixture.observation(outcome=outcome)

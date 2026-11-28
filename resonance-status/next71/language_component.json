@@ -1,0 +1,215 @@
+{
+  "schema": "carr-language-evidence-windows-sentinel-correction/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "composition_base": {
+    "head": "8c954a11bd62ab158e59593e73bfbed4f9b8bb6c",
+    "tree": "92d0c0c6c2caff7076da950408a8d3f2cc4fbe02",
+    "all_four_preimages_independently_verified": true
+  },
+  "observed_failure": {
+    "head": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+    "receipt": "9295e76b00785f830810661d6de4c0f80df17331",
+    "per_job_passed": 95,
+    "per_job_failed": 52,
+    "per_job_skipped": 0,
+    "per_job_first_type_errors": 2,
+    "per_job_partial_import_name_errors": 50,
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence.py",
+      "preimage": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+      "blob": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+      "inverse": [
+        {
+          "before": "    monkeypatch.setattr(subprocess, 'Popen', forbidden)",
+          "after": "    # Preserve the class used by Windows asyncio while forbidding process creation.\n    monkeypatch.setattr(subprocess.Popen, '__init__', forbidden)",
+          "count": 1
+        }
+      ],
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence_ui.py",
+      "preimage": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+      "blob": "a367681b16b41b161e9a581444cdb463220d1547",
+      "inverse": [
+        {
+          "before": "    monkeypatch.setattr(subprocess, 'Popen', forbidden)",
+          "after": "    # Preserve the class used by Windows asyncio while forbidding process creation.\n    monkeypatch.setattr(subprocess.Popen, '__init__', forbidden)",
+          "count": 1
+        }
+      ],
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+      "preimage": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+      "blob": "460e6ba9397c956660b9658b8f29047952e4243d",
+      "inverse": [
+        {
+          "before": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+          "after": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+          "count": 1
+        },
+        {
+          "before": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+          "after": "a367681b16b41b161e9a581444cdb463220d1547",
+          "count": 1
+        }
+      ],
+      "readback_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-language-evidence.yml",
+      "preimage": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+      "blob": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+      "inverse": [
+        {
+          "before": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+          "after": "460e6ba9397c956660b9658b8f29047952e4243d",
+          "count": 1
+        }
+      ],
+      "readback_exact": true
+    }
+  ],
+  "reason": "The two no-execution fixtures replaced the Popen class with a function, so the first real FileLock import failed when Windows asyncio subclassed Popen. Temporarily patching only the real class initializer retains the same forbidden callback and avoids poisoning cached subclass bases after restoration.",
+  "source_change": "Each fixture has one comment plus one monkeypatch target change. All other test bytes, parametrizations, assertions, and the shared inert fixture are unchanged.",
+  "product_changes": [],
+  "changed_suites": {
+    "tests/language_qualification/test_evidence.py": {
+      "git_blob": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+      "cases": 54,
+      "functions": [
+        "test_passive_import_and_zero_default_never_execute_or_accept_reviews",
+        "test_import_refuses_forged_or_ambiguous_observation_shapes",
+        "test_import_uses_strict_real_json_snapshot_decoder",
+        "test_review_binds_complete_observation_and_explicit_distinct_provenance",
+        "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests",
+        "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope",
+        "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes",
+        "test_real_directory_substitution_is_not_silently_adopted",
+        "test_linked_or_nonregular_evidence_is_refused_without_modification",
+        "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged",
+        "test_final_callback_cannot_replace_state_or_scope_before_actual_publication",
+        "test_visible_late_commit_is_reported_without_repeating_or_erasing_it",
+        "test_review_history_preserves_all_prior_rejections_and_revocations",
+        "test_collection_bounds_refuse_before_unbounded_history_processing"
+      ],
+      "function_case_counts": {
+        "test_passive_import_and_zero_default_never_execute_or_accept_reviews": 2,
+        "test_import_refuses_forged_or_ambiguous_observation_shapes": 20,
+        "test_import_uses_strict_real_json_snapshot_decoder": 3,
+        "test_review_binds_complete_observation_and_explicit_distinct_provenance": 4,
+        "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests": 5,
+        "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope": 4,
+        "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes": 1,
+        "test_real_directory_substitution_is_not_silently_adopted": 3,
+        "test_linked_or_nonregular_evidence_is_refused_without_modification": 2,
+        "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged": 4,
+        "test_final_callback_cannot_replace_state_or_scope_before_actual_publication": 2,
+        "test_visible_late_commit_is_reported_without_repeating_or_erasing_it": 1,
+        "test_review_history_preserves_all_prior_rejections_and_revocations": 1,
+        "test_collection_bounds_refuse_before_unbounded_history_processing": 2
+      },
+      "companions": [
+        "tests/language_qualification/evidence_fixture.py"
+      ]
+    },
+    "tests/language_qualification/test_evidence_ui.py": {
+      "git_blob": "a367681b16b41b161e9a581444cdb463220d1547",
+      "cases": 28,
+      "functions": [
+        "test_controller_requires_explicit_configuration_and_retains_exact_review_details",
+        "test_worker_and_result_callbacks_reject_current_library_changes",
+        "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review",
+        "test_report_is_create_only_passive_and_never_roundtrips_as_approval",
+        "test_cancelled_report_preserves_original_exception_and_creates_nothing",
+        "test_report_rechecks_actual_state_after_the_last_callback",
+        "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record",
+        "test_native_callback_never_publishes_unconfirmed_or_stale_review",
+        "test_native_import_requires_explicit_yes_and_stays_passive",
+        "test_late_committed_failure_retains_receipt_without_applying_old_library",
+        "test_current_failure_preserves_original_error_and_only_applies_actual_commit",
+        "test_late_success_retains_exact_result_without_delivering_it_to_changed_library"
+      ],
+      "function_case_counts": {
+        "test_controller_requires_explicit_configuration_and_retains_exact_review_details": 1,
+        "test_worker_and_result_callbacks_reject_current_library_changes": 6,
+        "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review": 1,
+        "test_report_is_create_only_passive_and_never_roundtrips_as_approval": 1,
+        "test_cancelled_report_preserves_original_exception_and_creates_nothing": 2,
+        "test_report_rechecks_actual_state_after_the_last_callback": 1,
+        "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record": 3,
+        "test_native_callback_never_publishes_unconfirmed_or_stale_review": 4,
+        "test_native_import_requires_explicit_yes_and_stays_passive": 2,
+        "test_late_committed_failure_retains_receipt_without_applying_old_library": 4,
+        "test_current_failure_preserves_original_error_and_only_applies_actual_commit": 2,
+        "test_late_success_retains_exact_result_without_delivering_it_to_changed_library": 1
+      },
+      "companions": [
+        "tests/language_qualification/evidence_fixture.py"
+      ]
+    }
+  },
+  "whole_contract": {
+    "source_pins": 48,
+    "source_pins_match_E_plus_two_tests": true,
+    "suites": {
+      "tests/language_qualification/test_catalog.py": 31,
+      "tests/language_qualification/test_ui.py": 7,
+      "tests/language_qualification/test_evidence.py": 54,
+      "tests/language_qualification/test_evidence_backup.py": 27,
+      "tests/language_qualification/test_evidence_ui.py": 28
+    },
+    "whole_modules": 5,
+    "case_total": 147,
+    "origins": 36
+  },
+  "retained": {
+    "data": "6797df44d708230f38ba999760bbfd3cb8581e40",
+    "native": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "fixture": "72944369f7304650e8742f97372d41415e3e35da",
+    "native_required_checks": 75,
+    "native_required_origins": 14,
+    "default_no_occurrences": 3,
+    "full_source_wholes": 493,
+    "child_limits_seconds": {
+      "source_parent": 1500,
+      "each_whole": 600,
+      "native": 330
+    },
+    "helper_minutes": 100,
+    "job_minutes": 135
+  },
+  "gate_closure": "Only the two test PINS in the helper and the single helper hash in its reusable workflow change. The data object has no test blob fields; its cases and names remain exact. Installed/source child bodies, wheel snapshots, every other source pin, all origin/companion maps, firewall and retention rules are byte-identical.",
+  "parent_dependency": {
+    "path": ".github/workflows/carr-windows.yml",
+    "F_preimage": "bbcb5500262598eb3935d36aac7c18561ea51151",
+    "old_workflow": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+    "new_workflow": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+    "occurrences": 1,
+    "owner": "root; no edit performed"
+  },
+  "verification": {
+    "exact_complete_inverses": true,
+    "exact_blob_readbacks": true,
+    "all48_pins_equal_F_plus_two_tests": true,
+    "python_parser": "NOT_RUN",
+    "windows_execution": "NOT_RUN",
+    "source147": "NOT_RUN",
+    "installed147": "NOT_RUN",
+    "native75": "NOT_RUN",
+    "no_ref_mutations": true
+  },
+  "created_utc": "2026-11-28 09:25:41 UTC",
+  "peer": {
+    "sha": "731dbf7c9b49431368c043c93212788de042683e",
+    "reviewer": "locate_project",
+    "status": "ACCEPTED_STATIC_NOT_RUN"
+  }
+}

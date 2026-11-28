@@ -163,10 +163,10 @@ jobs:
           expected = {
               'tests/audio/test_envelopes.py': 64,
               'tests/studio/test_envelope_workflow.py': 17,
-              'tests/packaging/test_library_scale_benchmark.py': 24,
-              'tests/studio/test_clip_operations.py': 59,
+              'tests/packaging/test_library_scale_benchmark.py': 30,
+              'tests/studio/test_clip_operations.py': 90,
               'tests/studio/test_project_history.py': 29,
-              'tests/studio/test_clip_history_dialog.py': 22,
+              'tests/studio/test_clip_history_dialog.py': 50,
               'tests/assistant/test_translation_layout.py': 33,
               'tests/ui/test_translation_layout.py': 23,
               'tests/assistant/test_translation_layout_cli.py': 5,

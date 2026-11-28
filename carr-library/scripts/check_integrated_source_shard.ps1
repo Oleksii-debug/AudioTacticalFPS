@@ -969,26 +969,40 @@ try {
   $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
   $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
   $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
-  # All newly integrated reader/Find and trust modules remain whole-module strict gates.
-  # The actual Windows run completed this suite alone in 208 seconds;
-  # another run reached its unchanged 600-second bound alongside other suites.
-  $academicSuite = 'tests/research/test_academic_library.py'
-  $parallelSuites = @($suites | Where-Object { $_ -cne $academicSuite })
-  $academicExit = 0
-  if ($suites -ccontains $academicSuite) {
-    if ($parallelSuites.Count + 1 -ne $suites.Count) { throw 'Required academic suite must occur exactly once.' }
-    & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 $academicSuite 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
-    $academicExit = $LASTEXITCODE
-  } elseif ($parallelSuites.Count -ne $suites.Count) {
-    throw 'A different shard must own the complete academic suite.'
+  # Preserve the measured whole-suite bounds while avoiding concurrent heavy children.
+  # Academic, Book and ASR have completed alone; the voice whole passed in B's shard.
+  # Contention is a hypothesis, not a change to any product or child deadline.
+  $isolatedSuiteNames = @(
+    'tests/research/test_academic_library.py',
+    'tests/transcription/test_admission_boundaries.py',
+    'tests/studio/test_book_batch.py',
+    'tests/audio/test_voice_package_management.py'
+  )
+  $isolatedSuites = @($suites | Where-Object { $isolatedSuiteNames -ccontains $_ })
+  $parallelSuites = @($suites | Where-Object { $isolatedSuiteNames -cnotcontains $_ })
+  if ($isolatedSuites.Count + $parallelSuites.Count -ne $suites.Count -or $parallelSuites.Count -eq 0) { throw 'The reviewed source groups do not preserve the complete shard.' }
+  Write-Output ('Reviewed isolated source suites: ' + ($isolatedSuites -join ', '))
+  $PSNativeCommandUseErrorActionPreference = $false
+  $isolatedExit = 0
+  $sourceGroupCounts = @()
+  if ($isolatedSuites.Count -gt 0) {
+    $isolatedArguments = @('--jobs', '1')
+    if ($isolatedSuites -ccontains 'tests/transcription/test_admission_boundaries.py') {
+      $isolatedArguments += @('--suite-timeout', 'tests/transcription/test_admission_boundaries.py=900')
+    }
+    & $env:CARR_PYTHON scripts/ci_check.py @isolatedArguments @isolatedSuites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+    $isolatedExit = $LASTEXITCODE
+    $sourceGroupCounts += $isolatedSuites.Count
   }
-  $parallelArguments = @('--jobs', '3')
-  if ($parallelSuites -ccontains 'tests/transcription/test_admission_boundaries.py') {
-    $parallelArguments += @('--suite-timeout', 'tests/transcription/test_admission_boundaries.py=900')
-  }
-  & $env:CARR_PYTHON scripts/ci_check.py @parallelArguments @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'
+  & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'
   $parallelExit = $LASTEXITCODE
-  if ($academicExit -ne 0 -or $parallelExit -ne 0) { throw 'Required whole source suites failed.' }
+  $sourceGroupCounts += $parallelSuites.Count
+  if ($isolatedExit -ne 0 -or $parallelExit -ne 0) { throw 'Required whole source suites failed.' }
+  foreach ($groupCount in $sourceGroupCounts) {
+    $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'
+    $pattern = '^' + [regex]::Escape($summary) + '$'
+    if (@(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern).Count -ne 1) { throw 'A real source group lacks its exact complete summary.' }
+  }
   foreach ($entry in $operationsCounts.GetEnumerator()) {
     if ($suites -cnotcontains $entry.Key) { continue }
     $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'

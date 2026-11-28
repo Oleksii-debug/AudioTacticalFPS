@@ -31,7 +31,8 @@ def controller(root):
 def test_controller_requires_explicit_configuration_and_retains_exact_review_details(tmp_path, monkeypatch):
     from carr_library import runtime_settings
     forbidden = lambda *a, **k: pytest.fail('Evidence view discovered or executed a runtime.')
-    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    # Preserve the class used by Windows asyncio while forbidding process creation.
+    monkeypatch.setattr(subprocess.Popen, '__init__', forbidden)
     monkeypatch.setattr(runtime_settings, 'voice_registry', forbidden)
     current, value, snapshot, token = controller(tmp_path)
     assert current.filter(status='verified') == ()

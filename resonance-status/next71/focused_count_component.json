@@ -1,0 +1,141 @@
+{
+  "schema": "carr-focused-whole-count-closure/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "observed_base": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "destination": "G final runnable composition; all three exact F preimages independently confirmed unchanged from E.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-next9-edit-docx.yml",
+      "preimage": "bce5296f5e70ac6964c8d3346ec30dfe6d503f94",
+      "blob": "8c590761d7963a0ef37f0ab4e6a31633d8a50ace",
+      "hunks": [
+        {
+          "old": "'tests/studio/test_clip_operations.py': 59",
+          "replacement": "'tests/studio/test_clip_operations.py': 90",
+          "offset": 5422
+        },
+        {
+          "old": "'tests/studio/test_clip_history_dialog.py': 22",
+          "replacement": "'tests/studio/test_clip_history_dialog.py': 50",
+          "offset": 5538
+        },
+        {
+          "old": "'tests/ui/test_translation_layout.py': 22",
+          "replacement": "'tests/ui/test_translation_layout.py': 23",
+          "offset": 5664
+        },
+        {
+          "old": "'tests/packaging/test_library_scale_benchmark.py': 24",
+          "replacement": "'tests/packaging/test_library_scale_benchmark.py': 30",
+          "offset": 5353
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "b200463d532ea53ddaef904663497465b9e05352",
+      "blob": "6e3788f45af909d00d250658f49c6b38e33bf162",
+      "hunks": [
+        {
+          "old": "\"tests/studio/test_clip_operations.py\": 59",
+          "replacement": "\"tests/studio/test_clip_operations.py\": 90",
+          "offset": 8898
+        },
+        {
+          "old": "\"tests/studio/test_clip_history_dialog.py\": 22",
+          "replacement": "\"tests/studio/test_clip_history_dialog.py\": 50",
+          "offset": 9014
+        },
+        {
+          "old": "\"tests/studio/test_clip_editing.py\": 20",
+          "replacement": "\"tests/studio/test_clip_editing.py\": 34",
+          "offset": 9076
+        },
+        {
+          "old": "\"tests/ui/test_engine_settings_lifetime.py\": 33",
+          "replacement": "\"tests/ui/test_engine_settings_lifetime.py\": 43",
+          "offset": 9574
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "preimage": "a6fce2331c62cfaad0beaf7c4c5268e1311620f8",
+      "blob": "ba3c85502a9a983c0ec15866fab9167ac157ab25",
+      "hunks": [
+        {
+          "old": "'tests/studio/test_clip_operations.py': 59",
+          "replacement": "'tests/studio/test_clip_operations.py': 90",
+          "offset": 7906
+        },
+        {
+          "old": "'tests/studio/test_clip_history_dialog.py': 22",
+          "replacement": "'tests/studio/test_clip_history_dialog.py': 50",
+          "offset": 8022
+        },
+        {
+          "old": "'tests/packaging/test_library_scale_benchmark.py': 24",
+          "replacement": "'tests/packaging/test_library_scale_benchmark.py': 30",
+          "offset": 7837
+        }
+      ]
+    }
+  ],
+  "proof": {
+    "all_complete_inverse": true,
+    "exact_blob_readback": true,
+    "all_other_bytes_unchanged": true,
+    "case_inventory_not_modified": true,
+    "selector_order_unchanged": true,
+    "budgets_and_verdicts_unchanged": true,
+    "source_pins_unchanged": true,
+    "changed_numeric_literals": 11
+  },
+  "actual_prior_source_evidence": [
+    {
+      "test": "tests/studio/test_clip_operations.py",
+      "required": 90,
+      "receipt": "9a3bb34cbf9773f73fe5d4b12f54f27f033cdf5b"
+    },
+    {
+      "test": "tests/studio/test_clip_history_dialog.py",
+      "required": 50,
+      "receipt": "87d1b030b25c833556cb5c3670178762a92b22dd"
+    },
+    {
+      "test": "tests/studio/test_clip_editing.py",
+      "required": 34,
+      "receipt": "176c9f5de17ece444f6cbe75716e2e9bd412981b"
+    },
+    {
+      "test": "tests/ui/test_translation_layout.py",
+      "required": 23,
+      "receipt": "9a3bb34cbf9773f73fe5d4b12f54f27f033cdf5b"
+    },
+    {
+      "test": "tests/ui/test_engine_settings_lifetime.py",
+      "required": 43,
+      "receipt": "f52c39aa3750abf4202d2492ac8e0029273733a7"
+    }
+  ],
+  "source_binding": "All five observed test blobs are identical between B and E. These per-whole B passes do not establish aggregate B or later-head PASS.",
+  "new_benchmark": {
+    "test": "tests/packaging/test_library_scale_benchmark.py",
+    "prior": 24,
+    "required": 30,
+    "source_component": "16eb37856c9ccf034526399773da142bad930fe6",
+    "test_blob": "906487bd1970ad69b466945461da73bd50cfa941",
+    "peer": "ae3d5fd87a3c5951f2df419657362e9e3e6235b9",
+    "actual_execution": "NOT_RUN; F source prerequisite"
+  },
+  "rationale": "Older focused workflows contain stale literal whole-count declarations. Actual current modules must still pass their full precise inventories; no case or assertion is removed to reconcile the count.",
+  "peer": {
+    "record": "7f503bfaa332dbd2be405e7ff5b3f2030b4fdfb6",
+    "second_record": "c0285107b74c3abdee23561ec6f3c22b83ae2db9",
+    "status": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "runtime_status": "NOT_RUN",
+  "base_commit": "8c954a11bd62ab158e59593e73bfbed4f9b8bb6c",
+  "base_tree": "92d0c0c6c2caff7076da950408a8d3f2cc4fbe02",
+  "reviewed_candidate": "d5920dee179cb890b5e4f4312e5762c7111916c4"
+}
