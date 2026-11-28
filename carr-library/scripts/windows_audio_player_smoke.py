@@ -18,6 +18,68 @@ import traceback
 import wave
 
 
+def _mix_snapshot(owner, current, other, expected, read_ui):
+    """Read bounded evidence only; never change a control or native level."""
+    def safe(read):
+        try:
+            return read()
+        except Exception as exc:
+            return dict(error=type(exc).__name__, detail=str(exc)[:512])
+
+    def levels(value):
+        return dict(volume=value.volume, muted=value.muted, balance=value.balance)
+
+    def output(player):
+        native = player._wave
+        if native is None or not native.handle.value:
+            return dict(open=False)
+        value = C.c_uint32()
+        result = int(native.library.waveOutGetVolume(native.handle, C.byref(value)))
+        return dict(open=True, handle=int(native.handle.value), result=result,
+                    packed=value.value, capabilities=native._caps)
+
+    return dict(expected=levels(expected), ui=safe(read_ui),
+        current=safe(lambda: levels(current.levels)),
+        other=safe(lambda: levels(other.levels)),
+        current_output=safe(lambda: output(current)),
+        other_output=safe(lambda: output(other)),
+        owner=dict(generation=owner.generation, pending=owner.pending,
+                   closed=owner.closed, notice=str(owner.notice)[:2048]))
+
+
+def _wait_for_mix_apply(owner, current, expected, dispatch, pump, snapshot):
+    """Observe one changed Apply through its real owner, including quiet delay."""
+    def report(stage, error=None):
+        record = dict(native_mix_observation=stage, values=snapshot())
+        if error is not None:
+            record['error'] = dict(type=type(error).__name__, detail=str(error)[:2048])
+        print(json.dumps(record, ensure_ascii=True, sort_keys=True, allow_nan=False), flush=True)
+
+    generation = owner.generation
+    report('before')
+    try:
+        if current.levels == expected:
+            raise ValueError('The native Apply probe requires changed settings.')
+
+        def admitted():
+            if owner.closed or owner.player is not current:
+                raise RuntimeError('The playback owner closed or changed during Apply.')
+            if owner.generation == generation:
+                return False
+            if owner.notice:
+                raise RuntimeError('Playback Apply failed: ' + str(owner.notice))
+            if owner.generation != generation + 1:
+                raise RuntimeError('Playback Apply was superseded by another owner action.')
+            return current.levels == expected
+
+        dispatch()
+        pump(admitted, 'The playback owner did not admit the requested mix settings')
+    except BaseException as exc:
+        report('timeout' if isinstance(exc, TimeoutError) else 'failed', exc)
+        raise
+    report('after')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--installed', action='store_true')
@@ -141,6 +203,20 @@ def main():
                            and window.GetTitle() == 'Audio playback and saved playlist']
                 owner = frame._playback_owner
                 current = owner.player
+
+                def apply_mix(expected):
+                    def read_ui():
+                        return dict(
+                            volume=wx.Window.FindWindowByName(
+                                'This player volume, 0 to 100', popup).GetValue()[:64],
+                            balance=wx.Window.FindWindowByName(
+                                'This player stereo balance, minus 100 left to 100 right', popup).GetValue()[:64],
+                            muted=bool(wx.Window.FindWindowByName(
+                                'Mute this player only', popup).GetValue()))
+                    _wait_for_mix_apply(owner, current, expected,
+                        lambda: press(named(popup, 'Apply player volume, mute and balance')),
+                        pump, lambda: _mix_snapshot(owner, current, other, expected, read_ui))
+
                 check('standalone opens without a source or native sound',
                       current.path is None and current._wave is None and not current._open)
                 press(named(popup, 'Replace session playlist...'))
@@ -159,7 +235,7 @@ def main():
                 check('queue selection is silent', current.path == current.playlist[0].path and current.state == 'stopped'
                       and current._wave is None)
                 named(popup, 'This player volume, 0 to 100').ChangeValue('43')
-                press(named(popup, 'Apply player volume, mute and balance'))
+                apply_mix(_wave_output.PlaybackLevels(43))
                 check('stopped live setting does not open a device',
                       current.levels.volume == 43 and current._wave is None)
                 press(named(popup, 'Play queue from selected item'))
@@ -184,7 +260,7 @@ def main():
                       other._wave.library.waveOutGetVolume(other._wave.handle, C.byref(other_before)) == 0)
                 named(popup, 'This player stereo balance, minus 100 left to 100 right').ChangeValue('-25')
                 press(named(popup, 'Mute this player only'))
-                press(named(popup, 'Apply player volume, mute and balance'))
+                apply_mix(_wave_output.PlaybackLevels(43, True, -.25))
                 current_level, other_after = C.c_uint32(), C.c_uint32()
                 check('read muted owned output level',
                       current._wave.library.waveOutGetVolume(current._wave.handle, C.byref(current_level)) == 0)
@@ -197,7 +273,7 @@ def main():
                       and abs(current.position_seconds - paused_position) < .02)
                 other.close()
                 press(named(popup, 'Mute this player only'))
-                press(named(popup, 'Apply player volume, mute and balance'))
+                apply_mix(_wave_output.PlaybackLevels(43, False, -.25))
                 check('unmute retains reviewed native level', not current.levels.muted and current.levels.volume == 43)
                 press(named(popup, 'Play queue from selected item'))
                 pump(lambda: current.playlist_index == 1, 'Real EOF did not admit the next reviewed item', timeout=10)
