@@ -1028,8 +1028,11 @@ def probe(args):
         shortcut_work = work / 'private-shortcut-observation'
         shortcut_work.mkdir()
         standard.inspect_shortcuts(root, shortcut_work)
-        output(report / 'A-shortcuts.json', json_value(read_bytes(
-            shortcut_work / 'shortcuts.json', 65536), maximum=65536))
+        # The reused Windows PowerShell observer writes UTF-8 with a BOM;
+        # its own validated reader uses utf-8-sig. Normalize only that local report.
+        shortcut_bytes = read_bytes(shortcut_work / 'shortcuts.json', 65536)
+        output(report / 'A-shortcuts.json', json_value(
+            shortcut_bytes.removeprefix(b'\xef\xbb\xbf'), maximum=65536))
         completed('both compiled source receipts and full owned A payload are exact',
                   marker_a['bundle_sha256'] == record_a['bundle_manifest_sha256']
                   and marker_a['setup_sha256'] == record_a['setup_sha256'])

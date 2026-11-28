@@ -77,7 +77,7 @@ jobs:
           root = pathlib.Path.cwd()
           head = subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()
           expected_pins = {
-              'scripts/windows_configured_update_smoke.py': 'abf7a10f52ce2c3f1a5178e4e481e5561f631dde',
+              'scripts/windows_configured_update_smoke.py': '247f3cb36da4d9cec36f383ce40ad51a78ce8e91',
               'scripts/windows_standard_installer_smoke.py': '8704c0b91a3ed518d1454cf814667f9ef0a149da',
               'scripts/windows_managed_update_smoke.py': 'ff6520d87d3fae899282433aacaae1ab9cff04f6',
               'packaging/windows-semantic-trusted-cp311.lock': 'db90fc87ce5ae0abcd9afb3c769bf6cdff1a88bb',
@@ -431,7 +431,7 @@ jobs:
           import json, os, pathlib, re
           script = pathlib.Path('scripts/windows_configured_update_smoke.py')
           raw = script.read_bytes()
-          assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == 'abf7a10f52ce2c3f1a5178e4e481e5561f631dde'
+          assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == '247f3cb36da4d9cec36f383ce40ad51a78ce8e91'
           constants = {}
           for node in ast.parse(raw).body:
               if isinstance(node,ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0],ast.Name):

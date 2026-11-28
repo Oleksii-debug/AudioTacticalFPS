@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_FAILURE",
+  "task": "Configured native A2-to-B Apply and checked restart",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_a": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "source_b": "652b98eb47da2b7afb1710ae69e51b2b3e9a15c5",
+  "run": {
+    "id": 46106592365,
+    "job_id": 140860632834,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46106592365",
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-11-28T04:22:16Z",
+    "completed_at": "2026-11-28T04:30:35Z"
+  },
+  "sources": {
+    "native": "abf7a10f52ce2c3f1a5178e4e481e5561f631dde",
+    "workflow": "55bcaba3952137bd588ff64dc0efafc19fc4502b",
+    "reused_shortcut_observer": "8704c0b91a3ed518d1454cf814667f9ef0a149da",
+    "strict_json_module": "eecd5c75f606741d3457ed8aef57f86556230538"
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:22:17Z",
+      "completed_at": "2026-11-28T04:22:18Z"
+    },
+    {
+      "number": 2,
+      "name": "Check out exact B source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:22:18Z",
+      "completed_at": "2026-11-28T04:22:26Z"
+    },
+    {
+      "number": 3,
+      "name": "Check out immutable reviewed A source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:22:26Z",
+      "completed_at": "2026-11-28T04:22:33Z"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 build host",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:22:33Z",
+      "completed_at": "2026-11-28T04:22:33Z"
+    },
+    {
+      "number": 5,
+      "name": "Pin the host profile and record both actual source identities",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:22:33Z",
+      "completed_at": "2026-11-28T04:23:00Z"
+    },
+    {
+      "number": 6,
+      "name": "Acquire the existing pinned compilers and original Python/native runtime",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:23:00Z",
+      "completed_at": "2026-11-28T04:23:36Z"
+    },
+    {
+      "number": 7,
+      "name": "Build two exact trusted-client distributions and actual standard setups",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:23:36Z",
+      "completed_at": "2026-11-28T04:28:11Z"
+    },
+    {
+      "number": 8,
+      "name": "Require real configured native Apply, full A retention and checked B restart",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T04:28:11Z",
+      "completed_at": "2026-11-28T04:30:23Z"
+    },
+    {
+      "number": 9,
+      "name": "Require unchanged exact source and installed host payload after native work",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:30:23Z",
+      "completed_at": "2026-11-28T04:30:25Z"
+    },
+    {
+      "number": 10,
+      "name": "Retain only the bounded public diagnostic contract",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:30:25Z",
+      "completed_at": "2026-11-28T04:30:26Z"
+    },
+    {
+      "number": 11,
+      "name": "Preserve bounded configured-update text evidence",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:30:26Z",
+      "completed_at": "2026-11-28T04:30:27Z"
+    },
+    {
+      "number": 20,
+      "name": "Post Set up native x64 build host",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T04:30:27Z",
+      "completed_at": "2026-11-28T04:30:27Z"
+    },
+    {
+      "number": 21,
+      "name": "Post Check out immutable reviewed A source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:30:27Z",
+      "completed_at": "2026-11-28T04:30:29Z"
+    },
+    {
+      "number": 22,
+      "name": "Post Check out exact B source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:30:29Z",
+      "completed_at": "2026-11-28T04:30:31Z"
+    },
+    {
+      "number": 23,
+      "name": "Complete job",
+      "conclusion": "success",
+      "started_at": "2026-11-28T04:30:31Z",
+      "completed_at": "2026-11-28T04:30:31Z"
+    }
+  ],
+  "actual": {
+    "a2_and_b_distributions_and_standard_setups": "PASS",
+    "a_installation_and_verify_current": "REACHED_AND_RETURNED_BEFORE_EXCEPTION",
+    "actual_shortcut_target_validation": "RETURNED_BEFORE_EXCEPTION",
+    "native_ui": "NOT_RUN",
+    "external_host_preparation": "NOT_RUN",
+    "apply_transaction": "NOT_RUN",
+    "checked_restart": "NOT_RUN",
+    "post_native_exact_source_and_installed_payload": "PASS",
+    "bounded_public_retention": "PASS"
+  },
+  "failure": {
+    "path": "carr-library/scripts/windows_configured_update_smoke.py",
+    "line": 1031,
+    "error_type": "TrustError",
+    "message": "Invalid UTF-8 JSON document.",
+    "trace": "2026-11-28T04:30:20.4207082Z Traceback (most recent call last):\r\n2026-11-28T04:30:20.4214266Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1174, in <module>\r\n2026-11-28T04:30:20.4230779Z     raise SystemExit(main())\r\n2026-11-28T04:30:20.4237178Z                      ^^^^^^\r\n2026-11-28T04:30:20.4243922Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1168, in main\r\n2026-11-28T04:30:20.4249512Z     result = probe(args)\r\n2026-11-28T04:30:20.4255213Z              ^^^^^^^^^^^\r\n2026-11-28T04:30:20.4262031Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1031, in probe\r\n2026-11-28T04:30:20.4267607Z     output(report / 'A-shortcuts.json', json_value(read_bytes(\r\n2026-11-28T04:30:20.4275781Z                                         ^^^^^^^^^^^^^^^^^^^^^^\r\n2026-11-28T04:30:20.4282151Z   File \"D:\\a\\_temp\\carr-configured-upgrade-private\\host\\Lib\\site-packages\\carr_library\\security\\_files.py\", line 138, in json_value\r\n2026-11-28T04:30:20.4287530Z     raise TrustError('Invalid UTF-8 JSON document.') from None\r\n2026-11-28T04:30:20.4293890Z carr_library.security._files.TrustError: Invalid UTF-8 JSON document.",
+    "diagnosis": "The immutable standard shortcut observer writes UTF-8 with BOM through Windows PowerShell and already reads with utf-8-sig while validating all targets. The new probe immediately reparses that local report through strict UTF-8 JSON without removing the BOM.",
+    "evidence_boundary": "Raw private shortcut bytes were not separately inspected. The producer/consumer mismatch is established by the exact source and completed inspect_shortcuts call; Microsoft documents Windows PowerShell UTF8 as BOM-prefixed.",
+    "primary_documentation": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-5.1"
+  },
+  "artifact": {
+    "id": 15248486678,
+    "name": "configured-update-652b98eb47da2b7afb1710ae69e51b2b3e9a15c5-1",
+    "size_in_bytes": 561000,
+    "digest": "sha256:3c0436728fe5cccfaae240dabf446d84273b1737696cc2563578501d0a3494b8",
+    "created_at": "2026-11-28T04:30:27Z",
+    "expires_at": "2026-12-05T04:30:26Z",
+    "metadata_matches_upload_log": true,
+    "closed_retention_file_count": 35,
+    "closed_retention_expanded_bytes": 2342373,
+    "uploaded_file_count": 36,
+    "archive_contents_independently_inspected": false
+  },
+  "qualification": {
+    "production_publisher": "NOT_CONFIGURED",
+    "production_rollout": "NOT_RUN",
+    "real_user_installation": "NOT_RUN",
+    "authenticode": "NOT_CLAIMED",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  },
+  "correction": {
+    "source": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91",
+    "workflow": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "execution": "NOT_RUN",
+    "scope": "Remove at most one leading exact UTF-8 BOM only from the bounded, already locally validated shortcut report. Preserve the unchanged strict JSON parser."
+  }
+}

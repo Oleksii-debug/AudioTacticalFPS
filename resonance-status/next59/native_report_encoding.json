@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "status": "PEER_ACCEPTED_STATIC_NOT_RUN",
+  "task": "Repair the actual local shortcut report encoding boundary",
+  "base": "652b98eb47da2b7afb1710ae69e51b2b3e9a15c5",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_configured_update_smoke.py",
+      "preimage": "abf7a10f52ce2c3f1a5178e4e481e5561f631dde",
+      "blob": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91",
+      "readback": true
+    },
+    {
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "preimage": "55bcaba3952137bd588ff64dc0efafc19fc4502b",
+      "blob": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+      "readback": true
+    }
+  ],
+  "actual_failure": {
+    "path": "resonance-status/Next_V3_18_Configured_Native_First_Actual_20261128.json",
+    "blob": "679a2f7e0314c3f959b96f88bf3f8f61e5a15aa0"
+  },
+  "review": {
+    "source": "Canonical independently accepted exact one-hunk inverse; all native controls, parser callers, labels/origins/deadlines remain unchanged.",
+    "workflow": "Exactly two native source pins; inverse reconstruction equals 55bcaba3952137bd588ff64dc0efafc19fc4502b.",
+    "root": "Local normalization principle accepted; final concrete source/pin review available."
+  },
+  "audit": {
+    "json_value_sites": 6,
+    "powershell_sites": 1,
+    "other_producers": [
+      "Probe plan: canonical json_bytes",
+      "Probe UI result: canonical json_bytes",
+      "Installed ownership: maintenance UTF-8 JSON",
+      "External host result: canonical JSON atomic write",
+      "Managed activation journal: canonical JSON"
+    ],
+    "global_parser_changed": false,
+    "read_budget": 65536,
+    "normalized_prefix": "one exact EF BB BF at byte zero",
+    "strict_duplicate_nonfinite_invalid_utf8_policy": "UNCHANGED",
+    "native_ui_checks": 15,
+    "parent_checks": 10,
+    "origins": 15,
+    "deadlines": "UNCHANGED",
+    "new_tests": "None: exact local format normalization; native rerun remains required."
+  },
+  "integration": {
+    "required_main_workflow_binding": {
+      "old": "55bcaba3952137bd588ff64dc0efafc19fc4502b",
+      "new": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+      "owner": "Locate/root; separate one-literal pin change required in the main final aggregate"
+    },
+    "refs": "NO_REF_MUTATION"
+  },
+  "execution": "NOT_RUN"
+}

@@ -3788,7 +3788,7 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has no exact tree.' }
           $configuredPath = '.github/workflows/carr-configured-update-native.yml'
           $configuredBlob = (& git rev-parse ('HEAD:' + $configuredPath)).Trim()
-          if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '55bcaba3952137bd588ff64dc0efafc19fc4502b') { throw 'The required configured native workflow differs from its reviewed source.' }
+          if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '181d615a32619af3fbd10322a2cb04e52be48aa9') { throw 'The required configured native workflow differs from its reviewed source.' }
           $results = [ordered]@{
             'source-syntax'=$env:CARR_RESULT_SOURCE_SYNTAX
             'integrated-source-complete'=$env:CARR_RESULT_SOURCE_COMPLETE

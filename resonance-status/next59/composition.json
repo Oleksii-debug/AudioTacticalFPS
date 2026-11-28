@@ -1,0 +1,34 @@
+{
+  "schema": "carr-local-native-report-repair/1",
+  "status": "SOURCE_COMPOSED_RUNTIME_NOT_RUN",
+  "parent": "343efc505230f969ec9519bd04e4340381f07909",
+  "parent_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_configured_update_smoke.py",
+      "preimage": "abf7a10f52ce2c3f1a5178e4e481e5561f631dde",
+      "blob": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "preimage": "55bcaba3952137bd588ff64dc0efafc19fc4502b",
+      "blob": "181d615a32619af3fbd10322a2cb04e52be48aa9"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "c480180284fbece879c76a5a435e23733891c1f5",
+      "blob": "a4855c1de2fd0073f6a242458feacdc31a84e693"
+    }
+  ],
+  "component_manifest": "d0709da6ca22250821cbc6043f1da1ecb6b774ff",
+  "closed_actual": "679a2f7e0314c3f959b96f88bf3f8f61e5a15aa0",
+  "root_verification": {
+    "main_exact_readback": true,
+    "main_workflow_pin_only": true,
+    "native_workflow_two_pins_only": true,
+    "native_source_one_local_report_hunk": true,
+    "product_modules_changed": 0,
+    "original_limits_and_assertions": true
+  },
+  "qualification": "Actual A2/B build and A install passed on652; the local report decode failed before UI or activation. Apply, preservation and restart require the corrected actual run. All343 source/product evidence remains attributed to343; this commit makes no new runtime claim."
+}
