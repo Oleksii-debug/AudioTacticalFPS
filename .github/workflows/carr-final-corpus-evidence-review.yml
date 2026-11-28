@@ -1,0 +1,42 @@
+name: Read fixed actual corpus artifacts
+on:
+  push:
+    branches: [carr/final-corpus-failure-evidence-review-20261128]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: carr-final-corpus-failure-evidence-20261128
+  cancel-in-progress: false
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+      CARR_HARVEST_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Read only the fixed digest-bound completed corpus artifacts
+        timeout-minutes: 22
+        shell: bash
+        env:
+          CARR_ARTIFACT_TOKEN: ${{ github.token }}
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 .github/diagnostics/harvest_final_scale_artifacts.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: final71ca-corpus-failure-artifact-evidence
+          path: capacity-harvest-output/
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,17 @@
+{
+  "schema": "carr-final-scale-artifact-selection/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "run_id": 46124999025,
+  "artifacts": [
+    {
+      "job_id": 140917529733,
+      "artifact_id": 15258975624,
+      "tier": "text-2g",
+      "os": "ubuntu-24.04",
+      "conclusion": "failure",
+      "size_in_bytes": 122712,
+      "sha256": "5d10aab9a1d6bb77d763bc22b49e1b04633eff619856d424d4097e2293c242cb"
+    }
+  ]
+}
