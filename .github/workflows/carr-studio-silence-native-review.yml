@@ -91,7 +91,7 @@ jobs:
           selected = installed
           mode = 'installed'
           artifacts = root / 'ci-studio-silence-native'
-          names = ["carr_library.application","carr_library.durable_state","carr_library.operations.broker","carr_library.runtime_settings","carr_library.audio.models","carr_library.audio.process","carr_library.audio.cleanup","carr_library.backup_compat.pcm","carr_library.studio.render","carr_library.studio.project","carr_library.studio.publication","carr_library.studio.interchange","carr_library.studio.silence","carr_library.ui.desktop_app","carr_library.ui.studio_dialog","carr_library.ui.operation_progress","carr_library.ui.progress_panel"]
+          names = ["carr_library.application","carr_library.durable_state","carr_library.operations.broker","carr_library.runtime_settings","carr_library.audio.models","carr_library.audio.process","carr_library.audio.cleanup","carr_library.backup_compat.pcm","carr_library.studio.render","carr_library.studio.project","carr_library.studio.publishing","carr_library.studio.interchange","carr_library.studio.silence","carr_library.ui.desktop_app","carr_library.ui.studio_dialog","carr_library.ui.operation_progress","carr_library.ui.progress_panel"]
           
           def package_inventory(directory):
               assert directory.is_dir() and not directory.is_symlink(), str(directory)

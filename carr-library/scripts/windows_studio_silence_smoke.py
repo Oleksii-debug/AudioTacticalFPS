@@ -103,13 +103,13 @@ def _native(args):
     from carr_library.operations import broker
     from carr_library.audio import models, process, cleanup
     from carr_library.backup_compat import pcm
-    from carr_library.studio import render, project, publication, interchange, silence
+    from carr_library.studio import render, project, publishing, interchange, silence
     from carr_library.ui import desktop_app, studio_dialog, operation_progress, progress_panel
 
     binding = _sibling('windows_publishing_smoke.py', '_silence_installed_bindings')
     helpers = _sibling('windows_speech_preparation_smoke.py', '_silence_owned_modals')
     modules = (application, durable_state, broker, runtime_settings, models, process,
-               cleanup, pcm, render, project, publication, interchange, silence,
+               cleanup, pcm, render, project, publishing, interchange, silence,
                desktop_app, studio_dialog, operation_progress, progress_panel)
     before = binding.verify_installed_sources(*modules)
     script_paths = tuple(Path(__file__).with_name(name) for name in (
