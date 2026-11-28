@@ -1,0 +1,205 @@
+{
+  "schema": "carr-observed-module-verdicts/1",
+  "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "job_id": 140876049212,
+  "mode": "source",
+  "selection": [
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_progress_voice_actions.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/speech/test_synthesis_admission.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/speech/test_progress_speech.py",
+    "tests/ui/test_operation_progress.py",
+    "tests/ui/test_progress_media_quiet.py",
+    "tests/ui/test_studio_progress_isolation.py",
+    "tests/speech/test_registered_studio_voices.py",
+    "tests/audio/test_model_voices.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/speech/test_session.py",
+    "tests/speech/test_reading_tabs.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/storage/test_reading_tabs_backup.py",
+    "tests/ui/test_save_all_access.py",
+    "tests/speech/test_source.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/storage/test_voice_preferences_backup.py"
+  ],
+  "selected_modules": 21,
+  "totals": {
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0
+  },
+  "verdicts": [
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_reader_synthesis.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_reader_playback.py",
+      "passed": 108,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_synthesis_admission.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_operation_progress.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_media_quiet.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_studio_progress_isolation.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_progress_speech.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_model_voices.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_registered_studio_voices.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_session.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_reader_synthesis_backup.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_reading_tabs.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_reader_tabs.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_save_all_access.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_reading_tabs_backup.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_source.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_voice_preferences_dialog.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_voice_preferences.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_voice_preferences_backup.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ]
+}

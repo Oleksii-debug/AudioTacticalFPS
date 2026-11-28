@@ -1,0 +1,20 @@
+{
+  "id": 15251558774,
+  "node_id": "MDg6QXJ0aWZhY3QxNTI1MTU1ODc3NA==",
+  "name": "carr-component-followup-windows-2022-source-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+  "size_in_bytes": 8780,
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251558774",
+  "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251558774/zip",
+  "expired": false,
+  "digest": "sha256:8a4a2726b1ba6558a4efcd78ed72475e81583094e1a9959f8a67797a741a8b70",
+  "created_at": "2026-11-28T06:28:36Z",
+  "updated_at": "2026-11-28T06:28:36Z",
+  "expires_at": "2026-12-05T06:28:35Z",
+  "workflow_run": {
+    "id": 46111572572,
+    "repository_id": 1341777614,
+    "head_repository_id": 1341777614,
+    "head_branch": "carr/component-followup-evaluation-20261127",
+    "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+  }
+}

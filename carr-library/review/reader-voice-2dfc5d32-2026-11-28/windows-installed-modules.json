@@ -1,0 +1,42 @@
+{
+  "schema": "carr-observed-module-verdicts/1",
+  "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "job_id": 140876049067,
+  "mode": "installed",
+  "selection": [
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_progress_voice_actions.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/speech/test_synthesis_admission.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/speech/test_progress_speech.py",
+    "tests/ui/test_operation_progress.py",
+    "tests/ui/test_progress_media_quiet.py",
+    "tests/ui/test_studio_progress_isolation.py",
+    "tests/speech/test_registered_studio_voices.py",
+    "tests/audio/test_model_voices.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/speech/test_session.py",
+    "tests/speech/test_reading_tabs.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/storage/test_reading_tabs_backup.py",
+    "tests/ui/test_save_all_access.py",
+    "tests/speech/test_source.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/storage/test_voice_preferences_backup.py"
+  ],
+  "selected_modules": 21,
+  "totals": {
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed_cases_pass": [
+    746
+  ],
+  "actual_pytest_summary": [
+    "746 passed in 127.50s (0:02:07)"
+  ],
+  "note": "Installed aggregate count is observed in this job. Per-module counts are not inferred from another mode."
+}

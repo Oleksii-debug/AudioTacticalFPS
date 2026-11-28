@@ -1,0 +1,257 @@
+{
+  "schema": "carr-exact-head-reader-component-receiving/1",
+  "status": "PASS_FOR_DECLARED_EIGHT_JOB_SCOPE",
+  "recorded_at_utc": "2026-11-28 06:36:15 UTC",
+  "candidate": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "python_modules": 383
+  },
+  "runs": [
+    {
+      "scope": "reader",
+      "id": 46111570967,
+      "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "event": "push",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967"
+    },
+    {
+      "scope": "component",
+      "id": 46111572572,
+      "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "event": "push",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572"
+    }
+  ],
+  "jobs": [
+    {
+      "scope": "component",
+      "mode": "linux-source",
+      "job_id": 140876054303,
+      "tree": "1721485bbf9713fd246dae5ddf2584978215478f",
+      "receipt": "6cd2f99b010b24f6270f356f1c322efc751ace47",
+      "passed": 3220,
+      "modules": 89,
+      "skipped": 0,
+      "failed": 0,
+      "receipt_file": {
+        "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6cd2f99b010b24f6270f356f1c322efc751ace47"
+      },
+      "receipt_sha256": "931e8e82524054ea29d606471debf01785064e40a5645c9c751129148fb03c81",
+      "started_at": "2026-11-28T05:40:50Z",
+      "completed_at": "2026-11-28T05:48:00Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054303"
+    },
+    {
+      "scope": "reader",
+      "mode": "windows-source",
+      "job_id": 140876048886,
+      "tree": "f9a98313b0227f2eea687e3a431e3d203504cfd9",
+      "receipt": "4aeae05950f76d0f73748a377446217a26d9e68c",
+      "passed": 746,
+      "modules": 21,
+      "skipped": 0,
+      "failed": 0,
+      "native_checks": 80,
+      "receipt_file": {
+        "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-source-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4aeae05950f76d0f73748a377446217a26d9e68c"
+      },
+      "receipt_sha256": "383b1529439620268a5028ff751b2f2c27186afc38a837c31620f9f46eda7194",
+      "started_at": "2026-11-28T05:48:02Z",
+      "completed_at": "2026-11-28T05:50:28Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967/job/140876048886"
+    },
+    {
+      "scope": "component",
+      "mode": "windows-installed",
+      "job_id": 140876054132,
+      "tree": "a3f94969f1ddf99e763cde6cbd3d6897019f14fd",
+      "receipt": "c7a7e10cd4cace51111d75ef40d6f210c429e6f4",
+      "passed": 3217,
+      "subtests": 12,
+      "selected_modules": 88,
+      "skipped": 0,
+      "failed": 0,
+      "venv": 21,
+      "native_clip": 120,
+      "clip_loop": "NOT_RUN",
+      "native_studio": "PASS",
+      "receipt_file": {
+        "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-installed-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c7a7e10cd4cace51111d75ef40d6f210c429e6f4"
+      },
+      "receipt_sha256": "5af87f967447d8f6e4bbaeeda12893083fb017127ed74052483b666a92457f31",
+      "started_at": "2026-11-28T05:30:40Z",
+      "completed_at": "2026-11-28T06:08:25Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054132"
+    },
+    {
+      "scope": "component",
+      "mode": "linux-installed",
+      "job_id": 140876054321,
+      "tree": "7a2a58154f3baaabdccb8d3b011182aa5e839cc8",
+      "receipt": "a75226b583a624dbcabfb8a74ee39689a6f1101d",
+      "passed": 3220,
+      "subtests": 12,
+      "selected_modules": 89,
+      "failed": 0,
+      "skipped": 0,
+      "receipt_file": {
+        "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a75226b583a624dbcabfb8a74ee39689a6f1101d"
+      },
+      "receipt_sha256": "44b2fe5f1dea9fcb5695abc5449c3b5f7557781da37cf7cb7b71560257a3c01a",
+      "started_at": "2026-11-28T06:07:48Z",
+      "completed_at": "2026-11-28T06:16:07Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054321"
+    },
+    {
+      "scope": "reader",
+      "mode": "linux-installed",
+      "job_id": 140876049044,
+      "tree": "a2cf6958692e23bdf28dbc4d26f3a0ab49b3b87c",
+      "receipt": "a171e01a5af71c8470575eadaf2854864b2337aa",
+      "passed": 746,
+      "selected_modules": 21,
+      "failed": 0,
+      "skipped": 0,
+      "receipt_file": {
+        "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/linux-installed-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a171e01a5af71c8470575eadaf2854864b2337aa"
+      },
+      "receipt_sha256": "ea18f54fe7bb2cf77cb3dd186bcc4c713074bccac5f39298745506c48e585ee7",
+      "started_at": "2026-11-28T06:18:02Z",
+      "completed_at": "2026-11-28T06:19:17Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967/job/140876049044"
+    },
+    {
+      "scope": "reader",
+      "mode": "windows-installed",
+      "job_id": 140876049067,
+      "tree": "9f5c41275076f6c5185e0f153a2cc8536de04554",
+      "receipt": "ec6df097690d2c51bf05211d68c9b188ab725798",
+      "passed": 746,
+      "selected_modules": 21,
+      "failed": 0,
+      "skipped": 0,
+      "native_checks": 80,
+      "receipt_file": {
+        "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ec6df097690d2c51bf05211d68c9b188ab725798"
+      },
+      "receipt_sha256": "0ac4ecc48bec0befe72ebd825d9ab3db07b1f34f29e3d9fb1b1fd06e8c658a95",
+      "started_at": "2026-11-28T06:26:23Z",
+      "completed_at": "2026-11-28T06:29:56Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967/job/140876049067"
+    },
+    {
+      "scope": "reader",
+      "mode": "linux-source",
+      "job_id": 140876049212,
+      "tree": "551d7a3ef7668fa57ef19475952180f8f433af7c",
+      "receipt": "8f8e41666b1d1a1c71965ce17dd6bfb1af0d6e40",
+      "passed": 746,
+      "selected_modules": 21,
+      "failed": 0,
+      "skipped": 0,
+      "receipt_file": {
+        "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/linux-source-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8f8e41666b1d1a1c71965ce17dd6bfb1af0d6e40"
+      },
+      "receipt_sha256": "05d057d86513bf0b35985c23229ade7d9f93a89d15874f74cf37bece4b8dace7",
+      "started_at": "2026-11-28T06:27:12Z",
+      "completed_at": "2026-11-28T06:28:23Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967/job/140876049212"
+    },
+    {
+      "scope": "component",
+      "mode": "windows-source",
+      "job_id": 140876054297,
+      "tree": "2a68c2cf3759ea6b723e22e357eb2d1e16579cb8",
+      "receipt": "90fad30a86c61b1f4a28fc2a11913316073ad749",
+      "passed": 3217,
+      "selected_modules": 88,
+      "failed": 0,
+      "skipped": 0,
+      "native_formats_source": 27,
+      "native_formats_installed": 28,
+      "receipt_file": {
+        "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-receipt.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "90fad30a86c61b1f4a28fc2a11913316073ad749"
+      },
+      "receipt_sha256": "e41cefb4ac744890296ba034d4809e62bcd47e67f54d9065c9b500f8839625fa",
+      "started_at": "2026-11-28T06:12:34Z",
+      "completed_at": "2026-11-28T06:28:39Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054297"
+    }
+  ],
+  "common_identity": {
+    "all_jobs_match_current_383_python_module_map": true,
+    "source_inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+    "reader_actual_full_row_array_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "source_reference": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/source-reference.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fd6f1423359cc18ac8c652b1e09294c72c68f60"
+    },
+    "historical_pass_transfer": false
+  },
+  "execution_counts": {
+    "reader": {
+      "each_of_four_modes": 746,
+      "selected_modules_per_mode": 21,
+      "windows_source_native_checks": 80,
+      "windows_installed_native_checks": 80
+    },
+    "components": {
+      "linux_source": 3220,
+      "linux_installed": 3220,
+      "linux_installed_subtests": 12,
+      "windows_source": 3217,
+      "windows_installed": 3217,
+      "windows_installed_subtests": 12,
+      "linux_selected_modules": 89,
+      "windows_selected_modules": 88,
+      "windows_installed_additional_actual_venv": 21,
+      "windows_installed_native_clip_checks": 120,
+      "windows_installed_clip_loop": "NOT_RUN",
+      "windows_installed_native_studio_inspection": "PASS; five added checks with five current installed module origin hashes",
+      "windows_source_native_formats": {
+        "source": 27,
+        "installed": 28
+      }
+    }
+  },
+  "limits": [
+    "The current source/installed suites and named native scenarios are the complete scope of this index, not whole-platform acceptance.",
+    "Installed aggregate counts are actual job results; per-module counts are not inferred from other jobs.",
+    "Studio silence positive control measures every-channel sample threshold at 0 dBFS, not perceptual silence or audio quality.",
+    "Manual NVDA, private engine/model assets, rights and audible loop acceptance remain outside these jobs.",
+    "Full native JSON and JUnit artifacts retain their separate immutable archive IDs and digests in the individual receipts."
+  ]
+}

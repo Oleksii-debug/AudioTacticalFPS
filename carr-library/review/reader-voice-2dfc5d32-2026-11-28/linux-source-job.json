@@ -1,0 +1,148 @@
+{
+  "id": 140876049212,
+  "run_id": 46111570967,
+  "workflow_name": "Resonance reader voice controls verification",
+  "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzN3rPA",
+  "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140876049212",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967/job/140876049212",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T05:19:23Z",
+  "started_at": "2026-11-28T06:27:12Z",
+  "completed_at": "2026-11-28T06:28:23Z",
+  "name": "Reader voice controls / ubuntu-24.04 / source",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T06:27:13Z",
+      "completed_at": "2026-11-28T06:27:13Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T06:27:13Z",
+      "completed_at": "2026-11-28T06:27:18Z"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T06:27:18Z",
+      "completed_at": "2026-11-28T06:27:21Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T06:27:21Z",
+      "completed_at": "2026-11-28T06:27:21Z"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T06:27:21Z",
+      "completed_at": "2026-11-28T06:27:40Z"
+    },
+    {
+      "name": "Prepare actual portable speech for registered Studio voice contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T06:27:40Z",
+      "completed_at": "2026-11-28T06:28:04Z"
+    },
+    {
+      "name": "Prepare the existing pinned Windows speech runtime",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 7,
+      "started_at": "2026-11-28T06:28:04Z",
+      "completed_at": "2026-11-28T06:28:04Z"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T06:28:04Z",
+      "completed_at": "2026-11-28T06:28:04Z"
+    },
+    {
+      "name": "Require source reader synthesis state and backup contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T06:28:04Z",
+      "completed_at": "2026-11-28T06:28:19Z"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 10,
+      "started_at": "2026-11-28T06:28:19Z",
+      "completed_at": "2026-11-28T06:28:19Z"
+    },
+    {
+      "name": "Require actual Windows voice option widgets in this mode",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-28T06:28:19Z",
+      "completed_at": "2026-11-28T06:28:19Z"
+    },
+    {
+      "name": "Preserve public synthetic receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T06:28:19Z",
+      "completed_at": "2026-11-28T06:28:21Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-11-28T06:28:21Z",
+      "completed_at": "2026-11-28T06:28:21Z"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-11-28T06:28:21Z",
+      "completed_at": "2026-11-28T06:28:21Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-11-28T06:28:21Z",
+      "completed_at": "2026-11-28T06:28:21Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140876049212",
+  "labels": [
+    "ubuntu-24.04"
+  ],
+  "runner_id": 1000490232,
+  "runner_name": "GitHub Actions 1000490232",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

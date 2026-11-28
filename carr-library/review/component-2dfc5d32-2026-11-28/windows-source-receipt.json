@@ -1,0 +1,258 @@
+{
+  "schema": "carr-exact-head-job-receipt/1",
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-28 06:33:48 UTC",
+  "candidate": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "workflow": {
+    "id": 46111572572,
+    "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "head_branch": "carr/component-followup-evaluation-20261127",
+    "event": "push",
+    "run_attempt": 1,
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572",
+    "path": ".github/workflows/carr-component-followup-evaluation.yml",
+    "workflow_git_blob": "40c95c79f99b1293877919759ca608e3593699e1"
+  },
+  "job": {
+    "id": 140876054297,
+    "name": "Updated components / windows-2022 / source",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T06:12:34Z",
+    "completed_at": "2026-11-28T06:28:39Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054297",
+    "runner_name": "GitHub Actions 1000490208",
+    "labels": [
+      "windows-2022"
+    ]
+  },
+  "platform": "windows-2022",
+  "mode": "source",
+  "execution_scope": "Actual source tests under the existing strict per-module ci_check/JUnit policy; all named selectors produced successful verdicts.",
+  "tests": {
+    "selected_modules": 88,
+    "passed": 3217,
+    "failed": 0,
+    "skipped": 0,
+    "observed_unique_modules": 88,
+    "all_requested_modules_observed": true,
+    "complete_selection_and_verdict_file": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-modules.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4e29b8085128720f14a9316078eba7e6bf46ce5"
+    },
+    "relevant_observed_verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/academic_integration/test_formatting.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_progress_speech.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_publishing_handlers.py",
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_book_audio_dialog.py",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_audio_process.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_silence_inspection.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_silence_inspection.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_director_silence.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_book_silence.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_local_runtime_cli.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_studio_silence_inspection.py",
+        "passed": 65,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_process_deadline.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "identity": {
+    "actual_inventory": {
+      "status": "PASS",
+      "module_origin": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library",
+      "python_modules": 383,
+      "source_inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6"
+    },
+    "reference": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/source-reference.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fd6f1423359cc18ac8c652b1e09294c72c68f60"
+    },
+    "all_383_hashes_match_current_candidate": true,
+    "comparison": "The actual complete source/installed digest equals the independently Git-bound current 383-module reference. No test result is transferred from another head or mode."
+  },
+  "artifact": {
+    "id": 15251558774,
+    "name": "carr-component-followup-windows-2022-source-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_in_bytes": 8780,
+    "digest": "sha256:8a4a2726b1ba6558a4efcd78ed72475e81583094e1a9959f8a67797a741a8b70",
+    "created_at": "2026-11-28T06:28:36Z",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251558774"
+  },
+  "native": {
+    "status": "PASS",
+    "source_document_format_checks": 27,
+    "installed_document_format_checks": 28,
+    "proof": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-native-formats.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b957a52d03fa64351338c31c331774c8bb3e75c"
+    }
+  },
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1b9e891305277535df33d9cb9ba69a2ec60b0d2",
+      "sha256": "ed5583967b6da36830b9e9d5475e8cdb868da700e14d3957b14ee88042542708",
+      "bytes": 6251,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "99e0de4fa39508d5c121043e3f3923eb2a558771",
+      "sha256": "b0d7ef14603fa3bfe70472dc114046977f7cedbd95433dda4c9f991479da33d3",
+      "bytes": 186355,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0477eb0ae4df88dbd1c2ebdab04a89c3c12d01f8",
+      "sha256": "9b4d228ebed0cd15bf49eb97d770ba7efe373a10b8600d45beb3b4a15f0a4c27",
+      "bytes": 251,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-modules.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4e29b8085128720f14a9316078eba7e6bf46ce5",
+      "sha256": "378658245a5d95fa0c4b1155fab1821caf650c9886ce827e5150036a7b66a31f",
+      "bytes": 19806,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-native-formats.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b957a52d03fa64351338c31c331774c8bb3e75c",
+      "sha256": "107343bc28a64886c9d09430abf43aa0a18ab41a4cc348b6ce58f07a5e542991",
+      "bytes": 1941,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15b7b10f7a07005c83a2835906be4c2dbe9b193b",
+      "sha256": "fed8f706c1de2c408f99b190bccd93032d0cf3904b836ab7f1e494132783a280",
+      "bytes": 894,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "SHA-256 of the exact decoded GitHub job-log string re-encoded as UTF-8, including its BOM and original newlines; distinct from the immutable artifact ZIP digest.",
+  "remaining_scope": {
+    "other_mode_test_results": "Recorded separately; no result transfer.",
+    "windows_installed_studio_inspection": "Not executed in this source-mode job; separately recorded in Windows installed receipt.",
+    "windows_installed_venv_and_clip": "Not executed in this source-mode job; separate receipt.",
+    "manual_nvda": "NOT_RUN",
+    "audible_quality": "NOT_CLAIMED",
+    "private_engines_assets_rights": "NOT_QUALIFIED",
+    "full_platform_release": "NOT_CLAIMED",
+    "historical_result_transfer": false
+  }
+}

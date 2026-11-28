@@ -197,6 +197,30 @@
       "job": 140876049044,
       "kind": "Terminal Linux installed Reader: all 21 selectors / 746 passed, zero failures/skips; all 383 emitted source/wheel/installed rows match current candidate. Windows native and human NVDA remain separate.",
       "qualification": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/linux-installed-receipt.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "9f5c41275076f6c5185e0f153a2cc8536de04554",
+      "run": 46111570967,
+      "job": 140876049067,
+      "kind": "Terminal Windows installed Reader: 746 passed across 21 selected modules, zero failures/skips; 80 actual native preferences checks and complete 383-module byte identity.",
+      "qualification": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-receipt.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "551d7a3ef7668fa57ef19475952180f8f433af7c",
+      "run": 46111570967,
+      "job": 140876049212,
+      "kind": "Terminal Linux source Reader: 21 modules / 746 passed, zero failures/skips; complete 383 source/wheel/installed rows match current candidate.",
+      "qualification": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/linux-source-receipt.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "2a68c2cf3759ea6b723e22e357eb2d1e16579cb8",
+      "run": 46111572572,
+      "job": 140876054297,
+      "kind": "Terminal Windows source components: 88 modules / 3,217 passed, zero failures/skips; native document formats 27 source / 28 installed checks; full current 383-module byte-map identity.",
+      "qualification": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-receipt.json"
     }
   ],
   "candidate_runs": {
@@ -216,7 +240,7 @@
     "pr_bridge": 46111581953,
     "push_integration_bridge": 46111575068
   },
-  "execution": "Only the exact terminal scopes in evidence_sets have results. All four ordinary native/bibliography/bridge/canonical runs and both standard-installation jobs succeeded; remaining Reader/component modes and full current Windows jobs continue. The current selected-capture step is failed metadata; no aggregate release or final wheel is qualified.",
+  "execution": "All four ordinary native/bibliography/bridge/canonical runs, all eight Reader/component modes, and both standard-installation jobs succeeded at this candidate. Full current MAIN and V3 remain active. Selected capture failed as recorded; no aggregate release or final wheel is qualified.",
   "ci_trigger_review": "Evidence branch name is outside every current workflow push branch filter. Workflow files and all application blobs are unchanged.",
   "private_artifacts": "Only public source review, metadata, decoded logs and synthetic test evidence; no private model, recordings, runtime binaries or credentials.",
   "diagnostic_runs": [
@@ -241,5 +265,44 @@
     "runtime_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
     "runtime_compact_mapping_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
     "note": "Distinct documented encodings; complete paths and each current content hash were reconciled independently. This is source identity, not transfer of execution results."
+  },
+  "completed_followup_modes": {
+    "source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "reader": {
+      "run": 46111570967,
+      "all_four_jobs": "SUCCESS",
+      "each_mode_passed": 746,
+      "source_modules": 21,
+      "installed_selectors": 21,
+      "windows_native_checks_each_mode": 80
+    },
+    "components": {
+      "run": 46111572572,
+      "all_four_jobs": "SUCCESS",
+      "linux": {
+        "source_passed": 3220,
+        "installed_passed": 3220,
+        "installed_subtests": 12,
+        "selectors": 89
+      },
+      "windows": {
+        "source_passed": 3217,
+        "installed_passed": 3217,
+        "installed_subtests": 12,
+        "selectors": 88,
+        "source_native_formats": 27,
+        "installed_native_formats_in_source_job": 28,
+        "installed_real_venv_cases": 21,
+        "installed_native_clip_checks": 120,
+        "installed_new_native_inspection_checks": 5
+      }
+    },
+    "limits": "Counts belong to their exact modes and overlapping phases; do not sum as unique platform cases. Loop listening, manual NVDA and private models are not qualified."
+  },
+  "eight_mode_summary": {
+    "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/reader-and-components.json",
+    "blob": "eec6c02cdb9977808f3fdb5712c1a5ce6e1956ba",
+    "sparse_tree": "c110deb8bfc0331cac7cfe8c2f1f943a528517e6",
+    "scope": "All eight exact 2df Reader/component modes; individual receipts retain counts, origins, native limits and actual job times."
   }
 }

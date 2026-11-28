@@ -1,0 +1,161 @@
+{
+  "schema": "carr-exact-head-job-receipt/1",
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-28 06:33:48 UTC",
+  "candidate": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "workflow": {
+    "id": 46111570967,
+    "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+    "event": "push",
+    "run_attempt": 1,
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967",
+    "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+    "workflow_git_blob": "b683358bf3325749f852040cef8a9e704c4c414a"
+  },
+  "job": {
+    "id": 140876049067,
+    "name": "Reader voice controls / windows-2022 / installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T06:26:23Z",
+    "completed_at": "2026-11-28T06:29:56Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111570967/job/140876049067",
+    "runner_name": "GitHub Actions 1000490230",
+    "labels": [
+      "windows-2022"
+    ]
+  },
+  "platform": "windows-2022",
+  "mode": "installed",
+  "execution_scope": "Actual installed package tests under isolated Python -I -B -X utf8 and the existing strict installed JUnit policy; aggregate evidence is not decomposed using another job.",
+  "tests": {
+    "selected_modules": 21,
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0,
+    "actual_pytest_summary": [
+      "746 passed in 127.50s (0:02:07)"
+    ],
+    "complete_selection_and_verdict_file": {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-modules.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f4492ae0b36015ea50c26600f77fb546dceaa4e"
+    }
+  },
+  "identity": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "executable": "D:\\a\\_temp\\carr-reader-voice-python\\Scripts\\python.exe",
+    "prefix": "D:\\a\\_temp\\carr-reader-voice-python",
+    "installed_package": "D:\\a\\_temp\\carr-reader-voice-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "python_modules": 383,
+    "python_rows_json_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "all_current_source_hashes_match": true,
+    "wheel": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+      "wheel_sha256": "4c37e3fdc1169451fcbb8e7b38fa9c1d38cd6be9b98c1a0c9f6e7e3c03856aa3"
+    },
+    "source_reference": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/source-reference.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fd6f1423359cc18ac8c652b1e09294c72c68f60"
+    }
+  },
+  "artifact": {
+    "id": 15251399392,
+    "name": "carr-reader-voice-controls-windows-2022-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_in_bytes": 40007,
+    "digest": "sha256:b3e91a32d6581994edd80924964ef969138c05c13d0c547fbd2f9ab9a156e34d",
+    "created_at": "2026-11-28T06:29:51Z",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251399392"
+  },
+  "native": {
+    "status": "PASS",
+    "script": "carr-library/scripts/windows_voice_preferences_smoke.py",
+    "mode": "installed",
+    "checks": 80,
+    "proof": {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-native.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "08cbe14079c6f185018e3cc43d2c8bc9c125e268"
+    }
+  },
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4ff19b59bebd656b77b20b6daa666510da645c0",
+      "sha256": "b8247b349d27c9cf6dbb6c194ba6f436fa307ca29d9fa028d994cb9f01ddd543",
+      "bytes": 4800,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "79b012ac733a7d5d4f1d39cea3792072120ddfae",
+      "sha256": "0aacff2ab72642ac43d3bf84cf6c538b7518d0d9ef24361033ba8100cd4936f8",
+      "bytes": 277960,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "976917f58c610f0d035f172aeac01b0d6553ef17",
+      "sha256": "466d48b71322edba67b43a2da3e6c46e7ee79ee9b300b6663c09bbbbe48b76c6",
+      "bytes": 67746,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-modules.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f4492ae0b36015ea50c26600f77fb546dceaa4e",
+      "sha256": "83ff91cc091707afed5e26298a057d7c5c18a514619137cef1abaa2cf6b86458",
+      "bytes": 1437,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-native.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "08cbe14079c6f185018e3cc43d2c8bc9c125e268",
+      "sha256": "0733d8e4e92b6b984951b64efd72de8308dd4a828d6b0f927e3e1bee556ba951",
+      "bytes": 4427,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/windows-installed-artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8974ba906cd04b2d2159c1ad7c21c57531ecf54d",
+      "sha256": "990eca740a2b91c39b2cc1347b06a727413843d9842de05762021be2e2244669",
+      "bytes": 904,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "SHA-256 of the exact decoded GitHub job-log string re-encoded as UTF-8, including its BOM and original newlines; distinct from the immutable artifact ZIP digest.",
+  "remaining_scope": {
+    "other_mode_test_results": "Recorded separately; no result transfer.",
+    "manual_nvda": "NOT_RUN",
+    "audible_quality": "NOT_CLAIMED",
+    "private_engines_assets_rights": "NOT_QUALIFIED",
+    "full_platform_release": "NOT_CLAIMED",
+    "historical_result_transfer": false
+  }
+}
