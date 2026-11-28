@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105052711,
+  "status": "COMPLETED_SUCCESS",
+  "modes": [
+    {
+      "platform": "linux",
+      "job_id": 140855821121,
+      "qualification": "linux/qualification.json",
+      "source_passed": 345,
+      "installed_passed": 345,
+      "subtests_passed": 22,
+      "python_files": 380,
+      "rows_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+      "native_standard": "NOT_APPLICABLE"
+    },
+    {
+      "platform": "windows",
+      "job_id": 140855821346,
+      "qualification": "windows/qualification.json",
+      "source_passed": 345,
+      "installed_passed": 345,
+      "subtests_passed": 22,
+      "python_files": 380,
+      "rows_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+      "native_standard": "PASS"
+    }
+  ],
+  "release_status": "unsigned-private-candidate",
+  "manual_nvda": "NOT_RUN",
+  "authenticode": "NOT_RUN",
+  "qualification_transfer": false
+}

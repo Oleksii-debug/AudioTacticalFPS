@@ -1,0 +1,148 @@
+{
+  "id": 140855821121,
+  "run_id": 46105052711,
+  "workflow_name": "Resonance standard installation verification",
+  "head_branch": "carr/standard-installation-evaluation-20261128",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46105052711",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgy6lDQQ",
+  "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140855821121",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105052711/job/140855821121",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T03:54:31Z",
+  "started_at": "2026-11-28T04:32:19Z",
+  "completed_at": "2026-11-28T04:33:24Z",
+  "name": "Standard installation / ubuntu-24.04 / source and installed",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T04:32:20Z",
+      "completed_at": "2026-11-28T04:32:22Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T04:32:22Z",
+      "completed_at": "2026-11-28T04:32:29Z"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T04:32:29Z",
+      "completed_at": "2026-11-28T04:32:35Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T04:32:35Z",
+      "completed_at": "2026-11-28T04:32:35Z"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T04:32:35Z",
+      "completed_at": "2026-11-28T04:32:59Z"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T04:32:59Z",
+      "completed_at": "2026-11-28T04:32:59Z"
+    },
+    {
+      "name": "Require source standard installation and existing launcher contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T04:32:59Z",
+      "completed_at": "2026-11-28T04:33:08Z"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T04:33:08Z",
+      "completed_at": "2026-11-28T04:33:19Z"
+    },
+    {
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 9,
+      "started_at": "2026-11-28T04:33:19Z",
+      "completed_at": "2026-11-28T04:33:19Z"
+    },
+    {
+      "name": "Build one exact current core bundle and its standard setup",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 10,
+      "started_at": "2026-11-28T04:33:19Z",
+      "completed_at": "2026-11-28T04:33:19Z"
+    },
+    {
+      "name": "Require actual native standard Install Repair and Uninstall",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-28T04:33:19Z",
+      "completed_at": "2026-11-28T04:33:19Z"
+    },
+    {
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T04:33:19Z",
+      "completed_at": "2026-11-28T04:33:21Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-11-28T04:33:21Z",
+      "completed_at": "2026-11-28T04:33:21Z"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-11-28T04:33:21Z",
+      "completed_at": "2026-11-28T04:33:21Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-11-28T04:33:21Z",
+      "completed_at": "2026-11-28T04:33:21Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140855821121",
+  "labels": [
+    "ubuntu-24.04"
+  ],
+  "runner_id": 1000490067,
+  "runner_name": "GitHub Actions 1000490067",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

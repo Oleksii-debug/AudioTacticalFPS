@@ -1,0 +1,2991 @@
+##[group]Run $strictTests = @'
+$strictTests = @'
+import sys
+import pytest
+class ImmediateFailures:
+    def pytest_runtest_logreport(self, report):
+        if report.failed:
+            print("\nREQUIRED_CASE_FAILURE " + report.nodeid + " [" + report.when + "]", flush=True)
+            print(str(report.longrepr), flush=True)
+    def pytest_collectreport(self, report):
+        if report.failed:
+            print("\nREQUIRED_COLLECTION_FAILURE " + report.nodeid, flush=True)
+            print(str(report.longrepr), flush=True)
+raise SystemExit(pytest.main(sys.argv[1:], plugins=[ImmediateFailures()]))
+'@
+python -c $strictTests -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/audio_acceptance/test_primary_publication_budget.py tests/academic_integration tests/conversion tests/ui/test_document_conversion_admission.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/language_qualification tests/ui/test_ebook_audio_initialization.py tests/ui/test_ebook_dialog.py tests/reader/test_ebook_audio.py tests/reader/test_ebook_audio_lifecycle.py tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_state_json_reader.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/storage/test_canonical_backup_compat.py tests/extract/test_language_manager.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_worker_interpreter_ownership.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_direct_import_pending_backup.py tests/storage/test_state_recovery_case_aliases.py tests/storage/test_import_registration_migration.py tests/ui/test_recording_dialog.py tests/storage/test_recording_backup.py tests/operations tests/transcription tests/transcription_windows tests/operations_windows tests/ui/test_operations_policy.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_transcription_dialog.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_atomic_state_publication.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/ui/test_worker_lifetime.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/ui/test_reading_tools.py tests/ui/test_reader_output.py tests/ui/test_reader_spelling.py tests/ui/test_reader_presentation.py tests/reader/test_export_reconciliation.py tests/storage/test_import_publication_backup.py tests/storage/test_transcription_composite_backup.py tests/reader/test_export_change_time.py tests/ui/test_voice_reference.py tests/ui/test_word_citations.py tests/ui/test_assistant_domain_routes.py tests/sync tests/ui/test_portable_sync.py tests/citations/test_streamed_text_attestation.py tests/e2e/test_source_file.py tests/e2e/test_streamed_import_cli.py tests/e2e/test_streamed_source_import.py tests/ingest/test_streamed_admission.py tests/ingest/test_streamed_ingest.py tests/ingest/test_streamed_text.py tests/reader/test_streamed_source_view.py tests/storage/test_streamed_source_backup.py tests/ui/test_source_launch.py tests/ui/test_source_open_handler.py tests/ui/test_streamed_import.py tests/ui/test_protected_voice_packages.py tests/search/test_source_pagination.py tests/search/test_source_page_benchmark.py tests/search/test_federated_pagination.py tests/e2e/test_search_pagination.py tests/ui/test_search_pagination.py tests/ui/test_federated_search.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/v3-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped)))" | Tee-Object 'ci-v3-results/v3-strict-summary.json'
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  PYTHONUTF8: 1
+  PYTHONUNBUFFERED: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  CARR_V3_AUDIO: D:\a\_temp\carr-v3-audio
+  CARR_OCR_DIR: D:\a\_temp\carr-v3-ocr\runtime
+##[endgroup]
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_requires_an_explicit_initial_preview [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251037F4310>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_requires_an_exp0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103918A50>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251032EA190>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_uses_actual_pla0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103827FD0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251032E3090>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_uses_actual_pla1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103202DD0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100A3C990>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_natural_end_can_be_e0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251039099D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[rendering] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251032758D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_revokes_the_fir0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103994350>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100671A10>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_revokes_the_fir1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251038EEF90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103884190>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002510326DE10>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103912850>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103817D90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100A5BFD0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025100671A10>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251038E4350>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103204F90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103277910>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006BD390>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251006CB1D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_changed_preview_pcm_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006AE850>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000002510075DED0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_or_close_revoke0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006DB9D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100738310>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_or_close_revoke1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251037FF050>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_failed_device_close_keeps_owner_but_disarms_loop [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000002510075CC50>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_failed_device_close_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251033678D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251006A9250>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_destroy_revokes_repe0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251032CE790>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251038C5B10>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_destroy_revokes_repe1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251032E1E50>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251037D38D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_host_finalizer_revok0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002517AD286D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+.E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251037C0650>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_timer_start_refusal_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251037F6590>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103926950>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_normal_timer_stop_er0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002510388D7D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000002517ACFB750>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251039294D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251038B5850>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002510328AE90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100751950>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006EB490>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+E
+REQUIRED_CASE_FAILURE tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] [setup]
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251007328D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025100A395D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+....... [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 99%]
+..............................................................           [100%]
+=================================== ERRORS ====================================
+____ ERROR at setup of test_clip_loop_requires_an_explicit_initial_preview ____
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251037F4310>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_requires_an_exp0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103918A50>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251032EA190>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_uses_actual_pla0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103827FD0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251032E3090>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_uses_actual_pla1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103202DD0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100A3C990>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_natural_end_can_be_e0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251039099D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_stop_revokes_the_first_queued_preview[rendering] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251032758D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_revokes_the_fir0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103994350>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100671A10>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_revokes_the_fir1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251038EEF90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103884190>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002510326DE10>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103912850>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103817D90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100A5BFD0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025100671A10>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251038E4350>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025103204F90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103277910>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_loop_rechecks_the_ex4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006BD390>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251006CB1D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_changed_preview_pcm_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006AE850>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000002510075DED0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_or_close_revoke0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006DB9D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100738310>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_stop_or_close_revoke1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251037FF050>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_failed_device_close_keeps_owner_but_disarms_loop _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000002510075CC50>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_failed_device_close_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251033678D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251006A9250>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_destroy_revokes_repe0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251032CE790>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251038C5B10>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_destroy_revokes_repe1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251032E1E50>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251037D38D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_host_finalizer_revok0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002517AD286D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251037C0650>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_timer_start_refusal_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251037F6590>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025103926950>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_normal_timer_stop_er0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002510388D7D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000002517ACFB750>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251039294D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251038B5850>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002510328AE90>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x0000025100751950>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000251006EB490>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+_ ERROR at setup of test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] _
+
+dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x00000251007328D0>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_clip_queued_loop_events_a3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025100A395D0>
+
+    @pytest.fixture
+    def loop_preview(dialog, tmp_path, monkeypatch):
+        """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+        import wave
+        from carr_library.speech import player as player_module
+    
+        original = tmp_path / 'original-loop.wav'
+        preview = tmp_path / 'clip-preview-loop.wav'
+        with wave.open(str(original), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+            output.writeframes(b'\xe8\x03' * 2000)
+        raw = original.read_bytes()
+        preview.write_bytes(raw)
+        cue = Cue('loop-clip', str(original), duration=.25)
+        scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+>       project = Project('loop-project', 'Loop project', (), (scene,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\studio\test_clip_dialog.py:746: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:13: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+
+    def __post_init__(self):
+        _id(self.id)
+        _text(self.title, 'project title', 512)
+        _text(self.original_script, 'original script', 16_000_000, True)
+        if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+            raise ValueError('Unsupported project schema or revision.')
+        if self.mode not in ('faithful', 'authored'):
+            raise ValueError('Choose faithful narration or explicitly authored production.')
+        if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+            raise ValueError('Unsupported master sample rate.')
+        if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+            raise ValueError('Project roles must be typed.')
+        if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+            raise ValueError('Project needs typed scenes.')
+        roles = {role.id for role in self.roles}
+        if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+            raise ValueError('Duplicate role or scene ID.')
+        if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+            raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+>           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+
+src\carr_library\studio\project.py:270: ValueError
+=========================== short test summary info ===========================
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_requires_an_explicit_initial_preview - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[rendering] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_failed_device_close_keeps_owner_but_disarms_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+6662 passed, 24 errors in 4790.12s (1:19:50)
+##[error]Process completed with exit code 1.
+##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+with:
+  name: carr-v3-evidence-46098474723-1
+  path: carr-library/ci-v3-results/
+  retention-days: 7
+  if-no-files-found: warn
+  compression-level: 6
+  overwrite: false
+  include-hidden-files: false
+  archive: true
+env:
+  PYTHONUTF8: 1
+  PYTHONUNBUFFERED: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  CARR_V3_AUDIO: D:\a\_temp\carr-v3-audio
+  CARR_OCR_DIR: D:\a\_temp\carr-v3-ocr\runtime
+##[endgroup]
+With the provided path, there will be 33 files uploaded
+Artifact name is valid!
+Root directory input is valid!
+Uploading artifact: carr-v3-evidence-46098474723-1.zip
+Beginning upload of artifact content to blob storage
+Uploaded bytes 209549
+Finished uploading artifact content to blob storage!
+SHA256 digest of uploaded artifact is 8a7fdf2e8d1024625f94f82e8508b3238f23e1112021407624e43a143f353211
+Finalizing artifact upload
+Artifact carr-v3-evidence-46098474723-1 successfully finalized. Artifact ID 15248118048
+Artifact carr-v3-evidence-46098474723-1 has been successfully uploaded! Final size is 209549 bytes. Artifact ID is 15248118048
+Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474723/artifacts/15248118048
+Post job cleanup.
+[command]"C:\Program Files\Git\bin\git.exe" version
+git version 2.56.1.windows.1
+Temporarily overriding HOME='D:\a\_temp\dc18ae6b-7e4e-4c61-8e7e-c22dbceb46c8' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+Removing SSH command configuration
+[command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+[command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+Removing HTTP extra header
+[command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+[command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+Removing includeIf entries pointing to credentials config files
+[command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+Cleaning up orphan processes

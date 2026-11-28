@@ -1,0 +1,284 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098474723,
+  "job_id": 140835231498,
+  "checkout": "Explicit source SHA in checkout log and matching workflow-run/job API head.",
+  "failed_steps": [
+    {
+      "number": 18,
+      "name": "Validate local services, DSP, integrity and provider permission boundaries"
+    }
+  ],
+  "source": {
+    "status": "FAIL",
+    "passed": 6662,
+    "failed_test_calls": 0,
+    "setup_errors": 24,
+    "skipped": 0,
+    "actual_summary": "6662 passed, 24 errors in 4790.12s (1:19:50)",
+    "elapsed_seconds": 4790.12,
+    "timed_out": false,
+    "errors": [
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_requires_an_explicit_initial_preview - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[rendering] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_failed_device_close_keeps_owner_but_disarms_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.",
+      "ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2."
+    ],
+    "cause": "The old clip-dialog test fixture selects edited microphone/timing tracks with project schema1; the runtime correctly refuses it. The schema2 fixture repair is in 78dc8ab6 and successors; no success is transferred to this run."
+  },
+  "installed_shared": {
+    "status": "PASS",
+    "passed": 1853,
+    "failed": 0,
+    "skipped": 0,
+    "nvda": "NOT_RUN",
+    "actual_summary": "1853 passed in 384.61s (0:06:24)"
+  },
+  "installed_backup": {
+    "status": "PASS",
+    "passed": 641,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "expected_failures": false,
+    "origins": {
+      "carr_library": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__init__.py",
+      "carr_library.state_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_backup.py",
+      "carr_library.state_recovery": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_recovery.py",
+      "carr_library.ingest.worker": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\worker.py",
+      "carr_library.application": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+      "carr_library.pending_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\pending_backup.py",
+      "carr_library.library_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+      "carr_library.recording_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\recording_backup.py",
+      "carr_library.speech.reading": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\reading.py",
+      "carr_library.speech.source": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\source.py",
+      "carr_library.ui.speech_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+      "carr_library.speech.runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\runtime.py",
+      "carr_library.academic_integration.doi": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\doi.py",
+      "carr_library.speech.session": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\session.py",
+      "carr_library.extract.ocr_runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\ocr_runtime.py",
+      "carr_library.storage.revisions": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+      "carr_library.storage.schema_identity": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\schema_identity.py"
+    },
+    "ocr_inventory_cases": [
+      "test_directory_inventory_checks_budget_between_entries",
+      "test_empty_directory_inventory_has_a_bound",
+      "test_unreadable_directory_rejects_entire_inventory"
+    ],
+    "ocr_inventory_exact": true,
+    "state_inventory_exact": true,
+    "state_inventory_cases": [
+      "test_state_inventory_rejects_unreadable_subtree[restore]",
+      "test_state_inventory_rejects_unreadable_subtree[snapshot]",
+      "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+      "test_state_root_lookup_error_is_not_absence[NotADirectoryError]",
+      "test_state_root_lookup_error_is_not_absence[PermissionError]",
+      "test_state_root_missing_is_optional_only_when_requested"
+    ],
+    "manual_nvda": "NOT_RUN"
+  },
+  "separate_required_suites": [
+    {
+      "status": "PASS",
+      "module": "tests/speech/test_progress_speech.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_operation_progress.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_numeric_limits.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_studio_progress_isolation.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_media_quiet.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/e2e/test_import_progress.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/storage/test_progress_preferences_backup.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_translation_v3.py",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_local_planning.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_planning_handlers.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "loopback_http": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "actual_summary": "12 passed in 7.76s",
+    "native_firewall_step": 17
+  },
+  "native_emitted_scopes": {
+    "recording_process": {
+      "status": "PASS",
+      "checks": 15
+    },
+    "scene_and_sapi": {
+      "status": "PASS",
+      "checks": 8
+    },
+    "clip_editor": {
+      "status": "PASS",
+      "checks": 120,
+      "loop_preview": {
+        "status": "NOT_RUN",
+        "reason": "No exact reviewed output endpoint was supplied for loop playback.",
+        "acoustic_listening": "NOT_RUN",
+        "physical_output_device": "NOT_RUN"
+      }
+    },
+    "asr_progress_controls": {
+      "status": "PASS",
+      "checks": 42,
+      "native_sapi_progress_pcm": {
+        "frames": 146164,
+        "rate": 22050,
+        "width": 2,
+        "peak": 4868
+      }
+    },
+    "assistant": {
+      "status": "PASS",
+      "checks": 10
+    }
+  },
+  "limitations": {
+    "manual_nvda": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "human_listening": "NOT_RUN",
+    "clip_loop_playback": "NOT_RUN in this V3 job; no reviewed endpoint supplied",
+    "actual_llm_model": "NOT_RUN",
+    "whisper_private_model_inference": "NOT_RUN",
+    "release_qualification": false,
+    "qualification_transfer": false
+  },
+  "completed_job_log": {
+    "sha256": "d517870445bcabb43942b13cf510afaef3f3c5b052a557e112b2e812deed92ed",
+    "bytes": 481218
+  },
+  "artifacts": [
+    {
+      "id": 15248118048,
+      "name": "carr-v3-evidence-46098474723-1",
+      "size_in_bytes": 209549,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248118048",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248118048/zip",
+      "expired": false,
+      "created_at": "2026-11-28T04:30:51Z",
+      "expires_at": "2026-12-05T04:30:50Z",
+      "updated_at": "2026-11-28T04:30:51Z",
+      "digest": "sha256:8a7fdf2e8d1024625f94f82e8508b3238f23e1112021407624e43a143f353211",
+      "workflow_run": {
+        "id": 46098474723,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-endpoint-evaluation-20261127",
+        "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee"
+      }
+    }
+  ]
+}

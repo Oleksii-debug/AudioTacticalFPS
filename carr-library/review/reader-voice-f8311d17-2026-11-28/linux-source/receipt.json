@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105049484,
+  "run_attempt": 1,
+  "event": "push",
+  "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+  "job_id": 140855810772,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105049484/job/140855810772",
+  "mode": "linux-source",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T04:40:22Z",
+  "completed_at": "2026-11-28T04:41:52Z",
+  "workflow_blob": "b683358bf3325749f852040cef8a9e704c4c414a",
+  "actual_tests": {
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "strict_no_skips": true,
+    "selected_modules": 21,
+    "per_module_verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_voice_actions.py",
+        "passed": 38,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_synthesis.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_job_review.py",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_synthesis_admission.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_playback.py",
+        "passed": 108,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_operation_progress.py",
+        "passed": 55,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_media_quiet.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_studio_progress_isolation.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_progress_speech.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_model_voices.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_registered_studio_voices.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_reader_synthesis_backup.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_session.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_reading_tabs.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_tabs.py",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_save_all_access.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_reading_tabs_backup.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_source.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_voice_preferences_dialog.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_voice_preferences.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_voice_preferences_backup.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "actual_native": {
+    "status": "NOT_APPLICABLE",
+    "checks": 0
+  },
+  "inventory": {
+    "modules": 380,
+    "full_row_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "full_identity_file": "application-source.json"
+  },
+  "artifact": {
+    "id": 15248890649,
+    "name": "carr-reader-voice-controls-ubuntu-24.04-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+    "size_in_bytes": 22950,
+    "sha256": "fe04b1f734654186b919e1cf733c825095cc3841055eb3a6f49932f8ad90b478"
+  },
+  "log": {
+    "kind": "Complete unchanged decoded terminal Actions job log",
+    "sha256": "b32773427ef7952786042ca984145c9dc01757242d22ba6214bac3ea0c267971",
+    "bytes": 336456
+  },
+  "limitations": [
+    "All results belong only to the exact listed f831 job.",
+    "No future canonical CSL or silence inspection changes are present or qualified.",
+    "Linux results do not establish Windows locale/device behavior, NVDA, private assets/rights or whole-platform acceptance."
+  ]
+}

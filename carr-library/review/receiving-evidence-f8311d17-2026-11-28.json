@@ -99,6 +99,46 @@
       "sparse_tree": "f09ddbc2f0d8d7826d35fadd26f51a796df9648d",
       "kind": "immutable already-uploaded native navigation, loop, capture and bundle diagnostics; not MAIN completion",
       "qualification": "carr-library/review/receiving-10e3-native-2026-11-28/provenance.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105052711,
+      "jobs": [
+        140855821121,
+        140855821346
+      ],
+      "sparse_tree": "09a0fe1096fba414da4d9afb7783809b0f9b3394",
+      "kind": "terminal Linux/Windows standard installation and actual native Windows Install / Repair / Uninstall",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/standard-installation/manifest.json"
+    },
+    {
+      "tested_source": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+      "run": 46098474723,
+      "job": 140835231498,
+      "sparse_tree": "33a64d1548327d7c7ddecca225bf7b2568d2d8d3",
+      "kind": "terminal failed V3; source6662PASS and24old clip-fixture setup errors; no timeout",
+      "qualification": "carr-library/review/receiving-5d19dde7-2026-11-28/v3-terminal/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105049484,
+      "jobs": [
+        140855810561,
+        140855810800,
+        140855810768,
+        140855810772
+      ],
+      "sparse_tree": "56da110c0b89989837040638d6922dcb2aacd71c",
+      "kind": "all4terminal Reader modes with identical380-row inventories",
+      "qualification": "carr-library/review/f831-reader-and-linux-components-2026-11-28.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105051241,
+      "job": 140855816075,
+      "sparse_tree": "56da110c0b89989837040638d6922dcb2aacd71c",
+      "kind": "terminal Linux source component contracts",
+      "qualification": "carr-library/review/component-f8311d17-2026-11-28/linux-source/receipt.json"
     }
   ],
   "application_changes": [],

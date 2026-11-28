@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b",
+  "reader": {
+    "run_id": 46105049484,
+    "conclusion": "success",
+    "modes": [
+      {
+        "mode": "windows-installed",
+        "job_id": 140855810561,
+        "passed": 746,
+        "failed": 0,
+        "skipped": 0,
+        "native_checks": 80
+      },
+      {
+        "mode": "windows-source",
+        "job_id": 140855810800,
+        "passed": 746,
+        "failed": 0,
+        "skipped": 0,
+        "native_checks": 80
+      },
+      {
+        "mode": "linux-installed",
+        "job_id": 140855810768,
+        "passed": 746,
+        "failed": 0,
+        "skipped": 0,
+        "native_checks": 0
+      },
+      {
+        "mode": "linux-source",
+        "job_id": 140855810772,
+        "passed": 746,
+        "failed": 0,
+        "skipped": 0,
+        "native_checks": 0
+      }
+    ],
+    "all_four_actual_full_inventories_equal": true,
+    "actual_python_modules": 380,
+    "actual_full_row_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971"
+  },
+  "components": {
+    "run_id": 46105051241,
+    "scope": "Two Linux modes only; Windows modes still active at receipt creation",
+    "source": {
+      "job_id": 140855816075,
+      "passed": 2893,
+      "failed": 0,
+      "skipped": 0,
+      "modules": 81
+    },
+    "installed": {
+      "job_id": 140855815854,
+      "passed": 2893,
+      "subtests_passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "selected_modules": 81
+    }
+  },
+  "new_files": [
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/linux-source/job.log",
+      "git_blob": "8f58006216638c4b18abbb3dea429e142975acd0",
+      "sha256": "b32773427ef7952786042ca984145c9dc01757242d22ba6214bac3ea0c267971",
+      "bytes": 336456
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/linux-source/application-source.json",
+      "git_blob": "7aa24412b84dc270f724184965a1681753c1b8d5",
+      "sha256": "9334c1e387c5664eb5b6cf858d4a385501b5a7d744a62f64cd0e8ba39d115832",
+      "bytes": 67215
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/linux-source/receipt.json",
+      "git_blob": "d128f01accc0c849510bcd35283f805eac1849aa",
+      "sha256": "d29070f29bbd470f13459709f402efa9cb9bc0617126c911d84ef1346910feed",
+      "bytes": 5732
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/linux-source/job.log",
+      "git_blob": "2f6fb9ea077452c81a0b92cf8e2361ad245c70eb",
+      "sha256": "04edf21fabe17590efdc396f5d0c134f3f739cc20c416dbf32679a1f676f3328",
+      "bytes": 220050
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/linux-source/application-source.json",
+      "git_blob": "8dbd7228dc193207a5a9c8a1e41f79984fe3bfea",
+      "sha256": "3a28dca782788cc3223c966fac8370b3851bf1655dc20ea32822745987ffe7cd",
+      "bytes": 249
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/linux-source/receipt.json",
+      "git_blob": "0a0827cc62407656445588e0809b8a5343575f2e",
+      "sha256": "057680535e2d2ea47ae76a0a859c61d3b97bda2883df9a997724fa8f133721e0",
+      "bytes": 17422
+    }
+  ],
+  "earlier_exact_evidence_trees": [
+    "e22356d973b83065c041de285b3858fd3aa1bccd",
+    "9020162f22f9ea63206c224095c771d039a33a87"
+  ],
+  "limits": [
+    "No old-head PASS transferred.",
+    "No new production/source changes in this evidence tree.",
+    "No Windows component/native clip/venv result is claimed before its own terminal receipt.",
+    "Future silence inspection work and the canonical CSL patch remain NOT_RUN."
+  ]
+}

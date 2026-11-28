@@ -1,0 +1,204 @@
+{
+  "id": 140835231498,
+  "run_id": 46098474723,
+  "workflow_name": "CARR V3 local studio and assistant",
+  "head_branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474723",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgym8XCg",
+  "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140835231498",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474723/job/140835231498",
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-11-28T02:31:13Z",
+  "started_at": "2026-11-28T02:52:09Z",
+  "completed_at": "2026-11-28T04:30:55Z",
+  "name": "native-studio",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T02:52:10Z",
+      "completed_at": "2026-11-28T02:52:11Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T02:52:11Z",
+      "completed_at": "2026-11-28T02:52:19Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T02:52:19Z",
+      "completed_at": "2026-11-28T02:52:19Z"
+    },
+    {
+      "name": "Install exact application and native desktop dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T02:52:19Z",
+      "completed_at": "2026-11-28T02:53:11Z"
+    },
+    {
+      "name": "Prepare explicitly pinned private test audio runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T02:53:11Z",
+      "completed_at": "2026-11-28T02:53:26Z"
+    },
+    {
+      "name": "Prepare pinned OCR for required recognition and backup acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T02:53:26Z",
+      "completed_at": "2026-11-28T02:55:24Z"
+    },
+    {
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T02:55:24Z",
+      "completed_at": "2026-11-28T02:55:25Z"
+    },
+    {
+      "name": "Verify installed reader, translation, voice and delivery services",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T02:55:25Z",
+      "completed_at": "2026-11-28T03:01:51Z"
+    },
+    {
+      "name": "Verify installed backup and import publication integrity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T03:01:51Z",
+      "completed_at": "2026-11-28T03:08:45Z"
+    },
+    {
+      "name": "Require actual Windows recording process ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T03:08:46Z",
+      "completed_at": "2026-11-28T03:08:46Z"
+    },
+    {
+      "name": "Require native voice preferences and fresh inventory review",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T03:08:46Z",
+      "completed_at": "2026-11-28T03:08:49Z"
+    },
+    {
+      "name": "Require source and installed native reading tabs and focus",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T03:08:49Z",
+      "completed_at": "2026-11-28T03:09:04Z"
+    },
+    {
+      "name": "Real native SAPI, scene production, keyboard controls and restart",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T03:09:04Z",
+      "completed_at": "2026-11-28T03:09:46Z"
+    },
+    {
+      "name": "Require progress isolation and actual selected-voice rendering regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T03:09:46Z",
+      "completed_at": "2026-11-28T03:10:19Z"
+    },
+    {
+      "name": "Require Advanced translation permission and checkpoint regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T03:10:19Z",
+      "completed_at": "2026-11-28T03:10:35Z"
+    },
+    {
+      "name": "Require local proposal scope and review regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T03:10:35Z",
+      "completed_at": "2026-11-28T03:10:41Z"
+    },
+    {
+      "name": "Native local proposal and actual loopback HTTP with external egress blocked",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T03:10:41Z",
+      "completed_at": "2026-11-28T03:10:52Z"
+    },
+    {
+      "name": "Validate local services, DSP, integrity and provider permission boundaries",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 18,
+      "started_at": "2026-11-28T03:10:52Z",
+      "completed_at": "2026-11-28T04:30:50Z"
+    },
+    {
+      "name": "Keep source and test evidence only",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-11-28T04:30:50Z",
+      "completed_at": "2026-11-28T04:30:51Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 37,
+      "started_at": "2026-11-28T04:30:51Z",
+      "completed_at": "2026-11-28T04:30:51Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 38,
+      "started_at": "2026-11-28T04:30:51Z",
+      "completed_at": "2026-11-28T04:30:53Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 39,
+      "started_at": "2026-11-28T04:30:53Z",
+      "completed_at": "2026-11-28T04:30:53Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140835231498",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000489887,
+  "runner_name": "GitHub Actions 1000489887",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}
