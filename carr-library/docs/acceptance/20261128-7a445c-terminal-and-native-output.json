@@ -1,0 +1,717 @@
+{
+  "schema": "carr-focused-acceptance/1",
+  "recorded_at_utc": "2026-11-28T01:41:24Z",
+  "status": "INCOMPLETE_SOURCE_CORRECTIONS_PREPARED_NATIVE_OUTPUT_PREREQUISITE_UNSATISFIED",
+  "evidence_scope": "Actual completed jobs retain their own exact source identities. Overlapping selections and repeated guards are not unique aggregate test counts. Source review is distinct from execution.",
+  "ordinary_source": {
+    "commit": "7a445cfa0701465facc80fe5dee226ba628aa4d6",
+    "tree": "b88e627d10ad397cc2d0ec9ce67b59155e257800"
+  },
+  "job_counts": {
+    "successful": 17,
+    "failed": 5,
+    "allTerminal": 22
+  },
+  "successful_jobs": [
+    {
+      "name": "lifetime",
+      "run": 46087584857,
+      "job": 140800692918,
+      "passed": 277,
+      "subtests": 37,
+      "nativeSource": 26,
+      "nativeInstalled": 26,
+      "launcher": 9,
+      "logSha256": "87d0aecd4cde9c9e0f4fb22cfd91bdeb848b3a8414f689b88d9ad30f14376e66",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087584857/job/140800692918"
+    },
+    {
+      "name": "readingSource",
+      "run": 46087590085,
+      "job": 140800709355,
+      "passed": 246,
+      "suites": 12,
+      "logSha256": "c32c320e4d5e66017d262870b46dc0b32ee557a24752be21960afa5587ee349b",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590085/job/140800709355"
+    },
+    {
+      "name": "ocr",
+      "run": 46087590079,
+      "job": 140800709227,
+      "passed": 133,
+      "suites": 8,
+      "logSha256": "57c1007260d07404394821e99835608712b72adb94ca1aa738bc796a9767670b",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590079/job/140800709227"
+    },
+    {
+      "name": "zig",
+      "run": 46087590089,
+      "job": 140800709145,
+      "native": 9,
+      "logSha256": "e9193172ba11c887d0303adcc60e3b8f44f0d07512e875adc2b6950841870e5b",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590089/job/140800709145"
+    },
+    {
+      "name": "production",
+      "run": 46087590080,
+      "job": 140800709211,
+      "passed": 2165,
+      "suites": 109,
+      "directPassed": 987,
+      "intendedPlatformDeselection": 1,
+      "logSha256": "d38d063423ce142b1637eec8f6b7c0635d9ee1133d6060db56c63c11e60aff05",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590080/job/140800709211"
+    },
+    {
+      "name": "asrLinux",
+      "run": 46087590093,
+      "job": 140800711781,
+      "passed": 734,
+      "suites": 16,
+      "logSha256": "dab0b7a5101573d3253dea680e9f1790260f847d64986d9d0ea882ccdf414489",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590093/job/140800711781"
+    },
+    {
+      "name": "reading_native",
+      "scope": "reading_native",
+      "run": 46087590085,
+      "job": 140800709090,
+      "conclusion": "success",
+      "log_chars": 46791,
+      "log_sha256": "0c765120c06feb93fe194143d322914489dbfba3222fb5b681acc1e60efb8556",
+      "strict": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 0,
+      "native": [
+        {
+          "verdict": "PASS",
+          "checks": 55
+        }
+      ],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590085/job/140800709090"
+    },
+    {
+      "name": "templates_native",
+      "scope": "templates_native",
+      "run": 46087590100,
+      "job": 140800709208,
+      "conclusion": "success",
+      "log_chars": 74756,
+      "log_sha256": "6b0653f8baf7513aa1b09576374b3f1b426e9fe6e06bd1c3292cc1dc3acc3a3d",
+      "strict": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 0,
+      "native": [
+        {
+          "verdict": "PASS",
+          "checks": 20
+        },
+        {
+          "verdict": "PASS",
+          "checks": 40
+        }
+      ],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590100/job/140800709208"
+    },
+    {
+      "name": "templates_source",
+      "scope": "templates_source",
+      "run": 46087590100,
+      "job": 140800709471,
+      "conclusion": "success",
+      "log_chars": 64130,
+      "log_sha256": "60bb89bdc95e9f6d2590d065e7490a4f16e15a0ea88397271cd086dff77be2fb",
+      "strict": {
+        "passed": 186,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 9,
+      "native": [],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "identity_cases": 12,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590100/job/140800709471"
+    },
+    {
+      "name": "msvc",
+      "scope": "msvc",
+      "run": 46087590089,
+      "job": 140800709299,
+      "conclusion": "success",
+      "log_chars": 34189,
+      "log_sha256": "6032e43bcd314236f8a6f8f4c3311d4143c28bd3baf160a1bb2192411603f776",
+      "strict": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 0,
+      "native": [
+        {
+          "verdict": "passed",
+          "checks": 9
+        }
+      ],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590089/job/140800709299"
+    },
+    {
+      "name": "quick",
+      "scope": "quick",
+      "run": 46087590295,
+      "job": 140800710137,
+      "conclusion": "success",
+      "log_chars": 209603,
+      "log_sha256": "b44ac7c46e024858efb9bf2cd55ae67ab7d0b24c3ec405b5128f0075489df637",
+      "strict": {
+        "passed": 2556,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 106,
+      "native": [],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590295/job/140800710137"
+    },
+    {
+      "name": "asr_windows",
+      "scope": "asr_windows",
+      "run": 46087590093,
+      "job": 140800711975,
+      "conclusion": "success",
+      "log_chars": 91158,
+      "log_sha256": "2b44ec34db61134751191f9f0afb479c2f47f907ac3dbeadd5f16bc7227c94d5",
+      "strict": {
+        "passed": 733,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 16,
+      "native": [
+        {
+          "verdict": "PASS",
+          "checks": 15
+        },
+        {
+          "verdict": "PASS",
+          "checks": 31
+        }
+      ],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "prior_native_barrier_checks": 6,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590093/job/140800711975"
+    },
+    {
+      "name": "keyboard",
+      "scope": "keyboard",
+      "run": 46087590271,
+      "job": 140802113875,
+      "conclusion": "success",
+      "log_chars": 62225,
+      "log_sha256": "95d5b788c827a4a2267a1c96781de474ef1766513b2abceb59b92b9a8383cd09",
+      "strict": {
+        "passed": 255,
+        "failed": 0,
+        "skipped": 0
+      },
+      "suites": 7,
+      "native": [
+        {
+          "verdict": "PASS",
+          "checks": 34
+        },
+        {
+          "verdict": "PASS",
+          "checks": 23
+        },
+        {
+          "verdict": "PASS",
+          "checks": 14
+        },
+        {
+          "verdict": "PASS",
+          "checks": 20
+        }
+      ],
+      "qualification": "Actual completed job on7a; overlapping selections not unique total",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590271/job/140802113875"
+    },
+    {
+      "name": "v3Source1",
+      "run": 46087590121,
+      "job": 140800711837,
+      "canonical_suites": 69,
+      "canonical_passed": 1312,
+      "guards": 22,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "8de6a9985e5ece1dd759ac8ecd674b66a48af312488de52cf39b3753764dc42b",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590121/job/140800711837"
+    },
+    {
+      "name": "v3Source2",
+      "run": 46087590121,
+      "job": 140800711859,
+      "canonical_suites": 69,
+      "canonical_passed": 1679,
+      "guards": 22,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "39d57ed976372ff9e53c7887bfa20e4085a8199faa3e86120cd9314409966284",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590121/job/140800711859"
+    },
+    {
+      "name": "v3Source3",
+      "run": 46087590121,
+      "job": 140800711958,
+      "canonical_suites": 1,
+      "canonical_passed": 17,
+      "guards": 22,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "c6f7c39390afbd41d5997ed1ec4cc6c2862e546534b27770734daac732f3e89d",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590121/job/140800711958"
+    },
+    {
+      "name": "v3Broad1",
+      "run": 46087590121,
+      "job": 140800711621,
+      "selectors": 4,
+      "passed": 2315,
+      "failed": 0,
+      "skipped": 18,
+      "pytest_seconds": 1420.69,
+      "coverage_guards": 26,
+      "skip_identity_scope": "18 optionalFlite expectedfrompreservedguards; freshnodeIDsnotdecoded",
+      "logSha256": "f15f4a252c6e1b6a76a6cf82e7580870d4439ea192f99c7313137bc5c299fd8a",
+      "conclusion": "success",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590121/job/140800711621"
+    }
+  ],
+  "failed_jobs": [
+    {
+      "name": "reconciled",
+      "run": 46087590080,
+      "job": 140800708935,
+      "passed": 3225,
+      "failed": 2,
+      "skipped": 0,
+      "suites": 95,
+      "path": "tests/ingest/test_import_publication_point.py",
+      "correction": "f36f1c4b77004cbf89251b5da1fe33a643237d96",
+      "correctedExecution": {
+        "head": "344a1be665ad442f918554e7c7e62ce40c2bcad2",
+        "run": 46088715505,
+        "job": 140804294140,
+        "passed": 2,
+        "scope": "focused publication-point suite only; ordinary reconciled gate awaits successor"
+      },
+      "logSha256": "10c3b46de6a0f42583c81fd38319b19f5f35bf645ca3aa4b37bf7dcf26f151d7",
+      "conclusion": "failure",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590080/job/140800708935"
+    },
+    {
+      "name": "bibliography",
+      "run": 46087590087,
+      "job": 140800709366,
+      "passed": 1252,
+      "failed": 4,
+      "skipped": 0,
+      "suites": 29,
+      "native_checks": 69,
+      "logSha256": "d542f97923a1baae9515089c1a43e77dd6276f1b93b923b751c02c8f41eb0802",
+      "correction": "9e8624cd3c5333f0138c4c147a6bed83c3c7d8c3",
+      "correctedExecution": {
+        "head": "2ed50a1e5236f19efbfc755a59baf356fd7ca072",
+        "run": 46091381260,
+        "job": 140812835954,
+        "scope": "focused replayidentity22+TXTregistration7 passed; entire bibliography awaits successor"
+      },
+      "conclusion": "failure",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590087/job/140800709366"
+    },
+    {
+      "name": "v3Native",
+      "run": 46087590121,
+      "job": 140800711793,
+      "strict_passed": 463,
+      "strict_suites": 28,
+      "provider_passed": 289,
+      "installed_recovery": {
+        "passed": 807,
+        "failed": 2,
+        "skipped": 0
+      },
+      "failure_path": "tests/ingest/test_import_replay_identity.py",
+      "correction": "9e8624cd3c5333f0138c4c147a6bed83c3c7d8c3",
+      "native_epub": "NOT_REACHED",
+      "logSha256": "1e1de2b3e5b94c242acc2f7f8de99d506d59083c50028443adb9e833b1b3115d",
+      "conclusion": "failure",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590121/job/140800711793"
+    },
+    {
+      "name": "v3Broad2",
+      "run": 46087590121,
+      "job": 140800711906,
+      "selectors": 16,
+      "passed": 799,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_seconds": 939.53,
+      "coverage_guards": 26,
+      "correction": "9e8624cd3c5333f0138c4c147a6bed83c3c7d8c3",
+      "failure_scope": "import_replay_identity[txt/pdf] initialcancellation expectations only",
+      "logSha256": "f67bc99f57da257327da3b9c2ed23269c7bc2b99ab5f33aad9e547c9cde8f0cb",
+      "conclusion": "failure",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590121/job/140800711906"
+    },
+    {
+      "name": "integratedWindows",
+      "run": 46087590271,
+      "job": 140802113695,
+      "status": "failure",
+      "failed_steps": [
+        35,
+        52,
+        56
+      ],
+      "source_step56_started": "2026-11-28T00:50:12Z",
+      "phase_artifact": {
+        "id": 15240359643,
+        "bytes": 103353,
+        "sha256": "0083a4a428ee17ed6b5149909c3960007f1f1c391bcaf43124ba7449a8fc2d3b",
+        "validated_members": 97,
+        "total_members": 98,
+        "excluded": "local-transport.xml wrongdeliveredhash/19bytesshort"
+      },
+      "failure": "Bothnativechainsfirstfail EPUBstage2, same suppressed MCIstart errorpattern",
+      "book_v3_groups": 16,
+      "book_first_result_seconds": 50.406,
+      "document_native_checks": 28,
+      "qualification": "Actual completed failed7a job; source402reports are partial404selection. No finalPASS. Earlierphase97/98memberproof remains separatelyqualified.",
+      "conclusion": "failure",
+      "completedAt": "2026-11-28T01:25:27Z",
+      "source": {
+        "selectors": 404,
+        "distinct": 403,
+        "reports": 402,
+        "suitePasses": 389,
+        "suiteFailures": 13,
+        "passed": 9865,
+        "failed": 61,
+        "skipped": 0,
+        "unreported": [
+          "tests/search/test_federated_advanced.py",
+          "tests/security/test_portable_handoff.py"
+        ],
+        "phaseStarted": "2026-11-28T00:50:12Z",
+        "phaseEnded": "2026-11-28T01:25:20Z",
+        "outerMinutes": 35
+      },
+      "logSha256": "3215de6d52346076c2f9e26077d05718667d383d4cd4e298e61ad308a4dbcd46",
+      "logCharacters": 1515973,
+      "artifact": {
+        "id": 15241383593,
+        "bytes": 2333945,
+        "sha256": "b7e13dfc3e8b7732edba229c95074101aabee3018dc1a2af9a51c31e8acff6dc",
+        "status": "metadata read; raw archive not decoded"
+      },
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590271/job/140802113695"
+    }
+  ],
+  "full_windows_source_failures": [
+    {
+      "path": "tests/e2e/test_epub_library.py",
+      "passed": 7,
+      "failed": 1,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/reader/test_reading_desk.py",
+      "passed": 30,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ui/test_notebook_search_actions.py",
+      "passed": 14,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ui/test_desktop_result_modes.py",
+      "passed": 8,
+      "failed": 15,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ui/probe_catalog_insights_actions.py",
+      "passed": 34,
+      "failed": 1,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ingest/test_import_metadata_shape.py",
+      "passed": 52,
+      "failed": 6,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ingest/test_txt_replay_registration.py",
+      "passed": 5,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ingest/test_terminal_replay_registration.py",
+      "passed": 7,
+      "failed": 4,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ingest/test_import_publication_point.py",
+      "passed": 0,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/ingest/test_import_replay_identity.py",
+      "passed": 20,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/storage/test_engine_settings_dordiai_backup.py",
+      "passed": 10,
+      "failed": 12,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/storage/test_studio_input_backup.py",
+      "passed": 10,
+      "failed": 9,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "path": "tests/storage/test_composed_recovery.py",
+      "passed": 0,
+      "failed": 3,
+      "skipped": 0,
+      "pytest_exit": 1
+    }
+  ],
+  "canonical_inventory": {
+    "suites": 139,
+    "partitions": [
+      69,
+      69,
+      1
+    ],
+    "passed": 3008,
+    "failed": 0,
+    "skipped": 0,
+    "book_batch_seconds": 495.77,
+    "coverage_guards_per_job": 22,
+    "guards_are_repeated": true
+  },
+  "broad_inventory": {
+    "selectors": 20,
+    "partitions": [
+      4,
+      16
+    ],
+    "passed": 3114,
+    "failed": 2,
+    "skipped": 18,
+    "skip_classification": "The remaining 18 are consistent with the preserved optional-Flite guards; fresh 7a JUnit node IDs were not decoded. No zero-skip claim.",
+    "coverage_guards_per_job": 26
+  },
+  "native_output_diagnostic": {
+    "commit": "2ed50a1e5236f19efbfc755a59baf356fd7ca072",
+    "tree": "28ffd173ac6f679dcce52fb4e3a2a7ed3905b370",
+    "run": 46091381260,
+    "job": 140812835954,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46091381260/job/140812835954",
+    "conclusion": "failure",
+    "completed_at_utc": "2026-11-28T01:12:59Z",
+    "log_characters": 117251,
+    "log_utf8_bytes": 117253,
+    "log_sha256": "8fd268063329869f31387834d925e5889a50182c3243fdc1aaef76bbc2a03c7b",
+    "artifact": {
+      "id": 15241054191,
+      "bytes": 25063,
+      "sha256": "8c2d458b84694a334dea422d8e66b9b55897d58b299c246248b3423d05bdf3d2"
+    },
+    "services_before": {
+      "AudioEndpointBuilder": "Stopped",
+      "Audiosrv": "Stopped"
+    },
+    "services_after": {
+      "AudioEndpointBuilder": "Running",
+      "Audiosrv": "Running"
+    },
+    "cim_sound_devices": [],
+    "canonical_outputs": [],
+    "waveOutGetNumDevs": 0,
+    "pcm16_queries": [
+      {
+        "sample_rate": 24000,
+        "channels": 1,
+        "status": 2,
+        "name": "MMSYSERR_BADDEVICEID",
+        "query_only": true
+      },
+      {
+        "sample_rate": 24000,
+        "channels": 2,
+        "status": 2,
+        "name": "MMSYSERR_BADDEVICEID",
+        "query_only": true
+      },
+      {
+        "sample_rate": 44100,
+        "channels": 1,
+        "status": 2,
+        "name": "MMSYSERR_BADDEVICEID",
+        "query_only": true
+      },
+      {
+        "sample_rate": 44100,
+        "channels": 2,
+        "status": 2,
+        "name": "MMSYSERR_BADDEVICEID",
+        "query_only": true
+      },
+      {
+        "sample_rate": 48000,
+        "channels": 1,
+        "status": 2,
+        "name": "MMSYSERR_BADDEVICEID",
+        "query_only": true
+      },
+      {
+        "sample_rate": 48000,
+        "channels": 2,
+        "status": 2,
+        "name": "MMSYSERR_BADDEVICEID",
+        "query_only": true
+      }
+    ],
+    "epub": {
+      "native_error": 326,
+      "error_meaning": "MCIERR_WAVE_OUTPUTSUNSUITABLE",
+      "message": "No wave device is installed that can play files in the current format.",
+      "before_cleanup": {
+        "owner_open": true,
+        "cancelled": true,
+        "pending": false,
+        "prepared": false,
+        "ticket": [
+          0,
+          3
+        ]
+      },
+      "gate": "FAIL"
+    },
+    "standalone_mci": {
+      "native_error": 326,
+      "gate": "FAIL"
+    },
+    "completed_strict_source": {
+      "suites": 13,
+      "passed": 346,
+      "failed": 0,
+      "skipped": 0,
+      "reader_ebook_audio": 62,
+      "new_owner_error_regressions": 7
+    },
+    "composed_source_at_that_phase": "Three cases collected, but no terminal report before the combined three-minute phase ended. No result inferred.",
+    "installed_python_files_equal": 341,
+    "native_document_checks": 28,
+    "conclusion_scope": "Starting the existing Windows audio services did not expose a render endpoint on this runner. Required playback remains failed; source fixtures cannot qualify actual output. No driver, license, signing-policy, reboot or security changes were performed.",
+    "official_error_reference": "https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Media/Multimedia/constant.MCIERR_WAVE_OUTPUTSUNSUITABLE.html"
+  },
+  "composed_diagnostic": {
+    "commit": "ef1d195b31f4951496773d3770fe1884848b8b6f",
+    "tree": "8efc6b1f2979563ed7ca5e008c6b544b14801e54",
+    "run": 46092805996,
+    "job": 140817358866,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46092805996/job/140817358866",
+    "conclusion": "failure",
+    "completed_at_utc": "2026-11-28T01:25:17Z",
+    "log_characters": 77671,
+    "log_sha256": "b638fde3554a699cf3dd54b33a3933c32f577fa411bdcdcb6c19da5252139c0c",
+    "strict_source": {
+      "suites": 1,
+      "passed": 0,
+      "failed": 3,
+      "skipped": 0,
+      "pytest_seconds": 7.35
+    },
+    "installed_python_files_equal": 341,
+    "native": "NOT_RUN",
+    "findings": [
+      "The real isolated stdlib supplied-worker environment reaches backup promptly.",
+      "The current producer writes version4/sidecars; the fixture demanded legacy version5/state.",
+      "Generated inclusion rejected an arbitrary unreceipted filename, as required by the typed cache contract.",
+      "The Path.open observer did not observe the actual os.open/fdopen second source read; cancellation was not triggered."
+    ],
+    "scope": "Actual failed diagnostic; no pass inferred from fast completion."
+  },
+  "reviewed_successor": {
+    "commit": "22ae69319a8ad822b81786c2a8233b3c75dfad49",
+    "tree": "126cb570054473db08cd68210f8f16a7135cdc16",
+    "state": "PREPARED_NOT_PUBLISHED",
+    "execution": "NOT_RUN",
+    "components": [
+      "508400f91c01c2f381c842e07e2e14130122eb7b",
+      "b678ce23c53757480424e2e6f5a9b218af41d4b8",
+      "f36f1c4b77004cbf89251b5da1fe33a643237d96",
+      "9e8624cd3c5333f0138c4c147a6bed83c3c7d8c3",
+      "c1b0dc1595665b84b7fe80a9349353c6a5c1045d",
+      "84cb9364ff11b0fa885d1b903fc3b7dc76fb3c31",
+      "bd367d65b856dd3310dc5cf5b5d1411f4049db4a",
+      "d03c73e9e379570e688db45c3f120454eddd7cf1",
+      "d427d6c6fa689b4b59daf177c8a39e9fb0510ae6",
+      "e5d461ee51bdcf5ad3ff574850df3b6dab9c3823"
+    ],
+    "scope": "19 changed paths from7a,1351files. Ordinary workflows unchanged, diagnostic workflows/ancestry excluded. Owner error reporting, passive Studio draft adapter, numeric validation and observed fixture contracts require focused then complete successor execution."
+  },
+  "qualification_limits": [
+    "No complete-head PASS, release, merge, native playback qualification or new provider/model quality is established by this checkpoint.",
+    "Actual Windows11/NVDA/manual listening and device qualification remain separate from hosted Windows2022 automation.",
+    "Private model rights/quality and feature-by-language coverage need the supplied assets; a language inventory is not quality acceptance.",
+    "Validation byte ceilings are not measured large-corpus capacity.",
+    "CI source wheels and launcher checks are not Authenticode signing or a qualified public installer.",
+    "The same endpointless hosted profile must not receive repeated native probes as a substitute for an available output."
+  ]
+}
