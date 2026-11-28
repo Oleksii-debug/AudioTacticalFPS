@@ -1,0 +1,564 @@
+{
+  "schema": "carr-import-center-audit-inventory-erratum/1",
+  "status": "CORRECTED_SOURCE_PROVENANCE_NO_RUNTIME_CLAIM",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "erratum_parent": {
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220"
+  },
+  "original_record": {
+    "path": "carr-library/docs/evidence/import-center-scroll-layout-repair-20261128.json",
+    "git_blob": "d6b802aaeb7dd66b08063713c40c9f9eecd9c3c6",
+    "sha256": "5517ed8e52cf89d62c240ddb8ac50319c0e1dd0926fb89689b17f8e97962e10d",
+    "component_commit": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+    "claimed_audit_commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "claimed_audit_tree": "f7e60bc176f53e810a046640394766fc91209ad7",
+    "field": "dependent_native_audit.inventory_sha256",
+    "recorded_digest": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+    "disposition": "This digest incorporated a stale body for one path and must not be represented as the current 2701 inventory. The immutable original record is preserved and corrected by this erratum."
+  },
+  "error": {
+    "mechanism": "A path-keyed local body cache supplied the pre-fix search probe while row metadata was taken from the 2701 tree. The resulting row combined the current Git blob identity with the previous body's SHA256.",
+    "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+    "stale_body": {
+      "freshly_read_at": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+      "git_blob": "a71a2f0e553a222817d485c8602f1bd85abba6ad",
+      "sha256": "d3a32334721fbfacc7d7d0b192c8406d52813bf731d909343234be80c7b1d11a"
+    },
+    "current_2701_body": {
+      "freshly_read_at": "2701b5717360996d706199e370ce1d1cc47f3a61",
+      "git_blob": "3cff32ca38b7097a943cf92d36512356076dede6",
+      "sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8"
+    },
+    "changed_rows": 1,
+    "exact_row_correction": {
+      "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+      "before": {
+        "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+        "sha": "3cff32ca38b7097a943cf92d36512356076dede6",
+        "sha256": "d3a32334721fbfacc7d7d0b192c8406d52813bf731d909343234be80c7b1d11a"
+      },
+      "after": {
+        "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+        "sha": "3cff32ca38b7097a943cf92d36512356076dede6",
+        "sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8"
+      }
+    },
+    "exact_reconstruction": "Replacing only the corrected search row's sha256 with the stale value reconstructs the original 88-row serialized digest exactly. All other 87 rows match fresh immutable reads."
+  },
+  "encoding": {
+    "hash": "SHA-256",
+    "bytes": "UTF-8 without BOM, no trailing newline",
+    "serialization": "Compact JSON.stringify(array), no indentation or separator spaces. Array is in the listed lexicographic path order. Every row is constructed with keys in this exact insertion order: path, sha, sha256. sha is the Git SHA-1 blob identity; sha256 is the file-content digest.",
+    "expression": "JSON.stringify(rows.map(row => ({path: row.path, sha: row.sha, sha256: row.sha256})))",
+    "paths_and_values": "All serialized row strings are ASCII.",
+    "corrected_parent_serialized_bytes": 16593
+  },
+  "corrected_2701_inventory": {
+    "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
+    "method": "88 fresh immutable fetch_file reads at 2701; every returned Git blob matched the recursive 2701 tree. No body cache was used for this corrected inventory.",
+    "entries": 88,
+    "sha256": "a286ab1f4a2d072c2b60d80bdd643d18055b139266f79c76339bf2fe4d2089c0",
+    "rows": [
+      {
+        "path": "carr-library/scripts/incremental_native_gate.py",
+        "sha": "9cf18b6fec9714fbaf54e45cceb52bcd9e02b154",
+        "sha256": "24c04511aaf3f2089a9f803cb85ca2c8e485c2d94822756bca367de28471d227"
+      },
+      {
+        "path": "carr-library/scripts/native_sapi_acceptance.py",
+        "sha": "d7b2a9a080f4ffab4b11b99f1915895f9984cac9",
+        "sha256": "da93340341d71f0b8be1f720275f7dc934106eae70a7dc48f88a0032296a0243"
+      },
+      {
+        "path": "carr-library/scripts/ocr_catalog_smoke.py",
+        "sha": "b97a945bf5121c9155e22e5a7371b6f7ffdb17d2",
+        "sha256": "e3f67cf4dfcd6ae21dbe29d61a4524a23031346655f58ee5f6ce1c17f48f1b92"
+      },
+      {
+        "path": "carr-library/scripts/r7_native_gate.py",
+        "sha": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+        "sha256": "45fc302646b0c6c4e6fa0783fabe6fafcecf43477360da137286c81af6353a5e"
+      },
+      {
+        "path": "carr-library/scripts/reader_interactive_native_gate.py",
+        "sha": "7e415972d50ae4851934e60e585b739add6242e4",
+        "sha256": "4d2a23ea94e0fb5c14c3ddf987eaf258cc77e8f4a6f8d913fa485f115dfdac2b"
+      },
+      {
+        "path": "carr-library/scripts/windows_academic_smoke.py",
+        "sha": "5c15a13059193578a785ab977918a90626d1b5e0",
+        "sha256": "6f2ead3f572836c44a94fc3fb2105874942c8632b1ac721437bea4b58ed9f200"
+      },
+      {
+        "path": "carr-library/scripts/windows_assistant_interactive_smoke.py",
+        "sha": "17986c922e7c98790aa9e97e63aee6b97acbfd68",
+        "sha256": "fee798933125bca57c6ca71689a91094431edd4aaa489eb3148c0d51f3af583a"
+      },
+      {
+        "path": "carr-library/scripts/windows_assistant_transcription_smoke.py",
+        "sha": "2c08376ac61001b005321fc8bc44bdd05d704882",
+        "sha256": "050ca243430560a70ff6b84659bce1cd4445284366cab75262f9dc5b0255a788"
+      },
+      {
+        "path": "carr-library/scripts/windows_audio_batches_smoke.py",
+        "sha": "5a596e7be79756b7aed81af60976f43ccc9e0d1f",
+        "sha256": "58028fd030d9b1940c427be0567e3cc35b39bab87674efc3eb9c407b17f81d30"
+      },
+      {
+        "path": "carr-library/scripts/windows_audio_effects_smoke.py",
+        "sha": "642f07905354104657d6b76ef34711b31b3cd4db",
+        "sha256": "bee4105dda40921e08b62a27c414fe5dcb17d22a9cb3e4202ab03e787457f422"
+      },
+      {
+        "path": "carr-library/scripts/windows_audio_smoke.py",
+        "sha": "4b287221937e5a71d33f8f2c3edd1b5a2dd58e89",
+        "sha256": "cc152a1544085cdd25ceda9743e5082cd68f2c0b11b77b026f20f5032a1b7c78"
+      },
+      {
+        "path": "carr-library/scripts/windows_book_duration_smoke.py",
+        "sha": "721b52989be0b5dc14d7273ed42ff46d9f5c35c7",
+        "sha256": "8515ab404add1bf0d37d2a75865fb4cf9be17501f18abf4c2e6ea07fd7aa1e70"
+      },
+      {
+        "path": "carr-library/scripts/windows_citation_styles_smoke.py",
+        "sha": "b142011dac4414d794c90ac6707b5c23b233b09b",
+        "sha256": "2e3a704ba847babe76c8f7b51dd632e5512750a7f412436a56a036b5181e0a1c"
+      },
+      {
+        "path": "carr-library/scripts/windows_clip_editor_smoke.py",
+        "sha": "388e149736228c98126dd1480caa85ca5c55bd16",
+        "sha256": "4e64b5d000df2e888a13ada2e097b4ebcbbf2610e3eeb33d6b8c7fa186abc399"
+      },
+      {
+        "path": "carr-library/scripts/windows_incremental_backup_smoke.py",
+        "sha": "cbbcce09de9b19294ae0fa35afb49e5fef422055",
+        "sha256": "c40055ea70ae97317622b85907b67d8d218c0493fc97b22db50299ac150395f1"
+      },
+      {
+        "path": "carr-library/scripts/windows_installer_launchers_smoke.py",
+        "sha": "c0b4706a6ad788580aa8f05c7658afb760144188",
+        "sha256": "6c7ff6c5ba7b6fda466fd6c2dfd1fc4f958c27347a2c23445aa0c264c62c9d21"
+      },
+      {
+        "path": "carr-library/scripts/windows_language_matrix_smoke.py",
+        "sha": "77a34d7b94386f6c262a917a648442adaaf94e41",
+        "sha256": "45a1aca03a4dfe151af634336c15faa1039782dc15938f2597aee12729bbf611"
+      },
+      {
+        "path": "carr-library/scripts/windows_legacy_reader_session_smoke.py",
+        "sha": "958cb0d66fa91b00d3f6042e6eff9e49d7483166",
+        "sha256": "7609c785c91a9783d0880705ec854ca15c24f6fd09e5f5034d1c10044036fb64"
+      },
+      {
+        "path": "carr-library/scripts/windows_legacy_reading_smoke.py",
+        "sha": "84058ab564e8283c438f64901fbd30c2d47a2a4d",
+        "sha256": "4a692119a2d9b10a36f43019741db7c106408ad87924ff797eef7e291573535a"
+      },
+      {
+        "path": "carr-library/scripts/windows_legacy_transcription_smoke.py",
+        "sha": "e54e507da1ab92475cff28c5f4ae7e737b679ba4",
+        "sha256": "c3aa1f12a9d2834790c149d5f31acf4f5407322729184039f299acfdfe1b4e7c"
+      },
+      {
+        "path": "carr-library/scripts/windows_live_reading_smoke.py",
+        "sha": "a557792065076a34e3d05fc506525ed195a8d4fe",
+        "sha256": "3669a4c411207c927c3bfebb8419e06c2662e65fe56c7d23998241bd78411b89"
+      },
+      {
+        "path": "carr-library/scripts/windows_local_voice_helper_smoke.py",
+        "sha": "a37c19b0b3decf73af32de8bf427874a49a682a3",
+        "sha256": "b48f523e8ed42b0a33a326ee3b34b1772b3f260f8bf706316ad381be341ba44b"
+      },
+      {
+        "path": "carr-library/scripts/windows_media_overlay_smoke.py",
+        "sha": "e3ddad8e489e807baccd36e3adbe1f4e7d585b8f",
+        "sha256": "4d8f097f88e7ce6eac84c029438c938ea6650be195eef12367d341087b63f2d7"
+      },
+      {
+        "path": "carr-library/scripts/windows_native_sapi_smoke.py",
+        "sha": "ac086048301e9091f2d6888fabeff32ed20e122c",
+        "sha256": "bfa7a9bd040796bcd76c529a74600d700a032a6c4c311a89eb57ea840a5d96dd"
+      },
+      {
+        "path": "carr-library/scripts/windows_ocr_languages_smoke.py",
+        "sha": "d71618bdc69568e06444a9a1030cfac0cdf7c0a7",
+        "sha256": "c4a29611098d0e0592db7514ee54cbad9d83788c69f698362c1a5db555c32717"
+      },
+      {
+        "path": "carr-library/scripts/windows_ocr_models_smoke.py",
+        "sha": "32e5b608fc29b88b267bff63b9d7da2d4f1e1921",
+        "sha256": "85a3fbd8f3c0541931c54d9e56ae816b3ef466def7b934a41abdf0ce190243ce"
+      },
+      {
+        "path": "carr-library/scripts/windows_playback_queue_smoke.py",
+        "sha": "ac7eebe3961d89f0a966284a4b140453d41f7013",
+        "sha256": "f448fbb160d4845a3d242cd3bc41232cb77d25107e682d0b1b1e496130076219"
+      },
+      {
+        "path": "carr-library/scripts/windows_progress_registered_smoke.py",
+        "sha": "9373fe82c37db944e25bfbf753ecc64c339c29d1",
+        "sha256": "5eb79ecf8623cbb2f627ae982ea89803208bfc8ed8f7875e0026d83a790be8fd"
+      },
+      {
+        "path": "carr-library/scripts/windows_progress_smoke.py",
+        "sha": "336ac577e0f6adc88d874481de72d26a6d60ec5b",
+        "sha256": "4af459ad689beba71e9a7d94bea05a43b2bc0eb69f167f3fc67a75ebd701228f"
+      },
+      {
+        "path": "carr-library/scripts/windows_provider_recovery_smoke.py",
+        "sha": "e7d9b99153577358cb2185835f95ae1dd2b9bf6c",
+        "sha256": "9f1bef25296e0643b571a507b2069d9fd07a39ed40dedf4189a2a03d7f0f2974"
+      },
+      {
+        "path": "carr-library/scripts/windows_publication_smoke.py",
+        "sha": "74f535ed9a717992a03d833b25b862bb7d01d505",
+        "sha256": "7dd7b30ff25201f0605f1ab7c3b9fe6fbc03b8455cc00c947d28e66e3f6659b9"
+      },
+      {
+        "path": "carr-library/scripts/windows_reader_appearance_smoke.py",
+        "sha": "d8f8909ebe1e11f2fccb917e9643a47e0982fa3a",
+        "sha256": "2e155352d6471337fa4590c6d0b1de0738af84294bf85a6f8db772c2ea6d4a56"
+      },
+      {
+        "path": "carr-library/scripts/windows_reading_preparation_smoke.py",
+        "sha": "2ee13ac190ce0343917bc25a2b2aad5f01fe3c29",
+        "sha256": "06d045c0d342caba696b0c9b3e5c62f99eaa501011bc2420f109de3792a4b9ad"
+      },
+      {
+        "path": "carr-library/scripts/windows_recording_smoke.py",
+        "sha": "4ab679b5e12f282b115ce90c33b7c9aae565604f",
+        "sha256": "0873b80b65b9fc3ca169171390b2f4f72e801d80b9b456baa71e77d18260b0fc"
+      },
+      {
+        "path": "carr-library/scripts/windows_shared_progress_smoke.py",
+        "sha": "7e9cc6ce9acf2d81d0648681845d26d9b28d189d",
+        "sha256": "75fd4f2c52e1ba6eeed6c2f8cdee45cecef926701aeed71f0f0c6e4d21a0df66"
+      },
+      {
+        "path": "carr-library/scripts/windows_supplied_transcription_smoke.py",
+        "sha": "05bc6b220295a887de26ab5995c5f8d835ad0095",
+        "sha256": "0fe6ddf90ff77f249e28180dc6e0fc7a51ea826915b0c7d4bf2adfa094a34706"
+      },
+      {
+        "path": "carr-library/scripts/windows_topic_tools_smoke.py",
+        "sha": "6482abfd4625a1e48dd5198ee13361dcb5b5eb2f",
+        "sha256": "63d1f23a4b08300e67cc2d637fad08b769df8963e5edce4bb6997a39b371bbba"
+      },
+      {
+        "path": "carr-library/scripts/windows_transcription_smoke.py",
+        "sha": "1128783300bfbd239c38b0886db4179d02adb84e",
+        "sha256": "2995e5c985c76d4a8990f3599c4c0ab4cec7f5584c873d8ea2f0c5c8df8a0808"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_local_smoke.py",
+        "sha": "dcb1fb940f078ecd7ff779eb9768056af63d8946",
+        "sha256": "7aa919464804f7acac897379c072a3ad8207eabf7ecc346d908ae399925def2e"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_scope_smoke.py",
+        "sha": "d3b0aa6ad304431863826fda71909fcbf088b651",
+        "sha256": "055f3fccdc166cc0d990a1bd5e5235b978db5985fcd54f5ef1811111223a03fc"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_smoke.py",
+        "sha": "781a38e2f02d2209db5333e6421b7873bf6e35e1",
+        "sha256": "ec8afc47fc1d293871d1255491aafdedc80635d33d036349dc1b5921202af2fb"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+        "sha": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd",
+        "sha256": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a"
+      },
+      {
+        "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+        "sha": "2844dcb6f87e871bc77a07b22ce7a9b5743c3a0e",
+        "sha256": "d1ce660eb8c1a78d4119c953f08aea1ed9ab457d2fb9e1dce81deee869fef490"
+      },
+      {
+        "path": "carr-library/scripts/windows_word_citations_smoke.py",
+        "sha": "2a4d304b1c811c4140571d7435e07372d859bfa4",
+        "sha256": "8b15da0b15657f72f3d5096a68877b3bca40ca5f9b1e8443d4d535e5ae995acb"
+      },
+      {
+        "path": "carr-library/scripts/windows_workflow_templates_smoke.py",
+        "sha": "48a92aacdd1ef9777a7917abd328e30ce54b309f",
+        "sha256": "d760dc56541e81018e30578144b12ec3fa72d17ce5b0a9c0c65db8e9e9a9b897"
+      },
+      {
+        "path": "carr-library/tests/audio/native_playback_probe.py",
+        "sha": "2817c61687c3baebac089737590dd2e769a32d32",
+        "sha256": "736e8e1b714e78899749ef0fffb4199dc855813f0fdd195d85b9c02ac4ee735a"
+      },
+      {
+        "path": "carr-library/tests/conversion/native_diagnostics.py",
+        "sha": "5031632770197ca921a1fa4def08a70f99eb8f19",
+        "sha256": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2"
+      },
+      {
+        "path": "carr-library/tests/conversion/test_legacy_adapters_native.py",
+        "sha": "1e9485b53f31485105103680a441c5b356f85747",
+        "sha256": "d8b2ca4af0245ca52e0251f655c507b2c4db91a0a029d4785a15b3d1374b0e38"
+      },
+      {
+        "path": "carr-library/tests/conversion/test_office_native.py",
+        "sha": "c3e94b4878bb827059babf1739e3b5b2c35c8fb9",
+        "sha256": "ee11ef7ae58d7421b9f183e75250be87e64d20fb00de9672193d8ecd2dc8052a"
+      },
+      {
+        "path": "carr-library/tests/conversion/test_selected_adapters_native.py",
+        "sha": "7a36325add9bcf8c5bd29258846b83f33037ce4b",
+        "sha256": "b1f44bd73cd8970a6d17ee5043b614ecb324b0fc01af3e8a454be3dd1ad417de"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_offline_pdf_smoke.py",
+        "sha": "83b0dc0fcc58a3d9656a8f5627cd3711699906bf",
+        "sha256": "87c47d1821f4a7a1ae8e0ebb3f1629f00dd9c428f43e183ef090e2c38e52a27b"
+      },
+      {
+        "path": "carr-library/tests/ui/federated_native_smoke.py",
+        "sha": "4240ebe61fa763de0fbbdd1648643833e3054bf6",
+        "sha256": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e"
+      },
+      {
+        "path": "carr-library/tests/ui/native_academic_comparison_smoke.py",
+        "sha": "b20f2962c4b2807eb761474f8da6900413cda538",
+        "sha256": "05282939acf95ef49f51f4075ec49a895999c3b0d563d1bba413e33a0554dca6"
+      },
+      {
+        "path": "carr-library/tests/ui/native_academic_smoke.py",
+        "sha": "36a5eedab29b80a8c59ceaa93709c1802ef7288f",
+        "sha256": "e75def6ed73fb5f2c113abae482a25873f5a6cf69128c448209b014dc10054ef"
+      },
+      {
+        "path": "carr-library/tests/ui/native_audio_silence_inspection_smoke.py",
+        "sha": "51c40dd9d75d2b5afc8fd7a7020a4ee0ea92bca8",
+        "sha256": "0deac9c8c65cc7c632e5973d734d9b356ef6fd6ead6de7e9d194b1a310e9891a"
+      },
+      {
+        "path": "carr-library/tests/ui/native_catalog_tools_smoke.py",
+        "sha": "53d29f8b4816238456c1c6375b79f193840d7063",
+        "sha256": "4e8f7d8289adc17982f77b25d8c604fcfece83c508a0d7b5d10685fbd019eec8"
+      },
+      {
+        "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+        "sha": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+        "sha256": "a24f415796b7d1a6d971fb26cae948df6a7f1332939a22737d68ca2b255e2bce"
+      },
+      {
+        "path": "carr-library/tests/ui/native_ebook_reader_smoke.py",
+        "sha": "bfd9ac8f900ee6ce939600d689546797d0e6433e",
+        "sha256": "9595080202a4757a9c34735bd1390387ed84f6108af94e5a87cb5044aed0f25e"
+      },
+      {
+        "path": "carr-library/tests/ui/native_evidence_drafts_smoke.py",
+        "sha": "21e7e60e51bf03176022b28443b0c4f16c08acbf",
+        "sha256": "6b9a16148c94bc75eb4eed0939c40dd5a859f7ce623839beec4adce6949fccbe"
+      },
+      {
+        "path": "carr-library/tests/ui/native_evidence_pages_smoke.py",
+        "sha": "b27e9998350a053f56a7dd19e5c43c855bb78240",
+        "sha256": "25577cbca731418c54499137004d169a2c39d0fc9d8179ed59f677077a986ca4"
+      },
+      {
+        "path": "carr-library/tests/ui/native_import_center_smoke.py",
+        "sha": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+        "sha256": "1b08b1b0b02df57746204b1edee4730e616a660b44a7796cb089b77608400c98"
+      },
+      {
+        "path": "carr-library/tests/ui/native_keyboard_settings_smoke.py",
+        "sha": "a14da51e452274ad5fda7a5c0b16e2ec16396231",
+        "sha256": "8f2042e5c828a17ba6e09242d846db85691305bbf143aed1b3d71e8efdd8161c"
+      },
+      {
+        "path": "carr-library/tests/ui/native_notebook_search_smoke.py",
+        "sha": "8a8830046719410492a88813f720a3673dd7bac8",
+        "sha256": "aebe3062ba48b856077af649721ded766513bbd28879051d9cf004a2caf3e91c"
+      },
+      {
+        "path": "carr-library/tests/ui/native_operations_smoke.py",
+        "sha": "1e964d56e3e3f03baafd84d7e381bd75084d9c02",
+        "sha256": "8c2a43f8430143112bb36198e1e3f91f2df68ed1c8f8efd4357de4a30a3e69e8"
+      },
+      {
+        "path": "carr-library/tests/ui/native_reader_keymap_smoke.py",
+        "sha": "45bcb63a6bc82767010678ec8033d677131c3b5a",
+        "sha256": "46881c0bf74819f461b11fb4f22f07aa70ada9813c7ea5f4b4e97d0415c6e5b7"
+      },
+      {
+        "path": "carr-library/tests/ui/native_reading_desk_smoke.py",
+        "sha": "91dcc1b3cb8660349618c5e4162e407332e7f3b5",
+        "sha256": "e08eeea8bc9f4319a253d559eec7d4bc453f0b86f56c49a6aa6c706281910cb6"
+      },
+      {
+        "path": "carr-library/tests/ui/native_save_all_smoke.py",
+        "sha": "74c167447d7fd980c024ce9bc77c319ea5e618a8",
+        "sha256": "41c119103d90618667edb73de4af0a3659e9f850321e61b82191642fb74642d1"
+      },
+      {
+        "path": "carr-library/tests/ui/native_studio_controls_smoke.py",
+        "sha": "86744468d155fdb4a6614aa1c7de1d28647feb1e",
+        "sha256": "c3c38813c75eaaca2b993b3cce2999bd97c661458b07102a937634d1bd9cdf15"
+      },
+      {
+        "path": "carr-library/tests/ui/native_trust_status_smoke.py",
+        "sha": "08c35c4ae5618a17dca08f782fb837dad1f4b1e9",
+        "sha256": "02b42f1f69f048997a186fad6a1ae9506969202d3326449744ac0968b72c7ab5"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_about_native.py",
+        "sha": "4ec34c02304e0118e9f069746ea720b906e553cd",
+        "sha256": "965871eac2e502b6a635c83695f05cadce4f18905b3b449b57683bd14ba4d4cc"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_advanced_query_builder.py",
+        "sha": "e7325194added5c23a522e053dfac56e5b19e467",
+        "sha256": "39322b2d1866da3e969f59b43a8adeb4375cddc0a0519fd5308f0c2a23269a53"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_advanced_search_native.py",
+        "sha": "c8609fc5cda1d95ac82c2c13e2a0a99a40833b01",
+        "sha256": "488e3702e8117ebea53924b7868603440a6a562515322f523f9d7866c247c881"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_catalog_insights_actions.py",
+        "sha": "2f1f6e2f9468e9fcec376538211c15efcaa5f98c",
+        "sha256": "c91d361ab91a335a61de236f5ef39a37ed3dd4149cf67099fc862c1544fad10f"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_catalog_insights_native.py",
+        "sha": "c96bfacf9f5d3bf161acb13a204c56daf3c58cfd",
+        "sha256": "5dea9807b3d1bb10b84caa1eda0299c5122524150ae94a5cc0eb8e77f0884b86"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_catalog_panel.py",
+        "sha": "12dac155920eb2749d93dc073032568035142d52",
+        "sha256": "e2eb485f7f7e6aa262869e7d319473c23a55a616cd72248ed430193b65f24efd"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_ebook_native.py",
+        "sha": "86ee349e64a0693fe63475246ca18bdded01d659",
+        "sha256": "3b1efe947eb7d1e25fcb8b82de93130379b8f6cd30040aeb3a8fa922c15c242e"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_evidence_panel.py",
+        "sha": "c43eb3d0ced7617f16b558016cc916cbad5dc3cb",
+        "sha256": "78db69ad09d9588ec8e0750e97e8d06fa360bb7e25b1dc770cde411797786bdc"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_import_epub_continuation_native.py",
+        "sha": "471b1136f3116f1cd9da25d7fc45e80aa3863179",
+        "sha256": "2a373cb070486fcf7992403fdb909dfab5c6daebe2999c6cde9fae4699de08d6"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_native_topic_reordering.py",
+        "sha": "dc23a6925a9e3ed988295750a2eb5784faef06ed",
+        "sha256": "5c153142128cb03d14196e4889f741c75161f9d2b9dd518d2c2d6b233ac0086b"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_page_context_dialog.py",
+        "sha": "779bd9cc7a3467ea733887ef199a31ded2634410",
+        "sha256": "4377092f29bcb8fba973e5c0c83e52eb0231ed151c95e380995afb66ef61a68e"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_paged_search_panel.py",
+        "sha": "adbe94ede217bb51b53644ea51851992293810b0",
+        "sha256": "5528d29eff04730279064b699057f99d7a6bb8b0898f38ec50ad4c64bc9e0a7a"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_portable_sync_native.py",
+        "sha": "6b8e8a583276468646f3f82cab8754f370545589",
+        "sha256": "ca33ae0fb38307e2639f84cb5538e5b683fbd2df8ca11fefaec6494725e644ed"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+        "sha": "3cff32ca38b7097a943cf92d36512356076dede6",
+        "sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_source_open_native.py",
+        "sha": "1035939697c06967cbc0de6fce58c10bb369192f",
+        "sha256": "2f615c3bde959e2edf85ba90f95f407c0df6b83488db64b213aaaabf793df115"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_streamed_import_native.py",
+        "sha": "f9d6ffe9f6603a5e41d7b7b2c54a28c51ebf3981",
+        "sha256": "f37872cc78405485e007d12e496c4218109b4c220cd44e79213f5bca99c6b9f8"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_topic_panel.py",
+        "sha": "eb9bd1e29d243d3093bb8d5e52a3b9c10f93fb21",
+        "sha256": "143a4a4306911aee251f42fa4fc66dae4f0a09ff9dbb873990a93253eb1b4f98"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_verified_clipboard.py",
+        "sha": "3d385d6299b6271f3f1e476885b6f1db3c806f86",
+        "sha256": "04d8f84a9c85545c80b2da75f9a659548414c4cc4ebedd878e3a973fa451e738"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_workspace_shell.py",
+        "sha": "783b69b3d34e4cd5a9d78a816c1407efff14c795",
+        "sha256": "254e04dea7e14b1dab6097e3573a2ce52d3ec5f18b3c1dd7edeb85909052773f"
+      }
+    ]
+  },
+  "separately_derived_09ac_inventory": {
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "entries": 88,
+    "method": "Start with the freshly verified 2701 rows above. The recursive 09ac tree retains 86 of those Git blobs exactly. Fresh 09ac reads bind the two changed native-probe rows below. Replace them in the same row positions and apply the identical encoding; this is a separate 09ac digest.",
+    "retained_identical_git_blobs": 86,
+    "changed_rows": [
+      {
+        "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+        "before": {
+          "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+          "sha": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+          "sha256": "a24f415796b7d1a6d971fb26cae948df6a7f1332939a22737d68ca2b255e2bce"
+        },
+        "after": {
+          "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+          "sha": "40ba40266b5b8d2954563c60d965c61985b8257b",
+          "sha256": "5827314af7add0cbf816f9957ea47fdc9bf68fd7f8271f725b849bee8b256ca6"
+        }
+      },
+      {
+        "path": "carr-library/tests/ui/native_import_center_smoke.py",
+        "before": {
+          "path": "carr-library/tests/ui/native_import_center_smoke.py",
+          "sha": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+          "sha256": "1b08b1b0b02df57746204b1edee4730e616a660b44a7796cb089b77608400c98"
+        },
+        "after": {
+          "path": "carr-library/tests/ui/native_import_center_smoke.py",
+          "sha": "baded3dff24d2974e9ba8bd6633b79a6d5e50985",
+          "sha256": "657ed4a78d17e5b46b078972c0b6aaaea2e528924ee79f58aabb5792d552b462"
+        }
+      }
+    ],
+    "sha256": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
+    "serialized_bytes": 16593,
+    "product_file_outside_native_inventory": {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "parent_2701_git_blob": "064ee4bb6c4db0001d64760910c777237f18596f",
+      "parent_2701_sha256": "d1824a4e4c8b30bb52c53dd7c630187eea652135d0d9cfeecbc9036ae5439f29",
+      "current_09ac_git_blob": "f757c8748ef273938992a1518f327012616d5ec1",
+      "current_09ac_sha256": "62ded099ed5c712f009447a0981407b721b323838d7e611106a1a8a643af7966",
+      "method": "The product file is the third repaired executable source but is outside the 88 native-producer audit paths. Its 09ac body was freshly read and matched the exact reviewed c2b0 blob."
+    }
+  },
+  "impact": {
+    "matching_2701_consumers": [
+      "carr-library/tests/ui/native_document_formats_smoke.py",
+      "carr-library/tests/ui/native_import_center_smoke.py",
+      "carr-library/tests/ui/probe_import_epub_continuation_native.py",
+      "carr-library/tests/ui/probe_streamed_import_native.py"
+    ],
+    "matching_consumer_count": 4,
+    "search_probe_is_matching_consumer": false,
+    "explanation": "Fresh reads reproduce the same four Import Center consumers. The search copy-completion correction does not add or remove an Import Center reference. The actual layout patch, retained action methods and two native-fixture changes remain exactly the reviewed c2b0 blobs.",
+    "changed_source_scope": "No application, test, workflow, oracle, reader pin or active source ref is changed by this document.",
+    "runtime": "No execution or qualification is claimed by this finite source-provenance correction. Current native focus is a separate actual run and will receive its own observed result."
+  }
+}
