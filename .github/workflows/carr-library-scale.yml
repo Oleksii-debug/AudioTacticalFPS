@@ -14,7 +14,7 @@ jobs:
     name: ${{ matrix.tier.name }} / ${{ matrix.os }}
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 12
       matrix:
         os: [ubuntu-24.04, windows-2022]
         tier:
@@ -25,7 +25,7 @@ jobs:
           - {name: text-129m, books: 0, bytes: 135266477, segments: 33, spool_mib: 4096}
           - {name: text-2g, books: 0, bytes: 2147483648, segments: 1000, spool_mib: 8192}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 300
+    timeout-minutes: 360
     defaults:
       run:
         working-directory: carr-library
@@ -43,6 +43,7 @@ jobs:
       CARR_SCALE_SPOOL_MIB: ${{ matrix.tier.spool_mib }}
       CARR_SCALE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
       CARR_SCALE_RUN: ${{ github.run_id }}
+      CARR_SCALE_BACKUP_MEMORY_MIB: ${{ matrix.tier.name == 'books-50000' && 4096 || 2048 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -54,9 +55,56 @@ jobs:
       - name: Select this runner's fresh measured profile path
         run: |
           python -I -B -X utf8 - <<'PY'
+          import json
           import os
           from pathlib import Path
-          path = Path(os.environ["RUNNER_TEMP"]) / ("carr-actual-library-" + os.environ["CARR_SCALE_TIER"])
+          import shutil
+          import stat
+          import tempfile
+
+          def directory(path):
+              info = path.lstat()
+              assert stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode), path
+              assert not int(getattr(info, "st_file_attributes", 0)) & 0x400, path
+              return [info.st_dev, info.st_ino, info.st_mode, int(getattr(info, "st_file_attributes", 0))]
+
+          observations = []
+          for label, raw in (("RUNNER_TEMP", os.environ["RUNNER_TEMP"]),
+                             ("python_tempfile", tempfile.gettempdir())):
+              spelling = Path(raw).absolute()
+              for parent in reversed(spelling.parents):
+                  directory(parent)
+              before = directory(spelling)
+              selected = spelling.resolve(strict=True)
+              assert directory(selected) == before
+              usage = shutil.disk_usage(selected)
+              assert directory(spelling) == directory(selected) == before
+              observations.append({"name": label, "supplied_path": str(spelling),
+                  "canonical_path": str(selected), "identity": before,
+                  "free_bytes": usage.free, "total_bytes": usage.total})
+          chosen = max(observations, key=lambda item: item["free_bytes"])
+          selected = Path(chosen["canonical_path"])
+          assert directory(selected) == chosen["identity"]
+          tier = os.environ["CARR_SCALE_TIER"]
+          assert tier in {"books-1000", "books-10000", "books-50000",
+                          "text-65m", "text-129m", "text-2g"}
+          # Exclusive new parent; the generator still creates a nonexisting child.
+          private = Path(tempfile.mkdtemp(prefix="carr-scale-" + tier + "-", dir=selected))
+          private_identity = directory(private)
+          assert directory(selected) == chosen["identity"]
+          path = private / "fixture"
+          assert not os.path.lexists(path) and "\n" not in str(path) and "\r" not in str(path)
+          report = {"observed_roots": observations, "selected_root": chosen,
+              "private_parent": str(private), "private_parent_identity": private_identity,
+              "fixture": str(path),
+              "selection": "larger measured free space among two known runner temporary roots",
+              "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight"}
+          out = Path("ci-library-corpus")
+          out.mkdir(exist_ok=True)
+          with (out / "runner-capacity.json").open("x", encoding="utf-8", newline="\n") as stream:
+              json.dump(report, stream, ensure_ascii=False, sort_keys=True)
+              stream.write("\n")
+          print("CARR_RUNNER_TEMP_CAPACITY " + json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
               stream.write("CARR_SCALE_DIR=" + str(path) + "\n")
           PY
@@ -86,7 +134,15 @@ jobs:
           EXPECTED_BOOKS = int(os.environ["CARR_SCALE_BOOKS"]) or 1
           EXPECTED_SEGMENTS = EXPECTED_BOOKS * int(os.environ["CARR_SCALE_SEGMENTS"])
           MODULES = ["carr_library.storage.publication","carr_library.storage.revisions","carr_library.application","carr_library.catalog.membership","carr_library.catalog.registration","carr_library.ingest.pipeline","carr_library.ingest.worker","carr_library.ingest.publication_identity","carr_library.ingest.retained_assets","carr_library.catalog.intake","carr_library.ingest.resource_budget","carr_library.durable_state","carr_library.citations.text_attestation","carr_library.citations.historical","carr_library.ingest.session","carr_library.ingest.slices","carr_library.ingest.reconciliation","carr_library.ingest.batch_pages","carr_library.ingest.batches","carr_library.ingest.batch_scan","carr_library.citations.pdf_review_attestation","carr_library.extract.raster_pages","carr_library.extract.page_ocr","carr_library.extract.runtime_identity","carr_library.search.paging","carr_library.search.ranked_scope","carr_library.search.federated","carr_library.search.literal","carr_library.search.thematic","carr_library.search.semantic_windows","carr_library.semantic","carr_library.audio.process","carr_library.audio.cleanup","carr_library.catalog.read_views","carr_library.operations.broker","carr_library.operations.models"]
-          SCRIPTS = ("benchmark_library_scale.py", "benchmark_library_catalog.py")
+          MODULES += ["carr_library.backup_budget", "carr_library.library_backup",
+                      "carr_library.pending_backup", "carr_library.backup_sidecars",
+                      "carr_library.backup_current", "carr_library.backup_producers",
+                      "carr_library.backup_transcription", "carr_library.ingest.catalog_asset_copy",
+                      "carr_library.ingest.restore"]
+          SCRIPTS = ("benchmark_library_scale.py", "benchmark_library_catalog.py",
+                     "benchmark_library_backup.py")
+          BACKUP_REQUIRED = os.environ["CARR_SCALE_TIER"] in {"books-50000", "text-2g"}
+          BACKUP_MEMORY_BYTES = int(os.environ["CARR_SCALE_BACKUP_MEMORY_MIB"]) * 1024**2
           
           
           def inventory(root):
@@ -190,6 +246,77 @@ jobs:
                   stream.write("\n")
           
           
+          def backup_capacity_before_import():
+              """Conservative authored-input admission before the expensive largest tiers."""
+              if not BACKUP_REQUIRED:
+                  write("backup-capacity-before-import.json", {
+                      "status": "NOT_REQUIRED", "reason": "Full roundtrip is required on the 50k and 2GiB tiers."})
+                  return
+              from dataclasses import asdict
+              from tempfile import gettempdir
+              from carr_library.durable_state import local_path, regular
+              module = foundation()
+              books = int(os.environ["CARR_SCALE_BOOKS"])
+              spec = (module.CorpusSpec(books=books, segments_per_book=int(os.environ["CARR_SCALE_SEGMENTS"]))
+                      if books else module.LargeTextSpec(int(os.environ["CARR_SCALE_BYTES"]),
+                                                        int(os.environ["CARR_SCALE_SEGMENTS"])))
+              spec.checked()
+              count = books or 1
+              plan = module.capacity_plan(spec.source_bytes, count, spec.segments,
+                  search_spool_budget_bytes=int(os.environ["CARR_SCALE_SPOOL_MIB"]) * 1024**2,
+                  free_reserve_bytes=1024**3, memory_headroom_bytes=BACKUP_MEMORY_BYTES + 64 * 1024**2)
+              # These are conservative projections from authored sizes, not
+              # measured use, policy authority, or a substitute for the later
+              # live-library BackupBudget and current-volume preflight.
+              metadata = count * 16 * 1024 + spec.segments * 256 + 64 * 1024**2
+              pending = plan.journal_estimate_bytes + plan.retained_bytes + metadata
+              manifest, other = 256 * 1024**2, 64 * 1024**2
+              archive = plan.catalog_estimate_bytes + plan.retained_bytes + pending + manifest + other
+              staging = (plan.catalog_estimate_bytes + plan.retained_bytes + 2 * pending
+                         + 2 * manifest + other + 64 * 1024**2)
+              required = plan.required_disk_bytes + archive + staging + 64 * 1024**2
+              temporary_required = staging + 1024**3 + 64 * 1024**2
+
+              def observed(path):
+                  path = local_path(Path(path), exists=True)
+                  before = regular(path, directory=True)
+                  usage = shutil.disk_usage(path)
+                  after = regular(path, directory=True)
+                  identity = lambda value: [value.st_dev, value.st_ino, value.st_mode,
+                                            int(getattr(value, "st_file_attributes", 0))]
+                  assert identity(before) == identity(after), path
+                  return {"path": str(path), "identity": identity(before),
+                          "free_bytes": usage.free, "total_bytes": usage.total,
+                          "used_bytes": usage.used}
+
+              disk = observed(FIXTURE.parent)
+              temporary = observed(gettempdir())
+              same_volume = disk["identity"][0] == temporary["identity"][0]
+              memory = module.available_memory()
+              reasons = []
+              if disk["free_bytes"] < required:
+                  reasons.append("insufficient measured fixture-volume space for import, archive and fresh restore")
+              if not same_volume and temporary["free_bytes"] < temporary_required:
+                  reasons.append("insufficient measured separate verifier temporary-volume space")
+              if memory["available_bytes"] is None or memory["available_bytes"] < BACKUP_MEMORY_BYTES + 64 * 1024**2:
+                  reasons.append("insufficient measured available memory for the explicit largest-tier backup policy")
+              result = {"status": "NOT_RUN" if reasons else "READY_FOR_ACTUAL_LARGEST_TIER",
+                        "reasons": reasons, "tier": os.environ["CARR_SCALE_TIER"],
+                        "authored_source_bytes": spec.source_bytes, "authored_books": count,
+                        "authored_segments": spec.segments, "import_capacity_plan": asdict(plan),
+                        "archive_estimate_bytes": archive, "restore_or_verify_staging_estimate_bytes": staging,
+                        "required_initial_fixture_free_bytes": required,
+                        "required_separate_temporary_free_bytes": temporary_required,
+                        "fixture_volume": disk, "verifier_temporary_volume": temporary,
+                        "same_volume": same_volume, "memory": memory,
+                        "selected_backup_memory_bytes": BACKUP_MEMORY_BYTES,
+                        "note": "Conservative admission estimates only; the unchanged backup adapter measures live inputs again."}
+              write("backup-capacity-before-import.json", result)
+              print("CARR_LARGEST_TIER_CAPACITY " + json.dumps(result, sort_keys=True), flush=True)
+              if reasons:
+                  raise SystemExit(3)
+
+
           def collect():
               destination = OUT / "fixture-evidence"
               destination.mkdir(exist_ok=True)
@@ -231,6 +358,15 @@ jobs:
               for key in ("inventory", "package_sha256", "origins", "scripts", "executable", "commit"):
                   assert before[key] == after[key], ("Implementation changed during the actual tier.", key)
               write("installed-after.json", after)
+              early = OUT / "backup-capacity-before-import.json"
+              if early.exists() and read(early).get("status") == "NOT_RUN":
+                  write("outcome.json", {"status": "NOT_RUN", "reason": "Largest-tier measured capacity refused before import.",
+                                        "capacity": read(early), "physical_or_human_quality": "NOT_ASSESSED"})
+                  raise SystemExit(2)
+              if not (FIXTURE / "generation.json").exists():
+                  write("outcome.json", {"status": "INCOMPLETE", "reason": "The actual source generator produced no final report.",
+                                        "physical_or_human_quality": "NOT_ASSESSED"})
+                  raise AssertionError("The source generator did not complete.")
               generated = read(FIXTURE / "generation.json")
               if generated.get("status") == "NOT_RUN":
                   write("outcome.json", {"status": "NOT_RUN", "reason": "Measured source-generation capacity refused.",
@@ -244,9 +380,19 @@ jobs:
                                             "application_admission": admitted,
                                             "physical_or_human_quality": "NOT_ASSESSED"})
                       raise SystemExit(2)
+              backup_phase = OUT / "backup.jsonl"
+              if BACKUP_REQUIRED and backup_phase.exists() and backup_phase.stat().st_size:
+                  backup_admission = read_phase(backup_phase)
+                  if backup_admission.get("status") == "NOT_RUN":
+                      write("outcome.json", {"status": "NOT_RUN", "reason": "Actual live-library backup capacity refused.",
+                                            "backup_admission": backup_admission,
+                                            "physical_or_human_quality": "NOT_ASSESSED"})
+                      raise SystemExit(2)
               phases = json.loads(os.environ["CARR_SCALE_PHASE_OUTCOMES"])
-              assert set(phases) == {"generate", "initialize", "interruption", "resume", "catalog", "search", "collect"}
-              incomplete = {name: value for name, value in phases.items() if value != "success"}
+              assert set(phases) == {"backup_preflight", "generate", "initialize", "interruption", "resume",
+                                     "catalog", "search", "backup", "collect"}
+              incomplete = {name: value for name, value in phases.items()
+                            if value != ("skipped" if name == "backup" and not BACKUP_REQUIRED else "success")}
               if incomplete:
                   write("outcome.json", {"status": "FAILED" if "failure" in incomplete.values() else "INCOMPLETE",
                                         "actual_phase_outcomes": phases,
@@ -273,7 +419,33 @@ jobs:
                   assert item["source_books"] == EXPECTED_BOOKS and item["source_segments"] == EXPECTED_SEGMENTS
                   assert item["separate_process"] is True and item["implementation_unchanged"] is True
                   assert item["worker_peaks"]["measured_worker_exits"] > 0
+              backup_result = None
+              if BACKUP_REQUIRED:
+                  backup_result = read(FIXTURE / "benchmark" / "backup-restore.json")
+                  assert backup_result == read_phase(OUT / "backup.jsonl")
+                  assert backup_result["status"] == "BACKUP_RESTORE_VERIFIED"
+                  assert (backup_result["source_books"] == EXPECTED_BOOKS
+                          and backup_result["source_segments"] == EXPECTED_SEGMENTS)
+                  for key in ("source_inventory_equal", "archive_inventory_equal", "catalog_equal",
+                              "raw_equal", "external_originals_equal", "implementation_unchanged"):
+                      assert backup_result[key] is True, key
+                  assert backup_result["source_oracle"] == backup_result["restored_oracle"]
+                  assert backup_result["passive_restore"]["completed_rows"] == EXPECTED_BOOKS
+                  assert backup_result["passive_restore"]["fresh_scan_review_required"] is True
+                  assert backup_result["passive_restore"]["old_attempts_removed"] is True
+                  assert backup_result["automatic_resume"] is False
+                  assert backup_result["last_verified_source_copy"]["actual_verified_copy"] is True
+                  assert backup_result["last_verified_source_copy"]["foreign_scope_refused"] is True
+                  assert backup_result["admission"]["status"] == "READY_FOR_BACKUP"
+                  assert backup_result["policy"]["memory_bytes"] == BACKUP_MEMORY_BYTES
               measured = result["search"]
+              admitted_profile = read_phase(OUT / "initialize.jsonl")
+              saved_profile = read(FIXTURE / "benchmark" / "state.json")
+              assert (measured["search_memory_allowance_bytes"]
+                      == admitted_profile["search_memory_bytes"]
+                      == saved_profile["search_memory_bytes"])
+              if int(os.environ["CARR_SCALE_BYTES"]) > 0:
+                  assert measured["search_memory_allowance_bytes"] == 1024 * 1024**2
               assert measured["federated_cleanup_confirmed"] is True
               assert measured["explicit_library_navigation"]["selected"] == 21
               assert measured["bounded_title_anchor_latency"]["samples"] == 50
@@ -286,6 +458,8 @@ jobs:
                     "installed_package_sha256": after["package_sha256"], "commit": after["commit"],
                     "run": after["run"], "manifest_sha256": generated["manifest_sha256"],
                     "generation": generated, "catalog": result["catalog"], "search": measured,
+                    "backup_roundtrip": backup_result,
+                    "backup_roundtrip_scope": "REQUIRED_AND_VERIFIED" if BACKUP_REQUIRED else "NOT_REQUIRED_ON_THIS_TIER",
                     "real_first_commit_process_exit": 73, "resume_same_saved_queue": True,
                     "semantic_model": "NOT_RUN", "simultaneous_family_peak": "NOT_MEASURED",
                     "physical_or_human_quality": "NOT_ASSESSED"})
@@ -297,6 +471,8 @@ jobs:
           mode = sys.argv[1]
           if mode == "before":
               write("installed-before.json", identity())
+          elif mode == "backup-preflight":
+              backup_capacity_before_import()
           elif mode == "collect":
               collect()
           elif mode == "finish":
@@ -306,6 +482,10 @@ jobs:
           PY
           unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
           python -I -B -X utf8 ci-library-corpus/check.py before
+      - name: Admit largest-tier import and full backup capacity before writing the corpus
+        id: backup_preflight
+        timeout-minutes: 5
+        run: python -I -B -X utf8 ci-library-corpus/check.py backup-preflight
       - name: Generate and independently hash the actual original corpus
         id: generate
         timeout-minutes: 20
@@ -318,7 +498,12 @@ jobs:
       - name: Admit the measured profile through the actual public queue
         id: initialize
         timeout-minutes: 15
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib "$CARR_SCALE_SPOOL_MIB" --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 > ci-library-corpus/initialize.jsonl
+        run: |
+          scale_search_memory_args=()
+          if [ "$CARR_SCALE_BYTES" != "0" ]; then
+            scale_search_memory_args=(--search-memory-mib 1024)
+          fi
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib "$CARR_SCALE_SPOOL_MIB" --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 "${scale_search_memory_args[@]}" > ci-library-corpus/initialize.jsonl
       - name: Interrupt the actual coordinator after one committed and quiescent publication
         id: interruption
         timeout-minutes: 35
@@ -341,8 +526,18 @@ jobs:
         run: python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl
       - name: Measure actual complete traversal, exact quotations and scoped ranking
         id: search
+        # The actual 1k tier traverses 400 literal pages. The 50k tier must
+        # traverse 20,000; the larger aggregate preserves all per-query bounds.
+        timeout-minutes: ${{ matrix.tier.name == 'books-50000' && 95 || 65 }}
+        run: |
+          seconds=3600
+          if [ "$CARR_SCALE_TIER" = "books-50000" ]; then seconds=5400; fi
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py search "$CARR_SCALE_DIR" --seconds "$seconds" --query-seconds 1800 --query-samples 50 > ci-library-corpus/search.jsonl
+      - name: Require actual complete backup verification and fresh restore on the largest tiers
+        id: backup
+        if: ${{ success() && (matrix.tier.name == 'books-50000' || matrix.tier.name == 'text-2g') }}
         timeout-minutes: 65
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py search "$CARR_SCALE_DIR" --seconds 3600 --query-seconds 1800 --query-samples 50 > ci-library-corpus/search.jsonl
+        run: python -I -B -X utf8 scripts/benchmark_library_backup.py backup "$CARR_SCALE_DIR" --seconds 3600 --memory-mib "$CARR_SCALE_BACKUP_MEMORY_MIB" --reserve-mib 1024 > ci-library-corpus/backup.jsonl
       - name: Preserve actual measured phase records and independent original manifest
         id: collect
         if: always()
@@ -350,7 +545,7 @@ jobs:
       - name: Require complete exact counts and unchanged installed bytes
         if: always()
         env:
-          CARR_SCALE_PHASE_OUTCOMES: '{"generate":"${{ steps.generate.outcome }}","initialize":"${{ steps.initialize.outcome }}","interruption":"${{ steps.interruption.outcome }}","resume":"${{ steps.resume.outcome }}","catalog":"${{ steps.catalog.outcome }}","search":"${{ steps.search.outcome }}","collect":"${{ steps.collect.outcome }}"}'
+          CARR_SCALE_PHASE_OUTCOMES: '{"backup_preflight":"${{ steps.backup_preflight.outcome }}","generate":"${{ steps.generate.outcome }}","initialize":"${{ steps.initialize.outcome }}","interruption":"${{ steps.interruption.outcome }}","resume":"${{ steps.resume.outcome }}","catalog":"${{ steps.catalog.outcome }}","search":"${{ steps.search.outcome }}","backup":"${{ steps.backup.outcome }}","collect":"${{ steps.collect.outcome }}"}'
         run: python -I -B -X utf8 ci-library-corpus/check.py finish
       - name: Preserve selected dependency identity
         if: always()
@@ -358,7 +553,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: actual-library-${{ matrix.os }}-${{ matrix.tier.name }}-${{ github.sha }}
+          name: actual-library-${{ matrix.os }}-${{ matrix.tier.name }}-${{ env.CARR_SCALE_HEAD }}
           path: carr-library/ci-library-corpus/
           if-no-files-found: error
           retention-days: 14

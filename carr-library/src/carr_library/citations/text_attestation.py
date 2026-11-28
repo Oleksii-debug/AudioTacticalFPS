@@ -11,7 +11,8 @@ MAX_BYTES = 64 * 1024 * 1024
 MAX_SEGMENTS = 1000
 
 
-def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: False):
+def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: False,
+                         page_originals=None):
     """Return a callback for historical_loader, never approve PDF or OCR here.
 
     resolve_asset(identity) must return bounded immutable original bytes or an
@@ -21,6 +22,10 @@ def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: Fals
     """
     if not isinstance(workspace, str) or not workspace.strip() or not callable(resolve_asset):
         raise ValueError('workspace and authorized asset resolver required')
+    if page_originals is not None:
+        from ..search.originals import PageOriginals
+        if type(page_originals) is not PageOriginals or page_originals.workspace != workspace:
+            raise ValueError('An exact private source-page proof is required.')
 
     def attest(identity, locator, raw_sha256):
         if not db.in_transaction or db.execute('PRAGMA read_uncommitted').fetchone()[0]:
@@ -47,6 +52,9 @@ def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: Fals
                     or not 0 < data.size <= source_limit(data.mime, data.size)):
                 return False
             try:
+                if page_originals is not None:
+                    return page_originals.attest_stream(identity, locator.index, row[1],
+                        data, raw_sha256, cancelled=cancelled)
                 selected, count, nonempty = None, 0, False
                 for count, segment in enumerate(text_segments(data, cancelled=cancelled,
                         max_segments=row[1], max_segment_bytes=MAX_BYTES), 1):

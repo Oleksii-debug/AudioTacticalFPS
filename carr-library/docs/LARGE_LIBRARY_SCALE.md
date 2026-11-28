@@ -82,6 +82,30 @@ These observations justify measuring scheduling allowances, not extrapolating a 
 
 The maintainable final workflow is `.github/workflows/carr-library-scale.yml`. It runs all twelve tiers for relevant pull requests or an explicit workflow dispatch, binding its report to the checked-out commit. Only a completed run on the coherent final candidate can establish final corpus acceptance. The exact PR-head checks and their bound artifacts are the final verdict authority; these dated component observations do not predeclare or override that verdict.
 
+### Completed corrected components, 28 November 2026
+
+The corrected component at exact head `bc195d800d9ffc5846cef37fac81e94e3e0a69b0` completed both its [source/installed contracts](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094685065) and its [actual 1,000-book protocol](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094685110). The contract gate passed **648 source and 648 installed cases on Linux**, and **641 source and 641 installed cases on Windows**, with no failures, errors, skips or expected failures. All four contexts checked the full 393-file package and 36 selected module origins before and after execution. This includes the current publication-receipt, directory-identity and Windows transient-directory corrections.
+
+The separate actual corpus jobs generated and imported 1,000 books / 40,000 segments, observed the authored exit 73 after a genuine committed publication, resumed the saved queue, and completed every catalog, original, quotation and scope oracle:
+
+| Measurement | Linux | Windows |
+| --- | ---: | ---: |
+| Public import calls, including owned worker cleanup | 92.936 s | 193.363 s |
+| Public scan planning | 1.655 s | 4.050 s |
+| Complete catalog verification | 1.527 s | 2.875 s |
+| Complete retrieval scenario | 102.586 s | 178.964 s |
+| Literal page calls | 400 | 400 |
+| Literal page P50 / P95 | 0.217 / 0.221 s | 0.391 / 0.419 s |
+| First / reopened complete-scope ranking | 6.842 / 6.593 s | 8.093 / 8.741 s |
+
+Both reopened ranking calls reported zero updated index rows. The actual selected temporary volume had approximately 87.86 GiB free on Linux and 219.84 GiB free on Windows; the Windows Python temporary volume separately had approximately 76.91 GiB free. These observations describe those runners. Every future tier must perform its own resource admission.
+
+The [Windows import profile](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095787806), exact head `27b5380eee386059affa89f5c38cb354ba20a034`, completed four genuine 250-book slices and full resulting catalog/source verification. Its 336.484-second parent measurement includes cProfile overhead and is not an uninstrumented throughput result. Each child performed three full storage checks, while the remaining live session checks and path observations consumed a substantial share of the measured time. Nested cumulative profile timings overlap and must not be summed. This evidence does not authorize removing current-source, ancestor, cancellation or resource observations.
+
+The [small backup-scale adapter gate](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095579146), exact head `1d85bae4c35bd7fedf385b3eeafc9519d770b0c5`, passed all **17 cases in source and isolated installed modes on both operating systems**. It checked 45 selected origins, all 405 package files and all three benchmark scripts before and after execution. These are actual small-corpus backup/verification/restore and refusal contracts; they do not establish a 50,000-book or 2 GiB roundtrip.
+
+These completed component results supersede the corresponding unresolved component observations above only for their exact source compositions. They do not establish the final twelve-tier verdict, larger-corpus throughput, simultaneous process-family RAM peak, semantic quality or physical accessibility. The current final-head workflow reports remain the acceptance authority.
+
 ## Actual corpus tiers
 
 Every corpus book contains 40 original form-feed-delimited segments. Each segment has an independent book/segment token, Ukrainian and Slovak text, a combining accent, exact CRLF bytes and repeated search terms. The first original includes a real UTF-8 BOM. No source is sparse, truncated to a nominal length or represented by a fabricated manifest size.
@@ -126,6 +150,8 @@ python -I -B -X utf8 scripts/benchmark_library_catalog.py import /owned/scale-10
 python -I -B -X utf8 scripts/benchmark_library_catalog.py verify /owned/scale-1000 --seconds 1800
 python -I -B -X utf8 scripts/benchmark_library_catalog.py search /owned/scale-1000 --seconds 3600 --query-seconds 1800 --query-samples 50
 ```
+
+For the large-single-source tiers, add `--search-memory-mib 1024` to the `init` command. This selects the existing `SearchResources` working-memory allowance and persists that exact choice before import; the separate `--memory-mib` option selects the importer allowance. The search value must be an integer within the supported range and large enough for the maximum authored record. The same real RAM/disk admission runs before creating the application profile. Without the new option, the previous derived default remains unchanged. A 1 GiB search allowance permits up to 33,554,432 raw source characters per window while retaining the existing 100-result cap, complete source traversal, all 50 anchor samples and every quotation/scope check. The working-window allowance is not a whole-interpreter RSS ceiling or an operating-system memory limit. The real RAM admission retains the existing 256 MiB headroom above the larger of the importer and search allowances; measured coordinator and individual-worker peaks remain separate report values. The report binds the selected memory value to both the admitted and saved profile; this configuration is not itself a throughput result.
 
 The first import command must exit with code **73** after one real publication, actual worker-family closure and the durable batch save. Run the next command as a new process. The resume reuses the original request and edition identities; a duplicate first publication is an acceptance failure.
 

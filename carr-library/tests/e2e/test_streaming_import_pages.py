@@ -190,8 +190,22 @@ def test_explicit_large_original_uses_real_public_pipeline_and_exact_copy(tmp_pa
     assert saved['asset_sha256'] == expected.hexdigest() == _digest(source)
     retained = app.assets.resolve(saved['asset_sha256'], max_bytes=size)
     assert _digest(retained) == expected.hexdigest() and retained.stat().st_size == size
-    hit, = app.search(workspace, 'Capacityanchor016')
-    assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'Capacityanchor016'
+    from carr_library.search.paging import SearchResources
+    resources = SearchResources(timeout=300, memory_bytes=256*MIB, disk_bytes=32*MIB)
+    cursor, matches = None, []
+    try:
+        for _ in range(count):
+            page = app.search_page(workspace, 'Capacityanchor016', cursor=cursor,
+                                  resources=resources, timeout=300)
+            matches.extend(page.results)
+            if page.next_source_cursor is None:
+                break
+            cursor = page.next_source_cursor
+        assert page.next_source_cursor is None, 'The explicit bounded search did not exhaust this source.'
+        hit, = matches
+        assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'Capacityanchor016'
+    finally:
+        assert app.close_search() is True
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM page WHERE revision=?', (result['id'],)).fetchone()[0] == count
         assert db.execute('SELECT size FROM catalog_asset WHERE digest=?',

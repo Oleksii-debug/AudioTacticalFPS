@@ -273,3 +273,109 @@ def test_actual_last_unicode_quote_is_beyond_the_first_large_source_window(adapt
     assert measured["federated_cleanup_confirmed"] is True
     assert adapter.fixture.digest_file(original) == original_digest
     assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1
+
+
+@pytest.mark.parametrize("selected", [True, 0, -1, 1.5, "1024", float("inf"), 16*1024**3+1])
+def test_explicit_search_memory_rejects_invalid_policy_before_profile_creation(adapter, tmp_path, selected):
+    directory, generation = generated(adapter, tmp_path, books=1, segments=1)
+    with pytest.raises(ValueError, match="Invalid explicit benchmark profile"):
+        adapter.initialize(directory, search_memory_bytes=selected, reserve_bytes=0,
+                           foreign_libraries=1)
+    assert not (directory / "library").exists() and not (directory / "benchmark").exists()
+    assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1
+
+
+def test_explicit_search_memory_cannot_understate_the_actual_authored_record(adapter, tmp_path):
+    directory, generation = generated(adapter, tmp_path, books=1, segments=1,
+                                      segment_bytes=3*adapter.MIB)
+    with pytest.raises(ValueError, match="maximum authored source segment"):
+        adapter.initialize(directory, search_memory_bytes=64*adapter.MIB,
+                           reserve_bytes=0, foreign_libraries=1)
+    assert not (directory / "library").exists() and not (directory / "benchmark").exists()
+    assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1
+
+
+def test_explicit_search_memory_uses_the_same_prewrite_measured_admission(adapter, tmp_path, monkeypatch):
+    directory, generation = generated(adapter, tmp_path, books=1, segments=1)
+    actual_memory = adapter.fixture.available_memory
+    observations = []
+
+    def constrained_observation():
+        # A disclosed lower available-RAM observation drives the real admission
+        # function. Disk checks and all filesystem operations remain actual.
+        observed = actual_memory()
+        observations.append(observed)
+        return {**observed, "available_bytes": min(observed["available_bytes"], 768*adapter.MIB-1),
+                "method": "controlled lower allowance after actual memory observation"}
+
+    monkeypatch.setattr(adapter.fixture, "available_memory", constrained_observation)
+    result = adapter.initialize(directory, memory_bytes=128*adapter.MIB,
+        search_memory_bytes=512*adapter.MIB, search_disk_bytes=32*adapter.MIB,
+        reserve_bytes=0, foreign_libraries=1)
+    assert observations
+    assert result["status"] == "NOT_RUN" and result["stage"] == "application admission"
+    assert result["admission"]["memory"]["required_headroom_bytes"] == 768*adapter.MIB
+    assert result["admission"]["memory"]["available_bytes"] <= 768*adapter.MIB-1
+    assert result["admission"]["disk"]["free_bytes"] > 0
+    assert not (directory / "library").exists() and not (directory / "benchmark").exists()
+    assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1
+
+
+def test_actual_isolated_cli_persists_the_exact_explicit_search_memory(adapter, tmp_path):
+    directory, generation = generated(adapter, tmp_path, books=1, segments=1)
+    process = invoke(directory, "init", "--search-memory-mib", "128",
+        "--memory-mib", "512", "--search-disk-mib", "32", "--reserve-mib", "0",
+        "--foreign-libraries", "1", "--page-files", "2", "--slice-items", "2",
+        "--slice-seconds", "60", "--steps", "2")
+    assert process.returncode == 0, process.stderr
+    replies = [json.loads(line) for line in process.stdout.decode("utf-8").splitlines() if line]
+    state = read_json(directory / "benchmark" / "state.json")
+    assert replies[-1]["search_memory_bytes"] == state["search_memory_bytes"] == 128*adapter.MIB
+    assert state["import_budget"]["memory_bytes"] == 512*adapter.MIB
+    assert state["admission"]["memory"]["required_headroom_bytes"] == 768*adapter.MIB
+    assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1
+
+
+def test_actual_explicit_larger_memory_groups_source_rows_without_losing_any_oracle(adapter, tmp_path):
+    from carr_library.search.paging import SearchResources
+
+    directory, generation = generated(adapter, tmp_path, books=1, segments=3,
+                                      segment_bytes=3*adapter.MIB)
+    state = adapter.initialize(directory, page_files=2, slice_items=2, steps=4,
+        slice_seconds=60, memory_bytes=512*adapter.MIB,
+        search_memory_bytes=384*adapter.MIB, search_disk_bytes=128*adapter.MIB,
+        reserve_bytes=0, foreign_libraries=1)
+    assert state["search_memory_bytes"] == 384*adapter.MIB
+    saved = read_json(directory / "benchmark" / "state.json")
+    assert saved["search_memory_bytes"] == state["search_memory_bytes"]
+    assert adapter.run_import(directory, seconds=180)["status"] == "IMPORT_COMPLETE"
+    assert adapter.verify_catalog(directory, seconds=180)["raw_utf8_bytes"] == 9*adapter.MIB
+    original = directory / "sources" / "book-00000.txt"
+    original_digest = adapter.fixture.digest_file(original)
+    query = (adapter.fixture.anchor(0, 3) + " commonrailway archive.\r\n"
+             "Київ — Žilina; cafe\u0301; літо")
+    app = LibraryApp(directory / "library")
+    try:
+        first = app.search_page(state["workspace"], query, mode="phrase", title="book-00000",
+            collection=state["collection"],
+            resources=SearchResources(timeout=120, memory_bytes=state["search_memory_bytes"],
+                                      disk_bytes=state["search_disk_bytes"]))
+        assert len(first.results) == 1 and first.next_source_cursor is None
+        assert not first.has_more_results and first.source_pages == 3
+        hit = first.results[0]
+        assert app.copy(state["workspace"], hit.ref, hit.revision, "quote") == query
+    finally:
+        assert app.close_search()
+    measured = adapter.search_catalog(directory, seconds=180, query_seconds=120, query_samples=2)
+    assert measured["status"] == "MEASURED_SYNTHETIC_CORPUS"
+    assert measured["source_books"] == 1 and measured["source_segments"] == 3
+    assert measured["source_windows"] == 1
+    assert measured["search_memory_allowance_bytes"] == 384*adapter.MIB
+    assert measured["unicode_quotations"] == [{
+        "book": 0, "last_segment": 3, "source_windows": 1,
+        "quote_sha256": sha256(query.encode("utf-8")).hexdigest()}]
+    assert measured["complete_scope_ranking"][0]["total_results"] == 3
+    assert measured["complete_scope_ranking"][1]["updated_index_rows"] == 0
+    assert measured["federated_cleanup_confirmed"] is True
+    assert adapter.fixture.digest_file(original) == original_digest
+    assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1
