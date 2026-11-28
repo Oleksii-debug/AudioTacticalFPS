@@ -1,0 +1,59 @@
+{
+  "schema": "carr-observed-windows-capacity-fixture-inverse/1",
+  "tested_head": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+  "base_commit": "69214167a42e69855cce08cf414c186115b62cca",
+  "changes": [
+    {
+      "path": "carr-library/tests/ingest/test_import_budget_worker.py",
+      "before_blob": "ebdce4010a2990eb9eba9581027f6a8243e3398f",
+      "after_blob": "8901a9d15a031233eb6310d892ab7254f5c53c2a",
+      "before": {
+        "sha256": "3939529ff7b89ac2c98af63f35f5ab000964e2101eea434edb8c405e102b38d2",
+        "bytes": 17198
+      },
+      "after": {
+        "sha256": "377f942b1903d7f78f191c995f3088fecf3d5a554cbfb612ecdb6895db7cb7f5",
+        "bytes": 17252
+      },
+      "hunks": [
+        {
+          "start": 225,
+          "removed": [
+            "])"
+          ],
+          "added": [
+            "], ids=['oversized-json', 'invalid-utf8', 'utf16-json'])"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_import_access_smoke.py",
+      "before_blob": "ff46ae2b890e0ce0f81e8445a246496e3cb8d0d3",
+      "before": {
+        "sha256": "dd0a124fa84a1fd58f1a04b64aa4aebb81e8e9d9dc40ee6a38dcf69f957fd121",
+        "bytes": 53309
+      },
+      "after": {
+        "sha256": "64476485147127a4f78961192538131953fa6b4251b762edd8a57574e2c64245",
+        "bytes": 53634
+      },
+      "hunks": [
+        {
+          "start": 560,
+          "removed": [
+            "        menu = frame.GetMenuBar().GetMenu(0)"
+          ],
+          "added": [
+            "        menu_bar = frame.GetMenuBar()",
+            "        library_menus = [index for index in range(menu_bar.GetMenuCount())",
+            "                         if menu_bar.GetMenuLabel(index).replace('&', '') == 'Library']",
+            "        check('one actual Library menu after productivity menus are installed',",
+            "              len(library_menus) == 1)",
+            "        menu = menu_bar.GetMenu(library_menus[0])"
+          ]
+        }
+      ]
+    }
+  ]
+}

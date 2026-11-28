@@ -1,0 +1,234 @@
+name: Focused native import and backup acceptance
+# Targeted diagnosis of the real native workflow. The separate 39-suite capacity,
+# component and full installed-bundle gates remain mandatory and unchanged.
+on:
+  push:
+    branches: [carr/native-capacity-evaluation-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-native-capacity-evaluation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-native-capacity-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  native:
+    name: Actual installed Import Center and backup controls
+    runs-on: windows-2022
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      CARR_CAPACITY_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Bind the native diagnostic to exact source and probe
+        shell: pwsh
+        run: |
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:CARR_CAPACITY_HEAD) { throw 'Native diagnostic source differs from the exact event.' }
+          "CARR_NATIVE_REFERENCE_HASH=$((Get-FileHash review/capacity-python-reference-2026-11-28.json -Algorithm SHA256).Hash)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_NATIVE_PROBE_HASH=$((Get-FileHash scripts/windows_backup_import_access_smoke.py -Algorithm SHA256).Hash)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install exact application and declared capacity prerequisites
+        shell: pwsh
+        run: |
+          $extras = if ($IsWindows) { '.[test,desktop,sync]' } else { '.[test,sync]' }
+          python -m pip install --only-binary=cryptography,cffi $extras 'lxml==6.1.3' 'cffi==2.1.1' 'pycparser==3.12'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the existing pinned Windows audio and OCR runtimes
+        if: runner.os == 'Windows'
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-capacity' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-capacity-audio'
+          python -I -B packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-capacity/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-capacity-ocr-work'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          $ocr = Join-Path $ocrWork 'ocr'
+          python -I -B packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'cache') --output $ocr --source-archive (Join-Path $ocrWork 'corresponding-source.tar') --download | Tee-Object 'ci-capacity/ocr-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          python -I -B ../.github/scripts/carr_prepare_test_font.py --report ci-capacity/test-font.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require the real installed Windows reply-boundary cases
+        if: ${{ !cancelled() }}
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $gate = @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import runpy
+          import subprocess
+          import sys
+          import xml.etree.ElementTree as ET
+          from carr_library.ingest import worker, batch_cli, resource_budget
+          assert sys.flags.isolated and sys.dont_write_bytecode
+          assert not any(os.environ.get(key) for key in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS'))
+          root = Path.cwd().resolve()
+          probe = root / 'scripts/windows_backup_import_access_smoke.py'
+          policy_path = root / 'scripts/ci_check.py'
+          test = root / 'tests/ingest/test_import_budget_worker.py'
+          reference_path = root / 'review/capacity-python-reference-2026-11-28.json'
+          digest = lambda path: sha256(path.read_bytes()).hexdigest()
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['CARR_CAPACITY_HEAD']
+          tracked = {str(path): digest(path) for path in (probe, policy_path, test, reference_path)}
+          for name, checksum in tracked.items():
+              relative = Path(name).relative_to(root).as_posix()
+              committed = subprocess.check_output(['git', 'cat-file', 'blob',
+                  head + ':carr-library/' + relative])
+              assert sha256(committed).hexdigest() == checksum, relative
+          identity = runpy.run_path(str(probe))['_installed_sources']
+          before = identity(worker, batch_cli, resource_budget)
+          reference = json.loads(reference_path.read_text(encoding='utf-8'))
+          expected = {row['path'].removeprefix('carr_library/'): {'sha256': row['sha256'], 'bytes': row['bytes']}
+                      for row in reference['runtime_rows']}
+          assert before['python_inventory'] == expected
+          report = root / 'ci-capacity/worker-boundaries.xml'
+          result = dict(status='FAIL', commit=head, expected_cases=12,
+                        scope='isolated installed Windows real owned reply-boundary cases',
+                        package_python_files=len(expected), tracked_sha256=tracked)
+          try:
+              policy = runpy.run_path(str(policy_path))['PYTEST_CHILD']
+              sys.argv = ['-c', '-vv', '-s', '--import-mode=importlib',
+                          '-o', 'pythonpath=', '-o', 'addopts=', '-o', 'xfail_strict=true',
+                          '--junitxml', str(report), 'tests/ingest/test_import_budget_worker.py']
+              namespace = {'__name__': '__main__'}
+              try:
+                  exec(compile(policy, '<unchanged-offline-test-policy>', 'exec'), namespace)
+              except SystemExit as error:
+                  status = error.code
+              else:
+                  raise AssertionError('The existing strict child policy did not return a verdict.')
+              cases = list(ET.parse(report).iter('testcase'))
+              failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+              skipped = sum(case.find('skipped') is not None for case in cases)
+              result.update(exit_code=status, cases=len(cases), failed=failed, skipped=skipped,
+                            junit_sha256=digest(report))
+              assert status == 0 and not namespace['policy'].seen
+              assert len(cases) == 12 and failed == skipped == 0
+              assert all(case.get('classname', '').endswith('tests.ingest.test_import_budget_worker') for case in cases)
+              result['status'] = 'PASS'
+          finally:
+              try:
+                  from carr_library.audio.cleanup import drain_pending_cleanup
+                  interruption = drain_pending_cleanup()
+                  if interruption is not None:
+                      raise interruption
+                  assert identity(worker, batch_cli, resource_budget) == before
+                  assert {name: digest(Path(name)) for name in tracked} == tracked
+                  assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == head
+              except BaseException:
+                  result['status'] = 'FAIL'
+                  result['identity_after'] = 'FAIL'
+                  raise
+              else:
+                  result['identity_after'] = 'PASS'
+              finally:
+                  (root / 'ci-capacity/worker-boundaries.json').write_text(
+                      json.dumps(result, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+                  print(json.dumps(result, sort_keys=True), flush=True)
+          '@
+          foreach ($name in @('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS')) { Remove-Item ("Env:" + $name) -ErrorAction SilentlyContinue }
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          python -I -B -X utf8 -c $gate 2>&1 | Tee-Object 'ci-capacity/worker-boundaries.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual installed Windows import and backup controls
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $before = (Get-FileHash scripts/windows_backup_import_access_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant()
+          python -I -B -X utf8 scripts/windows_backup_import_access_smoke.py 2>&1 | Tee-Object 'ci-capacity/native-backup-import.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash scripts/windows_backup_import_access_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant() -ne $before) { throw 'Native capacity probe changed during execution.' }
+          $proof = @'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import sys
+          root = Path.cwd().resolve()
+          result = json.loads((root / 'ci-capacity/native-backup-import.txt').read_text(encoding='utf-8-sig').strip().splitlines()[-1])
+          assert result['result'] == 'PASS' and type(result['checks']) is int and result['checks'] > 0
+          for name in ('native_keyboard', 'actual_scan_page_continuation', 'actual_snapshot_then_native_cancel',
+                       'full_incremental_verify_restore', 'independent_checksum_and_required_base_folders',
+                       'same_desktop_executor', 'restored_original_bytes_and_verified_copy'):
+              assert result[name] == 'PASS', name
+          assert result['native_full_backup_format'] == 5 and result['reviewed_import_original_mib'] == 128
+          assert all(result[name] == 'NOT_RUN' for name in ('native_folder_picker', 'physical_output', 'NVDA'))
+          assert result['flat4_compatibility'] == 'SEPARATE_PORTABLE_GATE'
+          assert result['large_original_capacity'] == 'SEPARATE_API_GATE'
+          probe = root / 'scripts/windows_backup_import_access_smoke.py'
+          assert result['probe_identity'] == {str(probe): sys.argv[1]}
+          reference = json.loads((root / 'review/capacity-python-reference-2026-11-28.json').read_text(encoding='utf-8'))
+          expected = {row['path'].removeprefix('carr_library/'): {'sha256': row['sha256'], 'bytes': row['bytes']}
+                      for row in reference['runtime_rows']}
+          identity = result['source_identity']
+          assert identity['python_inventory'] == expected and identity['python_files'] == len(expected)
+          source, installed = root / 'src/carr_library', Path(identity['installed_root'])
+          assert source.resolve() != installed.resolve() and identity['source_root'] == str(source.resolve())
+          for directory in (source, installed):
+              actual = {p.relative_to(directory).as_posix(): {'sha256': sha256(p.read_bytes()).hexdigest(), 'bytes': p.stat().st_size}
+                        for p in sorted(directory.rglob('*.py'))}
+              assert actual == expected
+          for name, row in identity['modules'].items():
+              relative = name.removeprefix('carr_library.').replace('.', '/') + '.py'
+              assert Path(row['path']).resolve() == installed / relative
+              assert {k: row[k] for k in ('sha256', 'bytes')} == expected[relative]
+          assert len(identity['modules']) == 28
+          result['commit'] = sys.argv[2]
+          (root / 'ci-capacity/native-backup-import-qualification.json').write_text(
+              json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'checks': result['checks'], 'python_files': len(expected),
+                            'native_keyboard': 'PASS', 'NVDA': 'NOT_RUN'}))
+          '@
+          python -I -B -X utf8 -c $proof $before $env:CARR_CAPACITY_HEAD | Tee-Object 'ci-capacity/native-qualification.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require unchanged exact source and diagnostic identity
+        if: always()
+        shell: pwsh
+        run: |
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:CARR_CAPACITY_HEAD) { throw 'Native diagnostic source changed.' }
+          if ((Get-FileHash review/capacity-python-reference-2026-11-28.json -Algorithm SHA256).Hash -cne $env:CARR_NATIVE_REFERENCE_HASH) { throw 'Committed native source reference changed.' }
+          if ((Get-FileHash scripts/windows_backup_import_access_smoke.py -Algorithm SHA256).Hash -cne $env:CARR_NATIVE_PROBE_HASH) { throw 'Native diagnostic changed.' }
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-capacity
+          git rev-parse HEAD > ci-capacity/commit.txt
+          git rev-parse HEAD^{tree} > ci-capacity/tree.txt
+          python -m pip freeze > ci-capacity/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: native-capacity-windows-2022-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-capacity
+          if-no-files-found: error

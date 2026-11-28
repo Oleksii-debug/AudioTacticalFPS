@@ -558,7 +558,12 @@ def _run_native():
 
     def command(label, title):
         check('menu operation starts with the same idle Desktop owner', quiet() and not owners())
-        menu = frame.GetMenuBar().GetMenu(0)
+        menu_bar = frame.GetMenuBar()
+        library_menus = [index for index in range(menu_bar.GetMenuCount())
+                         if menu_bar.GetMenuLabel(index).replace('&', '') == 'Library']
+        check('one actual Library menu after productivity menus are installed',
+              len(library_menus) == 1)
+        menu = menu_bar.GetMenu(library_menus[0])
         items = [item for item in menu.GetMenuItems() if not item.IsSeparator() and item.IsEnabled()]
         matches = [index for index, item in enumerate(items) if item.GetItemLabelText() == label]
         check('one actual Library menu command: ' + label, len(matches) == 1)

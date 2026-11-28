@@ -1,0 +1,55 @@
+{
+  "schema": "carr-observed-windows-capacity-fixture-repair/1",
+  "status": "SOURCE_REVIEWED / NOT_RUN",
+  "tested_head": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+  "base_commit": "69214167a42e69855cce08cf414c186115b62cca",
+  "run": 46132576738,
+  "job": 140940769513,
+  "observed": {
+    "source": {
+      "passed": 949,
+      "failed": 25,
+      "errors": 2,
+      "skipped": 0,
+      "seconds": 729.08
+    },
+    "installed": {
+      "passed": 949,
+      "failed": 25,
+      "errors": 2,
+      "skipped": 0,
+      "seconds": 718.95
+    },
+    "native": "FAIL after5 initial checks; no import/backup path reached.",
+    "raw": {
+      "bytes": 1630819,
+      "sha256": "27c6c1ee42e1907bb089748e3d6f66570d705481d7154eecd7630cf87105ff29"
+    }
+  },
+  "repairs": [
+    {
+      "path": "carr-library/tests/ingest/test_import_budget_worker.py",
+      "cause": "Automatically generated oversized-byte parameter ID exceeded the Windows environment-variable bound before the actual owned-reply case ran.",
+      "change": "Name only the three exact existing parameter values explicitly; every byte, exception, assertion and runtime guard is unchanged.",
+      "assertions_before": 75,
+      "assertions_after": 75
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_import_access_smoke.py",
+      "cause": "After Desktop constructs its original Library menu, existing productivity installation inserts File at index0; the native probe incorrectly assumed Library remained at0.",
+      "source": {
+        "path": "carr-library/src/carr_library/ui/productivity.py",
+        "blob": "adc71444e1a054b3cafcc380b6cd89698cf5dd92",
+        "statement": "frame.menu_bar.Insert(0, file_menu, '&File')"
+      },
+      "change": "Find exactly one real Library menu by its existing label, then retain unique command matching, Alt+L, actual highlight checks, Home/Down/Enter navigation, native modal checks and original scenario deadlines."
+    }
+  ],
+  "unchanged": [
+    "All production bytes",
+    "All expected reply-boundary results",
+    "All native operations and their guards",
+    "450/510/540-second native bounds",
+    "Whole installed namespace/RECORD identity"
+  ]
+}

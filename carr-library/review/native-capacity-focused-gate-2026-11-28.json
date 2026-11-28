@@ -1,0 +1,26 @@
+{
+  "schema": "carr-focused-native-capacity-gate/1",
+  "status": "SOURCE_REVIEWED / NOT_RUN",
+  "purpose": "Exercise the two observed Windows fixture failures and the previously unreached real native Import Center/full/incremental restore path without repeating unrelated39-suite diagnosis first.",
+  "parent": "69214167a42e69855cce08cf414c186115b62cca",
+  "workflow": ".github/workflows/carr-native-capacity-evaluation.yml",
+  "branch": "carr/native-capacity-evaluation-20261128",
+  "scope": "Windows diagnostic only; ordinary, full39-suite capacity, MAIN bundle and release requirements remain mandatory.",
+  "reused": "Exact existing full Windows audio/OCR preparation and complete native receipt predicate from carr-capacity-evaluation.yml; original probe450/510/540-second bounds.",
+  "worker": {
+    "selector": "tests/ingest/test_import_budget_worker.py",
+    "cases": 12,
+    "mode": "isolated installed",
+    "policy": "Unmodified scripts/ci_check.py PYTEST_CHILD including offline and XFAIL verdict.",
+    "required": "Every exact existing payload case, zero failures/errors/skips; full installed Python inventory and RECORD before/after."
+  },
+  "identity": "Git event head and committed reference/probe checksums before/after; native whole namespace and28 origins exactly match current committed reference. Probe, policy, selected test and reference bytes are compared directly with immutable HEAD Git blobs before runpy executes the helper.",
+  "changed_production_files": 0,
+  "new_job_minutes": 35,
+  "new_worker_step_minutes": 5,
+  "native_step_minutes": 10,
+  "raw_failure": "review/capacity-windows-fixture-repair-2026-11-28.json",
+  "manual_NVDA": "NOT_RUN",
+  "physical_audio": "NOT_RUN",
+  "new_artifacts": "Only public CI receipt directory; no release wheel or application archive."
+}

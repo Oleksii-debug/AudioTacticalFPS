@@ -223,7 +223,7 @@ def test_budgeted_child_commit_survives_cancelled_acknowledgment_without_second_
     b'{"result":{"state":"complete"}}' + b' ' * worker.MAX_REPLY,
     b'{"result":{"state":"\\xff"}}'.replace(b'\\xff', b'\xff'),
     '{"result":{"state":"complete"}}'.encode('utf-16'),
-])
+], ids=['oversized-json', 'invalid-utf8', 'utf16-json'])
 def test_owned_reply_byte_and_utf8_limits_refuse_real_child_output(tmp_path, monkeypatch, payload):
     """Only the child payload is synthetic; native process/readers are real."""
     actual = process.run_process
