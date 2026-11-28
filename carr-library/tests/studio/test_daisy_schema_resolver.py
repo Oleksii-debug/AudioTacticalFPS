@@ -49,6 +49,22 @@ def document(url, body=b'<body>plain &fixture;</body>'):
     return ('<!DOCTYPE html SYSTEM ' + quoteattr(url) + '>').encode('utf-8') + b'<html>' + body + b'</html>'
 
 
+def parse_document(schemas, kind, parser, body=b'<body>plain &fixture;</body>'):
+    selected = schemas['xhtml1-transitional.dtd']
+    if kind != 'native':
+        return etree.fromstring(document(spelling(selected, kind), body), parser)
+    # Native filesystem names are not XML SYSTEM URIs. Open the actual Unicode
+    # filename, while giving libxml2 the canonical admitted DTD URI.
+    path = selected.parent / 'native document \u03a9.xml'
+    raw = document(selected.as_uri(), body)
+    path.write_bytes(raw)
+    try:
+        with open(str(path), 'rb') as stream:
+            return etree.parse(stream, parser, base_url=path.as_uri()).getroot()
+    finally:
+        assert path.read_bytes() == raw
+
+
 @pytest.mark.parametrize('kind', ['native', 'canonical', 'short-file', 'official'])
 def test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings(schemas, kind):
     module = helper()
@@ -59,8 +75,7 @@ def test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri
         def resolve(self, url, public_id, context):
             visited.append(url)
             return super().resolve(url, public_id, context)
-    parsed = etree.fromstring(document(spelling(schemas['xhtml1-transitional.dtd'], kind)),
-                              module.parser_for_html(Observed, etree))
+    parsed = parse_document(schemas, kind, module.parser_for_html(Observed, etree))
     assert parsed.tag == 'html' and len(visited) == 2
     assert any('xhtml-special.ent' in url for url in visited)
     assert b'&fixture;' in etree.tostring(parsed)  # resolve_entities remains False.
@@ -72,9 +87,8 @@ def test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping(schemas, 
     module = helper()
     resolver = module.schema_resolver(etree, schemas)
     with pytest.raises(etree.XMLSyntaxError):
-        etree.fromstring(document(spelling(schemas['xhtml1-transitional.dtd'], kind),
-                                  b'<body><unsupported-element /></body>'),
-                         module.parser_for_html(resolver, etree))
+        parse_document(schemas, kind, module.parser_for_html(resolver, etree),
+                       b'<body><unsupported-element /></body>')
 
 
 def test_actual_lxml_keeps_separate_exact_smil_alias(schemas):
@@ -120,6 +134,17 @@ def test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_en
     assert outside.read_bytes() == b'<!ELEMENT html EMPTY>'
 
 
+@pytest.mark.parametrize('url', [None, '', True, 7, b'file:///unapproved.dtd', [], {}],
+                         ids=['missing', 'empty', 'boolean', 'integer', 'bytes', 'list', 'mapping'])
+def test_closed_schema_resolver_refuses_missing_or_non_string_identifiers(schemas, url):
+    module = helper()
+    before = {name: sha256(path.read_bytes()).hexdigest() for name, path in schemas.items()}
+    resolver = module.schema_resolver(etree, schemas)()
+    with pytest.raises(ValueError, match='unapproved resource identifier'):
+        resolver.resolve(url, None, None)
+    assert {name: sha256(path.read_bytes()).hexdigest() for name, path in schemas.items()} == before
+
+
 def test_windows_short_file_uri_maps_only_the_exact_approved_drive_path():
     module = helper()
     selected = PureWindowsPath('D:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent')
@@ -135,9 +160,11 @@ def test_windows_short_file_uri_maps_only_the_exact_approved_drive_path():
     assert resolver.resolve('file:/D:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent',
                             None, marker) == str(selected)
     assert events == [(str(selected), marker)]
+    assert resolver.resolve(spelling(selected, 'native'), None, marker) == str(selected)
+    assert events == [(str(selected), marker), (str(selected), marker)]
     for url in ('file:/E:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent',
                 'file://host/D:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent',
                 'file:/D:/a/_temp/other/xhtml-special.ent'):
         with pytest.raises(ValueError, match='unapproved resource'):
             resolver.resolve(url, None, marker)
-    assert events == [(str(selected), marker)]
+    assert events == [(str(selected), marker), (str(selected), marker)]

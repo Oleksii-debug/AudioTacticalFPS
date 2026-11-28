@@ -1,0 +1,1785 @@
+{
+  "schema": "carr-actual-main-fast-source/1",
+  "recorded_utc": "2026-11-28 06:32:39 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "job_id": 140873303815,
+  "status": "FAIL",
+  "source_workflow_git": "476f33c89684036b64f28d9024c0768c2d522eb1",
+  "checkout_evidence": [
+    {
+      "line": 37,
+      "text": "2026-11-28T05:52:50.5942818Z   ref: 5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    },
+    {
+      "line": 104,
+      "text": "2026-11-28T05:52:55.5683282Z 5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    },
+    {
+      "line": 129,
+      "text": "2026-11-28T05:52:56.0024457Z HEAD is now at 5b2c5a9 Finish mixed-text search work and restore strict native test admission"
+    },
+    {
+      "line": 132,
+      "text": "2026-11-28T05:52:56.0823809Z 5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    }
+  ],
+  "exact_whole_selector_order_matches": true,
+  "totals": {
+    "whole_suites": 180,
+    "whole_pass": 177,
+    "whole_fail": 3,
+    "case_executions": 4641,
+    "passed_case_executions": 4626,
+    "failed_case_executions": 15,
+    "skipped_case_executions": 0,
+    "case_executions_in_fully_passed_wholes": 4576
+  },
+  "strict_rows": [
+    {
+      "line": 8078,
+      "status": "PASS",
+      "path": "tests/reader/test_braille.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8079,
+      "status": "PASS",
+      "path": "tests/ui/test_braille_actions.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8080,
+      "status": "PASS",
+      "path": "tests/studio/test_project_effects.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8081,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_studio_effects.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8082,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8083,
+      "status": "PASS",
+      "path": "tests/ui/test_engine_settings_lifetime.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8084,
+      "status": "PASS",
+      "path": "tests/speech/test_listening.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8085,
+      "status": "PASS",
+      "path": "tests/speech/test_playback_devices.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8086,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_listening_hooks.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8087,
+      "status": "PASS",
+      "path": "tests/packaging/test_installed_trusted_client_probe.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8088,
+      "status": "PASS",
+      "path": "tests/speech/test_wave_output.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8089,
+      "status": "PASS",
+      "path": "tests/speech/test_playlist.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8090,
+      "status": "PASS",
+      "path": "tests/speech/test_playlist_recovery.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8091,
+      "status": "PASS",
+      "path": "tests/ui/test_audio_playback.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8092,
+      "status": "PASS",
+      "path": "tests/audio/test_conversion_batch.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8093,
+      "status": "PASS",
+      "path": "tests/ui/test_audio_conversion_batch.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8094,
+      "status": "PASS",
+      "path": "tests/studio/test_conversion_batch_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8095,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_playback.py",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8096,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_playback_actions.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8097,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_dialog.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8098,
+      "status": "PASS",
+      "path": "tests/packaging/test_standard_installer.py",
+      "passed": 102,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8099,
+      "status": "PASS",
+      "path": "tests/speech/test_reader_usability.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8100,
+      "status": "PASS",
+      "path": "tests/security/test_idle_renewal.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8101,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_local.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8102,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_v3.py",
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8103,
+      "status": "PASS",
+      "path": "tests/transcription/test_export_publication.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8104,
+      "status": "PASS",
+      "path": "tests/speech/test_publication_validation.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8105,
+      "status": "PASS",
+      "path": "tests/speech/test_reading_marks.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8106,
+      "status": "PASS",
+      "path": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8107,
+      "status": "PASS",
+      "path": "tests/speech/test_reading_tabs.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8108,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8109,
+      "status": "PASS",
+      "path": "tests/speech/test_reading_presentation.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8110,
+      "status": "PASS",
+      "path": "tests/speech/test_reading_presentation_handlers.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8111,
+      "status": "PASS",
+      "path": "tests/speech/test_reading_presentation_reader_hook.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8112,
+      "status": "PASS",
+      "path": "tests/ui/test_native_reading_presentation_driver.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8113,
+      "status": "PASS",
+      "path": "tests/speech/test_voice_preferences.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8114,
+      "status": "PASS",
+      "path": "tests/storage/test_voice_preferences_backup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8115,
+      "status": "PASS",
+      "path": "tests/ui/test_voice_preferences_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8116,
+      "status": "PASS",
+      "path": "tests/ui/test_progress_job_review.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8117,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_navigation_ui.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8118,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_view_hooks.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8119,
+      "status": "PASS",
+      "path": "tests/storage/test_reader_preferences_state.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8120,
+      "status": "PASS",
+      "path": "tests/studio/test_book_batch.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8121,
+      "status": "PASS",
+      "path": "tests/studio/test_book_cli.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8122,
+      "status": "PASS",
+      "path": "tests/ui/test_book_batch_dialog.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8123,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_book_batches.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8124,
+      "status": "PASS",
+      "path": "tests/audio/test_recording.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8125,
+      "status": "PASS",
+      "path": "tests/audio/test_recording_controls.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8126,
+      "status": "PASS",
+      "path": "tests/audio/test_recording_monitor.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8127,
+      "status": "PASS",
+      "path": "tests/ui/test_recording_dialog.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8128,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_recording_controls.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8129,
+      "status": "PASS",
+      "path": "tests/catalog/test_streaming_intake.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8130,
+      "status": "PASS",
+      "path": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8131,
+      "status": "PASS",
+      "path": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8132,
+      "status": "PASS",
+      "path": "tests/ingest/test_batch_continuation.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8133,
+      "status": "PASS",
+      "path": "tests/ingest/test_batch_continuation_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8134,
+      "status": "PASS",
+      "path": "tests/ui/test_import_center.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8135,
+      "status": "PASS",
+      "path": "tests/e2e/test_research_search_cli.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8136,
+      "status": "PASS",
+      "path": "tests/search/test_federated.py",
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8137,
+      "status": "PASS",
+      "path": "tests/ui/test_federated_search.py",
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8138,
+      "status": "PASS",
+      "path": "tests/search/test_search_paging.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8139,
+      "status": "PASS",
+      "path": "tests/ingest/test_scan_root_binding.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8140,
+      "status": "PASS",
+      "path": "tests/reader/test_export_reconciliation.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8141,
+      "status": "PASS",
+      "path": "tests/packaging/test_ci_check.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8142,
+      "status": "PASS",
+      "path": "tests/storage/test_desktop_preferences.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8143,
+      "status": "PASS",
+      "path": "tests/ui/test_desktop_integration.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8144,
+      "status": "PASS",
+      "path": "tests/ui/test_desktop_settings.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8145,
+      "status": "PASS",
+      "path": "tests/ui/test_desktop_host_lifecycle.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8146,
+      "status": "PASS",
+      "path": "tests/speech/test_narration_receipt.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8147,
+      "status": "PASS",
+      "path": "tests/storage/test_local_schedules.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8148,
+      "status": "PASS",
+      "path": "tests/ui/test_local_schedules.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8149,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_local_schedules.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8150,
+      "status": "PASS",
+      "path": "tests/packaging/test_local_schedules_cli.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8151,
+      "status": "PASS",
+      "path": "tests/storage/test_transcription_backup.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8152,
+      "status": "PASS",
+      "path": "tests/speech/test_spelling.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8153,
+      "status": "PASS",
+      "path": "tests/speech/test_spelling_handlers.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8154,
+      "status": "PASS",
+      "path": "tests/speech/test_spelling_reader_hook.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8155,
+      "status": "PASS",
+      "path": "tests/packaging/test_hunspell_build.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8156,
+      "status": "PASS",
+      "path": "tests/packaging/test_library_scale_benchmark.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8157,
+      "status": "PASS",
+      "path": "tests/audio/test_envelopes.py",
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8158,
+      "status": "PASS",
+      "path": "tests/studio/test_envelope_workflow.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8159,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_operations.py",
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8160,
+      "status": "PASS",
+      "path": "tests/studio/test_project_history.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8161,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_history_dialog.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8162,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_layout.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8163,
+      "status": "PASS",
+      "path": "tests/ui/test_translation_layout.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8164,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_layout_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8165,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_partition.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8166,
+      "status": "PASS",
+      "path": "tests/ui/test_save_all.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8167,
+      "status": "PASS",
+      "path": "tests/academic_integration/test_word_records.py",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8168,
+      "status": "PASS",
+      "path": "tests/academic_integration/test_word_bridge.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8169,
+      "status": "PASS",
+      "path": "tests/academic_integration/test_word_worker.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8170,
+      "status": "PASS",
+      "path": "tests/ui/test_word_citations.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8171,
+      "status": "PASS",
+      "path": "tests/assistant/test_google_oauth.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8172,
+      "status": "PASS",
+      "path": "tests/ui/test_google_oauth.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8173,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_epub_layout.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8174,
+      "status": "PASS",
+      "path": "tests/ui/test_translation_epub_layout.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8175,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_epub_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8176,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_copy.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8177,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_copy_dialog.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8178,
+      "status": "PASS",
+      "path": "tests/extract/test_docx_rich.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8179,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_rich_docx.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8180,
+      "status": "PASS",
+      "path": "tests/ui/test_translation_rich_docx.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8181,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_rich_docx_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8182,
+      "status": "PASS",
+      "path": "tests/extract/test_docx_ordered.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8183,
+      "status": "PASS",
+      "path": "tests/extract/test_docx_omitted_content.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8184,
+      "status": "PASS",
+      "path": "tests/extract/test_docx_hidden_styles.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8185,
+      "status": "PASS",
+      "path": "tests/ingest/test_application_atomic_docx_gate.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8186,
+      "status": "PASS",
+      "path": "tests/ingest/test_import_replay_identity.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8187,
+      "status": "PASS",
+      "path": "tests/ingest/test_terminal_replay_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8188,
+      "status": "PASS",
+      "path": "tests/ingest/test_txt_replay_registration.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8189,
+      "status": "PASS",
+      "path": "tests/ingest/test_import_publication_point.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8190,
+      "status": "PASS",
+      "path": "tests/ui/test_native_recording_driver.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8191,
+      "status": "PASS",
+      "path": "tests/storage/test_scoped_locator_capacity.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8192,
+      "status": "PASS",
+      "path": "tests/storage/test_locator_integrity.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8193,
+      "status": "PASS",
+      "path": "tests/storage/test_printed_label_integrity.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8194,
+      "status": "PASS",
+      "path": "tests/ingest/test_checked_catalog_commit.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8195,
+      "status": "PASS",
+      "path": "tests/search/test_search_query_work.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8196,
+      "status": "PASS",
+      "path": "tests/operations/test_broker_scope.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8197,
+      "status": "PASS",
+      "path": "tests/packaging/test_library_capacity_measurement.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8198,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_capacity.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8199,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_capacity_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8200,
+      "status": "PASS",
+      "path": "tests/ui/test_backup_capacity.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8201,
+      "status": "PASS",
+      "path": "tests/storage/test_crash_backup.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8202,
+      "status": "PASS",
+      "path": "tests/studio/test_book_effects.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8203,
+      "status": "PASS",
+      "path": "tests/studio/test_measured_audio.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8204,
+      "status": "PASS",
+      "path": "tests/studio/test_measured_pcm.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8205,
+      "status": "PASS",
+      "path": "tests/studio/test_book_measured_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8206,
+      "status": "PASS",
+      "path": "tests/ui/test_book_effects.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8207,
+      "status": "PASS",
+      "path": "tests/ui/test_book_duration_dialog.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8208,
+      "status": "PASS",
+      "path": "tests/packaging/test_owner_candidate_archives.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8209,
+      "status": "PASS",
+      "path": "tests/conversion/test_selected_conversion.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8210,
+      "status": "PASS",
+      "path": "tests/conversion/test_calibre_admission.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8211,
+      "status": "PASS",
+      "path": "tests/conversion/test_office_admission.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8212,
+      "status": "PASS",
+      "path": "tests/ui/test_document_conversion.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8213,
+      "status": "PASS",
+      "path": "tests/extract/test_document_formats_xml.py",
+      "passed": 151,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8214,
+      "status": "PASS",
+      "path": "tests/transcription/test_native_profiles_fixture.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8215,
+      "status": "PASS",
+      "path": "tests/ui/test_native_backup_capacity_driver.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8216,
+      "status": "PASS",
+      "path": "tests/ui/test_native_studio_book_choices.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8217,
+      "status": "PASS",
+      "path": "tests/ui/test_native_book_publication_driver.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8218,
+      "status": "PASS",
+      "path": "tests/search/test_paged_candidate_work.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8219,
+      "status": "PASS",
+      "path": "tests/audio/test_live_metadata_retry.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8220,
+      "status": "PASS",
+      "path": "tests/ui/test_native_conversion_diagnostics.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8221,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_package_management.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8222,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_management_state.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8223,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_reference_management.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8224,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_protected_management.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8225,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_publication_lifetime.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8226,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_ownership.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8227,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_owner_lease.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8228,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_managed_authority.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8229,
+      "status": "PASS",
+      "path": "tests/ui/test_voice_packages.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8230,
+      "status": "PASS",
+      "path": "tests/ui/test_voice_reference.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8231,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_voices.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8232,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_speech.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8233,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_settings.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8234,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8235,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_convergence.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8236,
+      "status": "PASS",
+      "path": "tests/audio/test_bundled_runtime_settings.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8237,
+      "status": "PASS",
+      "path": "tests/storage/test_v3_state_backup.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8238,
+      "status": "PASS",
+      "path": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8239,
+      "status": "PASS",
+      "path": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8240,
+      "status": "PASS",
+      "path": "tests/search/test_window_catalog_projection.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8241,
+      "status": "PASS",
+      "path": "tests/ui/test_ebook_dialog.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8242,
+      "status": "PASS",
+      "path": "tests/ui/test_native_saved_audio_cleanup.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8243,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_reference_backends.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8244,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_managed_backends.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8245,
+      "status": "PASS",
+      "path": "tests/citations/test_attestation_cancellation.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8246,
+      "status": "PASS",
+      "path": "tests/packaging/test_library_scale_profile.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8247,
+      "status": "FAIL",
+      "path": "tests/studio/test_daisy_schema_resolver.py",
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "line": 8248,
+      "status": "PASS",
+      "path": "tests/assistant/test_transcription_provider.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8249,
+      "status": "PASS",
+      "path": "tests/transcription/test_remote_service.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8250,
+      "status": "PASS",
+      "path": "tests/ui/test_transcription_remote.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8251,
+      "status": "FAIL",
+      "path": "tests/security/test_update_handoff.py",
+      "passed": 26,
+      "failed": 4,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "line": 8252,
+      "status": "PASS",
+      "path": "tests/security/test_update_runtime.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8253,
+      "status": "FAIL",
+      "path": "tests/security/test_update_ui.py",
+      "passed": 6,
+      "failed": 9,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "line": 8254,
+      "status": "PASS",
+      "path": "tests/security/test_update_controller_actions.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8255,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_scope_checks.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8256,
+      "status": "PASS",
+      "path": "tests/catalog/test_text_screen_work.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 8257,
+      "status": "PASS",
+      "path": "tests/search/test_ascii_mapping_work.py",
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "failures": [
+    {
+      "line": 8247,
+      "status": "FAIL",
+      "path": "tests/studio/test_daisy_schema_resolver.py",
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "line": 8251,
+      "status": "FAIL",
+      "path": "tests/security/test_update_handoff.py",
+      "passed": 26,
+      "failed": 4,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "line": 8253,
+      "status": "FAIL",
+      "path": "tests/security/test_update_ui.py",
+      "passed": 6,
+      "failed": 9,
+      "skipped": 0,
+      "pytest_exit": 1
+    }
+  ],
+  "failed_test_names": [
+    {
+      "line": 6953,
+      "text": "FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+    },
+    {
+      "line": 6954,
+      "text": "FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+    },
+    {
+      "line": 7242,
+      "text": "FAILED tests/security/test_update_handoff.py::test_real_supervisor_ready_never_means_apply_and_cancel_reaps_it - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7243,
+      "text": "FAILED tests/security/test_update_handoff.py::test_only_actual_close_boolean_can_commit_the_exact_owned_handoff - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7244,
+      "text": "FAILED tests/security/test_update_handoff.py::test_visible_commit_survives_postpublication_error_without_terminating_host - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7245,
+      "text": "FAILED tests/security/test_update_handoff.py::test_uncertain_commit_retains_fixed_host_without_falsely_claiming_activation - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7877,
+      "text": "FAILED tests/security/test_update_ui.py::test_actual_host_close_and_registered_finalizer_cannot_race_before_commit - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7878,
+      "text": "FAILED tests/security/test_update_ui.py::test_native_close_veto_or_missing_closing_state_cancels_only_owned_handoff[veto] - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7879,
+      "text": "FAILED tests/security/test_update_ui.py::test_native_close_veto_or_missing_closing_state_cancels_only_owned_handoff[false-ack] - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7880,
+      "text": "FAILED tests/security/test_update_ui.py::test_late_callback_never_closes_changed_host_or_applies_after_cancel[library] - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7881,
+      "text": "FAILED tests/security/test_update_ui.py::test_late_callback_never_closes_changed_host_or_applies_after_cancel[controller] - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7882,
+      "text": "FAILED tests/security/test_update_ui.py::test_late_callback_never_closes_changed_host_or_applies_after_cancel[cancel] - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7883,
+      "text": "FAILED tests/security/test_update_ui.py::test_real_host_shutdown_settles_prepared_helper_without_any_gui_callback - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7884,
+      "text": "FAILED tests/security/test_update_ui.py::test_close_between_preparation_and_cleanup_registration_reaps_real_helper - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    },
+    {
+      "line": 7885,
+      "text": "FAILED tests/security/test_update_ui.py::test_uncertain_durable_commit_is_retained_through_actual_host_cleanup - carr_library.security._files.TrustError: The maintenance host did not retain this exact reviewed update."
+    }
+  ],
+  "diagnostic_records": {
+    "daisy": "a25e44623ad3d5054629694d3da007f2a8eab5ed",
+    "updater": "655db5541d27d8bbbb6790767ef84f9ad4446dcf"
+  },
+  "artifact": {
+    "id": 15251841513,
+    "name": "carr-completion-source-cf804916ca28bec9e038e8bca755faeab28cb9a7-1",
+    "size_in_bytes": 102833,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251841513",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251841513/zip",
+    "expired": false,
+    "created_at": "2026-11-28T06:26:18Z",
+    "expires_at": "2026-12-01T06:26:17Z",
+    "updated_at": "2026-11-28T06:26:18Z",
+    "digest": "sha256:c9ab485a10e7d25e01b33a812bcfafacd48b07b885b787068206625f0467684e",
+    "workflow_run": {
+      "id": 46110647047,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+      "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    },
+    "metadata_matches_closed_upload_log": true,
+    "naming_note": "Artifact name uses GitHub's event merge SHA cf804916ca28bec9e038e8bca755faeab28cb9a7. Both API workflow_run.head_sha and actual checkout log bind the tested source to5b2."
+  },
+  "reporting_boundaries": [
+    "The actual strict runner produced one verdict for each of the180 declared whole selectors in exact order.",
+    "The command exited1 immediately, so subsequent main workflow success-only reviewed-count assertions were not reached.",
+    "These are source case executions; no installed/native/physical-acoustic result is inferred or transferred.",
+    "The separate full487 source partitions all failed before their own tests and retain independent cf406 evidence."
+  ],
+  "code_or_refs_changed": false
+}

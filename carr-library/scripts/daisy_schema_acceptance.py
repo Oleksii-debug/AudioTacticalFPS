@@ -34,6 +34,8 @@ def schema_resolver(etree, paths):
 
     class Resolver(etree.Resolver):
         def resolve(self, url, public_id, context):
+            if type(url) is not str or not url:
+                raise ValueError('The schema validator refused an unapproved resource identifier.')
             path = approved.get(url)
             if path is None:
                 raise ValueError('The schema validator refused an unapproved resource: ' + url)

@@ -1,0 +1,59 @@
+{
+  "schema": "carr.bounded-independent-peer/1",
+  "recorded_utc": "2026-11-28 06:42:19 UTC",
+  "reviewer": "canonical_regression",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "DAISY closed-resource identifier refusal and Windows native input fixture only",
+  "observed_failure": {
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "job_id": 140873303815,
+    "excerpt_blob": "a25e44623ad3d5054629694d3da007f2a8eab5ed",
+    "outcome": "18 of20 cases passed; two raw Windows native-path SYSTEM-literal cases invoked resolver with None and the old error formatter raised TypeError."
+  },
+  "paths": [
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "preimage": "df13248d149a2017bd1a70d68c4493edca1811f8",
+      "blob": "83da7af93215d0137d6ec53c03539bcc7617f228"
+    },
+    {
+      "path": "carr-library/tests/studio/test_daisy_schema_resolver.py",
+      "preimage": "4cdb3ee5f1a24bdeaf9b4725a5b0a53e0aed0b59",
+      "blob": "f71c6223ee2ef29457842c346aa60ae780176ace"
+    }
+  ],
+  "checks": {
+    "source_inverse": true,
+    "test_inverse": true,
+    "source_hunks": 1,
+    "test_hunks": 6,
+    "functions": 7,
+    "cases": 27,
+    "inventory": {
+      "test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings": 4,
+      "test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping": 4,
+      "test_actual_lxml_keeps_separate_exact_smil_alias": 1,
+      "test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization": 8,
+      "test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_entity": 2,
+      "test_closed_schema_resolver_refuses_missing_or_non_string_identifiers": 7,
+      "test_windows_short_file_uri_maps_only_the_exact_approved_drive_path": 1
+    }
+  },
+  "findings": [
+    "Source inverse is exact: only one2-line pre-lookup guard rejects every missing, empty or non-string identifier with ValueError; exact alias map and all original parser/publication/hash/escape checks remain.",
+    "No identifier is normalized, decoded, inferred from None, mapped by basename or given fallback authority.",
+    "Both existing native positive/invalid cases now use a real held binary Unicode input file, canonical admitted DTD SYSTEM URI and explicit document base_url. Exact input bytes are checked in finally; source closes through with.",
+    "The old four positive and four invalid-DTD parametrizations, actual root+sibling visits, unresolved entity assertion, external entity refusals and schema byte invariance remain. Existing recording-resolver test separately proves exact raw Windows alias and no additional resolution on refusals.",
+    "Seven new typed-negative cases include actual None, empty, bool, integer, bytes and both unhashable containers. Whole27cases/7functions, one existing suite and the unchanged helper companion."
+  ],
+  "primary_api": {
+    "url": "https://lxml.de/apidoc/lxml.etree.html#lxml.etree.parse",
+    "verified": "Official parse(source, parser=None, base_url=None) documentation admits a file object and explicit base_url for external entity resolution.",
+    "runtime_observation": "None came from the actual failure excerpt, not inferred from the documentation."
+  },
+  "limitations": [
+    "No local or CI execution was performed for these successor bytes.",
+    "Native DAISY publication/conformance and Windows fixture success require actual subsequent execution.",
+    "This review does not upgrade the20-case predecessor or make full DAISY, reader, NVDA or acoustic claims."
+  ]
+}

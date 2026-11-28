@@ -11,8 +11,8 @@ import stat
 import sys
 import sysconfig
 
-DATA_GIT = "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636"
-NATIVE_GIT = "4d8d9eb52052200d98f4465ab1a99bb766adb866"
+DATA_GIT = "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00"
+NATIVE_GIT = "e202ebe7f61490d2745d315f31330f97372ec705"
 AUDIO_LOCK_GIT = "2bc706ffc6208f5596a10abee61d3da33f20e6c6"
 
 

@@ -288,6 +288,18 @@ def test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision(edito
     from carr_library.studio.project_history import RevisionRef
     project, captures = _saved_crossfade_pair(editor, tmp_path)
     scene = project.scenes[0]
+    # An empty no-cue scene keeps the existing one-second render floor.
+    # Measure the actual unchanged project before testing non-ripple editing.
+    baseline_output = tmp_path / 'crossfade-before'
+    baseline_output.mkdir()
+    baseline = editor.service.run(editor.service.submit(project, baseline_output))
+    assert baseline['status'] == 'complete'
+    baseline_path = Path(baseline['destination']) / 'master.wav'
+    (baseline_left, baseline_right), baseline_rate = pcm(baseline_path)
+    baseline_digest = sha256(baseline_path.read_bytes()).hexdigest()
+    assert baseline_rate == 24000 and len(baseline_left) == len(baseline_right) == 78000
+    assert [(item['start'], item['end']) for item in baseline['result']['chapters']] == [
+        (0, 2.25), (2.25, 3.25)]
     before = _crossfade_state(editor, project)
     active, inspections, reservations = [], [], []
     original_reserve, original_inspect = ResourceBroker.reserve, AudioRuntime.inspect
@@ -331,7 +343,10 @@ def test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision(edito
     result = editor.service.run(editor.service.submit(updated, output))
     assert result['status'] == 'complete'
     (left_pcm, right_pcm), rate = pcm(Path(result['destination']) / 'master.wav')
-    assert rate == 24000 and len(left_pcm) == len(right_pcm) == round(2.5 * rate)
+    assert rate == baseline_rate == 24000
+    assert len(left_pcm) == len(right_pcm) == len(baseline_left) == len(baseline_right)
+    assert result['result']['chapters'] == baseline['result']['chapters']
+    assert sha256(baseline_path.read_bytes()).hexdigest() == baseline_digest
     assert max(map(abs, right_pcm)) == 0
     assert max(map(abs, left_pcm[:round(.24 * rate)])) == 0
     assert all(abs(value - 8000) <= 3 for value in left_pcm[round(.3 * rate):round(.7 * rate)])

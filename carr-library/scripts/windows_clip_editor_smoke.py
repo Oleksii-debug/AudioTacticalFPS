@@ -500,6 +500,27 @@ def main():
                                                  expected_fingerprint=pair.fingerprint)
                     press(dialog.buttons['reload'])
                     pump(lambda: not frame.working and not dialog.pending, 'Reloading native crossfade pair')
+                    # The existing renderer gives an empty no-cue scene at
+                    # least one second. Capture the actual unchanged geometry.
+                    press(dialog.buttons['render'])
+                    pump(lambda: not frame.working and not dialog.pending,
+                         'Rendering the unchanged native crossfade baseline')
+                    baselines = [row for row in editor.service.jobs()
+                                 if row['fingerprint'] == paired.fingerprint and row['status'] == 'complete']
+                    if len(baselines) != 1:
+                        raise AssertionError('The actual paired baseline did not complete exactly once.')
+                    baseline_output = Path(baselines[0]['destination']) / 'master.wav'
+                    baseline_digest = sha256(baseline_output.read_bytes()).hexdigest()
+                    baseline_chapters = baselines[0]['result']['chapters']
+                    if [(row['start'], row['end']) for row in baseline_chapters] != [(0, 2), (2, 3)]:
+                        raise AssertionError('The actual original scene boundaries differ.')
+                    with wave.open(str(baseline_output), 'rb') as stream:
+                        baseline_shape = (stream.getframerate(), stream.getnchannels(),
+                                          stream.getsampwidth(), stream.getnframes())
+                        baseline_pcm = stream.readframes(stream.getnframes())
+                    if (baseline_shape != (24000, 2, 2, 72000)
+                            or len(baseline_pcm) != 72000 * 2 * 2):
+                        raise AssertionError('The actual original PCM geometry differs.')
                     choose(dialog.clip_choice, dialog.clip_choice.GetString(0))
                     first, second = paired.scenes[0].cues
                     modal_sequence(lambda: press(dialog.buttons['timeline']), (
@@ -529,7 +550,9 @@ def main():
                         crossfade_pcm = stream.readframes(stream.getnframes())
                     crossfade_samples = struct.unpack('<' + 'h' * (len(crossfade_pcm) // 2), crossfade_pcm)
                     check('actual crossfade PCM keeps old scene extent and later silence',
-                          crossfade_shape == (24000, 2, 2, 60000)
+                          crossfade_shape == baseline_shape == (24000, 2, 2, 72000)
+                           and matching[0]['result']['chapters'] == baseline_chapters
+                           and sha256(baseline_output.read_bytes()).hexdigest() == baseline_digest
                           and max(map(abs, crossfade_samples[1::2])) == 0
                           and max(map(abs, crossfade_samples[18000*2:24000*2:2])) > 1000
                           and not any(crossfade_samples[42000*2:]))

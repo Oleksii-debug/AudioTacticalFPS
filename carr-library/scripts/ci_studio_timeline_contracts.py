@@ -67,7 +67,7 @@ PINS = {
     "tests/studio/test_project_markers.py": "088083c06c452fa5fbac9e14df1786aba524d3d7",
     "tests/studio/test_marker_consumers.py": "0877334ad369cc03b3d48edecfdd00b1a8202c9b",
     "tests/studio/test_clip_operations.py": "a47af2be53416f2a9588a20381063f63422f0940",
-    "tests/studio/test_clip_editing.py": "4583dca913a88091608a91e742aced16e5bdfc64",
+    "tests/studio/test_clip_editing.py": "27a3d1d3a156acd48090a08ca7f6264050f2c771",
     "tests/studio/test_clip_history_dialog.py": "d5675f91c0b6285ea9188fa90d4ca416cd6967dc",
     "tests/studio/test_studio_controller.py": "93a093e395388b69d6b7a76f22d7432cc8b60c92",
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
@@ -78,9 +78,9 @@ PINS = {
     "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
     "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
     "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
-    "scripts/windows_clip_editor_smoke.py": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
-    "scripts/ci_studio_timeline_cases.json": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
-    "scripts/check_studio_timeline_native.py": "6e5bea855c6341c1c052b23bb8e9fbce1703fe2d",
+    "scripts/windows_clip_editor_smoke.py": "e202ebe7f61490d2745d315f31330f97372ec705",
+    "scripts/ci_studio_timeline_cases.json": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+    "scripts/check_studio_timeline_native.py": "cc67469e59aee71504b60640b61619171e7566f1",
     "docs/STUDIO_CLIP_HISTORY.md": "b1ced7ecd98cebfdb9b0b817d9617e3bee2ca625"
 }
 COMPANIONS = ["scripts/windows_clip_editor_smoke.py"]

@@ -1,0 +1,104 @@
+{
+  "schema": "resonance-daisy-closed-resolver-correction/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "source_context": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "actual_failure": {
+    "run_id": 46110647047,
+    "job_id": 140873303815,
+    "source_receipt_git_blob": "47cd01be0239c0f2b73bfdea9d5dc3d64d09d230",
+    "bounded_trace_git_blob": "a25e44623ad3d5054629694d3da007f2a8eab5ed",
+    "failed_cases": 2,
+    "reason": "A native Windows filename was used as an XML SYSTEM URI; actual lxml called the resolver with url=None, and error formatting raised TypeError."
+  },
+  "changes": [
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "preimage": "df13248d149a2017bd1a70d68c4493edca1811f8",
+      "git_blob": "83da7af93215d0137d6ec53c03539bcc7617f228",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "label": "typed fail-closed identifier",
+          "before": "        def resolve(self, url, public_id, context):\n            path = approved.get(url)",
+          "after": "        def resolve(self, url, public_id, context):\n            if type(url) is not str or not url:\n                raise ValueError('The schema validator refused an unapproved resource identifier.')\n            path = approved.get(url)"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_daisy_schema_resolver.py",
+      "preimage": "4cdb3ee5f1a24bdeaf9b4725a5b0a53e0aed0b59",
+      "git_blob": "f71c6223ee2ef29457842c346aa60ae780176ace",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "label": "native held-file fixture",
+          "before": "\n\n@pytest.mark.parametrize('kind', ['native', 'canonical', 'short-file', 'official'])\ndef test_actual_lxml_accepts",
+          "after": "\n\ndef parse_document(schemas, kind, parser, body=b'<body>plain &fixture;</body>'):\n    selected = schemas['xhtml1-transitional.dtd']\n    if kind != 'native':\n        return etree.fromstring(document(spelling(selected, kind), body), parser)\n    # Native filesystem names are not XML SYSTEM URIs. Open the actual Unicode\n    # filename, while giving libxml2 the canonical admitted DTD URI.\n    path = selected.parent / 'native document \\u03a9.xml'\n    raw = document(selected.as_uri(), body)\n    path.write_bytes(raw)\n    try:\n        with open(str(path), 'rb') as stream:\n            return etree.parse(stream, parser, base_url=path.as_uri()).getroot()\n    finally:\n        assert path.read_bytes() == raw\n\n\n@pytest.mark.parametrize('kind', ['native', 'canonical', 'short-file', 'official'])\ndef test_actual_lxml_accepts"
+        },
+        {
+          "label": "positive native document parse",
+          "before": "    parsed = etree.fromstring(document(spelling(schemas['xhtml1-transitional.dtd'], kind)),\n                              module.parser_for_html(Observed, etree))",
+          "after": "    parsed = parse_document(schemas, kind, module.parser_for_html(Observed, etree))"
+        },
+        {
+          "label": "invalid native document parse",
+          "before": "        etree.fromstring(document(spelling(schemas['xhtml1-transitional.dtd'], kind),\n                                  b'<body><unsupported-element /></body>'),\n                         module.parser_for_html(resolver, etree))",
+          "after": "        parse_document(schemas, kind, module.parser_for_html(resolver, etree),\n                       b'<body><unsupported-element /></body>')"
+        },
+        {
+          "label": "seven closed identifier controls",
+          "before": "\n\ndef test_windows_short_file_uri_maps_only_the_exact_approved_drive_path():",
+          "after": "\n\n@pytest.mark.parametrize('url', [None, '', True, 7, b'file:///unapproved.dtd', [], {}],\n                         ids=['missing', 'empty', 'boolean', 'integer', 'bytes', 'list', 'mapping'])\ndef test_closed_schema_resolver_refuses_missing_or_non_string_identifiers(schemas, url):\n    module = helper()\n    before = {name: sha256(path.read_bytes()).hexdigest() for name, path in schemas.items()}\n    resolver = module.schema_resolver(etree, schemas)()\n    with pytest.raises(ValueError, match='unapproved resource identifier'):\n        resolver.resolve(url, None, None)\n    assert {name: sha256(path.read_bytes()).hexdigest() for name, path in schemas.items()} == before\n\n\ndef test_windows_short_file_uri_maps_only_the_exact_approved_drive_path():"
+        },
+        {
+          "label": "exact native drive alias retained",
+          "before": "    assert events == [(str(selected), marker)]\n    for url in (",
+          "after": "    assert events == [(str(selected), marker)]\n    assert resolver.resolve(spelling(selected, 'native'), None, marker) == str(selected)\n    assert events == [(str(selected), marker), (str(selected), marker)]\n    for url in ("
+        },
+        {
+          "label": "refused aliases make no new resolution",
+          "before": "    assert events == [(str(selected), marker)]\n",
+          "after": "    assert events == [(str(selected), marker), (str(selected), marker)]\n",
+          "at_end": true
+        }
+      ]
+    }
+  ],
+  "contracts": {
+    "whole_modules": 1,
+    "cases": 27,
+    "previous_cases": 20,
+    "functions": [
+      "test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings",
+      "test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping",
+      "test_actual_lxml_keeps_separate_exact_smil_alias",
+      "test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization",
+      "test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_entity",
+      "test_closed_schema_resolver_refuses_missing_or_non_string_identifiers",
+      "test_windows_short_file_uri_maps_only_the_exact_approved_drive_path"
+    ],
+    "retained_positive_and_invalid_lxml_cases": 8,
+    "new_refusal_cases": 7,
+    "native_file": "Actual Unicode/spaces native input file held in binary mode; canonical admitted DTD URI and base_url; exact input bytes unchanged.",
+    "authority": "Only existing exact admitted aliases; no incoming normalization, missing-URL fallback or new external resource authority."
+  },
+  "peer_git_blob": "2a9881acbeab868826e5ac725b6a841dfebbaf13",
+  "primary_sources": [
+    {
+      "url": "https://lxml.de/resolvers.html",
+      "fact": "Resolver URLs may be None; returning None delegates resolution. This resolver raises instead of delegating any missing or unapproved identifier."
+    },
+    {
+      "url": "https://lxml.de/tutorial.html",
+      "fact": "etree.parse accepts an open binary file; the returned ElementTree exposes getroot()."
+    },
+    {
+      "url": "https://lxml.de/apidoc/lxml.etree.html",
+      "fact": "etree.parse accepts an explicit base_url for a file-like source."
+    }
+  ],
+  "limitations": [
+    "Static composition and independent review only; no corrected candidate runtime result yet.",
+    "No full DAISY rules, reader interoperability or manual screen-reader qualification."
+  ]
+}

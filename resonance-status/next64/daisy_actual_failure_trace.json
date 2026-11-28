@@ -1,0 +1,583 @@
+{
+  "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "run": 46110647047,
+  "job": 140873303815,
+  "source_git": "df13248d149a2017bd1a70d68c4493edca1811f8",
+  "test_git": "4cdb3ee5f1a24bdeaf9b4725a5b0a53e0aed0b59",
+  "strict": {
+    "line": 8247,
+    "status": "FAIL",
+    "path": "tests/studio/test_daisy_schema_resolver.py",
+    "passed": 18,
+    "failed": 2,
+    "skipped": 0,
+    "pytest_exit": 1
+  },
+  "lines": [
+    {
+      "line": 6815,
+      "text": "2026-11-28T06:23:53.1776262Z ============================= test session starts ============================="
+    },
+    {
+      "line": 6816,
+      "text": "2026-11-28T06:23:53.1807350Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0 -- D:\\a\\_temp\\carr-completion-python\\Scripts\\python.exe"
+    },
+    {
+      "line": 6817,
+      "text": "2026-11-28T06:23:53.1809640Z cachedir: .pytest_cache"
+    },
+    {
+      "line": 6818,
+      "text": "2026-11-28T06:23:53.1810905Z rootdir: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library"
+    },
+    {
+      "line": 6819,
+      "text": "2026-11-28T06:23:53.1812018Z configfile: pyproject.toml"
+    },
+    {
+      "line": 6820,
+      "text": "2026-11-28T06:23:53.2376685Z collecting ... collected 20 items"
+    },
+    {
+      "line": 6821,
+      "text": "2026-11-28T06:23:53.2383910Z "
+    },
+    {
+      "line": 6822,
+      "text": "2026-11-28T06:23:53.3008416Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[native] FAILED [  5%]"
+    },
+    {
+      "line": 6823,
+      "text": "2026-11-28T06:23:53.3105682Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[canonical] PASSED [ 10%]"
+    },
+    {
+      "line": 6824,
+      "text": "2026-11-28T06:23:53.3196196Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[short-file] PASSED [ 15%]"
+    },
+    {
+      "line": 6825,
+      "text": "2026-11-28T06:23:53.3274016Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[official] PASSED [ 20%]"
+    },
+    {
+      "line": 6826,
+      "text": "2026-11-28T06:23:53.3436226Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[native] FAILED [ 25%]"
+    },
+    {
+      "line": 6827,
+      "text": "2026-11-28T06:23:53.3526615Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[canonical] PASSED [ 30%]"
+    },
+    {
+      "line": 6828,
+      "text": "2026-11-28T06:23:53.3618037Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[short-file] PASSED [ 35%]"
+    },
+    {
+      "line": 6829,
+      "text": "2026-11-28T06:23:53.3704247Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[official] PASSED [ 40%]"
+    },
+    {
+      "line": 6830,
+      "text": "2026-11-28T06:23:53.3789586Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_keeps_separate_exact_smil_alias PASSED [ 45%]"
+    },
+    {
+      "line": 6831,
+      "text": "2026-11-28T06:23:53.3871728Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[other-host] PASSED [ 50%]"
+    },
+    {
+      "line": 6832,
+      "text": "2026-11-28T06:23:53.3952918Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[https] PASSED [ 55%]"
+    },
+    {
+      "line": 6833,
+      "text": "2026-11-28T06:23:53.4048448Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[file-host] PASSED [ 60%]"
+    },
+    {
+      "line": 6834,
+      "text": "2026-11-28T06:23:53.4134980Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[query] PASSED [ 65%]"
+    },
+    {
+      "line": 6835,
+      "text": "2026-11-28T06:23:53.4220076Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[fragment] PASSED [ 70%]"
+    },
+    {
+      "line": 6836,
+      "text": "2026-11-28T06:23:53.4303227Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[sibling-outside] PASSED [ 75%]"
+    },
+    {
+      "line": 6837,
+      "text": "2026-11-28T06:23:53.4375079Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[relative] PASSED [ 80%]"
+    },
+    {
+      "line": 6838,
+      "text": "2026-11-28T06:23:53.4441371Z tests/studio/test_daisy_schema_resolver.py::test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization[percent-name] PASSED [ 85%]"
+    },
+    {
+      "line": 6839,
+      "text": "2026-11-28T06:23:53.4514786Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_entity[file] PASSED [ 90%]"
+    },
+    {
+      "line": 6840,
+      "text": "2026-11-28T06:23:53.4611385Z tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_entity[network] PASSED [ 95%]"
+    },
+    {
+      "line": 6841,
+      "text": "2026-11-28T06:23:53.4801519Z tests/studio/test_daisy_schema_resolver.py::test_windows_short_file_uri_maps_only_the_exact_approved_drive_path PASSED [100%]"
+    },
+    {
+      "line": 6842,
+      "text": "2026-11-28T06:23:53.4809261Z "
+    },
+    {
+      "line": 6843,
+      "text": "2026-11-28T06:23:53.4809518Z ================================== FAILURES ==================================="
+    },
+    {
+      "line": 6844,
+      "text": "2026-11-28T06:23:53.4811225Z _ test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[native] _"
+    },
+    {
+      "line": 6845,
+      "text": "2026-11-28T06:23:53.4814399Z "
+    },
+    {
+      "line": 6846,
+      "text": "2026-11-28T06:23:53.4819280Z schemas = {'SMIL10.dtd': WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-gvc4n1ai/pytest/test_actual_lxml_accepts_o...ppData/Local/Temp/carr-ci-gvc4n1ai/pytest/test_actual_lxml_accepts_only_0/approved schemas Ω/xhtml1-transitional.dtd')}"
+    },
+    {
+      "line": 6847,
+      "text": "2026-11-28T06:23:53.4821240Z kind = 'native'"
+    },
+    {
+      "line": 6848,
+      "text": "2026-11-28T06:23:53.4841235Z "
+    },
+    {
+      "line": 6849,
+      "text": "2026-11-28T06:23:53.4842831Z     @pytest.mark.parametrize('kind', ['native', 'canonical', 'short-file', 'official'])"
+    },
+    {
+      "line": 6850,
+      "text": "2026-11-28T06:23:53.4844334Z     def test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings(schemas, kind):"
+    },
+    {
+      "line": 6851,
+      "text": "2026-11-28T06:23:53.4849843Z         module = helper()"
+    },
+    {
+      "line": 6852,
+      "text": "2026-11-28T06:23:53.4850342Z         before = {name: sha256(path.read_bytes()).hexdigest() for name, path in schemas.items()}"
+    },
+    {
+      "line": 6853,
+      "text": "2026-11-28T06:23:53.4858992Z         base = module.schema_resolver(etree, schemas)"
+    },
+    {
+      "line": 6854,
+      "text": "2026-11-28T06:23:53.4859463Z         visited = []"
+    },
+    {
+      "line": 6855,
+      "text": "2026-11-28T06:23:53.4859811Z         class Observed(base):"
+    },
+    {
+      "line": 6856,
+      "text": "2026-11-28T06:23:53.4860228Z             def resolve(self, url, public_id, context):"
+    },
+    {
+      "line": 6857,
+      "text": "2026-11-28T06:23:53.4860686Z                 visited.append(url)"
+    },
+    {
+      "line": 6858,
+      "text": "2026-11-28T06:23:53.4861129Z                 return super().resolve(url, public_id, context)"
+    },
+    {
+      "line": 6859,
+      "text": "2026-11-28T06:23:53.4861770Z >       parsed = etree.fromstring(document(spelling(schemas['xhtml1-transitional.dtd'], kind)),"
+    },
+    {
+      "line": 6860,
+      "text": "2026-11-28T06:23:53.4862418Z                                   module.parser_for_html(Observed, etree))"
+    },
+    {
+      "line": 6861,
+      "text": "2026-11-28T06:23:53.4862800Z "
+    },
+    {
+      "line": 6862,
+      "text": "2026-11-28T06:23:53.4863073Z tests\\studio\\test_daisy_schema_resolver.py:62: "
+    },
+    {
+      "line": 6863,
+      "text": "2026-11-28T06:23:53.4863566Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _"
+    },
+    {
+      "line": 6864,
+      "text": "2026-11-28T06:23:53.4864074Z src/lxml/etree.pyx:3434: in lxml.etree.fromstring"
+    },
+    {
+      "line": 6865,
+      "text": "2026-11-28T06:23:53.4864508Z     ???"
+    },
+    {
+      "line": 6866,
+      "text": "2026-11-28T06:23:53.4864902Z src/lxml/parser.pxi:2080: in lxml.etree._parseMemoryDocument"
+    },
+    {
+      "line": 6867,
+      "text": "2026-11-28T06:23:53.4865388Z     ???"
+    },
+    {
+      "line": 6868,
+      "text": "2026-11-28T06:23:53.4865725Z src/lxml/parser.pxi:1923: in lxml.etree._parseDoc"
+    },
+    {
+      "line": 6869,
+      "text": "2026-11-28T06:23:53.4866166Z     ???"
+    },
+    {
+      "line": 6870,
+      "text": "2026-11-28T06:23:53.4866532Z src/lxml/parser.pxi:1948: in lxml.etree._parseDoc_bytes"
+    },
+    {
+      "line": 6871,
+      "text": "2026-11-28T06:23:53.4866960Z     ???"
+    },
+    {
+      "line": 6872,
+      "text": "2026-11-28T06:23:53.4867341Z src/lxml/parser.pxi:1195: in lxml.etree._BaseParser._parseDoc"
+    },
+    {
+      "line": 6873,
+      "text": "2026-11-28T06:23:53.4867800Z     ???"
+    },
+    {
+      "line": 6874,
+      "text": "2026-11-28T06:23:53.4868304Z src/lxml/parser.pxi:647: in lxml.etree._ParserContext._handleParseResultDoc"
+    },
+    {
+      "line": 6875,
+      "text": "2026-11-28T06:23:53.4868868Z     ???"
+    },
+    {
+      "line": 6876,
+      "text": "2026-11-28T06:23:53.4869249Z src/lxml/parser.pxi:761: in lxml.etree._handleParseResult"
+    },
+    {
+      "line": 6877,
+      "text": "2026-11-28T06:23:53.4869679Z     ???"
+    },
+    {
+      "line": 6878,
+      "text": "2026-11-28T06:23:53.4870078Z src/lxml/etree.pyx:452: in lxml.etree._ExceptionContext._raise_if_stored"
+    },
+    {
+      "line": 6879,
+      "text": "2026-11-28T06:23:53.4870569Z     ???"
+    },
+    {
+      "line": 6880,
+      "text": "2026-11-28T06:23:53.4870928Z src/lxml/parser.pxi:465: in lxml.etree._local_resolver"
+    },
+    {
+      "line": 6881,
+      "text": "2026-11-28T06:23:53.4871385Z     ???"
+    },
+    {
+      "line": 6882,
+      "text": "2026-11-28T06:23:53.4871976Z src/lxml/docloader.pxi:150: in lxml.etree._ResolverRegistry.resolve"
+    },
+    {
+      "line": 6883,
+      "text": "2026-11-28T06:23:53.4872495Z     ???"
+    },
+    {
+      "line": 6884,
+      "text": "2026-11-28T06:23:53.4872866Z tests\\studio\\test_daisy_schema_resolver.py:61: in resolve"
+    },
+    {
+      "line": 6885,
+      "text": "2026-11-28T06:23:53.4873408Z     return super().resolve(url, public_id, context)"
+    },
+    {
+      "line": 6886,
+      "text": "2026-11-28T06:23:53.4873856Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    },
+    {
+      "line": 6887,
+      "text": "2026-11-28T06:23:53.4874302Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _"
+    },
+    {
+      "line": 6888,
+      "text": "2026-11-28T06:23:53.4874672Z "
+    },
+    {
+      "line": 6889,
+      "text": "2026-11-28T06:23:53.4875358Z self = <test_daisy_schema_resolver.test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings.<locals>.Observed object at 0x00000145EC833490>"
+    },
+    {
+      "line": 6890,
+      "text": "2026-11-28T06:23:53.4876418Z url = None, public_id = None"
+    },
+    {
+      "line": 6891,
+      "text": "2026-11-28T06:23:53.4876880Z context = <lxml.etree._ParserContext object at 0x00000145EC82B840>"
+    },
+    {
+      "line": 6892,
+      "text": "2026-11-28T06:23:53.4877263Z "
+    },
+    {
+      "line": 6893,
+      "text": "2026-11-28T06:23:53.4877493Z     def resolve(self, url, public_id, context):"
+    },
+    {
+      "line": 6894,
+      "text": "2026-11-28T06:23:53.4877911Z         path = approved.get(url)"
+    },
+    {
+      "line": 6895,
+      "text": "2026-11-28T06:23:53.4878270Z         if path is None:"
+    },
+    {
+      "line": 6896,
+      "text": "2026-11-28T06:23:53.4878771Z >           raise ValueError('The schema validator refused an unapproved resource: ' + url)"
+    },
+    {
+      "line": 6897,
+      "text": "2026-11-28T06:23:53.4879386Z                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    },
+    {
+      "line": 6898,
+      "text": "2026-11-28T06:23:53.4879933Z E           TypeError: can only concatenate str (not \"NoneType\") to str"
+    },
+    {
+      "line": 6899,
+      "text": "2026-11-28T06:23:53.4880318Z "
+    },
+    {
+      "line": 6900,
+      "text": "2026-11-28T06:23:53.4880556Z scripts\\daisy_schema_acceptance.py:39: TypeError"
+    },
+    {
+      "line": 6901,
+      "text": "2026-11-28T06:23:53.4881125Z _ test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[native] __"
+    },
+    {
+      "line": 6902,
+      "text": "2026-11-28T06:23:53.4881590Z "
+    },
+    {
+      "line": 6903,
+      "text": "2026-11-28T06:23:53.4882931Z schemas = {'SMIL10.dtd': WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-gvc4n1ai/pytest/test_actual_lxml_invalid_x...ppData/Local/Temp/carr-ci-gvc4n1ai/pytest/test_actual_lxml_invalid_xhtml0/approved schemas Ω/xhtml1-transitional.dtd')}"
+    },
+    {
+      "line": 6904,
+      "text": "2026-11-28T06:23:53.4884179Z kind = 'native'"
+    },
+    {
+      "line": 6905,
+      "text": "2026-11-28T06:23:53.4884408Z "
+    },
+    {
+      "line": 6906,
+      "text": "2026-11-28T06:23:53.4884770Z     @pytest.mark.parametrize('kind', ['native', 'canonical', 'short-file', 'official'])"
+    },
+    {
+      "line": 6907,
+      "text": "2026-11-28T06:23:53.4885502Z     def test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping(schemas, kind):"
+    },
+    {
+      "line": 6908,
+      "text": "2026-11-28T06:23:53.4886075Z         module = helper()"
+    },
+    {
+      "line": 6909,
+      "text": "2026-11-28T06:23:53.4886462Z         resolver = module.schema_resolver(etree, schemas)"
+    },
+    {
+      "line": 6910,
+      "text": "2026-11-28T06:23:53.4887135Z         with pytest.raises(etree.XMLSyntaxError):"
+    },
+    {
+      "line": 6911,
+      "text": "2026-11-28T06:23:53.4887722Z >           etree.fromstring(document(spelling(schemas['xhtml1-transitional.dtd'], kind),"
+    },
+    {
+      "line": 6912,
+      "text": "2026-11-28T06:23:53.4888371Z                                       b'<body><unsupported-element /></body>'),"
+    },
+    {
+      "line": 6913,
+      "text": "2026-11-28T06:23:53.4888886Z                              module.parser_for_html(resolver, etree))"
+    },
+    {
+      "line": 6914,
+      "text": "2026-11-28T06:23:53.4889236Z "
+    },
+    {
+      "line": 6915,
+      "text": "2026-11-28T06:23:53.4889471Z tests\\studio\\test_daisy_schema_resolver.py:75: "
+    },
+    {
+      "line": 6916,
+      "text": "2026-11-28T06:23:53.4889938Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _"
+    },
+    {
+      "line": 6917,
+      "text": "2026-11-28T06:23:53.4890431Z src/lxml/etree.pyx:3434: in lxml.etree.fromstring"
+    },
+    {
+      "line": 6918,
+      "text": "2026-11-28T06:23:53.4891006Z     ???"
+    },
+    {
+      "line": 6919,
+      "text": "2026-11-28T06:23:53.4891345Z src/lxml/parser.pxi:2080: in lxml.etree._parseMemoryDocument"
+    },
+    {
+      "line": 6920,
+      "text": "2026-11-28T06:23:53.4891764Z     ???"
+    },
+    {
+      "line": 6921,
+      "text": "2026-11-28T06:23:53.4892058Z src/lxml/parser.pxi:1923: in lxml.etree._parseDoc"
+    },
+    {
+      "line": 6922,
+      "text": "2026-11-28T06:23:53.4892429Z     ???"
+    },
+    {
+      "line": 6923,
+      "text": "2026-11-28T06:23:53.4892737Z src/lxml/parser.pxi:1948: in lxml.etree._parseDoc_bytes"
+    },
+    {
+      "line": 6924,
+      "text": "2026-11-28T06:23:53.4893112Z     ???"
+    },
+    {
+      "line": 6925,
+      "text": "2026-11-28T06:23:53.4893441Z src/lxml/parser.pxi:1195: in lxml.etree._BaseParser._parseDoc"
+    },
+    {
+      "line": 6926,
+      "text": "2026-11-28T06:23:53.4893856Z     ???"
+    },
+    {
+      "line": 6927,
+      "text": "2026-11-28T06:23:53.4894258Z src/lxml/parser.pxi:647: in lxml.etree._ParserContext._handleParseResultDoc"
+    },
+    {
+      "line": 6928,
+      "text": "2026-11-28T06:23:53.4894736Z     ???"
+    },
+    {
+      "line": 6929,
+      "text": "2026-11-28T06:23:53.4895057Z src/lxml/parser.pxi:761: in lxml.etree._handleParseResult"
+    },
+    {
+      "line": 6930,
+      "text": "2026-11-28T06:23:53.4895457Z     ???"
+    },
+    {
+      "line": 6931,
+      "text": "2026-11-28T06:23:53.4895838Z src/lxml/etree.pyx:452: in lxml.etree._ExceptionContext._raise_if_stored"
+    },
+    {
+      "line": 6932,
+      "text": "2026-11-28T06:23:53.4896300Z     ???"
+    },
+    {
+      "line": 6933,
+      "text": "2026-11-28T06:23:53.4896757Z src/lxml/parser.pxi:465: in lxml.etree._local_resolver"
+    },
+    {
+      "line": 6934,
+      "text": "2026-11-28T06:23:53.4897169Z     ???"
+    },
+    {
+      "line": 6935,
+      "text": "2026-11-28T06:23:53.4897552Z src/lxml/docloader.pxi:150: in lxml.etree._ResolverRegistry.resolve"
+    },
+    {
+      "line": 6936,
+      "text": "2026-11-28T06:23:53.4898011Z     ???"
+    },
+    {
+      "line": 6937,
+      "text": "2026-11-28T06:23:53.4898324Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _"
+    },
+    {
+      "line": 6938,
+      "text": "2026-11-28T06:23:53.4898660Z "
+    },
+    {
+      "line": 6939,
+      "text": "2026-11-28T06:23:53.4899073Z self = <_daisy_closed_schema_resolver.schema_resolver.<locals>.Resolver object at 0x00000145EC8B9990>"
+    },
+    {
+      "line": 6940,
+      "text": "2026-11-28T06:23:53.4899676Z url = None, public_id = None"
+    },
+    {
+      "line": 6941,
+      "text": "2026-11-28T06:23:53.4900079Z context = <lxml.etree._ParserContext object at 0x00000145EC8ADBC0>"
+    },
+    {
+      "line": 6942,
+      "text": "2026-11-28T06:23:53.4900589Z "
+    },
+    {
+      "line": 6943,
+      "text": "2026-11-28T06:23:53.4900817Z     def resolve(self, url, public_id, context):"
+    },
+    {
+      "line": 6944,
+      "text": "2026-11-28T06:23:53.4901234Z         path = approved.get(url)"
+    },
+    {
+      "line": 6945,
+      "text": "2026-11-28T06:23:53.4901575Z         if path is None:"
+    },
+    {
+      "line": 6946,
+      "text": "2026-11-28T06:23:53.4902061Z >           raise ValueError('The schema validator refused an unapproved resource: ' + url)"
+    },
+    {
+      "line": 6947,
+      "text": "2026-11-28T06:23:53.4902673Z                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    },
+    {
+      "line": 6948,
+      "text": "2026-11-28T06:23:53.4903193Z E           TypeError: can only concatenate str (not \"NoneType\") to str"
+    },
+    {
+      "line": 6949,
+      "text": "2026-11-28T06:23:53.4903575Z "
+    },
+    {
+      "line": 6950,
+      "text": "2026-11-28T06:23:53.4903790Z scripts\\daisy_schema_acceptance.py:39: TypeError"
+    },
+    {
+      "line": 6951,
+      "text": "2026-11-28T06:23:53.4904349Z - generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-gvc4n1ai\\junit.xml -"
+    },
+    {
+      "line": 6952,
+      "text": "2026-11-28T06:23:53.4904945Z =========================== short test summary info ==========================="
+    },
+    {
+      "line": 6953,
+      "text": "2026-11-28T06:23:53.4906143Z FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+    },
+    {
+      "line": 6954,
+      "text": "2026-11-28T06:23:53.4907723Z FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+    },
+    {
+      "line": 6955,
+      "text": "2026-11-28T06:23:53.4908709Z ======================== 2 failed, 18 passed in 0.30s ========================="
+    }
+  ],
+  "limitation": "Actual lxml supplies url=None for both Windows native-string cases. Canonical/short-file/official and all exact-resource refusal cases passed. No correction is inferred here."
+}
