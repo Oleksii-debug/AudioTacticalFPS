@@ -374,7 +374,9 @@ def test_structural_script_edit_cannot_discard_an_attached_clip(tmp_path):
     controller.service.projects.save(altered, expected_revision=original.revision)
     controller.project = altered
     edited_script = '[Scene: Renamed]\nNarrator: Changed line.'
-    with pytest.raises(ValueError, match='attached audio changed its identity'):
+    with pytest.raises(ValueError, match=(
+        r'^A scene with attached audio, effects or named markers changed its identity\. '
+        r'Move or remove its clips and markers in the scene editor before changing scene structure\.$')):
         controller.save(edited_script, altered.title, ('voice-a',))
     assert controller.service.projects.load(altered.id) == altered
     assert controller.project == altered

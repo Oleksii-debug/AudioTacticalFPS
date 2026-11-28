@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "kind": "actual_corrected_native_syntax_and_declared_source_inventory",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "job_id": 140873185392,
+  "job_conclusion": "success",
+  "correction_manifest": "a764cf4d3b4698c2ad6baa842342ce6395e577fa",
+  "predecessor_failure": "29c3a6e6bc39705d7ade9276ea360ba7b279bca6",
+  "compilation": {
+    "line": 219,
+    "time": "2026-11-28T05:07:41.3109105",
+    "value": {
+      "explicit_packages": 31,
+      "inventory_sha256": "e3175ffebb304fa0a59b8096150ae72b10072cfd438d5d029d1122d5f2af433c",
+      "python_files": 1128,
+      "scope": "Compilation and TOML only; no runtime qualification",
+      "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "status": "PASS"
+    }
+  },
+  "workflow_parser": {
+    "line": 231,
+    "time": "2026-11-28T05:07:47.8239977",
+    "value": {
+      "status": "PASS",
+      "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "parsed_bodies": 195,
+      "failed_bodies": 0,
+      "controls": 6,
+      "control_failures": 0,
+      "workflow_size_limit_bytes": 500000,
+      "workflow_size_controls": 4,
+      "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-syntax-results/workflow-powershell.json",
+      "runtime_qualification": "NOT_RUN"
+    }
+  },
+  "standalone_helper": {
+    "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+    "blob": "a7cd67986474b15702c630e62ccca62e96c2e4d6",
+    "step": "Parse and audit the pinned complete source-shard inventory",
+    "conclusion": "success",
+    "final_log_line": 265,
+    "final_log_time": "2026-11-28T05:07:48.7049205Z",
+    "message": "PASS: native source-shard parser, exact 487 selectors, four assignments, and every overlapping case count.",
+    "declared_whole_selectors": 487,
+    "declared_partitions": [
+      122,
+      122,
+      122,
+      121
+    ],
+    "source_policy": "Existing Git/raw-source binding and after-call identity checks succeeded."
+  },
+  "artifact": {
+    "id": 15249213832,
+    "name": "carr-workflow-syntax-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "size_in_bytes": 26746,
+    "digest": "sha256:62f8e5a0c3c4c6294226122e7e017f5b4f43737b694c154cfb3de21edde90a1c",
+    "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+  },
+  "admitted_source_jobs": {
+    "partition0": 140873303784,
+    "partition1": 140873303811,
+    "partition2": 140873303877,
+    "partition3": 140873303824
+  },
+  "configured_native_job": 140873303994,
+  "qualification": {
+    "syntax": "PASS",
+    "declared_inventory": "PASS",
+    "runtime_source487": "PENDING",
+    "actual_ascii56": "PENDING",
+    "native": "PENDING",
+    "full_main": "PENDING"
+  },
+  "no_prior_runtime_result_transfer": true
+}

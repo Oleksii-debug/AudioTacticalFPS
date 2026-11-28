@@ -1,0 +1,63 @@
+{
+  "schema": "carr.bounded-independent-peer/1",
+  "recorded_utc": "2026-11-28 06:52:35 UTC",
+  "reviewer": "canonical_regression",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Configured updater actual supervisor PID/venv authority and owned precommit lifetime",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/security/update_handoff.py",
+      "preimage": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570",
+      "blob": "72ec774f28f195589498d95a76da788dbcc3416c"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "preimage": "cdb76726200bf12518501b9efa03b5b865cf48e7",
+      "blob": "057be5e81624330f63d0519569247e1129444781"
+    }
+  ],
+  "checks": {
+    "source_inverse": true,
+    "test_inverse": true,
+    "old_functions": 15,
+    "functions": 22,
+    "old_function_order_preserved": true,
+    "added_inventory": {
+      "test_sealed_venv_launch_binds_current_base_cfg_launcher_and_ignores_ambient_overrides": 1,
+      "test_sealed_venv_launch_refuses_unowned_or_ambiguous_interpreter_authority": 7,
+      "test_sealed_venv_launch_rechecks_each_real_identity_after_review": 8,
+      "test_sealed_venv_launch_cancellation_preserves_original_control_and_starts_no_child": 2,
+      "test_real_temporary_venv_preserves_direct_pid_installed_prefix_and_handoff_ownership": 2,
+      "test_ready_refusal_keeps_exact_identity_and_live_process_diagnostics": 2,
+      "test_changed_launch_binding_after_real_spawn_reaps_only_precommit_owner": 1
+    },
+    "added_cases": 23,
+    "whole_cases": 53
+  },
+  "primary_contract": {
+    "repository": "python/cpython",
+    "version": "3.11.9",
+    "launcher_blob": "da566a180168c5d80104e68b3595f140c4ba989f",
+    "venv_project_blob": "123e84ec4e3682a7292ebf1ca9f513c331f72944",
+    "getpath_sources": [
+      "https://github.com/python/cpython/blob/v3.11.9/Modules/getpath.py",
+      "https://github.com/python/cpython/blob/v3.11.9/Modules/getpath.c",
+      "https://github.com/python/cpython/blob/v3.11.9/Lib/site.py"
+    ],
+    "finding": "Windows venv redirector sets internal __PYVENV_LAUNCHER__ and creates/waits on the real base process. getpath consumes this binding even with isolated mode, retains actual base executable, chooses venv executable/prefix and clears the inherited internal variable."
+  },
+  "findings": [
+    "Existing runtime inventory parsing is factored without weakening full verify_runtime membership, hashes, byte bounds or configuration checks.",
+    "Windows launch accepts at most one exact sealed pyvenv.cfg; one absolute home must remain inside the same runtime. Existing component/directory/file_info rules reject path traversal, links, reparse and extra links. The selected base, launcher and cfg receive current captured identities, hashes and ancestors.",
+    "Both before and after actual spawn, fresh checks preserve manifest bytes/identity, candidate presence, all captured inputs and current configuration. The final pass catches ordinary late changes caused by callbacks while later inputs are hashed.",
+    "Environment removes ambient Python/Pip, internal launcher and VIRTUAL_ENV overrides, setting only the exact reviewed venv binding. Fixed -I/-B/module arguments and existing process flags are retained.",
+    "READY still requires the complete exact request/release identity, actual direct PID and live process. New diagnostics disclose only equality and return code, not configuration. COMMIT, normal Close, private TUF handoff, postcommit ownership and existing abort protocol are unchanged.",
+    "The postspawn recheck is inside the actual UpdateHandoff owner path; failures abort/reap only the precommit owner. No installer child is introduced before COMMIT and no transferred owner is claimed reaped.",
+    "New tests exercise seven refusal cases, eight real identity/late mutation paths, original cancellation, two real temporary-venv PID/prefix/environment/cancel-or-commit cases, strict ready mismatch/exit and actual child reaping after postspawn mutation. Inert marker authority tests never pretend to execute those marker bytes."
+  ],
+  "limitations": [
+    "Static source/fixture/API review only: no execution, native installer or compiled activation qualification.",
+    "The real temporary-venv tests and marker-based sealed authority tests cover complementary seams; actual end-to-end sealed maintenance launch remains for the native gate.",
+    "This peer does not cover the separate runtime.py26-name installation-log repair."
+  ]
+}

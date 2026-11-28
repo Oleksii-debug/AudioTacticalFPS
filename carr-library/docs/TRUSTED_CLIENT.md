@@ -1,6 +1,6 @@
 # Current compatible adoption
 
-Source is selectively reused from PR99 product revision `0fe4a4a3f20ffc6e95bc7b53754969c969f0ca30` and its reviewed original `934b632f98098d55253354e0c6f7d8d482b73461`. The original canonical Credential Manager and reading-copy adapters are retained; the existing process owner, full-backup format and ProgressHub remain authoritative. This composed candidate is NOT_RUN until exact-source CI succeeds. Production authority, website and distribution inputs remain owner configuration.
+Selective adoption began with PR99 product revision `0fe4a4a3f20ffc6e95bc7b53754969c969f0ca30` and its reviewed original `934b632f98098d55253354e0c6f7d8d482b73461`. The original canonical Credential Manager and reading-copy adapters are retained; the existing process owner, full-backup format and ProgressHub remain authoritative. Historical acceptance does not qualify a later source composition. The current configured update route and its separate acceptance lanes are described in [Managed updates](MANAGED_UPDATES.md#configured-check-download-and-apply). Production authority, website and distribution inputs remain owner configuration.
 
 # Signed permissions and offline updates
 
@@ -13,7 +13,10 @@ The current private installation remains perpetual and offline. Importing the
 module does not gate existing application operations, start a network task or
 change accepted terms. Help → License and signed updates presents native
 readable status. Permission import, renewal and offline update actions appear
-only when trusted host code supplies configured clients.
+only when trusted host code supplies configured clients. The packaged updater
+also accepts an explicitly selected, independently approved data-only recipe or
+ready-host configuration; an unconfigured installation explains why Apply is
+unavailable.
 
 ## Implemented behavior and owner boundary
 
@@ -24,8 +27,8 @@ only when trusted host code supplies configured clients.
 | Renewal | Explicitly enabled idle scheduler, one background request, synthetic 7/14-day cadence, separate expiry/grace, nonce binding, persistent backoff and changed-terms review | Configured signed-renewal provider and canonical OS-vault profile/reference |
 | Update | Real python-tuf verification of roles, signatures, version chains, expiry, target lengths/hashes | Independent bootstrap root/digest and product/channel/build policy |
 | Offline repository | Bounded local metadata/target fetcher without network or redirect fallback | Owner-produced signed repository and application bundle |
-| Installation | Bounded ZIP staging, existing installer verifier, full-library backup, program activation, health check and rollback recovery | External restart supervisor and real idle lease preventing new jobs |
-| Native UI | Named status/terms controls, explicit acceptance before import, background offline check/download | Actual production authority and activation supervisor remain unconfigured |
+| Installation | Bounded staging, verified external-host preparation, normal Close and COMMIT handoff, actual installation lease, full-library backup, managed activation/health/rollback and checked restart | Eligible installed A, independently approved runtime/configuration, signed target and exact compiled A/B acceptance |
+| Native UI | Named status/terms controls, explicit acceptance, offline or approved HTTPS check/download/resume, reviewed Apply and opt-in idle metadata checks | Actual production authority/configuration and exact native execution remain separately required |
 
 ## Permission format
 
@@ -162,11 +165,14 @@ installation material, never both from the repository under examination.
 Its internal root-history symlink or unprivileged Windows hardlink is checked
 and never becomes the bootstrap authority.
 
-A repository contains `metadata/` and `targets/`. The fetcher serves only these
-local files. Other schemes/hosts, redirects, queries, fragments, traversal,
+A repository contains `metadata/` and `targets/`. The local fetcher serves only
+these local files. Other schemes/hosts, redirects, queries, fragments, traversal,
 links and redirected parents are rejected. Metadata size caps are independent
 of signed lengths: root 512 KB, timestamp 16 KiB, snapshot 2 MB, targets 5 MB.
 Root rotation is limited to 32 steps; this adapter does not enable delegations.
+The separate configured HTTPS worker retains these TUF checks, verifies TLS,
+ignores proxy settings and refuses redirects or foreign URL authority; its
+configuration and bounded transfer rules are documented in [Managed updates](MANAGED_UPDATES.md#configured-check-download-and-apply).
 
 Signed target custom fields are schema 1, kind `carr-application`, product,
 channel, version, increasing build, exact source commit, unchanged data schema
@@ -188,7 +194,9 @@ Extraction rejects links, traversal, Windows special/alternate-stream names,
 duplicate/case-aliased paths, file/directory collisions, encryption and injected
 virtual environments. Target bytes, entries, unpacked bytes, free disk and
 cancellation are bounded. Failed staging never becomes current. Verified
-downloads are reusable; partial byte-range download resume is not claimed.
+downloads are reusable. The configured HTTPS path can retain and resume a private
+unverified prefix with checked Range responses. Only complete signed length/hash
+verification produces an approved package; a partial prefix never does.
 
 ## Installation transaction
 
@@ -223,11 +231,20 @@ lease until quiescence, before any rollback. The program-only adapter rejects a
 standard managed installation: its setup/repair ownership receipts must be
 updated by a reviewed managed-upgrade protocol, never by swapping just `app`.
 
-A production restart/idle supervisor is not implemented by this adoption.
-Independent root material, a real signed Windows bundle and its qualification
-are also still required before managed activation can be exposed. UI exposes
-working check/download, without an unimplemented activation button. Update
-server polling is absent; manual local checks are the implemented route.
+The configured managed route now supplies the external supervisor and native
+Apply handoff: explicit preparation copies only verified installed A inputs,
+normal Close precedes durable COMMIT, and the existing exclusive installation
+lease guards activation. Optional restart verifies the completed installation
+and launches its exact owned Python entrypoint with the approved configuration.
+The UI reports handoff separately from activation or observed restart success.
+
+Manual offline and approved HTTPS checks are available. Background metadata
+checks require separate default-No consent bound to the configuration digest;
+they run at most hourly while idle and never download or apply. Independent root
+material, a signed target, protected anchor and eligible runtime remain explicit
+owner inputs. See [Managed updates](MANAGED_UPDATES.md#configured-check-download-and-apply)
+for preparation, Apply, recovery and the required compiled acceptance. Production
+publisher rollout and a real user's installation remain NOT_RUN.
 
 This transaction delegates backup and restoration to the current canonical
 complete-library backup. It does not introduce a competing journal, media
@@ -297,8 +314,11 @@ The predecessor signed-client run
 executed the original client on Linux and Windows at source
 `74ecde75c9ae5f4863e0122964de4cff35b89da0`, including a temporary real Windows
 Credential Manager identity and installed native permission controls. That
-evidence does not qualify this changed composition. Its required source,
-installed, vault and native-control gates must run again.
+evidence is historical and does not qualify a later composition. Required
+source, installed, vault and native-control results must match the selected
+source. The current configured updater additionally has separate portable,
+local-TLS and compiled A/B Apply/restart lanes; neither these older permission
+probes nor portable updater results replace its actual native acceptance.
 
 The Help status command is an installation integration surface. Its queued
 review and result callbacks retain the same live host, selected library object,

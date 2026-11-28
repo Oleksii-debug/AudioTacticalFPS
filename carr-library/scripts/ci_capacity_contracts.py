@@ -31,7 +31,7 @@ SUITES = {
     'tests/storage/test_backup_schema_identity.py': 36,
     'tests/ui/test_native_backup_capacity_driver.py': 11,
     'tests/catalog/test_text_screen_work.py': 26,
-    'tests/search/test_ascii_mapping_work.py': 56,
+    'tests/search/test_ascii_mapping_work.py': 73,
 }
 PINS = {
     'tests/search/test_window_catalog_projection.py': 'a1b813b72e036a68fa8683be40bd91293d6b8d51',
@@ -62,9 +62,9 @@ PINS = {
     'src/carr_library/storage/revisions.py': '417a9920d4c25eacd36cc81f7441ea321c18d632',
     'src/carr_library/ui/backup_capacity.py': '66555889648ec8b76ac11e7ffe5bd54ece6c29e9',
     'tests/catalog/test_text_screen_work.py': '3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f',
-    'tests/search/test_ascii_mapping_work.py': '5ae468e51b908a8c15169948c5bcee6c9c6944e2',
+    'tests/search/test_ascii_mapping_work.py': 'e65d39a85c08b831ddf4f4b1f58ecd5359b7cb5d',
     'src/carr_library/catalog/intake.py': '8518f012491b542a57593af75993907983ddda0d',
-    'src/carr_library/search/literal.py': '8a3819914681f08dc942b0905ab2bad796971b37',
+    'src/carr_library/search/literal.py': 'ebc80347d09b35fc8f9d11858e38b2b424920ad8',
     'src/carr_library/search/presentation.py': '8ba46fa6ba4d7bafae451fab06d84ab4046bf64a',
     'src/carr_library/operations/broker.py': 'f09561333d33ae68480260668ec05b617cd72213',
 }

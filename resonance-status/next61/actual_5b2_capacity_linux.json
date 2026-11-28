@@ -1,0 +1,146 @@
+{
+  "schema": "carr-actual-focused-contract-evidence/1",
+  "recorded_utc": "2026-11-28 05:17:19 UTC",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "status": "PASS",
+  "source_manifest": "7f9444cd5e849d1754232b9fb385359f3b9929ad",
+  "jobs": [
+    {
+      "name": "capacity",
+      "platform": "ubuntu-24.04",
+      "run_id": 46110633668,
+      "job_id": 140873143057,
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110633668/job/140873143057",
+      "job_conclusion": "success",
+      "source_rows": [
+        {
+          "path": "tests/search/test_window_catalog_projection.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/packaging/test_library_scale_benchmark.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/packaging/test_library_capacity_measurement.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_capacity.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_capacity_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_backup_capacity.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_complete_pending_backup.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_pending_common4.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_schema_identity.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_native_backup_capacity_driver.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/catalog/test_text_screen_work.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/search/test_ascii_mapping_work.py",
+          "passed": 56,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "final_receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 298,
+        "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+        "source_passed": 298,
+        "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+        "status": "PASS"
+      },
+      "decoded_log_utf8": {
+        "sha256": "3071a100af57a6bc92eda2c3c4617df20097f31a0540a776b1fa91e5547365e0",
+        "bytes": 169911
+      },
+      "artifact": {
+        "id": 15249223977,
+        "name": "capacity-profile-contracts-ubuntu-24.04-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+        "bytes": 65088,
+        "digest": "sha256:75e3e45884a0008bedd08933eb6393eebf6488e678e400181686bf76bb8c803e",
+        "expired": false,
+        "created_at": "2026-11-28T05:08:53Z"
+      },
+      "artifact_digest_agrees_with_upload_log": true
+    }
+  ],
+  "limitations": [
+    "This record covers the Linux whole-source and isolated-installed contracts only. Windows validation and native backup controls are separate.",
+    "The four retained-capacity geometries require their own completed five-phase reports and are not qualified by these 298 cases.",
+    "Source and installed totals are case executions, not additional unique cases. No result is transferred between source heads."
+  ],
+  "method": "Closed decoded GitHub job logs and artifact API metadata; typed final receipt, exact fourteen whole-source rows and uploaded artifact SHA256 compared."
+}

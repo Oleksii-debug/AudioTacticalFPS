@@ -1,0 +1,188 @@
+{
+  "schema": "carr.actual-ci-evidence/1",
+  "recorded_utc": "2026-11-28T05:21:25.631Z",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "job_id": 140873303837,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110647047/job/140873303837",
+  "job_status": "completed",
+  "job_conclusion": "success",
+  "source": {
+    "whole_suites": 8,
+    "passed": 272,
+    "failed": 0,
+    "skipped": 0,
+    "strict_verdicts": [
+      "PASS: tests/sync/test_archive.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/sync/test_crypto.py: junit_passed=59, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/sync/test_service.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/sync/test_complete_state.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/sync/test_cli.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/sync/test_vault.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/sync/test_service_commit_boundaries.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/ui/test_portable_sync.py: junit_passed=103, failed=0, skipped=0, pytest_exit=0"
+    ]
+  },
+  "installed": {
+    "whole_suites": 8,
+    "passed": 272,
+    "failed_or_skipped": 0,
+    "suite_counts": {
+      "test_cli": 5,
+      "test_crypto": 59,
+      "test_portable_sync": 103,
+      "test_vault": 46,
+      "test_service": 18,
+      "test_service_commit_boundaries": 13,
+      "test_archive": 26,
+      "test_complete_state": 2
+    },
+    "installed_module": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py",
+    "source_origins": {
+      "carr_library.sync.archive": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\archive.py",
+        "source_sha256": "c61ec3488a48029c4236f8c478dc518d71c5b69f1dbb62e90f5c1d708b12ec4d"
+      },
+      "carr_library.sync.crypto": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\crypto.py",
+        "source_sha256": "5096319ea0d41e1e78052434641e51be093d700be7c3600afc5793970c1ff805"
+      },
+      "carr_library.sync.service": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py",
+        "source_sha256": "d23a2e87ea6a0c1f53605929e331c28aa1a311b59b4283c9ebc2727ecf614734"
+      },
+      "carr_library.sync.vault": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\vault.py",
+        "source_sha256": "9984a6b9641b212dbbb5739fcba2622b977784511f57c1f2a13aa0e9f056aa22"
+      },
+      "carr_library.sync.cli": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\cli.py",
+        "source_sha256": "aab55ca7490c150c80427adc3c993d133dc153b11ff808972ddf86b1c0783240"
+      },
+      "carr_library.ui.portable_sync": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+        "source_sha256": "e70d507f9abe57f61d8801dbdc4fda390a30720713880ef038366c60c33ef47a"
+      },
+      "carr_library.file_publication": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\file_publication.py",
+        "source_sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+      },
+      "carr_library.library_backup": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "source_sha256": "d012d328d95fac01ffb67cba2956a644409bbaa7d0395f17bdd1c35fd1029b51"
+      },
+      "carr_library.pending_backup": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\pending_backup.py",
+        "source_sha256": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b"
+      },
+      "carr_library.backup_sidecars": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\backup_sidecars.py",
+        "source_sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+      },
+      "carr_library.backup_producers": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\backup_producers.py",
+        "source_sha256": "a1ba2c7574f57e00abe0f2191fc280b9ff4d82d9f7adbad8141aa1dc22f07910"
+      },
+      "carr_library.state_backup": {
+        "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\state_backup.py",
+        "source_sha256": "e36c31aed14b883ff7c50934623a658007b6b78a8f7958d3fb0b09ab5dc2a8c8"
+      }
+    }
+  },
+  "wheel_proof": {
+    "payload_files": 485,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 414,
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "status": "PASS",
+    "wheel_sha256": "a515b6dbeca814225c98cc2be700f4e5620a0b1879455dac11838bf973603c79"
+  },
+  "native": {
+    "status": "PASS",
+    "checks_executed": 44,
+    "unique_check_names": 32,
+    "checks": [
+      "modules are loaded from the installed distribution",
+      "real desktop Library menu opens the snapshot window",
+      "snapshot window is modeless and parent-owned",
+      "paths, code, history, preview and status have accessible names",
+      "native command is enabled: Refresh history",
+      "native button event: Refresh history",
+      "snapshot worker finishes through the event loop",
+      "native command is enabled: Publish snapshot…",
+      "password entry uses named native masked controls",
+      "native button event: Publish snapshot…",
+      "snapshot worker finishes through the event loop",
+      "real service publishes a transfer receipt",
+      "publication and listing never autofill the trust code",
+      "native command is enabled: Verify code…",
+      "password entry uses named native masked controls",
+      "native button event: Verify code…",
+      "snapshot worker finishes through the event loop",
+      "verified scope includes the archived library",
+      "restore becomes available only after verification",
+      "native command is enabled: Restore to new folder…",
+      "password entry uses named native masked controls",
+      "native button event: Restore to new folder…",
+      "snapshot worker finishes through the event loop",
+      "real verified library exists at the new destination",
+      "restored library retains archived scope",
+      "current library and notebook never switch",
+      "main frame stays available",
+      "native command is enabled: Verify code…",
+      "password entry uses named native masked controls",
+      "native button event: Verify code…",
+      "worker reaches cancellation boundary",
+      "native command is enabled: Cancel operation",
+      "native button event: Cancel operation",
+      "snapshot worker finishes through the event loop",
+      "cancelled work never accepts a verification preview",
+      "native command is enabled: Verify code…",
+      "password entry uses named native masked controls",
+      "native button event: Verify code…",
+      "second worker reaches close boundary",
+      "native command is enabled: Close",
+      "native button event: Close",
+      "normal close waits for worker cancellation",
+      "window closes after safe worker completion",
+      "parent drops the closed modeless window"
+    ],
+    "modules": {
+      "carr_library.ui.portable_sync": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+      "carr_library.sync.service": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py"
+    },
+    "encrypted": true,
+    "python": "3.11.9",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+    "nvda": "NOT_RUN",
+    "note": "The identical JSON report is printed twice in the job log; it is one native execution, not two."
+  },
+  "final_report": {
+    "status": "PASS",
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "source_tests": "PASS",
+    "installed_tests": "PASS",
+    "native_encrypted_transfer": "PASS",
+    "production_entitlement": "UNCONFIGURED",
+    "manual_nvda": "NOT_RUN"
+  },
+  "artifact": {
+    "id": 15249902065,
+    "name": "carr-sync-windows-2022-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "bytes": 5122403,
+    "digest": "sha256:f5ad11b90355c605956ad598570bd7f0a5c6e4a9ca6d1906540b2521c1d606a0",
+    "expired": false,
+    "upload_log_identity_agrees": true
+  },
+  "paired_linux_evidence": "2172b800b2d647c21b5d980a6269283833e0521b",
+  "limits": [
+    "This is the required portable encrypted-backup Windows lane only; it does not qualify other main jobs or V3.",
+    "Both portable-sync platform jobs are now closed SUCCESS on this exact head; the final all-lane required aggregate remains pending.",
+    "Production entitlement is UNCONFIGURED and manual NVDA is NOT_RUN as stated by the actual report.",
+    "No prior-head result is transferred; no inference or physical-device claim."
+  ]
+}

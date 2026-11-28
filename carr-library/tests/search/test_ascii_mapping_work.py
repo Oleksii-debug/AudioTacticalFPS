@@ -556,3 +556,99 @@ def test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_clea
     elif action in ("interrupted", "timeout"):
         assert app.copy(workspace, prior[0].ref, prior[0].revision, "quote") == prior[0].quote
         assert selected.read_bytes() == data
+
+
+def test_bulk_ascii_runs_match_all_boundaries():
+    for code in range(128):
+        raw = ("Ω" + ("AB" + chr(code) + "xy") * 3
+               + " e\u0301\u0323 " + chr(code) + "\u0903 Ελληνικά")
+        expected, starts, ends = _canonical_cluster_oracle(raw)
+        actual, actual_starts, actual_ends = literal._mapped(raw)
+        assert actual == expected
+        assert dict(actual_starts.items()) == starts
+        assert dict(actual_ends.items()) == ends
+        for needle in ("ab", "xy", literal._fold("e\u0301\u0323")):
+            assert tuple(literal._spans(actual, actual_starts, actual_ends, needle)) == tuple(
+                literal._spans(expected, starts, ends, needle))
+
+
+@pytest.mark.parametrize("length", [256, 65535, 65536, 65537])
+def test_bulk_ascii_runs_keep_checkpoints_and_bounded_work(monkeypatch, length):
+    import sys
+
+    raw = "Ω" + "A" * (length - 1)
+    expected, starts, ends = _canonical_cluster_oracle(raw)
+    original_category = literal.ud.category
+    category_calls = 0
+    positions = []
+
+    def category(value):
+        nonlocal category_calls
+        category_calls += 1
+        return original_category(value)
+
+    def checked():
+        # Observe actual production checkpoints. Compact pre-fold checks occur
+        # before i exists; ordinary checkpoints keep their original raw offset.
+        positions.append(sys._getframe(1).f_locals.get("i"))
+
+    with monkeypatch.context() as patch:
+        patch.setattr(literal.ud, "category", category)
+        actual, actual_starts, actual_ends = literal._mapped(raw, checked)
+    assert actual == expected
+    assert dict(actual_starts.items()) == starts
+    assert dict(actual_ends.items()) == ends
+    initial = [None, None] if length >= 65536 else []
+    assert positions == initial + list(range(0, length, 1024)) + [length]
+    # Actual Unicode classification work grows with bounded runs, not every
+    # ASCII letter. This is independent of platform speed or profiler overhead.
+    assert category_calls <= (length + 1023) // 1024 + 2
+
+
+@pytest.mark.parametrize("offset", [1022, 1023, 1024, 65534, 65535, 65536])
+def test_bulk_ascii_runs_keep_mark_cluster_edges(offset):
+    for mark in ("\u0301", "\u0903", "\u20dd"):
+        raw = "Ω" + "A" * (offset - 1) + "e" + mark + " Tail."
+        expected, starts, ends = _canonical_cluster_oracle(raw)
+        actual, actual_starts, actual_ends = literal._mapped(raw)
+        assert actual == expected
+        assert dict(actual_starts.items()) == starts
+        assert dict(actual_ends.items()) == ends
+        position = len(literal._fold(raw[:offset]))
+        assert actual_starts[position] == offset
+        assert actual_ends[position + 2] == offset + 2
+        assert position + 1 not in actual_starts
+        assert position + 1 not in actual_ends
+
+
+@pytest.mark.parametrize("length", [4096, 65537])
+@pytest.mark.parametrize("fault", ["whole-fold", "interrupted", "timeout"])
+def test_bulk_ascii_runs_keep_validation_and_stop(monkeypatch, length, fault):
+    raw = "Ω" + "A" * (length - 3) + "e\u0301"
+    assert len(raw) == length
+    expected = _canonical_cluster_oracle(raw)[0]
+    calls = 0
+    original = (InterruptedError("exact bounded-run interruption") if fault == "interrupted"
+                else TimeoutError("exact bounded-run deadline"))
+
+    def checked():
+        nonlocal calls
+        calls += 1
+        if calls == 4:
+            raise original
+
+    if fault == "whole-fold":
+        actual_fold = literal._fold
+        def changed(value):
+            folded = actual_fold(value)
+            return folded.replace("a", "b", 1) if value == raw else folded
+        with monkeypatch.context() as patch:
+            patch.setattr(literal, "_fold", changed)
+            with pytest.raises(ValueError, match="unsupported normalization mapping"):
+                literal._mapped(raw)
+    else:
+        with pytest.raises(type(original)) as caught:
+            literal._mapped(raw, checked)
+        assert caught.value is original and calls == 4
+    # Refusal/cancellation does not retain a partial map for a later request.
+    assert literal._mapped(raw)[0] == expected

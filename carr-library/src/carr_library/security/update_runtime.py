@@ -30,6 +30,18 @@ _HELPERS = {'maintenance.py', 'installation_lease.py', 'bundle_verifier.py',
 _PRIVATE = {'.venv', 'data', 'state', 'models', 'voices', 'references', 'voice-packages',
             'dordiai-voices', 'node_modules', '.git', '.env'}
 
+# These exact files were observed in the independently pinned CPython runtime.
+# They are pip implementation modules, not an admission for a private models
+# directory. Every name still requires the complete A bundle/owner SHA and the
+# original ordinary-file, no-reparse and byte-hash checks below.
+_RUNTIME_PIP_MODEL_FILES = frozenset(
+    'runtime/Lib/site-packages/pip/_internal/models/' + suffix
+    for module in ('__init__', 'candidate', 'direct_url', 'format_control',
+                   'index', 'installation_report', 'link', 'release_control',
+                   'scheme', 'search_scope', 'selection_prefs', 'target_python', 'wheel')
+    for suffix in (module + '.py', '__pycache__/' + module + '.cpython-311.pyc')
+)
+
 
 def _publish_new(path, raw):
     """Publish without replacing a competing destination, even on a late race."""
@@ -193,7 +205,9 @@ def _source(recipe, *, cancelled):
     folded, total = set(), 0
     for name, digest in files.items():
         parts = relative_path(name)
-        if (name.casefold() in folded or any(part.casefold() in _PRIVATE for part in parts)
+        if (name.casefold() in folded
+                or (any(part.casefold() in _PRIVATE for part in parts)
+                    and name not in _RUNTIME_PIP_MODEL_FILES)
                 or owner['files'].get(name) != _digest(digest)):
             raise TrustError('The host cannot include private, ambiguous or unowned distribution paths.')
         folded.add(name.casefold())

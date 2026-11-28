@@ -1,0 +1,390 @@
+{
+  "schema": 1,
+  "kind": "actual_early_required_main_lanes",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "keyboard": {
+    "job_id": 140873303760,
+    "job_conclusion": "success",
+    "source_whole_count": 7,
+    "source_cases": 238,
+    "source_suites": [
+      {
+        "path": "tests/ui/test_command_registry.py",
+        "passed": 107,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 630
+      },
+      {
+        "path": "tests/storage/test_keyboard_preferences.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 631
+      },
+      {
+        "path": "tests/ui/test_keyboard_manager.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 632
+      },
+      {
+        "path": "tests/ui/test_reader_command_dispatch.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 633
+      },
+      {
+        "path": "tests/ui/test_reader_keymap_context.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 634
+      },
+      {
+        "path": "tests/storage/test_evidence_drafts.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 635
+      },
+      {
+        "path": "tests/ui/test_evidence_draft_recovery.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 636
+      }
+    ],
+    "native_reports": [
+      {
+        "closed_log_line": 690,
+        "time": "2026-11-28T05:09:34.4616934",
+        "status": "PASS",
+        "checks": 34,
+        "native_key_backend": "wx.UIActionSimulator",
+        "source_override": null,
+        "origins": {
+          "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+          "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+          "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+        },
+        "nvda": "NOT_RUN",
+        "platform": "Windows",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      },
+      {
+        "closed_log_line": 732,
+        "time": "2026-11-28T05:09:40.0852415",
+        "status": "PASS",
+        "checks": 23,
+        "native_key_backend": "wx.UIActionSimulator",
+        "source_override": null,
+        "origins": {
+          "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+          "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+          "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+          "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+        },
+        "nvda": "NOT_RUN",
+        "platform": "Windows",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      },
+      {
+        "closed_log_line": 765,
+        "time": "2026-11-28T05:09:41.3414381",
+        "status": "PASS",
+        "checks": 14,
+        "native_key_backend": null,
+        "source_override": null,
+        "origins": {
+          "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+          "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+        },
+        "nvda": "NOT_RUN",
+        "platform": "Windows",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    ],
+    "artifact": {
+      "id": 15249722225,
+      "name": "carr-keyboard-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+      "size_in_bytes": 8087,
+      "digest": "sha256:cd84d96bb8df63a6bc2ae6264b7be2615b774b8828e1f2a10b55412511b6d24c",
+      "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    }
+  },
+  "trusted_linux": {
+    "job_id": 140873303846,
+    "job_conclusion": "success",
+    "source_whole_count": 18,
+    "source_cases": 387,
+    "source_suites": [
+      {
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1051
+      },
+      {
+        "path": "tests/packaging/test_managed_update_native_policy.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1052
+      },
+      {
+        "path": "tests/packaging/test_native_launcher_bundle.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1053
+      },
+      {
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 102,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1054
+      },
+      {
+        "path": "tests/security/test_anchor_locking.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1055
+      },
+      {
+        "path": "tests/security/test_canonical_boundary.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1056
+      },
+      {
+        "path": "tests/security/test_controller.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1057
+      },
+      {
+        "path": "tests/security/test_entitlements.py",
+        "passed": 30,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1058
+      },
+      {
+        "path": "tests/security/test_idle_renewal.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1059
+      },
+      {
+        "path": "tests/security/test_independent_review_boundaries.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1060
+      },
+      {
+        "path": "tests/security/test_installation.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1061
+      },
+      {
+        "path": "tests/security/test_managed_installation.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1062
+      },
+      {
+        "path": "tests/security/test_managed_registration.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1063
+      },
+      {
+        "path": "tests/security/test_publication_integrity.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1064
+      },
+      {
+        "path": "tests/security/test_refresh.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1065
+      },
+      {
+        "path": "tests/security/test_updates.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1066
+      },
+      {
+        "path": "tests/ui/test_trust_status_handlers.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1067
+      },
+      {
+        "path": "tests/packaging/test_installed_trusted_client_probe.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "line": 1068
+      }
+    ],
+    "installed_whole_count": 17,
+    "installed_cases": 353,
+    "installed_report": {
+      "status": "PASS",
+      "cases": 353,
+      "failed_or_skipped": 0,
+      "suite_counts": {
+        "tests/packaging/test_managed_launch_boundary.py": 8,
+        "tests/packaging/test_managed_update_native_policy.py": 7,
+        "tests/packaging/test_native_launcher_bundle.py": 19,
+        "tests/packaging/test_standard_installer.py": 102,
+        "tests/security/test_anchor_locking.py": 1,
+        "tests/security/test_canonical_boundary.py": 27,
+        "tests/security/test_controller.py": 10,
+        "tests/security/test_entitlements.py": 30,
+        "tests/security/test_idle_renewal.py": 4,
+        "tests/security/test_independent_review_boundaries.py": 5,
+        "tests/security/test_installation.py": 39,
+        "tests/security/test_managed_installation.py": 34,
+        "tests/security/test_managed_registration.py": 10,
+        "tests/security/test_publication_integrity.py": 18,
+        "tests/security/test_refresh.py": 5,
+        "tests/security/test_updates.py": 23,
+        "tests/ui/test_trust_status_handlers.py": 11
+      },
+      "installed_origins": {
+        "carr_library.security.anchors": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/anchors.py",
+          "sha256": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.boundary": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/boundary.py",
+          "sha256": "60fe38d06826ed0822d565742e2c6ce744c85dbb6ebd3b2277d6990f72a579ec",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.controller": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/controller.py",
+          "sha256": "3c1cc0b9c8f8fdb82b9a924b77d53004e6a96938057d177c1168973cf08e02af",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.entitlements": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/entitlements.py",
+          "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.installation": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/installation.py",
+          "sha256": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.managed_installation": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/managed_installation.py",
+          "sha256": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.refresh": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/refresh.py",
+          "sha256": "e85d72183279fc0a48b5979e091cd82761d14d9500a3b351eb3c2c80e469712b",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.updates": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/updates.py",
+          "sha256": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.windows_registration": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/windows_registration.py",
+          "sha256": "fb1b15d9fb031e4260e66205bd79109901bdd830f91477f129f89f29f3bba1c5",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.installation_lease": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/installation_lease.py",
+          "sha256": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.managed_installation": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/managed_installation.py",
+          "sha256": "1582a4f24401e98345210d08b013b1a9a50f87e9f694597cc498f3db1a761e93",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.ui.trust_status": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/ui/trust_status.py",
+          "sha256": "2716f33a0e05d5d7c810d1d86c47d000d580a14b1cd5e3cf9046fcb0d54ba082",
+          "qualification": "installed-source-presence-only; native wx NOT_RUN"
+        }
+      },
+      "packaging_evidence": "Reviewed source helpers; separate actual native setup gates are required",
+      "production_issuer": "UNCONFIGURED",
+      "manual_nvda": "NOT_RUN"
+    },
+    "artifact": {
+      "id": 15249642343,
+      "name": "trusted-client-ubuntu-24.04-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+      "size_in_bytes": 59303,
+      "digest": "sha256:4798d86c84a657d5046dee63d17c29bbfe7e8c7e393c65ba688d142e888bd3be",
+      "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    }
+  },
+  "qualification": {
+    "these_two_required_lanes": "PASS",
+    "full_main": "PENDING",
+    "source487": "PENDING",
+    "v3": "PENDING",
+    "configured_native_update": "PENDING",
+    "physical_playback": "NO_QUALIFICATION_FROM_THIS_RECORD",
+    "manual_nvda": "NOT_RUN"
+  },
+  "counting": "Counts are separate suite/case executions in their named lanes; they are not unique project tests or a substitute for any pending required lane."
+}

@@ -32,7 +32,7 @@ PINS = {
     "src/carr_library/assistant/transcription_worker.py": "1651009d71e720ddad1793b35f8fad1464af7422",
     "src/carr_library/transcription.py": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e",
     "src/carr_library/backup_transcription.py": "98161afe7d432a81e169602f61b8443b639ccea6",
-    "src/carr_library/backup_producers.py": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+    "src/carr_library/backup_producers.py": "0fb5e91a440ded8b62b806b944bdd4722f288e65",
     "src/carr_library/ui/transcription_remote_dialog.py": "625500b8b51d4fbc37891218b5e1b0acbb9a5898",
     "src/carr_library/ui/transcription_dialog.py": "83425f992811d3560cb53cc191f61dfbe54b8ec5",
     "src/carr_library/ui/assistant_dialog.py": "ec81cbf478a225c482b3e74cd5bc9e9deadd3d9a",

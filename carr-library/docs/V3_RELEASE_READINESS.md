@@ -1,4 +1,4 @@
-# Resonance V3 implementation and owner-test delivery status
+# Resonance V3 implementation and qualification status
 
 This document describes the implemented library, reading and audio preview of
 Resonance by Sceneria Innovative Technologies. It does not close the complete
@@ -7,32 +7,41 @@ bundle and a signed distribution-cleared release have separate acceptance
 requirements. Existing package, launch filenames and data locations remain
 unchanged until a verified migration; visible application titles use Resonance.
 
-## Implemented and exercised
+## Implemented workflows and qualification boundaries
 
-| Area | Implemented behavior | Evidence and limits |
+The table records behavior present in the integration source. It is not an
+aggregate test verdict. Each executed result must identify its exact source
+commit and tree, installed artifact, dependency or model pack, command and
+actual outcome. The [acceptance gates](acceptance.md) and [current technical
+specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md) retain the full promised scope.
+
+| Area | Implemented behavior | Evidence boundary and current guide |
 | --- | --- | --- |
-| Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
-| Research search | Explicit Boolean/NEAR query mode, keyboard query builder, scoped multi-library search and retained reading positions | Bounded source-authenticated queries and backup round trips; results preserve exact source passages |
-| Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
-| Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats; portable retained clips with trim, placement, gain, pan, fades, preview and direct saved-project rendering | Real FFmpeg production and PCM/source tests; clip restore requires a fresh output selection even at the same library path; latest installed Windows clip checks remain pending; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
-| Microphone recording | Explicit DirectShow device selection, bounded capture, Stop/save, cancellation, verified originals, WAV export and backup/restore through the shared library | Actual FFmpeg with synthetic capture, owned-process and source/controller tests; physical devices, driver permissions, listening and the latest native Windows recording checks remain unqualified |
-| Synchronized publishing | EPUB3 media overlays from verified completed Studio output, measured speech-line SMIL timing, provenance, no-clobber export and receipt recovery | Actual synthetic-audio source/export tests and EPUBCheck conformance fixtures; latest installed native publishing checks remain pending; external-reader, DAISY and Braille qualification is separate |
-| Documents and citations | TXT/PDF/DOCX/EPUB and supported text subsets of HTML/HTM/XHTML, Markdown, EML, FB2/FB3, ODT/ODS/ODP, PPTX/XLSX; bounded conversion, reviewed BibTeX/RIS/CSL import, one pinned offline citeproc-js/QuickJS processor, editable DOCX with citation provenance and opt-in DOI previews | The 64 MiB source limit and parser budgets apply; source-integrity, generated-document and compatibility tests require the exact composed candidate; no live Word add-in or automatic quotation approval |
-| Recovery | Manifest-bound common backup format 4 includes typed settings, pending import bytes and identities, project inputs, recording originals, transcription state and reading positions; historical supported formats 1–5 remain readable | Real backup/restore and resumed import tests; exact publication reconciliation preserves completed imports after late cancellation; externally exported audio and OS credential secrets are separate |
-| Transcription | One existing job service for supplied-worker profiles, retained audio/video files or folders, cancellation/resume, verified results, editable derivatives and text/subtitle export | Synthetic child-process and native control checks; private V5 wrapper interoperability uses a controlled backend and does not qualify neural inference or recording quality |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions for previously executed controls; new candidate controls need their exact installed run; human NVDA and listening review remain required |
-| Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
-| Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references, per-request consent/budget and explicit local-server plan proposals through the existing validated executor | Actual loopback HTTP/CLI and synthetic native-control evidence; no local model weights or planning quality were qualified and no paid provider call was made during implementation |
-| Translation | Optional Google Basic v2 and Advanced v3 plain-text derivatives from pasted text or retained source ranges; account-bound language discovery, expiring OAuth credentials, existing glossaries, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; latest native Advanced completion checks remain pending; live API, linguistic quality, local inference, formatted-document fidelity and canonical-135 mapping are not qualified |
-| Delivery preparation | Native ResearchLibrary.exe launcher, exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files; transferable archive excludes audio payloads | Source/packaging tests; checksum integrity is not a publisher signature |
-| Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
-
+| Library, OCR and search | Scoped immutable originals, source/revision-bound quotation offsets, bibliography, managed OCR selection, bounded scan/import continuation and paged Boolean/NEAR search. Unicode mapping preserves the original boundaries and cancellation checks. | Source and installed tests must use the exact candidate. The retained-corpus benchmark measures actual library operations; safety limits alone are not scale acceptance. See [search](ACADEMIC_SEARCH.md), [paging](SEARCH_PAGING.md) and [capacity](backup_capacity.md). |
+| Reading and saved state | Derived reading copies, pronunciation edits, local voice discovery, source-aware presentation, persistent tabs/bookmarks/positions, voice preferences and saved playback queues. | SAPI, Flite and optional engines have separate execution and quality evidence. A registry entry does not qualify a voice, device or language. See [reading desk](READING_DESK.md), [tabs](READING_TABS.md), [presentation](READING_PRESENTATION.md) and [voice preferences](VOICE_PREFERENCES.md). |
+| Voice packages and references | Existing owner-API integration for reviewed local packages: inspect, approve, activate a version, export, protected import/export, revoke and delete. Explicit OmniVoice reference creation uses an existing PCM recording and transcript. Selected reviewed OmniVoice and OpenVoice V2 worker paths extend the existing speech adapter. | These are implemented lifecycle and protocol paths. Actual private runtime/model identity, authorized references, supported language pairs, inference and listening remain separate. No private engine or model is distributed. See [voice package management](VOICE_PACKAGE_MANAGEMENT.md). |
+| Audio studio and books | Existing scenes, roles, jobs and FFmpeg rendering; typed clip/role/scene/master effects; sample-based gain, mono-pan and width envelopes; split/cut/rejoin, copy/cut/paste, atomic crossfade of adjacent clips, named sample-aligned scene markers, undo/redo and saved revision browsing; explicit A–B repeat of the current rendered preview; book batches, chapters, stems, subtitles, verified resume/cache and measured outputs. | Each operator keeps its documented scope and timing restrictions. Synthetic long-file rendering does not establish hours of neural generation, arbitrary effect automation, device quality or complete live multitrack operation. See [envelopes](STUDIO_ENVELOPES.md), [clip history](STUDIO_CLIP_HISTORY.md) and [book batches](BOOK_BATCHES.md). |
+| Microphone recording | Explicit DirectShow input, bounded capture, segment-based Pause/Resume, Stop/save, cancellation, retained originals, WAV export and shared backup/restore. Optional dry monitoring feeds the same capture into an explicitly selected Windows output. | These software paths are present. Real device enumeration, output advancement, capture and listening/latency require actual supported hardware and drivers. Missing output cannot pass a playback or monitoring gate. See [recording](recording.md). |
+| Publishing and accessible interchange | EPUB3 measured media overlays, recorded-audio reading paths and bounded DAISY 2.02 interchange from the existing Studio timeline; separate source-bound six-dot BRF export through explicitly selected Liblouis tables. | Format validation, actual external-reader behavior, timing/listening, tactile language/layout, physical embossing and manual accessibility are distinct. DAISY export and BRF are implemented bounded profiles, not claims of arbitrary format or language support. See [recorded EPUB](EPUB_RECORDED_AUDIO.md), [DAISY implementation](../src/carr_library/studio/daisy.py) and [BRF](BRAILLE_BRF.md). |
+| Documents and citations | Retained text/document formats, bounded legacy conversion, BibTeX/RIS/CSL import, the pinned offline citation processor, generated DOCX and an optional reviewed-change bridge to an already-open Word document. | The Word bridge's native synthetic protocol checks do not qualify Microsoft Word, Office layouts or NVDA. Actual Office uses its separate disposable-document probe and explicit review. Format subsets and archive/parser bounds remain visible. See [conversion](DOCUMENT_CONVERSION.md), [bibliography](V3_BIBLIOGRAPHY.md), [Word bridge](WORD_BRIDGE.md) and [its validation contract](WORD_BRIDGE_VALIDATION.md). |
+| Recovery | The shared complete backup includes typed settings, required pending import inputs, project inputs, recording originals, transcription state and reading positions. Restored authority is passive until the relevant fresh review. | Recovery must preserve original bytes, provenance, committed results and cancelled/uncertain states. External runtime/model/reference folders, externally exported media and OS credential secrets retain explicit separate treatment. See [primary-state backup](PRIMARY_STATE_BACKUP.md). |
+| Local schedules | Explicitly reviewed, session-armed backup and watched-folder rules use the existing Vault and import-batch services. Rules and passive history persist through the current state/backup boundary. | The application and owning schedules window must remain open. This does not install an OS service, schedule work while closed, or modify ChatGPT automations. See [local schedules](LOCAL_SCHEDULES.md). |
+| Transcription | The existing service integrates the supplied worker profiles with retained media, batch/cancel/resume, verified result receipts, editable derivatives and TXT/SRT/VTT/JSON exports. The optional provider path retains per-operation consent and budgets. | Supplied source review and actual protocol/native tests do not establish neural inference, speaker quality, mixed-language accuracy or paid-provider execution. Private workers, models, recordings and transcripts remain external/private. See [transcription](TRANSCRIPTION.md) and [approved remote transcription](REMOTE_TRANSCRIPTION.md). |
+| Keyboard and progress | Native named controls, shared commands/shortcuts, measured or indeterminate progress, optional tones and explicitly selected local-voice notices; cancellation and cleanup remain tied to the real worker/owner. | Exact installed keyboard/native probes supplement human Windows/NVDA and listening review. A hidden window, accepted Close or successful source test alone does not prove native destruction or child quiescence. See [keyboard profiles](KEYBOARD_SHORTCUTS.md). |
+| Assistant and providers | Shared typed scoped tools, durable jobs, deterministic fallback, local-only default, protected credential references, explicit consent/budgets and local-server plan proposals through the validated executor. | Loopback/synthetic protocol execution does not qualify actual LLM planning or authorize paid calls. Documents and model text never acquire shell, filesystem or network authority. |
+| Translation | Google Basic v2 and Advanced v3, selected loopback local translation, retained-document/range batches, durable chunk receipts and offline export. Explicit desktop OAuth refresh credentials are supported. Bounded formatted DOCX profiles cover paragraphs/tables and a separate rich profile with selected images/notes; EPUB has its own layout profile. | Each source-format profile keeps its explicit exclusions and revalidates the reconstructed derivative. There is no guarantee of identical repagination or arbitrary mixed formatting. Explicit refresh is separate from automatic ADC/browser discovery. Actual provider/model execution, linguistic quality and full 135-language coverage remain unqualified without their own evidence. See [translation workstation](translation_workstation.md), [formatted translation](FORMATTED_TRANSLATION.md) and [OAuth adapter](../src/carr_library/assistant/google_oauth.py). |
+| Language inventory | The canonical catalog contains 135 target entries with separate capabilities and searchable evidence. | Inventory completeness never establishes 135 working voices, translators, OCR models, ASR models or interface localizations. Each capability/language pair needs its own qualification. |
+| Delivery preparation | Native launcher, ordinary installer/uninstall/repair paths, exact-source wheel checks, pinned dependencies/SBOM, notices/source closure, strict paths, sealed runtime files and configured update-host integration. | Compiled installers and exact checksums are separate from publisher signatures, private production trust, complete native A-to-B execution and per-profile distribution clearance. See [managed updates](MANAGED_UPDATES.md). |
+| Signed permissions and renewal | Ed25519 envelope verification, product/subject/device/policy/terms binding, supported perpetual/renewable/evaluation profiles, protected monotonic state, interrupted-publication recovery and explicit review of changed terms. Nonce-bound renewal uses the existing worker, cancellation/backoff and an opt-in idle scheduler. | This is a configured client and provider interface. The repository supplies no production issuer, account service, deployment keyring/terms or renewal endpoint. Synthetic signers/transports do not qualify a private authority or live unattended renewal. Reading, save/export, backup/recovery and authorized in-flight work retain the defined data-preservation contract. See [trusted client](TRUSTED_CLIENT.md). |
+| Configured signed updates | Independent explicit configuration enables offline or approved-HTTPS Check/Download/resume, signed release review and a sealed external maintenance host from verified installed A. After ordinary Close, the existing idle/installation-lease handoff, backup, managed activation/recovery and checked optional restart use the installed application. Background checks are opt-in; Apply is a separate explicit decision. | Ordinary source/installed tests, local TLS transport and the full compiled/native A-to-B cycle are separate evidence. Actual preparation, Apply, backup/recovery and the restarted window/lease must be observed on the exact candidate. Production signing, roots, targets, rollout policy and user installation are not supplied or qualified automatically. See [managed updates](MANAGED_UPDATES.md). |
 See the [Ukrainian quick start](START_V3_UK.txt), [document-format boundaries](DOCUMENT_FORMATS_V3.md),
 [advanced search syntax](ACADEMIC_SEARCH.md), [bibliography workflow](V3_BIBLIOGRAPHY.md)
 and [keyboard profiles](KEYBOARD_SHORTCUTS.md) for the implemented user paths.
-The complete private installation needs both Application and OCR Sources ZIPs
-extracted into their shared program folder; `ocr-corresponding-source.tar`
-remains intact for verification before `Install.cmd` runs.
+The archive-based owner-candidate route uses both Application and OCR Sources
+ZIPs extracted into their shared program folder; `ocr-corresponding-source.tar`
+remains intact for verification before `Install.cmd` runs. The standard installer
+and configured update route have their own acceptance. Archive assembly and
+checksums alone do not establish a qualified owner build or signed release.
 
 Progress speech now uses the explicitly selected, installed local voice through
 the existing speech adapter. Choose **Use voice for progress** in the Voice
@@ -72,34 +81,48 @@ See [the V4.3 adapter contract](SUPPLIED_TRANSCRIPTION_ADAPTER.md).
 
 ## Requirements still open
 
-The following cannot be labelled DONE by passing the current core tests:
+Implemented software, exact automated execution, real engine/device quality
+and distribution clearance are independent states. The following remain
+required even when a focused source or installed suite passes:
 
-- A signed ResearchLibrary.exe and standard signed installer/uninstall/repair,
-  owner-configured publisher trust and a complete private release review.
-- Compatible private entitlement authority, account-optional perpetual policies,
-  signed unattended refresh and offline renewal, and signed update A-to-B,
-  interruption/recovery and key-rotation acceptance.
-- Actual owner-supplied cloning runtime, authorized reference recordings,
-  protected voice profiles and independent multilingual inference/listening.
-- Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference
-  and the remaining approved Balabolka-equivalent workflow checklist.
-- Physical microphone/driver acceptance, live monitoring, capture pause/resume
-  and the remaining professional studio/device workflows. Basic recording,
-  portable clip editing and offline rendering are implemented; they do not prove
-  complete real-time multitrack operation or human accessibility/listening.
-- External-reader and listening acceptance for synchronized EPUB, plus DAISY
-  interchange and BRF/Braille translation/layout. EPUB media-overlay creation
-  and conformance fixtures do not implement or qualify those separate formats.
-- Actual local-model planning through the existing validated plan adapter, live
-  Google Basic/Advanced qualification and a local translation engine. The local
-  server and Advanced protocol paths are implemented; synthetic responses do
-  not establish executed model inference or linguistic quality. Automatic ADC
-  discovery/refresh, formatted-document and batch translation remain separate.
-- Independent qualification of every required capability for the canonical 135
-  entries; registry/resource counts never establish language quality.
+- Exact final integrated source, installed-wheel and required native workflow
+  acceptance, including cleanup, recovery and the configured A-to-B installer
+  cycle. Cancelled, skipped or pending work cannot satisfy those gates.
+- Publisher signing and a reviewed exact release profile, including dependency,
+  native binary, model, voice, sample, font/style, notices and corresponding
+  source obligations. The existing installer is not a signed distributable
+  solely because it builds or installs.
+- The configured private entitlement/account authority, intended production
+  policies and trust, signed unattended renewal/offline recovery and actual
+  update/rollback/key-rotation acceptance for that deployment. The software
+  adapters do not provide the owner's production keys or service configuration.
+- Actual authorized owner-engine inference and independent multilingual
+  intelligibility/similarity, long-form consistency and hardware measurements.
+  Supplied source and managed reference/profile workflows are present; a
+  synthetic protocol or generated PCM fixture cannot qualify the model.
+- The selected dordiai/SAPI4 combinations, optional MusicGen/ACE-Step model
+  inference and the remaining finite Balabolka-equivalent acceptance checklist.
+  Each advertised control and language must match the actual chosen engine.
+- Physical microphone/driver use, actual output advancement, dry-monitoring
+  latency and listening, plus any remaining professional live studio workflows.
+  Pause/Resume, dry monitoring, typed envelopes and saved clip/history editing
+  are implemented; their presence does not establish complete device or
+  real-time multitrack acceptance.
+- External-reader/listening acceptance for EPUB and DAISY, and independent
+  tactile language, layout and printer review for the supported BRF profiles.
+  The implemented exporters keep their documented format/language limitations.
+- Real local-model planning and translation, live Google Basic/Advanced
+  qualification, actual Office compatibility and visual review of supported
+  translated documents. The current protocols, Word bridge, OAuth refresh
+  and formatted DOCX/EPUB profiles are implemented; unsupported format features
+  and unexecuted model/provider/version combinations remain explicit.
+- Actual corpus measurements on the intended support profile, including
+  import/search/open latency, memory/disk, cancellation and recovery. A passing
+  smaller corpus or instrumented diagnostic cannot qualify a larger corpus.
+- Independent qualification of every required capability for the canonical
+  135-language target; catalogs and registries are not language-quality results.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
-  execution is useful evidence, but does not substitute for that review.
-
+  execution supplies separate evidence and cannot replace that review.
 The supplied Whisper projects, including the owner's corrected V5 worker, have
 been reviewed against the application's existing transcription service. Each
 supported protocol has an explicit profile; configuring one does not make other

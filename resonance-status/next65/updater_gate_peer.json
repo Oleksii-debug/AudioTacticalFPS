@@ -1,0 +1,62 @@
+{
+  "schema": "carr-bounded-peer-review/1",
+  "created_utc": "2026-11-28 07:01:29 UTC",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "ecbbdefdcf879962c54de2bc45084104ae2e28b2",
+  "scope": "Exact focused updater helper/workflow count and pin delta, accompanying five documentation hunks, and primary CPython 3.11.18 internal launcher binding continuity.",
+  "paths": [
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "preimage": "24d4bdb71b25597faffed9e5979c58ef7cc263ff",
+      "successor": "59d3642396f88529e17d82f68bb4675382145c9f"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "preimage": "838ff28ad3baea931b0a99f3071f1d000cb5b42c",
+      "successor": "b8424c11ae2c68be238a273b1fcbe6b1a057fe51"
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "c5e1fbcafd788ac1aa91f3589b97b949378cf705",
+      "successor": "c9e5230983eb7fa2ee70324dd687c93d7d51e1b3"
+    }
+  ],
+  "independent_checks": {
+    "helper_inverse": true,
+    "workflow_inverse": true,
+    "suites": {
+      "tests/security/test_update_handoff.py": 53,
+      "tests/security/test_update_runtime.py": 40,
+      "tests/security/test_update_ui.py": 15,
+      "tests/security/test_update_controller_actions.py": 14
+    },
+    "total_cases": 122,
+    "pins": 53,
+    "changed_pins": [
+      "tests/security/test_update_handoff.py",
+      "tests/security/test_update_runtime.py",
+      "src/carr_library/security/update_handoff.py",
+      "src/carr_library/security/update_runtime.py"
+    ],
+    "mismatches": []
+  },
+  "preserved": [
+    "Both exact inverse reconstructions return their complete preimages.",
+    "All four whole selectors retain their order; counts are 53 + 40 + 15 + 14 = 122.",
+    "All 53 pins match exact 72713056f6da48a327ce269dc805a42eb3bd1b52 tree with only the four accepted source/test overlays.",
+    "Installed child, companion staging (16 files), origin sets (31 common and 32 Windows), source isolation, full wheel proof and hash checks are unchanged.",
+    "Each whole 600 seconds, source parent 1500 seconds/jobs3, helper80/job120, setup/firewall/retention and separate TLS15 obligations are unchanged.",
+    "Documentation preserves the complete historical A2 identity, distinguishes the corrected immutable A requirement from candidate B, and does not claim a native successful cycle.",
+    "The CPython 3.11.18 internal __PYVENV_LAUNCHER__ binding block is byte-identical to the previously reviewed 3.11.9 block; getpath.c bytes are unchanged."
+  ],
+  "source_review_boundary": {
+    "handoff_and_tests": "d80d246182106044c35317c18188b20b5012e767",
+    "runtime_and_tests": "Independent source/test verdict belongs to locate_project; this review verifies their exact accepted pins and counts.",
+    "no_new_execution_claim": true
+  },
+  "limitations": [
+    "No Python/YAML/runtime/native execution was performed in this review.",
+    "Ordinary122 and TLS15 remain separate from actual configured native activation and restart qualification."
+  ]
+}

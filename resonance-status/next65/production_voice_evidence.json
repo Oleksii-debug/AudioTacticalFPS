@@ -1,0 +1,115 @@
+{
+  "schema": "carr-production-prerequisite-evidence/1",
+  "scope": "Choose an explicit real platform speech fixture; no current-run PASS transfer.",
+  "failed_run": {
+    "head": "80b64bac746851830d23e25a38e7a78870760a74",
+    "run_id": 46114564728,
+    "job_id": 140885384969,
+    "receipt_git_blob": "93ded39d63d0d4ee171d444bbf31392b03796c1e",
+    "production": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 11
+    },
+    "hardening": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 1
+    },
+    "skip_reason": "The individual skip message was not printed in the closed console; do not claim observed filter stderr."
+  },
+  "pinned_windows_codec": {
+    "path": "carr-library/packaging/windows-audio.lock.json",
+    "git_blob": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+    "engine": "FFmpeg9.1 Essentials",
+    "archive_sha256": "b9bbbb3acece000cbeec994f856649354e52c773807841e78908374b24d658fd",
+    "ffmpeg_sha256": "ed8f66cb877087a96f5bbb40a2944f0e764f2ad8870d5cb647360d912e62bc07",
+    "ffprobe_sha256": "df0199f606faa88e9ad192732a7c3987acfb647663534c297772e17730611a08",
+    "actual_preparation_line": 340,
+    "actual_preparation_status": "VERIFIED_AND_PREPARED",
+    "actual_both_executables_resolved_lines": [
+      429,
+      430
+    ],
+    "actual_metadata_sizes": [
+      110590976,
+      110374912
+    ],
+    "primary_vendor": "https://www.gyan.dev/ffmpeg/builds/",
+    "vendor_fact": "The primary vendor lists libflite among additional Full-build libraries, not Essentials libraries.",
+    "primary_ffmpeg": "https://ffmpeg.org/ffmpeg-filters.html#flite",
+    "ffmpeg_fact": "The Flite filter requires a build configured with --enable-libflite.",
+    "inference": "The pinned Essentials variant does not supply the required Flite voices; actual filter stderr is not present in this closed console."
+  },
+  "existing_actual_windows_source_selection": {
+    "head": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+    "run_id": 46097288504,
+    "job_id": 140831490799,
+    "overall_job": "CANCELLED; the selected earlier native phase has its own actual PASS report.",
+    "report_lines": [
+      4942,
+      4992
+    ],
+    "report": {
+      "status": "PASS",
+      "platform": "win32",
+      "manual_nvda": "NOT_RUN",
+      "checks": [
+        "actual installed SAPI voice to measured PCM",
+        "actual local three-role production with score and pause",
+        "WAV/FLAC, chapter and stem publication",
+        "completed-job restart and checksum verification",
+        "native menu integration and unique global shortcuts",
+        "native studio/assistant/provider/engine dialogs with named keyboard controls",
+        "native selected-book range 2-3 loads exact read-only retained source",
+        "native source-range Cancel opens no translation workspace",
+        "native close cancels active source loading without modifying originals"
+      ],
+      "voices": [
+        {
+          "id": "sapi5-64:8ceac258515d5a474e76deba",
+          "name": "Microsoft David Desktop - English (United States)",
+          "language": "en-US"
+        },
+        {
+          "id": "sapi5-64:745a26bc99ef3c4c944377b9",
+          "name": "Microsoft Zira Desktop - English (United States)",
+          "language": "en-US"
+        }
+      ],
+      "speech_peak_pcm16": 10989,
+      "audio": {
+        "duration": 10.691958,
+        "artifacts": 13,
+        "loudness": {
+          "integrated_lufs": -24.89,
+          "true_peak_dbfs": -6.28,
+          "loudness_range_lu": 4.5,
+          "threshold_lufs": -38.03,
+          "silent": false
+        },
+        "distinct_voice_tokens": 2
+      },
+      "translation_source": {
+        "fixture": "synthetic retained Unicode TXT",
+        "selected_positions": [
+          2,
+          3
+        ],
+        "original_sha256": "de090d84cb5ef51d57e31cbba6f7640e5f78e9a9c5b0bc56e284edd8b2526b6d",
+        "provider_calls": 0,
+        "manual_nvda": "NOT_RUN"
+      }
+    },
+    "excerpt": "2026-11-28T02:55:49.7949308Z {\n2026-11-28T02:55:49.7951269Z   \"status\": \"PASS\",\n2026-11-28T02:55:49.7953062Z   \"platform\": \"win32\",\n2026-11-28T02:55:49.7954653Z   \"manual_nvda\": \"NOT_RUN\",\n2026-11-28T02:55:49.7956216Z   \"checks\": [\n2026-11-28T02:55:49.7957732Z     \"actual installed SAPI voice to measured PCM\",\n2026-11-28T02:55:49.7959187Z     \"actual local three-role production with score and pause\",\n2026-11-28T02:55:49.7960851Z     \"WAV/FLAC, chapter and stem publication\",\n2026-11-28T02:55:49.7962067Z     \"completed-job restart and checksum verification\",\n2026-11-28T02:55:49.7963669Z     \"native menu integration and unique global shortcuts\",\n2026-11-28T02:55:49.7965206Z     \"native studio/assistant/provider/engine dialogs with named keyboard controls\",\n2026-11-28T02:55:49.7966598Z     \"native selected-book range 2-3 loads exact read-only retained source\",\n2026-11-28T02:55:49.7968064Z     \"native source-range Cancel opens no translation workspace\",\n2026-11-28T02:55:49.7969556Z     \"native close cancels active source loading without modifying originals\"\n2026-11-28T02:55:49.7971148Z   ],\n2026-11-28T02:55:49.7972593Z   \"voices\": [\n2026-11-28T02:55:49.7974099Z     {\n2026-11-28T02:55:49.7977364Z       \"id\": \"sapi5-64:8ceac258515d5a474e76deba\",\n2026-11-28T02:55:49.7978842Z       \"name\": \"Microsoft David Desktop - English (United States)\",\n2026-11-28T02:55:49.7980187Z       \"language\": \"en-US\"\n2026-11-28T02:55:49.7981519Z     },\n2026-11-28T02:55:49.7982871Z     {\n2026-11-28T02:55:49.7984260Z       \"id\": \"sapi5-64:745a26bc99ef3c4c944377b9\",\n2026-11-28T02:55:49.7985625Z       \"name\": \"Microsoft Zira Desktop - English (United States)\",\n2026-11-28T02:55:49.7986876Z       \"language\": \"en-US\"\n2026-11-28T02:55:49.7988267Z     }\n2026-11-28T02:55:49.7989637Z   ],\n2026-11-28T02:55:49.7990984Z   \"speech_peak_pcm16\": 10989,\n2026-11-28T02:55:49.7992322Z   \"audio\": {\n2026-11-28T02:55:49.7993828Z     \"duration\": 10.691958,\n2026-11-28T02:55:49.7995160Z     \"artifacts\": 13,\n2026-11-28T02:55:49.7996490Z     \"loudness\": {\n2026-11-28T02:55:49.7997802Z       \"integrated_lufs\": -24.89,\n2026-11-28T02:55:49.7999245Z       \"true_peak_dbfs\": -6.28,\n2026-11-28T02:55:49.8000557Z       \"loudness_range_lu\": 4.5,\n2026-11-28T02:55:49.8001899Z       \"threshold_lufs\": -38.03,\n2026-11-28T02:55:49.8003193Z       \"silent\": false\n2026-11-28T02:55:49.8004503Z     },\n2026-11-28T02:55:49.8005847Z     \"distinct_voice_tokens\": 2\n2026-11-28T02:55:49.8007104Z   },\n2026-11-28T02:55:49.8008477Z   \"translation_source\": {\n2026-11-28T02:55:49.8009786Z     \"fixture\": \"synthetic retained Unicode TXT\",\n2026-11-28T02:55:49.8011032Z     \"selected_positions\": [\n2026-11-28T02:55:49.8012347Z       2,\n2026-11-28T02:55:49.8013679Z       3\n2026-11-28T02:55:49.8014999Z     ],\n2026-11-28T02:55:49.8016503Z     \"original_sha256\": \"de090d84cb5ef51d57e31cbba6f7640e5f78e9a9c5b0bc56e284edd8b2526b6d\",\n2026-11-28T02:55:49.8017604Z     \"provider_calls\": 0,\n2026-11-28T02:55:49.8018950Z     \"manual_nvda\": \"NOT_RUN\"\n2026-11-28T02:55:49.8020295Z   }\n2026-11-28T02:55:49.8021695Z }",
+    "exact_sources_equal_current727": {
+      "carr-library/scripts/windows_v3_smoke.py": "5cd11e09c3e49c345277c82dd905655a3f8d7017",
+      "carr-library/src/carr_library/speech/runtime.py": "f5c43ef5f03af626f44096be0a2b10f034c09c80",
+      "carr-library/src/carr_library/speech/sapi_native_worker.py": "0faf8b266ff9fa5a0dc5db61243e5d8e5ce99135"
+    }
+  },
+  "chosen_fixture": "Windows explicitly uses the unchanged NativeSapiProvider and requires at least two distinct actual English tokens. Three roles use those actual IDs through the existing parser. Linux retains exact original Flite awb/rms/slt. No fictional voice, fallback PCM, codec/product change, dropped case or skip waiver.",
+  "new_fixture_runtime": "NOT_RUN",
+  "physical_playback": "NOT_QUALIFIED",
+  "manual_nvda": "NOT_QUALIFIED"
+}

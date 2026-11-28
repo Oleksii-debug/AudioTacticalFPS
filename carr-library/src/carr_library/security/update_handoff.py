@@ -71,6 +71,17 @@ def _hash_file(path, *, maximum, cancelled=lambda: False):
     return digest.hexdigest(), used
 
 
+def _supervisor_environment(venv_python=None):
+    """Keep CPython's explicit venv route, never an inherited launcher override."""
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith(('PYTHON', 'PIP'))
+                   and key.upper() not in ('__PYVENV_LAUNCHER__', 'VIRTUAL_ENV')}
+    environment.update(PYTHONNOUSERSITE='1', PYTHONDONTWRITEBYTECODE='1', PIP_NO_INDEX='1')
+    if venv_python is not None:
+        environment['__PYVENV_LAUNCHER__'] = str(venv_python)
+    return environment
+
+
 class OwnerUpdateConfiguration:
     """Data-only configuration, selected with an independently supplied digest."""
     def __init__(self, path, expected_sha256):
@@ -152,7 +163,7 @@ class OwnerUpdateConfiguration:
         if read_bytes(self.path, 65536) != self.raw:
             raise TrustError('The owner update authority changed after review.')
 
-    def verify_runtime(self, *, cancelled=lambda: False):
+    def _runtime_inventory(self):
         self.check()
         raw = read_bytes(self.manifest_path, 8 * 1024**2)
         if sha256(raw).hexdigest() != self.manifest_sha256:
@@ -170,6 +181,10 @@ class OwnerUpdateConfiguration:
                     self.maintenance.relative_to(self.runtime).as_posix()}
         if not required.issubset(expected):
             raise TrustError('The maintenance executable or helper is not sealed.')
+        return raw, expected
+
+    def verify_runtime(self, *, cancelled=lambda: False):
+        raw, expected = self._runtime_inventory()
         observed, directories, total = {}, {}, 0
         pending = [self.runtime]
         while pending:
@@ -200,6 +215,95 @@ class OwnerUpdateConfiguration:
         if read_bytes(self.manifest_path, 8 * 1024**2) != raw:
             raise TrustError('The maintenance runtime manifest changed while verifying.')
         return {'sha256': self.manifest_sha256, 'files': len(observed), 'bytes': total}
+
+    def _supervisor_launch(self, *, cancelled=lambda: False):
+        """Bind the actual interpreter PID while retaining the sealed venv."""
+        if cancelled():
+            raise InterruptedError('Update handoff cancelled before supervisor launch.')
+        raw, expected = self._runtime_inventory()
+        manifest_stamp = _file_stamp(file_info(self.manifest_path))
+        captured = {}
+
+        def capture(path, maximum):
+            if not path.is_relative_to(self.runtime):
+                raise TrustError('The supervisor interpreter must remain inside its sealed runtime.')
+            name = path.relative_to(self.runtime).as_posix()
+            if name not in expected:
+                raise TrustError('The supervisor launch path is not in its sealed runtime inventory.')
+            rows = _directory_rows(path.parent)
+            stamp = _file_stamp(file_info(path))
+            digest, _ = _hash_file(path, maximum=maximum, cancelled=cancelled)
+            if digest != expected[name] or _file_stamp(file_info(path)) != stamp:
+                raise TrustError('The sealed supervisor launch input changed.')
+            _same_directories(rows)
+            captured[path] = (maximum, stamp, rows, expected[name])
+
+        capture(self.python, 4 * 1024**3)
+        executable, venv_python = self.python, None
+        candidates = ()
+        if os.name == 'nt':
+            candidates = tuple(path for path in
+                (self.python.parent / 'pyvenv.cfg', self.python.parent.parent / 'pyvenv.cfg')
+                if path.is_relative_to(self.runtime))
+        present = tuple(os.path.lexists(path) for path in candidates)
+        selected = [path for path, exists in zip(candidates, present) if exists]
+        if len(selected) > 1:
+            raise TrustError('The supervisor venv configuration is ambiguous.')
+        if selected:
+            configuration = selected[0]
+            capture(configuration, 4096)
+            encoded = read_bytes(configuration, 4096)
+            if sha256(encoded).hexdigest() != captured[configuration][3]:
+                raise TrustError('The sealed supervisor venv configuration changed.')
+            try:
+                lines = encoded.decode('utf-8', errors='strict').splitlines()
+            except UnicodeError as error:
+                raise TrustError('The sealed supervisor venv configuration is not UTF-8.') from error
+            homes = []
+            for line in lines:
+                key, separator, value = line.partition('=')
+                if separator and key.strip().casefold() == 'home':
+                    homes.append(value.strip())
+            if len(homes) != 1 or not homes[0] or not Path(homes[0]).is_absolute():
+                raise TrustError('The sealed supervisor venv needs one absolute Python home.')
+            home = Path(homes[0])
+            if not home.is_relative_to(self.runtime):
+                raise TrustError('The supervisor Python home must remain inside its sealed runtime.')
+            executable = directory(home) / 'python.exe'
+            if executable == self.python:
+                raise TrustError('The supervisor venv cannot redirect to its own launcher.')
+            capture(executable, 4 * 1024**3)
+            venv_python = self.python
+
+        def current():
+            if cancelled():
+                raise InterruptedError('Update handoff cancelled before supervisor launch.')
+            self.check()
+            if (_file_stamp(file_info(self.manifest_path)) != manifest_stamp
+                    or read_bytes(self.manifest_path, 8 * 1024**2) != raw
+                    or tuple(os.path.lexists(path) for path in candidates) != present):
+                raise TrustError('The sealed supervisor launch authority changed.')
+            for path, (maximum, stamp, rows, expected_digest) in captured.items():
+                _same_directories(rows)
+                if _file_stamp(file_info(path)) != stamp:
+                    raise TrustError('The sealed supervisor launch identity changed.')
+                digest, _ = _hash_file(path, maximum=maximum, cancelled=cancelled)
+                if digest != expected_digest:
+                    raise TrustError('The sealed supervisor launch bytes changed.')
+            # Cancellation callbacks may have touched an earlier input while a
+            # later one was read. Preserve every original identity at admission.
+            for path, (_, stamp, rows, _) in captured.items():
+                _same_directories(rows)
+                if _file_stamp(file_info(path)) != stamp:
+                    raise TrustError('The sealed supervisor launch identity changed.')
+            if (_file_stamp(file_info(self.manifest_path)) != manifest_stamp
+                    or read_bytes(self.manifest_path, 8 * 1024**2) != raw
+                    or tuple(os.path.lexists(path) for path in candidates) != present):
+                raise TrustError('The sealed supervisor launch authority changed.')
+            self.check()
+
+        current()
+        return executable, _supervisor_environment(venv_python), current
 
     def client(self):
         repository = self.value['repository']
@@ -388,8 +492,10 @@ class UpdateHandoff:
                     result = json_value(read_bytes(ready, 16384), maximum=16384)
                     expected = {'schema': 1, 'status': 'ready', 'request_sha256': self.digest,
                                 'pid': self.process.pid, 'release': self.request['release']}
-                    if result != expected or self.process.poll() is not None:
-                        raise TrustError('The maintenance host did not retain this exact reviewed update.')
+                    returncode = self.process.poll()
+                    if result != expected or returncode is not None:
+                        raise TrustError('The maintenance host did not retain this exact reviewed update. '
+                            f'Ready identity matches: {result == expected}; direct process returncode: {returncode!r}.')
                     return self
                 if self.process.poll() is not None:
                     raise TrustError('The maintenance host refused preparation. Review its retained status.')
@@ -513,11 +619,9 @@ class ManagedUpdateHandoffService:
         raw = json_bytes(request)
         request_path = path / 'request.json'
         atomic_write(request_path, raw)
-        environment = {k: v for k, v in os.environ.items()
-                       if not k.upper().startswith(('PYTHON', 'PIP'))}
-        environment.update(PYTHONNOUSERSITE='1', PYTHONDONTWRITEBYTECODE='1', PIP_NO_INDEX='1')
+        executable, environment, launch_current = config._supervisor_launch(cancelled=stopped)
         config.check()
-        process = subprocess.Popen([str(config.python), '-I', '-B', '-m',
+        process = subprocess.Popen([str(executable), '-I', '-B', '-m',
             'carr_library.security.update_host', '--configuration', str(config.path),
             '--configuration-sha256', config.sha256, '--request', str(request_path),
             '--request-sha256', sha256(raw).hexdigest()], cwd=str(config.runtime), env=environment,
@@ -525,4 +629,9 @@ class ManagedUpdateHandoffService:
             close_fds=True, start_new_session=os.name == 'posix',
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         owner = UpdateHandoff(config, path, request, process)
-        return owner.wait_ready(cancelled=stopped, timeout=max(.05, deadline - time.monotonic()))
+        try:
+            launch_current()
+            return owner.wait_ready(cancelled=stopped, timeout=max(.05, deadline - time.monotonic()))
+        except BaseException:
+            owner.abort()
+            raise

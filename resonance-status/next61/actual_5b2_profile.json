@@ -1,0 +1,3157 @@
+{
+  "schema": "carr-measured-corpus-profile-evidence/1",
+  "recorded_utc": "2026-11-28 05:16:56 UTC",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110635865,
+  "job_id": 140873149700,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110635865/job/140873149700",
+  "job_conclusion": "success",
+  "qualification": "DIAGNOSTIC_ONLY",
+  "source_manifest": "7f9444cd5e849d1754232b9fb385359f3b9929ad",
+  "prior_profile_evidence": "abde0b90bc99bd7554e3f0258fb93ee600131e04",
+  "source_rows": [
+    {
+      "path": "tests/packaging/test_library_scale_benchmark.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/packaging/test_library_capacity_measurement.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/citations/test_attestation_cancellation.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/packaging/test_library_scale_profile.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/catalog/test_text_screen_work.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/search/test_ascii_mapping_work.py",
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "declared_case": {
+    "books": 1000,
+    "segments_per_book": 40,
+    "segment_bytes": 256,
+    "result_page_size": 37,
+    "source_window_pages": 100,
+    "repeats": 9,
+    "phase_timeout": 3600,
+    "construction": "retained-fixture",
+    "public_samples": 0,
+    "complete_backup": false
+  },
+  "final_diagnostic_receipt": {
+    "full_2m_capacity": "NOT_RUN_BY_THIS_DIAGNOSTIC",
+    "inputs_unchanged": true,
+    "qualification": "DIAGNOSTIC_ONLY",
+    "raw_binary_profile_retained": false,
+    "retained_reports": [
+      {
+        "bytes": 5440,
+        "path": "reports/configuration.json",
+        "sha256": "1a1ab2513cde711de38e75cc40cd14ea88e349967d0bf16d5a6dd222db360d8a"
+      },
+      {
+        "bytes": 91759,
+        "path": "reports/library-corpus-scale.json",
+        "sha256": "f8ac5ca2a0a7f37aedd064c2767ea733a99170641b9a2f13076982f95cb0daa8"
+      },
+      {
+        "bytes": 443,
+        "path": "reports/1000/corpus.json",
+        "sha256": "9dc1dbebc613ddb55b6e34be105961fa9034f719533710aa49f5834e84fe4d78"
+      },
+      {
+        "bytes": 5977,
+        "path": "reports/1000/build.json",
+        "sha256": "32cb1289c3bb7504cdb132761f950a18e2b630bdd343474193ab1823a398cf4f"
+      },
+      {
+        "bytes": 71223,
+        "path": "reports/1000/measure.json",
+        "sha256": "dee5202ce7dbcade728490a6856bebb3b73478ff3ecae63c20b2b4848469ef09"
+      },
+      {
+        "bytes": 6735,
+        "path": "reports/1000/restart.json",
+        "sha256": "4f97a5e91275624e55a4d13a6d912c38d634b55b03178d0937732b1a30a4732f"
+      },
+      {
+        "bytes": 0,
+        "path": "reports/1000/build.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "reports/1000/build.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 68665,
+        "path": "reports/1000/measure.stdout.txt",
+        "sha256": "262855686877aac71d2fbccdc8ee1c118885289d4ebb0622b19885c934d2180f"
+      },
+      {
+        "bytes": 0,
+        "path": "reports/1000/measure.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "reports/1000/restart.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "reports/1000/restart.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "schema": "carr-corpus-profile-diagnostic/1",
+    "source_cases_required": 153,
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "status": "PASS",
+    "unprofiled_latency_or_speedup": "NOT_MEASURED"
+  },
+  "bounded_cprofile": {
+    "functions": [
+      {
+        "callers": [],
+        "cumulative_seconds": 179.89830830300002,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "measure_corpus",
+        "line": 1056,
+        "omitted_callers": 0,
+        "primitive_calls": 1,
+        "self_seconds": 0.000476365,
+        "total_calls": 1
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 175.513721615,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "measure_corpus",
+            "line": 1056,
+            "primitive_calls": 1,
+            "self_seconds": 0.12274016800000001,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 175.513721615,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "traverse",
+        "line": 934,
+        "omitted_callers": 0,
+        "primitive_calls": 1,
+        "self_seconds": 0.12274016800000001,
+        "total_calls": 1
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 170.196766208,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "traverse",
+            "line": 934,
+            "primitive_calls": 1200,
+            "self_seconds": 0.038701792000000006,
+            "total_calls": 1200
+          },
+          {
+            "cumulative_seconds": 1.9297202990000002,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "measure_corpus",
+            "line": 1056,
+            "primitive_calls": 18,
+            "self_seconds": 0.00042120600000000003,
+            "total_calls": 18
+          },
+          {
+            "cumulative_seconds": 0.25925104200000004,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "cancellation_probe",
+            "line": 1017,
+            "primitive_calls": 3,
+            "self_seconds": 0.000070274,
+            "total_calls": 3
+          }
+        ],
+        "cumulative_seconds": 172.385737549,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "_query",
+        "line": 927,
+        "omitted_callers": 0,
+        "primitive_calls": 1221,
+        "self_seconds": 0.039193272,
+        "total_calls": 1221
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 172.319745218,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "_query",
+            "line": 927,
+            "primitive_calls": 1221,
+            "self_seconds": 0.093538363,
+            "total_calls": 1221
+          },
+          {
+            "cumulative_seconds": 0.00012842000000000002,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "cancellation_probe",
+            "line": 1017,
+            "primitive_calls": 1,
+            "self_seconds": 0.000018001000000000003,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 172.31987363800002,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "search_page",
+        "line": 1087,
+        "omitted_callers": 0,
+        "primitive_calls": 1222,
+        "self_seconds": 0.093556364,
+        "total_calls": 1222
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 171.774598746,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search_page",
+            "line": 1087,
+            "primitive_calls": 2042,
+            "self_seconds": 0.5755444070000001,
+            "total_calls": 2042
+          }
+        ],
+        "cumulative_seconds": 171.774598746,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "search",
+        "line": 967,
+        "omitted_callers": 0,
+        "primitive_calls": 2042,
+        "self_seconds": 0.5755444070000001,
+        "total_calls": 2042
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 117.14905108100001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 2040,
+            "self_seconds": 4.893451461000001,
+            "total_calls": 2040
+          }
+        ],
+        "cumulative_seconds": 117.14905108100001,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "search",
+        "line": 262,
+        "omitted_callers": 0,
+        "primitive_calls": 2040,
+        "self_seconds": 4.893451461000001,
+        "total_calls": 2040
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 64.766424083,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "stopped",
+            "line": 96,
+            "primitive_calls": 3564849,
+            "self_seconds": 2.0699729330000003,
+            "total_calls": 3564849
+          },
+          {
+            "cumulative_seconds": 42.013639585,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "stopped",
+            "line": 304,
+            "primitive_calls": 2265871,
+            "self_seconds": 1.204510738,
+            "total_calls": 2265871
+          },
+          {
+            "cumulative_seconds": 10.262868348000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "<lambda>",
+            "line": 213,
+            "primitive_calls": 560431,
+            "self_seconds": 0.30160358400000004,
+            "total_calls": 560431
+          },
+          {
+            "cumulative_seconds": 6.058701918000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "check",
+            "line": 100,
+            "primitive_calls": 319759,
+            "self_seconds": 0.17344769200000001,
+            "total_calls": 319759
+          },
+          {
+            "cumulative_seconds": 2.612669151,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_retained_source",
+            "line": 847,
+            "primitive_calls": 127616,
+            "self_seconds": 0.072958729,
+            "total_calls": 127616
+          },
+          {
+            "cumulative_seconds": 1.8585994250000002,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "_hash_stream",
+            "line": 287,
+            "primitive_calls": 88896,
+            "self_seconds": 0.055830289000000005,
+            "total_calls": 88896
+          }
+        ],
+        "cumulative_seconds": 67.16226653400001,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "stopped",
+        "line": 96,
+        "omitted_callers": 3,
+        "primitive_calls": 3570453,
+        "self_seconds": 4.011049098,
+        "total_calls": 7135302
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 62.493498354,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "stopped",
+            "line": 96,
+            "primitive_calls": 3570450,
+            "self_seconds": 1.099296795,
+            "total_calls": 3570450
+          },
+          {
+            "cumulative_seconds": 0.271670007,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "_hash_stream",
+            "line": 287,
+            "primitive_calls": 13608,
+            "self_seconds": 0.005289099,
+            "total_calls": 13608
+          },
+          {
+            "cumulative_seconds": 0.205519102,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_retained_source",
+            "line": 847,
+            "primitive_calls": 9608,
+            "self_seconds": 0.0036100660000000003,
+            "total_calls": 9608
+          },
+          {
+            "cumulative_seconds": 0.15228781500000002,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "attest",
+            "line": 907,
+            "primitive_calls": 7206,
+            "self_seconds": 0.0030614350000000004,
+            "total_calls": 7206
+          },
+          {
+            "cumulative_seconds": 0.13909839100000002,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "snapshot",
+            "line": 84,
+            "primitive_calls": 7206,
+            "self_seconds": 0.002759891,
+            "total_calls": 7206
+          },
+          {
+            "cumulative_seconds": 0.07211951300000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_asset_bytes",
+            "line": 883,
+            "primitive_calls": 3603,
+            "self_seconds": 0.001392851,
+            "total_calls": 3603
+          }
+        ],
+        "cumulative_seconds": 63.33419318200001,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "stopped",
+        "line": 314,
+        "omitted_callers": 0,
+        "primitive_calls": 3611681,
+        "self_seconds": 1.115410137,
+        "total_calls": 3611681
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 62.218783045,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "stopped",
+            "line": 314,
+            "primitive_calls": 3611681,
+            "self_seconds": 4.545243908000001,
+            "total_calls": 3611681
+          },
+          {
+            "cumulative_seconds": 0.07259571100000001,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "file_hash",
+            "line": 111,
+            "primitive_calls": 4068,
+            "self_seconds": 0.005885456000000001,
+            "total_calls": 4068
+          },
+          {
+            "cumulative_seconds": 0.034731311,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "verify_corpus",
+            "line": 325,
+            "primitive_calls": 2006,
+            "self_seconds": 0.002652422,
+            "total_calls": 2006
+          },
+          {
+            "cumulative_seconds": 0.026006681,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "_query",
+            "line": 927,
+            "primitive_calls": 1221,
+            "self_seconds": 0.0018405740000000002,
+            "total_calls": 1221
+          },
+          {
+            "cumulative_seconds": 0.016653385,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "footprint",
+            "line": 262,
+            "primitive_calls": 1014,
+            "self_seconds": 0.001271847,
+            "total_calls": 1014
+          },
+          {
+            "cumulative_seconds": 0.00033304,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "reader_samples",
+            "line": 999,
+            "primitive_calls": 16,
+            "self_seconds": 0.000022784,
+            "total_calls": 16
+          }
+        ],
+        "cumulative_seconds": 62.369197197000005,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "check",
+        "line": 303,
+        "omitted_callers": 2,
+        "primitive_calls": 3620010,
+        "self_seconds": 4.556927084000001,
+        "total_calls": 3620010
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 58.05213819,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 131100,
+            "self_seconds": 0.42970014500000003,
+            "total_calls": 131100
+          }
+        ],
+        "cumulative_seconds": 58.05213819,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_normalization",
+        "line": 240,
+        "omitted_callers": 0,
+        "primitive_calls": 131100,
+        "self_seconds": 0.42970014500000003,
+        "total_calls": 131100
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 56.44998549300001,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "check",
+            "line": 303,
+            "primitive_calls": 3620010,
+            "self_seconds": 1.5137552710000002,
+            "total_calls": 3620010
+          },
+          {
+            "cumulative_seconds": 0.000015647,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "__init__",
+            "line": 292,
+            "primitive_calls": 1,
+            "self_seconds": 7.49e-7,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 56.450001140000005,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "directory_id",
+        "line": 299,
+        "omitted_callers": 0,
+        "primitive_calls": 3620011,
+        "self_seconds": 1.5137560200000002,
+        "total_calls": 3620011
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 54.93624512,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "directory_id",
+            "line": 299,
+            "primitive_calls": 3620011,
+            "self_seconds": 5.889019429,
+            "total_calls": 3620011
+          },
+          {
+            "cumulative_seconds": 0.282816112,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "local",
+            "line": 99,
+            "primitive_calls": 20513,
+            "self_seconds": 0.034577894000000005,
+            "total_calls": 20513
+          },
+          {
+            "cumulative_seconds": 0.074908762,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "file_hash",
+            "line": 111,
+            "primitive_calls": 4050,
+            "self_seconds": 0.007577663,
+            "total_calls": 4050
+          },
+          {
+            "cumulative_seconds": 0.017523652,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "footprint",
+            "line": 262,
+            "primitive_calls": 1015,
+            "self_seconds": 0.0016861570000000002,
+            "total_calls": 1015
+          },
+          {
+            "cumulative_seconds": 0.000033575,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "read_json",
+            "line": 142,
+            "primitive_calls": 2,
+            "self_seconds": 0.00000352,
+            "total_calls": 2
+          }
+        ],
+        "cumulative_seconds": 55.311527221000006,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "plain",
+        "line": 89,
+        "omitted_callers": 0,
+        "primitive_calls": 3645591,
+        "self_seconds": 5.932864663,
+        "total_calls": 3645591
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 53.219544425,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_normalization",
+            "line": 240,
+            "primitive_calls": 85960,
+            "self_seconds": 32.82937242,
+            "total_calls": 85960
+          }
+        ],
+        "cumulative_seconds": 53.219544425,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_mapped",
+        "line": 90,
+        "omitted_callers": 0,
+        "primitive_calls": 85960,
+        "self_seconds": 32.82937242,
+        "total_calls": 85960
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 30.506602760000003,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 1615398,
+            "self_seconds": 0.42926710500000004,
+            "total_calls": 1615398
+          },
+          {
+            "cumulative_seconds": 4.370061754,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_normalization",
+            "line": 240,
+            "primitive_calls": 217060,
+            "self_seconds": 0.064794409,
+            "total_calls": 217060
+          },
+          {
+            "cumulative_seconds": 3.768796087,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 171920,
+            "self_seconds": 0.056413025000000006,
+            "total_calls": 171920
+          },
+          {
+            "cumulative_seconds": 2.5976308030000004,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_spans",
+            "line": 156,
+            "primitive_calls": 131100,
+            "self_seconds": 0.036584688000000004,
+            "total_calls": 131100
+          },
+          {
+            "cumulative_seconds": 2.5116701700000004,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_bind",
+            "line": 209,
+            "primitive_calls": 126760,
+            "self_seconds": 0.037842499,
+            "total_calls": 126760
+          }
+        ],
+        "cumulative_seconds": 43.754761574,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "check",
+        "line": 309,
+        "omitted_callers": 0,
+        "primitive_calls": 2262238,
+        "self_seconds": 0.624901726,
+        "total_calls": 2262238
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 43.129859848,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "check",
+            "line": 309,
+            "primitive_calls": 2262238,
+            "self_seconds": 0.9847533660000001,
+            "total_calls": 2262238
+          },
+          {
+            "cumulative_seconds": 0.070798473,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "<lambda>",
+            "line": 224,
+            "primitive_calls": 3633,
+            "self_seconds": 0.0015941430000000001,
+            "total_calls": 3633
+          }
+        ],
+        "cumulative_seconds": 43.200658321000006,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "stopped",
+        "line": 304,
+        "omitted_callers": 0,
+        "primitive_calls": 2265871,
+        "self_seconds": 0.986347509,
+        "total_calls": 2265871
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 37.413228377,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 41560,
+            "self_seconds": 0.054567394000000005,
+            "total_calls": 41560
+          },
+          {
+            "cumulative_seconds": 3.302243571,
+            "file": "checkout/carr-library/src/carr_library/citations/historical.py",
+            "function": "load",
+            "line": 16,
+            "primitive_calls": 3603,
+            "self_seconds": 0.0044477530000000005,
+            "total_calls": 3603
+          },
+          {
+            "cumulative_seconds": 0.015872765,
+            "file": "checkout/carr-library/src/carr_library/reader/reading_desk.py",
+            "function": "page",
+            "line": 181,
+            "primitive_calls": 16,
+            "self_seconds": 0.00002232,
+            "total_calls": 16
+          }
+        ],
+        "cumulative_seconds": 40.731344713000006,
+        "file": "checkout/carr-library/src/carr_library/citations/printed_label_attestation.py",
+        "function": "attest",
+        "line": 16,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.059037467,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 40.664067291,
+            "file": "checkout/carr-library/src/carr_library/citations/printed_label_attestation.py",
+            "function": "attest",
+            "line": 16,
+            "primitive_calls": 45179,
+            "self_seconds": 0.28028198600000004,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 40.664067291,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "attest",
+        "line": 907,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.28028198600000004,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 38.470549528,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "attest",
+            "line": 907,
+            "primitive_calls": 45179,
+            "self_seconds": 0.37710714,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 38.470549528,
+        "file": "checkout/carr-library/src/carr_library/citations/text_attestation.py",
+        "function": "attest",
+        "line": 25,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.37710714,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 32.249334709,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "_from_parts",
+            "line": 504,
+            "primitive_calls": 4012181,
+            "self_seconds": 2.707109984,
+            "total_calls": 4012181
+          },
+          {
+            "cumulative_seconds": 2.866987588,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "_make_child",
+            "line": 530,
+            "primitive_calls": 961656,
+            "self_seconds": 1.005380901,
+            "total_calls": 961656
+          },
+          {
+            "cumulative_seconds": 0.900652596,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "relative_to",
+            "line": 703,
+            "primitive_calls": 90358,
+            "self_seconds": 0.058971517,
+            "total_calls": 90358
+          }
+        ],
+        "cumulative_seconds": 36.016974893000004,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "_parse_args",
+        "line": 484,
+        "omitted_callers": 0,
+        "primitive_calls": 5064195,
+        "self_seconds": 3.771462402,
+        "total_calls": 5064195
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 33.248625398,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "__new__",
+            "line": 868,
+            "primitive_calls": 3739053,
+            "self_seconds": 2.497746233,
+            "total_calls": 3739053
+          },
+          {
+            "cumulative_seconds": 1.819703947,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "resolve",
+            "line": 981,
+            "primitive_calls": 182770,
+            "self_seconds": 0.13716878400000002,
+            "total_calls": 182770
+          },
+          {
+            "cumulative_seconds": 0.47459539700000003,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "__new__",
+            "line": 469,
+            "primitive_calls": 90358,
+            "self_seconds": 0.069506339,
+            "total_calls": 90358
+          }
+        ],
+        "cumulative_seconds": 35.542924742000004,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "_from_parts",
+        "line": 504,
+        "omitted_callers": 0,
+        "primitive_calls": 4012181,
+        "self_seconds": 2.704421356,
+        "total_calls": 4012181
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 35.231402312,
+            "file": "checkout/carr-library/src/carr_library/citations/text_attestation.py",
+            "function": "attest",
+            "line": 25,
+            "primitive_calls": 45179,
+            "self_seconds": 0.041612277,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 35.231402312,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "<lambda>",
+        "line": 893,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.041612277,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 35.189790035,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "<lambda>",
+            "line": 893,
+            "primitive_calls": 45179,
+            "self_seconds": 0.140142567,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 35.189790035,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "_asset_bytes",
+        "line": 883,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.140142567,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 34.069437743,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "plain",
+            "line": 89,
+            "primitive_calls": 3645591,
+            "self_seconds": 1.8255234400000002,
+            "total_calls": 3645591
+          },
+          {
+            "cumulative_seconds": 0.517359965,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "_selected",
+            "line": 203,
+            "primitive_calls": 45179,
+            "self_seconds": 0.024508218000000002,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 0.507051563,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "snapshot",
+            "line": 84,
+            "primitive_calls": 45179,
+            "self_seconds": 0.026387238,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 0.022450871,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "local",
+            "line": 99,
+            "primitive_calls": 2050,
+            "self_seconds": 0.001111893,
+            "total_calls": 2050
+          },
+          {
+            "cumulative_seconds": 0.009821026,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "footprint",
+            "line": 262,
+            "primitive_calls": 1011,
+            "self_seconds": 0.00044876000000000003,
+            "total_calls": 1011
+          },
+          {
+            "cumulative_seconds": 0.000327843,
+            "file": "python/lib/python3.11/importlib/metadata/__init__.py",
+            "function": "joinpath",
+            "line": 795,
+            "primitive_calls": 28,
+            "self_seconds": 0.000013828,
+            "total_calls": 28
+          }
+        ],
+        "cumulative_seconds": 35.126631270000004,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "__new__",
+        "line": 868,
+        "omitted_callers": 7,
+        "primitive_calls": 3739053,
+        "self_seconds": 1.8780058720000001,
+        "total_calls": 3739053
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 31.419962625000004,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "_parse_args",
+            "line": 484,
+            "primitive_calls": 5064195,
+            "self_seconds": 20.411852798,
+            "total_calls": 5064195
+          }
+        ],
+        "cumulative_seconds": 31.419962625000004,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "parse_parts",
+        "line": 56,
+        "omitted_callers": 0,
+        "primitive_calls": 5064195,
+        "self_seconds": 20.411852798,
+        "total_calls": 5064195
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 20.169311258,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_asset_bytes",
+            "line": 883,
+            "primitive_calls": 45179,
+            "self_seconds": 0.111297107,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 20.169311258,
+        "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+        "function": "source_snapshot",
+        "line": 341,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.111297107,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 13.892992563000002,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_asset_bytes",
+            "line": 883,
+            "primitive_calls": 45179,
+            "self_seconds": 0.223727099,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 2.7456346970000003,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_resolve_selection",
+            "line": 930,
+            "primitive_calls": 42761,
+            "self_seconds": 0.154465298,
+            "total_calls": 42761
+          },
+          {
+            "cumulative_seconds": 0.006081064000000001,
+            "file": "checkout/carr-library/src/carr_library/reader/reading_desk.py",
+            "function": "__init__",
+            "line": 107,
+            "primitive_calls": 16,
+            "self_seconds": 0.000107077,
+            "total_calls": 16
+          },
+          {
+            "cumulative_seconds": 0.005954409000000001,
+            "file": "checkout/carr-library/src/carr_library/reader/reading_desk.py",
+            "function": "page",
+            "line": 181,
+            "primitive_calls": 16,
+            "self_seconds": 0.000101105,
+            "total_calls": 16
+          }
+        ],
+        "cumulative_seconds": 16.650662733,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "_retained_source",
+        "line": 847,
+        "omitted_callers": 0,
+        "primitive_calls": 87972,
+        "self_seconds": 0.378400579,
+        "total_calls": 87972
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 8.980904189,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 4080,
+            "self_seconds": 4.119083658,
+            "total_calls": 4080
+          },
+          {
+            "cumulative_seconds": 1.2964994140000001,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_bind",
+            "line": 209,
+            "primitive_calls": 122680,
+            "self_seconds": 1.2234247420000002,
+            "total_calls": 122680
+          },
+          {
+            "cumulative_seconds": 1.2759890310000002,
+            "file": "checkout/carr-library/src/carr_library/catalog/read_views.py",
+            "function": "_edition_keys",
+            "line": 112,
+            "primitive_calls": 2068,
+            "self_seconds": 0.775912971,
+            "total_calls": 2068
+          },
+          {
+            "cumulative_seconds": 1.241289282,
+            "file": "checkout/carr-library/src/carr_library/storage/revisions.py",
+            "function": "_schema_signature",
+            "line": 139,
+            "primitive_calls": 3287,
+            "self_seconds": 1.241289282,
+            "total_calls": 3287
+          },
+          {
+            "cumulative_seconds": 0.6261421180000001,
+            "file": "checkout/carr-library/src/carr_library/citations/text_attestation.py",
+            "function": "attest",
+            "line": 25,
+            "primitive_calls": 90358,
+            "self_seconds": 0.534981534,
+            "total_calls": 90358
+          },
+          {
+            "cumulative_seconds": 0.5747902690000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_stored_selection",
+            "line": 937,
+            "primitive_calls": 85522,
+            "self_seconds": 0.5489279450000001,
+            "total_calls": 85522
+          }
+        ],
+        "cumulative_seconds": 15.395975426000001,
+        "file": "native",
+        "function": "<method_execute_of_sqlite3.Connection_objects>",
+        "line": 0,
+        "omitted_callers": 23,
+        "primitive_calls": 582280,
+        "self_seconds": 9.802439511000001,
+        "total_calls": 582280
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 13.93283472,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "plain",
+            "line": 89,
+            "primitive_calls": 3645591,
+            "self_seconds": 1.110401387,
+            "total_calls": 3645591
+          },
+          {
+            "cumulative_seconds": 0.19742852900000002,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "_selected",
+            "line": 203,
+            "primitive_calls": 45179,
+            "self_seconds": 0.016616342000000003,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 0.194990709,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "snapshot",
+            "line": 84,
+            "primitive_calls": 45179,
+            "self_seconds": 0.015398094000000001,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 0.142595938,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "resolve",
+            "line": 38,
+            "primitive_calls": 51252,
+            "self_seconds": 0.019860381,
+            "total_calls": 51252
+          },
+          {
+            "cumulative_seconds": 0.13476837,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "_digest",
+            "line": 54,
+            "primitive_calls": 51252,
+            "self_seconds": 0.016799889000000002,
+            "total_calls": 51252
+          },
+          {
+            "cumulative_seconds": 0.000042458000000000006,
+            "file": "checkout/carr-library/src/carr_library/ingest/writer_guard.py",
+            "function": "_regular_if_present",
+            "line": 28,
+            "primitive_calls": 9,
+            "self_seconds": 0.0000032390000000000002,
+            "total_calls": 9
+          }
+        ],
+        "cumulative_seconds": 14.602672349,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "lstat",
+        "line": 1158,
+        "omitted_callers": 3,
+        "primitive_calls": 3838465,
+        "self_seconds": 1.1790803710000002,
+        "total_calls": 3838465
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 13.423591978000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "lstat",
+            "line": 1158,
+            "primitive_calls": 3838465,
+            "self_seconds": 1.085738018,
+            "total_calls": 3838465
+          },
+          {
+            "cumulative_seconds": 0.11886020400000001,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "_digest",
+            "line": 54,
+            "primitive_calls": 51252,
+            "self_seconds": 0.015012148000000001,
+            "total_calls": 51252
+          },
+          {
+            "cumulative_seconds": 0.11632226400000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_retained_source",
+            "line": 847,
+            "primitive_calls": 49252,
+            "self_seconds": 0.017244828,
+            "total_calls": 49252
+          },
+          {
+            "cumulative_seconds": 0.00446124,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "is_dir",
+            "line": 1245,
+            "primitive_calls": 2053,
+            "self_seconds": 0.000538928,
+            "total_calls": 2053
+          },
+          {
+            "cumulative_seconds": 0.000014382,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "exists",
+            "line": 1230,
+            "primitive_calls": 1,
+            "self_seconds": 3.4800000000000005e-7,
+            "total_calls": 1
+          },
+          {
+            "cumulative_seconds": 0.000006854000000000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "resolve",
+            "line": 981,
+            "primitive_calls": 2,
+            "self_seconds": 5.53e-7,
+            "total_calls": 2
+          }
+        ],
+        "cumulative_seconds": 13.663256922,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "stat",
+        "line": 1008,
+        "omitted_callers": 0,
+        "primitive_calls": 3941025,
+        "self_seconds": 1.118534823,
+        "total_calls": 3941025
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 12.569889850000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_retained_source",
+            "line": 847,
+            "primitive_calls": 49252,
+            "self_seconds": 0.31834775800000004,
+            "total_calls": 49252
+          },
+          {
+            "cumulative_seconds": 0.5012189650000001,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "verify_corpus",
+            "line": 325,
+            "primitive_calls": 2000,
+            "self_seconds": 0.011021934,
+            "total_calls": 2000
+          }
+        ],
+        "cumulative_seconds": 13.071108815,
+        "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+        "function": "resolve",
+        "line": 38,
+        "omitted_callers": 0,
+        "primitive_calls": 51252,
+        "self_seconds": 0.32936969200000005,
+        "total_calls": 51252
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 12.84352454,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "source_snapshot",
+            "line": 341,
+            "primitive_calls": 45179,
+            "self_seconds": 0.583296275,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 12.84352454,
+        "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+        "function": "snapshot",
+        "line": 84,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.583296275,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 12.544722099000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "stat",
+            "line": 1008,
+            "primitive_calls": 3941025,
+            "self_seconds": 5.532549977,
+            "total_calls": 3941025
+          },
+          {
+            "cumulative_seconds": 0.000043166,
+            "file": "generated",
+            "function": "_path_stat",
+            "line": 140,
+            "primitive_calls": 12,
+            "self_seconds": 0.000043166,
+            "total_calls": 12
+          },
+          {
+            "cumulative_seconds": 0.000010076000000000001,
+            "file": "python/lib/python3.11/importlib/metadata/__init__.py",
+            "function": "mtime",
+            "line": 815,
+            "primitive_calls": 6,
+            "self_seconds": 0.000010076000000000001,
+            "total_calls": 6
+          }
+        ],
+        "cumulative_seconds": 12.544775341000001,
+        "file": "native",
+        "function": "<built_in_method_posix.stat>",
+        "line": 0,
+        "omitted_callers": 0,
+        "primitive_calls": 3941043,
+        "self_seconds": 5.532603219,
+        "total_calls": 3941043
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 5.520461243000001,
+            "file": "native",
+            "function": "<method_execute_of_sqlite3.Connection_objects>",
+            "line": 0,
+            "primitive_calls": 293297,
+            "self_seconds": 0.12432664,
+            "total_calls": 293297
+          },
+          {
+            "cumulative_seconds": 4.781865626,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 258786,
+            "self_seconds": 0.1037417,
+            "total_calls": 258786
+          },
+          {
+            "cumulative_seconds": 0.08388654100000001,
+            "file": "checkout/carr-library/src/carr_library/catalog/read_views.py",
+            "function": "<genexpr>",
+            "line": 125,
+            "primitive_calls": 4044,
+            "self_seconds": 0.0017877040000000002,
+            "total_calls": 4044
+          },
+          {
+            "cumulative_seconds": 0.065895835,
+            "file": "checkout/carr-library/src/carr_library/storage/revisions.py",
+            "function": "<genexpr>",
+            "line": 141,
+            "primitive_calls": 2073,
+            "self_seconds": 0.001789437,
+            "total_calls": 2073
+          },
+          {
+            "cumulative_seconds": 0.024575675,
+            "file": "native",
+            "function": "<method_fetchone_of_sqlite3.Cursor_objects>",
+            "line": 0,
+            "primitive_calls": 1209,
+            "self_seconds": 0.0008191330000000001,
+            "total_calls": 1209
+          },
+          {
+            "cumulative_seconds": 0.019243736,
+            "file": "checkout/carr-library/src/carr_library/search/paging.py",
+            "function": "select_window",
+            "line": 105,
+            "primitive_calls": 1022,
+            "self_seconds": 0.000595694,
+            "total_calls": 1022
+          }
+        ],
+        "cumulative_seconds": 10.495928656,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "<lambda>",
+        "line": 213,
+        "omitted_callers": 0,
+        "primitive_calls": 560431,
+        "self_seconds": 0.23306030800000002,
+        "total_calls": 560431
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.78734821,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "_selected",
+            "line": 203,
+            "primitive_calls": 90358,
+            "self_seconds": 0.09549544,
+            "total_calls": 90358
+          },
+          {
+            "cumulative_seconds": 4.575140881,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "snapshot",
+            "line": 84,
+            "primitive_calls": 90358,
+            "self_seconds": 0.088103675,
+            "total_calls": 90358
+          },
+          {
+            "cumulative_seconds": 0.11469358700000001,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "local",
+            "line": 99,
+            "primitive_calls": 2050,
+            "self_seconds": 0.002272441,
+            "total_calls": 2050
+          },
+          {
+            "cumulative_seconds": 0.000059223000000000005,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "__init__",
+            "line": 26,
+            "primitive_calls": 1,
+            "self_seconds": 9.310000000000001e-7,
+            "total_calls": 1
+          },
+          {
+            "cumulative_seconds": 0.000047276000000000006,
+            "file": "checkout/carr-library/src/carr_library/data_paths.py",
+            "function": "guard_data_directory",
+            "line": 35,
+            "primitive_calls": 1,
+            "self_seconds": 0.0000014900000000000001,
+            "total_calls": 1
+          },
+          {
+            "cumulative_seconds": 0.000046556000000000006,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "__init__",
+            "line": 167,
+            "primitive_calls": 1,
+            "self_seconds": 0.0000013240000000000002,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 9.477378247,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "resolve",
+        "line": 981,
+        "omitted_callers": 1,
+        "primitive_calls": 182770,
+        "self_seconds": 0.185876381,
+        "total_calls": 182770
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 7.012172122000001,
+            "file": "native",
+            "function": "<built_in_method_posix.stat>",
+            "line": 0,
+            "primitive_calls": 3941025,
+            "self_seconds": 1.357458003,
+            "total_calls": 3941025
+          },
+          {
+            "cumulative_seconds": 1.5028330300000001,
+            "file": "native",
+            "function": "<built_in_method_posix.lstat>",
+            "line": 0,
+            "primitive_calls": 891803,
+            "self_seconds": 0.288677356,
+            "total_calls": 891803
+          },
+          {
+            "cumulative_seconds": 0.22574101000000002,
+            "file": "native",
+            "function": "<built_in_method_posix.fspath>",
+            "line": 0,
+            "primitive_calls": 188084,
+            "self_seconds": 0.065043478,
+            "total_calls": 188084
+          },
+          {
+            "cumulative_seconds": 0.048246207000000006,
+            "file": "native",
+            "function": "<built_in_method_io.open>",
+            "line": 0,
+            "primitive_calls": 98458,
+            "self_seconds": 0.032294887,
+            "total_calls": 98458
+          },
+          {
+            "cumulative_seconds": 0.000364431,
+            "file": "native",
+            "function": "<built_in_method_posix.statvfs>",
+            "line": 0,
+            "primitive_calls": 719,
+            "self_seconds": 0.000244807,
+            "total_calls": 719
+          },
+          {
+            "cumulative_seconds": 0.000007393,
+            "file": "native",
+            "function": "<built_in_method_posix.unlink>",
+            "line": 0,
+            "primitive_calls": 1,
+            "self_seconds": 0.0000017070000000000001,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 8.789376739,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "__fspath__",
+        "line": 546,
+        "omitted_callers": 3,
+        "primitive_calls": 5120097,
+        "self_seconds": 1.7437229760000001,
+        "total_calls": 5120097
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 7.946559737,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 2041,
+            "self_seconds": 0.6983593010000001,
+            "total_calls": 2041
+          }
+        ],
+        "cumulative_seconds": 7.946559737,
+        "file": "checkout/carr-library/src/carr_library/search/paging.py",
+        "function": "select_window",
+        "line": 105,
+        "omitted_callers": 0,
+        "primitive_calls": 2041,
+        "self_seconds": 0.6983593010000001,
+        "total_calls": 2041
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 7.471791065000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "resolve",
+            "line": 981,
+            "primitive_calls": 182770,
+            "self_seconds": 0.21909303100000002,
+            "total_calls": 182770
+          },
+          {
+            "cumulative_seconds": 0.000068786,
+            "file": "python/lib/python3.11/site-packages/filelock/_api.py",
+            "function": "release",
+            "line": 527,
+            "primitive_calls": 1,
+            "self_seconds": 0.000003547,
+            "total_calls": 1
+          },
+          {
+            "cumulative_seconds": 0.000054631000000000006,
+            "file": "python/lib/python3.11/site-packages/filelock/_api.py",
+            "function": "acquire",
+            "line": 420,
+            "primitive_calls": 1,
+            "self_seconds": 0.0000019770000000000003,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 7.471914482000001,
+        "file": "generated",
+        "function": "realpath",
+        "line": 409,
+        "omitted_callers": 0,
+        "primitive_calls": 182772,
+        "self_seconds": 0.219098555,
+        "total_calls": 182772
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 7.214489611,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "source_snapshot",
+            "line": 341,
+            "primitive_calls": 45179,
+            "self_seconds": 0.24575011300000002,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 7.214489611,
+        "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+        "function": "_selected",
+        "line": 203,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.24575011300000002,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 7.045653763000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "__fspath__",
+            "line": 546,
+            "primitive_calls": 5120097,
+            "self_seconds": 4.214314927,
+            "total_calls": 5120097
+          },
+          {
+            "cumulative_seconds": 0.000444575,
+            "file": "checkout/carr-library/src/carr_library/search/paging.py",
+            "function": "scope_identity",
+            "line": 26,
+            "primitive_calls": 2041,
+            "self_seconds": 0.000444575,
+            "total_calls": 2041
+          },
+          {
+            "cumulative_seconds": 0.000037161000000000006,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "activate",
+            "line": 166,
+            "primitive_calls": 21,
+            "self_seconds": 0.00002266,
+            "total_calls": 21
+          },
+          {
+            "cumulative_seconds": 9.030000000000001e-7,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_check_database_paths",
+            "line": 191,
+            "primitive_calls": 6,
+            "self_seconds": 9.030000000000001e-7,
+            "total_calls": 6
+          }
+        ],
+        "cumulative_seconds": 7.046136402,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "__str__",
+        "line": 536,
+        "omitted_callers": 0,
+        "primitive_calls": 5122165,
+        "self_seconds": 4.214783065000001,
+        "total_calls": 5122165
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 6.53543812,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "parse_parts",
+            "line": 56,
+            "primitive_calls": 28277681,
+            "self_seconds": 5.535203528,
+            "total_calls": 28277681
+          }
+        ],
+        "cumulative_seconds": 6.53543812,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "splitroot",
+        "line": 239,
+        "omitted_callers": 0,
+        "primitive_calls": 28277681,
+        "self_seconds": 5.535203528,
+        "total_calls": 28277681
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 6.411891053000001,
+            "file": "generated",
+            "function": "realpath",
+            "line": 409,
+            "primitive_calls": 182772,
+            "self_seconds": 1.7746452110000002,
+            "total_calls": 182772
+          }
+        ],
+        "cumulative_seconds": 6.411891053000001,
+        "file": "generated",
+        "function": "_joinrealpath",
+        "line": 418,
+        "omitted_callers": 0,
+        "primitive_calls": 182772,
+        "self_seconds": 1.7746452110000002,
+        "total_calls": 182772
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.2261869080000003,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "<listcomp>",
+            "line": 387,
+            "primitive_calls": 131100,
+            "self_seconds": 0.04415609,
+            "total_calls": 131100
+          },
+          {
+            "cumulative_seconds": 2.229501534,
+            "file": "python/lib/python3.11/contextlib.py",
+            "function": "__enter__",
+            "line": 132,
+            "primitive_calls": 3288,
+            "self_seconds": 0.002799413,
+            "total_calls": 5361
+          },
+          {
+            "cumulative_seconds": 0.5835432110000001,
+            "file": "python/lib/python3.11/contextlib.py",
+            "function": "__exit__",
+            "line": 141,
+            "primitive_calls": 3286,
+            "self_seconds": 0.005151613,
+            "total_calls": 5358
+          },
+          {
+            "cumulative_seconds": 0.171715427,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "resolve",
+            "line": 38,
+            "primitive_calls": 51252,
+            "self_seconds": 0.02152706,
+            "total_calls": 51252
+          },
+          {
+            "cumulative_seconds": 0.025760929000000002,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search_page",
+            "line": 1087,
+            "primitive_calls": 38740,
+            "self_seconds": 0.025760929000000002,
+            "total_calls": 38740
+          },
+          {
+            "cumulative_seconds": 0.002359447,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 2040,
+            "self_seconds": 0.00125084,
+            "total_calls": 2040
+          }
+        ],
+        "cumulative_seconds": 6.239067456000001,
+        "file": "native",
+        "function": "<built_in_method_builtins.next>",
+        "line": 0,
+        "omitted_callers": 1,
+        "primitive_calls": 229706,
+        "self_seconds": 0.10065223100000001,
+        "total_calls": 233852
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.1451023320000004,
+            "file": "checkout/carr-library/src/carr_library/search/paging.py",
+            "function": "select_window",
+            "line": 105,
+            "primitive_calls": 221135,
+            "self_seconds": 0.065969951,
+            "total_calls": 221135
+          },
+          {
+            "cumulative_seconds": 1.650286836,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 83120,
+            "self_seconds": 0.029661539,
+            "total_calls": 83120
+          },
+          {
+            "cumulative_seconds": 0.130079507,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_search_read",
+            "line": 243,
+            "primitive_calls": 6219,
+            "self_seconds": 0.002196014,
+            "total_calls": 6219
+          },
+          {
+            "cumulative_seconds": 0.10027031600000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "remaining",
+            "line": 104,
+            "primitive_calls": 4082,
+            "self_seconds": 0.001390174,
+            "total_calls": 4082
+          },
+          {
+            "cumulative_seconds": 0.069847373,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search_page",
+            "line": 1087,
+            "primitive_calls": 2442,
+            "self_seconds": 0.0012265730000000001,
+            "total_calls": 2442
+          },
+          {
+            "cumulative_seconds": 0.051475827,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "read",
+            "line": 204,
+            "primitive_calls": 2073,
+            "self_seconds": 0.0008366350000000001,
+            "total_calls": 2073
+          }
+        ],
+        "cumulative_seconds": 6.1602112380000005,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "check",
+        "line": 100,
+        "omitted_callers": 2,
+        "primitive_calls": 319759,
+        "self_seconds": 0.10150932,
+        "total_calls": 319759
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 5.368961403,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 2040,
+            "self_seconds": 0.157445308,
+            "total_calls": 2040
+          }
+        ],
+        "cumulative_seconds": 5.368961403,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_bind",
+        "line": 209,
+        "omitted_callers": 0,
+        "primitive_calls": 2040,
+        "self_seconds": 0.157445308,
+        "total_calls": 2040
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 5.087027388,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "traverse",
+            "line": 934,
+            "primitive_calls": 1200,
+            "self_seconds": 0.009682828000000001,
+            "total_calls": 1200
+          },
+          {
+            "cumulative_seconds": 0.004317582,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "cancellation_probe",
+            "line": 1017,
+            "primitive_calls": 1,
+            "self_seconds": 0.000012233000000000001,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 5.091344970000001,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "copy",
+        "line": 1168,
+        "omitted_callers": 0,
+        "primitive_calls": 1201,
+        "self_seconds": 0.009695061000000001,
+        "total_calls": 1201
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.786393272000001,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "resolve",
+            "line": 38,
+            "primitive_calls": 51252,
+            "self_seconds": 0.095441304,
+            "total_calls": 51252
+          }
+        ],
+        "cumulative_seconds": 4.786393272000001,
+        "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+        "function": "_paths",
+        "line": 33,
+        "omitted_callers": 0,
+        "primitive_calls": 51252,
+        "self_seconds": 0.095441304,
+        "total_calls": 51252
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.266937201,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "<listcomp>",
+            "line": 36,
+            "primitive_calls": 871284,
+            "self_seconds": 0.259989263,
+            "total_calls": 871284
+          },
+          {
+            "cumulative_seconds": 0.245023872,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "_selected",
+            "line": 203,
+            "primitive_calls": 45179,
+            "self_seconds": 0.016618025,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 0.237965521,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "snapshot",
+            "line": 84,
+            "primitive_calls": 45179,
+            "self_seconds": 0.01656376,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 0.000029740000000000003,
+            "file": "checkout/carr-library/src/carr_library/data_paths.py",
+            "function": "program_directories",
+            "line": 12,
+            "primitive_calls": 6,
+            "self_seconds": 0.000002009,
+            "total_calls": 6
+          },
+          {
+            "cumulative_seconds": 0.000014858,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "__init__",
+            "line": 167,
+            "primitive_calls": 3,
+            "self_seconds": 0.000001064,
+            "total_calls": 3
+          },
+          {
+            "cumulative_seconds": 0.000014424000000000001,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "measure_corpus",
+            "line": 1056,
+            "primitive_calls": 2,
+            "self_seconds": 0.00000206,
+            "total_calls": 2
+          }
+        ],
+        "cumulative_seconds": 4.749999329,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "__truediv__",
+        "line": 765,
+        "omitted_callers": 2,
+        "primitive_calls": 961655,
+        "self_seconds": 0.293177175,
+        "total_calls": 961655
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.563491018000001,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "_paths",
+            "line": 33,
+            "primitive_calls": 51252,
+            "self_seconds": 0.296553817,
+            "total_calls": 51252
+          }
+        ],
+        "cumulative_seconds": 4.563491018000001,
+        "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+        "function": "<listcomp>",
+        "line": 36,
+        "omitted_callers": 0,
+        "primitive_calls": 51252,
+        "self_seconds": 0.296553817,
+        "total_calls": 51252
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.456822154,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "__truediv__",
+            "line": 765,
+            "primitive_calls": 961655,
+            "self_seconds": 0.989659601,
+            "total_calls": 961655
+          },
+          {
+            "cumulative_seconds": 0.000005441,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "joinpath",
+            "line": 757,
+            "primitive_calls": 1,
+            "self_seconds": 0.000001474,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 4.456827595,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "_make_child",
+        "line": 530,
+        "omitted_callers": 0,
+        "primitive_calls": 961656,
+        "self_seconds": 0.9896610750000001,
+        "total_calls": 961656
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.8868552970000003,
+            "file": "generated",
+            "function": "lexists",
+            "line": 174,
+            "primitive_calls": 891803,
+            "self_seconds": 1.3840222670000002,
+            "total_calls": 891803
+          },
+          {
+            "cumulative_seconds": 1.516192508,
+            "file": "generated",
+            "function": "_joinrealpath",
+            "line": 418,
+            "primitive_calls": 1554594,
+            "self_seconds": 1.516192508,
+            "total_calls": 1554594
+          }
+        ],
+        "cumulative_seconds": 4.403047805,
+        "file": "native",
+        "function": "<built_in_method_posix.lstat>",
+        "line": 0,
+        "omitted_callers": 0,
+        "primitive_calls": 2446397,
+        "self_seconds": 2.9002147750000002,
+        "total_calls": 2446397
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.775185474,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 41560,
+            "self_seconds": 0.085071807,
+            "total_calls": 41560
+          },
+          {
+            "cumulative_seconds": 0.585402243,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_selected",
+            "line": 926,
+            "primitive_calls": 1201,
+            "self_seconds": 0.003410058,
+            "total_calls": 1201
+          }
+        ],
+        "cumulative_seconds": 4.3605877170000005,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "_resolve_selection",
+        "line": 930,
+        "omitted_callers": 0,
+        "primitive_calls": 42761,
+        "self_seconds": 0.088481865,
+        "total_calls": 42761
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.302401755,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 63954240,
+            "self_seconds": 3.302401755,
+            "total_calls": 63954240
+          },
+          {
+            "cumulative_seconds": 0.5887117700000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "splitroot",
+            "line": 239,
+            "primitive_calls": 8024362,
+            "self_seconds": 0.5887117700000001,
+            "total_calls": 8024362
+          },
+          {
+            "cumulative_seconds": 0.148920946,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 1462498,
+            "self_seconds": 0.148920946,
+            "total_calls": 1462498
+          },
+          {
+            "cumulative_seconds": 0.032831866,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_normalization",
+            "line": 240,
+            "primitive_calls": 388980,
+            "self_seconds": 0.032831866,
+            "total_calls": 388980
+          },
+          {
+            "cumulative_seconds": 0.022269582000000003,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_spans",
+            "line": 156,
+            "primitive_calls": 262200,
+            "self_seconds": 0.022269582000000003,
+            "total_calls": 262200
+          },
+          {
+            "cumulative_seconds": 0.020709072000000002,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "name",
+            "line": 622,
+            "primitive_calls": 190883,
+            "self_seconds": 0.020709072000000002,
+            "total_calls": 190883
+          }
+        ],
+        "cumulative_seconds": 4.291321355,
+        "file": "native",
+        "function": "<built_in_method_builtins.len>",
+        "line": 0,
+        "omitted_callers": 59,
+        "primitive_calls": 76162912,
+        "self_seconds": 4.281640253,
+        "total_calls": 76201922
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.7470659800000004,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 773640,
+            "self_seconds": 0.65556939,
+            "total_calls": 773640
+          },
+          {
+            "cumulative_seconds": 1.2911938390000002,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_bind",
+            "line": 209,
+            "primitive_calls": 121460,
+            "self_seconds": 0.12058932500000001,
+            "total_calls": 121460
+          },
+          {
+            "cumulative_seconds": 0.017406124000000002,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 2040,
+            "self_seconds": 0.004003007,
+            "total_calls": 2040
+          }
+        ],
+        "cumulative_seconds": 4.055665943,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_fold",
+        "line": 25,
+        "omitted_callers": 0,
+        "primitive_calls": 897140,
+        "self_seconds": 0.780161722,
+        "total_calls": 897140
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 4.010978658,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "resolve",
+            "line": 38,
+            "primitive_calls": 51252,
+            "self_seconds": 0.34207541700000005,
+            "total_calls": 51252
+          }
+        ],
+        "cumulative_seconds": 4.010978658,
+        "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+        "function": "_digest",
+        "line": 54,
+        "omitted_callers": 0,
+        "primitive_calls": 51252,
+        "self_seconds": 0.34207541700000005,
+        "total_calls": 51252
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.023096674,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "parse_parts",
+            "line": 56,
+            "primitive_calls": 29950475,
+            "self_seconds": 2.023096674,
+            "total_calls": 29950475
+          },
+          {
+            "cumulative_seconds": 1.449416602,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 21232120,
+            "self_seconds": 1.449416602,
+            "total_calls": 21232120
+          },
+          {
+            "cumulative_seconds": 0.09505790700000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "_parse_args",
+            "line": 484,
+            "primitive_calls": 1237913,
+            "self_seconds": 0.09505790700000001,
+            "total_calls": 1237913
+          },
+          {
+            "cumulative_seconds": 0.086405986,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 1255498,
+            "self_seconds": 0.086405986,
+            "total_calls": 1255498
+          },
+          {
+            "cumulative_seconds": 0.01588071,
+            "file": "checkout/carr-library/src/carr_library/search/paging.py",
+            "function": "select_window",
+            "line": 105,
+            "primitive_calls": 212974,
+            "self_seconds": 0.01588071,
+            "total_calls": 212974
+          },
+          {
+            "cumulative_seconds": 0.0037948440000000003,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 41560,
+            "self_seconds": 0.0037948440000000003,
+            "total_calls": 41560
+          }
+        ],
+        "cumulative_seconds": 3.674004474,
+        "file": "native",
+        "function": "<method_append_of_list_objects>",
+        "line": 0,
+        "omitted_callers": 25,
+        "primitive_calls": 53934354,
+        "self_seconds": 3.674004474,
+        "total_calls": 53934354
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.580685341,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "resolve",
+            "line": 38,
+            "primitive_calls": 51252,
+            "self_seconds": 0.36721965500000003,
+            "total_calls": 51252
+          }
+        ],
+        "cumulative_seconds": 3.580685341,
+        "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+        "function": "<listcomp>",
+        "line": 40,
+        "omitted_callers": 0,
+        "primitive_calls": 51252,
+        "self_seconds": 0.36721965500000003,
+        "total_calls": 51252
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.219194393,
+            "file": "checkout/carr-library/src/carr_library/citations/anchors.py",
+            "function": "resolve_span",
+            "line": 158,
+            "primitive_calls": 2402,
+            "self_seconds": 0.017360248,
+            "total_calls": 2402
+          },
+          {
+            "cumulative_seconds": 1.2848458230000002,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_anchor",
+            "line": 1138,
+            "primitive_calls": 1201,
+            "self_seconds": 0.014106642,
+            "total_calls": 1201
+          }
+        ],
+        "cumulative_seconds": 3.5040402160000004,
+        "file": "checkout/carr-library/src/carr_library/citations/historical.py",
+        "function": "load",
+        "line": 16,
+        "omitted_callers": 0,
+        "primitive_calls": 3603,
+        "self_seconds": 0.031466890000000004,
+        "total_calls": 3603
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.367630205,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 131100,
+            "self_seconds": 0.12705772,
+            "total_calls": 131100
+          }
+        ],
+        "cumulative_seconds": 3.367630205,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "<listcomp>",
+        "line": 387,
+        "omitted_callers": 0,
+        "primitive_calls": 131100,
+        "self_seconds": 0.12705772,
+        "total_calls": 131100
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.213465686,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "<listcomp>",
+            "line": 40,
+            "primitive_calls": 871284,
+            "self_seconds": 0.388238629,
+            "total_calls": 871284
+          },
+          {
+            "cumulative_seconds": 0.06913638600000001,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "local",
+            "line": 99,
+            "primitive_calls": 20513,
+            "self_seconds": 0.007532081,
+            "total_calls": 20513
+          },
+          {
+            "cumulative_seconds": 0.000027311000000000003,
+            "file": "checkout/carr-library/src/carr_library/data_paths.py",
+            "function": "program_directories",
+            "line": 12,
+            "primitive_calls": 6,
+            "self_seconds": 0.0000033760000000000004,
+            "total_calls": 6
+          }
+        ],
+        "cumulative_seconds": 3.282629383,
+        "file": "generated",
+        "function": "lexists",
+        "line": 174,
+        "omitted_callers": 0,
+        "primitive_calls": 891803,
+        "self_seconds": 0.395774086,
+        "total_calls": 891803
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 3.1820308180000003,
+            "file": "native",
+            "function": "<built_in_method_builtins.next>",
+            "line": 0,
+            "primitive_calls": 131100,
+            "self_seconds": 0.31119451200000003,
+            "total_calls": 131100
+          },
+          {
+            "cumulative_seconds": 0.014385577,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "<listcomp>",
+            "line": 387,
+            "primitive_calls": 131100,
+            "self_seconds": 0.014385577,
+            "total_calls": 131100
+          }
+        ],
+        "cumulative_seconds": 3.1964163950000004,
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_spans",
+        "line": 156,
+        "omitted_callers": 0,
+        "primitive_calls": 262200,
+        "self_seconds": 0.325580089,
+        "total_calls": 262200
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.8313533370000004,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "__str__",
+            "line": 536,
+            "primitive_calls": 4720184,
+            "self_seconds": 2.085039874,
+            "total_calls": 4720184
+          }
+        ],
+        "cumulative_seconds": 2.8313533370000004,
+        "file": "python/lib/python3.11/pathlib.py",
+        "function": "_format_parsed_parts",
+        "line": 523,
+        "omitted_callers": 0,
+        "primitive_calls": 4720184,
+        "self_seconds": 2.085039874,
+        "total_calls": 4720184
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.81801001,
+            "file": "checkout/carr-library/src/carr_library/ingest/retained_assets.py",
+            "function": "_digest",
+            "line": 54,
+            "primitive_calls": 51252,
+            "self_seconds": 0.14926745,
+            "total_calls": 51252
+          }
+        ],
+        "cumulative_seconds": 2.81801001,
+        "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+        "function": "_hash_stream",
+        "line": 287,
+        "omitted_callers": 0,
+        "primitive_calls": 51252,
+        "self_seconds": 0.14926745,
+        "total_calls": 51252
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.6416393730000003,
+            "file": "native",
+            "function": "<built_in_method_builtins.next>",
+            "line": 0,
+            "primitive_calls": 6567,
+            "self_seconds": 0.08952863600000001,
+            "total_calls": 6567
+          },
+          {
+            "cumulative_seconds": 0.000063846,
+            "file": "native",
+            "function": "<method_throw_of_generator_objects>",
+            "line": 0,
+            "primitive_calls": 1,
+            "self_seconds": 0.0000029680000000000002,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 2.641703219,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "read",
+        "line": 204,
+        "omitted_callers": 0,
+        "primitive_calls": 6568,
+        "self_seconds": 0.089531604,
+        "total_calls": 6568
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.540901583,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 44183440,
+            "self_seconds": 2.540901583,
+            "total_calls": 44183440
+          }
+        ],
+        "cumulative_seconds": 2.540901583,
+        "file": "native",
+        "function": "<method_isspace_of_str_objects>",
+        "line": 0,
+        "omitted_callers": 0,
+        "primitive_calls": 44183440,
+        "self_seconds": 2.540901583,
+        "total_calls": 44183440
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.54078253,
+            "file": "generated",
+            "function": "_joinrealpath",
+            "line": 418,
+            "primitive_calls": 1554594,
+            "self_seconds": 1.607626186,
+            "total_calls": 1554594
+          }
+        ],
+        "cumulative_seconds": 2.54078253,
+        "file": "generated",
+        "function": "join",
+        "line": 71,
+        "omitted_callers": 0,
+        "primitive_calls": 1554594,
+        "self_seconds": 1.607626186,
+        "total_calls": 1554594
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.4228778870000003,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_fold",
+            "line": 25,
+            "primitive_calls": 897140,
+            "self_seconds": 0.443035952,
+            "total_calls": 897140
+          },
+          {
+            "cumulative_seconds": 0.000255777,
+            "file": "python/lib/python3.11/importlib/metadata/__init__.py",
+            "function": "normalize",
+            "line": 877,
+            "primitive_calls": 29,
+            "self_seconds": 0.000019168,
+            "total_calls": 29
+          }
+        ],
+        "cumulative_seconds": 2.4231336640000003,
+        "file": "python/lib/python3.11/re/__init__.py",
+        "function": "sub",
+        "line": 178,
+        "omitted_callers": 0,
+        "primitive_calls": 897169,
+        "self_seconds": 0.44305512,
+        "total_calls": 897169
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.162519262,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "copy",
+            "line": 1168,
+            "primitive_calls": 1201,
+            "self_seconds": 0.008222344000000001,
+            "total_calls": 1201
+          },
+          {
+            "cumulative_seconds": 1.1313795690000001,
+            "file": "checkout/carr-library/src/carr_library/reader/context.py",
+            "function": "clipboard",
+            "line": 27,
+            "primitive_calls": 1201,
+            "self_seconds": 0.005939992000000001,
+            "total_calls": 1201
+          }
+        ],
+        "cumulative_seconds": 2.2938988310000004,
+        "file": "checkout/carr-library/src/carr_library/reader/context.py",
+        "function": "open_context",
+        "line": 40,
+        "omitted_callers": 0,
+        "primitive_calls": 2402,
+        "self_seconds": 0.014162336000000001,
+        "total_calls": 2402
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.0244769160000002,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 18825240,
+            "self_seconds": 2.0244769160000002,
+            "total_calls": 18825240
+          },
+          {
+            "cumulative_seconds": 0.17826439500000002,
+            "file": "generated",
+            "function": "join",
+            "line": 71,
+            "primitive_calls": 1554594,
+            "self_seconds": 0.17826439500000002,
+            "total_calls": 1554594
+          },
+          {
+            "cumulative_seconds": 0.050456909,
+            "file": "generated",
+            "function": "isabs",
+            "line": 60,
+            "primitive_calls": 365545,
+            "self_seconds": 0.050456909,
+            "total_calls": 365545
+          },
+          {
+            "cumulative_seconds": 0.014025326000000001,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "is_reserved",
+            "line": 205,
+            "primitive_calls": 90358,
+            "self_seconds": 0.014025326000000001,
+            "total_calls": 90358
+          },
+          {
+            "cumulative_seconds": 0.0007417410000000001,
+            "file": "python/lib/python3.11/json/__init__.py",
+            "function": "loads",
+            "line": 299,
+            "primitive_calls": 1999,
+            "self_seconds": 0.0007417410000000001,
+            "total_calls": 1999
+          },
+          {
+            "cumulative_seconds": 0.00038617100000000004,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "local",
+            "line": 99,
+            "primitive_calls": 2050,
+            "self_seconds": 0.00038617100000000004,
+            "total_calls": 2050
+          }
+        ],
+        "cumulative_seconds": 2.268360349,
+        "file": "native",
+        "function": "<method_startswith_of_str_objects>",
+        "line": 0,
+        "omitted_callers": 4,
+        "primitive_calls": 20839843,
+        "self_seconds": 2.268360349,
+        "total_calls": 20839843
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.260877555,
+            "file": "checkout/carr-library/src/carr_library/reader/context.py",
+            "function": "open_context",
+            "line": 40,
+            "primitive_calls": 2402,
+            "self_seconds": 0.008362969000000001,
+            "total_calls": 2402
+          }
+        ],
+        "cumulative_seconds": 2.260877555,
+        "file": "checkout/carr-library/src/carr_library/citations/anchors.py",
+        "function": "resolve_span",
+        "line": 158,
+        "omitted_callers": 0,
+        "primitive_calls": 2402,
+        "self_seconds": 0.008362969000000001,
+        "total_calls": 2402
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.463196334,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "search",
+            "line": 967,
+            "primitive_calls": 2042,
+            "self_seconds": 0.0016048030000000001,
+            "total_calls": 2042
+          },
+          {
+            "cumulative_seconds": 1.3724484110000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "_search_read",
+            "line": 243,
+            "primitive_calls": 2073,
+            "self_seconds": 0.001115591,
+            "total_calls": 2073
+          },
+          {
+            "cumulative_seconds": 0.7374004270000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "copy",
+            "line": 1168,
+            "primitive_calls": 1201,
+            "self_seconds": 0.0010644740000000001,
+            "total_calls": 1201
+          },
+          {
+            "cumulative_seconds": 0.010899562000000002,
+            "file": "checkout/carr-library/src/carr_library/reader/reading_desk.py",
+            "function": "__init__",
+            "line": 107,
+            "primitive_calls": 16,
+            "self_seconds": 0.000012120000000000001,
+            "total_calls": 16
+          },
+          {
+            "cumulative_seconds": 0.010695726000000001,
+            "file": "checkout/carr-library/src/carr_library/reader/reading_desk.py",
+            "function": "page",
+            "line": 181,
+            "primitive_calls": 16,
+            "self_seconds": 0.000010870000000000001,
+            "total_calls": 16
+          },
+          {
+            "cumulative_seconds": 0.005598677000000001,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "browse",
+            "line": 316,
+            "primitive_calls": 8,
+            "self_seconds": 0.000007831,
+            "total_calls": 8
+          }
+        ],
+        "cumulative_seconds": 2.2322063610000002,
+        "file": "python/lib/python3.11/contextlib.py",
+        "function": "__enter__",
+        "line": 132,
+        "omitted_callers": 4,
+        "primitive_calls": 3288,
+        "self_seconds": 0.0038204180000000003,
+        "total_calls": 5361
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.166874585,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "snapshot",
+            "line": 84,
+            "primitive_calls": 45179,
+            "self_seconds": 0.43459493600000004,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 2.166874585,
+        "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+        "function": "classify",
+        "line": 39,
+        "omitted_callers": 0,
+        "primitive_calls": 45179,
+        "self_seconds": 0.43459493600000004,
+        "total_calls": 45179
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.076925224,
+            "file": "python/lib/python3.11/re/__init__.py",
+            "function": "search",
+            "line": 173,
+            "primitive_calls": 45179,
+            "self_seconds": 1.076925224,
+            "total_calls": 45179
+          },
+          {
+            "cumulative_seconds": 1.003848604,
+            "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+            "function": "classify",
+            "line": 39,
+            "primitive_calls": 45179,
+            "self_seconds": 1.003848604,
+            "total_calls": 45179
+          }
+        ],
+        "cumulative_seconds": 2.0807738280000003,
+        "file": "native",
+        "function": "<method_search_of_re.Pattern_objects>",
+        "line": 0,
+        "omitted_callers": 0,
+        "primitive_calls": 90358,
+        "self_seconds": 2.0807738280000003,
+        "total_calls": 90358
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 2.023038798,
+            "file": "checkout/carr-library/src/carr_library/search/paging.py",
+            "function": "select_window",
+            "line": 105,
+            "primitive_calls": 2068,
+            "self_seconds": 0.087064318,
+            "total_calls": 2068
+          }
+        ],
+        "cumulative_seconds": 2.023038798,
+        "file": "checkout/carr-library/src/carr_library/catalog/read_views.py",
+        "function": "_edition_keys",
+        "line": 112,
+        "omitted_callers": 0,
+        "primitive_calls": 2068,
+        "self_seconds": 0.087064318,
+        "total_calls": 2068
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.9534562960000001,
+            "file": "native",
+            "function": "<built_in_method_builtins.next>",
+            "line": 0,
+            "primitive_calls": 4146,
+            "self_seconds": 0.009708646000000001,
+            "total_calls": 4146
+          },
+          {
+            "cumulative_seconds": 0.000070998,
+            "file": "native",
+            "function": "<method_throw_of_generator_objects>",
+            "line": 0,
+            "primitive_calls": 1,
+            "self_seconds": 0.0000025980000000000004,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 1.9535272940000001,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "_search_read",
+        "line": 243,
+        "omitted_callers": 0,
+        "primitive_calls": 4147,
+        "self_seconds": 0.009711244,
+        "total_calls": 4147
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.927725439,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "copy",
+            "line": 1168,
+            "primitive_calls": 1201,
+            "self_seconds": 0.008832950000000001,
+            "total_calls": 1201
+          }
+        ],
+        "cumulative_seconds": 1.927725439,
+        "file": "checkout/carr-library/src/carr_library/application.py",
+        "function": "_anchor",
+        "line": 1138,
+        "omitted_callers": 0,
+        "primitive_calls": 1201,
+        "self_seconds": 0.008832950000000001,
+        "total_calls": 1201
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.885371552,
+            "file": "python/lib/python3.11/pathlib.py",
+            "function": "parse_parts",
+            "line": 56,
+            "primitive_calls": 25938294,
+            "self_seconds": 1.885371552,
+            "total_calls": 25938294
+          }
+        ],
+        "cumulative_seconds": 1.885371552,
+        "file": "native",
+        "function": "<built_in_method_sys.intern>",
+        "line": 0,
+        "omitted_callers": 0,
+        "primitive_calls": 25938294,
+        "self_seconds": 1.885371552,
+        "total_calls": 25938294
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.7292109670000002,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_mapped",
+            "line": 90,
+            "primitive_calls": 18825240,
+            "self_seconds": 1.7292109670000002,
+            "total_calls": 18825240
+          },
+          {
+            "cumulative_seconds": 0.053788473,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "_word",
+            "line": 152,
+            "primitive_calls": 524400,
+            "self_seconds": 0.053788473,
+            "total_calls": 524400
+          },
+          {
+            "cumulative_seconds": 0.004012885,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "<genexpr>",
+            "line": 281,
+            "primitive_calls": 32640,
+            "self_seconds": 0.004012885,
+            "total_calls": 32640
+          },
+          {
+            "cumulative_seconds": 0.00010578000000000001,
+            "file": "checkout/carr-library/src/carr_library/reader/reading_state.py",
+            "function": "<genexpr>",
+            "line": 33,
+            "primitive_calls": 1360,
+            "self_seconds": 0.00010578000000000001,
+            "total_calls": 1360
+          }
+        ],
+        "cumulative_seconds": 1.787118105,
+        "file": "native",
+        "function": "<built_in_method_unicodedata.category>",
+        "line": 0,
+        "omitted_callers": 0,
+        "primitive_calls": 19383640,
+        "self_seconds": 1.787118105,
+        "total_calls": 19383640
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.599922332,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "read",
+            "line": 204,
+            "primitive_calls": 3284,
+            "self_seconds": 0.04037127,
+            "total_calls": 3284
+          },
+          {
+            "cumulative_seconds": 0.000702136,
+            "file": "checkout/carr-library/src/carr_library/storage/revisions.py",
+            "function": "_check_schema",
+            "line": 272,
+            "primitive_calls": 2,
+            "self_seconds": 0.000020601,
+            "total_calls": 2
+          },
+          {
+            "cumulative_seconds": 0.000104585,
+            "file": "checkout/carr-library/src/carr_library/storage/revisions.py",
+            "function": "_expected_signature",
+            "line": 145,
+            "primitive_calls": 1,
+            "self_seconds": 0.000010045000000000001,
+            "total_calls": 1
+          }
+        ],
+        "cumulative_seconds": 1.600729053,
+        "file": "checkout/carr-library/src/carr_library/storage/revisions.py",
+        "function": "_schema_signature",
+        "line": 139,
+        "omitted_callers": 0,
+        "primitive_calls": 3287,
+        "self_seconds": 0.040401916,
+        "total_calls": 3287
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 1.600651757,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "measure_corpus",
+            "line": 1056,
+            "primitive_calls": 2,
+            "self_seconds": 0.015464527,
+            "total_calls": 2
+          }
+        ],
+        "cumulative_seconds": 1.600651757,
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "verify_corpus",
+        "line": 325,
+        "omitted_callers": 0,
+        "primitive_calls": 2,
+        "self_seconds": 0.015464527,
+        "total_calls": 2
+      },
+      {
+        "callers": [
+          {
+            "cumulative_seconds": 0.734405945,
+            "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+            "function": "check",
+            "line": 303,
+            "primitive_calls": 7240739,
+            "self_seconds": 0.734405945,
+            "total_calls": 7240739
+          },
+          {
+            "cumulative_seconds": 0.6576609,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "stopped",
+            "line": 96,
+            "primitive_calls": 7135300,
+            "self_seconds": 0.6576609,
+            "total_calls": 7135300
+          },
+          {
+            "cumulative_seconds": 0.200671227,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "stopped",
+            "line": 304,
+            "primitive_calls": 2265871,
+            "self_seconds": 0.200671227,
+            "total_calls": 2265871
+          },
+          {
+            "cumulative_seconds": 0.000380137,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "remaining",
+            "line": 104,
+            "primitive_calls": 4082,
+            "self_seconds": 0.000380137,
+            "total_calls": 4082
+          },
+          {
+            "cumulative_seconds": 0.000375493,
+            "file": "checkout/carr-library/src/carr_library/application.py",
+            "function": "__init__",
+            "line": 86,
+            "primitive_calls": 3296,
+            "self_seconds": 0.000375493,
+            "total_calls": 3296
+          },
+          {
+            "cumulative_seconds": 0.00024348700000000002,
+            "file": "checkout/carr-library/src/carr_library/search/literal.py",
+            "function": "search",
+            "line": 262,
+            "primitive_calls": 2040,
+            "self_seconds": 0.00024348700000000002,
+            "total_calls": 2040
+          }
+        ],
+        "cumulative_seconds": 1.593739226,
+        "file": "native",
+        "function": "<built_in_method_time.monotonic>",
+        "line": 0,
+        "omitted_callers": 1,
+        "primitive_calls": 16651329,
+        "self_seconds": 1.593739226,
+        "total_calls": 16651329
+      }
+    ],
+    "maximum_callers": 6,
+    "maximum_functions": 80,
+    "observed_functions": 752,
+    "omitted_functions": 672,
+    "qualification": "DIAGNOSTIC_ONLY",
+    "schema": "carr-corpus-cprofile/1",
+    "scope": "Unchanged complete measure phase, including retained-source checks, full traversal and origin verification.",
+    "timings": "Instrumented cProfile timings; not comparable to unprofiled capacity measurements."
+  },
+  "decoded_log_utf8": {
+    "sha256": "a924a363b2ec223b62728b6c2f940dc881090c5d1ecc5b6d204aea3096653ead",
+    "bytes": 166571
+  },
+  "artifact": {
+    "id": 15249652597,
+    "name": "corpus-profile-diagnostic-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "bytes": 58314,
+    "digest": "sha256:7e611bcf01e1cf9d81fe6258628224555a22a124c95b24a845613fdca816b7a8",
+    "created_at": "2026-11-28T05:10:53Z",
+    "expired": false
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "actual_work_counters": {
+    "prior_commit": "343efc505230f969ec9519bd04e4340381f07909",
+    "current_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "comparisons": [
+      {
+        "label": "full_fold",
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_fold",
+        "prior_calls": 21441580,
+        "current_calls": 897140,
+        "change": -20544440
+      },
+      {
+        "label": "mapped",
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_mapped",
+        "prior_calls": 85960,
+        "current_calls": 85960,
+        "change": 0
+      },
+      {
+        "label": "benchmark_budget_check",
+        "file": "checkout/carr-library/scripts/benchmark_library_scale.py",
+        "function": "check",
+        "prior_calls": 3620010,
+        "current_calls": 3620010,
+        "change": 0
+      },
+      {
+        "label": "retained_source_snapshot",
+        "file": "checkout/carr-library/src/carr_library/catalog/intake.py",
+        "function": "source_snapshot",
+        "prior_calls": 45179,
+        "current_calls": 45179,
+        "change": 0
+      },
+      {
+        "label": "normalization",
+        "file": "checkout/carr-library/src/carr_library/search/literal.py",
+        "function": "_normalization",
+        "prior_calls": 131100,
+        "current_calls": 131100,
+        "change": 0
+      }
+    ]
+  },
+  "observations": [
+    "All 153 ordinary source cases passed across the same six whole modules, including all 15 appended cluster regressions.",
+    "The unchanged complete retained-fixture diagnostic built 1000 books with 40 segments each, measured the full traversal, and reopened the corpus.",
+    "Observed full _fold calls fell by 20544440, from 21441580 to 897140. The mapped, benchmark budget-check, source-snapshot and normalization call counts remain exactly equal in the two captured profiles.",
+    "Instrumented measure_corpus cumulative seconds were 179.898308303; traverse cumulative seconds were 175.513721615. These values include cProfile instrumentation.",
+    "The remaining four ordinary corpus geometries, including 50000 books by 40 segments, are separate actual jobs. This diagnostic provides no full 2M capacity or unprofiled speed claim."
+  ],
+  "runtime_limits": {
+    "unprofiled_speedup": "NOT_MEASURED",
+    "full_2m_capacity": "NOT_RUN_BY_THIS_DIAGNOSTIC",
+    "windows_qualification": "NOT_RUN_BY_THIS_DIAGNOSTIC",
+    "raw_binary_profile_retained": false
+  }
+}

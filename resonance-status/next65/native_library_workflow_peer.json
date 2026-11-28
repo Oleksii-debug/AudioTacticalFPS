@@ -1,0 +1,72 @@
+{
+  "schema": "carr-bounded-peer-review/1",
+  "created_utc": "2026-11-28 07:08:37 UTC",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "path": ".github/workflows/carr-native-library-workflow.yml",
+  "successor": "62845cc0eab7fb5485ca4f6bce9279a7fc059207",
+  "template": "f97c059b72c00d517bf7a0b18bcfc77c1160e4ca",
+  "helper": "c9d5c070e0590b252d055be7f3acfa73db01eb19",
+  "original_probe": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+  "scope": "Workflow setup/firewall/CLI/closed evidence seam; helper source was separately accepted by progress_completion.",
+  "checks": {
+    "pins": 13,
+    "pin_mismatches": [],
+    "contracts": [
+      "identity-before.json",
+      "identity-after.json",
+      "wheel-build.txt",
+      "source-wheel-proof.json",
+      "wheel-install.txt",
+      "installed-pip-check.txt",
+      "native-origins-before.json",
+      "native-origins-before.txt",
+      "native-origins-after.json",
+      "native-origins-after.txt",
+      "native-library-workflow.txt",
+      "native-library-workflow.json",
+      "diagnostic-summary.json"
+    ],
+    "contract_count": 13,
+    "topnames": [
+      "installed-packages.json",
+      "full-lock-source-inventory.json",
+      "native-runtime.json",
+      "firewall.json",
+      "firewall-cleanup.json",
+      "diagnostic.txt"
+    ],
+    "total_public_files": 19,
+    "unchanged_helper_cli": true,
+    "cli_matches": true,
+    "same_sealed_child_command": true,
+    "finite_child_timeouts": [
+      30,
+      600,
+      300,
+      180,
+      60,
+      60,
+      180
+    ],
+    "version_check_51": true,
+    "package_acquisition_before_firewall": true,
+    "firewall_rule_readback": true,
+    "finally_owned_cleanup": true,
+    "python_all_four_paths": true,
+    "evidence_guarded_upload": true,
+    "source_and_workflow_mutations": false
+  },
+  "findings": [
+    "Exact13 preflight pins match727 plus the new helper; fixed Windows3.11 x64 and wx admission remains required.",
+    "Fresh venv installs the original locked desktop/trusted closure, existing locked build tools, explicit reportlab/openpyxl fixture versions, then the exact51 semantic lock entries; actual versions and pip check are required.",
+    "All acquisition precedes the read-back outbound block for the current venv/base Python and both pythonw paths. Only captured owned rules are removed and original profiles are restored in finally.",
+    "Actual helper argv/output paths agree. The original installed probe still has180-second parent and40/60 internal bounds; workflow15-minute aggregate and40-minute job are fail-closed caps.",
+    "Closed19-file public inventory matches13 actual helper outputs plus6 setup/runtime/firewall logs. Only single-link ordinary bounded JSON/text files are admitted and upload is contingent on successful retention validation.",
+    "No audio/OCR operation, model acquisition, product edits, network allowance or native assertion change was introduced."
+  ],
+  "limitations": [
+    "No YAML/PowerShell parsing or execution performed in this peer.",
+    "Native actual result remains required; diagnostic qualification cannot replace complete integrated or NVDA qualification."
+  ]
+}

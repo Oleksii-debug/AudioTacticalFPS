@@ -63,7 +63,7 @@ PINS = {
     "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
     "src/carr_library/speech/__init__.py": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
-    "tests/studio/test_clip_preview_loop.py": "90f2bfc4b79d8a6bc0abc7351ce7b165a87b0310",
+    "tests/studio/test_clip_preview_loop.py": "c2690ed5b36b2860238e6dc1d5d9420f355baf54",
     "tests/studio/test_project_markers.py": "088083c06c452fa5fbac9e14df1786aba524d3d7",
     "tests/studio/test_marker_consumers.py": "0877334ad369cc03b3d48edecfdd00b1a8202c9b",
     "tests/studio/test_clip_operations.py": "a47af2be53416f2a9588a20381063f63422f0940",

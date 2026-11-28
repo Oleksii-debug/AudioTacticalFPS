@@ -332,11 +332,20 @@ def test_clear_repeat_on_stopped_preview_does_not_start_audio(preview):
 
 
 def test_changed_pcm_is_refused_before_real_player_repeat_and_native_owner_closes(preview):
+    import os
     apply(preview)
     old_identity = preview.player._identity
+    original = preview.path.read_bytes()
     pcm(preview.path, value=11)
+    # A same-size write can retain the observed Windows timestamp. Make this
+    # real filesystem version change explicit; do not substitute player stamps.
+    info = preview.path.stat()
+    os.utime(preview.path, ns=(info.st_atime_ns, old_identity[3] + 2_000_000_000))
     assert preview.player._stamp(preview.path) != old_identity
+    assert preview.player._stamp(preview.path)[:3] == old_identity[:3]
+    assert preview.path.stat().st_mtime_ns != old_identity[3]
     changed = preview.path.read_bytes()
+    assert changed != original and len(changed) == len(original)
     preview.transport.finish(.75)
     preview.dialog._poll_preview_repeat()
     assert len(preview.transport.plays) == 2

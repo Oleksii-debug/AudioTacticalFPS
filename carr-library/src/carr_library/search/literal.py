@@ -20,6 +20,7 @@ MAX_CHARS = 5_000_000
 MAX_QUERY = 500
 _LONG_ASCII = 64 * 1024
 _SPACE_RUN = re.compile(r'\s{2,}')
+_ASCII_NONSPACE_RUN = re.compile(r'[\x00-\x08\x0e-\x1b\x21-\x7f]+')
 
 
 def _fold(text):
@@ -111,6 +112,29 @@ def _mapped(text, check=lambda: None):
         if i >= next_check:
             check()
             next_check = i + 1024
+        # Batch only complete ASCII non-whitespace clusters, within the same
+        # next cancellation checkpoint. A following Unicode mark still owns
+        # its preceding base and must use the original canonical-cluster path.
+        run = _ASCII_NONSPACE_RUN.match(text, i, min(len(text), next_check))
+        if run is not None:
+            end = run.end()
+            if end < len(text) and ud.category(text[end]).startswith('M'):
+                end -= 1
+            if end - i >= 2:
+                width = end - i
+                part = text[i:end].lower()
+                if compact:
+                    if not folded.startswith(part, pos):
+                        raise ValueError('unsupported normalization mapping')
+                    starts.values[pos:pos + width] = array('i', range(i, end))
+                    ends.values[pos + 1:pos + width + 1] = array('i', range(i + 1, end + 1))
+                else:
+                    starts.update(zip(range(pos, pos + width), range(i, end)))
+                    ends.update(zip(range(pos + 1, pos + width + 1), range(i + 1, end + 1)))
+                    parts.append(part)
+                pos += width
+                i = end
+                continue
         j = i + 1
         if text[i].isspace():
             while j < len(text) and text[j].isspace():

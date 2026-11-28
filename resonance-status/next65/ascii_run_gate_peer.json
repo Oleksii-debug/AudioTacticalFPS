@@ -1,0 +1,66 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "scope": "Focused mapper gate only; no source or test implementation re-review",
+  "base": "72713056f6da48a327ce269dc805a42eb3bd1b52",
+  "files": {
+    "helper": {
+      "before": "d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae",
+      "after": "8cf3771d907aa6ec0b57d3aee80599407f0bf8cb"
+    },
+    "profile": {
+      "before": "10c3e1ffd175e0941361bfeff612b22bb1ec6b97",
+      "after": "74101bae084c7080bf7f63c2bab275cc93bd1dfd"
+    },
+    "capacity": {
+      "before": "f7b8e3c5e5386793ceddb8faf821fd5cf21ae472",
+      "after": "4e225e34b68f534e2655542d84ae61f4e9a542f3"
+    }
+  },
+  "inverse": {
+    "helper": {
+      "inverse": true,
+      "occurrences": [
+        1,
+        1,
+        1
+      ]
+    },
+    "profile": {
+      "inverse": true,
+      "occurrences": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "capacity": {
+      "inverse": true,
+      "occurrences": [
+        2,
+        2,
+        1
+      ]
+    }
+  },
+  "inventory": {
+    "capacity_wholes": 14,
+    "capacity_cases": 315,
+    "capacity_pins": 33,
+    "profile_wholes": 6,
+    "profile_cases": 170,
+    "profile_pins": 38
+  },
+  "evidence": [
+    "All 71 pin occurrences equal exact base727 with only accepted literal/test overlays.",
+    "Three complete predecessor blobs reconstructed from named pin/count/label reverse replacements.",
+    "Installed child, policy/budget/jobs lines and all bytes outside named changes are unchanged."
+  ],
+  "runtime": "NOT_RUN"
+}

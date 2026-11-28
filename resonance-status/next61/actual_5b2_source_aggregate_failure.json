@@ -1,0 +1,122 @@
+{
+  "schema": "carr-actual-source-aggregate-refusal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "run_id": 46110647047,
+  "job_id": 140889372317,
+  "conclusion": "failure",
+  "evidence": [
+    {
+      "line": 53,
+      "text": "2026-11-28T06:21:19.0116708Z   CARR_SOURCE_RESULT_0: failure"
+    },
+    {
+      "line": 54,
+      "text": "2026-11-28T06:21:19.0117071Z   CARR_SOURCE_RESULT_1: failure"
+    },
+    {
+      "line": 55,
+      "text": "2026-11-28T06:21:19.0117427Z   CARR_SOURCE_RESULT_2: failure"
+    },
+    {
+      "line": 56,
+      "text": "2026-11-28T06:21:19.0117784Z   CARR_SOURCE_RESULT_3: failure"
+    },
+    {
+      "line": 57,
+      "text": "2026-11-28T06:21:19.0118138Z   CARR_SOURCE_RECEIPT_0: "
+    },
+    {
+      "line": 58,
+      "text": "2026-11-28T06:21:19.0118475Z   CARR_SOURCE_RECEIPT_1: "
+    },
+    {
+      "line": 59,
+      "text": "2026-11-28T06:21:19.0118815Z   CARR_SOURCE_RECEIPT_2: "
+    },
+    {
+      "line": 60,
+      "text": "2026-11-28T06:21:19.0119143Z   CARR_SOURCE_RECEIPT_3: "
+    },
+    {
+      "line": 246,
+      "text": "2026-11-28T06:21:25.9516145Z   CARR_SOURCE_RESULT_0: failure"
+    },
+    {
+      "line": 247,
+      "text": "2026-11-28T06:21:25.9516321Z   CARR_SOURCE_RESULT_1: failure"
+    },
+    {
+      "line": 248,
+      "text": "2026-11-28T06:21:25.9516500Z   CARR_SOURCE_RESULT_2: failure"
+    },
+    {
+      "line": 249,
+      "text": "2026-11-28T06:21:25.9516664Z   CARR_SOURCE_RESULT_3: failure"
+    },
+    {
+      "line": 250,
+      "text": "2026-11-28T06:21:25.9516840Z   CARR_SOURCE_RECEIPT_0: "
+    },
+    {
+      "line": 251,
+      "text": "2026-11-28T06:21:25.9517008Z   CARR_SOURCE_RECEIPT_1: "
+    },
+    {
+      "line": 252,
+      "text": "2026-11-28T06:21:25.9517162Z   CARR_SOURCE_RECEIPT_2: "
+    },
+    {
+      "line": 253,
+      "text": "2026-11-28T06:21:25.9517315Z   CARR_SOURCE_RECEIPT_3: "
+    },
+    {
+      "line": 259,
+      "text": "2026-11-28T06:21:26.7128701Z      | Required source partition 0 did not complete successfully."
+    },
+    {
+      "line": 260,
+      "text": "2026-11-28T06:21:26.7543458Z ##[error]Process completed with exit code 1."
+    },
+    {
+      "line": 273,
+      "text": "2026-11-28T06:21:26.7704098Z   CARR_SOURCE_RESULT_0: failure"
+    },
+    {
+      "line": 274,
+      "text": "2026-11-28T06:21:26.7704274Z   CARR_SOURCE_RESULT_1: failure"
+    },
+    {
+      "line": 275,
+      "text": "2026-11-28T06:21:26.7704458Z   CARR_SOURCE_RESULT_2: failure"
+    },
+    {
+      "line": 276,
+      "text": "2026-11-28T06:21:26.7704640Z   CARR_SOURCE_RESULT_3: failure"
+    },
+    {
+      "line": 277,
+      "text": "2026-11-28T06:21:26.7704812Z   CARR_SOURCE_RECEIPT_0: "
+    },
+    {
+      "line": 278,
+      "text": "2026-11-28T06:21:26.7704973Z   CARR_SOURCE_RECEIPT_1: "
+    },
+    {
+      "line": 279,
+      "text": "2026-11-28T06:21:26.7705123Z   CARR_SOURCE_RECEIPT_2: "
+    },
+    {
+      "line": 280,
+      "text": "2026-11-28T06:21:26.7705272Z   CARR_SOURCE_RECEIPT_3: "
+    },
+    {
+      "line": 282,
+      "text": "2026-11-28T06:21:26.9025033Z ##[warning]No files were found with the provided path: carr-library/ci-source-aggregate/complete-source.json. No artifacts will be uploaded."
+    }
+  ],
+  "observation": "The unchanged strict aggregate actually refuses four failed partition results and absent receipts. No complete-source.json artifact was published and no487-suite success was admitted.",
+  "related_partitions_receipt": "cf406bd7aec7bb26742fa983ea0aa465d6242252",
+  "new_product_test_executions": 0,
+  "code_or_refs_changed": false
+}

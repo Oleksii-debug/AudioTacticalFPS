@@ -1,0 +1,391 @@
+{
+  "schema": "carr-actual-windows-voice-evidence/1",
+  "recorded_utc": "2026-11-28 05:36:16 UTC",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110638804,
+  "job_id": 140873158491,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110638804/job/140873158491",
+  "status": "PASS",
+  "platform": "windows-2022",
+  "scheduling_manifest": "61a388850db43f792b4a3f6e4580abe26e6d3d93",
+  "cancellation_fixture_manifest": "a7dd657db823eb21e17709c41e982031534400da",
+  "prior_failure_evidence": "001578f515a565d8b00cb4464067a05ac428a5ec",
+  "linux_evidence": "fa5b532590631442e68b3ac6c8b10be89b7c5fa0",
+  "source_rows": [
+    {
+      "path": "tests/audio/test_voice_package_management.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_management_state.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_reference_management.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_protected_management.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_publication_lifetime.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_ownership.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_owner_lease.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_authority.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_voice_packages.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_voice_reference.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_engine_settings_lifetime.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_voices.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_speech.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_settings.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_convergence.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_bundled_runtime_settings.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_v3_state_backup.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "source_groups": [
+    {
+      "exit_code": 0,
+      "jobs": 1,
+      "log_sha256": "d1ce41b2059afd1f1f72e4a5df8aedc570ae8553d28e9d7cdd4cb34056c0420a",
+      "parent_seconds": 660,
+      "status": "PASS",
+      "suite_seconds": 600,
+      "suites": [
+        "tests/audio/test_voice_package_management.py"
+      ]
+    },
+    {
+      "exit_code": 0,
+      "jobs": 4,
+      "log_sha256": "3a631d394c2d9f63104b5440472fe7dcd056fdc9a12dab88d1ae793d49ce4fbe",
+      "parent_seconds": 3300,
+      "status": "PASS",
+      "suite_seconds": 600,
+      "suites": [
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/ui/test_engine_settings_lifetime.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_host_lifecycle.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/integrations/test_dordiai_probe_cancellation.py",
+        "tests/integrations/test_dordiai_convergence.py",
+        "tests/audio/test_bundled_runtime_settings.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py"
+      ]
+    }
+  ],
+  "source_package_whole": {
+    "path": "tests/audio/test_voice_package_management.py",
+    "passed": 30,
+    "failed": 0,
+    "seconds": 302.33,
+    "individual_deadline_seconds": 600,
+    "observed_from": "Exact isolated first-source-group pytest completion row."
+  },
+  "final_receipt": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 495,
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_passed": 495,
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "status": "PASS"
+  },
+  "actual_owner": [
+    {
+      "checks": 25,
+      "error": null,
+      "mode": "source",
+      "report_sha256": "bd25c7e98dc41f205d21e077228d71e9240d8cc7a8f4666b295a2610ac556ef6",
+      "status": "PASS"
+    },
+    {
+      "checks": 25,
+      "error": null,
+      "mode": "installed",
+      "report_sha256": "128dba81fb79ccb6ccbad327f8431eb668844265949e1e1c16ed44ee7cdc8510",
+      "status": "PASS"
+    }
+  ],
+  "native": {
+    "required_unique_checks": 83,
+    "actual_check_occurrences": 84,
+    "installed_origins": 22,
+    "report": {
+      "status": "PASS",
+      "checks": [
+        "exact installed source: carr_library.application",
+        "exact installed source: carr_library.runtime_settings",
+        "exact installed source: carr_library.durable_state",
+        "exact installed source: carr_library.native_runtime",
+        "exact installed source: carr_library.audio.voice_settings",
+        "exact installed source: carr_library.audio.voice_packages",
+        "exact installed source: carr_library.audio.voice_lifecycle",
+        "exact installed source: carr_library.audio.voice_reference",
+        "exact installed source: carr_library.audio.package_publication",
+        "exact installed source: carr_library.audio.voice_manifest",
+        "exact installed source: carr_library.audio.voice_ownership",
+        "exact installed source: carr_library.audio.voice_transport",
+        "exact installed source: carr_library.audio.process",
+        "exact installed source: carr_library.audio.windows_job",
+        "exact installed source: carr_library.operations.broker",
+        "exact installed source: carr_library.operations._locks",
+        "exact installed source: carr_library.ui.desktop_app",
+        "exact installed source: carr_library.ui.engine_settings",
+        "exact installed source: carr_library.ui.voice_packages",
+        "exact installed source: carr_library.ui.voice_reference",
+        "exact installed source: carr_library.ui.worker_lifetime",
+        "exact installed source: carr_library.ui.recording_dialog",
+        "real native Windows voice controls",
+        "registered engine action belongs to the existing host command registry",
+        "actual host menu contains one existing local-engine command",
+        "native failure answers owned No before closing only the active inner modal",
+        "existing engine settings exposes one explicit package-management action",
+        "package child borrows exact engine parent and existing host executor",
+        "unregistered package view has no implicit permission or metadata child",
+        "registration confirmation defaults to the actual owned No button",
+        "default No leaves voice registration and owner files unchanged",
+        "registration confirmation defaults to the actual owned No button",
+        "explicit manifest registration binds the real current settings map",
+        "Holos does not expose unreviewed reference creation",
+        "saved explicit OmniVoice configuration enables only its reference creator",
+        "reference child starts without recording permission or quality approval",
+        "reference close opens no microphone and dispatches no owner operation",
+        "inspection returns exact source roles and clears permission and languages",
+        "Apply without explicit rights cannot call the owner API",
+        "native keyboard explicitly grants rights and the selected production language",
+        "real owner installation publishes only the reviewed data and language choice",
+        "real installed version listing is visible in the readable status",
+        "installed version review resets export and production permission",
+        "unencrypted export requires separate explicit permission",
+        "actual owner export contains only the reviewed reference version",
+        "export result exposes its actual independently checked SHA256",
+        "empty removal confirmation cannot mutate the reviewed profile",
+        "real deactivation retains files and revokes active production authority",
+        "deletion requires a fresh distinct empty confirmation",
+        "real deletion removes only the explicitly reviewed profile versions",
+        "source package shared models and unrelated voice preferences remain exact",
+        "queued management borrows the retained host executor",
+        "closed queued child cannot call the owner API or deliver a late review",
+        "parent engine view reload preserves the current management binding",
+        "existing engine parent retains one native Close control",
+        "actual isolated owner metadata operations completed with no live Job handles",
+        "current broker has no active voice-management lease after native work",
+        "native host Close drains the original shared executor and finalizers",
+        "all actual metadata Job process and thread handles are settled before fallback",
+        "no active broker lease survives native host cleanup",
+        "synthetic owner companion remains byte-identical after cleanup",
+        "unchanged installed source after cleanup: carr_library.application",
+        "unchanged installed source after cleanup: carr_library.runtime_settings",
+        "unchanged installed source after cleanup: carr_library.durable_state",
+        "unchanged installed source after cleanup: carr_library.native_runtime",
+        "unchanged installed source after cleanup: carr_library.audio.voice_settings",
+        "unchanged installed source after cleanup: carr_library.audio.voice_packages",
+        "unchanged installed source after cleanup: carr_library.audio.voice_lifecycle",
+        "unchanged installed source after cleanup: carr_library.audio.voice_reference",
+        "unchanged installed source after cleanup: carr_library.audio.package_publication",
+        "unchanged installed source after cleanup: carr_library.audio.voice_manifest",
+        "unchanged installed source after cleanup: carr_library.audio.voice_ownership",
+        "unchanged installed source after cleanup: carr_library.audio.voice_transport",
+        "unchanged installed source after cleanup: carr_library.audio.process",
+        "unchanged installed source after cleanup: carr_library.audio.windows_job",
+        "unchanged installed source after cleanup: carr_library.operations.broker",
+        "unchanged installed source after cleanup: carr_library.operations._locks",
+        "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+        "unchanged installed source after cleanup: carr_library.ui.engine_settings",
+        "unchanged installed source after cleanup: carr_library.ui.voice_packages",
+        "unchanged installed source after cleanup: carr_library.ui.voice_reference",
+        "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+        "unchanged installed source after cleanup: carr_library.ui.recording_dialog",
+        "native voice failure cleanup control completed"
+      ],
+      "origins": {
+        "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+        "carr_library.runtime_settings": "b8a3c8078c8b00ef3f8dac2028ba3d6bee2b1722031482eb44958eafa617f58e",
+        "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+        "carr_library.native_runtime": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf",
+        "carr_library.audio.voice_settings": "f600ddd2dee34f5d0d454f090d52d8236d84aae9dc5dd962790280896e160b27",
+        "carr_library.audio.voice_packages": "4bd6ff3b3afb51f2e210b8f2ae4de423780fcf76b341257a848843e86644518d",
+        "carr_library.audio.voice_lifecycle": "0a82f0c1dc3cd905fa86c35ed4d18e5db82bd9f4997425e1fa73dda63752cf74",
+        "carr_library.audio.voice_reference": "1f3d98a0b4917f2c092db4868774119dfa5b9c247125060e0f146ee54794a334",
+        "carr_library.audio.package_publication": "e846c31638e24fe964762036a136577816245a3083ffadda866e5773b8268504",
+        "carr_library.audio.voice_manifest": "d7b188a647c4cb674f9901eb40a9164950644571f7a82eb8c7c38feac271bff1",
+        "carr_library.audio.voice_ownership": "c5d68892af10f4a4350159a6622e2e99c599d2517932916dd0eef22e83542373",
+        "carr_library.audio.voice_transport": "9c7e3dbf7f51b370647618596d1a5088b5ef9d754aa058184eafa167a06fc53e",
+        "carr_library.audio.process": "408ade7fa53dd38699fe35ad6b7509116252f10031ffd05e228045f821e4d063",
+        "carr_library.audio.windows_job": "be38dc5d5a7b5ed9a19ed8507e2b2a3757280f739c6bf3fff5ab562e49e30805",
+        "carr_library.operations.broker": "05cf0aa8672b2a98686aea51e5de7e52326c0dd61ade02418f6cefdc24be5022",
+        "carr_library.operations._locks": "cfed74a38aaec5e5fbbc707d30df2a1b20bc982750526c6371898d7d877151dc",
+        "carr_library.ui.desktop_app": "28cc10d724badc164b34814e24264e81bf1ee1e20e0afedb4c795d30dc29005f",
+        "carr_library.ui.engine_settings": "fb75ea876266996a9d116c3dd2ba9152a0497dddb84fbc6214e10fe9ec5048e0",
+        "carr_library.ui.voice_packages": "2d148b8c7f22a0b2673cb20572f4cfca527774f11392b575a21f919d6fb8ac4d",
+        "carr_library.ui.voice_reference": "a5b8747d211035ae5eca90e38aa411e6a5f4542299fd87b7304b4baa4f9d9a0a",
+        "carr_library.ui.worker_lifetime": "321720af78ed1605db5164a1cb8b675ba8f013343660f5449e811d12844a8c18",
+        "carr_library.ui.recording_dialog": "eb7c98320b8b2582d57b1de54ec3ef9cc701d98175f950a15910649dab07b90c"
+      },
+      "native_keyboard": "PASS",
+      "native_metadata_lifecycle": "PASS",
+      "native_queued_close": "PASS",
+      "native_host_cleanup": "PASS",
+      "native_failure_cleanup": "PASS",
+      "synthetic_owner_protocol": true,
+      "fixture_sha256": "d19814b081f9d5f50cafc2348ddc572d5b55b276d6365d8abe1b2c5767bfe1a3",
+      "real_owner_inference": "NOT_RUN",
+      "voice_similarity": "NOT_RUN",
+      "physical_recording": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "picker": "explicit fixture file selections; system picker not automated",
+      "interpreter": "only the inert synthetic owner marker is replaced with this installed Python"
+    }
+  },
+  "decoded_log_utf8": {
+    "sha256": "09920b5c6fbb95a9f9e5b9bb231e257f7143ca014a248d1ecba5ba646e48e1ad",
+    "bytes": 292912
+  },
+  "artifact": {
+    "id": 15249799889,
+    "name": "voice-management-windows-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "bytes": 157151,
+    "digest": "sha256:79530394c8c40add7f3afd18a93edb887ed1e2fdd4c50a8cdf65447c3b1d31f1",
+    "expired": false,
+    "created_at": "2026-11-28T05:35:14Z"
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "limitations": [
+    "The whole-source and isolated-installed gates both executed all495 cases without changing the individual600-second suite limit.",
+    "The actual current-manager/real-owner25-check closure ran in each mode. Native83/22 uses the explicitly synthetic owner protocol and exact installed source.",
+    "Real owner inference, voice similarity, physical recording and manual NVDA remain NOT_RUN as recorded by the native probe.",
+    "The measured package completion is one actual scheduling outcome, not a general throughput or cross-host speed ratio.",
+    "No ordinary corpus, other source head or platform qualification is inferred."
+  ]
+}

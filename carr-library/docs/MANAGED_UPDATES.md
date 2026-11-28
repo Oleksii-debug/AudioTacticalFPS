@@ -215,7 +215,11 @@ points, hardlinked payloads, changed ancestors and altered source hashes refuse.
 
 Only A's exact manifest-declared distribution and eight fixed maintenance helpers
 are copied. The active .venv, research data, private model/reference/voice and Node
-directories are not copied. The existing offline install_windows.py creates a
+directories are not copied. The closed exception for the thirteen observed pip
+implementation modules under runtime/Lib/site-packages/pip/_internal/models and
+their exact CPython311 bytecode files still requires A's independent bundle and
+ownership hashes. It does not admit other files or any private models directory.
+The existing offline install_windows.py creates a
 new environment at its final external path inside an owned Windows process
 family. The complete new runtime is sealed; its manifest and configuration are
 published without replacing a competitor. A failed attempt remains at its owned
@@ -252,8 +256,16 @@ After a verified download, **Close application and apply this update** is a
 separate action with Cancel as default and optional restart unchecked.
 Preparation reverifies the exact signed release, copies only authenticated
 metadata and its target into a private offline repository, verifies the entire
-sealed runtime and starts one fixed supervisor. No installer or network child
-starts before COMMIT.
+sealed runtime and starts one fixed supervisor. For a Windows virtual environment,
+the launch uses the base python.exe named by its sealed pyvenv.cfg and sets
+CPython's internal __PYVENV_LAUNCHER__ binding to the exact configured environment.
+The base executable, launcher and configuration must remain inside the same
+sealed runtime and retain their captured hashes and directory/file identities
+before and immediately after launch. Inherited interpreter overrides cannot
+select them. This preserves installed environment imports while making the
+retained process ID the actual supervisor ID. READY still requires that exact
+live process, request and release. No installer or network child starts before
+COMMIT.
 
 READY means only that this exact supervisor, request and release are retained.
 The parent registers precommit cleanup on the existing DesktopExecutor. One
@@ -294,8 +306,11 @@ explicit authority; an application target does not grant those permissions.
 
 ### Additional regression boundary
 
-New portable inventory: handoff/transaction/real-lease 30, preparation 18,
-actual-handler/shared-executor 15, controller/configuration 14: 77 total.
+Current portable inventory: handoff/transaction/real-lease 53, preparation 40,
+actual-handler/shared-executor 15, controller/configuration 14: 122 total.
+The added cases exercise real temporary virtual environments, exact PID and
+prefix, cancellation/commit ownership, late sealed-input changes, all observed
+pip code paths and continued private, unowned, changed or ambiguous path refusal.
 A separate 15-case suite uses real local TLS, official TUF and actual transfer
 children. It requires the explicit loopback gate and is not admitted through an
 all-network-denied runner.
@@ -313,8 +328,12 @@ does not qualify this newly configured Apply route.
 
 ### Compiled configured-update acceptance
 
-The separate `carr-configured-update-native.yml` job builds the immutable A2
-source `8f24cae6dbb657854a07dcb801f77296f3b7e4e3` and the exact selected B source.
+The separate `carr-configured-update-native.yml` job builds the immutable baseline
+named by CARR_CONFIGURED_SOURCE_A and the exact selected B source. After the
+runtime-admission and supervisor-launch corrections, that baseline must itself
+contain both fixes; a changed B cannot repair code already installed from A.
+The historical A2 source `8f24cae6dbb657854a07dcb801f77296f3b7e4e3` reached the real
+preparation review but refused its pip runtime-code paths. It does not qualify the corrected native cycle.
 Both distributions use the existing complete 56-wheel trusted-client lock,
 original pinned Python, native DLL closure, launcher compiler and standard Inno
 setup. Version labels do not replace the source, bundle and installer digests.
@@ -346,4 +365,4 @@ fixtures stay in the runner's private temporary tree. The real Windows vault
 anchor belongs only to that synthetic run. Production publisher provisioning,
 vendor rollout, a real user's installation, Authenticode, NVDA and physical audio
 remain separate qualifications. The probe's source review or the portable
-77-case and TLS15 results cannot stand in for an actual successful native run.
+122-case and TLS15 results cannot stand in for an actual successful native run.

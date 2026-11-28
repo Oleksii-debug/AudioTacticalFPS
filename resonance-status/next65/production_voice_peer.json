@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "component": "Platform-appropriate actual production fixture",
+  "reviewer": "/root/locate_project",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "files": [
+    {
+      "preimage": "2036c36cab2fe931d72014ad75eabaf8381bcd6c",
+      "git_blob": "8d55d1f6706124fdf857892b84da5484936bdee7",
+      "inverse": "PASS",
+      "unchanged_test_functions": [
+        "test_actual_three_role_music_chapters_stems_and_text_invariance",
+        "test_actual_left_center_right_routing_and_two_second_pause",
+        "test_measured_line_subtitles_and_music_stem_alignment",
+        "test_actual_music_ducking_recovers_during_deliberate_silence",
+        "test_completed_operation_is_idempotent_and_outputs_are_reverified",
+        "test_pause_restart_and_one_corrupt_speech_chunk_repaired",
+        "test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+        "test_completed_output_tampering_is_not_silently_overwritten",
+        "test_corrupt_receipt_is_recoverable_like_corrupt_audio",
+        "test_actual_selected_local_sfx_routing_and_source_audio_invariance",
+        "test_unselected_cue_directory_is_denied_before_publication"
+      ],
+      "all_old_assertion_and_parametrization_lines": "BYTE_IDENTICAL",
+      "added_validation": "At least two distinct actual English SAPI tokens on Windows."
+    },
+    {
+      "preimage": "79fda93171f594bb0554a6a48096201c1c734d4d",
+      "git_blob": "b9d410614f709750bc0b124185e44cbc19190d34",
+      "inverse": "PASS",
+      "unchanged_test_functions": [
+        "test_completed_actual_speech_is_receipted_before_cancellation",
+        "test_speech_publication_flush_uses_writable_descriptor",
+        "test_serviced_windows_powershell_host_allows_only_its_exact_hardlink",
+        "test_system_host_exception_still_rejects_a_canonical_symlink"
+      ],
+      "all_old_assertion_and_parametrization_lines": "BYTE_IDENTICAL",
+      "added_validation": "At least two distinct actual English SAPI tokens on Windows."
+    }
+  ],
+  "cases": {
+    "production": 11,
+    "production_hardening": 5
+  },
+  "source_review": {
+    "runtime": "f5c43ef5f03af626f44096be0a2b10f034c09c80",
+    "speech_exports": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+    "current_native_probe": "5cd11e09c3e49c345277c82dd905655a3f8d7017",
+    "project": "63a20c64909db77b9958e9c16627b78f08050d95"
+  },
+  "reasoning": [
+    "Windows explicitly selects the existing NativeSapiProvider; VoiceRegistry only retains actually enumerated tokens and rejects fewer than two distinct English IDs.",
+    "Three roles use the actual token tuple; parse_script already cycles that tuple. No fictional aliases or claim of three distinct Windows voices is added.",
+    "Single-voice cases use one actually enumerated token. Linux retains exact awb/rms/slt and hardening slt.",
+    "The actual providers, production/FFmpeg routes, audio/routing/pause/cache/receipt/source preservation assertions remain unchanged.",
+    "Yield-fixture finalizers call the existing owned VoiceRegistry.close after dependent work, including failed assertions. Discovery already closes its own failed construction.",
+    "The native worker uses the existing bounded isolated helper, actual COM and original source/PCM verification; no synthetic speech or playback waiver."
+  ],
+  "limitations": [
+    "No Windows or Linux execution of these successor fixtures was performed by this peer.",
+    "The prior old62b native result does not qualify the corrected fixtures or current head.",
+    "Physical output, listening and NVDA remain separate."
+  ],
+  "refs_modified": false,
+  "recorded_utc": "2026-11-28 07:12:33 UTC"
+}

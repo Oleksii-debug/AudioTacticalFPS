@@ -1,0 +1,1211 @@
+{
+  "schema": "carr-actual-source-evidence/1",
+  "created_utc": "2026-11-28 07:05:14 UTC",
+  "source_commit": "80b64bac746851830d23e25a38e7a78870760a74",
+  "source_tree": "e9dd083aa9737b7ec72a6fb8d1d409c5601f0312",
+  "run_id": 46114564728,
+  "job_id": 140885384969,
+  "job_status": "completed",
+  "job_conclusion": "failure",
+  "source_wholes": 138,
+  "passed_wholes": 132,
+  "failed_wholes": 6,
+  "junit_totals": {
+    "passed": 3391,
+    "failed": 5,
+    "skipped": 12
+  },
+  "counts_are": "Actual case executions from unique strict whole-suite rows; no installed or native qualification.",
+  "decoded_log": {
+    "sha256": "4d73cc2d280f2d377835567661fa6e7403a68cf9a8f0e0530b55bc540864d41e",
+    "bytes": 787981
+  },
+  "strict_rows": [
+    {
+      "status": "PASS",
+      "suite": "tests/catalog/test_streaming_intake.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_anchors.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_authorized_action.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_finish_label_integrity.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_historical.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_printed_label_attestation.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/citations/test_span_approval_integration.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_application.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_extended_document_workflows.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_raster_ocr_native.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_retained_source_search_integrity.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ingest/test_batch_continuation.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ingest/test_batch_continuation_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_academic_documents.py",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_anchored_export.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_bibliographic_locators.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_context.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_evidence_export.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_finish_export_formats.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_historical_reader_integration.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_reading_desk.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_saved_span_compatibility.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_span_snapshot.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_topic_literature_matrix.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/research/test_outline_export.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_federated_epub.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_literal_readonly.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_thematic_budget.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_complete_pending_backup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_pending_backup.py",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_desktop_handlers.py",
+      "passed": 60,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_federated_labels.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_import_center.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_source_open_handler.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_source_review.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_research_search_cli.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_federated.py",
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_federated_search.py",
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/search/test_search_paging.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ingest/test_scan_root_binding.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ingest/test_large_source_intake.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reading_marks.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reading_tabs.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reading_presentation.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reading_presentation_handlers.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reading_presentation_reader_hook.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_native_reading_presentation_driver.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_voice_preferences.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_voice_preferences_backup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_voice_preferences_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_progress_job_review.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_reader_navigation_ui.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_reader_view_hooks.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_reader_preferences_state.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_batch.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_cli.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_book_batch_dialog.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_book_batches.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_recording_controls.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_recording_monitor.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_recording_controls.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_recording.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_recording_cleanup.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_recording_compatibility.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_recording_export.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_recording_dialog.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_audio_process.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_windows_audio_ownership.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/audio/test_conversion_batch.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_conversion_batch_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_publication_validation.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_braille.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_incremental_backup.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_book_audio.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_effect_presets.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_studio_effects.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reading.py",
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_session.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_audio.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_book_audio_dialog.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/e2e/test_import_worker_publication.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_desktop_preferences.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_desktop_integration.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_desktop_settings.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_desktop_host_lifecycle.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_ci_check.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/reader/test_export_reconciliation.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_local_schedules.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/ui/test_local_schedules.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_local_schedules.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/packaging/test_local_schedules_cli.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_transcription_backup.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_narration_receipt.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/speech/test_reader_usability.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_boundary.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_generated_audio.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_primary_producers.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_retained_audio.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_schema_identity.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_studio_draft.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_backup_v4_review.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/storage/test_v3_state_backup.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_audiobook_publication.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_effects.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_book_measured_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_clip_cli.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_clip_copy.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_clip_copy_dialog.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "FAIL",
+      "suite": "tests/studio/test_clip_dialog.py",
+      "passed": 44,
+      "failed": 1,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "status": "FAIL",
+      "suite": "tests/studio/test_clip_editing.py",
+      "passed": 33,
+      "failed": 1,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_clip_history_dialog.py",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_clip_operations.py",
+      "passed": 90,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "FAIL",
+      "suite": "tests/studio/test_clip_preview_loop.py",
+      "passed": 26,
+      "failed": 1,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_clip_restoration.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_daisy_boundaries.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_daisy_publishing.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "FAIL",
+      "suite": "tests/studio/test_daisy_schema_resolver.py",
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_envelope_workflow.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_marker_consumers.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_measured_audio.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_measured_pcm.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_music_scheduling.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "FAIL",
+      "suite": "tests/studio/test_production.py",
+      "passed": 0,
+      "failed": 0,
+      "skipped": 11,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "FAIL",
+      "suite": "tests/studio/test_production_hardening.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 1,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_project_effects.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_project_history.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_project_markers.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_publishing.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_publishing_boundaries.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_publishing_cli.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_publishing_handlers.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "suite": "tests/studio/test_studio_controller.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "final_summary": "Required suites complete: 138; passed=132; failed=6",
+  "artifact": {
+    "id": 15252896772,
+    "name": "carr-next8-source-80b64bac746851830d23e25a38e7a78870760a74-1",
+    "size_in_bytes": 76247,
+    "digest": "sha256:c1fd9f13cb60115b8c8805b97ecca5965a1160e6e61feee842240acee10c88af",
+    "expired": false,
+    "created_at": "2026-11-28T06:50:53Z",
+    "head_sha": "80b64bac746851830d23e25a38e7a78870760a74"
+  },
+  "failure_findings": [
+    {
+      "suite": "tests/studio/test_clip_dialog.py",
+      "test": "test_structural_script_edit_cannot_discard_an_attached_clip",
+      "actual": "Correct ValueError refusal followed by pytest regex mismatch.",
+      "expected_message": "attached audio changed its identity",
+      "observed_message": "A scene with attached audio, effects or named markers changed its identity. Move or remove its clips and markers in the scene editor before changing scene structure.",
+      "later_state_preservation_assertions": "NOT_REACHED"
+    },
+    {
+      "suite": "tests/studio/test_clip_editing.py",
+      "actual": "Expected total60000 frames; actual78000 at sample rate24000.",
+      "followup": "Existing separately reviewed pre-edit baseline fixture correction is not qualified by this old run."
+    },
+    {
+      "suite": "tests/studio/test_clip_preview_loop.py",
+      "actual": "Precondition requiring changed metadata stamp failed after same-size rewrite; before/after tuple identical.",
+      "followup": "No later repeat/refusal/cleanup assertion is inferred from this failed case."
+    },
+    {
+      "suite": "tests/studio/test_daisy_schema_resolver.py",
+      "actual": "Two native-spelling fixtures reached resolver url=None; old error formatting raised TypeError.",
+      "followup": "Separate83da/f71c correction is not qualified by this old run."
+    },
+    {
+      "suite": "tests/studio/test_production.py",
+      "actual": "All11 cases skipped. The closed console omits individual skip reason.",
+      "source": "2036c36cab2fe931d72014ad75eabaf8381bcd6c",
+      "prerequisites": [
+        "ffmpeg and ffprobe available",
+        "actual Flite voices awb, rms and slt"
+      ],
+      "which_prerequisite_failed": "NOT_OBSERVED"
+    },
+    {
+      "suite": "tests/studio/test_production_hardening.py",
+      "actual": "Actual-speech case skipped; other4 passed. The closed console omits individual skip reason.",
+      "source": "79fda93171f594bb0554a6a48096201c1c734d4d",
+      "prerequisites": [
+        "ffmpeg and ffprobe available",
+        "actual Flite slt voice"
+      ],
+      "which_prerequisite_failed": "NOT_OBSERVED"
+    }
+  ],
+  "bounded_log_excerpts": [
+    {
+      "start_line": 4460,
+      "end_line": 4537,
+      "text": "        controller.project = altered\n        edited_script = '[Scene: Renamed]\\nNarrator: Changed line.'\n        with pytest.raises(ValueError, match='attached audio changed its identity'):\n>           controller.save(edited_script, altered.title, ('voice-a',))\n\ntests\\studio\\test_clip_dialog.py:378: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <carr_library.ui.studio_dialog.StudioController object at 0x000001F9112F8490>\ntext = '[Scene: Renamed]\\nNarrator: Changed line.', title = 'Project'\nvoice_ids = ('voice-a',)\n\n    def save(self, text, title, voice_ids):\n        # Keep even an invalid script draft, and report the validation failure.\n        self.autosave(text, title, voice_ids)\n        previous_project = self.project\n        if previous_project and text == previous_project.original_script:\n            # JSON projects can contain recorded clips, source bindings and\n            # non-default render settings which the prose grammar cannot express.\n            # Saving an unchanged script must preserve that complete performance.\n            project = replace(previous_project, title=title)\n        else:\n            project = parse_script(text, title=title, voice_ids=voice_ids,\n                                   mode=previous_project.mode if previous_project else 'faithful',\n                                   project_id=previous_project.id if previous_project else None)\n        if previous_project and text != previous_project.original_script:\n            marker_scenes = {marker.scene_id for marker in previous_project.markers}\n            if marker_scenes:\n                old_structure = tuple((scene.id, scene.title) for scene in previous_project.scenes)\n                new_structure = tuple((scene.id, scene.title) for scene in project.scenes)\n                if old_structure != new_structure:\n                    raise ValueError('A script with named markers changed its ordered scene structure. '\n                                     'Remove or review its markers before changing scene structure.')\n                title_counts = {}\n                for scene in previous_project.scenes:\n                    title_counts[scene.title] = title_counts.get(scene.title, 0) + 1\n                if any(scene.id in marker_scenes and title_counts[scene.title] > 1\n                       for scene in previous_project.scenes):\n                    raise ValueError('Named markers in scenes with repeated titles cannot be matched '\n                                     'unambiguously after a script edit. Remove those markers and use '\n                                     'distinct scene titles before adding reviewed markers again.')\n            attached = {scene.id: scene for scene in previous_project.scenes\n                        if scene.cues or scene.effects or scene.id in marker_scenes}\n            current = {scene.id: scene for scene in project.scenes}\n            if any(identity not in current or current[identity].title != old.title\n                   for identity, old in attached.items()):\n>               raise ValueError('A scene with attached audio, effects or named markers changed its identity. '\n                                 'Move or remove its clips and markers in the scene editor before changing scene structure.')\nE               ValueError: A scene with attached audio, effects or named markers changed its identity. Move or remove its clips and markers in the scene editor before changing scene structure.\n\nsrc\\carr_library\\ui\\studio_dialog.py:83: ValueError\n\nDuring handling of the above exception, another exception occurred:\n\ntmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-ay89o32w/pytest/test_structural_script_edit_ca0')\n\n    def test_structural_script_edit_cannot_discard_an_attached_clip(tmp_path):\n        from dataclasses import replace\n        from carr_library.ui.studio_dialog import StudioController\n        controller = StudioController(SimpleNamespace(root=tmp_path))\n        original = controller.save('[Scene: Original]\\nNarrator: Retained line.', 'Project', ('voice-a',))\n        scene = replace(original.scenes[0], cues=(Cue('attached', '/never-open-legacy-audio.wav'),))\n        altered = replace(original, scenes=(scene,), revision=2)\n        controller.service.projects.save(altered, expected_revision=original.revision)\n        controller.project = altered\n        edited_script = '[Scene: Renamed]\\nNarrator: Changed line.'\n>       with pytest.raises(ValueError, match='attached audio changed its identity'):\nE       AssertionError: Regex pattern did not match.\nE         Expected regex: 'attached audio changed its identity'\nE         Actual message: 'A scene with attached audio, effects or named markers changed its identity. Move or remove its clips and markers in the scene editor before changing scene structure.'\n\ntests\\studio\\test_clip_dialog.py:377: AssertionError\n- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-ay89o32w\\junit.xml -\n=========================== short test summary info ===========================\nFAILED tests/studio/test_clip_dialog.py::test_structural_script_edit_cannot_discard_an_attached_clip - AssertionError: Regex pattern did not match.\n  Expected regex: 'attached audio changed its identity'\n  Actual message: 'A scene with attached audio, effects or named markers changed its identity. Move or remove its clips and markers in the scene editor before changing scene structure.'\n======================== 1 failed, 44 passed in 1.91s ========================="
+    },
+    {
+      "start_line": 5351,
+      "end_line": 5366,
+      "text": "collecting ... collected 11 items\n\ntests/studio/test_production.py::test_actual_three_role_music_chapters_stems_and_text_invariance SKIPPED [  9%]\ntests/studio/test_production.py::test_actual_left_center_right_routing_and_two_second_pause SKIPPED [ 18%]\ntests/studio/test_production.py::test_measured_line_subtitles_and_music_stem_alignment SKIPPED [ 27%]\ntests/studio/test_production.py::test_actual_music_ducking_recovers_during_deliberate_silence SKIPPED [ 36%]\ntests/studio/test_production.py::test_completed_operation_is_idempotent_and_outputs_are_reverified SKIPPED [ 45%]\ntests/studio/test_production.py::test_pause_restart_and_one_corrupt_speech_chunk_repaired SKIPPED [ 54%]\ntests/studio/test_production.py::test_edit_one_scene_reuses_unchanged_speech_and_source_original SKIPPED [ 63%]\ntests/studio/test_production.py::test_completed_output_tampering_is_not_silently_overwritten SKIPPED [ 72%]\ntests/studio/test_production.py::test_corrupt_receipt_is_recoverable_like_corrupt_audio SKIPPED [ 81%]\ntests/studio/test_production.py::test_actual_selected_local_sfx_routing_and_source_audio_invariance SKIPPED [ 90%]\ntests/studio/test_production.py::test_unselected_cue_directory_is_denied_before_publication SKIPPED [100%]\n\n- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-97v1rxcr\\junit.xml -\n============================= 11 skipped in 0.20s ============================="
+    },
+    {
+      "start_line": 5399,
+      "end_line": 5403,
+      "text": "tests/studio/test_production_hardening.py::test_completed_actual_speech_is_receipted_before_cancellation SKIPPED [ 20%]\ntests/studio/test_production_hardening.py::test_speech_publication_flush_uses_writable_descriptor PASSED [ 40%]\ntests/studio/test_production_hardening.py::test_serviced_windows_powershell_host_allows_only_its_exact_hardlink[64-System32] PASSED [ 60%]\ntests/studio/test_production_hardening.py::test_serviced_windows_powershell_host_allows_only_its_exact_hardlink[32-SysWOW64] PASSED [ 80%]\ntests/studio/test_production_hardening.py::test_system_host_exception_still_rejects_a_canonical_symlink PASSED [100%]"
+    }
+  ],
+  "exact_marker_result": {
+    "domain48": "PASS",
+    "consumers31": "PASS",
+    "controller18": "PASS"
+  },
+  "limitations": [
+    "No successor head result transfer.",
+    "No installed wheel/native playback/acoustic/release claim.",
+    "No source or benchmark correction is inferred from skips without the missing prerequisite evidence."
+  ]
+}

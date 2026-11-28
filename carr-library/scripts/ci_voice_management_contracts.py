@@ -51,7 +51,7 @@ PINS = {
     "src/carr_library/audio/voice_lifecycle.py": "0508ffba185e99171d0d2e230a9adb06db05bbae",
     "src/carr_library/audio/voice_reference.py": "8d3265dcc37662046a3bebcf2abacf317c818553",
     "src/carr_library/audio/voice_restore.py": "44844682df24a5d3934830e5ae0d3d78d09a9a6a",
-    "src/carr_library/state_backup.py": "7027e3f07f967403d6e523aa23c8233176a43222",
+    "src/carr_library/state_backup.py": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
     "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
     "src/carr_library/ui/voice_packages.py": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da",
     "src/carr_library/ui/voice_reference.py": "53578efe02f434c72ebd3b3acae95eb729671659",

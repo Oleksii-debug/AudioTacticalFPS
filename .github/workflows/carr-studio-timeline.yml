@@ -51,7 +51,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, json, pathlib, sys
-          pins = {"scripts/ci_studio_timeline_contracts.py":"eb7653c7b2b057bf3db892561990e72935b534ec","scripts/check_studio_timeline_native.py":"cc67469e59aee71504b60640b61619171e7566f1","scripts/ci_studio_timeline_cases.json":"5d6c9fa8eed10b037bdb056ce0d942a0ce21de00","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_studio_timeline_contracts.py":"f6d1fa87319f86f777333aa66576254d5ec4fa2d","scripts/check_studio_timeline_native.py":"cc67469e59aee71504b60640b61619171e7566f1","scripts/ci_studio_timeline_cases.json":"5d6c9fa8eed10b037bdb056ce0d942a0ce21de00","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()

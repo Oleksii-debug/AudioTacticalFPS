@@ -96,7 +96,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = 'a7cd67986474b15702c630e62ccca62e96c2e4d6'
+          $expectedBlob = '162be91cb9e49f64ddbdc7ce7e64271f687dd3e7'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -114,9 +114,9 @@ jobs:
           if ($afterInfo.PSIsContainer -or ($afterInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
               ($helperStamp -join ':') -cne (@($afterInfo.Length, $afterInfo.CreationTimeUtc.Ticks, $afterInfo.LastWriteTimeUtc.Ticks) -join ':') -or
               (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant() -cne $helperHash) { throw 'The reviewed source-shard helper changed during execution.' }
-          if ($inventory.complete_count -ne 487 -or $inventory.complete.Count -ne 487 -or $inventory.shards.Count -ne 4) { throw 'The actual source inventory audit did not return its complete reviewed contract.' }
+          if ($inventory.complete_count -ne 490 -or $inventory.complete.Count -ne 490 -or $inventory.shards.Count -ne 4) { throw 'The actual source inventory audit did not return its complete reviewed contract.' }
           $inventory | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath 'ci-syntax-results/integrated-source-inventory.json' -Encoding utf8
-          Write-Output 'PASS: native source-shard parser, exact 487 selectors, four assignments, and every overlapping case count.'
+          Write-Output 'PASS: native source-shard parser, exact 490 selectors, four assignments, and every overlapping case count.'
 
       - name: Preserve exact workflow syntax evidence
         if: always()
@@ -160,7 +160,7 @@ jobs:
       expected_head: ${{ github.event.pull_request.head.sha || github.sha }}
 
   integrated-source-complete:
-    name: Required complete source inventory / 487 whole suites
+    name: Required complete source inventory / 490 whole suites
     needs: [integrated-source-0, integrated-source-1, integrated-source-2, integrated-source-3]
     if: always()
     runs-on: windows-2022
@@ -192,7 +192,7 @@ jobs:
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required source aggregate has no exact tree.' }
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = 'a7cd67986474b15702c630e62ccca62e96c2e4d6'
+          $expectedBlob = '162be91cb9e49f64ddbdc7ce7e64271f687dd3e7'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -210,7 +210,7 @@ jobs:
           if ($afterInfo.PSIsContainer -or ($afterInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
               ($helperStamp -join ':') -cne (@($afterInfo.Length, $afterInfo.CreationTimeUtc.Ticks, $afterInfo.LastWriteTimeUtc.Ticks) -join ':') -or
               (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant() -cne $helperHash) { throw 'The reviewed source-shard helper changed during execution.' }
-          if ($inventory.schema -cne 'carr-integrated-source-inventory/1' -or $inventory.complete_count -ne 487 -or $inventory.complete.Count -ne 487 -or $inventory.shards.Count -ne 4) { throw 'The source inventory helper did not produce its complete reviewed map.' }
+          if ($inventory.schema -cne 'carr-integrated-source-inventory/1' -or $inventory.complete_count -ne 490 -or $inventory.complete.Count -ne 490 -or $inventory.shards.Count -ne 4) { throw 'The source inventory helper did not produce its complete reviewed map.' }
           function Exact-Integer($Value, [int]$Expected) {
             return (($Value -is [long] -or $Value -is [int]) -and $Value -eq $Expected)
           }
@@ -237,7 +237,7 @@ jobs:
             if ($receipt.schema -cne 'carr-required-source-shard/1' -or $receipt.status -cne 'PASS' -or
                 $receipt.head -cne $head -or $receipt.tree -cne $tree -or
                 -not (Exact-Integer $receipt.shard $index) -or
-                -not (Exact-Integer $receipt.complete_count 487) -or
+                -not (Exact-Integer $receipt.complete_count 490) -or
                 -not (Exact-Integer $receipt.assigned_count $assigned.Count) -or
                 -not (Exact-Integer $receipt.strict_verdict_count $assigned.Count) -or
                 -not (Exact-Integer $receipt.jobs 3) -or -not (Exact-Integer $receipt.academic_jobs 1) -or
@@ -258,16 +258,16 @@ jobs:
             elseif ($sourceSha256 -cne $receipt.source_sha256) { throw 'The four source workers did not validate the same tracked payload.' }
             $reports.Add($receipt)
           }
-          if ($union.Count -ne 487 -or -not $union.SetEquals([string[]]$inventory.complete)) { throw 'The four source jobs did not cover the exact 487-suite union once.' }
+          if ($union.Count -ne 490 -or -not $union.SetEquals([string[]]$inventory.complete)) { throw 'The four source jobs did not cover the exact 490-suite union once.' }
           New-Item -ItemType Directory -Path 'ci-source-aggregate' | Out-Null
           $complete = [ordered]@{
             schema='carr-required-source-aggregate/1'; status='PASS'; head=$head; tree=$tree;
-            complete_whole_suites=487; shards=4; multiplicity=1; source_sha256=$sourceSha256;
+            complete_whole_suites=490; shards=4; multiplicity=1; source_sha256=$sourceSha256;
             inventory_sha256=$inventory.inventory_sha256; count_contract_sha256=$inventory.count_contract_sha256;
             helper_sha256=$helperHash; results=$reports; qualification='Strict source acceptance only'
           }
           $complete | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath 'ci-source-aggregate/complete-source.json' -Encoding utf8
-          Write-Output ('PASS: all four required source jobs, exactly 487 whole suites, head=' + $head)
+          Write-Output ('PASS: all four required source jobs, exactly 490 whole suites, head=' + $head)
       - name: Preserve the required complete-source receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -510,7 +510,9 @@ jobs:
             'tests/security/test_update_controller_actions.py',
             'tests/audio/test_voice_scope_checks.py',
             'tests/catalog/test_text_screen_work.py',
-            'tests/search/test_ascii_mapping_work.py'
+            'tests/search/test_ascii_mapping_work.py',
+            'tests/studio/test_clip_preview_loop.py',
+            'tests/studio/test_project_markers.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -571,9 +573,11 @@ jobs:
             'tests/packaging/test_library_scale_benchmark.py' = 24
             'tests/audio/test_envelopes.py' = 64
             'tests/studio/test_envelope_workflow.py' = 17
-            'tests/studio/test_clip_operations.py' = 59
+            'tests/studio/test_clip_operations.py' = 90
             'tests/studio/test_project_history.py' = 29
-            'tests/studio/test_clip_history_dialog.py' = 22
+            'tests/studio/test_clip_history_dialog.py' = 50
+            'tests/studio/test_clip_preview_loop.py' = 49
+            'tests/studio/test_project_markers.py' = 48
             'tests/assistant/test_translation_layout.py' = 33
             'tests/ui/test_translation_layout.py' = 23
             'tests/assistant/test_translation_layout_cli.py' = 5
@@ -661,17 +665,17 @@ jobs:
             'tests/integrations/test_dordiai_managed_backends.py' = 6
             'tests/citations/test_attestation_cancellation.py' = 15
             'tests/packaging/test_library_scale_profile.py' = 7
-            'tests/studio/test_daisy_schema_resolver.py' = 20
+            'tests/studio/test_daisy_schema_resolver.py' = 27
             'tests/assistant/test_transcription_provider.py' = 39
             'tests/transcription/test_remote_service.py' = 29
             'tests/ui/test_transcription_remote.py' = 18
-            'tests/security/test_update_handoff.py' = 30
-            'tests/security/test_update_runtime.py' = 18
+            'tests/security/test_update_handoff.py' = 53
+            'tests/security/test_update_runtime.py' = 40
             'tests/security/test_update_ui.py' = 15
             'tests/security/test_update_controller_actions.py' = 14
             'tests/audio/test_voice_scope_checks.py' = 42
             'tests/catalog/test_text_screen_work.py' = 26
-            'tests/search/test_ascii_mapping_work.py' = 56
+            'tests/search/test_ascii_mapping_work.py' = 73
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -1883,8 +1887,23 @@ jobs:
             @{ status=$(if ($requiredNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-results/required-native-failures.json'
           }
           try {
+          $studioGate = 'scripts/check_studio_timeline_native.py'
+          function Confirm-StudioGate {
+            $item = Get-Item -LiteralPath $studioGate -ErrorAction Stop
+            if (-not ($item -is [IO.FileInfo]) -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Studio native gate is not an ordinary file.' }
+            $blob = (git hash-object --no-filters -- $studioGate).Trim()
+            if ($LASTEXITCODE -ne 0 -or $blob -cne 'cc67469e59aee71504b60640b61619171e7566f1') { throw 'Studio native gate differs from the reviewed source.' }
+          }
+          Confirm-StudioGate
+          & $python -I -B $studioGate pre --log 'ci-results/full-bundle-clips-native.txt' --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR
+          if ($LASTEXITCODE -ne 0) { throw 'Studio native preflight failed.' }
+          $studioProof = (Get-FileHash -LiteralPath 'ci-results/full-bundle-clips-native.pre.json' -Algorithm SHA256).Hash.ToLowerInvariant()
           & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-clips-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native portable clip editing failed.' }
+          Confirm-StudioGate
+          & $python -I -B $studioGate post --log 'ci-results/full-bundle-clips-native.txt' --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --proof-sha256 $studioProof
+          if ($LASTEXITCODE -ne 0) { throw 'Studio native result or original preflight identity failed.' }
+          Confirm-StudioGate
           } catch {
             $requiredNativeFailures.Add([pscustomobject]@{ block='clips'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
             Write-Host ('REQUIRED NATIVE BLOCK FAILED [clips]: ' + $_.Exception.Message)
@@ -3807,7 +3826,7 @@ jobs:
             status=$(if ($failed.Count -eq 0) { 'PASS' } else { 'FAIL' })
             head=$head; tree=$tree; run_id=[long]$env:GITHUB_RUN_ID; run_attempt=[int]$env:GITHUB_RUN_ATTEMPT
             required_jobs=$results; failed_jobs=$failed
-            source_whole_suites=487
+            source_whole_suites=490
             configured_native_workflow=$configuredPath; configured_native_workflow_blob=$configuredBlob
             configured_native_artifact=('configured-update-' + $head + '-' + $env:GITHUB_RUN_ATTEMPT)
             qualification='Required workflow results only; each lane retains its original source, native, hardware and manual acceptance boundaries.'

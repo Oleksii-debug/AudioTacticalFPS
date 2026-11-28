@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   configured-update-linux:
-    name: Configured updater77 source and77 installed on Linux
+    name: Configured updater122 source and122 installed on Linux
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     concurrency:
@@ -53,7 +53,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_configured_update_contracts.py":"24d4bdb71b25597faffed9e5979c58ef7cc263ff","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_configured_update_contracts.py":"59d3642396f88529e17d82f68bb4675382145c9f","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -69,7 +69,7 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD',):
               compile(getattr(module, name), '<configured-update-'+name+'>', 'exec')
-          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 77
+          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 122
           assert len(module.PINS) == 53
           assert len(module.MODULES) == len(set(module.MODULES)) == (32 if os.name == 'nt' else 31)
           print('Exact configured updater source and embedded Python compile checks passed.')
@@ -82,7 +82,7 @@ jobs:
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'configured updater dependency closure is inconsistent.' }
 
-      - name: Require77 source and77 isolated installed whole cases
+      - name: Require122 source and122 isolated installed whole cases
         # Reserve 40 minutes for acquisition, setup and retained cleanup evidence.
         # Individual whole-suite deadlines remain unchanged.
         timeout-minutes: 80
@@ -90,7 +90,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_configured_update_contracts.py --evidence ci-configured-update/contracts --expected-head $env:EXPECTED_SOURCE_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'All77 source and77 isolated installed whole cases are required.' }
+          if ($LASTEXITCODE -ne 0) { throw 'All122 source and122 isolated installed whole cases are required.' }
       - name: Admit only bounded diagnostic text and JSON evidence
         id: evidence_contract
         if: ${{ always() }}
@@ -139,7 +139,7 @@ jobs:
           if-no-files-found: error
 
   configured-update-windows:
-    name: Configured updater77 source and77 installed on Windows
+    name: Configured updater122 source and122 installed on Windows
     runs-on: windows-2022
     timeout-minutes: 120
     concurrency:
@@ -181,7 +181,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_configured_update_contracts.py":"24d4bdb71b25597faffed9e5979c58ef7cc263ff","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_configured_update_contracts.py":"59d3642396f88529e17d82f68bb4675382145c9f","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -197,7 +197,7 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD',):
               compile(getattr(module, name), '<configured-update-'+name+'>', 'exec')
-          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 77
+          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 122
           assert len(module.PINS) == 53
           assert len(module.MODULES) == len(set(module.MODULES)) == (32 if os.name == 'nt' else 31)
           print('Exact configured updater source and embedded Python compile checks passed.')
@@ -210,7 +210,7 @@ jobs:
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'configured updater dependency closure is inconsistent.' }
 
-      - name: Require77 source and77 isolated installed whole cases
+      - name: Require122 source and122 isolated installed whole cases
         # Reserve 40 minutes for acquisition, setup and retained cleanup evidence.
         # Individual whole-suite deadlines remain unchanged.
         timeout-minutes: 80

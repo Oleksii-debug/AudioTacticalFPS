@@ -1,0 +1,328 @@
+{
+  "schema": "carr.actual-ci-evidence/1",
+  "recorded_utc": "2026-11-28T05:34:32.007Z",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "job_id": 140873303945,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110647047/job/140873303945",
+  "job_status": "completed",
+  "job_conclusion": "success",
+  "source": {
+    "whole_suites": 19,
+    "passed": 388,
+    "failed": 0,
+    "skipped": 0,
+    "strict_verdicts": [
+      {
+        "line": 1056,
+        "status": "PASS",
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1057,
+        "status": "PASS",
+        "path": "tests/packaging/test_managed_update_native_policy.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1058,
+        "status": "PASS",
+        "path": "tests/packaging/test_native_launcher_bundle.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1059,
+        "status": "PASS",
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 102,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1060,
+        "status": "PASS",
+        "path": "tests/security/test_anchor_locking.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1061,
+        "status": "PASS",
+        "path": "tests/security/test_canonical_boundary.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1062,
+        "status": "PASS",
+        "path": "tests/security/test_controller.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1063,
+        "status": "PASS",
+        "path": "tests/security/test_entitlements.py",
+        "passed": 30,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1064,
+        "status": "PASS",
+        "path": "tests/security/test_idle_renewal.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1065,
+        "status": "PASS",
+        "path": "tests/security/test_independent_review_boundaries.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1066,
+        "status": "PASS",
+        "path": "tests/security/test_installation.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1067,
+        "status": "PASS",
+        "path": "tests/security/test_managed_installation.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1068,
+        "status": "PASS",
+        "path": "tests/security/test_managed_registration.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1069,
+        "status": "PASS",
+        "path": "tests/security/test_publication_integrity.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1070,
+        "status": "PASS",
+        "path": "tests/security/test_refresh.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1071,
+        "status": "PASS",
+        "path": "tests/security/test_updates.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1072,
+        "status": "PASS",
+        "path": "tests/ui/test_trust_status_handlers.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1073,
+        "status": "PASS",
+        "path": "tests/packaging/test_installed_trusted_client_probe.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 1074,
+        "status": "PASS",
+        "path": "tests/security/test_windows_vault.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "whole_suites": 18,
+    "status": "PASS",
+    "cases": 354,
+    "failed_or_skipped": 0,
+    "suite_counts": {
+      "tests/packaging/test_managed_launch_boundary.py": 8,
+      "tests/packaging/test_managed_update_native_policy.py": 7,
+      "tests/packaging/test_native_launcher_bundle.py": 19,
+      "tests/packaging/test_standard_installer.py": 102,
+      "tests/security/test_anchor_locking.py": 1,
+      "tests/security/test_canonical_boundary.py": 27,
+      "tests/security/test_controller.py": 10,
+      "tests/security/test_entitlements.py": 30,
+      "tests/security/test_idle_renewal.py": 4,
+      "tests/security/test_independent_review_boundaries.py": 5,
+      "tests/security/test_installation.py": 39,
+      "tests/security/test_managed_installation.py": 34,
+      "tests/security/test_managed_registration.py": 10,
+      "tests/security/test_publication_integrity.py": 18,
+      "tests/security/test_refresh.py": 5,
+      "tests/security/test_updates.py": 23,
+      "tests/ui/test_trust_status_handlers.py": 11,
+      "tests/security/test_windows_vault.py": 1
+    },
+    "installed_origins": {
+      "carr_library.security.anchors": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\anchors.py",
+        "sha256": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.boundary": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\boundary.py",
+        "sha256": "60fe38d06826ed0822d565742e2c6ce744c85dbb6ebd3b2277d6990f72a579ec",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.controller": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\controller.py",
+        "sha256": "3c1cc0b9c8f8fdb82b9a924b77d53004e6a96938057d177c1168973cf08e02af",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.entitlements": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\entitlements.py",
+        "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.installation": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+        "sha256": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.managed_installation": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\managed_installation.py",
+        "sha256": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.refresh": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\refresh.py",
+        "sha256": "e85d72183279fc0a48b5979e091cd82761d14d9500a3b351eb3c2c80e469712b",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.updates": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\updates.py",
+        "sha256": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.security.windows_registration": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\windows_registration.py",
+        "sha256": "fb1b15d9fb031e4260e66205bd79109901bdd830f91477f129f89f29f3bba1c5",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.installation_lease": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+        "sha256": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.managed_installation": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\managed_installation.py",
+        "sha256": "1582a4f24401e98345210d08b013b1a9a50f87e9f694597cc498f3db1a761e93",
+        "qualification": "imported-installed-runtime"
+      },
+      "carr_library.ui.trust_status": {
+        "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+        "sha256": "2716f33a0e05d5d7c810d1d86c47d000d580a14b1cd5e3cf9046fcb0d54ba082",
+        "qualification": "imported-installed-runtime"
+      }
+    },
+    "packaging_evidence": "Reviewed source helpers; separate actual native setup gates are required",
+    "production_issuer": "UNCONFIGURED",
+    "manual_nvda": "NOT_RUN"
+  },
+  "native": {
+    "status": "PASS",
+    "checks": [
+      "Actual desktop Help exposes the signed client status",
+      "Signed status uses the existing configurable keyboard registry",
+      "Repeated module installation does not duplicate the Help command",
+      "Native Help event reaches the status action",
+      "Default status is a named native read-only multiline control",
+      "Private default shows perpetual operation and no fake authority actions",
+      "Terms and profile are readable before accepting",
+      "Import requires explicit native checkbox acceptance",
+      "Native acceptance event enables import",
+      "Reviewed signed grant is durably verified"
+    ],
+    "nvda": "NOT_RUN",
+    "production_authority": "NOT_CONFIGURED",
+    "production_installer_upgrade": "NOT_RUN",
+    "ui_module": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+    "executed_checks": 10,
+    "unique_check_names": 10,
+    "note": "Identical native report appears twice in the log; counted as one native execution."
+  },
+  "wheel_proof": {
+    "payload_files": 485,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 414,
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "status": "PASS",
+    "wheel_sha256": "dc8e6a76cd6955f8f3b0b85b89fe3f2f25c3bba004f266924070335ece4c6c85"
+  },
+  "artifact": {
+    "id": 15250680477,
+    "name": "trusted-client-windows-2022-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "bytes": 61689,
+    "digest": "sha256:622733c4396319778e56fcbd2b8da275b89b24cd1aef3c2be17928273bb27366",
+    "expired": false,
+    "upload_log_identity_agrees": true
+  },
+  "paired_linux_evidence": "3168ff42feb0a29e189ea27be6cac96ce5d611b4",
+  "qualification": [
+    "Both required signed-client platform jobs are now closed SUCCESS on exact5b2.",
+    "The separate old native managed-update and configured-native A-to-B jobs remain required and are not qualified by this report.",
+    "Production issuer/authority remains unconfigured and manual NVDA is NOT_RUN.",
+    "Other main/V3 gates and all-lane required aggregate remain pending; no prior-head results transferred."
+  ]
+}

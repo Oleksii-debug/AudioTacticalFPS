@@ -220,3 +220,151 @@ def test_visible_final_configuration_retains_truth_if_acknowledgment_fails(recip
     assert result['status'] == 'PREPARED' and result['vendor_rollout'] == 'NOT_RUN'
     assert OwnerUpdateConfiguration(recipe.configuration, result['configuration_sha256']).verify_runtime()
     assert (recipe.root / 'app/version.txt').read_bytes() == b'3.1.0'
+
+
+def _recipe_with_runtime_files(tmp_path, repository, monkeypatch, files):
+    # Build the real original installation and ownership receipt from this
+    # synthetic distribution; do not bypass the admission or copy functions.
+    import sys
+    original = _payload
+    def payload(root, *args, **kwargs):
+        original(root, *args, **kwargs)
+        manifest = json.loads((root / 'bundle-manifest.json').read_bytes())
+        for name, raw in files.items():
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+            manifest['files'][name] = sha256(raw).hexdigest()
+        (root / 'bundle-manifest.json').write_bytes(json_bytes(manifest))
+    with monkeypatch.context() as patch:
+        patch.setattr(sys.modules[__name__], '_payload', payload)
+        return recipe.__wrapped__(tmp_path, repository)
+
+
+def _repin_source_recipe(item, *, manifest=None, owner=None):
+    # Deliberately resign only the fixture's independent metadata so malformed
+    # declared ownership reaches the real per-file admission boundary.
+    source = dict(item.source)
+    if manifest is not None:
+        raw = json_bytes(manifest)
+        (item.root / 'app/bundle-manifest.json').write_bytes(raw)
+        source['bundle_sha256'] = sha256(raw).hexdigest()
+    if owner is None:
+        owner = json.loads((item.root / 'owned-files.json').read_bytes())
+    owner['bundle_sha256'] = source['bundle_sha256']
+    raw = json_bytes(owner)
+    (item.root / 'owned-files.json').write_bytes(raw)
+    source['owner_sha256'] = sha256(raw).hexdigest()
+    maintenance.set_marker(item.root, 'complete', source['bundle_sha256'],
+                           source['setup_sha256'], source['owner_sha256'])
+    return _rewrite(item, lambda value: value.update(source=source))
+
+
+@pytest.mark.parametrize('form', ['source', 'bytecode'])
+def test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code(
+        tmp_path, repository, monkeypatch, form):
+    # Independent names from the retained original install-A.log: all thirteen
+    # source modules and their exact CPython311 bytecode counterparts.
+    modules = ('__init__', 'candidate', 'direct_url', 'format_control', 'index',
+               'installation_report', 'link', 'release_control', 'scheme',
+               'search_scope', 'selection_prefs', 'target_python', 'wheel')
+    prefix = 'runtime/Lib/site-packages/pip/_internal/models/'
+    names = [prefix + (name + '.py' if form == 'source'
+                       else '__pycache__/' + name + '.cpython-311.pyc')
+             for name in modules]
+    files = {name: ('Explicit inert pinned runtime-code fixture: ' + name).encode('ascii')
+             for name in names}
+    item = _recipe_with_runtime_files(tmp_path, repository, monkeypatch, files)
+    before_owner = (item.root / 'owned-files.json').read_bytes()
+    before_manifest = (item.root / 'app/bundle-manifest.json').read_bytes()
+    calls = _portable_bootstrap(monkeypatch, item)
+    result = runtime.prepare_update_host(item)
+    assert result['status'] == 'PREPARED' and len(calls) == 2
+    assert len(files) == 13
+    for name, raw in files.items():
+        assert (item.root / 'app' / name).read_bytes() == raw
+        assert (item.destination / 'app' / name).read_bytes() == raw
+    assert (item.root / 'owned-files.json').read_bytes() == before_owner
+    assert (item.root / 'app/bundle-manifest.json').read_bytes() == before_manifest
+    configured = runtime.OwnerUpdateConfiguration(
+        item.configuration, result['configuration_sha256'])
+    assert configured.verify_runtime()['sha256'] == result['manifest_sha256']
+    assert item.fixture_library.search(item.fixture_workspace, 'unchanged')[0].quote == 'unchanged'
+
+
+@pytest.mark.parametrize('component', [
+    '.venv', 'data', 'state', 'models', 'voices', 'references', 'voice-packages',
+    'dordiai-voices', 'node_modules', '.git', '.env',
+])
+def test_pip_code_exception_preserves_every_private_component_refusal(
+        tmp_path, repository, monkeypatch, component):
+    canonical = 'runtime/Lib/site-packages/pip/_internal/models/wheel.py'
+    private = 'extra/' + component + '/private.bin'
+    files = {canonical: b'Explicit inert runtime code', private: b'Private fixture must not be copied'}
+    item = _recipe_with_runtime_files(tmp_path, repository, monkeypatch, files)
+    calls = _portable_bootstrap(monkeypatch, item)
+    with pytest.raises(TrustError, match='private, ambiguous or unowned'):
+        runtime.prepare_update_host(item)
+    assert calls == []
+    assert not item.destination.exists() and not item.manifest.exists() and not item.configuration.exists()
+    for name, raw in files.items():
+        assert (item.root / 'app' / name).read_bytes() == raw
+
+
+@pytest.mark.parametrize('unreviewed', [
+    'runtime/Lib/site-packages/pip/_internal/models/extra.py',
+    'runtime/Lib/site-packages/other/models/wheel.py',
+    'runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-312.pyc',
+    'runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-311.opt-1.pyc',
+])
+def test_pip_code_exception_is_closed_to_exact_observed_relative_files(
+        tmp_path, repository, monkeypatch, unreviewed):
+    files = {'runtime/Lib/site-packages/pip/_internal/models/wheel.py': b'Known inert module',
+             unreviewed: b'Unreviewed sibling or misplaced code'}
+    item = _recipe_with_runtime_files(tmp_path, repository, monkeypatch, files)
+    calls = _portable_bootstrap(monkeypatch, item)
+    with pytest.raises(TrustError, match='private, ambiguous or unowned'):
+        runtime.prepare_update_host(item)
+    assert calls == [] and not item.destination.exists()
+    assert not item.manifest.exists() and not item.configuration.exists()
+    assert (item.root / 'app' / unreviewed).read_bytes() == files[unreviewed]
+
+
+@pytest.mark.parametrize('fault', [
+    'owner-entry', 'source-bytes', 'hardlink', 'case-duplicate', 'traversal',
+])
+def test_pip_code_exception_cannot_bypass_owner_hash_or_path_identity(
+        tmp_path, repository, monkeypatch, fault):
+    name = 'runtime/Lib/site-packages/pip/_internal/models/wheel.py'
+    item = _recipe_with_runtime_files(tmp_path, repository, monkeypatch,
+                                     {name: b'Known exact inert runtime module'})
+    target = item.root / 'app' / name
+    if fault == 'owner-entry':
+        owner = json.loads((item.root / 'owned-files.json').read_bytes())
+        owner['files'][name] = '0' * 64
+        item = _repin_source_recipe(item, owner=owner)
+    elif fault == 'source-bytes':
+        target.write_bytes(b'Changed after the independent A hashes were pinned')
+    elif fault == 'hardlink':
+        os.link(target, tmp_path / 'retained-alias')
+    else:
+        manifest = json.loads((item.root / 'app/bundle-manifest.json').read_bytes())
+        owner = json.loads((item.root / 'owned-files.json').read_bytes())
+        additional = (name[:-8] + 'WHEEL.py' if fault == 'case-duplicate'
+                      else name[:-8] + '../models/wheel.py')
+        manifest['files'][additional] = manifest['files'][name]
+        owner['files'][additional] = owner['files'][name]
+        item = _repin_source_recipe(item, manifest=manifest, owner=owner)
+    original = target.read_bytes()
+    original_owner = (item.root / 'owned-files.json').read_bytes()
+    original_manifest = (item.root / 'app/bundle-manifest.json').read_bytes()
+    calls = _portable_bootstrap(monkeypatch, item)
+    with pytest.raises((TrustError, ValueError)):
+        runtime.prepare_update_host(item)
+    assert calls == []
+    assert not item.destination.exists() and not item.manifest.exists() and not item.configuration.exists()
+    assert target.read_bytes() == original
+    assert (item.root / 'owned-files.json').read_bytes() == original_owner
+    assert (item.root / 'app/bundle-manifest.json').read_bytes() == original_manifest
+    if fault == 'hardlink':
+        assert (tmp_path / 'retained-alias').read_bytes() == original

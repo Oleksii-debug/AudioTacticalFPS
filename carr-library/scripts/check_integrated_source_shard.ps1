@@ -493,7 +493,10 @@ $suites = @(
   'tests/security/test_update_controller_actions.py',
   'tests/audio/test_voice_scope_checks.py',
   'tests/catalog/test_text_screen_work.py',
-  'tests/search/test_ascii_mapping_work.py'
+  'tests/search/test_ascii_mapping_work.py',
+  'tests/studio/test_clip_preview_loop.py',
+  'tests/studio/test_project_markers.py',
+  'tests/studio/test_marker_consumers.py'
 )
 
 $operationsCounts = @{
@@ -599,9 +602,14 @@ $completedFeatureCounts = @{
   'tests/packaging/test_library_scale_benchmark.py' = 24
   'tests/audio/test_envelopes.py' = 64
   'tests/studio/test_envelope_workflow.py' = 17
-  'tests/studio/test_clip_operations.py' = 59
+  'tests/studio/test_clip_operations.py' = 90
   'tests/studio/test_project_history.py' = 29
-  'tests/studio/test_clip_history_dialog.py' = 22
+  'tests/studio/test_clip_history_dialog.py' = 50
+  'tests/studio/test_clip_preview_loop.py' = 49
+  'tests/studio/test_project_markers.py' = 48
+  'tests/studio/test_marker_consumers.py' = 31
+  'tests/studio/test_clip_editing.py' = 34
+  'tests/studio/test_studio_controller.py' = 18
   'tests/assistant/test_translation_layout.py' = 33
   'tests/ui/test_translation_layout.py' = 23
   'tests/assistant/test_translation_layout_cli.py' = 5
@@ -688,17 +696,17 @@ $completedFeatureCounts = @{
   'tests/integrations/test_dordiai_managed_backends.py' = 6
   'tests/citations/test_attestation_cancellation.py' = 15
   'tests/packaging/test_library_scale_profile.py' = 7
-  'tests/studio/test_daisy_schema_resolver.py' = 20
+  'tests/studio/test_daisy_schema_resolver.py' = 27
   'tests/assistant/test_transcription_provider.py' = 39
   'tests/transcription/test_remote_service.py' = 29
   'tests/ui/test_transcription_remote.py' = 18
-  'tests/security/test_update_handoff.py' = 30
-  'tests/security/test_update_runtime.py' = 18
+  'tests/security/test_update_handoff.py' = 53
+  'tests/security/test_update_runtime.py' = 40
   'tests/security/test_update_ui.py' = 15
   'tests/security/test_update_controller_actions.py' = 14
   'tests/audio/test_voice_scope_checks.py' = 42
   'tests/catalog/test_text_screen_work.py' = 26
-  'tests/search/test_ascii_mapping_work.py' = 56
+  'tests/search/test_ascii_mapping_work.py' = 73
 }
 $formatExpected = @{
   'tests/audio/test_audiobook.py' = 17
@@ -716,7 +724,7 @@ $unique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Or
 foreach ($suite in $allSuites) {
   if ($suite -cnotmatch '^(tests|bootstrap)/[A-Za-z0-9_./-]+\.py$' -or -not $unique.Add($suite)) { throw "Invalid or duplicate whole-suite selector: $suite" }
 }
-if ($allSuites.Count -ne 487) { throw 'Exactly 487 reviewed whole source selectors are required.' }
+if ($allSuites.Count -ne 490) { throw 'Exactly 490 reviewed whole source selectors are required.' }
 $allCounts = [System.Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
 foreach ($mapping in @($operationsCounts, $readerExpected, $completedFeatureCounts, $formatExpected, @{'tests/speech/test_runtime.py'=13})) {
   foreach ($entry in $mapping.GetEnumerator()) {
@@ -755,13 +763,13 @@ $assignedUnion = [System.Collections.Generic.HashSet[string]]::new([StringCompar
 $shards = [ordered]@{}
 for ($index = 0; $index -lt 4; $index++) {
   $selected = @($partitions[$index].ToArray())
-  if ($selected.Count -ne @(122,122,122,121)[$index]) { throw 'The reviewed four-shard inventory size differs.' }
+  if ($selected.Count -ne @(123,123,122,122)[$index]) { throw 'The reviewed four-shard inventory size differs.' }
   foreach ($suite in $selected) {
     if (-not $unique.Contains($suite) -or -not $assignedUnion.Add($suite)) { throw "Shard overlap or unknown selector: $suite" }
   }
   $shards[[string]$index] = $selected
 }
-if ($assignedUnion.Count -ne 487 -or -not $assignedUnion.SetEquals($unique)) { throw 'The source shard union is incomplete.' }
+if ($assignedUnion.Count -ne 490 -or -not $assignedUnion.SetEquals($unique)) { throw 'The source shard union is incomplete.' }
 function Text-Sha256([string]$Text) {
   $hash = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text))
   return [Convert]::ToHexString($hash).ToLowerInvariant()
@@ -773,7 +781,7 @@ $countLines = @($countKeys | ForEach-Object { $_ + '=' + $allCounts[$_] })
 $inventory = [ordered]@{
   schema = 'carr-integrated-source-inventory/1'
   complete = $allSuites
-  complete_count = 487
+  complete_count = 490
   shards = $shards
   inventory_sha256 = Text-Sha256 (($allSuites -join $lf) + $lf)
   expected_counts = $allCounts
@@ -802,6 +810,7 @@ from pathlib import Path
 import stat
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 
 phase, expected_head = sys.argv[1:]
 if phase not in ('before', 'after'):
@@ -825,6 +834,54 @@ def ordinary(info, directory=False):
 def stamp(info):
     return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+def descriptor_path_stamp(info, path):
+    value = stamp(info)
+    if os.name == 'nt' and path.suffix.casefold() in ('.exe', '.bat', '.cmd', '.com'):
+        # CPython 3.11 win32_xstat_impl adds these filename-derived bits.
+        # Its _Py_fstat_noraise sees the same handle metadata without a filename.
+        value = (*value[:2], value[2] | 0o111, *value[3:])
+    return value
+def descriptor_controls():
+    controls = 0
+    with TemporaryDirectory(prefix='carr-source-descriptor-control-') as temporary:
+        root = Path(temporary)
+        for suffix in ('.txt', '.py', '.cmd', '.BAT', '.exe', '.com'):
+            path = root / ('controlled' + suffix)
+            path.write_bytes(b'fixed source proof fixture\n')
+            before = path.lstat()
+            ordinary(before)
+            with path.open('rb') as stream:
+                opened = os.fstat(stream.fileno())
+                ordinary(opened)
+                if descriptor_path_stamp(opened, path) != stamp(before):
+                    raise ValueError('Real source descriptor control failed: ' + suffix)
+                stream.read()
+                if stamp(os.fstat(stream.fileno())) != stamp(opened):
+                    raise ValueError('Real source descriptor control changed during reading.')
+            if stamp(path.lstat()) != stamp(before):
+                raise ValueError('Real source descriptor control path changed.')
+            controls += 1
+        path = root / 'identity.cmd'
+        path.write_bytes(b'same bytes\n')
+        original = path.lstat()
+        path.rename(root / 'retired.cmd')
+        path.write_bytes(b'same bytes\n')
+        with path.open('rb') as stream:
+            if descriptor_path_stamp(os.fstat(stream.fileno()), path) == stamp(original):
+                raise ValueError('Source proof accepted an actual same-byte file replacement.')
+        controls += 1
+        original = path.lstat()
+        with path.open('ab') as stream:
+            stream.write(b'changed\n')
+        with path.open('rb') as stream:
+            if descriptor_path_stamp(os.fstat(stream.fileno()), path) == stamp(original):
+                raise ValueError('Source proof accepted actual changed file bytes/size.')
+        controls += 1
+    if controls != 8:
+        raise ValueError('The real source descriptor controls are incomplete.')
+    print(json.dumps(dict(status='PASS', source_descriptor_controls=controls), sort_keys=True))
+if phase == 'before':
+    descriptor_controls()
 files, identities = {}, {}
 for row in rows:
     if not row:
@@ -849,16 +906,20 @@ for row in rows:
     content_hash = sha256()
     count = 0
     with path.open('rb') as stream:
-        if stamp(os.fstat(stream.fileno())) != stamp(before):
-            raise ValueError('A source file changed while opening.')
+        opened = os.fstat(stream.fileno())
+        ordinary(opened)
+        if descriptor_path_stamp(opened, path) != stamp(before):
+            raise ValueError('A source file changed while opening: ' + name
+                             + '; path=' + repr(stamp(before))
+                             + '; descriptor=' + repr(stamp(opened)))
         while block := stream.read(1024 * 1024):
             count += len(block)
             if count > before.st_size:
                 raise ValueError('A source file grew while hashing.')
             git_hash.update(block)
             content_hash.update(block)
-        if stamp(os.fstat(stream.fileno())) != stamp(before):
-            raise ValueError('A source descriptor changed while hashing.')
+        if stamp(os.fstat(stream.fileno())) != stamp(opened):
+            raise ValueError('A source descriptor changed while hashing: ' + name)
     if stamp(path.lstat()) != stamp(before) or count != before.st_size:
         raise ValueError('A source path changed while hashing.')
     if git_hash.hexdigest() != blob:
@@ -990,7 +1051,7 @@ $receipt = [ordered]@{
   head = $head
   tree = $tree
   shard = $Shard
-  complete_count = 487
+  complete_count = 490
   assigned = $suites
   assigned_count = $suites.Count
   inventory_sha256 = $inventory.inventory_sha256
