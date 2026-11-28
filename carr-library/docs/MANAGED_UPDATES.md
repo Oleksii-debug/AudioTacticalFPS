@@ -310,3 +310,40 @@ production TLS, Authenticode, publisher rollout or NVDA.
 The added source and isolated-installed suites and actual external-host Windows
 acceptance remain separately required. Historical managed-transaction success
 does not qualify this newly configured Apply route.
+
+### Compiled configured-update acceptance
+
+The separate `carr-configured-update-native.yml` job builds the immutable A2
+source `8f24cae6dbb657854a07dcb801f77296f3b7e4e3` and the exact selected B source.
+Both distributions use the existing complete 56-wheel trusted-client lock,
+original pinned Python, native DLL closure, launcher compiler and standard Inno
+setup. Version labels do not replace the source, bundle and installer digests.
+
+The probe runs A's actual installed module entrypoint and existing desktop. It
+uses the native preparation question, observes default No, prepares the separate
+host after explicit Yes, reviews and downloads one locally signed fixture
+release, cancels an Apply review, then explicitly selects restart and applies.
+The repository chooser selects one owned synthetic directory; this does not
+qualify the operating system's file-picker accessibility.
+
+After normal Close and durable handoff, the original managed transaction must
+install B and retain A's complete program, uninstaller, registration snapshot and
+cached setup. The original research must remain exact, and the actual backup
+must restore it. The restarted installed Python process and its visible desktop
+must belong to the same retained Windows Job, expose the configured update
+route, hold the actual installation lease and leave that family quiescent after
+ordinary Close. A returned process ID alone cannot satisfy this check.
+
+The job requires all 15 native UI checks, all 10 transaction/restart checks and
+15 exact installed A module origins, with complete source and isolated B package
+proofs before and after the work. The fixed acceptance programs have outbound
+firewall rules with checked restoration. This is not a claim that every internal
+temporary Inno executable has an independently installed rule.
+
+Only bounded text and JSON reports can be retained. Compiled distributions,
+runtime copies, synthetic signing keys, the private recipe, targets and research
+fixtures stay in the runner's private temporary tree. The real Windows vault
+anchor belongs only to that synthetic run. Production publisher provisioning,
+vendor rollout, a real user's installation, Authenticode, NVDA and physical audio
+remain separate qualifications. The probe's source review or the portable
+77-case and TLS15 results cannot stand in for an actual successful native run.

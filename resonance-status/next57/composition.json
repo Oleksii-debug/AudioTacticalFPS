@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "actual-configured-updater-compiled-native-candidate",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "parent": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+  "parent_tree": "f40d6e06ab82524f7ee8e086c5456747c7312db6",
+  "component": "dc5e18e23a45d6ef99269fade293d6ad9db8e5a2",
+  "source_a": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "source_b": "THIS_COMMIT_AT_EXECUTION",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_configured_update_smoke.py",
+      "preimage": null,
+      "blob": "abf7a10f52ce2c3f1a5178e4e481e5561f631dde"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "preimage": null,
+      "blob": "55bcaba3952137bd588ff64dc0efafc19fc4502b"
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "53514286ca6ae129f315bd83070f486ef8ec7e57",
+      "blob": "c5e1fbcafd788ac1aa91f3589b97b949378cf705"
+    },
+    {
+      "path": "resonance-status/next57/configured_native_component.json",
+      "preimage": null,
+      "blob": "dc5e18e23a45d6ef99269fade293d6ad9db8e5a2"
+    },
+    {
+      "path": "resonance-status/next57/configured_updater_A2_actual.json",
+      "preimage": null,
+      "blob": "f984db72e185ed3be1a540c9d349d026b7bf0aa0"
+    }
+  ],
+  "required": {
+    "actual_compiled_setups": 2,
+    "exact_trusted_wheels_each": 56,
+    "ui_checks": 15,
+    "parent_checks": 10,
+    "installed_a_origins": 15,
+    "normal_close": true,
+    "actual_external_host": true,
+    "exact_owned_restart": true,
+    "prior_version_backup_and_research": true
+  },
+  "review": {
+    "source": "Root transaction/Job/wrapper; Locate UI/cleanup, accepted",
+    "workflow": "Root builds/proofs/envelopes; Locate CLI/firewall/retention, accepted",
+    "docs": "Exact append-only535 prefix retained"
+  },
+  "execution": "New compiled native A-to-B NOT_RUN. Source A2 actual77+77 eachOS and Windows realTLS15+15 are retained separately and do not qualify this route.",
+  "full_integrated_wire": {
+    "blob": "89143ad6ddfd1d66ffc1171ae46a73a09140cc61",
+    "status": "Accepted separately; queued with the complete source inventory composition."
+  },
+  "publication": "Source and bounded evidence only; no compiled installer/runtime/model/audio/key material published."
+}

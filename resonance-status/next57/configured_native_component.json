@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "task": "V3-18 actual configured A2-to-B update, complete previous wrapper and checked installed restart",
+  "source_a": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "source_a_tree": "ce159fca8cc4344690d456dd3571937b4c46b781",
+  "source_b": "Exact event source HEAD; to be published by root",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_configured_update_smoke.py",
+      "preimage": null,
+      "blob": "abf7a10f52ce2c3f1a5178e4e481e5561f631dde",
+      "exact_readback": true
+    },
+    {
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "preimage": null,
+      "blob": "55bcaba3952137bd588ff64dc0efafc19fc4502b",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "53514286ca6ae129f315bd83070f486ef8ec7e57",
+      "blob": "c5e1fbcafd788ac1aa91f3589b97b949378cf705",
+      "exact_readback": true
+    }
+  ],
+  "review": {
+    "native_transaction_wrapper_job": "Root accepted cc02460baf27cb5fef5d9308245c57ed49af79be; unchanged in final except separately reviewed failure settlement",
+    "native_ui_failure_settlement": "Locate accepted abf7a10f52ce2c3f1a5178e4e481e5561f631dde against actual a177 main/fa58 trust_status/ed626 DesktopExecutor",
+    "workflow": "Root broad build/source/native/envelope and Locate CLI/firewall/report/closed-retention reviews accepted exact55bcaba3952137bd588ff64dc0efafc19fc4502b. No parser or native execution claim.",
+    "docs": "Append-only exact new native qualification boundary; no previous instructions removed",
+    "workflow_build_source_native": "Root accepted55bc: original pinned build APIs, full A/B source and trusted56 identity, whole installed B payload, native25/origins15 and derived270-minute envelope; static only"
+  },
+  "required": {
+    "ui_names": [
+      "actual installed A entrypoint owns the selected library and explicit recipe",
+      "actual native updater command is registered exactly once",
+      "offline configuration grants no idle network permission",
+      "preparation question defaults to the actual owned No button",
+      "observed No creates no host or configuration",
+      "explicit native Yes prepares the separate exact A runtime",
+      "prepared controller retains original library and requires explicit review",
+      "native signed release review has exact product build source and target",
+      "downloaded target is verified before the native Apply review",
+      "Apply opens with restart unchecked and Cancel as default",
+      "native Cancel leaves A open and creates no handoff",
+      "explicit native Space selects the optional checked restart",
+      "actual Close precedes the exact durable COMMIT",
+      "source identity remains exact through the real application lease",
+      "actual entrypoint returns after normal Close and shared worker settlement"
+    ],
+    "parent_names": [
+      "both compiled source receipts and full owned A payload are exact",
+      "temporary actual Windows vault anchor begins at A",
+      "real separate host records completed B and protected build two",
+      "complete prior A wrapper and exact original research are retained",
+      "actual backup restores the original synthetic research",
+      "restarted process and window belong to the retained Windows Job",
+      "restarted actual installed entrypoint retains the configured Apply route",
+      "restarted actual application holds the installation lease",
+      "normal restarted Close settles the complete native process family",
+      "actual standard uninstaller leaves research and prior recovery intact"
+    ],
+    "origins": [
+      "carr_library.__main__",
+      "carr_library.application",
+      "carr_library.installation_lease",
+      "carr_library.native_runtime",
+      "carr_library.security.controller",
+      "carr_library.security.update_runtime",
+      "carr_library.security.update_handoff",
+      "carr_library.security.update_host",
+      "carr_library.security.updates",
+      "carr_library.security.managed_installation",
+      "carr_library.security.installation",
+      "carr_library.security.anchors",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.trust_status",
+      "carr_library.ui.worker_lifetime"
+    ],
+    "counts": {
+      "ui": 15,
+      "parent": 10,
+      "origins": 15
+    },
+    "report": "configured-update-results/native/configured-update.json",
+    "positive_fields": [
+      "status",
+      "actual_native_restart",
+      "actual_host_preparation",
+      "actual_update"
+    ],
+    "qualifiers": {
+      "production_publisher": "NOT_CONFIGURED",
+      "production_rollout": "NOT_RUN",
+      "real_user_installation": "NOT_RUN",
+      "authenticode": "NOT_CLAIMED",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN"
+    }
+  },
+  "proofs": [
+    "Immutable A2 and selected distinct B built with exact committed 56-wheel trusted-client lock and matching SBOM",
+    "Actual original Python, native DLLs, Zig launcher and Inno setup paths are unchanged existing build mechanisms",
+    "Every tracked carr-library file in A and B bound to Git and SHA256 before and after; no source injection into installed parent/child",
+    "Isolated B full carr_library and bootstrap wheel payload set and each digest checked before and after",
+    "Actual installed A main and native menu/question/default No, explicit Yes, native Cancel and explicit restart checkbox",
+    "Original application lease and borrowed DesktopExecutor survive observer and native cleanup even on entry.main exceptions",
+    "Actual prepared external host, READY and normal Close before exact COMMIT, original managed transaction with full previous wrapper and backup",
+    "Exact restarted owned installed Python, actual native configured desktop inside retained Windows Job, real shared installation lease and normal complete-family Close",
+    "Original synthetic research remains unchanged after backup restore and actual standard Uninstall",
+    "Selected fixed-program outbound rules established and read back; all owned rules and original profiles restored and checked",
+    "Public upload conditional on successful closed bounded text/JSON/log retention; all compiled/private material remains in RUNNER_TEMP"
+  ],
+  "limits": {
+    "job_minutes": 270,
+    "declared_steps_minutes": 262,
+    "native_step_minutes": 150,
+    "initial_install_seconds": 1800,
+    "ui_seconds": 2700,
+    "ui_cleanup_seconds": 300,
+    "ui_watchdog_seconds": 3030,
+    "ui_parent_wait_seconds": 3060,
+    "owned_native_family_seconds": 5400,
+    "checked_entrypoint_seconds": 300,
+    "uninstall_seconds": 900,
+    "retained_file_bytes": 8388608,
+    "retained_total_bytes": 67108864,
+    "native_report_bytes": 65536
+  },
+  "execution": {
+    "parser": "NOT_RUN",
+    "build_a": "NOT_RUN",
+    "build_b": "NOT_RUN",
+    "native_apply": "NOT_RUN",
+    "native_restart": "NOT_RUN",
+    "ordinary77": {
+      "status": "ACTUAL_PASS_AT_IMMUTABLE_A2",
+      "source_and_installed_each": 77,
+      "platforms": [
+        "Linux",
+        "Windows"
+      ],
+      "evidence_blob": "f984db72e185ed3be1a540c9d349d026b7bf0aa0",
+      "run_id": 46104132320
+    },
+    "https15": {
+      "status": "ACTUAL_PASS_AT_IMMUTABLE_A2",
+      "source_and_installed_each": 15,
+      "platform": "Windows",
+      "boundary": "Actual local TLS and current TUF/owned worker; no production endpoint qualification",
+      "evidence_blob": "f984db72e185ed3be1a540c9d349d026b7bf0aa0",
+      "run_id": 46104132320
+    }
+  },
+  "publication": "Root only; no refs changed by this component",
+  "integration": {
+    "main_required_workflow": "Locate owns a separate exact-preimage required reusable job/aggregate; existing old managed-update rollback lane remains required",
+    "ordinary_full_gate_counts": "No change from current ordinary77/TLS15 requirements; native25 is a separate compiled qualification",
+    "no_ref_mutation": true
+  }
+}

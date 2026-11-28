@@ -1,0 +1,679 @@
+name: CARR configured updater native A-to-B and checked restart
+
+on:
+  push:
+    branches: ['carr/ci-configured-update-native-*']
+    paths: ['carr-library/**', '.github/workflows/carr-configured-update-native.yml']
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Required by the integrated workflow; all acceptance binds the exact event head.
+jobs:
+  configured-update-native:
+    name: Windows x64 / actual configured Apply and checked restart
+    runs-on: windows-2022
+    # 9 checkout/Python + 20 host + 20 tools + 50 builds + 150 native
+    # + 5 final identity + 5 bounded retention + 3 upload = 262 minutes.
+    timeout-minutes: 270
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: source-b/carr-library
+    env:
+      # Corrected immutable A2 contains the actual configured host preparation
+      # and owned installed Python restart. B is the exact event source head.
+      # Same display versions retain their real source/bundle identities; only
+      # this isolated synthetic publisher advances protected build1 to2.
+      CARR_CONFIGURED_SOURCE_A: '8f24cae6dbb657854a07dcb801f77296f3b7e4e3'
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out exact B source
+        timeout-minutes: 3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: source-b
+          persist-credentials: false
+      - name: Check out immutable reviewed A source
+        timeout-minutes: 3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.CARR_CONFIGURED_SOURCE_A }}
+          path: source-a
+          persist-credentials: false
+      - name: Set up native x64 build host
+        timeout-minutes: 3
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Pin the host profile and record both actual source identities
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $report = Join-Path (Get-Location) 'configured-update-results'
+          New-Item -ItemType Directory $report | Out-Null
+          $sourceB = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceB -ne '${{ github.event.pull_request.head.sha || github.sha }}') { throw 'Cannot identify the exact event B source.' }
+          $sourceAPath = Join-Path $env:GITHUB_WORKSPACE 'source-a/carr-library'
+          $sourceA = (git -C $sourceAPath rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceA -ne $env:CARR_CONFIGURED_SOURCE_A -or $sourceA -eq $sourceB) { throw 'A/B source selection is not exact and distinct.' }
+          @{ source_a=$sourceA; source_b=$sourceB; baseline_policy='immutable corrected configured updater A2; current native proof required'; version_policy='Exact committed wheels; synthetic build1 to2'; runtime_profile='Exact56 pinned full trusted-client wheels, original Python and native DLLs; no model/audio/Node payload' } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')
+          $preflight = @'
+          from hashlib import sha1, sha256
+          import json, os, pathlib, stat, subprocess
+          root = pathlib.Path.cwd()
+          head = subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()
+          expected_pins = {
+              'scripts/windows_configured_update_smoke.py': 'abf7a10f52ce2c3f1a5178e4e481e5561f631dde',
+              'scripts/windows_standard_installer_smoke.py': '8704c0b91a3ed518d1454cf814667f9ef0a149da',
+              'scripts/windows_managed_update_smoke.py': 'ff6520d87d3fae899282433aacaae1ab9cff04f6',
+              'packaging/windows-semantic-trusted-cp311.lock': 'db90fc87ce5ae0abcd9afb3c769bf6cdff1a88bb',
+              'packaging/windows-semantic-trusted-sbom.cdx.json': 'f38132206accbaa9c05db9e59697207afa2e9167',
+              'packaging/windows-managed-build-cp311.lock': '3ca3f7782fa6367331723031971d0bef8be03564',
+          }
+          for name, expected in expected_pins.items():
+              path = root / name
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink()
+              assert not getattr(info,'st_file_attributes',0) & 1024
+              raw = path.read_bytes()
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == expected, name
+              assert raw == subprocess.check_output(['git','show',head+':carr-library/'+name]), name
+          compile((root/'scripts/windows_configured_update_smoke.py').read_bytes(),
+                  'scripts/windows_configured_update_smoke.py', 'exec')
+          names = list(expected_pins) + [
+              'packaging/build_windows_bundle.py','packaging/install_windows.py',
+              'packaging/add_native_runtime.py','packaging/prepare_native_runtime.py',
+              'packaging/windows-python.json','packaging/native-runtime/source-lock.json',
+              'packaging/native-launcher/toolchain.lock.json',
+              'packaging/native-launcher/build_launcher.py','packaging/native-launcher/probe_pe.py',
+              'packaging/native-launcher/probe_windows.py',
+              'packaging/windows_installer/build_setup.py','packaging/windows_installer/create_update_target.py',
+              'packaging/windows_installer/maintenance.py','packaging/windows_installer/prepare_inno.ps1',
+              'packaging/windows_installer/toolchain.lock.json',
+              'packaging/windows-cp311.lock','packaging/trusted-client.lock','packaging/windows-sync-test-cp311.lock',
+          ]
+          sources = {}
+          for name in names:
+              path = root/name
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink()
+              assert not getattr(info,'st_file_attributes',0)&1024
+              raw = path.read_bytes()
+              assert raw == subprocess.check_output(['git','show',head+':carr-library/'+name]), name
+              sources[name] = sha256(raw).hexdigest()
+          pathlib.Path('configured-update-results/source-inputs-before.json').write_text(
+              json.dumps({'head':head,'sources':sources}, sort_keys=True, indent=2)+'\n', encoding='utf-8')
+          def source_inputs():
+              result = {}
+              for label in ('a', 'b'):
+                  checkout = pathlib.Path(os.environ['GITHUB_WORKSPACE']) / ('source-'+label)
+                  head = subprocess.check_output(['git','-C',str(checkout),'rev-parse','HEAD'], text=True).strip()
+                  expected = os.environ['CARR_CONFIGURED_SOURCE_A'] if label == 'a' else '${{ github.event.pull_request.head.sha || github.sha }}'
+                  assert head == expected, label
+                  tree = subprocess.check_output(['git','-C',str(checkout),'rev-parse','HEAD^{tree}'], text=True).strip()
+                  entries = subprocess.check_output(['git','-C',str(checkout),'ls-tree','-r','-z',head,'--','carr-library']).split(b'\0')
+                  files, total = {}, 0
+                  for entry in filter(None,entries):
+                      metadata, raw_name = entry.split(b'\t',1)
+                      mode, kind, blob = metadata.decode('ascii').split()
+                      name = raw_name.decode('utf-8')
+                      assert mode in ('100644','100755') and kind == 'blob'
+                      path = checkout/name
+                      info = path.lstat()
+                      assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink()
+                      assert not getattr(info,'st_file_attributes',0)&1024 and info.st_size <= 64*1024**2
+                      raw = path.read_bytes()
+                      final = path.lstat()
+                      assert (info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns) == (final.st_dev,final.st_ino,final.st_size,final.st_mtime_ns)
+                      assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == blob, name
+                      files[name] = {'git_blob':blob,'sha256':sha256(raw).hexdigest(),'bytes':len(raw)}
+                      total += len(raw)
+                  assert 0 < len(files) <= 10000 and total <= 512*1024**2
+                  result[label] = {'source_commit':head,'source_tree':tree,'files':files}
+              return result
+          pathlib.Path('configured-update-results/source-tree-inputs-before.json').write_text(
+              json.dumps(source_inputs(), sort_keys=True, indent=2)+'\n', encoding='utf-8')
+          print('Exact native configured-update probe, packaging helpers and all pinned build inputs admitted.')
+          '@
+          $preflight | python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Native configured-update source preflight refused.' }
+          $private = Join-Path $env:RUNNER_TEMP 'carr-configured-upgrade-private'
+          New-Item -ItemType Directory $private | Out-Null
+          $private = (python -I -B -c "from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve(strict=True))" $private).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot bind the actual private directory.' }
+          python -I -B -m venv (Join-Path $private 'host')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $private 'host/Scripts/python.exe'
+          & $python -I -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock -r packaging/windows-managed-build-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip list --format=json | Set-Content (Join-Path $report 'host-packages.json')
+          "CARR_CONFIGURED_PYTHON=$python" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CONFIGURED_PRIVATE=$private" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CONFIGURED_SOURCE_B=$sourceB" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Acquire the existing pinned compilers and original Python/native runtime
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private = $env:CARR_CONFIGURED_PRIVATE
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $runtimeA = Get-Content (Join-Path $env:GITHUB_WORKSPACE 'source-a/carr-library/packaging/windows-python.json') -Raw | ConvertFrom-Json
+          if ($runtime.download.sha256 -ne $runtimeA.download.sha256) { throw 'This A/B gate requires the same reviewed original Python archive; do not substitute one runtime.' }
+          $pythonArchive = Join-Path $private 'original-windows-python.tar.gz'
+          Invoke-WebRequest $runtime.download.url -OutFile $pythonArchive
+          if ((Get-FileHash $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $runtime.download.sha256) { throw 'Original CPython checksum mismatch.' }
+
+          $zigLock = Get-Content packaging/native-launcher/toolchain.lock.json -Raw | ConvertFrom-Json
+          $zigPin = $zigLock.'x86_64-windows'
+          $zigArchive = Join-Path $private 'zig.zip'
+          Invoke-WebRequest $zigPin.url -OutFile $zigArchive
+          if ((Get-Item $zigArchive).Length -ne $zigPin.bytes -or (Get-FileHash $zigArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $zigPin.sha256) { throw 'Native compiler archive mismatch.' }
+          $zigRoot = Join-Path $private 'zig'
+          Expand-Archive $zigArchive -DestinationPath $zigRoot
+          $zig = @(Get-ChildItem $zigRoot -Filter 'zig.exe' -Recurse)
+          if ($zig.Count -ne 1) { throw 'Ambiguous native compiler.' }
+
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $private 'native-runtime.conda'
+          Invoke-WebRequest $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item $nativePackage).Length -ne $nativeLock.package.size -or (Get-FileHash $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nativeLock.package.sha256) { throw 'Original native DLL package mismatch.' }
+          & $env:CARR_CONFIGURED_PYTHON -I -B packaging/prepare_native_runtime.py --package $nativePackage --output (Join-Path $private 'native-runtime') | Tee-Object 'configured-update-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory (Join-Path $private 'inno')
+          "CARR_CONFIGURED_ZIG=$($zig[0].FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Copy-Item (Join-Path $private 'inno/toolchain-receipt.json') 'configured-update-results/inno-toolchain.json'
+          Copy-Item 'packaging/windows-python.json' 'configured-update-results/original-python.json'
+          Copy-Item 'packaging/native-launcher/toolchain.lock.json' 'configured-update-results/launcher-toolchain.json'
+
+      - name: Build two exact trusted-client distributions and actual standard setups
+        timeout-minutes: 50
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private, $python = $env:CARR_CONFIGURED_PRIVATE, $env:CARR_CONFIGURED_PYTHON
+          $report = (Resolve-Path 'configured-update-results').Path
+          $launcherBootstrap = @'
+          import pathlib, runpy, subprocess, sys
+          source = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          expected = sys.argv[2]
+          repository = source.parent
+          actual = subprocess.check_output(['git', '-C', str(repository), 'rev-parse', 'HEAD'], text=True).strip()
+          if actual != expected:
+              raise RuntimeError('The selected immutable launcher source changed.')
+          for name in ('build_launcher.py', 'probe_pe.py'):
+              path = source / 'packaging/native-launcher' / name
+              raw = subprocess.check_output(['git', '-C', str(repository), 'show',
+                                            expected + ':carr-library/packaging/native-launcher/' + name])
+              if path.read_bytes() != raw:
+                  raise RuntimeError('The launcher build helper differs from its exact committed source.')
+          script = source / 'packaging/native-launcher/build_launcher.py'
+          # -I omits script siblings. Admit this one verified source directory explicitly;
+          # neither the working directory nor PYTHONPATH participates in module discovery.
+          sys.path.insert(0, str(script.parent))
+          sys.argv = [str(script), *sys.argv[3:]]
+          runpy.run_path(str(script), run_name='__main__')
+          '@
+          foreach ($label in @('a', 'b')) {
+            $source = Join-Path $env:GITHUB_WORKSPACE ('source-' + $label + '/carr-library')
+            $expected = if ($label -eq 'a') { $env:CARR_CONFIGURED_SOURCE_A } else { $env:CARR_CONFIGURED_SOURCE_B }
+            $build = Join-Path $private ('build-' + $label)
+            New-Item -ItemType Directory $build | Out-Null
+            Push-Location $source
+            try {
+              $actual = (git rev-parse HEAD).Trim()
+              if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) { throw 'Source changed before wheel preparation.' }
+              $wheelhouse = Join-Path $build 'wheelhouse'
+              $application = Join-Path $build 'application'
+              New-Item -ItemType Directory $wheelhouse, $application | Out-Null
+              & $python -I -B -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-trusted-cp311.lock --dest $wheelhouse
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $inventory = @'
+          from hashlib import sha256
+          import json, pathlib, re, subprocess, sys
+          from packaging.utils import canonicalize_name, parse_wheel_filename
+          wheelhouse, expected, output = pathlib.Path(sys.argv[1]), sys.argv[2], pathlib.Path(sys.argv[3])
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == expected
+          locks = {}
+          for filename in ('windows-semantic-trusted-cp311.lock',):
+              path = pathlib.Path('packaging') / filename
+              raw = path.read_bytes()
+              pairs = re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', raw.decode('utf-8'), re.M)
+              pins = {canonicalize_name(name): version for name, version in pairs}
+              assert pins and len(pins) == len(pairs), filename
+              locks[filename] = dict(sha256=sha256(raw).hexdigest(), count=len(pins), pins=pins)
+          wheels = []
+          actual = {}
+          for path in sorted(wheelhouse.glob('*.whl')):
+              name, version, _, _ = parse_wheel_filename(path.name)
+              name = canonicalize_name(name)
+              assert name not in actual
+              actual[name] = str(version)
+              wheels.append(dict(name=path.name, distribution=name, version=str(version), sha256=sha256(path.read_bytes()).hexdigest()))
+          assert len(actual) == 56 and actual == locks['windows-semantic-trusted-cp311.lock']['pins'], (actual, locks)
+          result = dict(status='PASS', source_commit=expected,
+              source_tree=subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+              locks=locks, downloaded_trusted_client_wheels=wheels, model_audio_payloads='NOT_ACQUIRED', trusted_profile='Exact56 mandatory signed-client distribution wheels')
+          output.write_text(json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          '@
+              $inventory | & $python -I -B - $wheelhouse $expected (Join-Path $report ('dependency-lock-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              & $python -I -B -m pip wheel --no-build-isolation --no-deps --wheel-dir $application .
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $wheel = @(Get-ChildItem $application -Filter '*.whl')
+              if ($wheel.Count -ne 1) { throw 'Expected one exact source application wheel.' }
+              $launcher = Join-Path $build 'launcher'
+              $launcherBootstrap | & $python -I -B - $source $expected --zig $env:CARR_CONFIGURED_ZIG --toolchain-archive (Join-Path $private 'zig.zip') --output-dir $launcher --build-probe | Tee-Object (Join-Path $report ('launcher-build-' + $label + '.txt'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              & $python -I -B packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcher 'ResearchLibrary.exe') --child (Join-Path $launcher 'windows_child_probe.exe') --report (Join-Path $report ('launcher-native-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $base = Join-Path $build 'trusted-base'
+              $bundle = Join-Path $build 'trusted-bundle'
+              # The unchanged builder requires the complete trusted-client56
+              # lock and matching SBOM. No engine/model, OCR, audio or Node
+              # payload is acquired or added by this configured update lane.
+              & $python -I -B packaging/build_windows_bundle.py --wheel $wheel[0].FullName --wheelhouse $wheelhouse --lock packaging/windows-semantic-trusted-cp311.lock --sbom packaging/windows-semantic-trusted-sbom.cdx.json --trusted-client --python-archive (Join-Path $private 'original-windows-python.tar.gz') --launcher-dir $launcher --source-commit $expected --output $base | Tee-Object (Join-Path $report ('trusted-build-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              & $python -I -B packaging/add_native_runtime.py --bundle $base --native-runtime (Join-Path $private 'native-runtime') --output $bundle | Tee-Object (Join-Path $report ('trusted-native-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $manifest = (Get-FileHash (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+              & $python -I -B packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --output (Join-Path $build 'setup') --iscc (Join-Path $private 'inno/tools/ISCC.exe') --toolchain-receipt (Join-Path $private 'inno/toolchain-receipt.json') | Tee-Object (Join-Path $report ('setup-build-' + $label + '.txt'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              # Independently record each A/B sealed wheel through its own source
+              # verifier; the current B builder also seals application-source.json.
+              # Bind this external build receipt to the exact bundle inventory.
+              $sealedWheel = Join-Path $bundle ('wheelhouse/' + $wheel[0].Name)
+              & $python -I -B -c "import hashlib,json,pathlib,runpy,subprocess,sys; wheel=pathlib.Path(sys.argv[1]); bundle=pathlib.Path(sys.argv[3]); verify=runpy.run_path('packaging/build_windows_bundle.py')['verify_application_source']; evidence=verify(wheel,sys.argv[2]); raw=(bundle/'bundle-manifest.json').read_bytes(); manifest=json.loads(raw); assert evidence['source_commit']==manifest['source_commit']==sys.argv[2]; assert manifest['files']['wheelhouse/'+wheel.name]==evidence['wheel_sha256']; evidence['source_tree']=subprocess.check_output(['git','rev-parse','--verify',sys.argv[2]+'^{tree}'],text=True).strip(); evidence['bundle_manifest_sha256']=hashlib.sha256(raw).hexdigest(); print(json.dumps(evidence,sort_keys=True))" $sealedWheel $expected $bundle | Tee-Object (Join-Path $report ('wheel-source-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              Copy-Item (Join-Path $build 'setup/setup-build.json') (Join-Path $report ('setup-source-' + $label + '.json'))
+              if ($label -eq 'b') {
+                & $python -I -B -m pip install --no-deps --force-reinstall $wheel[0].FullName
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              }
+            } finally { Pop-Location }
+          }
+          & $python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import carr_library,importlib.metadata as m,json,pathlib; p=pathlib.Path(carr_library.__file__).resolve(); assert 'site-packages' in p.parts; print(json.dumps({'installed_host':str(p),'version':m.version('universal-research-library')}))" | Tee-Object 'configured-update-results/installed-host.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+          $installed = @'
+          from hashlib import sha256
+          import json, os, pathlib, stat, sys
+          def installed_payload():
+              from zipfile import ZipFile
+              import carr_library, bootstrap
+              private = pathlib.Path(os.environ['CARR_CONFIGURED_PRIVATE']).resolve(strict=True)
+              host = (private/'host').resolve(strict=True)
+              assert pathlib.Path(sys.prefix).resolve(strict=True) == host
+              package = pathlib.Path(carr_library.__file__).resolve(strict=True)
+              site = package.parent.parent
+              assert site == (host/'Lib/site-packages').resolve(strict=True)
+              assert pathlib.Path(bootstrap.__file__).resolve(strict=True).parent == site/'bootstrap'
+              wheels = list((private/'build-b/application').glob('*.whl'))
+              assert len(wheels) == 1
+              wheel = wheels[0]
+              proof = json.loads(pathlib.Path('configured-update-results/wheel-source-b.json').read_text(encoding='utf-8-sig'))
+              assert proof['source_commit'] == os.environ['CARR_CONFIGURED_SOURCE_B']
+              assert sha256(wheel.read_bytes()).hexdigest() == proof['wheel_sha256']
+              files = {}
+              with ZipFile(wheel) as archive:
+                  for member in archive.infolist():
+                      if member.is_dir() or not member.filename.startswith(('carr_library/','bootstrap/')):
+                          continue
+                      assert member.filename not in files
+                      path = site/member.filename
+                      info = path.lstat()
+                      assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink()
+                      assert not getattr(info,'st_file_attributes',0)&1024
+                      expected = sha256(archive.read(member)).hexdigest()
+                      assert sha256(path.read_bytes()).hexdigest() == expected, member.filename
+                      files[member.filename] = expected
+              actual = set()
+              for name in ('carr_library','bootstrap'):
+                  for path in (site/name).rglob('*'):
+                      info = path.lstat()
+                      assert not path.is_symlink() and not getattr(info,'st_file_attributes',0)&1024
+                      if path.is_file() and path.suffix != '.pyc':
+                          assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                          actual.add(path.relative_to(site).as_posix())
+              assert set(files) == actual and len(files) == proof['payload_files']
+              return {'source_commit':proof['source_commit'],'wheel_sha256':proof['wheel_sha256'],
+                      'installed_root':str(site),'payload_files':files,'payload_count':len(files)}
+          pathlib.Path('configured-update-results/installed-payload-before.json').write_text(
+              json.dumps(installed_payload(),sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          print('PASS: isolated installed B whole wheel payload matches exact source.')
+          '@
+          $installed | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Installed B whole payload proof failed.' }
+
+      - name: Require real configured native Apply, full A retention and checked B restart
+        timeout-minutes: 150
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private, $python = $env:CARR_CONFIGURED_PRIVATE, $env:CARR_CONFIGURED_PYTHON
+          $setupA = Join-Path $private 'build-a/setup'
+          $setupB = Join-Path $private 'build-b/setup'
+          $report = Join-Path (Resolve-Path 'configured-update-results').Path 'native'
+          $basePython = (& $python -I -B -c "from pathlib import Path; import sys; print(Path(sys._base_executable).resolve(strict=True))").Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the actual base interpreter.' }
+          $installedRoot = Join-Path $private 'actual-native-work/Configured Resonance Україна Ω'
+          $externalRoot = Join-Path $private 'actual-native-work/external updater'
+          # Exact fixed paths are covered before native work. Inno may use
+          # temporary internal executables: this is not a whole-machine or
+          # arbitrary-descendant traffic interception claim.
+          $programs = @($python, $basePython,
+            (Join-Path (Split-Path $python) 'pythonw.exe'),
+            (Join-Path (Split-Path $basePython) 'pythonw.exe'),
+            (Join-Path $setupA 'compiled/ResonanceSetup.exe'),
+            (Join-Path $setupB 'compiled/ResonanceSetup.exe'),
+            (Join-Path $installedRoot 'app/ResearchLibrary.exe'),
+            (Join-Path $installedRoot 'app/runtime/python.exe'),
+            (Join-Path $installedRoot 'app/runtime/pythonw.exe'),
+            (Join-Path $installedRoot 'app/.venv/Scripts/python.exe'),
+            (Join-Path $installedRoot 'app/.venv/Scripts/pythonw.exe'),
+            (Join-Path $externalRoot 'app/runtime/python.exe'),
+            (Join-Path $externalRoot 'app/runtime/pythonw.exe'),
+            (Join-Path $externalRoot 'app/.venv/Scripts/python.exe'),
+            (Join-Path $externalRoot 'app/.venv/Scripts/pythonw.exe'),
+            (Join-Path $installedRoot 'maintenance/ResonanceSetup.exe'),
+            (Join-Path $installedRoot 'unins000.exe'),
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) |
+            ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Select-Object -Unique
+          $rulePrefix = 'CARR-configured-native-' + [guid]::NewGuid().ToString('N')
+          $rules = @()
+          $phaseError = $null
+          $cleanupErrors = [System.Collections.Generic.List[string]]::new()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3) { throw 'Cannot capture all actual firewall profiles.' }
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $name = $rulePrefix + '-' + $rules.Count
+              $rules += $name
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules -ErrorAction Stop)
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop |
+              Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0 -or
+                $active.Count -ne $programs.Count -or
+                @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0 -or
+                @(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) {
+              throw 'Selected configured-native firewall rules are incomplete.'
+            }
+            @{ status='PASS'; blocked_programs=$filters; scope='Selected host, actual fixed A/B and external-host paths; no whole-machine or arbitrary Inno descendant interception claim' } |
+              ConvertTo-Json -Depth 4 | Set-Content 'configured-update-results/native-firewall.json'
+            & $python -I -B -X utf8 scripts/windows_configured_update_smoke.py --setup-a (Join-Path $setupA 'compiled/ResonanceSetup.exe') --build-a (Join-Path $setupA 'setup-build.json') --prepared-b $setupB --source-a $env:CARR_CONFIGURED_SOURCE_A --source-b $env:CARR_CONFIGURED_SOURCE_B --work (Join-Path $private 'actual-native-work') --report $report 2>&1 | Tee-Object 'configured-update-results/native-configured-update.txt'
+            if ($LASTEXITCODE -ne 0) { throw ('Actual configured native updater failed with exit ' + $LASTEXITCODE) }
+            $verify = @'
+          import ast
+          from collections import Counter
+          from hashlib import sha1
+          import json, os, pathlib, re
+          script = pathlib.Path('scripts/windows_configured_update_smoke.py')
+          raw = script.read_bytes()
+          assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == 'abf7a10f52ce2c3f1a5178e4e481e5561f631dde'
+          constants = {}
+          for node in ast.parse(raw).body:
+              if isinstance(node,ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0],ast.Name):
+                  name = node.targets[0].id
+                  if name in ('UI_CHECKS','PARENT_CHECKS','ORIGINS','NOT_RUN'):
+                      assert name not in constants
+                      constants[name] = ast.literal_eval(node.value)
+          assert set(constants) == {'UI_CHECKS','PARENT_CHECKS','ORIGINS','NOT_RUN'}
+          assert len(constants['UI_CHECKS']) == 15 and len(constants['PARENT_CHECKS']) == 10 and len(constants['ORIGINS']) == 15
+          path = pathlib.Path('configured-update-results/native/configured-update.json')
+          assert path.stat().st_size <= 65536
+          value = json.loads(path.read_text(encoding='utf-8'))
+          for field in ('status','actual_native_restart','actual_host_preparation','actual_update'):
+              assert value.get(field) == 'PASS', field
+          assert value.get('source_a') == os.environ['CARR_CONFIGURED_SOURCE_A']
+          assert value.get('source_b') == os.environ['CARR_CONFIGURED_SOURCE_B']
+          assert Counter(value.get('checks',[])) == Counter(constants['PARENT_CHECKS'])
+          assert Counter(value.get('ui_checks',[])) == Counter(constants['UI_CHECKS'])
+          assert type(value.get('ui_origin_count')) is int and value['ui_origin_count'] == 15
+          assert set(value.get('ui_origins',{})) == set(constants['ORIGINS'])
+          assert all(type(v) is str and re.fullmatch('[0-9a-f]{64}',v) for v in value['ui_origins'].values())
+          for name, wanted in constants['NOT_RUN'].items():
+              assert value.get(name) == wanted, name
+          restart = value.get('actual_restart',{})
+          assert restart.get('status') == restart.get('normal_close') == restart.get('owned_family') == 'PASS'
+          assert all(type(restart.get(name)) is int and restart[name] > 0
+                     for name in ('requested_pid','actual_window_pid','actual_window'))
+          for name in ('setup_a_sha256','setup_b_sha256','target_sha256','actual_host_result_sha256',
+                       'actual_ui_result_sha256','prepared_configuration_sha256'):
+              assert type(value.get(name)) is str and re.fullmatch('[0-9a-f]{64}',value[name]), name
+          print('PASS: exact native UI15 + parent10, installed origins15, checked restart and original qualifiers.')
+          '@
+            $verify | & $python -I -B -X utf8 -
+            if ($LASTEXITCODE -ne 0) { throw 'Configured native report verifier refused.' }
+          } catch {
+            $phaseError = $_
+          } finally {
+            try {
+              $present = @(Get-NetFirewallRule -ErrorAction Stop |
+                Where-Object { $rules -contains $_.Name } | Select-Object -ExpandProperty Name)
+              foreach ($name in $present) {
+                try { Remove-NetFirewallRule -Name $name -ErrorAction Stop }
+                catch { $cleanupErrors.Add(('Rule removal: ' + $_.Exception.Message)) }
+              }
+            } catch { $cleanupErrors.Add(('Rule inventory: ' + $_.Exception.Message)) }
+            foreach ($profile in $profilesBefore) {
+              try { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+              catch { $cleanupErrors.Add(('Profile restoration: ' + $_.Exception.Message)) }
+            }
+            try {
+              $remaining = @(Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction Stop | Where-Object { $rules -contains $_.Name })
+              $after = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+              if ($remaining.Count -ne 0 -or $after.Count -ne $profilesBefore.Count) { throw 'Owned rule/profile cleanup is incomplete.' }
+              foreach ($profile in $profilesBefore) {
+                $actual = @($after | Where-Object { $_.Name -eq $profile.Name })
+                if ($actual.Count -ne 1 -or $actual[0].Enabled -ne $profile.Enabled) { throw 'An original firewall profile was not restored.' }
+              }
+            } catch { $cleanupErrors.Add(('Cleanup readback: ' + $_.Exception.Message)) }
+            @{ status=$(if ($cleanupErrors.Count -eq 0) { 'PASS' } else { 'FAIL' });
+               owned_rules=$rules.Count; original_profiles=$profilesBefore; errors=@($cleanupErrors) } |
+              ConvertTo-Json -Depth 5 | Set-Content 'configured-update-results/native-firewall-cleanup.json'
+          }
+          if ($phaseError -ne $null) { throw $phaseError }
+          if ($cleanupErrors.Count -ne 0) { throw 'Actual configured-native firewall restoration failed.' }
+
+      - name: Require unchanged exact source and installed host payload after native work
+        if: always()
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path -LiteralPath 'configured-update-results/source-tree-inputs-before.json')) {
+            Write-Output 'Source identity capture was not reached; the earlier required step remains failed.'
+            exit 0
+          }
+          $python = $env:CARR_CONFIGURED_PYTHON
+          if (-not $python -or -not (Test-Path -LiteralPath $python)) { $python = 'python' }
+          $check = @'
+          from hashlib import sha1, sha256
+          import json, os, pathlib, stat, subprocess, sys
+          def source_inputs():
+              result = {}
+              for label in ('a', 'b'):
+                  checkout = pathlib.Path(os.environ['GITHUB_WORKSPACE']) / ('source-'+label)
+                  head = subprocess.check_output(['git','-C',str(checkout),'rev-parse','HEAD'], text=True).strip()
+                  expected = os.environ['CARR_CONFIGURED_SOURCE_A'] if label == 'a' else '${{ github.event.pull_request.head.sha || github.sha }}'
+                  assert head == expected, label
+                  tree = subprocess.check_output(['git','-C',str(checkout),'rev-parse','HEAD^{tree}'], text=True).strip()
+                  entries = subprocess.check_output(['git','-C',str(checkout),'ls-tree','-r','-z',head,'--','carr-library']).split(b'\0')
+                  files, total = {}, 0
+                  for entry in filter(None,entries):
+                      metadata, raw_name = entry.split(b'\t',1)
+                      mode, kind, blob = metadata.decode('ascii').split()
+                      name = raw_name.decode('utf-8')
+                      assert mode in ('100644','100755') and kind == 'blob'
+                      path = checkout/name
+                      info = path.lstat()
+                      assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink()
+                      assert not getattr(info,'st_file_attributes',0)&1024 and info.st_size <= 64*1024**2
+                      raw = path.read_bytes()
+                      final = path.lstat()
+                      assert (info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns) == (final.st_dev,final.st_ino,final.st_size,final.st_mtime_ns)
+                      assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == blob, name
+                      files[name] = {'git_blob':blob,'sha256':sha256(raw).hexdigest(),'bytes':len(raw)}
+                      total += len(raw)
+                  assert 0 < len(files) <= 10000 and total <= 512*1024**2
+                  result[label] = {'source_commit':head,'source_tree':tree,'files':files}
+              return result
+          root = pathlib.Path('configured-update-results')
+          before = json.loads((root/'source-tree-inputs-before.json').read_text(encoding='utf-8'))
+          after = source_inputs()
+          (root/'source-tree-inputs-after.json').write_text(json.dumps(after,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          assert before == after, 'Actual committed A/B source changed.'
+          old = json.loads((root/'source-inputs-before.json').read_text(encoding='utf-8'))
+          now = {}
+          for name in old['sources']:
+              path = pathlib.Path(name)
+              raw = path.read_bytes()
+              assert raw == subprocess.check_output(['git','show',old['head']+':carr-library/'+name]), name
+              now[name] = sha256(raw).hexdigest()
+          assert now == old['sources']
+          (root/'source-inputs-after.json').write_text(json.dumps(old,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          def installed_payload():
+              from zipfile import ZipFile
+              import carr_library, bootstrap
+              private = pathlib.Path(os.environ['CARR_CONFIGURED_PRIVATE']).resolve(strict=True)
+              host = (private/'host').resolve(strict=True)
+              assert pathlib.Path(sys.prefix).resolve(strict=True) == host
+              package = pathlib.Path(carr_library.__file__).resolve(strict=True)
+              site = package.parent.parent
+              assert site == (host/'Lib/site-packages').resolve(strict=True)
+              assert pathlib.Path(bootstrap.__file__).resolve(strict=True).parent == site/'bootstrap'
+              wheels = list((private/'build-b/application').glob('*.whl'))
+              assert len(wheels) == 1
+              wheel = wheels[0]
+              proof = json.loads(pathlib.Path('configured-update-results/wheel-source-b.json').read_text(encoding='utf-8-sig'))
+              assert proof['source_commit'] == os.environ['CARR_CONFIGURED_SOURCE_B']
+              assert sha256(wheel.read_bytes()).hexdigest() == proof['wheel_sha256']
+              files = {}
+              with ZipFile(wheel) as archive:
+                  for member in archive.infolist():
+                      if member.is_dir() or not member.filename.startswith(('carr_library/','bootstrap/')):
+                          continue
+                      assert member.filename not in files
+                      path = site/member.filename
+                      info = path.lstat()
+                      assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not path.is_symlink()
+                      assert not getattr(info,'st_file_attributes',0)&1024
+                      expected = sha256(archive.read(member)).hexdigest()
+                      assert sha256(path.read_bytes()).hexdigest() == expected, member.filename
+                      files[member.filename] = expected
+              actual = set()
+              for name in ('carr_library','bootstrap'):
+                  for path in (site/name).rglob('*'):
+                      info = path.lstat()
+                      assert not path.is_symlink() and not getattr(info,'st_file_attributes',0)&1024
+                      if path.is_file() and path.suffix != '.pyc':
+                          assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                          actual.add(path.relative_to(site).as_posix())
+              assert set(files) == actual and len(files) == proof['payload_files']
+              return {'source_commit':proof['source_commit'],'wheel_sha256':proof['wheel_sha256'],
+                      'installed_root':str(site),'payload_files':files,'payload_count':len(files)}
+          payload = root/'installed-payload-before.json'
+          if payload.is_file():
+              expected = json.loads(payload.read_text(encoding='utf-8'))
+              actual = installed_payload()
+              (root/'installed-payload-after.json').write_text(json.dumps(actual,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+              assert actual == expected, 'The actual isolated B package payload changed.'
+          else:
+              print('Installed B admission was not reached; no installed or native verdict is inferred.')
+          print('PASS: exact admitted source and any admitted installed payload remain unchanged.')
+          '@
+          $check | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Native acceptance source or installed-payload identity changed.' }
+
+      - name: Retain only the bounded public diagnostic contract
+        id: configured_retention
+        if: always()
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $retention = @'
+          from hashlib import sha256
+          import json, os, pathlib, stat
+          root = pathlib.Path('configured-update-results')
+          if not root.is_dir():
+              raise RuntimeError('The required evidence directory was never created.')
+          allowed = {
+              'source-identities.json','source-inputs-before.json','source-inputs-after.json',
+              'source-tree-inputs-before.json','source-tree-inputs-after.json',
+              'host-packages.json','native-runtime.json','inno-toolchain.json',
+              'original-python.json','launcher-toolchain.json','installed-host.json',
+              'installed-payload-before.json','installed-payload-after.json',
+              'native-firewall.json','native-firewall-cleanup.json','native-configured-update.txt',
+              'native/configured-update.json','native/install-A.log','native/install-A-process.txt',
+              'native/A-shortcuts.json','native/configured-native-child.txt',
+              'native/verified-B-entrypoint.txt','native/uninstall-B.log','native/uninstall-B-process.txt',
+          }
+          for label in ('a','b'):
+              for stem,suffix in (
+                  ('dependency-lock','.json'),('launcher-build','.txt'),('launcher-native','.json'),
+                  ('trusted-build','.json'),('trusted-native','.json'),('setup-build','.txt'),
+                  ('wheel-source','.json'),('setup-source','.json')):
+                  allowed.add(stem+'-'+label+suffix)
+          rows, total = {}, 0
+          for path in root.rglob('*'):
+              info = path.lstat()
+              if path.is_symlink() or getattr(info,'st_file_attributes',0)&1024:
+                  raise RuntimeError('Evidence must not contain aliases or reparse points.')
+              if path.is_dir():
+                  if path.relative_to(root).as_posix() != 'native':
+                      raise RuntimeError('Unexpected evidence directory.')
+                  continue
+              relative = path.relative_to(root).as_posix()
+              if relative not in allowed or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                  raise RuntimeError('Unexpected public evidence member: '+relative)
+              if not 0 <= info.st_size <= 8*1024**2:
+                  raise RuntimeError('Evidence file exceeds eight MiB: '+relative)
+              raw = path.read_bytes()
+              final = path.lstat()
+              if (info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns) != (final.st_dev,final.st_ino,final.st_size,final.st_mtime_ns):
+                  raise RuntimeError('Evidence changed during retention.')
+              # Native Inno logs can be UTF-16; all other records are UTF-8.
+              raw.decode('utf-16' if raw.startswith((b'\xff\xfe',b'\xfe\xff')) else 'utf-8-sig',errors='strict')
+              rows[relative] = {'bytes':len(raw),'sha256':sha256(raw).hexdigest()}
+              total += len(raw)
+          if not rows or total > 64*1024**2:
+              raise RuntimeError('Public evidence exceeds its closed total bound.')
+          value = {'schema':1,'status':'PASS','source_a':os.environ['CARR_CONFIGURED_SOURCE_A'],
+                   'source_b':'${{ github.event.pull_request.head.sha || github.sha }}','files':rows,'total_bytes':total,
+                   'private_binary_payloads':'NOT_RETAINED','qualification':'Report retention only; native verdict remains in the required phase.'}
+          (root/'retention.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({'status':'PASS','retained_files':len(rows),'total_bytes':total},sort_keys=True))
+          '@
+          $retention | python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Closed configured-update evidence retention refused.' }
+
+      - name: Preserve bounded configured-update text evidence
+        if: ${{ always() && steps.configured_retention.outcome == 'success' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: configured-update-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: source-b/carr-library/configured-update-results/
+          if-no-files-found: error
+          retention-days: 7
