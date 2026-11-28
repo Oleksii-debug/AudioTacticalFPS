@@ -2050,7 +2050,7 @@ jobs:
             'tests/ui/test_backup_menu_binding.py',
             'tests/ui/test_backup_resource_actions.py',
             'tests/ui/test_playback_queue.py',
-            'tests/ui/test_search_owner_lifetime.py'
+            'tests/ui/test_search_owner_lifetime.py',
               'tests/academic_integration/test_word_com.py',
               'tests/diagnostics/test_support_diagnostics.py',
               'tests/packaging/test_component_notices.py',
@@ -2069,7 +2069,7 @@ jobs:
               'tests/ui/test_speech_preparation.py',
               'tests/ui/test_speech_preparation_hooks.py',
               'tests/ui/test_studio_silence_actions.py',
-              'tests/ui/test_word_citations_dialog.py',
+              'tests/ui/test_word_citations_dialog.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
