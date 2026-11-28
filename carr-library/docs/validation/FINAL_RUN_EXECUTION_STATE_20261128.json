@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28T09:06:55Z",
+  "updated_utc": "2026-11-28T09:26:15Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -136,15 +136,16 @@
   },
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
+    "head": "bc87a52c04ac025e4daa8ee53f4f0be267f3e2ac",
+    "tree": "db1a83d1781bdce69cafac6d7ca336ab763798b8",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
     "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
     "auxiliary_root_review_path": "carr-library/docs/evidence/pr210-7c991-auxiliary-independent-review-20261128.json",
-    "files": 1813,
+    "files": 1819,
     "current_source_composition": "2701b5717360996d706199e370ce1d1cc47f3a61",
     "current_independent_review_path": "carr-library/docs/evidence/search-native-final-independent-review-20261128.json",
-    "head_observed_before_this_checkpoint": "c32b5a1be7673d57c3522f8948e96f06508f72cc",
-    "tree_observed_before_this_checkpoint": "922fc150658ac44865e0f11d88804e9a4f24b742"
+    "focused_2701_review_path": "carr-library/docs/evidence/2701-focused-independent-review-20261128.json"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -157,19 +158,11 @@
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
-    "status": "COMPOSED_AND_FOCUSED_LAUNCHED",
-    "component": "53a7bbb40c593cd282e79b78803839d3006297d1",
-    "focused_workflow_component": "847759802d11f916686269ca1a9ed19f12d72968",
-    "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
-    "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
-    "files": 1816,
-    "root_review": "SOURCE_GO_NOT_EXECUTED",
-    "peer_review": "NATIVE_SOURCE_GO_NOT_EXECUTED",
-    "planned_focused_branches": {
-      "native": "carr/native-main-final-2701-20261128-d3a",
-      "basic": "carr/local-translation-final-2701-20261128-d3a",
-      "inspection": "carr/silence-inspection-final-2701-20261128-d3a"
-    }
+    "base": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "owner": "durable_native_composition",
+    "status": "SOURCE_REPAIR_IN_PROGRESS",
+    "scope": "Import Center scrollable body with retained geometry/native import expectations",
+    "reason": "actual early native run 46128793730 failed min-sizer-height assertion at focused step28"
   },
   "next_candidate": {
     "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
@@ -442,7 +435,7 @@
     "new_release_gate": false,
     "root_review": "22 source hashes,20 workflow mappings/bounds,19 skipped actual steps and all baseline blobs verified"
   },
-  "canonical_observed_at": "2026-11-28T09:02:47Z",
+  "canonical_observed_at": "2026-11-28 09:24:38 UTC",
   "delivery_template": {
     "path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_TEMPLATE_20261128_UK.md",
     "status": "DRAFT_PLACEHOLDERS_REQUIRE_ACTUAL_FINAL_OUTCOME",
@@ -466,7 +459,7 @@
     "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
     "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
     "files": 1816,
-    "status": "THREE_FOCUSED_GATES_QUEUED",
+    "status": "FAILED_NATIVE_FOCUS_NOT_INTEGRATABLE",
     "root_review": "SOURCE_GO_NOT_EXECUTED",
     "peer_review": "NATIVE_SOURCE_GO_NOT_EXECUTED",
     "focused": {
@@ -475,28 +468,40 @@
         "job": 140929198970,
         "attempt": 1,
         "branch": "carr/native-main-final-2701-20261128-d3a",
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "failure",
+        "failed_step": 28,
+        "failure": "Import Center min-sizer height exceeds client height",
+        "actual_search_checks": 21,
+        "proof_commit": "52da38fd6d4cc498a54dfcd1fb579bf919ed5477",
+        "root_checks": 12,
+        "independent_review": "GO_OBSERVED_FAILURE_EVIDENCE"
       },
       "basic": {
         "run": 46128793566,
         "job": 140929198153,
         "attempt": 1,
         "branch": "carr/local-translation-final-2701-20261128-d3a",
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success",
+        "proof_commit": "479c036feb6e8ab3c4fc7c45a5b1c6105e932799",
+        "root_runtime_checks": 19,
+        "root_proof_checks": 15
       },
       "inspection": {
         "run": 46128795407,
         "job": 140929203423,
         "attempt": 1,
         "branch": "carr/silence-inspection-final-2701-20261128-d3a",
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success",
+        "proof_commit": "6a709ac97f498bc0e8f48785834d26afb8a68d07",
+        "root_runtime_checks": 26,
+        "root_proof_checks": 16
       }
     },
-    "main": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
-    "auxiliary": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "no_historical_pass_transfer": true
   }
 }
