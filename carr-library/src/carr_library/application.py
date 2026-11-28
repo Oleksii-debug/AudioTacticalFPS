@@ -668,11 +668,17 @@ class LibraryApp:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
-        if _expected_manifest is None:
-            asset = source_snapshot(path.parent, path.name, cancelled=cancelled)
-        else:
-            from .ingest.batch_scan import planned_snapshot
-            asset = planned_snapshot(path, cancelled=cancelled)
+        try:
+            if _expected_manifest is None:
+                asset = source_snapshot(path.parent, path.name, cancelled=cancelled)
+            else:
+                from .ingest.batch_scan import planned_snapshot
+                asset = planned_snapshot(path, cancelled=cancelled)
+        except InterruptedError:
+            if not cancelled():
+                raise
+            # This attempt has not retained bytes, created a journal or published.
+            return {'state': 'cancelled', 'message': 'Import cancelled before source admission.'}
         if _expected_manifest is not None and asset.manifest() != _expected_manifest:
             raise ValueError('Source changed after import planning; plan this file again.')
         record = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,

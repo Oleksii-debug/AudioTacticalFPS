@@ -126,6 +126,13 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/reader/test_ebook_audio.py tests/ui/test_ebook_dialog.py tests/ui/test_import_center.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/epub-source-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Require the corrected import installer and reporting regressions
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/e2e/test_application.py tests/e2e/test_import_batches.py tests/ingest/test_batch_scan.py tests/packaging/test_install_bytecode.py tests/search/test_retrieval_evaluation.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/prior-failure-source-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise actual installed recorded EPUB with bounded stack observations
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         timeout-minutes: 3

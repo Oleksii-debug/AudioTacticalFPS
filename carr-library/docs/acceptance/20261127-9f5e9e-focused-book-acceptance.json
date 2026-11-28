@@ -1,0 +1,272 @@
+{
+  "schema": "carr-focused-acceptance/1",
+  "recorded_at_utc": "2026-11-27T23:29:00Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Completed isolated Windows Book/recording diagnostic; ordinary candidate gates remain separate.",
+  "source": {
+    "commit": "9f5e9e214e9a0df8c599069222e225c21f964564",
+    "tree": "03a326eb524f905c7ddd200311dbfc8b9a77e915",
+    "parent": "925658a422405b20746ddd4bf1bb0153940e64cd",
+    "production_correction": "5adc38203317456a511d3e8f6eb6c0b14b97868d",
+    "renderer_git_blob": "2a4ccc6666d02fd0ca2a0d6540ee78b2bdabaf82",
+    "renderer_sha256": "58adc93699af10395ce2b433943102600e57458e18f7f208952eea218814df11",
+    "regression_git_blob": "9e55a7a14fc5fdaa9734f2dc62c18ee7d66a58b7",
+    "correction": "Measure the existing disk-scan interval from successful completion. Forced scans, fresh stop/source checks and publication budgets remain unchanged."
+  },
+  "workflow": {
+    "run_id": 46077443673,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46077443673",
+    "conclusion": "success",
+    "updated_at_utc": "2026-11-27T23:13:22Z",
+    "branch": "carr/native-audio-diagnostic-20261127",
+    "ordinary_workflow_or_ref_modified": false
+  },
+  "native": {
+    "job_id": 140768371374,
+    "conclusion": "success",
+    "completed_at_utc": "2026-11-27T23:07:43Z",
+    "decoded_log_sha256": "7db2f6ba756f13a079066f822cb81ec6c3d91fcb65d4c72d3e98943232b3df19",
+    "decoded_log_characters": 81180,
+    "source_controls": {
+      "suites": 3,
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "reports": [
+        {
+          "path": "tests/ui/test_recording_dialog.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "path": "tests/ui/test_book_batch_dialog.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "path": "tests/operations/test_production_admission.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "recording": {
+      "status": "PASS",
+      "reported_checks": 57,
+      "actual_native_keys": true,
+      "actual_ffmpeg_synthetic_capture": true
+    },
+    "v3": {
+      "status": "PASS",
+      "reported_check_groups": 16,
+      "actual_installed_sapi": true
+    },
+    "book": {
+      "status": "PASS",
+      "books": 2,
+      "parts": 3,
+      "formats": [
+        "wav",
+        "flac"
+      ],
+      "shared_worker": true,
+      "explicit_run_confirmations": 2,
+      "verified_resume_preserves_hashes_and_mtimes": true,
+      "source_originals_preserved": true,
+      "first_result_verified_seconds": 55.328,
+      "original_guard_seconds": 90,
+      "both_runs_finished_within_original_guard": true,
+      "stages": [
+        {
+          "stage": "opened",
+          "seconds": 0
+        },
+        {
+          "stage": "loaded",
+          "seconds": 0.062
+        },
+        {
+          "stage": "reviewed",
+          "seconds": 0.203
+        },
+        {
+          "stage": "rendered",
+          "seconds": 0.312,
+          "run_approvals": 1,
+          "first_result_verified": false
+        },
+        {
+          "stage": "rendered",
+          "seconds": 55.328,
+          "run_approvals": 2,
+          "first_result_verified": true
+        }
+      ]
+    },
+    "cleanup": {
+      "status": "PASS",
+      "destroy_event": true,
+      "private_worker_releases": 1,
+      "voice_owner_released": true,
+      "scenario_started_in_main_loop": true,
+      "bootstrap_destroy_event": true,
+      "frame_destroy_native_id": -31993,
+      "bootstrap_destroy_native_id": -31994,
+      "frame_wrapper_deleted": true,
+      "bootstrap_wrapper_deleted": true
+    },
+    "installed_identity": {
+      "source_commit": "9f5e9e214e9a0df8c599069222e225c21f964564",
+      "exact_checkout_python_files": 341,
+      "every_checkout_python_file_has_byte_equal_installed_counterpart": true,
+      "isolated_installed_entrypoint": true,
+      "audio_package": "ffmpeg-win64-lgpl-shared-20261126",
+      "audio_source_lock_sha256": "fba184226c559a39684810ce34b823b86b75a3708711b599dfbd437c5511f80a",
+      "audio_manifest_sha256": "c63a3f54aa1382be29cdd7baa148c7fa389ac543a9161692bd5380e2630abb9b",
+      "sapi_voices": [
+        {
+          "id": "sapi5-64:8ceac258515d5a474e76deba",
+          "name": "Microsoft David Desktop - English (United States)",
+          "language": "en-US"
+        },
+        {
+          "id": "sapi5-64:745a26bc99ef3c4c944377b9",
+          "name": "Microsoft Zira Desktop - English (United States)",
+          "language": "en-US"
+        }
+      ]
+    }
+  },
+  "book_source": {
+    "job_id": 140768371037,
+    "conclusion": "success",
+    "completed_at_utc": "2026-11-27T23:13:21Z",
+    "decoded_log_sha256": "533c68199da6795719edaeee502516fb9cc3b21234d172ce96d643efa9fc283c",
+    "decoded_log_characters": 139539,
+    "suites": 2,
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0,
+    "completed_case_call_reports": 30,
+    "reports": [
+      {
+        "path": "tests/studio/test_book_cli.py",
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 196.88
+      },
+      {
+        "path": "tests/studio/test_book_batch.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 517.45
+      }
+    ],
+    "measured_case_seconds": {
+      "cli_preview_prepare_run_status_verified_resume": 61.229571,
+      "cli_restored_fresh_output_review_run": 55.755888,
+      "cli_measured_duration_publication": 70.227066,
+      "two_book_render_and_verified_resume": 72.915961
+    },
+    "preserved_limits": {
+      "suite_seconds": 600,
+      "phase_seconds": 720,
+      "cli_child_seconds": 90
+    },
+    "diagnostic_sampling": {
+      "observed_records": 7,
+      "observation_errors": 0,
+      "periodic_c_timer": false,
+      "implementation": "Bounded ordinary Python thread; owned sys._current_frames references; duplicated original output descriptor.",
+      "maximum_samples_per_child": 6,
+      "interval_seconds": 90,
+      "maximum_threads": 8,
+      "maximum_frames_per_thread": 32,
+      "stop_join_seconds": 2
+    }
+  },
+  "artifacts": [
+    {
+      "id": 15237256384,
+      "name": "carr-native-audio-diagnostic-native-controls-9f5e9e214e9a0df8c599069222e225c21f964564",
+      "size_bytes": 22617,
+      "sha256": "3748bebafd89f5014ccd651820cf9c4dae11b982934ed3639aea2ae73d842ddb",
+      "run_id": 46077443673,
+      "head_sha": "9f5e9e214e9a0df8c599069222e225c21f964564"
+    },
+    {
+      "id": 15236403879,
+      "name": "carr-native-audio-diagnostic-book-source-9f5e9e214e9a0df8c599069222e225c21f964564",
+      "size_bytes": 23812,
+      "sha256": "abeddd39d50472278e8878ed60eeaf2aac84e1c408242d05192e115ef164f6a0",
+      "run_id": 46077443673,
+      "head_sha": "9f5e9e214e9a0df8c599069222e225c21f964564"
+    }
+  ],
+  "separate_ordinary_evidence": {
+    "head": "95efc7d06a82f19e9d247acadd027894608d7891",
+    "platform": "Linux",
+    "scope": "Root-verified ordinary production source selection, not the focused Windows candidate.",
+    "job_id": 140771992614,
+    "suites": 109,
+    "passed": 2165,
+    "failed": 0,
+    "skipped": 0,
+    "cadence_controls": {
+      "path": "tests/operations/test_production_admission.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "log_timestamp_utc": "2026-11-27T22:52:55.4466701Z"
+    },
+    "transfer_to_another_head": false
+  },
+  "reviewed_next_scheduling": {
+    "component": "db5d7af5acc6956d7773e9b2362b617db5244f21",
+    "source_review": "APPROVED",
+    "execution": "NOT_RUN",
+    "ordered_inventory_entries": 139,
+    "unchanged_inventory_git_blob": "37c38b6153c183f8dd5924a97ac8edef35f83108",
+    "required_partitions": [
+      69,
+      69,
+      1
+    ],
+    "dedicated_suite": "tests/studio/test_book_batch.py",
+    "other_assignments_and_order_preserved": true,
+    "book_cli_remains_in_partition": 2,
+    "workers_per_vm": 2,
+    "limits": {
+      "suite_seconds": 600,
+      "source_phase_seconds": 720,
+      "job_seconds": 2700
+    },
+    "required_v3_jobs": 5,
+    "projection": {
+      "source": "Observed 9f durations for 48 of 50 earlier selectors plus this exact focused Book duration.",
+      "known_predecessor_sum_seconds": 840.74,
+      "largest_known_predecessor_seconds": 254.78,
+      "optimistic_start_lower_bound_seconds": 292.98,
+      "book_seconds": 517.45,
+      "projected_finish_lower_bound_seconds": 810.43,
+      "qualification": "Scheduling projection from historical measurements; not a guaranteed future duration or a completed partition result."
+    }
+  },
+  "next_ordinary_composition": {
+    "documentation_base": "ec975ec5278eb1849cd6bd7d1eb8f6991f555264",
+    "execution": "NOT_RUN",
+    "explanation": "This focused record does not establish complete 95ef V3/full-Windows acceptance or execution of the forthcoming ordinary composition."
+  },
+  "not_qualified": [
+    "Human NVDA and manual Book keyboard qualification.",
+    "Physical microphone, dry-monitoring device and listening-quality qualification.",
+    "Private voice/model/runtime or multilingual-quality qualification.",
+    "Production signing, activation or distribution approval.",
+    "Performance guarantees for other machines, corpora or larger books."
+  ]
+}

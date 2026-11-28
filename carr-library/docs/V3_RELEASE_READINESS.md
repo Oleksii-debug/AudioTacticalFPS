@@ -13,6 +13,7 @@ bound to the stated source identities.
 
 | Recent exact checkpoint | Actual result | Evidence and scope |
 | --- | --- | --- |
+| 9f late integrated terminal readback | **103 actual source reports: 2269 passed, 22 failed, zero skipped; 301 selected entries remain unreported** | [Exact terminal follow-through](acceptance/20261127-9f2a83-integrated-terminal.json). The complete 404-entry inventory includes one bootstrap compatibility suite and one pre-existing duplicate. A huge generated test ID also failed Windows environment-variable setup/teardown; no final JUnit report exists for that suite. The job ended cancelled on ordinary supersession at 22:50:44 UTC. |
 | 9f broad source composition | **2432 passed in 102 quick suites; 2113 in 109 production suites; 3218 in 95 reconciled suites; zero failures/skips** | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). The separate direct regression passed 987 cases with one intentional Windows-only deselection. These selections overlap. |
 | 9f completed Windows and Linux components | **15 workflow jobs completed successfully**, including both ASR selections, native reading/templates/bibliography/keyboard/lifetime and both compiled launchers | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). ASR completed 734 Linux and 733 Windows cases, six Windows native handle barriers, 15 native ASR and 31 installed incremental-backup checks. Hosted controls retain their stated qualification limits. |
 | 9f integrated desktop evidence | **Native Import Center and all 137 metadata checks passed; recording closure and Book completion still failed** | [Exact recovered phase evidence](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). Nine metadata installed origins, source-wheel bytes and full-lock/SBOM parity passed. Source phase 56 remained in progress at the snapshot, beyond its configured 35-minute limit; no source coverage is inferred. |
@@ -210,6 +211,39 @@ flow, raster input bounds and the distinct private-model and signed-distribution
 requirements. These clarifications do not expand the supported-format or
 qualification claims below.
 
+## Follow-through from recovered integrated source output
+
+The later [complete 9f terminal log](acceptance/20261127-9f2a83-integrated-terminal.json) exposed source failures that
+were absent from the earlier phase artifact. The source phase finished 103
+actual suite reports: 2269 passes and 22 failures. Its 404 selected entries
+include the bootstrap compatibility suite and two selections of the same OCR
+file; 301 entries remain unreported. Command echoes containing an expected PASS
+string are excluded from these counts. A missing report never becomes a pass.
+
+The follow-up source composition
+[007b52f4](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/007b52f4b66f2e60e8ebc6230e0b993a690c4ccd)
+restores the established cancelled result only when a real cancellation
+interrupts initial source admission. Exceptions after retention, journal work or
+publication remain outside that catch. Six real boundary controls preserve
+the original source, empty-catalog cancellation and the truth of already
+committed output. Snapshot test wrappers now pass the actual cancellation
+callback through the current reader.
+
+The installer regression executes its current fixed inline native check in a
+real child and observes both PASS and FAIL exit statuses. Cold/stale bytecode
+integrity now exercises the canonical acquisition worker, whose controlled
+invalid private destination is rejected before networking. The retired DOI
+client is not reintroduced. Existing lifecycle, original-byte and manifest
+assertions remain.
+
+The oversized retrieval fixture now has two short explicit test IDs; its actual
+duplicate-key and one-MiB-plus-one payloads and every assertion are unchanged.
+Four previously missing files also join the quick strict gate: 104 offline
+suites plus the same two namespace suites, with all 102 earlier selectors
+preserved. The full Windows inventory remains unchanged. This reviewed
+seven-path source union requires its own actual execution; current outcomes
+remain bound to the head reported in PR152.
+
 ## Explicit capability limits
 
 The requested format inventory remains in [document compatibility](DOCUMENT_FORMATS_V3.md).
@@ -234,3 +268,35 @@ The following require evidence or inputs beyond source completion:
 - Optional online accounts, external provider permissions and billing. No paid call or secret access is implied by implementing a provider adapter.
 
 The default remains local/offline operation with access to user-owned data. This technical work does not activate paid services, select prices, publish private voices/books/models or waive third-party notices and corresponding-source obligations.
+
+
+## Completed focused Windows Book acceptance — 2026-11-27 23:13 UTC
+
+The [exact 9f5 evidence](acceptance/20261127-9f5e9e-focused-book-acceptance.json)
+replaces only the earlier queued status of that isolated diagnostic. Run 46077443673
+completed successfully: native job 140768371374 ended at 23:07:43 UTC and
+Book-source job 140768371037 at 23:13:21 UTC. The installed inventory matched all
+341 Python files to 9f5. Three source-control suites passed 79 cases; recording
+reported 57 native checks and the installed V3/SAPI probe 16 check groups.
+
+The two-book/three-part native flow passed both explicit Run approvals,
+WAV/FLAC publication and exact hash/mtime reuse with originals preserved. Its
+first completion was observed at 55.328 seconds and the second Run also finished
+inside the unchanged 90-second guard. Book CLI passed 13 cases in 196.88 seconds;
+Book batch passed 17 in 517.45 seconds, with zero failures/skips and complete JUnit
+reports. The 600-second suite, 720-second phase and 90-second CLI-child limits
+were unchanged. This is actual component acceptance, not a general capacity
+measurement or a full ordinary-head result.
+
+Separate ordinary 95ef Linux production evidence remains bound to 95ef:
+job 140771992614 passed 2165 cases in 109 suites, including all 25 production
+admission controls. It is not transferred to 9f5 or a later candidate.
+
+The independently reviewed scheduling successor db5d7af5 preserves the exact
+139-suite manifest and all limits while moving Book batch alone to a required
+third source VM: 69/69/1 suites, with Book CLI still in the second partition.
+Observed earlier work plus the 517.45-second Book run projects an optimistic
+810.43-second finish in its old 720-second partition; this is a scheduling
+projection, not a future timing guarantee. The new partition and forthcoming
+ordinary composition remain **NOT_RUN** in this record. All qualification
+limits above remain unchanged.

@@ -194,3 +194,129 @@ def test_original_byte_drift_blocks_fresh_copy(app):
     retained.write_bytes(original)
     assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'exact quotation'
 
+
+
+@pytest.mark.parametrize('planned', [False, True], ids=['direct', 'planned'])
+def test_actual_source_snapshot_cancellation_returns_without_retention_or_publication(
+        app, tmp_path, monkeypatch, planned):
+    from threading import Event
+    from carr_library.catalog.intake import source_snapshot
+
+    source = tmp_path / 'source.txt'
+    raw = b'Exact source bytes remain outside the cancelled library.'
+    source.write_bytes(raw)
+    expected = source_snapshot(source.parent, source.name).manifest() if planned else None
+    workspace = app.create_workspace('Cancellation during intake')
+    stopped, opened = Event(), []
+    actual_open = Path.open
+
+    def open_and_stop(path, mode='r', *args, **kwargs):
+        stream = actual_open(path, mode, *args, **kwargs)
+        if path == source and mode == 'rb':
+            # Arm only after the actual selected file descriptor exists. The
+            # genuine intake reader must see the same callback after its read.
+            opened.append(stream)
+            stopped.set()
+        return stream
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'open', open_and_stop)
+        result = app.import_file(workspace, source, cancelled=stopped.is_set,
+                                 expected_manifest=expected)
+
+    assert result['state'] == 'cancelled'
+    assert len(opened) == 1 and opened[0].closed and stopped.is_set()
+    assert source.read_bytes() == raw
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert not (app.root / 'imports.sqlite').exists()
+    assert app.browse(workspace) == () and app.search(workspace, 'Exact') == ()
+
+
+@pytest.mark.parametrize('planned', [False, True], ids=['direct', 'planned'])
+def test_unrequested_source_interruption_is_not_reported_as_cancellation(
+        app, tmp_path, monkeypatch, planned):
+    from carr_library import application
+    from carr_library.catalog.intake import source_snapshot
+    from carr_library.ingest import batch_scan
+
+    source = tmp_path / 'source.txt'
+    raw = b'Unrequested interruption must remain an error.'
+    source.write_bytes(raw)
+    expected = source_snapshot(source.parent, source.name).manifest() if planned else None
+    workspace = app.create_workspace('Unrequested intake interruption')
+    cancelled = lambda: False
+    problem = InterruptedError('Unrequested source interruption.')
+    calls = []
+
+    def interrupted(*args, **kwargs):
+        calls.append(args)
+        assert kwargs['cancelled'] is cancelled
+        raise problem
+
+    with monkeypatch.context() as patch:
+        if planned:
+            patch.setattr(batch_scan, 'planned_snapshot', interrupted)
+        else:
+            patch.setattr(application, 'source_snapshot', interrupted)
+        with pytest.raises(InterruptedError) as caught:
+            app.import_file(workspace, source, cancelled=cancelled,
+                            expected_manifest=expected)
+
+    assert caught.value is problem and len(calls) == 1
+    assert source.read_bytes() == raw
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert not (app.root / 'imports.sqlite').exists()
+    assert app.browse(workspace) == () and app.search(workspace, 'interruption') == ()
+
+
+@pytest.mark.parametrize('boundary', ['publication', 'cleanup'])
+def test_interruption_after_actual_publication_preserves_commit_and_propagates(
+        app, tmp_path, monkeypatch, boundary):
+    from contextlib import closing
+    from hashlib import sha256
+    from threading import Event
+    from carr_library import application
+
+    source = tmp_path / 'source.txt'
+    raw = b'Exact published quotation survives the later interrupted reply.'
+    source.write_bytes(raw)
+    workspace = app.create_workspace('Committed import interruption')
+    stopped, published = Event(), []
+    problem = InterruptedError('Interrupted after the real source publication.')
+    actual_publish = application._CatalogPublisher.publish_revision
+    actual_close = application.Ingest.close
+
+    def publish(self, scope, edition, revision, asset, config, pages):
+        actual_publish(self, scope, edition, revision, asset, config, pages)
+        published.append((edition, revision, asset))
+        if boundary == 'publication':
+            stopped.set()
+            raise problem
+
+    def close(self):
+        actual_close(self)
+        stopped.set()
+        raise problem
+
+    with monkeypatch.context() as patch:
+        patch.setattr(application._CatalogPublisher, 'publish_revision', publish)
+        if boundary == 'cleanup':
+            patch.setattr(application.Ingest, 'close', close)
+        with pytest.raises(InterruptedError) as caught:
+            app.import_file(workspace, source, cancelled=stopped.is_set)
+
+    assert caught.value is problem and stopped.is_set() and len(published) == 1
+    edition, revision, asset = published[0]
+    assert asset == sha256(raw).hexdigest()
+    assert source.read_bytes() == raw and app.assets.resolve(asset).read_bytes() == raw
+    assert len(app.browse(workspace)) == 1
+    hit, = app.search(workspace, 'published quotation')
+    assert hit.revision == revision
+    assert app.copy(workspace, hit.ref, revision, 'quote') == 'published quotation'
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT workspace,edition,asset FROM revision WHERE id=?',
+                                (revision,)).fetchone()) == (workspace, edition, asset)
+        assert db.execute('SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()
+    with closing(sqlite3.connect(app.root / 'imports.sqlite')) as db:
+        state, = db.execute('SELECT state FROM job WHERE id=?', (revision,)).fetchone()
+    assert state == ('failed' if boundary == 'publication' else 'complete')
