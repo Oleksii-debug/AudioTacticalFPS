@@ -477,8 +477,14 @@ def _recorded_dialog_start_harness(session, player, *, quiet=True):
         shutdown = Mock()
 
     hold = SimpleNamespace(ready=quiet, close=Mock())
-    progress = SimpleNamespace(hold_audio=lambda: hold, refresh_audio_state=Mock(),
-                               unregister_player=Mock())
+    class Progress:
+        # The real quiet coordinator deduplicates owner objects by identity.
+        def __init__(self):
+            self.refresh_audio_state = Mock()
+            self.unregister_player = Mock()
+        def hold_audio(self):
+            return hold
+    progress = Progress()
     dialog = object.__new__(EbookAudioDialog)
     dialog.session, dialog.player = session, player
     dialog.transport = OverlayPlayback(session, player)

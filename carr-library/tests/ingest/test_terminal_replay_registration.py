@@ -89,9 +89,9 @@ def test_superseded_replay_uses_current_metadata_without_reactivating_old_source
 
 def test_cancelled_completed_replay_does_not_add_memberships(imported):
     app, workspace, first, requested, source, metadata, initial = imported
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app._import_file(workspace, source, collections=(requested,),
-                         cancelled=lambda: True, **metadata)
+    cancelled = app._import_file(workspace, source, collections=(requested,),
+                                 cancelled=lambda: True, **metadata)
+    assert cancelled['state'] == 'cancelled' and 'id' not in cancelled
     assert app.browse(workspace, collection=requested) == ()
     assert app.search(workspace, 'railway', collection=first)[0].revision == initial['id']
 
@@ -120,10 +120,41 @@ def test_forged_terminal_journal_without_published_source_does_not_register(tmp_
     source = tmp_path / 'source.txt'
     source.write_text('Original railway text', encoding='utf-8')
     metadata = dict(work_id='work', edition_id='edition', title='Original')
-    cancelled = app.import_file(workspace, source, cancelled=lambda: True, **metadata)
+    original_bytes = source.read_bytes()
+    observed = []
+    def cancel_after_durable_job():
+        if observed:
+            return True
+        journal_path = app.root / 'imports.sqlite'
+        if not journal_path.is_file():
+            return False
+        # Observe the genuine committed job from a separate, closed connection;
+        # early source-admission cancellation correctly has no journal identity.
+        with closing(sqlite3.connect(journal_path, isolation_level=None)) as observer:
+            rows = observer.execute(
+                'SELECT id,workspace,edition,asset,state FROM job').fetchall()
+        if not rows:
+            return False
+        assert len(rows) == 1
+        job, scope, edition, asset, saved_state = rows[0]
+        assert (scope, edition, asset, saved_state) == (
+            workspace, metadata['edition_id'], sha256(original_bytes).hexdigest(), 'pending')
+        observed.append(job)
+        return True
+
+    cancelled = app.import_file(workspace, source, cancelled=cancel_after_durable_job, **metadata)
     assert cancelled['state'] == 'cancelled'
+    assert observed == [cancelled['id']] and cancelled['completed'] == 0
+    assert source.read_bytes() == original_bytes
+    assert app.assets.resolve(sha256(original_bytes).hexdigest()).read_bytes() == original_bytes
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
     with closing(sqlite3.connect(app.root / 'imports.sqlite', isolation_level=None)) as journal:
-        journal.execute('UPDATE job SET state=? WHERE id=?', (state, cancelled['id']))
+        assert journal.execute('SELECT state FROM job WHERE id=?', (cancelled['id'],)).fetchone() == ('cancelled',)
+        assert journal.execute('SELECT count(*) FROM checkpoint WHERE job=?',
+                               (cancelled['id'],)).fetchone()[0] == 0
+        updated = journal.execute('UPDATE job SET state=? WHERE id=?', (state, cancelled['id']))
+        assert updated.rowcount == 1
     with pytest.raises(ValueError, match='missing its sealed source'):
         app.import_file(workspace, source, collections=(requested,), **metadata)
     assert app.browse(workspace) == ()

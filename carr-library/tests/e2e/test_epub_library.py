@@ -230,8 +230,8 @@ def test_incompatible_book_and_cancelled_import_never_publish(tmp_path):
     workspace = app.create_workspace('Rejected inputs')
     source = tmp_path / 'synthetic.epub'
     source.write_bytes(synthetic_epub())
-    with pytest.raises(InterruptedError):
-        app._import_file(workspace, source, cancelled=lambda: True)
+    cancelled = app._import_file(workspace, source, cancelled=lambda: True)
+    assert cancelled['state'] == 'cancelled' and 'id' not in cancelled
     assert app.browse(workspace) == ()
     data = BytesIO()
     with ZipFile(BytesIO(synthetic_epub())) as original, ZipFile(data, 'w') as changed:
