@@ -1,0 +1,52 @@
+{
+  "schema": "carr-full-main-reader-input/1",
+  "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "source_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+  "run_id": 46099459968,
+  "job_id": 140838351981,
+  "run_attempt": 1,
+  "artifact": {
+    "id": null,
+    "name": null,
+    "bytes": null,
+    "sha256": null
+  },
+  "source_blobs": {
+    "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+    ".github/workflows/carr-windows.yml": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "carr-library/packaging/probe_standard_update_windows.py": "3ac3401e48e937c78142e8d296cb408f32df0429",
+    "carr-library/scripts/standard_qualification_shell_acceptance.py": "ec240ce21e39f261a09bf4403179be894c548e8d",
+    "carr-library/scripts/v3_acceptance_oracles.json": "b350bdab38415c42d13c69116dd876747e8f0354",
+    "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+    "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+    "carr-library/scripts/reader_interactive_native_gate.py": "7e415972d50ae4851934e60e585b739add6242e4",
+    "carr-library/scripts/local_translation_oracles.json": "a954839a9e373b60f13f35b16c57d7160e43750c",
+    "carr-library/scripts/translation_scope_oracles.json": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+    "carr-library/scripts/reader_appearance_acceptance_oracle.json": "a63625ec4911c9258927fff5dd8f32e7efe9f665",
+    "carr-library/scripts/assistant_interactive_acceptance_oracle.json": "bb16b437acbb980999729a5312ae4322dcd69198",
+    "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+    "carr-library/scripts/qualify_reader_appearance.py": "4bb2a090a42dffd5cba9c5c11814a9055b9000ee",
+    "carr-library/scripts/local_translation_acceptance.py": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+    "carr-library/scripts/translation_scope_acceptance.py": "60d841da5b74fde0ee8491899c12aa516b461851",
+    "carr-library/packaging/source_wheel.py": "bba3d0cda29b475d51347434d832af9187840547",
+    "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b",
+    "carr-library/scripts/ci_standard_installer.ps1": "f1c00bcdb02b520316d2d9832f0ce4ce61bd2905",
+    "carr-library/scripts/ci_check.py": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+    "carr-library/tests/loopback/test_local_planning.py": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab"
+  },
+  "wheel_extension": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_PUBLIC_WHEEL_READ_POST_014B_20261128.json",
+    "sha256": "0eccb950b2f8b3cd2115693cdef74cb76a4e1f76bb208edcf956e81f3fd3a1f4"
+  },
+  "bounds": {
+    "archive_bytes": 8388608,
+    "members": 10000,
+    "expanded_bytes": 536870912,
+    "member_bytes": 4194304
+  },
+  "instruction": "UNREADY: do not launch the final reader until the exact completed c31 main artifact id/name/bytes/SHA are supplied from actual metadata. Null artifact pins stop before API access. Preserve the byte-exact f77 and014 snapshots and overlays; only the explicit post014 locator applies to this current config.",
+  "post014_binding_overlay": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_014B_20261128.json",
+    "sha256": "3dc33e35b53426626df1960c2faaf64565e7c7f6e67b6ea16aa54ff54c1e58b0"
+  }
+}

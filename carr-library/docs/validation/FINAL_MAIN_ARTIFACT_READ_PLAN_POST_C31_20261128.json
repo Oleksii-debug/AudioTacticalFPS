@@ -1,0 +1,272 @@
+{
+  "schema": "carr.final-main-post-c31-silence-overlay.v1",
+  "status": "UNREADY_ACTUAL_ARTIFACT_NOT_PINNED",
+  "base_plan": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json",
+    "blob": "955081bda0d4a47d8eff6200a010943da7bd0cf2"
+  },
+  "previous_candidate": {
+    "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "source_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+    "run_id": 46099459968,
+    "job_id": 140838351981,
+    "run_attempt": 1
+  },
+  "previous_reader_config": {
+    "commit": "ba414f761a864edbe13a7744621ab6619033fd6e",
+    "path": "carr-library/scripts/main_artifact_reader.json",
+    "blob": "85388ec1f08a4e475bc15030df24ef23588c4117",
+    "sha256": "a2190e4875a54de2547836a9b58cdb5dba920c1b94c9579f06660d0dc5a5ebfb",
+    "snapshot_path": "carr-library/scripts/main_artifact_reader.c31.json"
+  },
+  "previous_source_overlay": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_014B_20261128.json",
+    "blob": "b7331b436522c93d103560f27722f3e356338ea3",
+    "sha256": "3dc33e35b53426626df1960c2faaf64565e7c7f6e67b6ea16aa54ff54c1e58b0"
+  },
+  "candidate": {
+    "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "source_tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+    "run_id": 46121064501,
+    "job_id": 140905458267,
+    "run_attempt": 1
+  },
+  "changes": [
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "before": {
+        "blob": "b350bdab38415c42d13c69116dd876747e8f0354",
+        "sha256": "b4f2c3fe0f58100598830f35f4a485121cade5f9055693ca6a1410a4bc6d9685"
+      },
+      "after": {
+        "blob": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+        "sha256": "24f1c6f2e29f944d76362a01a699d70164dbda7e7e3bd775e3379b4c4b0855cf"
+      }
+    }
+  ],
+  "unchanged_bindings": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+      "sha256": "70befd739fd9cac7467fcbfdaf57e0153404d9fd7e843e5edab707aa6c3581fd"
+    },
+    {
+      "path": "carr-library/packaging/probe_standard_update_windows.py",
+      "blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+      "sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "blob": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+      "sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7"
+    },
+    {
+      "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+      "blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+      "sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54"
+    },
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "blob": "b350bdab38415c42d13c69116dd876747e8f0354",
+      "sha256": "b4f2c3fe0f58100598830f35f4a485121cade5f9055693ca6a1410a4bc6d9685"
+    },
+    {
+      "path": "carr-library/tests/loopback/test_local_planning.py",
+      "blob": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab",
+      "sha256": "b4bacd663fc19e945db6b6f1fddff758b1993f7310e673357755ab84482dace7"
+    }
+  ],
+  "qc_additions": {
+    "source": {
+      "tests.audio.test_local_voice_helper": {
+        "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+        "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+        "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+        "test_private_helper_directory_refuses_replaced_ownership": 2,
+        "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
+      },
+      "tests.audio.test_production_integrity": {
+        "test_silence_scanner_crosses_real_block_boundaries": 2,
+        "test_silence_scanner_applies_all_channel_threshold_and_exact_length": 8,
+        "test_silence_scanner_counts_all_omitted_intervals": 2,
+        "test_silence_inspection_rejects_invalid_explicit_criteria_before_io": 18,
+        "test_completed_silence_inspection_is_source_bound_contextual_and_read_only": 1,
+        "test_completed_silence_rejects_changed_retained_inputs": 3,
+        "test_completed_silence_retains_readers_through_mutation_attempt": 3,
+        "test_completed_silence_cancellation_keeps_completion_and_receipts": 2,
+        "test_completed_silence_requires_expected_run_and_manifest_selection": 2,
+        "test_silence_context_rejects_resealed_out_of_bounds_timeline": 4,
+        "test_silence_inspection_preserves_legacy_completed_replay": 1,
+        "test_silence_report_formatter_rejects_unbounded_or_forged_summary": 4
+      },
+      "tests.e2e.test_audio_cli_resources": {
+        "test_silence_cli_requires_selected_completion_and_both_explicit_criteria": 6,
+        "test_silence_cli_refuses_unrelated_rendering_or_runtime_authority": 7,
+        "test_silence_cli_cannot_share_a_command_with_another_operation": 4,
+        "test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes": 1,
+        "test_silence_cli_cancel_restores_handler_without_a_partial_complete_report": 2,
+        "test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start": 1
+      },
+      "tests.ui.test_audio_studio": {
+        "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+        "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+        "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+        "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+        "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+        "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+        "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+        "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+        "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+        "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+        "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+        "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+        "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+        "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+        "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+        "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+        "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+        "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+        "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+        "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+        "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+        "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
+      }
+    },
+    "installed": {
+      "tests.audio.test_local_voice_helper": {
+        "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+        "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+        "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+        "test_private_helper_directory_refuses_replaced_ownership": 2,
+        "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
+      },
+      "tests.audio.test_production_integrity": {
+        "test_silence_scanner_crosses_real_block_boundaries": 2,
+        "test_silence_scanner_applies_all_channel_threshold_and_exact_length": 8,
+        "test_silence_scanner_counts_all_omitted_intervals": 2,
+        "test_silence_inspection_rejects_invalid_explicit_criteria_before_io": 18,
+        "test_completed_silence_inspection_is_source_bound_contextual_and_read_only": 1,
+        "test_completed_silence_rejects_changed_retained_inputs": 3,
+        "test_completed_silence_retains_readers_through_mutation_attempt": 3,
+        "test_completed_silence_cancellation_keeps_completion_and_receipts": 2,
+        "test_completed_silence_requires_expected_run_and_manifest_selection": 2,
+        "test_silence_context_rejects_resealed_out_of_bounds_timeline": 4,
+        "test_silence_inspection_preserves_legacy_completed_replay": 1,
+        "test_silence_report_formatter_rejects_unbounded_or_forged_summary": 4
+      },
+      "tests.e2e.test_audio_cli_resources": {
+        "test_silence_cli_requires_selected_completion_and_both_explicit_criteria": 6,
+        "test_silence_cli_refuses_unrelated_rendering_or_runtime_authority": 7,
+        "test_silence_cli_cannot_share_a_command_with_another_operation": 4,
+        "test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes": 1,
+        "test_silence_cli_cancel_restores_handler_without_a_partial_complete_report": 2,
+        "test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start": 1
+      },
+      "tests.ui.test_audio_studio": {
+        "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+        "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+        "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+        "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+        "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+        "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+        "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+        "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+        "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+        "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+        "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+        "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+        "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+        "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+        "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+        "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+        "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+        "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+        "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+        "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+        "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+        "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
+      }
+    }
+  },
+  "expected_populations": {
+    "source_modules": 252,
+    "source_cases": 5947,
+    "installed_modules": 239,
+    "installed_cases": 5619
+  },
+  "actual_artifact": {
+    "id": null,
+    "name": null,
+    "bytes": null,
+    "sha256": null
+  },
+  "preserved_contracts": {
+    "source_selectors": 451,
+    "source_aggregate": [
+      451,
+      451,
+      0
+    ],
+    "source_pin_map": "Exactly the historical c31 21-pin map with the one reviewed V3-oracle substitution. Runner/main workflow/probe/shell pins remain unchanged.",
+    "source_and_installed_receipts": "Existing source and installed parser functions, exact function Counters, selector multiplicity, failure/error/skip predicates and all prior source bindings remain unchanged.",
+    "native_families": 21,
+    "planning_loopback": 14,
+    "standard_installer": 6,
+    "maintenance": 4,
+    "managed_update": 15,
+    "library": 50,
+    "artifact_layout": "Existing main artifact members are unchanged. The new QC native proof is separately qualified by its focused workflow and is not inferred by this reader.",
+    "no_artifact_execution": true,
+    "null_artifact": "The original hard NOT_READY check remains before API/source/archive access.",
+    "archive_limits": {
+      "archive_bytes": 8388608,
+      "members": 10000,
+      "expanded_bytes": 536870912,
+      "member_bytes": 4194304
+    }
+  },
+  "historical_outcome": {
+    "status": "FAIL",
+    "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "proof_commit": "a45bd8667646f0d4a2d9665c0e6f50af730addc0",
+    "source_suites_passed": 450,
+    "source_suites_failed": 1,
+    "source_case_passed": 11462,
+    "source_case_failed": 1,
+    "protected_gate": "SKIPPED",
+    "later_full_main": "NOT_RUN"
+  },
+  "parser_control_evidence": {
+    "status": "PASS",
+    "scope": "PARSER_CONTROLS_ONLY",
+    "proof_path": "carr-library/docs/evidence/post-c31-main-reader-parser-controls-observed-20261128.json",
+    "proof_blob": "645f6914db040a71c983d7a1c0f1145a7d211c98",
+    "proof_sha256": "da55edaaecf9fa6d17fc1528cf5acc98d2a4535fda316eaa70f4f590380903de",
+    "tested_tooling": {
+      "source_commit": "1099392b6ad00e2402962551280db41634f66b33",
+      "source_tree": "839aa66d0bae0b03cdbf104e9700fa04802c4f86",
+      "sole_parent": "40a4379a55fafa2269eae2719216931e825e97f1",
+      "branch": "carr/main-reader-self-check-r38-e9-d3a-20261128"
+    },
+    "run_id": 46107509544,
+    "job_id": 140863455133,
+    "run_attempt": 1,
+    "reader_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
+    "reader_sha256": "bad4a97d0a9143ec189fdaa67e47cbe96fd2c100f52f6509e1819c57d008fbb2",
+    "negative_controls": 37,
+    "positive_controls": 6,
+    "application_qualification": "NOT_RUN",
+    "artifact_inspection": "NOT_RUN"
+  },
+  "scope": "Only the exact four-module126-case additive extension and its one reviewed V3 source pin are admitted. All historical f77/014/c31 documents and old case multiplicities remain required. Current source 7c991dac1581faa63cb32eaaa5e21cf548287b38, tree 4929a01d460a1184d0552fdcda0fe392f1e7e21b, actual main run 46121064501, job 140905458267, attempt 1 are bound; every artifact field remains null. Earlier candidates' outcomes are not transferred.",
+  "runtime": "NOT_RUN: current full-main execution and its own immutable artifact are not qualified by prepared tooling or parser controls.",
+  "historical_parser_control_evidence": {
+    "commit": "45fcf5167a87cc8904794871e1c04b21a501302e",
+    "path": "carr-library/docs/evidence/post014-main-reader-parser-controls-observed-20261128.json",
+    "blob": "2caba29b056e15802cb21aac2ab37d53f7009458",
+    "sha256": "2961f877f3deb793ea3163bf2678ba8baa4aaa7b11a697b95eb375dda6595aff",
+    "negative_controls": 19,
+    "positive_controls": 4,
+    "transfer": "Historical parser result only; new37/6 controls still require their own actual execution."
+  }
+}

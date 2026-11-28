@@ -1,0 +1,47 @@
+name: CARR fixed full-main inert artifact reader
+on:
+  push:
+    branches: ['carr/main-artifact-reader-*']
+    paths:
+      - carr-library/scripts/main_artifact_reader.py
+      - carr-library/scripts/main_artifact_reader.json
+      - carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_WHEEL_EXTENSION_20261127.json
+      - .github/workflows/carr-main-artifact-reader.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: carr-main-artifact-reader-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  read-fixed-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Check the reviewed inert-parser and finite source-map controls
+        run: |
+          python -I -B -X utf8 carr-library/scripts/main_artifact_reader.py --self-check
+      - name: Read only the exact completed public artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -I -B -X utf8 carr-library/scripts/main_artifact_reader.py --output-dir main-reader-results
+      - name: Preserve compact complete hashes and verdicts on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-main-inert-${{ github.sha }}-${{ github.run_attempt }}
+          path: main-reader-results/main-artifact-reader-result.json
+          if-no-files-found: warn

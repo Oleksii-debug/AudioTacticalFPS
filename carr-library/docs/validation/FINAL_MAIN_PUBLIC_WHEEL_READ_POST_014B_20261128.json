@@ -1,0 +1,49 @@
+{
+  "schema": "carr.final-main-public-wheel-read-extension.v1",
+  "status": "UNREADY_ACTUAL_ARTIFACT_NOT_PINNED",
+  "base_plan_path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json",
+  "base_plan_blob": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+  "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "source_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+  "run_id": 46099459968,
+  "job_id": 140838351981,
+  "run_attempt": 1,
+  "authorization": "Root authorized the same closed public-wheel selection for the exact frozen c31 candidate and this actual main run. This off-ref tooling preserves all application files and does not change the integration or frozen control references.",
+  "allowed_prefixes": [
+    "standard-update/original-application-wheel/",
+    "standard-update/previous-application-wheel/"
+  ],
+  "selection": "For each fixed prefix, first read its already selected manifest.json. Admit only the single safe ASCII .whl basename in wheel_file beneath that same prefix. Require the manifest source to be original913322 or maintenance3cef exactly; require its candidate source/hash to match B. Never recursively select a directory.",
+  "checks": [
+    "Full retained wheel byte length and SHA256 equal its bound manifest.",
+    "Original, maintenance and current public wheel identities are pairwise distinct.",
+    "Inert wheel ZIP inventory rejects duplicates, aliases, links, encryption, bytecode and undeclared payload.",
+    "Every wheel RECORD entry verifies exact member SHA256 and byte count; only RECORD itself has its standard empty self-hash.",
+    "Every package and declared license byte equals its exact original/maintenance/current Git source; metadata name/version and entry points match that source.",
+    "Original/maintenance sealed manifest wheel hashes and native/build/source receipts cross-bind the same retained bytes."
+  ],
+  "unchanged": "The B-wheel,151 root-member,21 native-family, reader-interactive, shell3 and standard-child predicates remain unchanged. Every former protected case is retained; the separately validated oracle adds only eight resource cases in each mode, yielding5821/5493. The inherited8MiB compressed/512MiB expanded/4MiB member/10000 member bounds remain fixed.",
+  "forbidden": "No compiled setup, native runtime, model, user document, executable artifact import, archive extraction, wheel installation or dynamic code execution.",
+  "limits": "These public wheel checks are source-byte evidence, not a new native execution, signing, model-quality or redistribution qualification.",
+  "actual_artifact": {
+    "id": null,
+    "name": null,
+    "bytes": null,
+    "sha256": null
+  },
+  "runtime": "NOT_RUN: no actual artifact is selected. Preserve both failed f77 and014 outcomes; require this exact completed main job's own immutable artifact metadata before reading.",
+  "historical_extension": {
+    "commit": "3275bed074f3eb886de55af319467735fe0eb00e",
+    "path": "carr-library/docs/validation/FINAL_MAIN_PUBLIC_WHEEL_READ_POST_F77_20261128.json",
+    "blob": "6f51b15fe0c99fa34b969900d047411e9b20d34c",
+    "sha256": "e83f7ca10c5a0bcd87d77ae7cfb5fbaf8a30e1da5a610612c9e08b55d840e770",
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "prior_historical_extension": {
+      "commit": "c76f65d953a0704d5da373f760bcbbb2aaa3322e",
+      "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_WHEEL_EXTENSION_20261127.json",
+      "blob": "84f46815c971e62595f36a4c14b78ee2ae3b5088",
+      "sha256": "2122cc43fac4eca30cb2b02ca8580245f796868e0d56a772adeee038e97647bf",
+      "source_commit": "f77cdd445c158f3f66d13c03d920418965840d16"
+    }
+  }
+}

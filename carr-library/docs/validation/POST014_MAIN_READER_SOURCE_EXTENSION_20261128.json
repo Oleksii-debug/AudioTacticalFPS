@@ -1,0 +1,378 @@
+{
+  "schema": "carr.post014-reader-source-extension.v1",
+  "status": "SOURCE_ONLY_RUNTIME_NOT_RUN",
+  "prepared_parent": {
+    "commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b"
+  },
+  "reader_before": {
+    "commit": "3275bed074f3eb886de55af319467735fe0eb00e",
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "blob": "b8323d37ac5b8d183f7b0ebd28621238ccfb367d",
+    "sha256": "c6798e0e9e2a1883a1c6cb149643c16d3ba6d299a05edf6271d7d32063c5d041"
+  },
+  "reader_after": {
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "sha256": "1dca0f5febd534b69f89c7db6fd1f11893baf342b0e2e46549b3ec32663747d2"
+  },
+  "immutable_history": {
+    "f77_plan": {
+      "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json",
+      "blob": "955081bda0d4a47d8eff6200a010943da7bd0cf2"
+    },
+    "prior_014_config": {
+      "commit": "3275bed074f3eb886de55af319467735fe0eb00e",
+      "path": "carr-library/scripts/main_artifact_reader.json",
+      "blob": "c7862ffc86b82dd544b0574375ae22c350cb790e",
+      "sha256": "a70ca7b50d82a14cf4616fa3b73ea4d589fdb8e5eb96441d87cae226a4e97492",
+      "snapshot_path": "carr-library/scripts/main_artifact_reader.014b.json"
+    },
+    "prior_014_overlay": {
+      "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_F77_20261128.json",
+      "blob": "fb893a801f6f008b64136c021bb6ceee779a87f2",
+      "sha256": "742ca4f1cb1c2bcd72a660370ba1c2ac10a3297d57fb588e3cbe91e335cf6ae2"
+    },
+    "prior_014_runtime": {
+      "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+      "source_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+      "run_id": 46089514448,
+      "job_id": 140806885393,
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "source_suites_total": 451,
+      "source_suites_passed": 448,
+      "source_suites_failed": 3,
+      "complete_source_receipts": 450,
+      "complete_source_case_passed": 10797,
+      "complete_source_case_failed": 2,
+      "assistant_case_starts": 613,
+      "assistant_unstarted": 43,
+      "assistant_complete_receipt": "ABSENT",
+      "loopback_passed": 14,
+      "loopback_failed": 0,
+      "protected_source_phase": "SKIPPED",
+      "later_full_main_qualification": "NOT_RUN",
+      "artifact": {
+        "id": 15242629034,
+        "name": "carr-windows-014b128f13d47a900008f8970de4d0024ff0047d-1",
+        "bytes": 304113,
+        "sha256": "96deebbd3952c15beaa4faa93c0f70d89e85c704245f225338575bfca3f4205c"
+      },
+      "decoded_log_sha256": "1a1decd5250c4c2535748cc407d58548afe5491cd92d482c2c13fdebfc7bb01f"
+    },
+    "rule": "The former f77/default and014 resolver paths remain available unchanged. Historical documents are checked by exact Git identity and SHA256, never relabeled as the repaired candidate."
+  },
+  "reviewed_source_substitutions": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "before": {
+        "blob": "5937231e2f3a00a163b0e10b9707df27f279b134",
+        "sha256": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df"
+      },
+      "after": {
+        "blob": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+        "sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7"
+      }
+    },
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "before": {
+        "blob": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+        "sha256": "f3ddb02cad816213c0ec6447e0987e11ad589e8edea557e3bd3b734c97d8d23f"
+      },
+      "after": {
+        "blob": "b350bdab38415c42d13c69116dd876747e8f0354",
+        "sha256": "b4f2c3fe0f58100598830f35f4a485121cade5f9055693ca6a1410a4bc6d9685"
+      }
+    }
+  ],
+  "population": {
+    "original": {
+      "source_modules": 252,
+      "source_cases": 5813,
+      "installed_modules": 239,
+      "installed_cases": 5485,
+      "resource_cases_per_mode": 32
+    },
+    "reviewed": {
+      "source_modules": 252,
+      "source_cases": 5821,
+      "installed_modules": 239,
+      "installed_cases": 5493,
+      "resource_cases_per_mode": 40
+    },
+    "only_additions_per_mode": {
+      "tests.operations.test_resources": {
+        "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+        "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+      }
+    },
+    "old_oracle": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+    "new_oracle": "b350bdab38415c42d13c69116dd876747e8f0354",
+    "exact_additive_oracle_readback": "PASS: remote JSON objects differ only in these two added keys in both source and installed. This is static data comparison, not test execution.",
+    "validator": "The historical oracle is fetched through the existing exact commit/tree/remote Source reader and checked by blob and SHA256. Every old module and function multiplicity, schema and nonpopulation field is retained; only the two fixed additions are accepted. A new oracle with the old/default config is refused."
+  },
+  "acceptance_preserved": {
+    "source_selectors": 451,
+    "source_selector_order": "Unchanged",
+    "source_aggregate": [
+      451,
+      451,
+      0
+    ],
+    "source_pin_map": "Must equal the complete historical014 21-pin map with exactly the runner/oracle substitutions. No unrelated source pin, omission or addition is permitted.",
+    "source_and_installed_receipts": "Existing exact module/function Counters and strict failure/error/skip rules remain. Only expected totals come from the verified additive population.",
+    "no_artifact_execution": true,
+    "actual_null_artifact_pins": "Original hard NOT_READY check remains before API/source/archive reading.",
+    "archive_limits": {
+      "archive_bytes": 8388608,
+      "members": 10000,
+      "expanded_bytes": 536870912,
+      "member_bytes": 4194304
+    },
+    "native_families": 21,
+    "planning_loopback": 14,
+    "standard_installer": 6,
+    "maintenance": 4,
+    "managed_update": 15,
+    "library": 50,
+    "byte_unchanged_critical_functions": [
+      {
+        "label": "def zip_inventory(",
+        "exact": true
+      },
+      {
+        "label": "class Evidence:",
+        "exact": true
+      },
+      {
+        "label": "def verify_wheel(",
+        "exact": true
+      },
+      {
+        "label": "def source_and_public_wheel(",
+        "exact": true
+      },
+      {
+        "label": "def source_selectors(",
+        "exact": true
+      },
+      {
+        "label": "def native_kind(",
+        "exact": true
+      },
+      {
+        "label": "def runtime_boundaries(",
+        "exact": true
+      },
+      {
+        "label": "def loopback(",
+        "exact": true
+      },
+      {
+        "label": "def translation(",
+        "exact": true
+      },
+      {
+        "label": "def standard(",
+        "exact": true
+      },
+      {
+        "label": "def shell_classification(",
+        "exact": true
+      },
+      {
+        "label": "def closed_members(",
+        "exact": true
+      },
+      {
+        "label": "def resolve_successor_source_map(",
+        "exact": true
+      },
+      {
+        "label": "def main(",
+        "exact": true
+      }
+    ]
+  },
+  "inverse_source_proof": {
+    "rule": "Removing the new blocks and reversing the recorded source seams reproduces the complete previously reviewed b832 reader byte-for-byte; the hashes identify every before/after block in that checked inverse.",
+    "complete_inverse_equality": true,
+    "transformations": [
+      {
+        "label": "add finite post014 resolver and Counter validator",
+        "before_sha256": "6a556d20f79258c2ba0bd600e6e4d4027280885dd79aa9809bc40089d9a77dd1",
+        "after_sha256": "03b25ea9e63d9c190e1f2c317f48cda76b87275ac8074876a7ec26024d9c682d",
+        "before_characters": 18,
+        "after_characters": 12986
+      },
+      {
+        "label": "new opt-in resolver seam",
+        "before_sha256": "c5ec6206c887e5277fe507771bd438ef189796b197e2facc1e3be6aecf97d0d1",
+        "after_sha256": "9f63807b27e03f82ac8047c438ac934fbc71c95db34bf4a1c9a73548bff96558",
+        "before_characters": 95,
+        "after_characters": 265
+      },
+      {
+        "label": "source reviewed limits",
+        "before_sha256": "3f57ee52883c048f98ff3dd376bf132306d2db2b88fcf0788c2dc633c54af1d4",
+        "after_sha256": "b67ab168f6f09a36a51fc24963d12102aae041ee6d7de3c3f17dbdb8f1948055",
+        "before_characters": 85,
+        "after_characters": 94
+      },
+      {
+        "label": "source module and case predicates",
+        "before_sha256": "58f23c003c5354f9cf18f65eb12194e28cf95dfcc4876f38bcdc54be767b2d4e",
+        "after_sha256": "cafebdc99d82d2c3dbb16ed6147a89ff3dd5ad143cb02fed22cab270a7f567d5",
+        "before_characters": 85,
+        "after_characters": 146
+      },
+      {
+        "label": "source receipt predicates",
+        "before_sha256": "8bbca118e501ab260c8e45fbbb88563ac5e3715d0dfd63f4c45d2c54dc0c051b",
+        "after_sha256": "1858d28ff3eae88f7be978af0b6e5654a3aabe327e1d27699f60a50c3a4fcd6f",
+        "before_characters": 90,
+        "after_characters": 162
+      },
+      {
+        "label": "source result fields",
+        "before_sha256": "a7da58fcf08994439d2cdaa3b4df11414f91a4acd35112ec490621107b810d35",
+        "after_sha256": "a4bfc8feee5ab426d03a2439057d795c66028e800158019a39a82481a55454ec",
+        "before_characters": 88,
+        "after_characters": 149
+      },
+      {
+        "label": "installed reviewed limits",
+        "before_sha256": "0655fa80cc2ea1e0f65124517745381d14e0eddac443ce32915b3aa8cb20e4c6",
+        "after_sha256": "3a6a0643e8fb2243a15d5057153b72b69aaad69f3d62722dba89eba460cca514",
+        "before_characters": 88,
+        "after_characters": 97
+      },
+      {
+        "label": "installed module and case predicates",
+        "before_sha256": "52596154d28207dd0f2f79e2f1f4e063f831c902a800f6d17dde44775d6b9277",
+        "after_sha256": "6e2d13d1eb524dcf640049f10aefafe08c6ff99087cd78faa6c19bd862474cd8",
+        "before_characters": 67,
+        "after_characters": 134
+      },
+      {
+        "label": "installed receipt predicates",
+        "before_sha256": "2d25715e4631835b275450d816a11398ac1ef9b64d61a843265c3cd8af3189d7",
+        "after_sha256": "bae7a24b55e6975bd2461017167636cf989875787c8454f984c749e9c9b765b5",
+        "before_characters": 92,
+        "after_characters": 141
+      },
+      {
+        "label": "installed result fields",
+        "before_sha256": "291058fdc879c8a6ecd6d11f9f55fd9a32ffc76fe85b7927e2d887eee7d4ce74",
+        "after_sha256": "d25b1796a34d8ba11494e846fd33f0fd641c08a35ff70ed2350d3ec515a8eaa4",
+        "before_characters": 92,
+        "after_characters": 159
+      },
+      {
+        "label": "add repair-only self controls",
+        "before_sha256": "966150544657fb68dee438c9c481c33261970c625559cb2bc95dbf63fa76f542",
+        "after_sha256": "a437ff59c8b910df43e09acc4459487c90815f9684f9f7bc946c5399a92ca459",
+        "before_characters": 31,
+        "after_characters": 5709
+      },
+      {
+        "label": "append self-check positive labels",
+        "before_sha256": "d14f611ff6fef9df50c0eab3a7d41111abf26d14c0b523d8512380da079e9d21",
+        "after_sha256": "b02560043c70f71eec82a1888a4688c78611d3c8c99d7b9365bba8d91d0ac595",
+        "before_characters": 83,
+        "after_characters": 247
+      },
+      {
+        "label": "update explanatory population label",
+        "before_sha256": "452eee7da2d733e62649f2bb5904b8b453252f3363a9d16fa847f80a2929635a",
+        "after_sha256": "f0c07b9a43b09446d310e7a14a9400844add0759a97576acdbfef2a3593dbfb8",
+        "before_characters": 104,
+        "after_characters": 110
+      }
+    ],
+    "note": "The code is saved without any finalized current-candidate config. No application, workflow, test or historical proof file is changed in this component."
+  },
+  "self_controls": {
+    "retained_negative_labels": [
+      "missing-required-member",
+      "duplicate-normalized-member",
+      "wrong-function-multiplicity",
+      "wrong-source-identity",
+      "source-map-wrong-target",
+      "source-map-unreviewed-path",
+      "source-map-changed-prior",
+      "source-map-changed-after",
+      "source-map-dropped-unchanged-binding"
+    ],
+    "new_negative_labels": [
+      "post014-source-map-wrong-target",
+      "post014-source-map-unreviewed-pin",
+      "post014-source-map-dropped-pin",
+      "post014-source-map-rebound-history",
+      "post014-source-map-wrong-population",
+      "post014-oracle-dropped-old-case",
+      "post014-oracle-wrong-added-multiplicity",
+      "post014-oracle-changed-old-multiplicity",
+      "post014-oracle-unrelated-module-change",
+      "post014-oracle-nonpopulation-change"
+    ],
+    "all_negative_controls": 19,
+    "retained_positive_labels": [
+      "appended-verdict-and-universal-newlines",
+      "exact-reviewed-successor-source-map"
+    ],
+    "new_positive_labels": [
+      "exact-reviewed-post014-source-map",
+      "exact-additive-resource-populations"
+    ],
+    "all_positive_controls": 4,
+    "scope": "In-memory synthetic parser/map/Counter controls only; no config file, GitHub request, application test, artifact read or archive execution.",
+    "execution": "NOT_RUN"
+  },
+  "future_materialization": {
+    "status": "NOT_READY",
+    "candidate": {
+      "source_commit": null,
+      "source_tree": null,
+      "run_id": null,
+      "job_id": null,
+      "run_attempt": null
+    },
+    "artifact": {
+      "id": null,
+      "name": null,
+      "bytes": null,
+      "sha256": null
+    },
+    "required": "After root freezes the repaired application, build the tooling descendant from that exact app tree. Copy only the reviewed reader/history/tooling paths, preserve every application file, and bind the actual candidate/run/job/attempt in a new POST014 overlay and wheel extension. Do not base final tooling on an obsolete tooling tree or mutate old f77/014 documents.",
+    "new_overlay_path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_014B_20261128.json",
+    "new_config_locator_key": "post014_binding_overlay",
+    "required_history_files": [
+      {
+        "path": "carr-library/scripts/main_artifact_reader.f77.json",
+        "blob": "27ca2bc6233a6c222f4ff1cc49cde9753e4b95eb"
+      },
+      {
+        "path": "carr-library/scripts/main_artifact_reader.014b.json",
+        "blob": "c7862ffc86b82dd544b0574375ae22c350cb790e"
+      },
+      {
+        "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_F77_20261128.json",
+        "blob": "fb893a801f6f008b64136c021bb6ceee779a87f2"
+      },
+      {
+        "path": "carr-library/docs/validation/FINAL_MAIN_PUBLIC_WHEEL_READ_POST_F77_20261128.json",
+        "blob": "6f51b15fe0c99fa34b969900d047411e9b20d34c"
+      }
+    ],
+    "workflow_reference": {
+      "path": ".github/workflows/carr-main-reader-self-check.yml",
+      "blob": "cc21d54e5fe9ce8f7aef9c3c3a41d63f45f53ab6",
+      "rule": "Reuse only after independent source review; this component does not add or launch the workflow."
+    }
+  },
+  "refs_changed": false,
+  "application_execution": "NOT_RUN",
+  "artifact_zip_read": "NOT_RUN"
+}

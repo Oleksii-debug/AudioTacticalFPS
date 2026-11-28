@@ -1,0 +1,314 @@
+{
+  "schema": "carr.post-c31-silence-reader-source-extension.v1",
+  "status": "SOURCE_ONLY_COMPOSITION_AND_RUNTIME_REQUIRED",
+  "prepared_parent": {
+    "commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0"
+  },
+  "reader_before": {
+    "commit": "ba414f761a864edbe13a7744621ab6619033fd6e",
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "blob": "f276d0e4a2ad686be21933f92d3c1b6a1443bb08",
+    "sha256": "1dca0f5febd534b69f89c7db6fd1f11893baf342b0e2e46549b3ec32663747d2"
+  },
+  "reader_after": {
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "sha256": "bad4a97d0a9143ec189fdaa67e47cbe96fd2c100f52f6509e1819c57d008fbb2"
+  },
+  "immutable_history": {
+    "c31_target": {
+      "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+      "source_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+      "run_id": 46099459968,
+      "job_id": 140838351981,
+      "run_attempt": 1
+    },
+    "c31_reader_config": {
+      "commit": "ba414f761a864edbe13a7744621ab6619033fd6e",
+      "path": "carr-library/scripts/main_artifact_reader.json",
+      "blob": "85388ec1f08a4e475bc15030df24ef23588c4117",
+      "sha256": "a2190e4875a54de2547836a9b58cdb5dba920c1b94c9579f06660d0dc5a5ebfb",
+      "snapshot_path": "carr-library/scripts/main_artifact_reader.c31.json"
+    },
+    "c31_source_overlay": {
+      "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_014B_20261128.json",
+      "blob": "b7331b436522c93d103560f27722f3e356338ea3",
+      "sha256": "3dc33e35b53426626df1960c2faaf64565e7c7f6e67b6ea16aa54ff54c1e58b0"
+    },
+    "prior_f77_014_documents": "The exact f77/default and post014 documents/resolvers remain unchanged, including all previous failed-run facts.",
+    "c31_outcome": "The exact c31 baseline failed:450/451 source selectors passed,11462 case passes and1 failure, all11463 starts retained; protected/later gates were skipped. Observed proof is a45bd8667646f0d4a2d9665c0e6f50af730addc0. This historical result is not transferred to the later QC/cleanup candidate."
+  },
+  "reviewed_source_substitutions": [
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "before": {
+        "blob": "b350bdab38415c42d13c69116dd876747e8f0354",
+        "sha256": "b4f2c3fe0f58100598830f35f4a485121cade5f9055693ca6a1410a4bc6d9685"
+      },
+      "after": {
+        "blob": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+        "sha256": "24f1c6f2e29f944d76362a01a699d70164dbda7e7e3bd775e3379b4c4b0855cf"
+      }
+    }
+  ],
+  "population": {
+    "baseline": {
+      "source_modules": 252,
+      "source_cases": 5821,
+      "installed_modules": 239,
+      "installed_cases": 5493
+    },
+    "reviewed": {
+      "source_modules": 252,
+      "source_cases": 5947,
+      "installed_modules": 239,
+      "installed_cases": 5619
+    },
+    "old_owner_cases_per_mode": {
+      "tests.audio.test_local_voice_helper": 67,
+      "tests.audio.test_production_integrity": 12,
+      "tests.e2e.test_audio_cli_resources": 9,
+      "tests.ui.test_audio_studio": 60
+    },
+    "added_cases_per_mode": 126,
+    "only_additions_per_mode": {
+      "tests.audio.test_local_voice_helper": {
+        "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+        "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+        "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+        "test_private_helper_directory_refuses_replaced_ownership": 2,
+        "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
+      },
+      "tests.audio.test_production_integrity": {
+        "test_silence_scanner_crosses_real_block_boundaries": 2,
+        "test_silence_scanner_applies_all_channel_threshold_and_exact_length": 8,
+        "test_silence_scanner_counts_all_omitted_intervals": 2,
+        "test_silence_inspection_rejects_invalid_explicit_criteria_before_io": 18,
+        "test_completed_silence_inspection_is_source_bound_contextual_and_read_only": 1,
+        "test_completed_silence_rejects_changed_retained_inputs": 3,
+        "test_completed_silence_retains_readers_through_mutation_attempt": 3,
+        "test_completed_silence_cancellation_keeps_completion_and_receipts": 2,
+        "test_completed_silence_requires_expected_run_and_manifest_selection": 2,
+        "test_silence_context_rejects_resealed_out_of_bounds_timeline": 4,
+        "test_silence_inspection_preserves_legacy_completed_replay": 1,
+        "test_silence_report_formatter_rejects_unbounded_or_forged_summary": 4
+      },
+      "tests.e2e.test_audio_cli_resources": {
+        "test_silence_cli_requires_selected_completion_and_both_explicit_criteria": 6,
+        "test_silence_cli_refuses_unrelated_rendering_or_runtime_authority": 7,
+        "test_silence_cli_cannot_share_a_command_with_another_operation": 4,
+        "test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes": 1,
+        "test_silence_cli_cancel_restores_handler_without_a_partial_complete_report": 2,
+        "test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start": 1
+      },
+      "tests.ui.test_audio_studio": {
+        "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+        "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+        "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+        "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+        "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+        "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+        "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+        "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+        "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+        "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+        "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+        "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+        "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+        "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+        "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+        "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+        "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+        "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+        "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+        "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+        "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+        "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
+      }
+    },
+    "validator": "Every old module/function multiplicity and nonpopulation field is retained; only these exact new names/multiplicities in the four existing owner modules are accepted. The exact historical c31 oracle is re-read through Source and checked by Git blob and SHA256 before comparison."
+  },
+  "acceptance_preserved": {
+    "source_selectors": 451,
+    "source_aggregate": [
+      451,
+      451,
+      0
+    ],
+    "source_pin_map": "Exactly the historical c31 21-pin map with the one reviewed V3-oracle substitution. Runner/main workflow/probe/shell pins remain unchanged.",
+    "source_and_installed_receipts": "Existing source and installed parser functions, exact function Counters, selector multiplicity, failure/error/skip predicates and all prior source bindings remain unchanged.",
+    "native_families": 21,
+    "planning_loopback": 14,
+    "standard_installer": 6,
+    "maintenance": 4,
+    "managed_update": 15,
+    "library": 50,
+    "artifact_layout": "Existing main artifact members are unchanged. The new QC native proof is separately qualified by its focused workflow and is not inferred by this reader.",
+    "no_artifact_execution": true,
+    "null_artifact": "The original hard NOT_READY check remains before API/source/archive access.",
+    "archive_limits": {
+      "archive_bytes": 8388608,
+      "members": 10000,
+      "expanded_bytes": 536870912,
+      "member_bytes": 4194304
+    }
+  },
+  "inverse_source_proof": {
+    "complete_inverse_equality": true,
+    "transformations": [
+      {
+        "label": "add finite post-c31 resolver and exact QC Counter validator",
+        "before_sha256": "6a556d20f79258c2ba0bd600e6e4d4027280885dd79aa9809bc40089d9a77dd1",
+        "after_sha256": "f6e9b350d55b6b2bf88991ac809b0b64d9a7f8813e19cbf04dc34cd6a1e8872f",
+        "before_characters": 18,
+        "after_characters": 15549
+      },
+      {
+        "label": "opt-in QC source-map seam",
+        "before_sha256": "04e5913bc01a7cfcc08716733918c34e645a480ff00931004d5b1f572b01004a",
+        "after_sha256": "a34d54860bcde99d17f106468d610aa1878bc6352aafec2a6659c2307bd1d818",
+        "before_characters": 42,
+        "after_characters": 202
+      },
+      {
+        "label": "opt-in QC protected-oracle seam",
+        "before_sha256": "ab6c5ff10ec3ffffdcaa6acfe006a1cedf6633502b13383e476d4cb2babda80a",
+        "after_sha256": "ff3434992c145a3016f4c22e7c2537bdc33fd32016fc6bd479f021b6d7c4a50d",
+        "before_characters": 86,
+        "after_characters": 211
+      },
+      {
+        "label": "append QC-only map and Counter controls",
+        "before_sha256": "966150544657fb68dee438c9c481c33261970c625559cb2bc95dbf63fa76f542",
+        "after_sha256": "8989fb2648a381f5ad5c36139562929446f61117efec7e52fd004c113ffdf770",
+        "before_characters": 31,
+        "after_characters": 8440
+      },
+      {
+        "label": "append QC self-check positive labels",
+        "before_sha256": "100b5656ab98a0c00d90a4258290c78053b196e5d192c69dc3064f82b49714b3",
+        "after_sha256": "3474daf3336682651fac6c7032722890683219612049eab9603c56da80f02782",
+        "before_characters": 84,
+        "after_characters": 251
+      }
+    ],
+    "rule": "Removing only the new block and reversing these exact seams reproduces the complete previously reviewed and parser-tested f276 reader byte-for-byte.",
+    "top_level_definition_check": {
+      "before": 53,
+      "after": 57,
+      "unchanged": 50,
+      "changed": [
+        "reviewed_plan_bindings",
+        "protected_oracle",
+        "self_check"
+      ],
+      "added": [
+        "resolve_post_c31_source_map",
+        "reviewed_post_c31_plan_bindings",
+        "validate_post_c31_oracle",
+        "protected_post_c31_oracle"
+      ],
+      "removed": []
+    }
+  },
+  "self_controls": {
+    "retained_negative_labels": [
+      "missing-required-member",
+      "duplicate-normalized-member",
+      "wrong-function-multiplicity",
+      "wrong-source-identity",
+      "source-map-wrong-target",
+      "source-map-unreviewed-path",
+      "source-map-changed-prior",
+      "source-map-changed-after",
+      "source-map-dropped-unchanged-binding",
+      "post014-source-map-wrong-target",
+      "post014-source-map-unreviewed-pin",
+      "post014-source-map-dropped-pin",
+      "post014-source-map-rebound-history",
+      "post014-source-map-wrong-population",
+      "post014-oracle-dropped-old-case",
+      "post014-oracle-wrong-added-multiplicity",
+      "post014-oracle-changed-old-multiplicity",
+      "post014-oracle-unrelated-module-change",
+      "post014-oracle-nonpopulation-change"
+    ],
+    "new_negative_labels": [
+      "post-c31-source-map-wrong-target",
+      "post-c31-source-map-unreviewed-runner-pin",
+      "post-c31-source-map-dropped-pin",
+      "post-c31-source-map-rebound-history",
+      "post-c31-source-map-wrong-population",
+      "post-c31-source-map-ambiguous-locator",
+      "post-c31-oracle-dropped-old-case:tests.audio.test_local_voice_helper",
+      "post-c31-oracle-wrong-added-multiplicity:tests.audio.test_local_voice_helper",
+      "post-c31-oracle-dropped-old-case:tests.audio.test_production_integrity",
+      "post-c31-oracle-wrong-added-multiplicity:tests.audio.test_production_integrity",
+      "post-c31-oracle-dropped-old-case:tests.e2e.test_audio_cli_resources",
+      "post-c31-oracle-wrong-added-multiplicity:tests.e2e.test_audio_cli_resources",
+      "post-c31-oracle-dropped-old-case:tests.ui.test_audio_studio",
+      "post-c31-oracle-wrong-added-multiplicity:tests.ui.test_audio_studio",
+      "post-c31-oracle-changed-old-multiplicity",
+      "post-c31-oracle-unrelated-module-change",
+      "post-c31-oracle-nonpopulation-change",
+      "post-c31-oracle-unreviewed-new-name"
+    ],
+    "all_negative_controls": 37,
+    "retained_positive_labels": [
+      "appended-verdict-and-universal-newlines",
+      "exact-reviewed-successor-source-map",
+      "exact-reviewed-post014-source-map",
+      "exact-additive-resource-populations"
+    ],
+    "new_positive_labels": [
+      "exact-reviewed-post-c31-source-map",
+      "exact-additive-silence-qc-populations"
+    ],
+    "all_positive_controls": 6,
+    "scope": "In-memory synthetic parser/map/Counter controls only; no config file, API, application test or archive is read/executed.",
+    "execution": "NOT_RUN"
+  },
+  "future_materialization": {
+    "status": "NOT_READY",
+    "candidate": {
+      "source_commit": null,
+      "source_tree": null,
+      "run_id": null,
+      "job_id": null,
+      "run_attempt": null
+    },
+    "artifact": {
+      "id": null,
+      "name": null,
+      "bytes": null,
+      "sha256": null
+    },
+    "required": "Build final tooling from the actual frozen QC application tree, preserving every application file. Copy reviewed history/tooling only. Bind the actual new head/tree/run/job/attempt in the new overlay, wheel extension and current config; leave artifact fields null until actual completed metadata. Do not move earlier control/reader refs or relabel c31 evidence.",
+    "new_overlay_path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_C31_20261128.json",
+    "new_config_locator_key": "post_c31_binding_overlay",
+    "new_wheel_extension_path": "carr-library/docs/validation/FINAL_MAIN_PUBLIC_WHEEL_READ_POST_C31_20261128.json",
+    "new_history_snapshot": {
+      "path": "carr-library/scripts/main_artifact_reader.c31.json",
+      "blob": "85388ec1f08a4e475bc15030df24ef23588c4117",
+      "sha256": "a2190e4875a54de2547836a9b58cdb5dba920c1b94c9579f06660d0dc5a5ebfb"
+    },
+    "retained_history": "Keep all existing f77/014 configs, overlays, wheel extensions, the current post014 overlay, its wheel extension and observed19/4 parser proof exact.",
+    "workflow_reference": {
+      "path": ".github/workflows/carr-main-reader-self-check.yml",
+      "blob": "cc21d54e5fe9ce8f7aef9c3c3a41d63f45f53ab6",
+      "rule": "The unchanged parser-only workflow needs no candidate/artifact config; reuse only after independent source review. No workflow is added or launched by this component."
+    }
+  },
+  "refs_changed": false,
+  "application_execution": "NOT_RUN",
+  "artifact_zip_read": "NOT_RUN",
+  "reviewed_qualification_component": {
+    "commit": "51fa3797b095545ad6ab79e5a64a2d1b852fa52b",
+    "tree": "f7fa9bfe038ad9edf56b279bab6cc8ba2b72e41a",
+    "v3_blob": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+    "v3_sha256": "24f1c6f2e29f944d76362a01a699d70164dbda7e7e3bd775e3379b4c4b0855cf",
+    "focused_cases": 274,
+    "focused_native_checks": 29,
+    "source_review_only": true
+  }
+}

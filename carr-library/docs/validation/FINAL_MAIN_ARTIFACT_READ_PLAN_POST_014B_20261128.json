@@ -1,0 +1,162 @@
+{
+  "schema": "carr.final-main-post014-repair-overlay.v1",
+  "status": "UNREADY_ACTUAL_ARTIFACT_NOT_PINNED",
+  "base_plan": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json",
+    "blob": "955081bda0d4a47d8eff6200a010943da7bd0cf2"
+  },
+  "previous_candidate": {
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "source_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+    "run_id": 46089514448,
+    "job_id": 140806885393,
+    "run_attempt": 1,
+    "conclusion": "failure",
+    "source_suites_total": 451,
+    "source_suites_passed": 448,
+    "source_suites_failed": 3,
+    "complete_source_receipts": 450,
+    "complete_source_case_passed": 10797,
+    "complete_source_case_failed": 2,
+    "assistant_case_starts": 613,
+    "assistant_unstarted": 43,
+    "assistant_complete_receipt": "ABSENT",
+    "loopback_passed": 14,
+    "loopback_failed": 0,
+    "protected_source_phase": "SKIPPED",
+    "later_full_main_qualification": "NOT_RUN",
+    "artifact": {
+      "id": 15242629034,
+      "name": "carr-windows-014b128f13d47a900008f8970de4d0024ff0047d-1",
+      "bytes": 304113,
+      "sha256": "96deebbd3952c15beaa4faa93c0f70d89e85c704245f225338575bfca3f4205c"
+    },
+    "decoded_log_sha256": "1a1decd5250c4c2535748cc407d58548afe5491cd92d482c2c13fdebfc7bb01f"
+  },
+  "previous_reader_config": {
+    "commit": "3275bed074f3eb886de55af319467735fe0eb00e",
+    "path": "carr-library/scripts/main_artifact_reader.json",
+    "blob": "c7862ffc86b82dd544b0574375ae22c350cb790e",
+    "sha256": "a70ca7b50d82a14cf4616fa3b73ea4d589fdb8e5eb96441d87cae226a4e97492",
+    "snapshot_path": "carr-library/scripts/main_artifact_reader.014b.json"
+  },
+  "previous_source_overlay": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_POST_F77_20261128.json",
+    "blob": "fb893a801f6f008b64136c021bb6ceee779a87f2",
+    "sha256": "742ca4f1cb1c2bcd72a660370ba1c2ac10a3297d57fb588e3cbe91e335cf6ae2"
+  },
+  "candidate": {
+    "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "source_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+    "run_id": 46099459968,
+    "job_id": 140838351981,
+    "run_attempt": 1
+  },
+  "changes": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "before": {
+        "blob": "5937231e2f3a00a163b0e10b9707df27f279b134",
+        "sha256": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df"
+      },
+      "after": {
+        "blob": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+        "sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7"
+      }
+    },
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "before": {
+        "blob": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+        "sha256": "f3ddb02cad816213c0ec6447e0987e11ad589e8edea557e3bd3b734c97d8d23f"
+      },
+      "after": {
+        "blob": "b350bdab38415c42d13c69116dd876747e8f0354",
+        "sha256": "b4f2c3fe0f58100598830f35f4a485121cade5f9055693ca6a1410a4bc6d9685"
+      }
+    }
+  ],
+  "unchanged_bindings": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+      "sha256": "70befd739fd9cac7467fcbfdaf57e0153404d9fd7e843e5edab707aa6c3581fd"
+    },
+    {
+      "path": "carr-library/packaging/probe_standard_update_windows.py",
+      "blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+      "sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e"
+    },
+    {
+      "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+      "blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+      "sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54"
+    },
+    {
+      "path": "carr-library/tests/loopback/test_local_planning.py",
+      "blob": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab",
+      "sha256": "b4bacd663fc19e945db6b6f1fddff758b1993f7310e673357755ab84482dace7"
+    }
+  ],
+  "resource_additions": {
+    "source": {
+      "tests.operations.test_resources": {
+        "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+        "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+      }
+    },
+    "installed": {
+      "tests.operations.test_resources": {
+        "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+        "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+      }
+    }
+  },
+  "expected_populations": {
+    "source_modules": 252,
+    "source_cases": 5821,
+    "installed_modules": 239,
+    "installed_cases": 5493
+  },
+  "candidate_metadata": {
+    "event": "pull_request",
+    "created_at": "2026-11-28T02:43:25Z",
+    "freeze_confirmed": true,
+    "workflow": ".github/workflows/carr-windows.yml"
+  },
+  "actual_artifact": {
+    "id": null,
+    "name": null,
+    "bytes": null,
+    "sha256": null
+  },
+  "scope": "Accept only the two reviewed source-pin substitutions over the byte-exact historical014 configuration. Preserve its immutable f77 plan and failed014 record. The resource oracle comparison must preserve every old module/function multiplicity and nonpopulation field, adding only the two fixed resource functions in both modes.",
+  "preserved_contracts": {
+    "source_selectors": 451,
+    "protected_source_modules": 252,
+    "protected_installed_modules": 239,
+    "protected_source_cases": 5821,
+    "protected_installed_cases": 5493,
+    "planning_loopback_cases": 14,
+    "translation_cases_per_mode": 324,
+    "translation_native_flows": 8,
+    "root_exact_members": 151,
+    "r7_native_families": 21,
+    "standard_installer_checks": 6,
+    "ordinary_maintenance_checks": 4,
+    "managed_update_checks": 15,
+    "installed_library_cases": 50
+  },
+  "parser_control_evidence": {
+    "commit": "45fcf5167a87cc8904794871e1c04b21a501302e",
+    "path": "carr-library/docs/evidence/post014-main-reader-parser-controls-observed-20261128.json",
+    "blob": "2caba29b056e15802cb21aac2ab37d53f7009458",
+    "source_commit": "961ca5d2bff8dd62b18b060ce7e0b7a588d84184",
+    "run_id": 46098851005,
+    "job_id": 140836431086,
+    "negative_controls": 19,
+    "positive_controls": 4,
+    "scope": "Actual parser-only PASS; no application or main-artifact qualification."
+  },
+  "runtime": "NOT_RUN: all artifact fields remain null. The eventual completed main job's own artifact metadata must be pinned and reviewed before any final reader launch. No old run supplies missing current receipts."
+}
