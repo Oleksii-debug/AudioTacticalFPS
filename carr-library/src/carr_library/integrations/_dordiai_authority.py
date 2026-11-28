@@ -185,11 +185,27 @@ class DordiaiAuthority:
                                               expected_sha256=self._binding['sha256'])
             self._store._validate_runtime(manifest, self._configuration,
                                           cancelled=lambda: _requested(cancelled))
-            from ..audio.voice_packages import runtime_settings
+            from ..audio.voice_packages import runtime_directory, runtime_settings
             settings = runtime_settings(manifest.settings)
-            if (settings != {'reference_engine': 'holos', 'models': 'models',
-                             'reference_model': 'models/Holos', 'references': 'models/voices'}):
-                raise ValueError('The current speech bridge requires the reviewed fixed Holos paths.')
+            backend = settings['reference_engine']
+            if settings['models'] != 'models' or settings['references'] != 'models/voices':
+                raise ValueError('The current speech bridge requires the reviewed models and reference directories.')
+            model = runtime_directory(manifest, settings['reference_model'])
+            if backend == 'holos':
+                if settings['reference_model'] != 'models/Holos':
+                    raise ValueError('The current Holos bridge requires its reviewed fixed model path.')
+            elif backend == 'openvoice':
+                # This owner branch receives the reviewed models directory;
+                # ConvertedVoices resolves its OpenVoiceV2 and Piper assets there.
+                # Its reference-model argument is retained exactly as configured.
+                manifest.asset('converted_voices.py')
+            elif backend == 'omnivoice':
+                # ReferenceVoices loads this explicitly reviewed local entry,
+                # then uses the selected package audio/transcript roles.
+                manifest.asset('reference_voices.py')
+                manifest.asset((model / 'use_onnx.py').relative_to(self.runtime).as_posix())
+            else:
+                raise ValueError('The selected reference backend has no reviewed speech protocol.')
             manifest.verify(cancelled=lambda: _requested(cancelled),
                             require_complete=True, ownership=self._lease)
             self._manifest = manifest
@@ -214,7 +230,7 @@ class DordiaiAuthority:
                 document = _document(raw)
                 if (document['id'], document['version']) != (profile, version):
                     raise ValueError('The active voice document has another identity.')
-                if (document['engine']['id'] != 'holos'
+                if (document['engine']['id'] != runtime_settings(settings)['reference_engine']
                         or settings.get('managed_profiles') is not True
                         or not approved_profile(self._manifest, document)):
                     continue
@@ -260,9 +276,14 @@ class DordiaiAuthority:
     def filter_inventory(self, value):
         self.checkpoint()
         result = dict(value)
+        backend = self.runtime_configuration()['reference_engine']
         voices = []
         for voice in value['voices']:
             profile = voice['id']
+            # Only an explicitly approved managed profile can select either
+            # additional backend; raw legacy IDs continue to mean Holos.
+            if backend != 'holos' and profile not in self._profiles:
+                continue
             if profile in self._owned:
                 approved = self._profiles.get(profile)
                 if approved is None:
@@ -275,6 +296,15 @@ class DordiaiAuthority:
         result['voices'] = voices
         self.checkpoint()
         return result
+
+    def runtime_configuration(self):
+        """Return only the current operation's reviewed worker configuration."""
+        self.checkpoint()
+        if self._manifest is None:
+            return {'reference_engine': 'holos', 'models': 'models',
+                    'reference_model': 'models/Holos', 'references': 'models/voices'}
+        from ..audio.voice_packages import runtime_settings
+        return runtime_settings(self._manifest.settings)
 
     def profile_identity(self, profile, *, select=False):
         if not isinstance(profile, str):

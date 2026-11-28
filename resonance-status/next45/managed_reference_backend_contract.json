@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "created_utc": "2026-11-28 02:57:56 UTC",
+  "status": "STATIC_NOT_RUN",
+  "component": "Managed OmniVoice and OpenVoice V2 synthesis through the existing dordiai provider",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "preimage": "d67becf3f47b9157710f4020caf47fd60b7a3fab",
+      "blob_sha": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "preimage": "9f8e090fb780acba417af3db0b8702615acae2a9",
+      "blob_sha": "b402a6cb86ee150dc67d5654a3495289269f10aa"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "preimage": "a52f940d53905ebde76e6b163c900d1fcbb65268",
+      "blob_sha": "44fd0e0a169dc15c759a2d8a020341168b33defc"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_reference_backends.py",
+      "preimage": null,
+      "blob_sha": "de40ac027c6706886d248edaea14dec7bea36608"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_managed_backends.py",
+      "preimage": null,
+      "blob_sha": "1f03119d76dbf72b839c004aacc70baea0bb8657"
+    },
+    {
+      "path": "carr-library/docs/DORDIAI_VOICES_CONTRACT.md",
+      "preimage": "7f50b8bb60a2e0aa4e0be39da9ae0da4025c151a",
+      "blob_sha": "2acb197decf1a0078670d32f6c69b27127d89531"
+    },
+    {
+      "path": "carr-library/docs/VOICE_PACKAGE_MANAGEMENT.md",
+      "preimage": "247d5dddcaff0bd2ab177077dd39bb9c92b0ebb3",
+      "blob_sha": "e1b16e32a165819c46e86e6e7ee757cbc0cc7d0a"
+    }
+  ],
+  "primary_contract": {
+    "repository": "Oleksii-debug/ChatGPT-Autopilot-ExtensionChatGPT-Autopilot-Extension",
+    "commit": "a1c73a5747bc86eb11f0c037120442e0c2593e91",
+    "path_prefix": "dordiai-voices/source/0.12.2/",
+    "blobs": {
+      "kx47Runtime/nvda_worker.py": "8ad1cc32194528d00f7a3bebb351af31fe4c77ce",
+      "kx47Runtime/reference_voices.py": "197d8cdfdd27952bfaded3b3e74b430b4d8d830a",
+      "kx47Runtime/converted_voices.py": "ac8d50d6a4c223c0eaf3ed49635ec278dfb65ee2",
+      "kx47Runtime/voice_assets.py": "6cabd9c44a3979e2b543f2272915fdc83523c87c",
+      "synthDrivers/kx47Preview.py": "e2a19ca62558210a50adc2a697916c5373faa273"
+    },
+    "worker_sha256": "8b8860c97f2fdd87bf42b476e803a7f4ac756718afc5e70816268bcd5085123b",
+    "legacy_default_worker_sha256_unchanged": "8fb4303098489bc8ad255696895a05f3daf731e60c4dbb8b271c16fdc31d121a",
+    "authority": "Explicit existing runtime setting plus current library-bound complete manifest; no automatic worker/hash upgrade.",
+    "semantics": {
+      "omnivoice": "Current owner ReferenceVoices with explicit selected reference-model directory; stream=false; one terminal pcm reply, no next. Exact approved audio/text roles and languages. Host bounds and post-yield authority remain.",
+      "openvoice": "Current owner ConvertedVoices with reviewed models/OpenVoiceV2 converter/encoder and required Piper carrier/config; chunk/next/finished. Only explicit uk/en base language pairs; en_male also needs en timing carrier. No OpenVoice V1 claim.",
+      "holos": "Existing unbound/direct path, default worker hash, commands and discovery branch unchanged."
+    }
+  },
+  "new_whole_suites": [
+    {
+      "path": "tests/integrations/test_dordiai_reference_backends.py",
+      "cases": 40,
+      "functions": [
+        "test_actual_reference_metadata_child_uses_only_selected_backend_roles_and_available_languages",
+        "test_actual_reference_metadata_does_not_advertise_missing_model_or_carrier",
+        "test_actual_openvoice_metadata_requires_both_male_and_english_timing_carriers",
+        "test_actual_reference_metadata_rejects_unknown_backend_or_unbound_model_without_private_error_text",
+        "test_actual_reference_metadata_refuses_missing_required_package_role",
+        "test_actual_reference_pipe_uses_reviewed_argv_controls_and_terminal_or_pull_reply",
+        "test_actual_reference_pipe_rejects_bad_or_ambiguous_pcm_and_keeps_recovery_synchronized",
+        "test_actual_reference_pipe_cancel_or_abandoned_yield_never_sends_next_and_releases_child",
+        "test_actual_reference_pipe_keeps_audio_budget_and_cancel_before_yield",
+        "test_actual_reference_pipe_cancels_a_pending_single_or_streaming_reply_without_success"
+      ],
+      "per_function_cases": [
+        2,
+        5,
+        1,
+        4,
+        2,
+        2,
+        16,
+        4,
+        2,
+        2
+      ],
+      "companions": []
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_backends.py",
+      "cases": 6,
+      "functions": [
+        "test_current_managed_reference_backend_preserves_version_identity_capabilities_registry_pcm_and_lease",
+        "test_current_managed_reference_reply_still_holds_real_lock_and_rechecks_document_before_completion",
+        "test_current_backend_configuration_change_retires_saved_authority_without_retargeting_approved_voice"
+      ],
+      "per_function_cases": [
+        2,
+        2,
+        2
+      ],
+      "companions": [
+        "tests/integrations/test_dordiai_reference_backends.py",
+        "tests/audio/voice_management_fixtures.py"
+      ]
+    }
+  ],
+  "companion_sha": {
+    "tests/audio/voice_management_fixtures.py": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5"
+  },
+  "source_origins": "Existing authority/adapter/probe origins change bytes; no new application module or alternate engine/registry/broker.",
+  "preserved": [
+    "Current provider dordiai_speech85c9248923b6332da9ea30d7b0dc644f90dc77ba and shared VoiceRegistry are unchanged.",
+    "Manager, runtime-settings schema, consent CAS, ownership module and old test bodies unchanged.",
+    "Version/document/reference/binding identity; complete manifest validation; per-poll/per-yield current authority; lock held through actual worker retirement and pending cleanup.",
+    "Existing 16MiB reply, request/text/audio bounds, no-network environment, child ownership, cancel/drop/deadline and atomic WAV publication."
+  ],
+  "peer_reviews": [
+    {
+      "reviewer": "progress_completion",
+      "scope": "All three product source deltas against exact primary owner modules",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "locate_project",
+      "scope": "Exact6 managed cases and40 real metadata/pipe cases against current manager/provider/fixture APIs; current child/lock/retirement assertions",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "execution": "NOT_RUN; no local executor. Static case inventory40+6 requires strict source/isolated-installed collection and execution.",
+  "qualification": "No owner code/model/reference audio copied into product. Synthetic fixtures do not establish acoustic quality or actual installed model inference; explicit model-equipped acceptance remains separate.",
+  "refs_moved": false
+}

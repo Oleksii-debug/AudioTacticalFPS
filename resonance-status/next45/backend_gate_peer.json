@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "manifest": "664b8a18e43fd47b0a43c0af86630dccfe7e68fe",
+  "reviewer": "canonical_regression",
+  "outcome": "ACCEPTED_STATIC_NOT_RUN",
+  "observations": {
+    "workflow_reconstructed_exactly": true,
+    "shared_helpers_and_installed_child_byte_identical": true,
+    "main_reconstructed_from_declared_operations": true,
+    "whole_modules": 4,
+    "source_cases": 96,
+    "isolated_installed_cases": 96,
+    "source_pins": 70,
+    "installed_origins": {
+      "linux": 35,
+      "windows": 38
+    },
+    "whole_child_seconds": 600,
+    "source_parent_seconds": 1500,
+    "step_minutes": 80,
+    "job_minutes": 120,
+    "closed_contract_outputs": 20,
+    "closed_setup_outputs": 4
+  },
+  "qualification": "No parser/runtime claim. New focused helper omits native/owner paths only within its declared narrower scope; the complete existing495 gate is preserved."
+}

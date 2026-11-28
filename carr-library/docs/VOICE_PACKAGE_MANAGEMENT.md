@@ -18,9 +18,19 @@ The permission checkbox begins unchecked. Check it only when you have permission
 
 A package's declared languages do not establish pronunciation, similarity or synthesis quality. Open a new Reader or Audio Studio window for a separate, explicit audition. Management never starts inference or replaces a live speech provider.
 
+## Audition the explicitly selected backend
+
+Holos retains its existing path. A managed OmniVoice package requires the selected local OmniVoice model directory and its reviewed `use_onnx.py` entry, plus the package's exact audio and transcript roles. It returns one completed PCM reply per request, so loading and chunk-streaming progress are not advertised.
+
+A managed OpenVoice package uses the reviewed owner's OpenVoice V2 converter and encoder under `models/OpenVoiceV2`, plus the selected Ukrainian or English Piper carrier and its configuration. OpenVoice V1 is not advertised by this adapter. Other declared package languages remain unavailable through this particular OpenVoice route. Missing resources refuse the pair; a package label alone cannot make it runnable.
+
+The worker fingerprint, complete local manifest and explicit permission remain required. A different reviewed worker hash is an explicit configuration choice; existing installations are not silently upgraded. Changing a backend, activating another version, revoking permission or deleting references invalidates the previous reviewed selection. Reopen the voice list and select the approved current voice before auditioning or preparing another saved plan.
+
+The managed process holds the existing package lock until its real worker closes. Each PCM delivery rechecks current authority, and cancellation remains a failure rather than a completed partial audition. Package-management tests and synthetic PCM tests do not establish model inference, language quality or similarity.
+
 ## Create a local OmniVoice reference package
 
-Reference creation is available only for the saved OmniVoice configuration. The current Holos playback provider does not expose this creation operation.
+Reference creation is available only for the saved OmniVoice configuration. After creating, inspecting and approving that package, open a fresh Reader or Audio Studio to choose its current managed voice. The existing speech provider has separate reviewed OmniVoice and OpenVoice V2 protocol paths; this does not download a model or establish acoustic quality.
 
 Choose a local standard 16-bit mono or stereo PCM WAV, enter its exact transcript, profile ID, version, display name, language and provenance, and confirm your permission. **Open existing recorder** opens the application's recorder only after that explicit action; the recorder must return a verified saved recording.
 

@@ -413,7 +413,11 @@ class DordiaiVoicesAdapter:
             helper = Path(__file__).with_name("_dordiai_probe.py").resolve()
             check_cancelled()
             deadline = monotonic() + min(self.request_timeout, 60.0)
-            child = _JsonLinesProcess([str(self.python), "-I", "-B", "-u", str(helper), str(self.runtime)], self.runtime)
+            configuration = self._authority.runtime_configuration()
+            command = [str(self.python), "-I", "-B", "-u", str(helper), str(self.runtime)]
+            if configuration['reference_engine'] != 'holos':
+                command.extend((configuration['reference_engine'], configuration['reference_model']))
+            child = _JsonLinesProcess(command, self.runtime)
             self._probe_child = child
             try:
                 while True:
@@ -447,12 +451,17 @@ class DordiaiVoicesAdapter:
                 or not isinstance(value.get("voices"), list)
                 or not isinstance(value.get("languages"), list)):
             raise DordiaiProtocolError("Unexpected dordiai-voices inventory contract")
+        backend = self._authority.runtime_configuration()['reference_engine']
+        if value.get("reference_engine", "holos") != backend:
+            raise DordiaiProtocolError("The discovered reference backend differs from current approval")
         ids, codes = set(), set()
         for language in value["languages"]:
             if (not isinstance(language, dict) or not isinstance(language.get("code"), str)
                     or not language["code"] or language["code"] in codes
                     or not isinstance(language.get("resources_present"), bool)
-                    or language.get("route") not in {None, "wide", "native_profile", "native_locale", "ukrainian"}):
+                    or language.get("route") not in (
+                        {None, "wide", "native_profile", "native_locale", "ukrainian"}
+                        if backend == "holos" else {None, "reference"})):
                 raise DordiaiProtocolError("Invalid dordiai-voices language inventory")
             codes.add(language["code"])
         for voice in value["voices"]:
@@ -475,7 +484,9 @@ class DordiaiVoicesAdapter:
         with self._authority_scope(cancelled=cancelled):
             inventory = self._probe(cancelled=cancelled)
             authority, versions = self._authority.capability_identity()
+            backend = self._authority.runtime_configuration()['reference_engine']
             return DordiaiCapabilities(inventory.get("engine_version"), inventory["worker_sha256"],
+                streaming_pcm=backend != "omnivoice", loading_progress=backend == "holos",
                 managed_authority_sha256=authority, managed_asset_versions=versions)
 
     def language_statuses(self, *, cancelled: Event | Callable[[], bool] | None = None) -> tuple[dict, ...]:
@@ -488,11 +499,12 @@ class DordiaiVoicesAdapter:
                 raise DordiaiUnavailable("The dordiai-voices adapter is closed")
             if self._worker is None:
                 self._validate_installation()
-                reference_model = _inside(self.runtime, "models/Holos", directory=True)
+                configuration = self._authority.runtime_configuration()
+                reference_model = _inside(self.runtime, configuration['reference_model'], directory=True)
                 command = [str(self.python), "-I", "-B", "-u", str(self.runtime / "nvda_worker.py"),
-                           str(self.runtime / "models"), "--reference-model", str(reference_model),
-                           "--references", str(self.runtime / "models/voices"),
-                           "--reference-engine", "holos", "--preload-language", "mixed"]
+                           str(self.runtime / configuration['models']), "--reference-model", str(reference_model),
+                           "--references", str(self.runtime / configuration['references']),
+                           "--reference-engine", configuration['reference_engine'], "--preload-language", "mixed"]
                 self._worker = _JsonLinesProcess(command, self.runtime)
             return self._worker
 
@@ -599,11 +611,13 @@ class DordiaiVoicesAdapter:
                 raise DordiaiCancelled("dordiai-voices rendering was cancelled")
             worker = self._start_worker()
             route = selected["route"]
+            backend = inventory.get("reference_engine", "holos")
+            terminal_pcm = backend == "omnivoice"
             request = {"mode": "reference", "profile": voice_id, "language": language,
-                       "text": text, "speed": float(speed), "stream": True,
+                       "text": text, "speed": float(speed), "stream": not terminal_pcm,
                        "controls": {"pitch": pitch, "timbre": timbre, "volume": volume},
                        "nativeProfile": route == "native_profile", "nativeLocale": route == "native_locale",
-                       "wideLocale": route == "wide", "reportLoading": True,
+                       "wideLocale": route == "wide", "reportLoading": backend == "holos",
                        "nativeEnglish": False, "character": False, "numberLanguage": "auto"}
             worker.send(request)
             pending = True
@@ -626,7 +640,7 @@ class DordiaiVoicesAdapter:
                 except DordiaiTimeout:
                     continue
                 if "loadingStage" in reply:
-                    if reply["loadingStage"] not in LOADING_STAGES or len(reply) != 1:
+                    if backend != "holos" or reply["loadingStage"] not in LOADING_STAGES or len(reply) != 1:
                         raise DordiaiProtocolError("Unexpected dordiai-voices loading stage")
                     if progress is not None and not is_cancelled:
                         progress(DordiaiProgress(reply["loadingStage"], frames))
@@ -643,10 +657,13 @@ class DordiaiVoicesAdapter:
                         raise DordiaiEngineError("EmptyAudio")
                     completed = True
                     return
-                if "chunk" not in reply or not isinstance(reply["chunk"], str) or "finished" in reply:
+                field = "pcm" if terminal_pcm else "chunk"
+                if (field not in reply or not isinstance(reply[field], str) or "finished" in reply
+                        or (terminal_pcm and set(reply) != {"pcm"})
+                        or (not terminal_pcm and "pcm" in reply)):
                     raise DordiaiProtocolError("Unexpected dordiai-voices PCM reply")
                 try:
-                    data = base64.b64decode(reply["chunk"], validate=True)
+                    data = base64.b64decode(reply[field], validate=True)
                 except (ValueError, TypeError):
                     raise DordiaiProtocolError("dordiai-voices returned malformed base64 PCM") from None
                 if not data or len(data) % 2:
@@ -662,6 +679,11 @@ class DordiaiVoicesAdapter:
                 yield chunk
                 if cancellation_requested():
                     raise DordiaiCancelled("dordiai-voices rendering was cancelled")
+                if terminal_pcm:
+                    # The reviewed OmniVoice worker already completed this one
+                    # reply. Do not manufacture a streaming next/finish cycle.
+                    completed = True
+                    return
                 worker.send({"mode": "next"})
                 pending = True
                 deadline = monotonic() + self.request_timeout
