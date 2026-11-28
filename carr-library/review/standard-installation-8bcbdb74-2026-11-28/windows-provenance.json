@@ -1,0 +1,405 @@
+{
+  "schema": "carr-standard-native-lifecycle-evidence/1",
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "source_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "source_run": 46092676035,
+  "job": 140816954489,
+  "attempt": 1,
+  "branch": "carr/standard-installation-evaluation-20261128",
+  "workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+  "result": "SUCCESS",
+  "completed_step_metadata": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6
+    },
+    {
+      "name": "Require source standard installation and existing launcher contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8
+    },
+    {
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9
+    },
+    {
+      "name": "Build one exact current core bundle and its standard setup",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10
+    },
+    {
+      "name": "Require actual native standard Install Repair and Uninstall",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11
+    },
+    {
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25
+    }
+  ],
+  "python_source_installed": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "source": {
+    "modules": 11,
+    "passed": 345,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_native_checks.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_windows_bundle.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_windows_launcher_bundle.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 149,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_worker_bytecode.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_install_bytecode.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_native_runtime.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/audio/test_local_runtime_cli.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/test_delivery_cli.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "passed": 345,
+    "subtests_passed": 22,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "strict_junit_gate": "PASS"
+  },
+  "complete_python_inventory": {
+    "modules": 379,
+    "status": "PASS",
+    "source_wheel_sha256": "85f871970b992322f8cddc6344ce95c7db403ab0392077de8e77fbc040b28a1b",
+    "sealed_wheel_sha256": "85f871970b992322f8cddc6344ce95c7db403ab0392077de8e77fbc040b28a1b"
+  },
+  "native": {
+    "status": "PASS",
+    "required_assertions": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "all_required_exact_true": true,
+    "setup_sha256": "7b4a68f67337dd28fea9fd469300df407ca891496b602fdd98ee0a3fd5d07ba5",
+    "setup_bytes": 82397138,
+    "bundle_manifest_sha256": "42edfd7c6fb81e99b7616f10eb56df1ef5fc2d0be946c67e9c34131de1d76be3",
+    "actual_inno_install": true,
+    "actual_repair": true,
+    "actual_uninstall": true,
+    "populated_library_bytes_preserved": true
+  },
+  "files": [
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-contracts.txt",
+      "utf8_bytes": 2544,
+      "sha256": "419a23d467a1bf0f44f6cf71a75e4daa0b2523b6ada384598e48e010b6ccc107"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-dependencies.json",
+      "utf8_bytes": 857,
+      "sha256": "86cd0cf205759dd92e5d54c622a37a7c46f5102aa9f365e79851a58c53872d27"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-python-identity.json",
+      "utf8_bytes": 55908,
+      "sha256": "3bbf2743452b6aa70b46ab7ec21c4d2db02bbca66c2ec1823a7fc4375e0ac2e6"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-source-wheel.json",
+      "utf8_bytes": 337,
+      "sha256": "dbfa37063de64bcb91ea604c2a95d6380fde034c8d7e5234577a07f6e6ba0734"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-sealed-source-wheel.json",
+      "utf8_bytes": 474,
+      "sha256": "bf1e509329b6782dbcb8a45ff6552327b6c0054f5dd8114f1e73a98e65616eab"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-setup-build.json",
+      "utf8_bytes": 1728,
+      "sha256": "3981cfd0a2d2ae06f551709d42094b95525a633876d8eabac4696742750735db"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-native-result.json",
+      "utf8_bytes": 944,
+      "sha256": "1c7453b88d53d47808695e6fa1c6834d21e20225af89a0351b02c06588b64f3a"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-native-verdict.json",
+      "utf8_bytes": 705,
+      "sha256": "34caca17a1b892f5f7f5e9ab02524b09d01d98db0931d21059d9076dea535fc2"
+    }
+  ],
+  "receipt_records": [
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-dependencies.json",
+      "decoded_log_lines": [
+        1210,
+        1210
+      ],
+      "utf8_bytes": 857,
+      "sha256": "86cd0cf205759dd92e5d54c622a37a7c46f5102aa9f365e79851a58c53872d27"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-python-identity.json",
+      "decoded_log_lines": [
+        1385,
+        1385
+      ],
+      "utf8_bytes": 55908,
+      "sha256": "3bbf2743452b6aa70b46ab7ec21c4d2db02bbca66c2ec1823a7fc4375e0ac2e6"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-source-wheel.json",
+      "decoded_log_lines": [
+        1316,
+        1316
+      ],
+      "utf8_bytes": 337,
+      "sha256": "dbfa37063de64bcb91ea604c2a95d6380fde034c8d7e5234577a07f6e6ba0734"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-sealed-source-wheel.json",
+      "decoded_log_lines": [
+        1906,
+        1906
+      ],
+      "utf8_bytes": 474,
+      "sha256": "bf1e509329b6782dbcb8a45ff6552327b6c0054f5dd8114f1e73a98e65616eab"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-setup-build.json",
+      "decoded_log_lines": [
+        1909,
+        1941
+      ],
+      "utf8_bytes": 1728,
+      "sha256": "3981cfd0a2d2ae06f551709d42094b95525a633876d8eabac4696742750735db"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-native-result.json",
+      "decoded_log_lines": [
+        1998,
+        2021
+      ],
+      "utf8_bytes": 944,
+      "sha256": "1c7453b88d53d47808695e6fa1c6834d21e20225af89a0351b02c06588b64f3a"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-native-verdict.json",
+      "decoded_log_lines": [
+        2022,
+        2022
+      ],
+      "utf8_bytes": 705,
+      "sha256": "34caca17a1b892f5f7f5e9ab02524b09d01d98db0931d21059d9076dea535fc2"
+    }
+  ],
+  "source_blobs": [
+    {
+      "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+      "blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+      "bytes": 27372
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "blob": "a030d415cf7326e937880f150d9667104828cf60",
+      "bytes": 11751
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/maintenance.py",
+      "blob": "efd6884c4d63d7c1b1a551dbe4a75ad4abc1d11d",
+      "bytes": 38515
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "blob": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "bytes": 11741
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "blob": "f963493b87df786336d3af38902ad88dacbbbd43",
+      "bytes": 21303
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "blob": "271e2aecc684a2b0408005fd369a298de476850b",
+      "bytes": 68773
+    },
+    {
+      "path": "carr-library/src/carr_library/installation_lease.py",
+      "blob": "f85b72eaa0aea0ff9d3b741ef44377e08f653da8",
+      "bytes": 16263
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "blob": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c",
+      "bytes": 29030
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/windows_process.py",
+      "blob": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+      "bytes": 23275
+    }
+  ],
+  "artifact": {
+    "id": 15242545000,
+    "name": "carr-standard-installation-windows-2022-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+    "bytes": 140200,
+    "sha256": "784c9a861f000426658d67b5f70d329e1611e6450c1eaff1362a7140d4180b2d",
+    "downloaded_by_this_collection": false
+  },
+  "decoded_completed_log": {
+    "utf8_bytes": 313070,
+    "sha256": "38672264fb7dd6ed7a0c64a76d68e38ac2584821b6e82a059084fe1c238abdb5"
+  },
+  "provenance": "JSON receipt payloads are preserved from the completed GitHub log after timestamp/CRLF removal. The setup JSON opening brace follows the compiler's literal 'Preprocessing' progress text on the same line; that prefix alone is omitted. Contracts are bounded exact-line excerpts. Raw artifact member bytes are being retrieved by a separate guarded read-only reader; this collection does not claim original runner-file byte identity.",
+  "interpretation": "The receiving head now passes actual native Install/Repair/Uninstall with the existing twelve required result fields. The original fresh registry/program/wrapper/shortcut/library/recovery assertions are unchanged. Thus the prior final uninstall failure is not reproduced after the exact empty-only directory entry correction.",
+  "limits": {
+    "release_status": "unsigned-private-candidate",
+    "authenticode_verified": false,
+    "nvda_verified": false,
+    "unprivileged_account_qualification": "NOT_RUN",
+    "native_network_trace": "NOT_RUN",
+    "full_application_release": "Not qualified by this focused core installer run.",
+    "physical_audio_capture": "Not covered."
+  },
+  "no_ref_or_product_mutation": true
+}

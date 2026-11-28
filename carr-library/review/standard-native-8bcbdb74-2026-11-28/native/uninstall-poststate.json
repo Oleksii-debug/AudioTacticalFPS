@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "observation": "after_owned_uninstall",
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "setup_sha256": "7b4a68f67337dd28fea9fd469300df407ca891496b602fdd98ee0a3fd5d07ba5",
+  "bundle_manifest_sha256": "42edfd7c6fb81e99b7616f10eb56df1ef5fc2d0be946c67e9c34131de1d76be3",
+  "registration": {
+    "present": false
+  },
+  "paths": {
+    "app": {
+      "present": false
+    },
+    "maintenance": {
+      "present": false
+    }
+  }
+}

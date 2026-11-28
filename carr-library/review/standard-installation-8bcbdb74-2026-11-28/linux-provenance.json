@@ -1,0 +1,160 @@
+{
+  "schema": "carr-standard-portable-evidence/1",
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "source_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "source_run": 46092676035,
+  "job": 140816954644,
+  "mode": "Linux source and installed",
+  "result": "SUCCESS",
+  "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+  "source": {
+    "modules": 11,
+    "passed": 345,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 149,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_native_checks.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_windows_bundle.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_windows_launcher_bundle.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_worker_bytecode.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_native_runtime.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/audio/test_local_runtime_cli.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/test_delivery_cli.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/packaging/test_install_bytecode.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "passed": 345,
+    "subtests_passed": 22,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "strict_junit_gate": "Completed source-and-installed workflow step is successful; no-empty/fail/error/skip/xpass predicates unchanged."
+  },
+  "identity": {
+    "python_modules": 379,
+    "complete_source_wheel_installed_inventory": "PASS",
+    "wheel_sha256": "c9cd7a890536ea032235f80d8b9790bce5e506ef66953c6c868c489d5b1d72fb",
+    "required_suites": [
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/packaging/test_native_checks.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/packaging/test_install_bytecode.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/packaging/test_native_runtime.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/test_delivery_cli.py"
+    ]
+  },
+  "artifact": {
+    "id": 15242285429,
+    "name": "carr-standard-installation-ubuntu-24.04-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+    "bytes": 29256,
+    "sha256": "2b279683cd09cb3ec8331580505bf311d1e87ed5cf4f74567560e2d68a5a6f6b",
+    "downloaded": false
+  },
+  "files": [
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-contracts.txt",
+      "utf8_bytes": 2545,
+      "sha256": "ebcf381acbc78098d1c97484b3059ad2651c892a6dde8ed079aa5c7893140e24"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-dependencies.json",
+      "utf8_bytes": 838,
+      "sha256": "d1360b7d71de2a273cd90816584961beb12729d684572bdd184943354d31e136"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-python-identity.json",
+      "utf8_bytes": 55894,
+      "sha256": "2d1b2d4bc68b739ac163c6899a2060eff443c336727a13cc8deee53dd3315fe0"
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-source-wheel.json",
+      "utf8_bytes": 337,
+      "sha256": "a03879de84ceb664498a6f84c64dc12f4c3061ce21e0857e6bfb629427cbfab7"
+    }
+  ],
+  "decoded_completed_log": {
+    "utf8_bytes": 273824,
+    "sha256": "48100f563ec36c6e93ce6e35d4ca85e39e13d926e4dc2a0ea67c66cf86460766"
+  },
+  "provenance": "JSON payloads are preserved as emitted in the completed log after removing the timestamp prefix. linux-contracts.txt is a bounded exact-line excerpt. Artifact metadata is recorded, but its ZIP was not downloaded in this collection.",
+  "limits": [
+    "The native compiler/setup/lifecycle steps are Windows-only and were conditionally skipped on Linux, not pytest skips.",
+    "This record does not qualify actual native Inno install/repair/uninstall, signing, NVDA or physical audio capture.",
+    "No source, workflow or ref mutation was performed."
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "source_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "source_run": 46092676035,
+  "source_job": 140816954489,
+  "source_conclusion": "success",
+  "artifact": {
+    "id": 15242545000,
+    "name": "carr-standard-installation-windows-2022-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+    "size_in_bytes": 140200,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242545000",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242545000/zip",
+    "expired": false,
+    "created_at": "2026-11-28T01:29:46Z",
+    "expires_at": "2026-12-05T01:29:44Z",
+    "updated_at": "2026-11-28T01:29:46Z",
+    "digest": "sha256:784c9a861f000426658d67b5f70d329e1611e6450c1eaff1362a7140d4180b2d",
+    "workflow_run": {
+      "id": 46092676035,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    }
+  },
+  "reader": {
+    "commit": "fb113e7054cddd3804c9b30472271f764e2e8c76",
+    "tree": "ef57fa869fca7dc747a93b4ae14ede35a71ce484",
+    "script_blob": "501099c6c33a8f7767eecb16b3951fc3a23fff5a",
+    "workflow_blob": "3864c0b3a699d7aa1fa9deaa749abe1bb0b593ed",
+    "run": 46093600781,
+    "job": 140819861547,
+    "conclusion": "success",
+    "decoded_log": {
+      "sha256": "4230d1a32c53dfa763edb974e4c4438ad3365e3286c20bb283d1d0adad3b6554",
+      "bytes": 155147
+    },
+    "bounds_unchanged": true,
+    "extract_or_execute_artifacts": false
+  },
+  "verification": {
+    "artifact_zip_digest_verified": true,
+    "selected_members": 17,
+    "small_original_members_independently_verified": 15,
+    "empty_members_identity_only": 6,
+    "nonempty_originals_retained": 9,
+    "large_logs_are_partial": 2
+  },
+  "findings": {
+    "native_status": "PASS",
+    "required_boolean_checks": 12,
+    "all_required_true": true,
+    "poststate": {
+      "schema": 1,
+      "observation": "after_owned_uninstall",
+      "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+      "setup_sha256": "7b4a68f67337dd28fea9fd469300df407ca891496b602fdd98ee0a3fd5d07ba5",
+      "bundle_manifest_sha256": "42edfd7c6fb81e99b7616f10eb56df1ef5fc2d0be946c67e9c34131de1d76be3",
+      "registration": {
+        "present": false
+      },
+      "paths": {
+        "app": {
+          "present": false
+        },
+        "maintenance": {
+          "present": false
+        }
+      }
+    },
+    "uninstall_log_contains_maintenance_directory_removal": true,
+    "user_library_preserved": true
+  },
+  "members": [
+    {
+      "path": "native-standard-installation.txt",
+      "bytes": 968,
+      "sha256": "68319ff3fc9a5a6fe3ba7e5fa7b759de9bb9225d3f9f792a443b93d2e2a1bbf6",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native-standard-installation.txt",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native-standard-verdict.json",
+      "bytes": 706,
+      "sha256": "2168eee5e97cdf2b54fb0d0e885b590d0d18de03ee39257dab14e3a8ac4eb157",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native-standard-verdict.json",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native/busy-uninstall-process.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retention": "empty; identity retained in this inventory"
+    },
+    {
+      "path": "native/busy-uninstall.log",
+      "bytes": 3810,
+      "sha256": "9d58471e486da73661e08bba44f0a0a95e9d32d55462cf9618b948d35ca1b313",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/busy-uninstall.log",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native/install-process.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retention": "empty; identity retained in this inventory"
+    },
+    {
+      "path": "native/install.log",
+      "bytes": 700758,
+      "sha256": "1d1d23c4f27b6ab2d18a8a4278aca0ad18f659e14541ea450f634864b042fc53",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/install.log.excerpt.txt",
+      "retention": "bounded error contexts and tail; original full-member SHA-256 retained; not complete raw log"
+    },
+    {
+      "path": "native/modified-uninstall-process.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retention": "empty; identity retained in this inventory"
+    },
+    {
+      "path": "native/modified-uninstall.log",
+      "bytes": 4285,
+      "sha256": "931365d7b6c9b8da3d9f61e43a74c867a1e8b60096f4dbde345a706ea9e5ab55",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/modified-uninstall.log",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native/repair-process.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retention": "empty; identity retained in this inventory"
+    },
+    {
+      "path": "native/repair.log",
+      "bytes": 700478,
+      "sha256": "0dde65f8edd805ba2f52eec4807c46f3b16a90bd99e3f2a189a065a9d1521e7f",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/repair.log.excerpt.txt",
+      "retention": "bounded error contexts and tail; original full-member SHA-256 retained; not complete raw log"
+    },
+    {
+      "path": "native/repaired-native-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retention": "empty; identity retained in this inventory"
+    },
+    {
+      "path": "native/result.json",
+      "bytes": 968,
+      "sha256": "68319ff3fc9a5a6fe3ba7e5fa7b759de9bb9225d3f9f792a443b93d2e2a1bbf6",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/result.json",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native/shortcuts.json",
+      "bytes": 449,
+      "sha256": "317280853c522f2b11216d77b9f423d5c1f4f182463f20f9d7285915aaabdd4c",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/shortcuts.json",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native/uninstall-poststate.json",
+      "bytes": 462,
+      "sha256": "3898175fd55d30b7917e1753b2189e9a57e7c1d1d0f5aa89fdfeec632e6b6521",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/uninstall-poststate.json",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "native/uninstall-process.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retention": "empty; identity retained in this inventory"
+    },
+    {
+      "path": "native/uninstall.log",
+      "bytes": 7585,
+      "sha256": "fc746febe7f0c2ee25bead9e7f14f8ef3a7f303574f5e62c9ffc99dcf8044e03",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/uninstall.log",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    },
+    {
+      "path": "setup-build.json",
+      "bytes": 1761,
+      "sha256": "2639e6db307c2b9ea3cd0ad797d6538b7785a12742d64f66eb8ed49ad3462589",
+      "retained_path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/setup-build.json",
+      "retention": "original ZIP member bytes; independent SHA-256 and UTF-8 roundtrip verified"
+    }
+  ],
+  "limits": [
+    "Exact core installer lifecycle and source/installed contracts only; overlapping scopes are not combined into a unique total.",
+    "This evidence commit does not become the tested product head.",
+    "Unsigned private candidate; Authenticode, human NVDA, unprivileged account qualification and native network trace remain unqualified.",
+    "Complete ordinary workflows/full Windows, physical capture, model inference and complete-platform acceptance are separate.",
+    "Only allowlisted public CI receipts were read; no models, audio, user data, setup executable or credential material is retained."
+  ]
+}

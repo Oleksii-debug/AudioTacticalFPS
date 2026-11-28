@@ -1,0 +1,277 @@
+{
+  "schema": 1,
+  "tested_source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "tested_source_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "tested_application_tree": "278ef5d7f31ee617172945281889bc2060533da7",
+  "purpose": "Evidence-only child; none of its commits is substituted for the tested product head.",
+  "scopes": [
+    {
+      "name": "native launcher",
+      "run": 46092682625,
+      "status": "PASS",
+      "msvc_checks": 9,
+      "zig_checks": 9
+    },
+    {
+      "name": "standard installation",
+      "run": 46092676035,
+      "status": "PASS",
+      "source_cases_per_os": 345,
+      "installed_cases_per_os": 345,
+      "installed_subtests_per_os": 22,
+      "python_modules": 379,
+      "native_required_true": 12,
+      "poststate": "registration, app path and maintenance path all absent; populated external library preserved"
+    },
+    {
+      "name": "reader voice",
+      "run": 46092677995,
+      "status": "PASS",
+      "modes": 4,
+      "cases_per_mode": 301,
+      "windows_native_checks_per_mode": 80,
+      "python_modules": 379
+    },
+    {
+      "name": "component Linux",
+      "run": 46092679183,
+      "status": "PASS",
+      "cases_per_mode": 2191,
+      "installed_subtests": 12,
+      "python_modules": 379
+    },
+    {
+      "name": "component Windows",
+      "run": 46092679183,
+      "status": "RUNNING; not qualified by this snapshot"
+    },
+    {
+      "name": "ordinary workflows and full Windows aggregate",
+      "status": "IN_PROGRESS; release eligibility not established"
+    }
+  ],
+  "caution": [
+    "Scopes overlap and must not be summed as a unique suite count.",
+    "The native Job modeled boundary suite is outside the component selection and needs its separate ordinary gate.",
+    "The exact17 original selected input access failure remains historical FAIL with a read-only diagnostic; no policy/consent change was made and no new capture PASS is inferred.",
+    "Actual engine inference, physical capture, human NVDA, language/quality, signing/distribution and full updated-platform acceptance remain separate."
+  ],
+  "evidence_files": [
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/linux-installed-package-identity.json",
+      "git_blob": "b35f8ad90ff7e0d79469b3f4939c06f3c8e45487",
+      "bytes": 66586
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/linux-installed-terminal.json",
+      "git_blob": "622837a8a411624535390415ccfa02dc30b345a5",
+      "bytes": 4489
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/linux-source-package-identity.json",
+      "git_blob": "48d509d6e30555d3b2c0c99f6dbc223af3d31e15",
+      "bytes": 66583
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/linux-source-terminal.json",
+      "git_blob": "462bb1b9a54587e472e7e4ba769bb364fc089752",
+      "bytes": 6576
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/windows-installed-package-identity.json",
+      "git_blob": "4cf4ecd1bee07ae6b52d6c0f6a27bb3702206d3b",
+      "bytes": 66594
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/windows-installed-terminal.json",
+      "git_blob": "579747fbf3ec1acad85584ac014d4a32ddc41d2e",
+      "bytes": 8309
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/windows-source-package-identity.json",
+      "git_blob": "bd2506927cb3b2198e7ab51d4db0949ae24494f0",
+      "bytes": 66591
+    },
+    {
+      "path": "carr-library/review/reader-voice-8bcbdb74-2026-11-28/windows-source-terminal.json",
+      "git_blob": "5799dd13b477c044ebd8e5b9989d6feae3c15def",
+      "bytes": 10395
+    },
+    {
+      "path": "carr-library/review/terminal-8bcbdb74-2026-11-28/linux-installed-component.json",
+      "git_blob": "360c09566e0a974c09b510261b8dea577d4c6513",
+      "bytes": 5852
+    },
+    {
+      "path": "carr-library/review/terminal-8bcbdb74-2026-11-28/linux-source-component.json",
+      "git_blob": "eb172ae1e5ad151500656cf7a2c821bcf8f3f414",
+      "bytes": 13131
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-contracts.txt",
+      "git_blob": "d03f96fa42c2cdec89f93602b3c5b00e68cdc74c",
+      "bytes": 2545
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-dependencies.json",
+      "git_blob": "a8ffa265d8beb26ad6920602f20d7ed7b4924603",
+      "bytes": 838
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-provenance.json",
+      "git_blob": "933f22ae7cdb36ec2f74af44eff0fd70f9bbc06c",
+      "bytes": 5132
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-python-identity.json",
+      "git_blob": "bf8d6ccfe807be49f3eb1d80b7acc54ad6e2fd64",
+      "bytes": 55894
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/linux-source-wheel.json",
+      "git_blob": "1bbd754463d4264781499640b347e759a34fb3f9",
+      "bytes": 337
+    },
+    {
+      "path": "carr-library/review/native-launcher-8bcbdb74-2026-11-28/msvc-build-evidence.json",
+      "git_blob": "e66a5861f2db3849bb3c7e7a4337a97492113cf5",
+      "bytes": 2715
+    },
+    {
+      "path": "carr-library/review/native-launcher-8bcbdb74-2026-11-28/msvc-windows-probe.json",
+      "git_blob": "e322bd1cff0be269fab2f449a03d856846c073dd",
+      "bytes": 793
+    },
+    {
+      "path": "carr-library/review/native-launcher-8bcbdb74-2026-11-28/provenance.json",
+      "git_blob": "b442b77ce7dfb5c8f28afa0f9e7cedbcb3d7539e",
+      "bytes": 14062
+    },
+    {
+      "path": "carr-library/review/native-launcher-8bcbdb74-2026-11-28/source-native-excerpts.txt",
+      "git_blob": "53cd8eef3e50ca5e73a9aea99bebac17f66a798f",
+      "bytes": 883
+    },
+    {
+      "path": "carr-library/review/native-launcher-8bcbdb74-2026-11-28/zig-build-evidence.json",
+      "git_blob": "1b933be5424f67fd89753923f0096613d95ef015",
+      "bytes": 1544
+    },
+    {
+      "path": "carr-library/review/native-launcher-8bcbdb74-2026-11-28/zig-windows-probe.json",
+      "git_blob": "23f7465e4aee16c11b20cee97cbda3cbc360c74c",
+      "bytes": 793
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-contracts.txt",
+      "git_blob": "680ee9cfeace2cfdcd5e075ca85d738e21172ab5",
+      "bytes": 2544
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-dependencies.json",
+      "git_blob": "65c167c7e8348ff76069243e5e2b866ff06b4698",
+      "bytes": 857
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-native-result.json",
+      "git_blob": "20c4ec797d8977df7178499b913f0b8cf68a706e",
+      "bytes": 944
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-native-verdict.json",
+      "git_blob": "48209ed986b9b2f4567b21905fecbbbacb0bc010",
+      "bytes": 705
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-provenance.json",
+      "git_blob": "1b7220061355924fe21ea2c20db751dbabf409fd",
+      "bytes": 13106
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-python-identity.json",
+      "git_blob": "d5efcbbd7a8918659108f7114ac3c896051ef976",
+      "bytes": 55908
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-sealed-source-wheel.json",
+      "git_blob": "1fce67688be74dcadcc56308ec597fa8037c136d",
+      "bytes": 474
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-setup-build.json",
+      "git_blob": "c7630c345a7788c34878f594dd76430506a9ae13",
+      "bytes": 1728
+    },
+    {
+      "path": "carr-library/review/standard-installation-8bcbdb74-2026-11-28/windows-source-wheel.json",
+      "git_blob": "7bd9ca61696b590a807375a066abbe538bbddc1e",
+      "bytes": 337
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native-standard-installation.txt",
+      "git_blob": "eb73c570e128b0615984496bafcf9766aaeb3c1a",
+      "bytes": 968
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native-standard-verdict.json",
+      "git_blob": "a4cb89aa4ad89be024ce993d3feed07acb4d0be0",
+      "bytes": 706
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/busy-uninstall.log",
+      "git_blob": "3a40900acd97c9110c7bd173d01e2ec82d0ef527",
+      "bytes": 3810
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/install.log.excerpt.txt",
+      "git_blob": "d8b6a71914dfa58c34245c12f8daeda851ed0c2b",
+      "bytes": 32826
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/modified-uninstall.log",
+      "git_blob": "1aea84b79f82f1e2f3252f6a65824c43e54535ad",
+      "bytes": 4285
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/repair.log.excerpt.txt",
+      "git_blob": "14243d7bfdc66388448aa3010a82061ccc8436a7",
+      "bytes": 32825
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/result.json",
+      "git_blob": "eb73c570e128b0615984496bafcf9766aaeb3c1a",
+      "bytes": 968
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/shortcuts.json",
+      "git_blob": "c29cfc371367156473a70ee93ecef0f426063d7f",
+      "bytes": 449
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/uninstall-poststate.json",
+      "git_blob": "bb12190f50146a0e649c95c4446eff988d27e831",
+      "bytes": 462
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/native/uninstall.log",
+      "git_blob": "cf84d4ca31ae4cf5601d6078deaf67237a9552b1",
+      "bytes": 7585
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/provenance.json",
+      "git_blob": "077ef7a69b011b3bbf9c6292eba2a8afae1a289e",
+      "bytes": 8753
+    },
+    {
+      "path": "carr-library/review/standard-native-8bcbdb74-2026-11-28/setup-build.json",
+      "git_blob": "0b465db687a03910fa965c3ec4c5a418512c921d",
+      "bytes": 1761
+    }
+  ],
+  "source_changes": false,
+  "workflow_changes": false,
+  "dependency_changes": false,
+  "test_selection_changes": false,
+  "tested_ref": "carr/v3-integrated-final-dbbb-20261126",
+  "pull_request": 127
+}
