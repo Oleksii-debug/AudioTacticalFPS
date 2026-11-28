@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+  "preimage": "16afe6e4efea7b3676ee66c676d47fdd8940e0ed",
+  "successor": "21774e1c6fa3c871299727949bf9fc868b4fb3e7",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "peer": "/root/locate_project",
+  "scope": "Data-only immutable artifact inspector successor; exact8 declarations/literals.",
+  "actual_record_manifest": "3c59a15c56a859c466f18e4840f5574c091df93e",
+  "validation": {
+    "inverse_preimage": "PASS",
+    "actual_declared_artifacts": 4,
+    "exact_record_maps": "PASS",
+    "changed_declarations": 8,
+    "read_only_body_unchanged": true,
+    "producer_origin21_seen": true
+  },
+  "artifacts": [
+    15250411632,
+    15249654872,
+    15251387470,
+    15252930085
+  ],
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110633668,
+  "unchanged": [
+    "Authenticated API request, explicit NoRedirect and no credential forwarding to storage",
+    "Bounded archive/member inventory and exact complete hashes",
+    "Closed JSON parser bounds, phase/status/fresh-process/source identities",
+    "Read-only inspection/no extraction/no source execution",
+    "6-minute workflow cap and finite HTTP/print limits"
+  ],
+  "qualification": "Three exact5b2 source profiles passed allfive phases;50000x40 measure remainsPARTIAL with later phasesNOT_RUN. This peer establishes no new runtime, performance value or cross-head qualification.",
+  "recorded_utc": "2026-11-28 06:45:28 UTC",
+  "refs_modified": false
+}

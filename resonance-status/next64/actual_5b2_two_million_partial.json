@@ -1,0 +1,90 @@
+{
+  "schema": "carr.actual-retained-capacity-profile/1",
+  "recorded_utc": "2026-11-28 06:42:18 UTC",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110633668,
+  "job_id": 140873548381,
+  "status": "PARTIAL",
+  "geometry": {
+    "books": 50000,
+    "segments_per_book": 40,
+    "segments": 2000000
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110633668/job/140873548381",
+  "job_conclusion": "failure",
+  "parent_exit_code": 2,
+  "phase_receipt": {
+    "books": 50000,
+    "phases": [
+      {
+        "phase": "build",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "measure",
+        "reason": "BudgetExceeded",
+        "status": "PARTIAL"
+      }
+    ],
+    "qualification": "Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.",
+    "retained": {
+      "50000/build.json": {
+        "bytes": 5987,
+        "sha256": "23e6a6eedd588c376ed4b59a1815c4053569a71e78ca941e4a0ba27a214d3d31"
+      },
+      "50000/build.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "50000/build.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "50000/measure.json": {
+        "bytes": 5596,
+        "sha256": "c47cdf28886cf35ef940c88b569914afa1e2107d57a44e59099b61b4ea482851"
+      },
+      "50000/measure.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "50000/measure.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "configuration.json": {
+        "bytes": 5462,
+        "sha256": "12ff251328e74002e3ced37e2bca072435701571c37cdc43d5d82dc9524a5f65"
+      },
+      "library-corpus-scale.json": {
+        "bytes": 19242,
+        "sha256": "4327e5736a295c49717b9288789df899b50ec9c561e5dc93ab7b750562ba3966"
+      }
+    },
+    "segments": 2000000,
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "status": "PARTIAL"
+  },
+  "decoded_log_utf8": {
+    "sha256": "2a616f510c87758e0716306440d9dd1e02d218852986efdc435d81510ed2e3df",
+    "bytes": 48499
+  },
+  "artifact": {
+    "id": 15252930085,
+    "name": "retained-capacity-large-source-v1-50000x40-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "bytes": 13489,
+    "digest": "sha256:96a76e45096c055eac52a386e08a235cfd3fa74e5aa4adf37d218315a259cce0",
+    "created_at": "2026-11-28T06:40:48Z",
+    "expired": false
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "limits": {
+    "detailed_phase_metrics": "Exact partial timing, operation and stopping counters remain in the immutable8-member archive; not yet decoded here.",
+    "remaining_phases": "Only build and measure are retained; restart, operations and backup were not run.",
+    "required_capacity": "Full2M traversal inside the unchanged3600-second phase deadline remains unmet.",
+    "source_scope": "Exact5b2 only. No success from its1M profile or earlier343 data is transferred.",
+    "construction": "Retained synthetic originals with declared public samples; no sustained ordinary full-corpus import, native GUI, acoustic or physical-device qualification."
+  }
+}

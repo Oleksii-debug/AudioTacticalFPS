@@ -1,0 +1,201 @@
+{
+  "schema": "carr.exact-readonly-artifact-inspector-handoff/1",
+  "recorded_utc": "2026-11-28 06:45:39 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+  "blob": "21774e1c6fa3c871299727949bf9fc868b4fb3e7",
+  "preimage": null,
+  "template_blob": "16afe6e4efea7b3676ee66c676d47fdd8940e0ed",
+  "composition": "Add the absent workflow to a source/evidence child selected by root; it has no checkout or product execution. The template exists only on the separate old343 inspection branch.",
+  "branch_pattern": "carr/ci-c3-capacity-evidence-5b2-*",
+  "measurement": {
+    "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "run_id": 46110633668,
+    "evidence_blob": "3c59a15c56a859c466f18e4840f5574c091df93e",
+    "closed_profiles": [
+      {
+        "books": 1000,
+        "segments_per_book": 20,
+        "job_id": 140873548343,
+        "status": "PASS",
+        "artifact": {
+          "id": 15250411632,
+          "name": "retained-capacity-large-source-v1-1000x20-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+          "bytes": 27227,
+          "digest": "sha256:c53fe2bc21b8057adb77450782e63a5fc1ee0faa131179d146f2b8c8c6ffd6fa",
+          "created_at": "2026-11-28T05:34:43Z",
+          "expired": false
+        },
+        "retained_member_count": 17,
+        "phase_statuses": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "restart",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "operations",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "backup",
+            "reason": null,
+            "status": "PASS"
+          }
+        ]
+      },
+      {
+        "books": 10000,
+        "segments_per_book": 20,
+        "job_id": 140873548356,
+        "status": "PASS",
+        "artifact": {
+          "id": 15249654872,
+          "name": "retained-capacity-large-source-v1-10000x20-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+          "bytes": 27371,
+          "digest": "sha256:6b3d60c8af3786797ebbf642ebe06a5e39faee0008c4cba1896f938405ab06f6",
+          "created_at": "2026-11-28T05:26:37Z",
+          "expired": false
+        },
+        "retained_member_count": 17,
+        "phase_statuses": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "restart",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "operations",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "backup",
+            "reason": null,
+            "status": "PASS"
+          }
+        ]
+      },
+      {
+        "books": 50000,
+        "segments_per_book": 20,
+        "job_id": 140873548518,
+        "status": "PASS",
+        "artifact": {
+          "id": 15251387470,
+          "name": "retained-capacity-large-source-v1-50000x20-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+          "bytes": 27465,
+          "digest": "sha256:b39f54361ace63633278dbce21f023c2df7b0ffd0698f5e62557fd49ef608f47",
+          "created_at": "2026-11-28T06:25:49Z",
+          "expired": false
+        },
+        "retained_member_count": 17,
+        "phase_statuses": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "restart",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "operations",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "backup",
+            "reason": null,
+            "status": "PASS"
+          }
+        ]
+      },
+      {
+        "books": 50000,
+        "segments_per_book": 40,
+        "job_id": 140873548381,
+        "status": "PARTIAL",
+        "artifact": {
+          "id": 15252930085,
+          "name": "retained-capacity-large-source-v1-50000x40-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+          "bytes": 13489,
+          "digest": "sha256:96a76e45096c055eac52a386e08a235cfd3fa74e5aa4adf37d218315a259cce0",
+          "created_at": "2026-11-28T06:40:48Z",
+          "expired": false
+        },
+        "retained_member_count": 8,
+        "phase_statuses": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": "BudgetExceeded",
+            "status": "PARTIAL"
+          }
+        ]
+      }
+    ]
+  },
+  "review": {
+    "reviewer": "locate_project",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Independently reversed all8 declarations/literals and compared every fixed artifact/member/hash/phase with3c59. Also checked actual5b2 producer origin_count21 and phase_timeout3600.",
+    "source_changes": 0,
+    "exact_inverse": true,
+    "ascii_bytes": 26023,
+    "unchanged_body": true,
+    "unchanged_limits": true
+  },
+  "changes": [
+    "Workflow display name",
+    "Dedicated evidence branch prefix",
+    "Step display name",
+    "Exact measured run ID",
+    "Exact measured head SHA",
+    "Exact measured tree SHA",
+    "Closed4-artifact identities and retained member pins",
+    "Truthful four-profile final scope"
+  ],
+  "retained_authority": [
+    "Same pinned Python3.11/setup action, Ubuntu24.04, six-minute job, no checkout and no execution of retained source.",
+    "Token only on the fixed GitHub API; inspected first redirect, fresh header-free object-storage request and all subsequent redirects refused.",
+    "All original64KiB archive/32member/2MiBexpanded/256KiBmember/20kJSONnodes/depth32/256KiBoutput bounds unchanged.",
+    "All original phase order, complete corpus, original exit/reaping, report/source identity,21origin and3600/page37 guards unchanged.",
+    "Three exact all-five-PASS profiles and one measurePARTIAL profile remain separate; later phases of the failed2M case are explicitly absent/not run."
+  ],
+  "qualification": "No metric values or capacity success are inferred from this static inspector. The required full2M completion is still unmet; this workflow only recovers its immutable stopping metrics."
+}
