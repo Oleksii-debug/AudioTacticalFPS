@@ -1,5 +1,7 @@
 # Canonical convergence — 2026-11-27
 
+[Latest exact execution checkpoint: 95ef ordinary gates and bbf EPUB/document diagnosis](acceptance/20261128-95efc7-completed-gates-and-epub-diagnostic.json). The focused EPUB job failed after its corrected highlight; the follow-up is pending, not accepted.
+
 ## Reviewed identities and authority
 
 This ledger records reconciliation into the current completion candidate. It does not change the product requirements or declare a qualified release.
@@ -751,3 +753,46 @@ two workers per VM, 600-second suites, 720-second phases and 45-minute jobs rema
 V3 then has five required jobs: native, three source partitions and broad source.
 Historical measured durations motivate the change; its new execution is
 **NOT_RUN**. The ordinary final composition still requires its own gates.
+
+
+## 28 November ordinary coverage, focused mapping and remaining EPUB playback
+
+The [exact checkpoint](acceptance/20261128-95efc7-completed-gates-and-epub-diagnostic.json) preserves all 17 successful ordinary 95ef jobs,
+their links and overlapping source/native counts. It also retains the incomplete
+first V3 source partition, the native EPUB timeout and the integrated source
+phase with no terminal report at 00:17:54 UTC. Successful jobs are not assigned
+to the unpublished ordinary source union or to a later head.
+
+The exact broad JUnit was parsed inside the fixed, SHA-verified artifact reader:
+3134 cases mapped once to the original 20 selectors, with 3114 passes, 20 skips,
+zero failures/errors and no unmapped or ambiguous cases. Eighteen skips concern
+optional Flite; two existing OCR guards did not receive the already prepared
+runtime. No masked XML or parameter text was reconstructed. The unchanged
+45-minute job finished with three seconds remaining.
+
+| Reviewed component | Concrete boundary | Execution at this checkpoint |
+| --- | --- | --- |
+| `db5d7af5acc6956d7773e9b2362b617db5244f21` | Keep the 139-entry strict manifest as required 69/69/1 partitions; move only Book batch to its own VM. | New partition NOT_RUN. Exact 95ef shard 1 lacks only Book batch; all 69 shard-2 reports completed. |
+| `8706a80468a6d641f615b14be7f537f819e1aea1` | Keep the 20 broad selectors/options in required 4/16 partitions and expose the same verified OCR runtime. All native/source bodies and deadlines remain. | New partition/guard execution NOT_RUN. V3 has six required jobs; the earlier five-job description records the preceding db5-only state. |
+| `d2c940f40a918b4c886efd253e791d2c35c38231` | Verify exact native text prefixes for Unicode and newline mappings before bounded fallback. | bbf source cases and actual exact highlight passed; subsequent playback acceptance failed at stage 2. |
+| `9deeebfb2112c8e387adfe6b2f77183d877c470a` | Select one exact native button among the selected dialog's descendants after the ScrolledPanel change. | bbf's separate installed document probe passed all 28 checks. This does not replace a later complete-bundle run. |
+| `b11e49948cfe3b2584fc95a301116ccc342836a7` | Emit bounded actual playback/status observations before the existing expiry error and owned modal cleanup. | Source approved only; all original native check calls and the 120-second guard remain unchanged. |
+
+The bbf focused job verifies every one of 341 checkout Python files against its
+installed counterpart, not a reverse enumeration of every installed file.
+Three suites passed 160 cases with zero failures/skips, and the native document
+probe passed 28 checks. EPUB verified the original exact highlight and native
+Play focus and successful keyboard-simulator returns, then expired without
+observing playing. Four bounded
+stack samples show idle worker queues and the actual nested modal loop; they do
+not establish a product cause. The diagnostic failed and later EPUB assertions
+remain unexecuted.
+
+Follow-up f4195b58 was queued when recorded. Its source base contains the full
+approved ordinary union plus b11; five concrete prior-failure files receive a
+separate strict three-minute/two-worker step. The ordinary evidence child takes
+only the two approved b11 source/test blobs and this record, with 59763001 and
+b11 as parents. It imports no diagnostic workflow or diagnostic ancestry, and
+changes no shared ref. Complete acceptance still requires actual successor
+results; no existing deadline, assertion, origin check or optional qualification
+is waived.

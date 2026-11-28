@@ -599,7 +599,7 @@ def _recorded_epub_native_probe_handlers():
     script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_epub_reading_smoke.py'
     module = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
     main = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
-    names = {'remember_failure', 'abort', 'guarded', 'expire', 'trace_highlight'}
+    names = {'remember_failure', 'abort', 'guarded', 'expire', 'trace_highlight', 'trace_failure_state'}
     functions = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in functions} == names
     events, pending = [], []
@@ -968,5 +968,54 @@ def test_recorded_epub_failed_failure_state_read_does_not_suppress_deadline_or_c
     assert 'EPUB failure-state observation unavailable: RuntimeError: native text peer is unavailable' in output
     assert 'FAIL: Native EPUB deadline expired.' in output
     assert len(harness.env['errors']) == 1 and 'deadline at stage 2' in harness.env['errors'][0]
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_guarded_failure_observes_live_playback_before_abort(capsys):
+    import json
+
+    harness = _recorded_epub_playback_observation()
+    harness.overlay.status.GetValue = lambda: 'An exact preparation error is still visible.'
+    pending = harness.overlay._pending = object()
+
+    def drive_timeout():
+        raise TimeoutError('original drive deadline at stage 2')
+
+    harness.env['guarded'](drive_timeout)()
+    output = capsys.readouterr().out
+    line = next(line for line in output.splitlines() if line.startswith('{"epub_highlight_diagnostic"'))
+    state = json.loads(line)['epub_highlight_diagnostic']
+    assert state['closed'] is False and state['busy'] is False
+    assert state['playback']['cancelled'] is False
+    assert state['playback']['transport_closed'] is False
+    assert state['playback']['transport_ticket'] == [0, 1]
+    assert state['playback']['pending_present'] is True
+    assert state['status']['prefix'] == 'An exact preparation error is still visible.'
+    assert output.index(line) < output.index('FAIL: Native EPUB driver callback failed at stage 2')
+    assert len(harness.env['errors']) == 1
+    assert 'TimeoutError: original drive deadline at stage 2' in harness.env['errors'][0]
+    assert harness.overlay._pending is pending and not harness.overlay.closed
+    assert harness.events == [] and len(harness.pending) == 1
+    _recorded_epub_native_step(harness)
+    assert harness.overlay.closed
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_guarded_original_exception_survives_failed_state_observation(capsys):
+    harness = _recorded_epub_playback_observation()
+    harness.overlay.text.GetSelection = Mock(side_effect=RuntimeError('state getter unavailable'))
+
+    def original_failure():
+        raise ValueError('original playback admission failure')
+
+    harness.env['guarded'](original_failure)()
+    output = capsys.readouterr().out
+    assert 'EPUB failure-state observation unavailable: RuntimeError: state getter unavailable' in output
+    assert 'FAIL: Native EPUB driver callback failed at stage 2' in output
+    assert len(harness.env['errors']) == 1
+    assert 'ValueError: original playback admission failure' in harness.env['errors'][0]
+    assert 'RuntimeError: state getter unavailable' not in harness.env['errors'][0]
+    assert harness.events == [] and len(harness.pending) == 1
     _recorded_epub_native_step(harness)
     assert harness.events == [('close', 'overlay'), ('end', 'overlay')]

@@ -63,11 +63,11 @@ def test_cancel_after_committed_publication_returns_complete_and_keeps_replay_gu
         with pytest.raises(ValueError):
             reopened.copy(workspace, hit.ref, hit.revision, 'quote')
 
-    # This is now a genuine terminal replay, so cancellation must still prevent
-    # a new membership from being committed even though the source exists.
-    with pytest.raises(InterruptedError, match='cancelled'):
-        reopened._import_file(workspace, source, collections=(requested,),
-                              cancelled=stopped.is_set, **metadata)
+    # A fresh attempt could reuse the completed revision, but cancellation before
+    # source admission must still prevent any new membership from being committed.
+    cancelled = reopened._import_file(workspace, source, collections=(requested,),
+                                      cancelled=stopped.is_set, **metadata)
+    assert cancelled['state'] == 'cancelled' and 'id' not in cancelled
     assert reopened.browse(workspace, collection=requested) == ()
     stopped.clear()
     replay = reopened._import_file(workspace, source, collections=(requested,),
