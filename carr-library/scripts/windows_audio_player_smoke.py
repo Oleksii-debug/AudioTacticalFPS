@@ -18,6 +18,22 @@ import traceback
 import wave
 
 
+def _queued_pcm(output):
+    """Read only the bounded buffers still strongly owned by this output."""
+    pending = tuple(output.pending)
+    if len(pending) > 4:
+        raise ValueError('The native output exceeded its bounded buffer inventory.')
+    chunks = []
+    for token in pending:
+        size = len(token.data)
+        if (not 0 < size <= 384000 * 50 // 1000 * 8
+                or token.header.length != size
+                or token.header.data != C.addressof(token.data)):
+            raise ValueError('The queued PCM no longer matches its owned native buffer.')
+        chunks.append(token.data.raw)
+    return b''.join(chunks)
+
+
 def _mix_snapshot(owner, current, other, expected, read_ui):
     """Read bounded evidence only; never change a control or native level."""
     def safe(read):
@@ -35,8 +51,11 @@ def _mix_snapshot(owner, current, other, expected, read_ui):
             return dict(open=False)
         value = C.c_uint32()
         result = int(native.library.waveOutGetVolume(native.handle, C.byref(value)))
+        pcm = _queued_pcm(native)
         return dict(open=True, handle=int(native.handle.value), result=result,
-                    packed=value.value, capabilities=native._caps)
+                    packed=value.value, capabilities=native._caps,
+                    pcm_levels=levels(native.levels), queued_bytes=len(pcm),
+                    queued_pcm_sha256=sha256(pcm).hexdigest())
 
     return dict(expected=levels(expected), ui=safe(read_ui),
         current=safe(lambda: levels(current.levels)),
@@ -258,23 +277,34 @@ def main():
                 other_before = C.c_uint32()
                 check('read independent owned output level',
                       other._wave.library.waveOutGetVolume(other._wave.handle, C.byref(other_before)) == 0)
+                current_before = C.c_uint32()
+                check('read current native mixer before private PCM change',
+                      current._wave.library.waveOutGetVolume(current._wave.handle, C.byref(current_before)) == 0)
+                other_pcm_before = _queued_pcm(other._wave)
+                other_levels_before = other.levels
                 named(popup, 'This player stereo balance, minus 100 left to 100 right').ChangeValue('-25')
                 press(named(popup, 'Mute this player only'))
                 apply_mix(_wave_output.PlaybackLevels(43, True, -.25))
                 current_level, other_after = C.c_uint32(), C.c_uint32()
-                check('read muted owned output level',
+                check('read unchanged current native mixer level',
                       current._wave.library.waveOutGetVolume(current._wave.handle, C.byref(current_level)) == 0)
                 check('read unaffected independent output level',
                       other._wave.library.waveOutGetVolume(other._wave.handle, C.byref(other_after)) == 0)
+                current_pcm = _queued_pcm(current._wave)
                 check('live mute and balance preserve volume and other player',
                       current.levels.muted and current.levels.volume == 43 and current.levels.balance == -.25
-                      and current_level.value == 0 and other_before.value == other_after.value)
+                      and current._wave.levels == current.levels
+                      and bool(current_pcm) and not any(current_pcm)
+                      and bool(other_pcm_before) and _queued_pcm(other._wave) == other_pcm_before
+                      and other.levels == other_levels_before and other._wave.paused
+                      and current_before.value == current_level.value
+                      and other_before.value == other_after.value)
                 check('live paused controls never resume audio', current.state == 'paused'
                       and abs(current.position_seconds - paused_position) < .02)
                 other.close()
                 press(named(popup, 'Mute this player only'))
                 apply_mix(_wave_output.PlaybackLevels(43, False, -.25))
-                check('unmute retains reviewed native level', not current.levels.muted and current.levels.volume == 43)
+                check('unmute retains reviewed private PCM level', not current.levels.muted and current.levels.volume == 43)
                 press(named(popup, 'Play queue from selected item'))
                 pump(lambda: current.playlist_index == 1, 'Real EOF did not admit the next reviewed item', timeout=10)
                 check('actual queue transition keeps levels and exact next file',
