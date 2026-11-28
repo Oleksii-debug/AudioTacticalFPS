@@ -1,5 +1,54 @@
 # Resonance — current integration and release evidence
 
+## 2026-11-28: current keyboard owner in the native reading fixture
+
+The exact 09ac [early native run](evidence/09ac-native-main-observed-failure-20261128.md)
+passed all 21 search checks and the complete Import Center flow, including its
+minimum-window geometry, focus scrolling, actual Tab into the fixed footer and
+durable import/search/reopen checks. Default client size was 904×721 with a
+887×637 viewport; minimum client size was 784×611 with a 767×527 viewport.
+Content minimum was 639×673 and the outer minimum was 240×284 at both sizes.
+This probe imports current checkout source. The separate installed-format probe
+was skipped and is not qualified by that result.
+
+Focused step 29 (main step 31) then failed at the reading fixture's obsolete
+frame.keyboard_actions lookup. Four initial reading checks passed; the final
+reading receipt was absent, the same step's OCR-language command was not invoked,
+and focused steps 30–47 were skipped. The before binder passed for 1,824 tracked
+files and 442 installed payload files; the after binder was skipped. No full
+main or auxiliary cohort was launched for the failed 09ac source.
+
+The separate [Basic/local run](evidence/basic-and-local-translation-focused-observed-09ac-20261128.md)
+passed the strict 13-field Basic receipt with 33 bounded diagnostic events and
+324 source / 324 installed cases / 8 native flows. The separate
+[audio/helper run](evidence/completed-audio-inspection-helper-09ac-observed-20261128.md)
+passed 274 / 274 cases and 29 native checks. These observations remain tied to09ac.
+
+The [reading-fixture migration](evidence/reading-native-keyboard-owner-fixture-repair-20261128.json)
+uses the current keyboard_commands owner and complete native menu inventory.
+It resolves the same Save menu item through the current stable command ID,
+uses apply_overrides and the actual KeymapStore path, and restores that same
+library-relative path from backup. All 24 literal check sites, eight expected
+shortcuts, real Save dispatch, deliberate Ctrl+I conflict, narration/autosave,
+immutable source and backup assertions remain. Original waits are unchanged.
+No application, regression, native test-tree or workflow file changes in this
+migration; only this existing scripts/ producer is updated.
+
+The [append-only audit erratum](evidence/import-center-audit-inventory-erratum-20261128.json)
+corrects one stale search-probe body hash in the historical 2701 88-file audit.
+Its original9d9b inventory digest is invalid as a current2701 inventory; the
+corrected2701 a286ab and separate09ac b32f71 inventories are retained in full.
+This changes historical provenance, not a product result or acceptance gate.
+
+The [composition record](evidence/reading-native-final-composition-20261128.json)
+preserves every previous requirement and all 21 reader pins. This successor is
+SOURCE_REVIEWED / NOT_EXECUTED at authoring. Its three focused gates, complete
+main and auxiliaries, successful-main artifact inspection and canonical
+integration remain required. Full-platform owner-engine, model/language,
+acoustic, hardware, manual-accessibility and distribution acceptance remains
+NOT_QUALIFIED.
+
+
 ## 2026-11-28: Import Center viewport and native reachability
 
 The exact 2701 [early native run](evidence/2701-native-main-observed-failure-20261128.md)

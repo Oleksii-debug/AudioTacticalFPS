@@ -1,0 +1,421 @@
+{
+  "schema": "carr-reading-native-keyboard-owner-repair/1",
+  "status": "SOURCE_REPAIR_NOT_EXECUTED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent": {
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220"
+  },
+  "observed": {
+    "run_id": 46131541694,
+    "job_id": 140937577072,
+    "attempt": 1,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46131541694",
+    "job_started_at": "2026-11-28T09:56:52Z",
+    "job_completed_at": "2026-11-28T10:04:21Z",
+    "focused_step": 29,
+    "copied_main_step": 31,
+    "step": "Exercise native reading copies, save commands and keyboard preferences",
+    "conclusion": "failure",
+    "trace": {
+      "producer": "carr-library/scripts/windows_v3_reading_smoke.py",
+      "line": 88,
+      "expression": "keyboard = frame.keyboard_actions",
+      "exception": "AttributeError",
+      "message": "'DesktopFrame' object has no attribute 'keyboard_actions'. Did you mean: 'ebook_actions'?"
+    },
+    "prior_reading_checks": [
+      "productivity and editor load from the installed wheel",
+      "real Windows wx runtime",
+      "File is the first Alt menu",
+      "Options and Reading remain accessible"
+    ],
+    "reading_final_receipt": "NOT_REACHED",
+    "following_ocr_languages_command_in_same_step": "NOT_RUN after immediate nonzero exit",
+    "later_focused_steps_30_through_47": "SKIPPED",
+    "raw_log": {
+      "characters": 579471,
+      "utf8_bytes": 579473,
+      "sha256": "bb7a4fed4d433b79cbca2ff540031a04cd7f0bb8494337a5052d856800fb1c2e"
+    },
+    "artifact": {
+      "id": 15257579427,
+      "bytes": 246817,
+      "sha256": "cf3b7bcb5b39b0be8eeab694aa8eb1a1d016e329baa1508259ac36251d51575d",
+      "independent_zip_read": "NOT_RUN"
+    },
+    "preserved_import_center": {
+      "focused_step": 28,
+      "copied_main_step": 30,
+      "status": "PASS",
+      "producer_git_blob": "baded3dff24d2974e9ba8bd6633b79a6d5e50985",
+      "default_viewport": {
+        "window": [
+          920,
+          760
+        ],
+        "client": [
+          904,
+          721
+        ],
+        "outer_minimum": [
+          240,
+          284
+        ],
+        "viewport": [
+          887,
+          637
+        ],
+        "content_minimum": [
+          639,
+          673
+        ],
+        "virtual": [
+          887,
+          673
+        ]
+      },
+      "minimum_viewport": {
+        "window": [
+          800,
+          650
+        ],
+        "client": [
+          784,
+          611
+        ],
+        "outer_minimum": [
+          240,
+          284
+        ],
+        "viewport": [
+          767,
+          527
+        ],
+        "content_minimum": [
+          639,
+          673
+        ],
+        "virtual": [
+          767,
+          673
+        ]
+      },
+      "final_receipt": {
+        "status": "PASS",
+        "native_controls": "PASS",
+        "planned_import_search_reopen": "PASS",
+        "nvda": "NOT_RUN"
+      },
+      "scope": "This actual 09ac result includes the source-bound 41 assertion sites, focus/Tab/geometry and complete import/reopen flow. It is not transferred as a runtime result to this unexecuted fixture successor."
+    },
+    "record_scope": "The separately authored whole 09ac observed-failure record owns the complete job/receipt audit. This document records only the demonstrated boundary, preserved Import Center result and source correction."
+  },
+  "diagnosis": {
+    "classification": "obsolete native fixture API",
+    "actual_observation": "The current installed DesktopFrame does not expose keyboard_actions; the probe failed on that lookup before any keyboard composition, persistence, conflict, reading-copy or backup assertions.",
+    "source_contract": "DesktopFrame calls install_productivity_actions, which explicitly retains KeyboardActions only for historical keymap validation and installs the single shared KeyboardManager as keyboard_commands. Its bindings are keyed by stable ID; apply_overrides validates native keys, updates the actual menus and saves through KeymapStore.",
+    "current_store": "KeyboardManager.store.path is inside the selected library and identifies keyboard-shortcuts.json. The current complete-backup producer explicitly inventories and validates that file.",
+    "no_product_defect_inferred": "The actual trace proves the missing fixture attribute. Current source establishes the owner/API migration; this document does not infer execution of any skipped keyboard or backup action."
+  },
+  "correction": {
+    "owner": "Use frame.keyboard_commands, without constructing a second keyboard manager or historical KeybindingStore.",
+    "inventory": "Use the existing read-only productivity.collect_commands on the complete current native menu bar. The current registry itself uses this helper; this preserves all original path-based expected shortcuts and also includes commands installed after manager creation.",
+    "registered_save": "Resolve the existing File/Save current changes identity through keyboard.legacy_command_ids and require its current manager binding to own the exact same native item before the unchanged EVT_MENU Save dispatch.",
+    "mutation_and_persistence": "Use current apply_overrides with the stable Save ID and reopen the actual KeymapStore path. The keymap path must be relative to the selected library; restore checks read that same relative path in the restored library.",
+    "conflict": "Retain the deliberate Ctrl+I conflict, ValueError requirement and unchanged complete native-menu labels after refusal.",
+    "retained_flow": "The original eight expected shortcuts, exact native menu Save event, note assertion, reading-copy editor/timer/draft/source-byte checks, reading state and backup checks remain. The original final receipt and cleanup block are byte-identical.",
+    "bounds": "Existing pump timeout 15 seconds, reading modal watchdog 15000 ms, command arguments, workflow step bounds and orchestration are unchanged.",
+    "changes": [
+      {
+        "before": "    from carr_library.keybindings import KeybindingStore\n",
+        "after": "    from carr_library.keyboard_preferences import KeymapStore\n"
+      },
+      {
+        "before": "            keyboard = frame.keyboard_actions\n            inventory = {binding.command.identity: binding.command.shortcut\n                         for binding in keyboard.bindings}\n",
+        "after": "            keyboard = frame.keyboard_commands\n            bindings = productivity.collect_commands(frame.GetMenuBar())\n            keymap_path = keyboard.store.path\n            keymap_relative = keymap_path.relative_to(library.root)\n            inventory = {binding.command.identity: binding.command.shortcut\n                         for binding in bindings}\n"
+      },
+      {
+        "before": "            save_binding = next(binding for binding in keyboard.bindings\n                                if binding.command.identity == 'File/Save current changes')\n            check('main Save exposes Ctrl+S', save_binding.item.GetItemLabel().endswith('\\tCtrl+S'))\n",
+        "after": "            save_binding = next(binding for binding in bindings\n                                if binding.command.identity == 'File/Save current changes')\n            save_id = keyboard.legacy_command_ids[save_binding.command.identity]\n            check('main Save exposes Ctrl+S', keyboard.bindings[save_id].item is save_binding.item\n                  and save_binding.item.GetItemLabel().endswith('\\tCtrl+S'))\n"
+      },
+      {
+        "before": "            keyboard.save({save_binding.command.identity: 'Ctrl+Alt+S'})\n",
+        "after": "            keyboard.apply_overrides({save_id: 'Ctrl+Alt+S'})\n"
+      },
+      {
+        "before": "                  KeybindingStore(library.root).load()[save_binding.command.identity] == 'Ctrl+Alt+S')\n",
+        "after": "                  KeymapStore(keymap_path).load()[save_id] == 'Ctrl+Alt+S')\n"
+      },
+      {
+        "before": "            old_labels = tuple(binding.item.GetItemLabel() for binding in keyboard.bindings)\n",
+        "after": "            old_labels = tuple(binding.item.GetItemLabel() for binding in bindings)\n"
+      },
+      {
+        "before": "                keyboard.save({save_binding.command.identity: 'Ctrl+I'})\n",
+        "after": "                keyboard.apply_overrides({save_id: 'Ctrl+I'})\n"
+      },
+      {
+        "before": "                  tuple(binding.item.GetItemLabel() for binding in keyboard.bindings) == old_labels)\n",
+        "after": "                  tuple(binding.item.GetItemLabel() for binding in bindings) == old_labels)\n"
+      },
+      {
+        "before": "                  KeybindingStore(restored).load() == KeybindingStore(library.root).load())\n",
+        "after": "                  KeymapStore(restored / keymap_relative).load() == KeymapStore(keymap_path).load())\n"
+      }
+    ]
+  },
+  "expected_menu_registration": [
+    {
+      "path": "File/Save current changes",
+      "shortcut": "Ctrl+S",
+      "constructor": "ui/productivity.py:install_productivity_actions",
+      "registration": "Existing complete-menu registry derives and retains its stable ID through legacy_command_ids."
+    },
+    {
+      "path": "File/Save all changes",
+      "shortcut": "Ctrl+Shift+S",
+      "constructor": "ui/productivity.py:install_productivity_actions",
+      "registration": "Existing complete-menu registry derives its stable ID."
+    },
+    {
+      "path": "Research/Build advanced query",
+      "shortcut": "Ctrl+Alt+Q",
+      "constructor": "ui/desktop_app.py:DesktopFrame._menus",
+      "registration": "Existing complete-menu registry derives its stable ID."
+    },
+    {
+      "path": "Research/Research Search Center",
+      "shortcut": "Ctrl+Alt+F",
+      "constructor": "ui/federated_search.py:install_federated_search_actions",
+      "registration": "builtin research.search_center"
+    },
+    {
+      "path": "Academic/Compare sources in active topic",
+      "shortcut": "Ctrl+Alt+M",
+      "constructor": "ui/academic_tools.py:install_academic_actions",
+      "registration": "Existing complete-menu registry derives its stable ID."
+    },
+    {
+      "path": "Academic/Academic library",
+      "shortcut": "Ctrl+Shift+B",
+      "constructor": "ui/desktop_app.py:DesktopFrame._menus",
+      "registration": "builtin academic.open"
+    },
+    {
+      "path": "Reading/Read selected book",
+      "shortcut": "Ctrl+R",
+      "constructor": "ui/reading_desk.py:install_reading_desk_actions",
+      "registration": "builtin reading.open"
+    },
+    {
+      "path": "Library/Read EPUB book",
+      "shortcut": "Ctrl+Shift+R",
+      "constructor": "ui/ebook_reader.py:install_ebook_reader",
+      "registration": "builtin library.epub_reader"
+    }
+  ],
+  "expected_menu_registration_scope": "These constructors and mappings were read from exact 09ac source. The actual 09ac run stopped before printing or checking its native inventory; no runtime shortcut result is asserted here.",
+  "finite_dependent_audit": {
+    "source_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "source_inventory_entries": 88,
+    "source_inventory_sha256": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
+    "inventory_erratum": {
+      "commit": "ec70134c192f35d59a09821116d0a8c2214053dd",
+      "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json",
+      "git_blob": "5cd8c388c45f8bdfbb696501bebb30722ba4ad08",
+      "sha256": "7b526c6708683a732b17c4e08f85dfe0603687f2587eed7fc83574bc1f45ed43"
+    },
+    "method": "Search the exact freshly rebound 88 current native/smoke producer bodies for keyboard_actions and keyboard_commands. The full corrected source inventory and separate 2701/09ac encoding are in the immutable erratum.",
+    "old_owner_consumers": 1,
+    "current_owner_consumers": 5,
+    "matches": [
+      {
+        "path": "carr-library/scripts/windows_language_matrix_smoke.py",
+        "blob": "77a34d7b94386f6c262a917a648442adaaf94e41",
+        "sha256": "45a1aca03a4dfe151af634336c15faa1039782dc15938f2597aee12729bbf611",
+        "matches": [
+          {
+            "line": 48,
+            "text": "            assert 'audio.language_evidence' in frame.keyboard_commands.bindings"
+          }
+        ]
+      },
+      {
+        "path": "carr-library/scripts/windows_progress_smoke.py",
+        "blob": "336ac577e0f6adc88d874481de72d26a6d60ec5b",
+        "sha256": "4af459ad689beba71e9a7d94bea05a43b2bc0eb69f167f3fc67a75ebd701228f",
+        "matches": [
+          {
+            "line": 83,
+            "text": "            frame.keyboard_commands.apply_overrides({'progress.query': 'Ctrl+Alt+P'})"
+          }
+        ]
+      },
+      {
+        "path": "carr-library/scripts/windows_shared_progress_smoke.py",
+        "blob": "7e9cc6ce9acf2d81d0648681845d26d9b28d189d",
+        "sha256": "75fd4f2c52e1ba6eeed6c2f8cdee45cecef926701aeed71f0f0c6e4d21a0df66",
+        "matches": [
+          {
+            "line": 130,
+            "text": "            frame.keyboard_commands.apply_overrides({'progress.query': 'Ctrl+Shift+Q',"
+          }
+        ]
+      },
+      {
+        "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+        "blob": "2844dcb6f87e871bc77a07b22ce7a9b5743c3a0e",
+        "sha256": "d1ce660eb8c1a78d4119c953f08aea1ed9ab457d2fb9e1dce81deee869fef490",
+        "matches": [
+          {
+            "line": 88,
+            "text": "            keyboard = frame.keyboard_actions"
+          }
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/native_keyboard_settings_smoke.py",
+        "blob": "a14da51e452274ad5fda7a5c0b16e2ec16396231",
+        "sha256": "8f2042e5c828a17ba6e09242d846db85691305bbf143aed1b3d71e8efdd8161c",
+        "matches": [
+          {
+            "line": 179,
+            "text": "            manager = frame.keyboard_commands"
+          }
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/native_save_all_smoke.py",
+        "blob": "74c167447d7fd980c024ce9bc77c319ea5e618a8",
+        "sha256": "41c119103d90618667edb73de4af0a3659e9f850321e61b82191642fb74642d1",
+        "matches": [
+          {
+            "line": 133,
+            "text": "                command_ids = {spec.command_id for spec in frame.keyboard_commands.registry.commands()}"
+          }
+        ]
+      }
+    ],
+    "result": "Only windows_v3_reading_smoke.py uses the obsolete owner. The other five matching producers already use keyboard_commands and require no edit."
+  },
+  "bindings": {
+    "changed_script": {
+      "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+      "before_git_blob": "2844dcb6f87e871bc77a07b22ce7a9b5743c3a0e",
+      "before_sha256": "d1ce660eb8c1a78d4119c953f08aea1ed9ab457d2fb9e1dce81deee869fef490",
+      "after_sha256": "84203698444eb05fec85e5a24fbda3ce4fc2e542be8579ede41b880384fe22ec"
+    },
+    "current_contract_sources": [
+      {
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+        "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/productivity.py",
+        "git_blob": "348cc35dd963e99d01659dc89a85bea1e95e299f",
+        "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+        "git_blob": "58912be85954a059c680783ccda66769757ec491",
+        "sha256": "be9aacf22fc20b0e40a7d11046d639b7f8b545d31808d378817e29947c960548"
+      },
+      {
+        "path": "carr-library/src/carr_library/keyboard_preferences.py",
+        "git_blob": "6d2b28b2a5c9704d0b4ea99ffb107d0937523aa4",
+        "sha256": "851a3c01f47c8ed92438149f34ad34fb1350bd68d6ff0254b2bf40268635bd1d"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+        "git_blob": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78",
+        "sha256": "cefc1920c5e91e1c0470f12677f00145965e873cd1f65211402f9c7df1cc99d0"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+        "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/academic_tools.py",
+        "git_blob": "aac69e501226314d4280ca1d74ac866a79a11614",
+        "sha256": "334296c00848f8aa64772866f2f8b13af827c03ce6d2f5756fcb344344787871"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/reading_desk.py",
+        "git_blob": "19a0d6fc34a32de00a77e6bf20f98f84250207be",
+        "sha256": "5f492095683669e6f07ae1bef0bd2a6b7054e6ab2c04883587fb045aca4be796"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/ebook_reader.py",
+        "git_blob": "d42215174b7c764cda36b6a835bb0f7e7b01c193",
+        "sha256": "011415a49a25442de823d6966e5017f3ab35807cb776dd11f61191bf881cf3bc"
+      },
+      {
+        "path": "carr-library/src/carr_library/library_backup.py",
+        "git_blob": "d89f91ba63904cc052fdd6d7ffd3853f267bc61e",
+        "sha256": "d5c2806d503b1bc431ca58755b253a900391142f7e0f26862309a3eb5b448d3f"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/narration.py",
+        "git_blob": "24848da175fff5d5cd260ecacf9854ed807e79b2",
+        "sha256": "7e4c0ac9bbf99407105b02ee6a3e66382b43f8c7a80fe94f9529a5582955a41b"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/narration_editor.py",
+        "git_blob": "da98eddc262c4fff582d742fc66a05b2985883d0",
+        "sha256": "70f88f59beb37485f0dbdf6bd8aa9c94b8d1d3de82d2ac22ad35a86e316911d9"
+      },
+      {
+        "path": "carr-library/tests/ui/native_keyboard_settings_smoke.py",
+        "git_blob": "a14da51e452274ad5fda7a5c0b16e2ec16396231",
+        "sha256": "8f2042e5c828a17ba6e09242d846db85691305bbf143aed1b3d71e8efdd8161c"
+      }
+    ]
+  },
+  "static_checks": {
+    "inverse_exact": true,
+    "expected_eight_shortcuts_block_exact": true,
+    "all_check_label_expressions_exact": true,
+    "literal_check_call_sites": 24,
+    "narration_flow_exact": true,
+    "final_receipt_and_cleanup_exact": true,
+    "pump_deadline_15_exact": true,
+    "modal_watchdog_15s_exact": true
+  },
+  "retained_literal_check_labels": [
+    "native button event: ",
+    "productivity and editor load from the installed wheel",
+    "real Windows wx runtime",
+    "File is the first Alt menu",
+    "Options and Reading remain accessible",
+    "native academic, search, reader and save menus compose",
+    "complete native command inventory has unique shortcuts",
+    "main Save exposes Ctrl+S",
+    "native File Save dispatches",
+    "File Save commits the selected evidence note",
+    "shortcut change updates native menu",
+    "shortcut persists after reopening preferences",
+    "conflicting key leaves native menu unchanged",
+    "original text is a native read-only multiline control",
+    "editor permits Tab navigation",
+    "provenance distinguishes a reading copy from quotation evidence",
+    "native Save persists edits but retains exact original",
+    "native timer publishes a recoverable draft",
+    "autosave does not silently replace saved version",
+    "reading copy survives closing and reopening the store",
+    "source bytes and authenticated citation remain unchanged",
+    "complete backup restores saved reading-copy revisions",
+    "complete backup restores page resume and bookmark",
+    "complete backup restores keyboard preferences"
+  ],
+  "qualification": {
+    "application_files": "All 425 application-source files unchanged.",
+    "tests_and_gates": "No test_*.py population, oracle, workflow, runner, bound or product file changes.",
+    "source_review": "PENDING_INDEPENDENT_REVIEW",
+    "execution": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "no_transfer": "The 09ac native focus remains aggregate FAIL. This repair has no runtime result; all previous PASS receipts remain source-specific."
+  }
+}

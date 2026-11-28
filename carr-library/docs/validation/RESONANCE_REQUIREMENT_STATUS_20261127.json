@@ -1307,5 +1307,82 @@
     ],
     "full_platform_status": "NOT_QUALIFIED",
     "no_historical_success_transfer": true
+  },
+  "post_09ac_reading_keyboard_fixture": {
+    "baseline_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "baseline_tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "actual_native": {
+      "run_id": 46131541694,
+      "job_id": 140937577072,
+      "attempt": 1,
+      "status": "FAILURE",
+      "search_checks": 21,
+      "import_center": "PASS_CURRENT_CHECKOUT_SOURCE",
+      "import_center_assertion_sites": 41,
+      "failed_focused_step": 29,
+      "equivalent_main_step": 31,
+      "failure": "Obsolete frame.keyboard_actions fixture lookup raised AttributeError.",
+      "reading_checks_before_failure": 4,
+      "later_focused_steps_30_through_47": "SKIPPED",
+      "same_step_ocr_language_command": "NOT_INVOKED",
+      "before_binding": "PASS1824/442",
+      "after_binding": "SKIPPED",
+      "proof": "evidence/09ac-native-main-observed-failure-20261128.json"
+    },
+    "separate_focused_09ac": {
+      "translation": {
+        "run_id": 46131541968,
+        "job_id": 140937577696,
+        "status": "PASS",
+        "basic_fields": 13,
+        "basic_diagnostics": 33,
+        "source_cases": 324,
+        "installed_cases": 324,
+        "native_flows": 8,
+        "proof": "evidence/basic-and-local-translation-focused-observed-09ac-20261128.json"
+      },
+      "inspection": {
+        "run_id": 46131543810,
+        "job_id": 140937583241,
+        "status": "PASS",
+        "source_cases": 274,
+        "installed_cases": 274,
+        "native_checks": 29,
+        "proof": "evidence/completed-audio-inspection-helper-09ac-observed-20261128.json"
+      },
+      "full_main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED"
+    },
+    "source_correction": {
+      "component": "58370c0b7d10c01b5e249baee77a1fd9f7b48c9e",
+      "path": "scripts/windows_v3_reading_smoke.py",
+      "scope": "Migrate obsolete fixture owner/store operations to the existing current manager; preserve actual native menu Save and complete reading/backup flow.",
+      "application_files_changed": 0,
+      "regression_test_files_changed": 0,
+      "native_test_tree_files_changed": 0,
+      "workflow_files_changed": 0,
+      "reader_pins_changed": 0,
+      "literal_check_sites_retained": 24,
+      "expected_shortcuts_retained": 8,
+      "pump_seconds": 15,
+      "modal_watchdog_ms": 15000,
+      "proof": "evidence/reading-native-keyboard-owner-fixture-repair-20261128.json",
+      "execution": "NOT_RUN"
+    },
+    "historical_audit_erratum": {
+      "component": "ec70134c192f35d59a09821116d0a8c2214053dd",
+      "proof": "evidence/import-center-audit-inventory-erratum-20261128.json",
+      "invalid_original_digest": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+      "corrected_2701_digest": "a286ab1f4a2d072c2b60d80bdd643d18055b139266f79c76339bf2fe4d2089c0",
+      "separate_09ac_digest": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c"
+    },
+    "composed_candidate_execution": "NOT_RUN",
+    "required_after_source_review": [
+      "Three exact-source focused gates",
+      "Complete main and five auxiliary jobs",
+      "Independent successful-main artifact read",
+      "Fresh canonical/protection/ancestry checks and expected-head integration"
+    ],
+    "full_platform_status": "NOT_QUALIFIED",
+    "no_historical_success_transfer": true
   }
 }
