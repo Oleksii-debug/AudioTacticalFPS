@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28 07:33:46 UTC",
+  "updated_utc": "2026-11-28 07:40:13 UTC",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -138,9 +138,8 @@
     "branch": "carr/final-evidence-d3a-20261127",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
-    "head_observed_before_this_checkpoint": "403cb9607f6e8ed42924eaa33cf0471cb6c27ca1",
-    "tree_observed_before_this_checkpoint": "f38545d887e67582536e49886afa0a9582f21fe4",
-    "checkpoint_note": "Current exact7c focused gates passed; PR210 now points to7c and full/auxiliary actual runs are active or queued. Reader d890 is source-reviewed UNREADY with null artifact. Evidence tree retains historical source and is never the application promotion target."
+    "head_observed_before_this_checkpoint": "fad5a0493b82d38ac27bcc72605af381b9f8074d",
+    "tree_observed_before_this_checkpoint": "bb67093fb60d72c16a4553b2ba3ecaa6293bd346"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -229,8 +228,15 @@
       "run": 46121064501,
       "job": 140905458267,
       "attempt": 1,
-      "status": "queued",
-      "conclusion": null
+      "status": "in_progress",
+      "conclusion": null,
+      "started_at": "2026-11-28T07:37:58Z",
+      "last_observed_step": {
+        "number": 15,
+        "name": "Prove fixed PowerShell native classification before bundle work",
+        "status": "in_progress",
+        "observed_at": "2026-11-28T07:39:30Z"
+      }
     },
     "auxiliary": {
       "keyboard": {
@@ -258,8 +264,8 @@
         "run": 46121064493,
         "job": 140905458089,
         "attempt": 1,
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success"
       },
       "launcher": {
         "run": 46121064498,
@@ -281,5 +287,11 @@
     "observed_additional_product_bugs": 0,
     "new_release_gate": false,
     "root_review": "22 source hashes,20 workflow mappings/bounds,19 skipped actual steps and all baseline blobs verified"
+  },
+  "canonical_observed_at": "2026-11-28T07:40:13Z",
+  "delivery_template": {
+    "path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_TEMPLATE_20261128_UK.md",
+    "status": "DRAFT_PLACEHOLDERS_REQUIRE_ACTUAL_FINAL_OUTCOME",
+    "final_path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_20261128_UK.md"
   }
 }
