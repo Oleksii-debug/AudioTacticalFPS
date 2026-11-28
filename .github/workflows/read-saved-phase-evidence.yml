@@ -21,50 +21,25 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          from decimal import Decimal
           import hashlib
           import io
           import json
           from pathlib import PurePosixPath
-          import re
           import stat
           import subprocess
           import zipfile
-          import xml.etree.ElementTree as ET
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15238365533
-          SOURCE_RUN = 46078579632
-          SOURCE_HEAD = "95efc7d06a82f19e9d247acadd027894608d7891"
-          ZIP_BYTES = 62876
-          ZIP_SHA256 = "114e229344d241952adccb3f9a18a72d10b3c6f5743b8984bfbf59a71a67f22d"
+          ARTIFACT_ID = 15240359643
+          SOURCE_RUN = 46087590271
+          SOURCE_HEAD = "7a445cfa0701465facc80fe5dee226ba628aa4d6"
+          ZIP_BYTES = 103353
+          ZIP_SHA256 = "0083a4a428ee17ed6b5149909c3960007f1f1c391bcaf43124ba7449a8fc2d3b"
           MAX_MEMBERS = 128
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
-          REQUIRED_FILES = {"v3-tests.txt", "v3-tests.xml"}
-          BROAD_SELECTORS = (
-              "tests/audio",
-              "tests/speech",
-              "tests/assistant",
-              "tests/studio",
-              "tests/transcription",
-              "tests/academic_integration",
-              "tests/test_delivery_contract.py",
-              "tests/storage/test_pending_backup.py",
-              "tests/storage/test_complete_pending_backup.py",
-              "tests/storage/test_backup_v4_review.py",
-              "tests/e2e/test_import_worker_publication.py",
-              "tests/e2e/test_import_publication_receipt_integrity.py",
-              "tests/ingest/test_import_replay_identity.py",
-              "tests/packaging/test_worker_bytecode.py",
-              "tests/storage/test_v3_state_backup.py",
-              "tests/storage/test_state_snapshot_identity.py",
-              "tests/language_qualification",
-              "tests/conversion",
-              "tests/extract/test_language_manager.py",
-              "tests/packaging/test_prepare_windows_audio.py",
-          )
+          REQUIRED_FILES = {"tested-commit.txt", "full-bundle-build.json"}
 
           def fixed_get(endpoint, limit):
               result = subprocess.run(
@@ -130,97 +105,7 @@ jobs:
                   text = content.decode("utf-8")
                   decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
-                  raise ValueError("The two required broad-service diagnostics are absent or ambiguous.")
-
-
-          def junit_statistics(content):
-              # The archive and every bounded member were already verified above.
-              # Never transport unrelated parameter payloads from this XML.
-              if (len(content) != 516942
-                      or hashlib.sha256(content).hexdigest() != "3c3b2d04ab8e45571fa8f27f413fb4addb23eaf055381fb71647fb4dab1e6be0"):
-                  raise ValueError("The verified broad JUnit member identity changed.")
-              upper = content.upper()
-              if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
-                  raise ValueError("JUnit document declarations are not permitted.")
-              root = ET.fromstring(content)
-              if root.tag != "testsuites" or len(root) != 1 or root[0].tag != "testsuite":
-                  raise ValueError("Unexpected JUnit suite structure.")
-              suite = root[0]
-              expected = {"tests": "3134", "skipped": "20", "failures": "0", "errors": "0"}
-              if any(suite.get(key) != value for key, value in expected.items()):
-                  raise ValueError("The completed broad-suite totals differ from the reviewed run.")
-              cases = list(suite)
-              if len(cases) != 3134 or any(case.tag != "testcase" for case in cases):
-                  raise ValueError("JUnit testcase inventory is incomplete or nested.")
-
-              def counter(label):
-                  return {"name": label, "tests": 0, "passed": 0, "skipped": 0,
-                          "failures": 0, "errors": 0, "seconds": Decimal(0)}
-
-              groups = {selector: counter(selector) for selector in BROAD_SELECTORS}
-              files, skipped = {}, []
-              for case in cases:
-                  classname = case.get("classname", "")
-                  parts = classname.split(".")
-                  module_positions = [index for index, part in enumerate(parts)
-                                      if part.startswith("test_")]
-                  if (len(module_positions) != 1 or parts[0] != "tests"
-                          or any(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", part) is None
-                                 for part in parts)):
-                      raise ValueError("An unexpected JUnit classname cannot be mapped.")
-                  filename = "/".join(parts[:module_positions[0] + 1]) + ".py"
-                  matched = [selector for selector in BROAD_SELECTORS
-                             if filename == selector or filename.startswith(selector + "/")]
-                  if len(matched) != 1:
-                      raise ValueError("A JUnit testcase is unmapped or ambiguously mapped.")
-                  seconds = Decimal(case.get("time", "NaN"))
-                  if not seconds.is_finite() or not Decimal(0) <= seconds <= Decimal(2700):
-                      raise ValueError("Invalid bounded JUnit duration.")
-                  outcomes = [child for child in case
-                              if child.tag in ("skipped", "failure", "error")]
-                  if len(outcomes) > 1:
-                      raise ValueError("A JUnit testcase has conflicting outcomes.")
-                  outcome = ("passed" if not outcomes else
-                             {"skipped": "skipped", "failure": "failures", "error": "errors"}[outcomes[0].tag])
-                  for row in (groups[matched[0]], files.setdefault(filename, counter(filename))):
-                      row["tests"] += 1
-                      row[outcome] += 1
-                      row["seconds"] += seconds
-                  if outcome == "skipped":
-                      base_function = case.get("name", "").split("[", 1)[0]
-                      reason = outcomes[0].get("message", "")
-                      kind = outcomes[0].get("type", "")
-                      if (re.fullmatch(r"test_[A-Za-z0-9_]+", base_function) is None
-                              or len(reason) > 1024 or len(kind) > 128):
-                          raise ValueError("Skipped-case metadata exceeds its fixed output scope.")
-                      skipped.append({"file": filename, "function": base_function,
-                                      "reason": reason, "type": kind,
-                                      "seconds": format(seconds, "f")})
-              totals = {key: sum(row[key] for row in groups.values())
-                        for key in ("tests", "passed", "skipped", "failures", "errors")}
-              if (totals != {"tests": 3134, "passed": 3114, "skipped": 20, "failures": 0, "errors": 0}
-                      or len(skipped) != 20 or any(row["tests"] == 0 for row in groups.values())):
-                  raise ValueError("Computed JUnit outcomes do not reproduce the completed run.")
-
-              def public(row):
-                  return {key: format(value, "f") if isinstance(value, Decimal) else value
-                          for key, value in row.items()}
-
-              records = [{"junit_verified": True, "xml_bytes": len(content),
-                          "xml_sha256": hashlib.sha256(content).hexdigest(),
-                          "suite_seconds": suite.get("time"),
-                          "testcase_seconds": format(sum(row["seconds"] for row in groups.values()), "f"),
-                          "selector_count": len(groups), "file_count": len(files),
-                          "unmapped": 0, "ambiguous": 0, **totals}]
-              records.extend({"junit_skip": row} for row in skipped)
-              records.extend({"junit_selector": public(row)} for row in groups.values())
-              records.extend({"junit_slowest_file": public(row)} for row in
-                             sorted(files.values(), key=lambda row: (-row["seconds"], row["name"]))[:20])
-              return records
-
-          junit_content = next(content for name, content, _ in decoded
-                               if PurePosixPath(name).name == "v3-tests.xml")
-          junit_records = junit_statistics(junit_content)
+                  raise ValueError("The two required complete-bundle phase diagnostics are absent or ambiguous.")
 
           print(json.dumps({
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
@@ -230,19 +115,13 @@ jobs:
               "scope": "readback of saved public diagnostics; no application execution"
           }, ensure_ascii=True), flush=True)
           for name, content, text in sorted(decoded, key=lambda item: item[0]):
-              structured_only = PurePosixPath(name).name == "v3-tests.xml"
-              count = 0 if structured_only else (len(text) + CHUNK_CHARACTERS - 1) // CHUNK_CHARACTERS
+              count = (len(text) + CHUNK_CHARACTERS - 1) // CHUNK_CHARACTERS
               print(json.dumps({
                   "phase_file": name, "byte_sha256": hashlib.sha256(content).hexdigest(),
                   "byte_length": len(content), "decoded_length": len(text),
                   "encoding": "utf-8", "chunk_count": count,
-                  "chunk_characters": CHUNK_CHARACTERS,
-                  "raw_chunks_omitted": structured_only
+                  "chunk_characters": CHUNK_CHARACTERS
               }, ensure_ascii=True), flush=True)
-              if structured_only:
-                  for record in junit_records:
-                      print(json.dumps(record, ensure_ascii=True), flush=True)
-                  continue
               for index in range(count):
                   print(json.dumps({
                       "phase_file": name, "chunk_index": index,
