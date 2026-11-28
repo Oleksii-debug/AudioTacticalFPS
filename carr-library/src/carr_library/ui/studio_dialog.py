@@ -108,10 +108,51 @@ def show_studio(frame):
             if getattr(self, '_destroy_requested', False):
                 return False
             self._destroy_requested = True
+            navigation = getattr(self, '_playback_navigation', None)
+            session = getattr(navigation, '_queue_session', None)
+            self._destroy_queue = getattr(session, 'view', None)
             callback = getattr(self, 'dispose', None)
             if callback is not None:
                 callback()
-            return super().Destroy() if self else False
+            return self._finish_destroy()
+
+        def _finish_destroy(self):
+            self._destroy_later = None
+            if not self:
+                return False
+            queue = getattr(self, '_destroy_queue', None)
+            if queue and queue.IsModal():
+                # The Studio loop is suspended until the queue ShowModal
+                # returns. A queue picker/settings loop may suspend it again.
+                # Only its enabled, shown owned modal can be ended this turn.
+                owned = []
+                for child in wx.GetTopLevelWindows():
+                    if not child or child is self or not isinstance(child, wx.Dialog):
+                        continue
+                    parent = child.GetParent()
+                    for _ in range(64):
+                        if not parent:
+                            break
+                        if parent.GetId() == self._native_id:
+                            if child.IsModal():
+                                owned.append(child)
+                            break
+                        parent = parent.GetParent()
+                # EndModal can re-enable its parent before ShowModal returns.
+                # Any hidden owned modal is still an explicit unwind barrier.
+                active = ([child for child in owned if child.IsEnabled()]
+                          if all(child.IsShown() for child in owned) else [])
+                if len(active) == 1:
+                    child = active[0]
+                    callback = getattr(child, 'dispose', None)
+                    if callback is not None:
+                        callback()
+                    child.EndModal(wx.ID_CANCEL)
+                # IsModal stays true while EndModal's nested loop is unwinding.
+                # Retain this same owner; never exit its suspended parent loop.
+                self._destroy_later = wx.CallLater(10, self._finish_destroy)
+                return True
+            return super().Destroy()
 
     dialog = StudioDialog(frame, title='Audio Studio — script, voices and production', size=(980, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)

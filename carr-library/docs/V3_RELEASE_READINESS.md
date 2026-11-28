@@ -12,7 +12,9 @@ The source composition reconciles canonical
 `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`, the earlier PR143 feature input
 `198a488b72c73b57e7e8bad87d69c3915bfd5e31`, and the reviewed integrated
 reader/conversion/effects/recovery, retake, dictionary, schema3 clip, independent
-playback, verified-download continuation and typed local-tool additions. It follows the unchanged current
+playback, verified-download continuation, typed local tools, streamed import and backup,
+complete-scope search, explicit automatic OCR, local translation and reviewed playback queues.
+It follows the unchanged current
 `UNIVERSAL_SCOPE_V3_FINALIZATION.md` and retains catalog V5, original bytes,
 source lineage, import publication receipts and both exact saved ASR codecs.
 The committed files are a source composition. Execution verdicts belong to the
@@ -27,13 +29,25 @@ accept source/receipt identities inferred from matching text.
 
 ## Completed public implementation additions
 
-The current source includes three previously open implementation groups:
+The current source retains these completed implementation groups:
 
 | Requirement | Current route | Verification boundary |
 | --- | --- | --- |
 | V3-03 / V3-05 independent listening | Native reader/Studio settings for tempo, pitch, volume, mute and balance reuse the existing player, worker and admission owner. Tempo/pitch prepare bounded private PCM; gain/mute/balance affect only queued PCM for the selected output. | Source audio, synthesis settings and other players stay unchanged. Existing MCI is the default; explicit levels use an owned WinMM handle. Exact queue bounds and device limitations are documented in [independent playback](INDEPENDENT_PLAYBACK.md). |
 | V3-09 typed local tools | The existing Assistant now has 21 allowlisted tool names, including current-source/evidence selection, voice/effect discovery, inspected serial audio conversion and current-reader status/Pause/Stop. | Preview and explicit Run use the same durable executor and exact artifact receipts. Completed side effects are verified before recovery; a late journal warning cannot invent rollback or authorize replay. The existing reader bridge never creates a second player. See [local tools](ASSISTANT_LOCAL_TOOLS.md). |
 | V3-18 Pause / Resume / Cancel | The existing signed updater retains a bounded inert prefix, refreshes TUF metadata on Resume and verifies the full signed length and hashes before making an installable package. | Actual local/TLS Range cases and native keyboard/progress/lifetime probes are included. Opening/restoring a checkpoint neither resumes nor installs. See [verified continuation](VERIFIED_UPDATE_RESUME.md). |
+
+
+The capacity and workflow completion also reuses the existing services:
+
+| Addition | Current route | Verification boundary |
+| --- | --- | --- |
+| Streamed sources and durable import pages | Explicit TXT/PDF resource profiles, finite folder windows, saved scan continuations and independent per-book commits in one current import slice | Every source, request, checkpoint and actual publication receipt retains its own identity. Resume is explicit; each completed book survives a later failure. See [Import Center](IMPORT_CENTER.md). |
+| Automatic OCR and static images | Pinned first-pass language classification, explicit selected language pool, bounded region analysis and existing Tesseract/PDFium quarantine; checked PNG/JPEG/TIFF import | The selected OCR models and exact native runtime remain visible. Automatic language selection never approves quotation text. See [automatic OCR](AUTOMATIC_OCR_UK.md). |
+| Complete selected search scope | Bounded result and source cursors, complete-scope lexical/BM25 ranking and batched real MiniLM scoring | Current scope, retained originals and exact quotation-copy checks apply on every continuation. The real model regression covers 607 sources beyond the former 500-source window. See [search paging](SEARCH_PAGING_AND_RESOURCES.md). |
+| Explicit local translation | A user-selected numeric loopback LibreTranslate-compatible service through the existing provider gateway, scoped approval, ledger, single-document and batch jobs | No server or model is installed or started implicitly. Actual HTTP/TLS cancellation and native controls are qualified separately from language/model quality. See [local translation](LOCAL_TRANSLATION_UK.md). |
+| Reviewed playback queue | Passive saved queue and skip intervals in the current Studio/player/worker ownership model | Output and entries need current review. Restore never starts playback; Stop, Pause, replacement and native destruction revoke pending advancement. See [playback queue](PLAYBACK_QUEUE.md). |
+| Full and incremental recovery | The same common format-4 snapshot/restore checker, explicit resource controls and a caller-selected chain of exact parent manifest hashes | Eight-layer maximum, bounded private reconstruction, unchanged historical readers and create-only final publication. Restored jobs and settings remain passive. See [backup and recovery](BACKUP_RESOURCES_AND_RECOVERY.md). |
 
 The same composition retains canonical Save All behavior, exact ASR runtime-file
 inventory, both saved transcript codecs, and source-preserving no-clobber exports.
@@ -73,7 +87,7 @@ attempt and the real-device requirement visible.
 
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
-| Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
+| Library and OCR | Scoped original bytes, exact quotations, academic references, managed Fast/Best OCR profiles, explicit automatic language/region selection and static-image import; larger TXT/PDF sources use reviewed streaming budgets | Real source/installed OCR and image regressions plus actual native Windows controls; classifier inventory and supported model availability do not establish every language's OCR quality |
 | Reading and voices | Source-preserving reading derivatives, portable edition/revision/asset lineage, explicit detached-draft recovery, native pronunciation review and bounded author-observed BXD/DIC/REX text-rule import, recorded EPUB/SMIL playback and the existing SAPI5 COM worker | Historical formats and original bytes remain intact. Recorded overlays use exact fragment ranges, isolated bounded parsing and shared admission before snapshot writes, extraction and conversion. Native lifetime/keyboard gates require exact-head execution; physical listening, reader interoperability and human NVDA remain separate |
 | Session playback controls | Explicit Windows output selection and opt-in tray/global keys for one current live reader; no hidden clipboard watcher or background daemon | Actual device inventory and OS key registration are native gate subjects. Session selections are temporary, owner-bound and revoked on native destruction; physical routing/keypresses/listening remain separate |
 | dordiai-voices bridge | Explicit connection to a separately installed reviewed local runtime; bounded JSONL discovery/PCM, persistent worker, content-bound cache fingerprints and cancellable inventory | Public adapter only: no private worker/model bytes are copied. Synthetic actual-child tests cover changed assets, cancellation, cleanup failure and retained ownership. An installed owner runtime, authorized reference material, hardware capacity and acoustic quality still need independent qualification |
@@ -81,18 +95,18 @@ attempt and the real-device requirement visible.
 | Ordered effects and presets | Typed supported offline effect chains, reordering, bypass, bounded undo/redo and named local presets; exact preset files included in complete backup | Installed FFmpeg capabilities and numeric limits are rechecked at execution. This extends the existing conversion path and does not establish live microphone effect monitoring |
 | Synchronized EPUB and DAISY publication | One Studio publisher, native format selector and CLI export completed schema1 narration and schema2/3 clip productions as EPUB3 media overlays or a DAISY2.02 NCC/XHTML/SMIL/MP3 file set; DAISY requires explicit publisher metadata | Both formats retain the same resource, destination, atomic publication and prepared-receipt recovery authority. Exact-head tests include real process death, backup/restore and native controls. Pinned EPUBCheck and offline DAISY DTD checks are required; DTD validation does not certify all DAISY rules, hardware readers, word alignment or Braille |
 | Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations, shared CUDA exclusion and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; disposable metadata cleanup cannot reverse a verified completed output; hardware capacity and hard-crash orphan management remain separate |
-| Research search and acquisition | Extended isolated document adapters, explicit advanced query builder, scoped lexical/semantic search and cache; opt-in DOI/ISBN metadata and source acquisition through current catalog/import services | Original assets remain unmodified. Provider statements do not approve quotations or establish rights. Malformed-document, scope, cache, consent and publication tests are required; corpus scale, live endpoint behavior and full format fidelity remain separate |
+| Research search and acquisition | Existing isolated document adapters, advanced query builder, complete selected lexical/BM25/semantic scope with bounded continuation and cache; opt-in DOI/ISBN metadata and source acquisition | Actual 607-source MiniLM and 365 native search checks are component evidence. Exact final corpus gates measure scale separately. Provider statements never approve quotations or establish rights; live endpoint and full-format fidelity remain separate |
 | Documents and citations | Bounded BibTeX/RIS/CSL-JSON import, selected-field metadata review, isolated conversion, seven current CSL styles and historical editable DOCX regeneration through one bounded QuickJS executor; original style/processor provenance retained | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
 | Workflow templates | Typed assistant, Studio-project and retained-batch templates; explicit parameters and per-item overrides, reviewed expansion, import/export and passive backup | One existing execution host and current domain services. New use rechecks scope, inputs, voices and output permission; restoring or opening a template executes nothing. Native keyboard/lifetime acceptance is independent of model quality. See [templates](WORKFLOW_TEMPLATES.md) |
 | Selected legacy reading | Explicit checked LibreOffice and Calibre routes, plus isolated MHTML/TXTZ/readable ZIP text | Fixed supported families, retained originals and the current no-clobber derivative/provenance pair. Dedicated actual six-family Office and eight-family Calibre gates are required; no visual fidelity, hidden OCR, decryption or automatic converter selection. See [legacy](LEGACY_DOCUMENT_READING.md) and [Calibre](CALIBRE_READING.md) |
 | Retained document batches | Existing conversion workers and reading copies, exact stream splitting, portable filename previews, explicit review/approval, no-clobber text/provenance and Studio output; UI and CLI share one service | Completed artifacts are reverified on resume; restored destinations require fresh review. Estimated duration is not measured speech timing, and imported prose is never executed as a Studio script |
-| Recovery | One common format-4 writer for database, originals, supported settings, pending imports, reading drafts, projects and typed retained Studio/ASR inputs; strict readers for supported historical formats 1–5 | Namespace checks stream and stop at the first undeclared entry; cancellation is honored before staging. ASR cache requires explicit manifest inclusion while retained inputs, accepted results and edit revisions remain ordinary user data. Restored engines stay inert and typed media/source/receipt identities remain authoritative |
+| Recovery | One common format-4 writer with explicit resource budgets for database, streamed originals, settings, pending imports, reading drafts, projects and typed retained Studio/ASR inputs; strict historical readers 1–5 and explicit-chain incremental snapshots | Full and incremental paths share the same complete snapshot verifier and create-only restore. Current typed manifests, retained input checks and exact parent hashes govern recovery. Restored engines, scan authority, provider approvals and playback remain inert |
 | Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 32 MiB overwrite-check limit require a new filename |
 | Supplied transcription | Existing Whisper worker protocol, strict source preparation, reviewed local runtime/model and complete recorded-distribution inventories, isolated owned processes, captured export/edit identities and atomic TXT/SRT/VTT/JSON receipts; native file/folder jobs, pause/cancel/resume and transcript editing, plus CLI | Actual-child regressions distinguish the unchanged native deadline from later synchronous validation: timely native exits remain timely; living roots and descendants are stopped at the original limit. Every final cancellation and content check remains required. Synthetic recognition does not establish real model quality, throughput or human NVDA |
 | Keyboard and progress | One command manager and contextual keymaps, searchable command palette, one shared progress contract with compatibility facades, measured or indeterminate native indicators and optional selected local-voice notices | The palette preserves explicit saved shortcut conflicts and stable command identities. Audio playback/capture quiets notifications. Cold voice discovery is cancellable and stays off the UI thread; failed worker cleanup retains ownership for retry. Exact-head native probes are required, and manual NVDA remains NOT_RUN |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Existing typed scoped executor and deterministic parser plus an explicit local compatible-LLM proposal path, profile selection, plan preview and separate Run action in UI/CLI | Capability, profile identity, scope, budget and plan validation surround the real gateway. Edited goals discard pending proposals. Synthetic loopback HTTP and native controls are tested before the runtime firewall; actual model inference and paid provider quality remain unqualified |
-| Translation | Optional official Google Basic v2 and Advanced v3 plain-text translation, explicit source ranges, directional language inventory, existing glossary selection, scoped consent, decoded-text receipts, resume and export through the same gateway; ordered reviewed document batches reuse those exact child jobs, approvals and provider ledger | Exact source/account/model/glossary/approval bindings and short-lived OAuth expiry are covered by synthetic provider, CLI and native-handler cases. Completed saved derivatives remain exportable offline. Actual API/IAM, glossary language coverage, formatted-document fidelity, automatic token renewal and local inference remain separate |
+| Translation | Official Google Basic v2/Advanced v3 and explicit numeric-loopback local translation; current source ranges, actual directional inventory, scoped approvals, decoded-text receipts, export and ordered reviewed batches through one gateway/ledger | Actual local HTTP/TLS, cancellation, Unicode and native controls use disclosed protocol fixtures. Completed derivatives remain available offline. Actual selected model/API quality, IAM, glossary coverage, formatted-document fidelity and automatic token renewal remain separate |
 | Signed maintenance | Explicit owner-source HTTPS/TUF check and download, separate reviewed activation, protected-anchor-bound portable and standard update/recovery, native maintenance status and current owned launch entry | Default installation invents no publisher authority. Synthetic signed fixtures and actual setup/health/repair/uninstall gates are separate from production signing, hosting and credentials. Successive updates retain an independently bound generation history and existing research data. See [maintenance](SIGNED_UPDATE_MAINTENANCE.md) |
 | Delivery preparation | Native ResearchLibrary.exe, exact-source sealed bundles and the existing Inno Setup wrapper: per-user Start-menu launch, versioned repair generations and normal uninstall preserving unknown/data files | Required Windows gates bind build/source/executable identities and actual install, failing bootstrap, repair with an old interpreter alive, uninstall and final bundle seal. This is an unsigned development installer; exact-head native acceptance, publisher signing and distribution clearance are separate |
 | Portable snapshots | Explicit snapshot publication, inspected transfer codes, optional password encryption and restore into a new folder over the complete typed backup producers | AES-GCM, scrypt and HKDF use the pinned cryptography library. Actual encrypted roundtrips, competing writers, process interruption, changed destinations and committed-cleanup outcomes are covered by source tests. Windows DPAPI/native controls and the installed artifact need exact-head qualification |
@@ -111,7 +125,8 @@ attempt and the real-device requirement visible.
 | Native launchers | Both MSVC and pinned Zig for this exact committed application source | Compiler execution does not prove publisher signing |
 | Bibliography | Installed import/export, seven retained styles, original/adapted runtime receipts and historical DOCX regeneration | No live Word add-in or external provider acceptance |
 | Selected legacy converters | Actual six-family Office and eight-family Calibre conversion with selected executable identities, private worker ownership, cancellation and unchanged source bytes | Authored fixtures establish their exact supported text routes; visual fidelity and third-party protected material are outside these probes |
-| Current feature integration | 115 common suites, eight POSIX and four Windows-specific suites, plus twelve installed native workflow probes and one actual output-device inventory, all from one committed union | Focused evidence supports diagnosis; the complete installed bundle and source matrix remain required |
+| Current feature integration | Every explicit current source and installed selector, platform-specific ownership race and native workflow probe in the committed Windows/V3 workflows; installed module origins and complete package-byte inventories before and after execution | Focused component evidence supports diagnosis; the full installed bundle and source matrix remain required for the exact integrated candidate |
+| Actual library capacity | Exact PR-head checkout and installed-byte proof for Linux and Windows, each with 1k/10k/50k books × 40 segments and genuine 65 MiB/129 MiB/2 GiB text sources; real crash/resume, catalog, Unicode quotation, scoped search and ranking measurements | Fixture contracts and earlier partial measurements cannot establish a complete corpus tier. Runtime, memory and disk observations are recorded per actual tier; unmeasured device or process-family metrics stay explicit |
 
 The Actions checks attached to [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143/checks)
 and their exact-commit artifacts provide the current verdict. A failed,
@@ -130,13 +145,37 @@ still rejects skips, expected failures, empty results and incomplete process
 cleanup. Its explicit-selector routing and real child deadlines have their own
 regressions.
 
-The outer Windows source step now allows 60 minutes instead of 40; the V3
-installed step allows 75 instead of 50. Their measured incomplete runs below
-projected approximately 45.7 and 62.1 minutes respectively at the observed
-completion rates. These are bounded aggregate allowances, not changes to the
-default 600-second suite guard, the explicit 900-second admission guard, or any
-individual operation, cancellation or native cleanup deadline. Required
-selectors and the existing job and bundle limits remain in place.
+The Windows source aggregate remains 60 minutes. The V3 installed aggregate is
+105 minutes, its native aggregate 65 minutes and its job 240 minutes. The main
+Windows bundle aggregate is 160 minutes within a 270-minute job. The predecessor
+96cf8a V3 run completed 8,416 installed tests in 4,208.93 seconds (70m09s) before
+its later native palette failure; the expanded selectors and retained installation,
+native, repair and sealing work need their own finite aggregate allowance.
+These changes preserve the default 600-second suite guard, explicit 900-second
+admission guard and all individual operation, cancellation and native cleanup
+deadlines. A timeout remains a failed or incomplete result, never a PASS.
+
+## Qualified component evidence
+
+These are completed component runs at their recorded commits. They do not
+transfer a PASS to a later composition. The final PR checks, exact installed
+inventory and corpus artifacts remain the integration authority.
+
+| Exact component revision | Executed scope and result | Evidence boundary |
+| --- | --- | --- |
+| 043f494eed00e6d08fc90f98786720c44e08613a | Automatic OCR/image component: Windows 194 source + 194 installed + 194 semantic-environment cases; Linux 214 + 214 + 214; native Windows 11 source and 15 installed checks; zero failed/skipped cases. [Run 46081652369](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46081652369). | Exact pinned classifier and both NumPy environments, real OCR dependencies and complete package binding; all-language image/recognition quality is separate. |
+| 06c70bde0d7e388984880557aab6494b0377a3ed | Complete-scope search common regressions: Windows 905 source + 905 installed, Linux 907 + 907, zero failed/skipped cases. [Run 46082271279](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46082271279). | Source scope, cursors, retained quotation authority and platform races; later real-model/native component is separate. |
+| 3be09c364abae9c43e6fe24b34ba129e5664fde5 | Real MiniLM search component: 241 source + 241 installed cases, including the actual 607-source regression; 365 native checks. [Run 46084207789](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46084207789). | The selected pinned model executes; this does not establish 50k-book throughput or every language's retrieval quality. |
+| 76f776177c4fe9a8efdb74a6c2e1ab2c44e9b155 | Local translation: each OS passed 556 source + 556 installed common cases and 21 source + 21 installed actual HTTP/TLS cases; Windows native checks passed 115 in each context. [Run 46086508668](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46086508668). | Real socket/TLS, withheld headers/handshake, body cancellation, Unicode and owner lifetime; local protocol fixtures provide no linguistic quality claim. |
+| 90ea2ede28fad196a7ecaf8e31c72d0b1ea546be | Playback queue: Windows 575 source + 575 installed, Linux 585 + 585, and 154 native checks; zero failed/skipped cases. [Run 46089506019](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46089506019). | The unchanged native probe now passes genuine nested-modal teardown, late callbacks and committed-result preservation. Hosted runner output inventory is zero; physical output and NVDA remain NOT_RUN. |
+| 9dc56d6cd1db2d050be244c5eb81fd795bfeefef | Runtime corrections: each OS passed 140 source + 140 installed cases, zero failed/skipped cases. [Run 46085152514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085152514). | Bounded Windows job enumeration and durable idle-refresh backoff with explicit manual/due paths; the final full installer remains a separate gate. |
+
+The earlier integrated 96cf8a1435187844393b5389001d07a587c417a8
+runs remain failed: Windows source exposed refresh, firewall-recovery and job
+enumeration defects, and both installed native paths hit the palette's wx text
+type error. The corrected palette, exact owned firewall recovery and the
+component-qualified runtime fixes are included in the current source; only the
+new complete integration run can qualify that union.
 
 ## Executed predecessor evidence
 
@@ -231,7 +270,15 @@ The current writer emits common format 4. Supported historical formats 1–5 rea
 are strict, read-only decoders with their original envelope and typed-producer
 rules. Literal prior-writer fixtures verify compatibility independently of the
 new writer. A backup includes only declared typed state and retained inputs,
-with size/hash, path, source and publication checks. Unreadable inventory
+with size/hash, path, source and publication checks. Optional explicit budgets
+bound streamed original copying, SQLite snapshot progress, journal fields,
+metadata memory, staging and cooperative time without rewriting archive authority.
+Incremental copies first use that same complete snapshot path, select only
+changed retained bytes, and bind an explicit ordered chain of exact parent
+manifest hashes. Verification reconstructs a private complete snapshot and runs
+the unchanged full checker before create-only restore. No archive grants a new
+resource budget, reactivates a provider approval or starts playback.
+Unreadable inventory
 subtrees fail visibly; they are not treated as absent. Generated audio is an
 explicit choice, and external exports need their own copies.
 
@@ -363,7 +410,11 @@ Use [the Ukrainian quick start](START_V3_UK.txt),
 [selected legacy documents](LEGACY_DOCUMENT_READING.md), [Calibre reading](CALIBRE_READING.md)
 and [signed maintenance](SIGNED_UPDATE_MAINTENANCE.md),
 [independent listening](INDEPENDENT_PLAYBACK.md), [typed local tools](ASSISTANT_LOCAL_TOOLS.md)
-and [verified download continuation](VERIFIED_UPDATE_RESUME.md).
+and [verified download continuation](VERIFIED_UPDATE_RESUME.md),
+[streamed import and continuation](IMPORT_CENTER.md), [automatic OCR](AUTOMATIC_OCR_UK.md),
+[complete-scope search](SEARCH_PAGING_AND_RESOURCES.md), [local translation](LOCAL_TRANSLATION_UK.md),
+[playback queues](PLAYBACK_QUEUE.md), [backup resource controls](BACKUP_RESOURCES_AND_RECOVERY.md)
+and [actual library scale](LARGE_LIBRARY_SCALE.md).
 The exact published source and checks are tracked in
 [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
 

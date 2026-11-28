@@ -4,6 +4,7 @@ from dataclasses import replace
 from hashlib import sha256
 import json
 import os
+import sqlite3
 from pathlib import Path
 from uuid import uuid4
 
@@ -159,11 +160,16 @@ def test_v5_keeps_canonical_cancelled_import_resume_identity(tmp_path):
                     collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     expected = snapshot(original.parent, original.name).manifest()
     request = prepare_request(app.root, workspace, original, metadata, Config(), expected_manifest=expected)
-    count = 0
     def cancelled():
-        nonlocal count
-        count += 1
-        return count >= 2
+        # Observe the real committed checkpoint, independent of how many source
+        # or resource cancellation checks run before the first extraction.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as db:
+            return db.execute('SELECT count(*) FROM checkpoint c JOIN job j ON j.id=c.job '
+                              'WHERE j.workspace=? AND j.edition=?',
+                              (workspace, metadata['edition_id'])).fetchone()[0] >= 1
     initial = app._import_file(workspace, original, **metadata, cancelled=cancelled,
                               _request_id=request['request_id'], _expected_manifest=expected)
     assert initial['completed'] == 1

@@ -86,7 +86,7 @@ def source_limit(mime, value=None):
 def bounded_cancel(cancelled, selected):
     """Return one operation deadline; nested producers must reuse the callback."""
     if not callable(cancelled):
-        raise TypeError('A backup cancellation callback is required.')
+        raise ValueError('A backup cancellation callback is required.')
     checked_budget(selected)
     if selected is None:
         return cancelled

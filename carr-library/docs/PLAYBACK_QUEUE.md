@@ -44,4 +44,6 @@ Full library backup preserves the saved queue and its exact retained audio refer
 
 The focused queue gate checks the actual source and isolated installed package, retained PCM copies, saved-state conflict handling, cancellation and window lifetime. Its native probe uses actual Windows controls and the actual Studio executor, with authored file-picker answers and a clearly controlled MCI command boundary for hosted machines. This does not qualify physical speakers, listening quality, native file-picker interaction or NVDA use.
 
-The initial queue composition is under qualification. Read the final release evidence for the exact tested commit and completed native result; source review alone is not a runtime pass.
+The focused component at commit `90ea2ede28fad196a7ecaf8e31c72d0b1ea546be` completed [run 46089506019](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46089506019): Windows passed 575 source tests, 575 isolated installed tests and 154 native checks; Linux passed 585 source tests and 585 isolated installed tests. There were no failed, errored or skipped test cases. The native checks include actual parent and child deletion, timer detachment before worker release, successful saved receipts after owner death, and replay of late callbacks.
+
+These results qualify that exact component with its disclosed controlled audio transport. The hosted Windows runner reported no usable output device. Physical playback, native file-picker interaction and NVDA remain untested, and the final integrated release requires its own completed gates.

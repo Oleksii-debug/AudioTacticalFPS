@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ..backup_incremental import (BackupReference, MAX_CHAIN, DEFAULT_MAX_BYTES,
     create_incremental_backup, verify_incremental_backup, restore_incremental_backup)
-from .backup_actions import BackupOwner
+from .backup_actions import BackupOwner, choose_checksum, show_report
 from .backup_resources import review_backup_options
 
 
@@ -166,11 +166,10 @@ class NativeDialogs:
             except RuntimeError:
                 pass
 
-    def checksum(self):
+    def checksum(self, owner):
         import wx
-        from .desktop_app import text_dialog
-        return text_dialog(self.frame, 'Verify the selected backup identity',
-            'Paste the manifest SHA256 kept separately when this backup was created.')
+        return choose_checksum(owner, 'Verify the selected backup identity',
+            'Paste the manifest SHA256 kept separately when this backup was created.', wx)
 
     def options(self, owner, action):
         return review_backup_options(self.frame, restore=action != 'create', guard=owner.guard)
@@ -190,9 +189,9 @@ class NativeDialogs:
             except RuntimeError:
                 pass
 
-    def show(self, title, body):
-        from .desktop_app import show_text
-        show_text(self.frame, title, body)
+    def show(self, title, body, owner):
+        import wx
+        show_report(owner, title, body, wx)
 
 
 class IncrementalBackupActions:
@@ -208,7 +207,7 @@ class IncrementalBackupActions:
         guard()
         if folder is None:
             return None
-        checksum = self.dialogs.checksum()
+        checksum = self.dialogs.checksum(self.owner)
         if not self.owner.live() or checksum is None:
             return None
         guard()
@@ -269,7 +268,7 @@ class IncrementalBackupActions:
                     title = 'Backup restored'
                     note = ('Open the restored folder through Library, Open existing library folder. '
                             'Restored external engines, scan roots and execution approvals require explicit review.')
-                self.dialogs.show(title, note + '\n\n' + json.dumps(result, ensure_ascii=False, indent=2))
+                self.dialogs.show(title, note + '\n\n' + json.dumps(result, ensure_ascii=False, indent=2), owner)
             frame.run_job({'create': 'Creating incremental backup', 'verify': 'Verifying backup chain',
                            'restore': 'Restoring incremental backup'}[action], work, done)
         except (Exception, KeyboardInterrupt) as error:

@@ -48,8 +48,12 @@ instructions.
   are excluded from bibliography exports unless explicitly requested.
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
-- Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
-  changes atomically, isolate native parsers and resume interrupted imports.
+- Import UTF-8 TXT, PDF, supported static images, DOCX and text-based EPUB. Retain
+  originals, publish catalog/revision changes atomically, isolate native parsers
+  and resume interrupted imports. [Import Center](docs/IMPORT_CENTER.md) exposes
+  bounded folder pages, saved continuations and explicit streaming resource
+  profiles; [automatic OCR](docs/AUTOMATIC_OCR_UK.md) keeps language selection and
+  independent text review separate.
 - Read EPUB books by their declared section order, with keyboard chapter
   selection, previous/next navigation and separate authored image descriptions.
 - Navigate embedded EPUB contents and headings, find exact text within a chapter,
@@ -58,6 +62,8 @@ instructions.
 - Search exact words, phrases or all terms; filter by collection, author, title,
   language and edition. Local thematic BM25 and multilingual MiniLM rank exact
   source slices. Catalog and source lookups share one authorized snapshot.
+  [Search paging](docs/SEARCH_PAGING_AND_RESOURCES.md) covers the complete selected
+  scope through bounded result/source windows and one current cursor owner.
 - Open source context and copy verified quotations and citations. Original text,
   physical PDF pages and unpaginated segments remain distinct. Printed page
   labels require their own independent approval.
@@ -72,8 +78,17 @@ instructions.
   and hear exact location information through native text controls. See
   [the reading desk guide](docs/READING_DESK.md).
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
-  Back up completed libraries with original files and checksums; restore into a
-  new folder without overwriting the existing library.
+  Back up libraries, their declared pending work and retained inputs with exact
+  checksums. Full and explicit-chain incremental copies use the same verified
+  snapshot and restore service; restore publishes into a new folder.
+  See [backup resource controls and recovery](docs/BACKUP_RESOURCES_AND_RECOVERY.md).
+- Use [explicit local translation](docs/LOCAL_TRANSLATION_UK.md) through a selected
+  LibreTranslate-compatible loopback server, or the existing official Google
+  provider routes. Saved derivatives preserve original source identity, current
+  approvals and the provider ledger; completed text remains available offline.
+- Save and review a [playback queue](docs/PLAYBACK_QUEUE.md) in Audio Studio. It
+  reuses the current player and retained audio inputs; reopening or restoring a
+  queue does not start playback.
 - Review RIS or CSL-JSON reference metadata before applying selected fields to
   an existing book. Export a whole library or collection bibliography in
   CSL-JSON, RIS or BibTeX, and export a complete research topic branch with its

@@ -470,6 +470,7 @@ jobs:
             tests/ingest/test_import_budget.py \
             tests/ingest/test_import_reconciliation.py \
             tests/ingest/test_import_session.py \
+            tests/ingest/test_import_session_posix.py \
             tests/ingest/test_import_slice_ownership.py \
             tests/scale/test_library_catalog_benchmark.py \
             tests/scale/test_library_scale_contract.py \
@@ -481,6 +482,8 @@ jobs:
             tests/speech/test_playlist_boundary_posix.py \
             tests/speech/test_playlist_recovery.py \
             tests/storage/test_backup_budget_snapshot.py \
+            tests/storage/test_backup_incremental.py \
+            tests/storage/test_backup_resource_cli.py \
             tests/storage/test_backup_resource_policy.py \
             tests/storage/test_large_import_backup.py \
             tests/storage/test_ocr_language_presets.py \
@@ -488,6 +491,7 @@ jobs:
             tests/storage/test_playback_queue_backup.py \
             tests/storage/test_publication_session.py \
             tests/ui/test_import_resources.py \
+            tests/ui/test_backup_resource_actions.py \
             tests/ui/test_playback_queue.py \
             tests/ui/test_search_owner_lifetime.py \
             --junitxml=ci-source-results/source-tests.xml
@@ -992,6 +996,8 @@ jobs:
               'tests/speech/test_playlist.py',
               'tests/speech/test_playlist_recovery.py',
               'tests/storage/test_backup_budget_snapshot.py',
+              'tests/storage/test_backup_incremental.py',
+              'tests/storage/test_backup_resource_cli.py',
               'tests/storage/test_backup_resource_policy.py',
               'tests/storage/test_large_import_backup.py',
               'tests/storage/test_ocr_language_presets.py',
@@ -999,6 +1005,7 @@ jobs:
               'tests/storage/test_playback_queue_backup.py',
               'tests/storage/test_publication_session.py',
               'tests/ui/test_import_resources.py',
+              'tests/ui/test_backup_resource_actions.py',
               'tests/ui/test_playback_queue.py',
               'tests/ui/test_search_owner_lifetime.py',
           ])

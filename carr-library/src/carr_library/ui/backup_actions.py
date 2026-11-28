@@ -68,10 +68,70 @@ def choose_directory(owner, title, wx):
             pass
 
 
+def choose_checksum(owner, title, message, wx):
+    """Read only a still-owned native peer after its modal loop returns."""
+    owner.guard()
+    if not owner.live():
+        return None
+    chooser = wx.TextEntryDialog(owner.frame, message, title)
+    native_id = chooser.GetId()
+    alive = True
+    def destroyed(event):
+        nonlocal alive
+        if event.GetId() == native_id:
+            alive = False
+        event.Skip()
+    chooser.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+    try:
+        accepted = chooser.ShowModal()
+        if (not alive or not owner.current() or not chooser
+                or chooser.IsBeingDeleted() or chooser.GetId() != native_id):
+            return None
+        owner.guard()
+        return chooser.GetValue() if accepted == wx.ID_OK else None
+    finally:
+        try:
+            if alive and chooser and not chooser.IsBeingDeleted():
+                chooser.Destroy()
+        except RuntimeError:
+            pass
+
+
+def show_report(owner, title, body, wx):
+    """Show a completed result without touching a destroyed modal peer."""
+    if not owner.current():
+        return
+    dialog = wx.Dialog(owner.frame, title=title, size=(800, 600))
+    native_id = dialog.GetId()
+    alive = True
+    def destroyed(event):
+        nonlocal alive
+        if event.GetId() == native_id:
+            alive = False
+        event.Skip()
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+    try:
+        layout = wx.BoxSizer(wx.VERTICAL)
+        reader = wx.TextCtrl(dialog, value=body, style=wx.TE_READONLY | wx.TE_MULTILINE)
+        reader.SetName(title)
+        layout.Add(reader, 1, wx.EXPAND | wx.ALL, 8)
+        back = wx.Button(dialog, wx.ID_CANCEL, '&Close')
+        layout.Add(back, 0, wx.ALL, 8)
+        dialog.SetSizer(layout)
+        reader.SetInsertionPoint(0)
+        reader.SetFocus()
+        dialog.ShowModal()
+    finally:
+        try:
+            if alive and dialog and not dialog.IsBeingDeleted():
+                dialog.Destroy()
+        except RuntimeError:
+            pass
+
+
 def create_backup(frame):
     import wx
     from ..backup_report import backup_scope_text
-    from .desktop_app import show_text
     if frame.working or getattr(frame, '_closing', False) or getattr(frame, '_backup_review', None) is not None:
         return
     owner = BackupOwner(frame)
@@ -94,9 +154,9 @@ def create_backup(frame):
         def done(checksum):
             if not owner.current():
                 return
-            show_text(frame, 'Backup complete', f'Backup folder: {destination}\n\n'
+            show_report(owner, 'Backup complete', f'Backup folder: {destination}\n\n'
                 + backup_scope_text(options.include_generated) + '\n\n'
-                f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
+                f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}', wx)
         frame.run_job('Backing up all libraries', work, done)
     except (Exception, KeyboardInterrupt) as error:
         owner.report(error)
@@ -108,7 +168,6 @@ def create_backup(frame):
 def restore_backup(frame):
     import wx
     from ..library_backup import restore_backup as restore
-    from .desktop_app import show_text, text_dialog
     if frame.working or getattr(frame, '_closing', False) or getattr(frame, '_backup_review', None) is not None:
         return
     owner = BackupOwner(frame)
@@ -120,8 +179,8 @@ def restore_backup(frame):
         source = choose_directory(owner, 'Select the backup folder', wx)
         if source is None:
             return
-        checksum = text_dialog(frame, 'Verify backup',
-            'Paste the manifest checksum saved when this backup was created.')
+        checksum = choose_checksum(owner, 'Verify backup',
+            'Paste the manifest checksum saved when this backup was created.', wx)
         if checksum is None or not owner.live():
             return
         owner.guard()
@@ -140,7 +199,7 @@ def restore_backup(frame):
             if not owner.current():
                 return
             from ..backup_report import recovery_summary
-            show_text(frame, 'Recovery details', recovery_summary(path))
+            show_report(owner, 'Recovery details', recovery_summary(path), wx)
             if not owner.current():
                 return
             answer = wx.MessageBox('Backup restored successfully. Open the restored libraries now?',
@@ -150,8 +209,8 @@ def restore_backup(frame):
             if answer == wx.YES:
                 frame._open_data_root(path)
             else:
-                show_text(frame, 'Restore complete', f'Restored library folder: {path}\n\n'
-                    'You can open it later through Library, Open existing library folder.')
+                show_report(owner, 'Restore complete', f'Restored library folder: {path}\n\n'
+                    'You can open it later through Library, Open existing library folder.', wx)
         frame.run_job('Restoring backup', work, done)
     except (Exception, KeyboardInterrupt) as error:
         owner.report(error)

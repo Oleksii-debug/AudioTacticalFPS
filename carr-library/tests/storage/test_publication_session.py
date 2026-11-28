@@ -260,3 +260,130 @@ def test_reopening_never_inherits_a_prior_validation_stamp(library):
         with pytest.raises(ValueError, match='raw digest mismatch'):
             with reopened.incremental_publications():
                 pass
+
+
+def _receipt_import(app, workspace, directory, number, owner, *, collection=None):
+    """Use the actual TXT journal and frozen worker receipt in the owned slice."""
+    from uuid import uuid4
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest import worker
+    from carr_library.ingest.publication_identity import PublicationAttempt, request_identity
+
+    source = directory / ('receipt-%d.txt' % number)
+    source.write_text('Exact source %d — точні дані.\fSecond segment.\fThird segment.' % number,
+                      encoding='utf-8')
+    metadata = dict(title='Receipt source %d' % number, authors=('Fixture Author',),
+                    language='uk', edition=None, volume=None,
+                    collections=() if collection is None else (collection,),
+                    work_id=uuid4().hex, edition_id=uuid4().hex)
+    config = Config()
+    record = worker.prepare_request(
+        app.root, workspace, source, metadata, config, import_budget=owner.budget)
+    attempt = PublicationAttempt(uuid4().hex, request_identity(record))
+    worker.record_progress(app.root, record['request_id'], attempt=attempt.attempt_id)
+    result = app._import_file(
+        workspace, source, **metadata, config=config, import_budget=owner.budget,
+        _request_id=record['request_id'], _publication_attempt=attempt,
+        _ingest_session=owner)
+    return record, attempt, result
+
+
+def _receipt_budget():
+    from carr_library.ingest.resource_budget import ImportBudget, MIB
+    return ImportBudget(source_bytes=2*MIB, segment_bytes=2*MIB,
+                        segments=1000, steps=1001, memory_bytes=128*MIB,
+                        library_bytes=64*MIB, temporary_bytes=16*MIB)
+
+
+@pytest.mark.parametrize('scoped', (False, True))
+def test_actual_receipt_imports_reuse_validation_and_commit_each_book(
+        library, tmp_path, monkeypatch, scoped):
+    from carr_library.ingest import worker
+    from carr_library.ingest.session import import_session
+
+    app, workspace, _ = library
+    collection = app.create_collection(workspace, 'Reviewed scope') if scoped else None
+    checks = []
+    original = Storage._check
+
+    def checked(storage):
+        checks.append(storage)
+        return original(storage)
+
+    monkeypatch.setattr(Storage, '_check', checked)
+    with import_session(app, workspace, _receipt_budget()) as owner:
+        assert checks == [owner.storage]
+        for number in range(8):
+            request, attempt, result = _receipt_import(
+                app, workspace, tmp_path, number, owner, collection=collection)
+            assert result['state'] == 'complete' and result['verified'] is True
+            stored = worker.load_request(app.root, request['request_id'])
+            # A separate SQLite connection observes the real per-book COMMIT,
+            # including the same attempt receipt and all three exact segments.
+            with closing(sqlite3.connect(app.database)) as reader:
+                row = reader.execute(
+                    'SELECT request_id,attempt,sha256 FROM import_publication WHERE revision=?',
+                    (result['id'],)).fetchone()
+                assert row == (request['request_id'], attempt.attempt_id,
+                               stored['publication_candidate']['sha256'])
+                assert reader.execute(
+                    'SELECT count(*) FROM page WHERE revision=?',
+                    (result['id'],)).fetchone() == (3,)
+                if collection is not None:
+                    assert reader.execute(
+                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND collection=? AND edition=?',
+                        (workspace, collection, request['metadata']['edition_id'])).fetchone() == (1,)
+            assert checks == [owner.storage]
+    assert checks == [owner.storage, owner.storage]
+
+
+@pytest.mark.parametrize('sql', ('PRAGMA foreign_keys=ON', 'PRAGMA user_version'))
+def test_receipt_does_not_trust_assignments_or_unrecognized_pragma_reads(
+        library, tmp_path, monkeypatch, sql):
+    from carr_library.ingest import worker
+    from carr_library.ingest.session import import_session
+
+    app, workspace, _ = library
+    checks = []
+    original_check = Storage._check
+    original_receipt = worker.record_publication_candidate
+
+    def checked(storage):
+        checks.append(storage)
+        return original_check(storage)
+
+    def receipt(root, request_id, db, workspace, revision, **options):
+        original_receipt(root, request_id, db, workspace, revision, **options)
+        db.execute(sql).fetchall()
+
+    monkeypatch.setattr(Storage, '_check', checked)
+    monkeypatch.setattr(worker, 'record_publication_candidate', receipt)
+    with import_session(app, workspace, _receipt_budget()) as owner:
+        _, _, result = _receipt_import(app, workspace, tmp_path, 0, owner)
+        assert result['state'] == 'complete'
+        assert checks == [owner.storage, owner.storage]
+    assert checks == [owner.storage, owner.storage, owner.storage]
+
+
+def test_untracked_write_after_real_receipt_still_rolls_back_the_whole_book(
+        library, tmp_path, monkeypatch):
+    from carr_library.ingest import worker
+    from carr_library.ingest.session import import_session
+
+    app, workspace, _ = library
+    original_receipt = worker.record_publication_candidate
+
+    def changed(root, request_id, db, workspace, revision, **options):
+        original_receipt(root, request_id, db, workspace, revision, **options)
+        # Bypass the tracked facade after candidate validation and the genuine
+        # receipt. The unchanged observation must force a full check and rollback.
+        db.raw.execute('DELETE FROM indexed WHERE id IN '
+                       '(SELECT id FROM page WHERE revision=?)', (revision,))
+
+    monkeypatch.setattr(worker, 'record_publication_candidate', changed)
+    with pytest.raises(ValueError, match='active index content mismatch'):
+        with import_session(app, workspace, _receipt_budget()) as owner:
+            _receipt_import(app, workspace, tmp_path, 0, owner)
+    with app.read(workspace) as db:
+        for table in ('revision', 'sealed', 'page', 'catalog_edition', 'import_publication'):
+            assert db.execute('SELECT count(*) FROM ' + table).fetchone()[0] == 0

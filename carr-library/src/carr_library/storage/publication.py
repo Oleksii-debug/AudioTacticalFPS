@@ -53,7 +53,13 @@ class _TrackedConnection:
         if any((type(value), sqlite3.PrepareProtocol) in sqlite3.adapters for value in values):
             self.owner.tainted = True
         if self.owner.receipt_only:
-            if not sql.lstrip().upper().startswith('SELECT ') and sql != _RECEIPT_INSERT:
+            # Catalog construction checks the actual foreign-key setting while
+            # assembling the immutable receipt. Only this exact parameter-free
+            # read is known; assignments and every other PRAGMA still fall back
+            # to the full-store check before this transaction can commit.
+            catalog_read = sql == 'PRAGMA foreign_keys' and not values
+            if (not sql.lstrip().upper().startswith('SELECT ')
+                    and sql != _RECEIPT_INSERT and not catalog_read):
                 self.owner.tainted = True
         try:
             return self.raw.execute(sql, values)

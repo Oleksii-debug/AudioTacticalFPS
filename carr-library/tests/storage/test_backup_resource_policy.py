@@ -85,3 +85,9 @@ def test_explicit_manifest_limit_is_checked_before_its_descriptor_is_read(tmp_pa
     with pytest.raises(ValueError, match='manifest size limit'):
         library_backup.verify_backup(folder, checksum, backup_budget=BackupBudget(
             manifest_bytes=1, memory_bytes=768*MIB, staging_bytes=GIB))
+
+
+@pytest.mark.parametrize('selected', [None, BackupBudget()])
+def test_invalid_cancellation_retains_existing_value_error_contract(selected):
+    with pytest.raises(ValueError, match='callback'):
+        bounded_cancel(True, selected)

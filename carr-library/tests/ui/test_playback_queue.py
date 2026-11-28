@@ -391,3 +391,126 @@ def test_actual_studio_handler_interrupt_releases_busy_and_allows_explicit_retry
     assert observed == [{'status': 'saved'}]
     assert env.dialog.working is False
     assert env.progress.active_task.snapshot().state == ProgressState.SUCCEEDED
+
+
+def _actual_studio_destroy_class(wx):
+    """Compile the selected production class without importing native wx."""
+    import ast
+    from importlib.util import find_spec
+    origin = Path(find_spec('carr_library.ui.studio_dialog').origin)
+    module = ast.parse(origin.read_text(encoding='utf-8'))
+    show = next(node for node in module.body if isinstance(node, ast.FunctionDef)
+                and node.name == 'show_studio')
+    selected = next(node for node in show.body if isinstance(node, ast.ClassDef)
+                    and node.name == 'StudioDialog')
+    namespace = {'wx': wx}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[selected], type_ignores=[])),
+                 str(origin), 'exec'), namespace)
+    return namespace['StudioDialog']
+
+
+@pytest.fixture
+def studio_modal_owner():
+    events, scheduled, windows = [], [], []
+
+    class Dialog(Control):
+        def __init__(self, parent=None, *, name='dialog'):
+            super().__init__(parent)
+            self.name, self.shown = name, True
+            windows.append(self)
+        def GetParent(self): self.native(); return self.parent
+        def IsShown(self): self.native(); return self.shown
+        def IsEnabled(self): self.native(); return self.enabled
+        def EndModal(self, code):
+            self.native()
+            assert self.modal and self.shown and self.enabled, 'A suspended modal cannot exit.'
+            events.append(('end', self.name, code))
+            self.shown = False
+            # Actual wx keeps IsModal true until ShowModal has returned.
+        def Destroy(self):
+            self.native()
+            assert not any(child and child.modal for child in self.children), 'A child loop is still active.'
+            events.append(('destroy', self.name))
+            return super().Destroy()
+
+    def later(delay, callback):
+        record = SimpleNamespace(delay=delay, callback=callback, stopped=False)
+        record.Stop = lambda: setattr(record, 'stopped', True)
+        scheduled.append(record)
+        return record
+
+    wx = SimpleNamespace(Dialog=Dialog, ID_CANCEL=99, CallLater=later,
+                         GetTopLevelWindows=lambda: tuple(reversed(windows)))
+    Studio = _actual_studio_destroy_class(wx)
+    studio = Studio(name='studio')
+    studio._native_id = studio.GetId()
+    studio.modal = True
+    studio.dispose = lambda: events.append(('dispose', 'studio'))
+    return SimpleNamespace(wx=wx, Dialog=Dialog, studio=studio,
+                           events=events, scheduled=scheduled, windows=windows)
+
+
+def test_actual_studio_destroy_without_queue_keeps_immediate_native_close(studio_modal_owner):
+    t = studio_modal_owner
+    t.wx.GetTopLevelWindows = lambda: pytest.fail('Ordinary Studio close needs no queue walk.')
+    t.studio.Destroy()
+    assert not t.studio and t.events == [('dispose', 'studio'), ('destroy', 'studio')]
+    assert not t.scheduled
+    assert t.studio.Destroy() is False
+
+
+def test_actual_studio_parent_destroy_waits_for_each_owned_modal_return(studio_modal_owner):
+    t = studio_modal_owner
+    queue = t.Dialog(t.studio, name='queue')
+    picker = t.Dialog(queue, name='picker')
+    foreign = t.Dialog(name='foreign')
+    for dialog in (queue, picker, foreign):
+        dialog.modal = True
+    queue.enabled = False
+    t.studio.enabled = False
+    t.studio._playback_navigation = SimpleNamespace(_queue_session=SimpleNamespace(view=queue))
+    queue.dispose = lambda: t.events.append(('dispose', 'queue'))
+    assert t.studio.Destroy() is True
+    assert t.events == [('dispose', 'studio'), ('end', 'picker', 99)]
+    assert queue and t.studio and foreign.shown
+    assert t.studio.Destroy() is False
+
+    # Native EndModal releases its disabler before ShowModal returns. An
+    # enabled queue still cannot exit while its hidden picker loop unwinds.
+    queue.enabled = True
+    assert picker.modal and not picker.shown
+    t.scheduled.pop(0).callback()
+    assert t.events == [('dispose', 'studio'), ('end', 'picker', 99)]
+    picker.modal = False
+    picker.Destroy()
+    queue.enabled = True
+    t.scheduled.pop(0).callback()
+    assert t.events[-2:] == [('dispose', 'queue'), ('end', 'queue', 99)]
+    assert queue.modal and not queue.shown and t.studio
+    t.scheduled.pop(0).callback()
+    assert ('destroy', 'studio') not in t.events
+
+    queue.modal = False
+    queue.Destroy()
+    t.studio.enabled = True
+    t.scheduled.pop(0).callback()
+    assert not t.studio and not t.scheduled
+    assert t.events == [('dispose', 'studio'), ('end', 'picker', 99),
+                        ('destroy', 'picker'), ('dispose', 'queue'),
+                        ('end', 'queue', 99), ('destroy', 'queue'), ('destroy', 'studio')]
+    assert foreign and foreign.modal and foreign.shown
+    assert t.studio.forbidden == []
+
+
+def test_actual_studio_destroy_retry_never_touches_an_already_deleted_peer(studio_modal_owner):
+    t = studio_modal_owner
+    queue = t.Dialog(t.studio, name='queue')
+    queue.modal = True
+    t.studio._playback_navigation = SimpleNamespace(_queue_session=SimpleNamespace(view=queue))
+    assert t.studio.Destroy() is True
+    retry = t.scheduled.pop(0)
+    # A native ancestor may delete this already-withdrawn owner independently.
+    Control.Destroy(t.studio)
+    assert retry.callback() is False
+    assert not t.studio and not queue and not t.scheduled
+    assert t.studio.forbidden == []
