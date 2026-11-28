@@ -48,6 +48,22 @@ def _json_text(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + '\n'
 
 
+
+def _inspection_criteria_values(threshold, minimum):
+    """Explicit review criteria, never a claim about acceptable audio quality."""
+    import math
+    if any(type(value) not in (str, int, float) for value in (threshold, minimum)):
+        raise ValueError('Enter numeric dBFS and minimum seconds for this inspection.')
+    try:
+        values = float(threshold), float(minimum)
+    except (TypeError, ValueError) as exc:
+        raise ValueError('Enter numeric dBFS and minimum seconds for this inspection.') from exc
+    if (not all(math.isfinite(value) for value in values)
+            or not -120 <= values[0] <= 0 or not 0 < values[1] <= 86400):
+        raise ValueError('Use a threshold from -120 to 0 dBFS and minimum seconds above 0 up to 86400.')
+    return values
+
+
 def _voice_dict(voice):
     if is_dataclass(voice):
         return asdict(voice)
@@ -588,6 +604,104 @@ class StudioController:
         finally:
             self._render_lock.release()
 
+    def _completed_inspection_target(self, *, cancelled=lambda: False):
+        """Select only this project's retained completed run; never render it."""
+        from ..audio.jobs import check_cancelled, read_json
+        from ..audio.models import digest
+        check_cancelled(cancelled)
+        plan = self.plan()
+        if self.output_dir is None:
+            raise ValueError('Choose this completed project audio output folder first.')
+        folder = self._output_folder(self.output_dir)
+        selected = self.result
+        if selected is None:
+            # A restored journal may retain an obsolete absolute output path.
+            # Its bounded run key selects only the current project's namespace.
+            selected = read_json(folder / 'render-journal.json', limit=1024 * 1024)
+        if not isinstance(selected, dict):
+            raise ValueError('This project has no selected completed production.')
+        run_key = selected.get('run_key')
+        if (type(run_key) is not str or len(run_key) != 64
+                or any(character not in '0123456789abcdef' for character in run_key)):
+            raise ValueError('The completed production run identity is unavailable.')
+        manifest = folder / 'renders' / run_key / 'complete.json'
+        if self.result is not None:
+            if (self.result.get('status') != 'complete'
+                    or _local_path(self.result.get('manifest', ''),
+                                   'completed production manifest') != manifest):
+                raise ValueError('The selected completion belongs to another production output.')
+        check_cancelled(cancelled)
+        return {'manifest': manifest, 'folder': folder, 'run_key': run_key,
+                'source_sha256': plan.source_sha256, 'plan_sha256': digest(plan.to_dict())}
+
+    @staticmethod
+    def _bind_completed_inspection(report, selected):
+        if (type(report) is not dict
+                or report.get('schema') != 'carr-completed-silence-inspection/1'
+                or report.get('status') != 'complete'
+                or any(report.get(key) != selected[key]
+                       for key in ('run_key', 'source_sha256', 'plan_sha256'))):
+            raise ValueError('The inspection does not match this saved production plan and source. '
+                             'Open the matching saved project before inspecting it here.')
+
+    def inspect_completed_audio(self, *, threshold_dbfs, minimum_seconds,
+                                cancelled=lambda: False, on_status=lambda message: None):
+        """Read the already completed master without changing the render result."""
+        from ..audio.jobs import check_cancelled
+        from ..audio.production import inspect_completed_silence
+        if not self._render_lock.acquire(blocking=False):
+            raise ValueError('Wait for the current Studio operation before inspecting completed audio.')
+        try:
+            draft, result = self.draft, self.result
+            state, result_state = _json_text(self.to_dict()), _json_text(result)
+
+            def stopped():
+                return (cancelled() or self.draft is not draft or self.result is not result
+                        or _json_text(self.to_dict()) != state
+                        or _json_text(self.result) != result_state)
+
+            selected = self._completed_inspection_target(cancelled=stopped)
+            report = inspect_completed_silence(selected['manifest'],
+                threshold_dbfs=threshold_dbfs, minimum_seconds=minimum_seconds,
+                expected_run_key=selected['run_key'], cancelled=stopped,
+                on_status=on_status, max_intervals=1000)
+            check_cancelled(stopped)
+            self._bind_completed_inspection(report, selected)
+            return report
+        finally:
+            self._render_lock.release()
+
+    def inspection_export_destination(self, path):
+        """Keep review reports outside every production, project and source file."""
+        selected = _local_path(path, 'inspection report filename')
+        _filename(selected.name)
+        self._protect_original(selected)
+        if self.output_dir is None:
+            raise ValueError('The inspected production output folder is unavailable.')
+        folder = self._output_folder(self.output_dir)
+        resolved = selected.resolve()
+        if (selected.is_relative_to(folder) or resolved.is_relative_to(folder.resolve())
+                or (self.project_path is not None
+                    and resolved == self.project_path.resolve())):
+            raise ValueError('Save the inspection report outside the production output and project files.')
+        return selected
+
+    def export_inspection_report(self, report, path, *, approval=None,
+                                 cancelled=lambda: False):
+        from ..audio.jobs import check_cancelled
+        from ..audio.production import completed_silence_report_text
+        check_cancelled(cancelled)
+        selected = self._completed_inspection_target(cancelled=cancelled)
+        self._bind_completed_inspection(report, selected)
+        if _path_digest(selected['manifest'], budget=1024 * 1024) != report['completion_sha256']:
+            raise ValueError('The completed production changed after inspection. Inspect it again.')
+        destination = self.inspection_export_destination(path)
+        # Omitting native replacement approval is create-only. An approval for
+        # a previously absent path also retains the publisher's no-clobber rule.
+        return write_export(destination, completed_silence_report_text(report),
+            private_root=self.private_root, cancelled=cancelled,
+            require_absent=approval is None, approval=approval)
+
     def _publication_service(self, *, bind_plan=False, resources=False, cancelled=lambda: False):
         from ..audio.publishing import PublicationService
         from ..audio.models import digest
@@ -802,6 +916,7 @@ class AudioStudioDialog:
         self._button(production_page, production_buttons, 'Export DAISY 2.02',
                      lambda event: self.export_book('daisy-2.02'))
         self._button(production_page, production_buttons, 'Verify saved audiobook', self.verify_book)
+        self._button(production_page, production_buttons, 'Inspect completed audio', self.inspect_completed_audio)
         self._button(production_page, production_buttons, 'Play rendered master', self.play)
         self.windows_playback_controls.append(self._button(production_page, production_buttons,
             'Pause / resume playback', self.pause_resume))
@@ -1683,6 +1798,247 @@ class AudioStudioDialog:
                     approval=approval, cancelled=self.cancelled.is_set, on_status=progress), finished)
         except Exception as exc:
             self._error(exc)
+
+    def _choose_inspection_criteria(self, current):
+        """One owned native criteria dialog; Cancel starts no worker."""
+        wx = self.wx
+        dialog = wx.Dialog(self.dialog, title='Inspect completed audio',
+                           size=(560, 360), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        dialog.SetName('Completed audio inspection criteria')
+        selected = None
+        try:
+            layout = wx.BoxSizer(wx.VERTICAL)
+            explanation = wx.StaticText(dialog, label=(
+                'Choose amplitude and duration criteria for review warnings. '
+                'These settings are not audio-quality targets. Completed audio stays unchanged.'))
+            explanation.Wrap(510)
+            layout.Add(explanation, 0, wx.EXPAND | wx.ALL, 8)
+            defaults = getattr(self, '_inspection_criteria', (-50.0, 3.0))
+            controls = []
+            for name, value in (('Inspection threshold in dBFS', defaults[0]),
+                                ('Inspection minimum duration in seconds', defaults[1])):
+                layout.Add(wx.StaticText(dialog, label=name), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+                control = wx.TextCtrl(dialog, value=f'{value:g}')
+                control.SetName(name)
+                layout.Add(control, 0, wx.EXPAND | wx.ALL, 8)
+                controls.append(control)
+            status = wx.TextCtrl(dialog, value='Review criteria, then choose Inspect.',
+                                 style=wx.TE_READONLY | wx.TE_MULTILINE)
+            status.SetName('Inspection criteria validation')
+            layout.Add(status, 1, wx.EXPAND | wx.ALL, 8)
+            buttons = wx.BoxSizer(wx.HORIZONTAL)
+            inspect = wx.Button(dialog, label='Inspect using these criteria')
+            inspect.SetName('Inspect using these criteria')
+            cancel = wx.Button(dialog, wx.ID_CANCEL, 'Cancel inspection setup')
+            cancel.SetName('Cancel inspection setup')
+            buttons.Add(inspect, 0, wx.ALL, 5)
+            buttons.Add(cancel, 0, wx.ALL, 5)
+            layout.Add(buttons, 0, wx.ALL, 3)
+            dialog.SetSizer(layout)
+            dialog.SetEscapeId(wx.ID_CANCEL)
+
+            def accept(event):
+                nonlocal selected
+                try:
+                    if not current() or self.busy:
+                        raise ValueError('The Studio source or completed run changed. Review it again.')
+                    selected = _inspection_criteria_values(
+                        controls[0].GetValue(), controls[1].GetValue())
+                    dialog.EndModal(wx.ID_OK)
+                except Exception as exc:
+                    status.ChangeValue(str(exc))
+                    status.SetFocus()
+
+            inspect.Bind(wx.EVT_BUTTON, accept)
+            controls[0].SetFocus()
+            if not current():
+                raise ValueError('The Studio source or completed run changed before inspection.')
+            return selected if dialog.ShowModal() == wx.ID_OK else None
+        finally:
+            dialog.Destroy()
+
+    def inspect_completed_audio(self, event=None):
+        try:
+            if self.busy or self.closed or self.close_pending:
+                raise ValueError('Wait for the current Studio operation before inspecting completed audio.')
+            controller, draft, result = self.controller, self.controller.draft, self.controller.result
+            # Do not use _capture: inspection must not turn pending widget edits
+            # into a project edit or clear the retained render result.
+            index = self.voice.GetSelection()
+            voice = (self.voice_rows[index]['id'] if 0 <= index < len(self.voice_rows)
+                     else controller.voice)
+            if (getattr(self, '_script_dirty', False)
+                    or self.title.GetValue() != controller.title
+                    or self.language.GetValue() != controller.language
+                    or ('narration' if self.input_kind.GetSelection() == 0 else 'script') != controller.input_kind
+                    or voice != controller.voice
+                    or self.output.GetValue().strip() != str(controller.output_dir or '')):
+                raise ValueError('Save or revert pending Studio settings before inspecting their completed audio.')
+            state = self._production_form_state()
+            saved = _json_text(controller.to_dict())
+            result_state = _json_text(result)
+            progress = getattr(self, 'operation_progress', None)
+            parent = self.parent
+            owner = getattr(progress, 'frame', parent) if progress is not None else parent
+            library = getattr(owner, 'library', None)
+
+            def owned():
+                try:
+                    return (not self.closed and not self.close_pending and self.parent is parent
+                            and getattr(self, 'operation_progress', None) is progress
+                            and self.controller is controller and controller.draft is draft
+                            and controller.result is result
+                            and getattr(owner, 'library', None) is library
+                            and _json_text(controller.to_dict()) == saved
+                            and _json_text(controller.result) == result_state)
+                except (AttributeError, RuntimeError, TypeError, ValueError):
+                    return False
+
+            def current():
+                if not owned():
+                    return False
+                try:
+                    return self._production_form_state() == state
+                except (AttributeError, RuntimeError, TypeError, ValueError):
+                    return False
+
+            criteria = self._choose_inspection_criteria(current)
+            if criteria is None:
+                return
+            if not current():
+                raise ValueError('The Studio source or completed run changed during inspection setup.')
+            threshold, minimum = _inspection_criteria_values(*criteria)
+            self._inspection_criteria = threshold, minimum
+
+            def stopped():
+                # This predicate runs on the worker and never reads wx controls.
+                return self.cancelled.is_set() or not owned()
+
+            def report_status(message):
+                from ..progress import report_progress
+                report_progress(phase=str(message))
+                token = getattr(self, '_job_token', None)
+                def apply():
+                    if current() and getattr(self, '_job_token', None) is token:
+                        self._message(str(message))
+                self.wx.CallAfter(apply)
+
+            def finished(report):
+                if not current() or self.cancelled.is_set():
+                    raise ValueError('The Studio source or completed run changed; the late inspection was not displayed.')
+                # Keep the same completed production result object. Findings
+                # belong only to this read-only report and never fail rendering.
+                self._show_inspection_report(report, current)
+                if current():
+                    self._message(f"Completed audio inspection: {report['interval_count']} review warning(s). "
+                                  'The completed production is unchanged.', focus=True)
+
+            self._run('Inspecting the retained completed PCM; no rendering or model is started.',
+                lambda: controller.inspect_completed_audio(
+                    threshold_dbfs=threshold, minimum_seconds=minimum,
+                    cancelled=stopped, on_status=report_status), finished)
+        except Exception as exc:
+            self._error(exc)
+
+    def _inspection_report_path(self, parent):
+        wx = self.wx
+        picker = wx.FileDialog(parent, 'Export completed audio inspection report',
+            wildcard='Text report (*.txt)|*.txt|All files (*.*)|*.*',
+            defaultFile='audio-silence-inspection.txt', style=wx.FD_SAVE)
+        try:
+            return Path(picker.GetPath()) if picker.ShowModal() == wx.ID_OK else None
+        finally:
+            picker.Destroy()
+
+    def _export_inspection_report(self, report, parent, current):
+        from ..research.export_file import export_completion
+        if not current():
+            raise ValueError('The inspected Studio source or completed run changed.')
+        path = self._inspection_report_path(parent)
+        if path is None:
+            return None
+        if not current():
+            raise ValueError('The inspected Studio source or completed run changed while choosing a destination.')
+        # Refuse production/project/source destinations before opening a
+        # replacement question or hashing any existing destination content.
+        path = self.controller.inspection_export_destination(path)
+        approval = approve_export_destination(parent, path,
+                                               private_root=self.controller.private_root)
+        if approval is None:
+            return None
+        if not current():
+            raise ValueError('The inspected Studio source or completed run changed during export approval.')
+        receipt = self.controller.export_inspection_report(
+            report, path, approval=approval, cancelled=lambda: not current())
+        return export_completion('Inspection report saved: ' + str(receipt.path), receipt)
+
+    def _show_inspection_report(self, report, current):
+        from ..audio.production import completed_silence_report_text
+        text = completed_silence_report_text(report)
+        if not current():
+            raise ValueError('The inspected Studio source or completed run changed.')
+        wx = self.wx
+        dialog = wx.Dialog(self.dialog, title='Completed audio inspection report',
+                           size=(860, 620), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        dialog.SetName('Completed audio inspection report window')
+        try:
+            layout = wx.BoxSizer(wx.VERTICAL)
+            reader = wx.TextCtrl(dialog, value=text, style=wx.TE_READONLY | wx.TE_MULTILINE)
+            reader.SetName('Completed audio inspection report')
+            layout.Add(reader, 1, wx.EXPAND | wx.ALL, 8)
+            status = wx.TextCtrl(dialog, value='Review warnings only. Completed audio is unchanged.',
+                                 style=wx.TE_READONLY)
+            status.SetName('Inspection report action status')
+            layout.Add(status, 0, wx.EXPAND | wx.ALL, 8)
+            buttons = wx.BoxSizer(wx.HORIZONTAL)
+            copy = wx.Button(dialog, label='Copy inspection report')
+            copy.SetName('Copy inspection report')
+            export = wx.Button(dialog, label='Export inspection report')
+            export.SetName('Export inspection report')
+            close = wx.Button(dialog, wx.ID_CANCEL, 'Close inspection report')
+            close.SetName('Close inspection report')
+            for button in (copy, export, close):
+                buttons.Add(button, 0, wx.ALL, 5)
+            layout.Add(buttons, 0, wx.ALL, 3)
+            dialog.SetSizer(layout)
+            dialog.SetEscapeId(wx.ID_CANCEL)
+
+            def copy_report(event):
+                try:
+                    if not current():
+                        raise ValueError('The inspected Studio source or completed run changed.')
+                    if not wx.TheClipboard.Open():
+                        raise RuntimeError('The clipboard is unavailable. Select and copy the report text explicitly.')
+                    try:
+                        if not current():
+                            raise ValueError('The inspected Studio source or completed run changed.')
+                        if not wx.TheClipboard.SetData(wx.TextDataObject(text)):
+                            raise RuntimeError('The clipboard did not accept the inspection report.')
+                    finally:
+                        wx.TheClipboard.Close()
+                    status.ChangeValue('Inspection report copied.')
+                except Exception as exc:
+                    status.ChangeValue(str(exc))
+                status.SetFocus()
+
+            def export_report(event):
+                try:
+                    message = self._export_inspection_report(report, dialog, current)
+                    if message is not None:
+                        status.ChangeValue(message)
+                except Exception as exc:
+                    status.ChangeValue(str(exc))
+                status.SetFocus()
+
+            copy.Bind(wx.EVT_BUTTON, copy_report)
+            export.Bind(wx.EVT_BUTTON, export_report)
+            reader.SetInsertionPoint(0)
+            reader.SetFocus()
+            if not current():
+                raise ValueError('The inspected Studio source or completed run changed before display.')
+            dialog.ShowModal()
+        finally:
+            dialog.Destroy()
 
     def verify_book(self, event=None):
         try:
