@@ -229,7 +229,7 @@ def run_native(source=None):
                       and reader.controller.current.verified is False
                       and 'unverified' in reader.location.GetValue().lower())
                 check('native imported text receives keyboard focus', pump(lambda: wx.Window.FindFocus() is reader.text))
-                next_button = next(button for button in reader.buttons if button.GetLabel() == 'Next source location')
+                next_button = next(button for button in reader.buttons if button.GetName() == 'Next source location')
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, next_button.GetId())
                 event.SetEventObject(next_button)
                 check('native next-document-segment button event is handled',
