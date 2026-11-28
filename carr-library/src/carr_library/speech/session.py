@@ -295,7 +295,7 @@ class ReaderDraftStore:
                     raise ValueError('Unsupported saved reading draft.')
                 document = record['document']
                 schema = document.get('schema')
-                if schema not in ('carr.reading-copy.v1', 'carr.reading-copy.v2'):
+                if schema not in ('carr.reading-copy.v1', 'carr.reading-copy.v2', 'carr.reading-copy.v3'):
                     raise ValueError('Unsupported reading-copy schema.')
                 title = text_value(document.get('title'), 'reading-copy title', maximum=512)
                 original = text_value(document.get('source_text'), 'source text', empty=True)
@@ -305,7 +305,8 @@ class ReaderDraftStore:
                 after = _saved_digest(path, cancelled)
                 if before != after:
                     raise ValueError('The saved draft changed during discovery.')
-                copies.append(ReaderDraftSummary(key, title, schema == 'carr.reading-copy.v2',
+                copies.append(ReaderDraftSummary(key, title, schema == 'carr.reading-copy.v2'
+                                                or schema == 'carr.reading-copy.v3' and document.get('source_anchor') is not None,
                                                 revision, len(original), after, stamp))
             except InterruptedError:
                 raise

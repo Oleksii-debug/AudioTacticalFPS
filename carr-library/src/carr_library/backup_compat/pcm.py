@@ -45,43 +45,51 @@ def _local_path(value):
 
 
 def _pcm_header(path):
-    """Read RIFF or RF64 PCM16 bounds without loading the recording into RAM."""
-    size = path.stat().st_size
+    """Read RIFF/RF64 PCM16 bounds from the same opened recording descriptor."""
     with path.open('rb') as stream:
-        header = stream.read(12)
-        if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
-            raise ValueError('Not a RIFF/RF64 PCM recording.')
-        fmt = None
-        rf64_data = None
-        while stream.tell() + 8 <= size:
-            chunk, length = struct.unpack('<4sI', stream.read(8))
-            start = stream.tell()
-            if chunk == b'ds64':
-                if length < 28:
-                    raise ValueError('Invalid RF64 size descriptor.')
-                _, rf64_data, _, _ = struct.unpack('<QQQI', stream.read(28))
-            elif chunk == b'fmt ':
-                if length < 16 or length > 4096:
-                    raise ValueError('Invalid PCM format descriptor.')
-                payload = stream.read(length)
-                code, channels, rate, byte_rate, align, bits = struct.unpack('<HHIIHH', payload[:16])
-                if code == 0xfffe and (len(payload) < 40 or payload[24:40] != bytes.fromhex('0100000000001000800000aa00389b71')):
-                    raise ValueError('Unsupported extensible WAV subtype.')
-                if (code not in (1, 0xfffe) or bits != 16 or channels not in (1, 2)
-                        or align != channels * 2 or not 0 < rate <= 768000 or byte_rate != rate * align):
-                    raise ValueError('Expected mono/stereo PCM16 audio.')
-                fmt = rate, channels, align
-            elif chunk == b'data':
-                if fmt is None:
-                    raise ValueError('PCM audio is missing its format header.')
-                if length == 0xffffffff:
-                    if header[:4] != b'RF64' or rf64_data is None:
-                        raise ValueError('PCM data length is not verifiable.')
-                    length = rf64_data
-                if length <= 0 or start + length > size or length % fmt[2]:
-                    raise ValueError('PCM recording is empty, truncated or not sample aligned.')
-                return fmt[0], fmt[1], length // fmt[2], start, length
-            if start + length > size:
-                raise ValueError('Truncated PCM chunk.')
-            stream.seek(start + length + (length & 1))
+        return _pcm_header_stream(stream, os.fstat(stream.fileno()).st_size)
+
+
+def _pcm_header_stream(stream, size, *, check=lambda: None):
+    """Reuse the current PCM parser on a caller-owned, identity-checked stream."""
+    if type(size) is not int or size < 12 or stream.tell() != 0:
+        raise ValueError('Read a complete PCM header from the start of its held stream.')
+    check()
+    header = stream.read(12)
+    if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
+        raise ValueError('Not a RIFF/RF64 PCM recording.')
+    fmt = None
+    rf64_data = None
+    while stream.tell() + 8 <= size:
+        check()
+        chunk, length = struct.unpack('<4sI', stream.read(8))
+        start = stream.tell()
+        if chunk == b'ds64':
+            if length < 28:
+                raise ValueError('Invalid RF64 size descriptor.')
+            _, rf64_data, _, _ = struct.unpack('<QQQI', stream.read(28))
+        elif chunk == b'fmt ':
+            if length < 16 or length > 4096:
+                raise ValueError('Invalid PCM format descriptor.')
+            payload = stream.read(length)
+            code, channels, rate, byte_rate, align, bits = struct.unpack('<HHIIHH', payload[:16])
+            if code == 0xfffe and (len(payload) < 40 or payload[24:40] != bytes.fromhex('0100000000001000800000aa00389b71')):
+                raise ValueError('Unsupported extensible WAV subtype.')
+            if (code not in (1, 0xfffe) or bits != 16 or channels not in (1, 2)
+                    or align != channels * 2 or not 0 < rate <= 768000 or byte_rate != rate * align):
+                raise ValueError('Expected mono/stereo PCM16 audio.')
+            fmt = rate, channels, align
+        elif chunk == b'data':
+            if fmt is None:
+                raise ValueError('PCM audio is missing its format header.')
+            if length == 0xffffffff:
+                if header[:4] != b'RF64' or rf64_data is None:
+                    raise ValueError('PCM data length is not verifiable.')
+                length = rf64_data
+            if length <= 0 or start + length > size or length % fmt[2]:
+                raise ValueError('PCM recording is empty, truncated or not sample aligned.')
+            return fmt[0], fmt[1], length // fmt[2], start, length
+        if start + length > size:
+            raise ValueError('Truncated PCM chunk.')
+        stream.seek(start + length + (length & 1))
     raise ValueError('The recording has no PCM data.')

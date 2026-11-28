@@ -35,6 +35,25 @@ epoch are checked before publishing that page or its cursors. Later calls and
 quotation copy obtain fresh authority. The bulk ASCII path retains the same
 Unicode normalization, source offsets and bounded cancellation checks.
 
+## Current finalization additions
+
+The source also includes the following reviewed additions to the existing services.
+Their completed component results are recorded separately below; the final
+composition is qualified by the exact-head checks on
+[PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
+No predecessor result is a substitute for testing that composed package.
+
+| Workflow | Implemented route and retained boundary |
+| --- | --- |
+| Speech preparation | [Explicit EN/UK/SK proposal review](SPEECH_PREPARATION.md), with exact original/derived maps, one compound Undo/Redo operation, stale-source refusal and ordinary Reader/Studio save/recovery. The pinned Slovak code and its own notices are included in the actual package metadata and licence inventory. |
+| Live text A–B and sleep | [Repeat one explicit source range and stop after the selected interval](LIVE_READING.md) through the existing live-reader owner, player, budget and cancellation path. Original source bytes stay unchanged; audio quality and physical output remain separately qualified. |
+| Word desktop citations | [Native citation controls and an optional local Word bridge](WORD_DESKTOP_INTEGRATION.md) use the current CSL/schema, source-bound references and a new working copy. Uncertain COM outcomes require inspection before replay; document Save and Undo remain explicit. Office absence is a zero-check NOT_RUN outcome, separate from required native CARR controls. |
+| Research-content merge | [Preview conflicts and choose whole workspaces](RESEARCH_CONTENT_MERGE.md) from two verified, immutable backups, then publish into a fresh destination. Exact research IDs, sources, history and evidence are preserved. This separate selective profile visibly omits operational/audio/settings state; the complete full-backup/restore route remains available. |
+| Completed-audio inspection | [Read-only long-silence inspection](AUDIO_SILENCE_INSPECTION.md) validates the current completed receipt and hashes the same PCM descriptor used for its header and samples. Exact intervals and complete counts are warnings for listening review, shown in the existing Studio status field. |
+| Editor interchange | [Standard chapter CUE sheets beside the measured WAV master](AUDIO_EDITOR_INTERCHANGE.md) retain source/timeline bindings and explicit 75 Hz rounding. The existing backup consumers validate retained metadata and exclude only recognized private rebuildable sheets. Actual libcue parsing is separate from a proprietary editor GUI claim. |
+| Components and diagnostics | [Help/About notices](ABOUT_COMPONENT_NOTICES.md) read actual installed metadata and upstream text. [Redacted diagnostics](REDACTED_DIAGNOSTICS.md) provide a bounded local preview and explicit create-only export through the same desktop executor; no telemetry is added. |
+| UI language plan | The [English-first Ukrainian/Slovak localization plan](UI_LOCALIZATION_PLAN.md) defines catalogue, fallback and native/human acceptance work. It does not claim that translated UI catalogues have already shipped. |
+
 ## Completed public implementation additions
 
 The current source retains these completed implementation groups:
@@ -197,6 +216,33 @@ enumeration defects, and both installed native paths hit the palette's wx text
 type error. The corrected palette, exact owned firewall recovery and the
 component-qualified runtime fixes are included in the current source; only the
 new complete integration run can qualify that union.
+
+### Newly completed component records
+
+All counts below are per reported context; overlapping suites are not added
+together as if they were distinct cases.
+
+| Exact component | Executed result | Retained evidence |
+| --- | --- | --- |
+| Indexed publication, head `409d2d7bebdeae13dc5c7ac97aa5d5304f331a8c`, [run 46112053954](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46112053954) | 306 source and 306 isolated installed cases on each OS, plus three subtests per context; real rollback after committed inline index inserts and native SQLite plan checks. | `e0ff493a9ebac6bdfb6817e33693023efc3044e1` |
+| Windows actual 512 MiB, head `04ef743f2b68069516e19adefd39ef405097938a`, [run 46112104315](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46112104315) | Full actual generation/admission/import, committed interruption, same-queue resume, catalog, complete search and unchanged saved budgets. The original scratch quota was retained. | `18a9c2c04c248166a5e7b323d0a3c33dc39ad074`; measured limits in [the scale guide](LARGE_LIBRARY_SCALE.md). |
+| About, head `8c51cb28f8410d01e4675876a703fcf558a424e5`, [run 46117569608](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46117569608) | 41 source and 41 installed cases on each OS; 19 actual native assertions in each of the core and semantic Windows profiles. | `4395289883c6de3d4f4b77a82bd6dce684e0ba84` |
+| Diagnostics, head `75be34c36dfc92d22a3fe138afb98c76a8f217f7`, [run 46118029628](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118029628) | Windows 77 + 77; Linux 78 + 78; 135 actual native assertions at that menu composition. Fixed scenario outcomes, rather than a variable key-press count, bind a later composition. | `4b82c8fe492ec5373c300f8b397074ea5f5f4659` |
+| Speech preparation, common head `20e56f1a8423b3943f610b7579bacedc773410d2`, native head `f127fecc136ee129e5d8ed7b63cd4b0a892412de` | 755 source and 755 installed cases on each OS; 321 actual native assertions for proposals, source maps, compound history, recovery, save, cancellation and lifetime. | Common `277388ce9e6444d1789fe8281aded18ebdbe705e`; native `9033d18c80d3ea299122968fe9075dac5ee128a5`. |
+| Live range/sleep, common head `a07b52423823f8c175218178047ce883746667dc`, native head `c1285910738e71b2c15b68599f54b29938be1cfe` | 987 source and 987 installed cases on each OS; 126 actual native assertions and five real selected SAPI renders, with explicitly controlled PCM output. | Common `8a55ed632361b245533d91788d8c291cfe7424d5`; native `3e97f7fca1e68fbdb9e6752fdafd1391b9be858e`. |
+| Word common contracts, head `8a7b8632009f8019c3223465c4129b8d23ccafdf`, [run 46120130479](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120130479) | 539 source and 539 installed cases on each OS, including current CSL/document protocols and controlled host ownership; 408 Python files and 20 CSL/runtime/notice assets checked before and after. | `9b620e7e1045049eb3af6eb2decc79268620e7c9`; actual Office and native CARR UI remain distinct records. |
+| Research merge common contracts, head `cf16f98880eb5fb72c0eeb9eb6121e85a7181406`, [run 46120328460](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120328460) | 237 source and 237 installed cases on each OS, including all 36 new graph, rollback, conflict, executor and late-result cases; 408 Python files and 20 CSL assets checked before and after. | `4b69a98a4dc6e7b5cb3495470fdd0667dd286eec`. |
+
+These completed contracts have no skipped or expected-failure cases. CUE and
+silence use a combined 17-suite acceptance route with an actual independent
+libcue reader; its exact result and the remaining native records are attached
+to the composed-head qualification, rather than inferred from authored tests.
+The maintained Windows and V3 gates execute all eight final native scope
+contracts through one committed helper, with all installed Python modules,
+22 selected runtime/notice assets, exact probe files and the selected audio
+evidence checked before and after. Human NVDA, physical listening, proprietary
+Office availability, private model compatibility and release signing remain
+separate qualifications.
 
 ## Executed predecessor evidence
 

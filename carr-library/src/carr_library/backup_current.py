@@ -256,6 +256,8 @@ def legacy_empty_directories(entries):
 
 
 def validate_collection(db, stage, entries, *, independent=True, cancelled=lambda: False):
+    from .backup_producers import validate_studio_interchange
+    validate_studio_interchange(stage, entries, cancelled=cancelled)
     from .assistant.templates import MAX_TEMPLATES
     if sum(bool(_WORKFLOW_TEMPLATE.fullmatch(entry['filename'])) for entry in entries) > MAX_TEMPLATES:
         raise RestoreError('The workflow template collection exceeds 64 records.')

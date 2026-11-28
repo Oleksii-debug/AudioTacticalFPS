@@ -66,6 +66,7 @@ def create_studio_pronunciation_dialog(frame, *, service=None, wx_module=None):
             for items in (
                 (('reload', 'Reload projects', self.reload), ('open', '&Open selected line', self.open_line),
                  ('review', '&Review pronunciation rules', self.review)),
+                (('prepare', 'Prepare speech text...', lambda event: self.review(event, preparation=True)),),
                 (('save', '&Save spoken line', self.save), ('undo', '&Undo last saved change', self.undo_saved),
                  ('discard', '&Discard unsaved line changes', self.discard)),
                 (('cancel', 'Ca&ncel operation', self.cancel), ('close', '&Close', self.close))):
@@ -115,7 +116,7 @@ def create_studio_pronunciation_dialog(frame, *, service=None, wx_module=None):
                 allowed = idle
                 if key in ('reload', 'open'):
                     allowed = idle and not dirty
-                elif key == 'review':
+                elif key in ('review', 'prepare'):
                     allowed = idle and self.draft is not None
                 elif key in ('save', 'discard'):
                     allowed = idle and dirty
@@ -290,7 +291,7 @@ def create_studio_pronunciation_dialog(frame, *, service=None, wx_module=None):
             if self.draft is not draft or (signature is not None and draft.document._signature() != signature):
                 raise ValueError('The spoken-line reading draft changed. Review it again.')
 
-        def review(self, event=None):
+        def review(self, event=None, *, preparation=False):
             if not self.alive:
                 return
             try:
@@ -298,6 +299,8 @@ def create_studio_pronunciation_dialog(frame, *, service=None, wx_module=None):
                 if self.pending or self.draft is None:
                     raise ValueError('Open a spoken line and finish its current operation first.')
                 draft = self.draft; self.same_selection(draft)
+                if preparation:
+                    from .speech_preparation import capture_speech, apply_speech, create_speech_preparation
                 def guard():
                     self.draft_guard(draft)
                 def capture():
@@ -305,10 +308,14 @@ def create_studio_pronunciation_dialog(frame, *, service=None, wx_module=None):
                     first, last = self.text.GetSelection()
                     prefix, selection = self.text.GetRange(0, first), self.text.GetRange(first, last)
                     start, end = native_reading_range(draft.document.text, self.text.GetValue(), prefix, selection)
-                    return ReadingSnapshot.capture(draft.document, (start, end),
+                    capture_current = capture_speech if preparation else ReadingSnapshot.capture
+                    return capture_current(draft.document, (start, end),
                         language=draft.role.language, voice_id=draft.role.voice_id)
                 def apply(preview):
-                    apply_pronunciation_preview(draft.document, preview, capture())
+                    if preparation:
+                        apply_speech(draft.document, preview, capture())
+                    else:
+                        apply_pronunciation_preview(draft.document, preview, capture())
                     self.text.ChangeValue(draft.document.text)
                     return capture(), 'This is a local Studio line draft. Close this dialog and Save spoken line to create a project revision.'
                 def undo(expected):
@@ -322,10 +329,16 @@ def create_studio_pronunciation_dialog(frame, *, service=None, wx_module=None):
                     # dialogs omit this keyword and classify their own results.
                     return self.run('Reviewing Studio pronunciation rules', operation, done,
                                     failed=on_failed, committed=committed)
-                child = create_pronunciation_dialog(self, library_root=self.root, capture=capture,
-                    apply=apply, undo=undo, guard=guard, run=run, cancel=frame.cancel_event, wx_module=wx)
+                if preparation:
+                    child = create_speech_preparation(self, capture=capture, apply=apply, undo=undo,
+                        guard=guard, run=run, cancel=frame.cancel_event, wx_module=wx)
+                else:
+                    child = create_pronunciation_dialog(self, library_root=self.root, capture=capture,
+                        apply=apply, undo=undo, guard=guard, run=run, cancel=frame.cancel_event, wx_module=wx)
                 try:
-                    child.on_load(); child.ShowModal()
+                    if not preparation:
+                        child.on_load()
+                    child.ShowModal()
                 finally:
                     if child and child.alive:
                         child.finish_close()

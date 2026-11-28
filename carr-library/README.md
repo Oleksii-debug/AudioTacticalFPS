@@ -98,6 +98,29 @@ instructions.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
 
+- Review [English, Ukrainian and Slovak speech preparation](docs/SPEECH_PREPARATION.md)
+  before applying it to a reading copy or Studio text. Original text and the
+  exact derived mapping remain available; the accepted proposal is one Undo/Redo
+  operation and uses the existing save and recovery routes.
+- Repeat an explicit source-text A–B range and set or cancel a sleep interval
+  in [live reading](docs/LIVE_READING.md), using the current reader and player.
+- Use [native Word citation controls](docs/WORD_DESKTOP_INTEGRATION.md) with the
+  existing CSL format and source-bound references. The optional local Word
+  connection works on a new copy and keeps document Save and Undo explicit.
+- Preview conflicts between two verified backups and
+  [merge their published research content](docs/RESEARCH_CONTENT_MERGE.md)
+  into a fresh destination, with whole-workspace choices and explicit
+  acknowledgement of the operational state this selective profile omits.
+- Inspect [long silent intervals](docs/AUDIO_SILENCE_INSPECTION.md) in a current
+  completed Studio production. The read-only report is shown in the existing
+  status field and does not alter the audio.
+- Export [standard chapter CUE sheets](docs/AUDIO_EDITOR_INTERCHANGE.md) beside
+  the measured WAV master, with explicit frame rounding and retained timeline
+  and source bindings.
+- Read actual installed [component notices in Help/About](docs/ABOUT_COMPONENT_NOTICES.md)
+  and preview a bounded [redacted diagnostic report](docs/REDACTED_DIAGNOSTICS.md)
+  before explicitly saving it to a new local file.
+
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
 as verified quotations. DOCX and EPUB are imported as logical segments, with unknown
@@ -107,12 +130,19 @@ score never approves a quotation.
 
 ## Candidate status and verification
 
-This is an integrated development candidate. The assembled services and installed
-Python package have real end-to-end tests, including offline local model
-inference, citation preservation, workspace isolation and backup recovery.
-The native Windows workflow also exercises installation, desktop controls, local
-model inference and scanned-source review. Manual NVDA acceptance remains a
-separate check; automated native UI tests do not establish its spoken behavior.
+This is an integrated development candidate. Required source and installed-package
+checks, actual Windows controls, offline execution and large-library tiers qualify
+the exact composed commit. See [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143)
+and [release readiness](docs/V3_RELEASE_READINESS.md) for the current result and
+retained evidence. Completed component runs apply to their own recorded commits;
+they do not predeclare the final composition's result.
+
+Manual NVDA acceptance, physical audio output and private model packages have
+separate acceptance evidence. Word desktop automation is optional and reports
+an explicit zero-check NOT_RUN result when Office is unavailable; CARR's native
+citation controls remain required. The current UI uses English; the
+[Ukrainian and Slovak localization plan](docs/UI_LOCALIZATION_PLAN.md) describes
+the remaining catalogue and acceptance work.
 
 The Windows bundle's hashes and dependency inventory are verified during
 assembly. Only local synthetic or lawfully supplied fixtures may be used in

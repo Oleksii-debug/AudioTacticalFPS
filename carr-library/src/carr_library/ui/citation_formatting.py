@@ -429,6 +429,7 @@ def _native_types():
             self.references = ()
             self.clusters = []
             self.result = None
+            self._word_request = None
             self.styles = available_styles()
             layout = wx.BoxSizer(wx.VERTICAL)
             self.tabs = wx.Notebook(self)
@@ -520,6 +521,10 @@ def _native_types():
             third.Add(self.attribution, 0, wx.ALL, 7)
             self.preview = labelled(preview_page, third, "Formatted citations and bibliography", wx.TextCtrl(preview_page,
                 style=wx.TE_READONLY | wx.TE_MULTILINE), proportion=1)
+            self.word_button = wx.Button(preview_page, label="Open &Word controls...")
+            self.word_button.SetName("Open native Word citation working copy")
+            self.word_button.Bind(wx.EVT_BUTTON, self.open_word)
+            third.Add(self.word_button, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
             preview_page.SetSizer(third)
             layout.Add(self.tabs, 1, wx.EXPAND | wx.ALL, 6)
             self.format_button = wx.Button(self, label="&Format locally (F6)")
@@ -534,7 +539,8 @@ def _native_types():
             self.controls.extend((self.references_box, self.all_button, self.none_button, self.reload_button, self.style,
                 self.locale, self.citation_reference, self.locator_kind, self.locator,
                 self.verified, self.add_citation, self.citation_list, self.remove_citation, self.move_up, self.move_down,
-                self.document_title, self.format_button, self.export_button, self.regenerate_button))
+                self.document_title, self.format_button, self.export_button, self.regenerate_button,
+                self.word_button))
             command = int(wx.NewIdRef())
             self.Bind(wx.EVT_MENU, self.format, id=command)
             self.SetAcceleratorTable(wx.AcceleratorTable([(wx.ACCEL_NORMAL, wx.WXK_F6, command)]))
@@ -547,6 +553,7 @@ def _native_types():
             super().update_controls()
             self.format_button.Enable(bool(self.references) and not self.pending)
             self.export_button.Enable(self.result is not None and not self.pending)
+            self.word_button.Enable(self.result is not None and bool(self.result.citations) and not self.pending)
             for control in (self.add_citation, self.all_button, self.none_button):
                 control.Enable(bool(self.references) and not self.pending)
             for control in (self.remove_citation, self.move_up, self.move_down):
@@ -697,6 +704,14 @@ def _native_types():
             self.run("Saving the citation document", lambda: self.controller.export_docx(snapshot, result, destination,
                 title=title, cancelled=self.cancel_event.is_set), lambda path: self.report(f"Saved the editable citation document: {path}"),
                 published_result=True)
+
+        def open_word(self, event=None):
+            if self.pending or self.snapshot is None or self.result is None or not self.result.citations:
+                return
+            _guard(self.GetParent(), self.controller.library, self.controller.workspace)
+            self._word_request = (self.controller, self.snapshot, self.result)
+            # Finish this modal loop before the same Desktop opens Word controls.
+            self.close()
 
         def open_regeneration(self, event=None):
             if self.pending:
@@ -927,19 +942,29 @@ def _native_types():
 
 
 def show_citation_formatter(frame):
+    from .word_citations_dialog import _live, show_word_citations
     dialog = None
+    dialog_id = None
+    request = None
+    frame_id = frame.GetId()
     try:
         library, workspace = _scope(frame)
         controller = CitationFormattingController(library, workspace)
         CitationDialog, _ = _native_types()
         dialog = CitationDialog(frame, controller)
+        dialog_id = dialog.GetId()
         dialog.ShowModal()
+        request = getattr(dialog, "_word_request", None)
     except Exception as error:
-        frame.report("Citation formatting could not open. " + str(error))
+        if _live(frame, frame_id) and not getattr(frame, "_closing", False):
+            frame.report("Citation formatting could not open. " + str(error))
     finally:
         if dialog is not None:
             dialog.shutdown()
-            dialog.Destroy()
+            if _live(dialog, dialog_id):
+                dialog.Destroy()
+    if request is not None and _live(frame, frame_id) and not getattr(frame, "_closing", False):
+        show_word_citations(frame, *request)
 
 
 def show_doi_preview(frame):

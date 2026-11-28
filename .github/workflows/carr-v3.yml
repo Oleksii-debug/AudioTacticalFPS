@@ -501,6 +501,25 @@ jobs:
             tests/ui/test_backup_resource_actions.py \
             tests/ui/test_playback_queue.py \
             tests/ui/test_search_owner_lifetime.py \
+            tests/academic_integration/test_word_com.py \
+            tests/diagnostics/test_support_diagnostics.py \
+            tests/packaging/test_component_notices.py \
+            tests/packaging/test_preparation_notice_closure.py \
+            tests/reader/test_speech_normalization.py \
+            tests/speech/test_preparation.py \
+            tests/storage/test_cue_interchange_backup.py \
+            tests/storage/test_research_content_merge.py \
+            tests/studio/test_interchange.py \
+            tests/studio/test_production_hardening.py \
+            tests/studio/test_silence.py \
+            tests/ui/test_about_dialog.py \
+            tests/ui/test_diagnostics_dialog.py \
+            tests/ui/test_live_range_controls.py \
+            tests/ui/test_research_merge_dialog.py \
+            tests/ui/test_speech_preparation.py \
+            tests/ui/test_speech_preparation_hooks.py \
+            tests/ui/test_studio_silence_actions.py \
+            tests/ui/test_word_citations_dialog.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -514,7 +533,7 @@ jobs:
 
   native-studio:
     runs-on: windows-2022
-    timeout-minutes: 240
+    timeout-minutes: 270
     defaults:
       run:
         shell: pwsh
@@ -635,6 +654,7 @@ jobs:
           names = tuple(dict.fromkeys((*names, 'carr_library.assistant.llm', 'carr_library.assistant.local_tools', 'carr_library.assistant.models', 'carr_library.assistant.planner', 'carr_library.assistant.player_tools', 'carr_library.assistant.service', 'carr_library.audio.conversion_batch', 'carr_library.audio.dsp', 'carr_library.audio.process', 'carr_library.conversion.service', 'carr_library.reader.live_player', 'carr_library.reader.live_reading', 'carr_library.security._https_worker', 'carr_library.security.download_state', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.updates', 'carr_library.speech._wave_output', 'carr_library.speech.listening', 'carr_library.speech.player', 'carr_library.ui.assistant_dialog', 'carr_library.ui.builtin_keyboard_commands', 'carr_library.ui.live_reading', 'carr_library.ui.playback_navigation', 'carr_library.ui.playback_settings', 'carr_library.ui.save_all', 'carr_library.ui.studio_clips', 'carr_library.ui.studio_dialog', 'carr_library.ui.update_maintenance')))
           names = tuple(dict.fromkeys((*names, 'carr_library.audio.cleanup', 'carr_library.assistant.state')))
           names = tuple(dict.fromkeys((*names, 'carr_library.__main__', 'carr_library.application', 'carr_library.assistant.profiles', 'carr_library.assistant.providers', 'carr_library.assistant.translation', 'carr_library.assistant.translation_batch', 'carr_library.assistant.translation_batch_cli', 'carr_library.assistant.translation_cli', 'carr_library.assistant.translation_local', 'carr_library.audio.windows_job', 'carr_library.backup_budget', 'carr_library.backup_current', 'carr_library.backup_incremental', 'carr_library.backup_incremental_cli', 'carr_library.backup_options', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.catalog.intake', 'carr_library.citations.pdf_review_attestation', 'carr_library.citations.text_attestation', 'carr_library.extract.document_formats', 'carr_library.extract.language_detection', 'carr_library.extract.language_manager', 'carr_library.extract.ocr_languages', 'carr_library.extract.ocr_regions', 'carr_library.extract.page_ocr', 'carr_library.extract.raster_pages', 'carr_library.extract.runtime_identity', 'carr_library.ingest.batch_cli', 'carr_library.ingest.batch_pages', 'carr_library.ingest.batch_scan', 'carr_library.ingest.batches', 'carr_library.ingest.catalog_asset_copy', 'carr_library.ingest.pipeline', 'carr_library.ingest.publication_identity', 'carr_library.ingest.reconciliation', 'carr_library.ingest.resource_budget', 'carr_library.ingest.retained_assets', 'carr_library.ingest.session', 'carr_library.ingest.slices', 'carr_library.ingest.worker', 'carr_library.library_backup', 'carr_library.pending_backup', 'carr_library.portable_entry', 'carr_library.search.federated', 'carr_library.search.literal', 'carr_library.search.originals', 'carr_library.search.paging', 'carr_library.search.ranked_scope', 'carr_library.search.semantic_windows', 'carr_library.search.thematic', 'carr_library.security.refresh', 'carr_library.semantic', 'carr_library.speech.player', 'carr_library.speech.playlist', 'carr_library.storage.publication', 'carr_library.storage.revisions', 'carr_library.studio.backup_inputs', 'carr_library.studio.clips', 'carr_library.ui.assistant_dialog', 'carr_library.ui.backup_actions', 'carr_library.ui.backup_incremental_dialog', 'carr_library.ui.backup_resources', 'carr_library.ui.desktop_app', 'carr_library.ui.federated_search', 'carr_library.ui.import_center', 'carr_library.ui.import_resources', 'carr_library.ui.ocr_selection', 'carr_library.ui.playback_navigation', 'carr_library.ui.playback_queue', 'carr_library.ui.studio_dialog', 'carr_library.ui.translation_batch_dialog', 'carr_library.ui.translation_dialog')))
+          names = tuple(dict.fromkeys((*names, "carr_library.academic_integration.documents", "carr_library.academic_integration.word_com", "carr_library.backup_compat.pcm", "carr_library.backup_current", "carr_library.backup_producers", "carr_library.backup_sidecars", "carr_library.component_notices", "carr_library.reader._vendor_num2words", "carr_library.reader._vendor_num2words.base", "carr_library.reader._vendor_num2words.compat", "carr_library.reader._vendor_num2words.currency", "carr_library.reader._vendor_num2words.lang_SK", "carr_library.reader._vendor_num2words.utils", "carr_library.reader.live_reading", "carr_library.reader.speech_normalization", "carr_library.research_merge", "carr_library.speech.preparation", "carr_library.speech.reading", "carr_library.speech.session", "carr_library.studio.interchange", "carr_library.studio.render", "carr_library.studio.silence", "carr_library.support_diagnostics", "carr_library.ui.about_dialog", "carr_library.ui.citation_formatting", "carr_library.ui.desktop_app", "carr_library.ui.diagnostics_dialog", "carr_library.ui.live_range_controls", "carr_library.ui.live_reading", "carr_library.ui.research_merge_dialog", "carr_library.ui.speech_dialog", "carr_library.ui.speech_preparation", "carr_library.ui.studio_dialog", "carr_library.ui.studio_pronunciation", "carr_library.ui.word_citations_dialog")))
           for name in names:
               importlib.import_module(name)
           def installed_origins():
@@ -977,6 +997,25 @@ jobs:
               'tests/security/test_update_resume_https.py',
               'tests/storage/test_durable_state_publication.py',
               'tests/studio/test_production.py',
+              'tests/academic_integration/test_word_com.py',
+              'tests/diagnostics/test_support_diagnostics.py',
+              'tests/packaging/test_component_notices.py',
+              'tests/packaging/test_preparation_notice_closure.py',
+              'tests/reader/test_speech_normalization.py',
+              'tests/speech/test_preparation.py',
+              'tests/storage/test_cue_interchange_backup.py',
+              'tests/storage/test_research_content_merge.py',
+              'tests/studio/test_interchange.py',
+              'tests/studio/test_production_hardening.py',
+              'tests/studio/test_silence.py',
+              'tests/ui/test_about_dialog.py',
+              'tests/ui/test_diagnostics_dialog.py',
+              'tests/ui/test_live_range_controls.py',
+              'tests/ui/test_research_merge_dialog.py',
+              'tests/ui/test_speech_preparation.py',
+              'tests/ui/test_speech_preparation_hooks.py',
+              'tests/ui/test_studio_silence_actions.py',
+              'tests/ui/test_word_citations_dialog.py',
           ]
           suites.extend([
               'tests/assistant/test_translation_local.py',
@@ -1097,7 +1136,8 @@ jobs:
           "CARR_DAISY_SCHEMAS=$schemas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Real native SAPI, scene production, keyboard controls and restart
-        timeout-minutes: 65
+        # Final scope adds eight explicit native feature probes; their owned deadlines remain unchanged.
+        timeout-minutes: 95
         run: |
           $python = (Get-Command python.exe).Source
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
@@ -1221,6 +1261,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
             & $python -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-v3-results/native-portable-sync.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native encrypted snapshot workflow failed.' }
+            & $python -I -B -X utf8 scripts/run_final_scope_native.py --expected-head '${{ github.event.pull_request.head.sha || github.sha }}' --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --output 'ci-v3-results/final-scope-native' 2>&1 | Tee-Object 'ci-v3-results/final-scope-native.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Final exact-head installed native feature acceptance failed.' }
             & $python -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-installed --report 'ci-v3-results/epub-conformance.json' 2>&1 | Tee-Object 'ci-v3-results/epub-conformance.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual EPUBCheck conformance acceptance failed.' }
           } finally {

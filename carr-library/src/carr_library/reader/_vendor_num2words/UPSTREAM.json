@@ -1,0 +1,34 @@
+{
+  "name": "num2words",
+  "version": "0.5.14",
+  "repository": "https://github.com/savoirfairelinux/num2words",
+  "commit": "6abe2c64714a38e41de23fe20fa319d0ad2fd845",
+  "license": "LGPL-2.1-or-later",
+  "scope": "Unmodified Slovak integer-cardinal runtime closure; local inert __init__.py. Upstream package initializer and CLI/docopt are not used.",
+  "files": {
+    "lang_SK.py": {
+      "upstream_path": "num2words/lang_SK.py",
+      "git_blob": "35ece024f13cf90999d3ca4954229f1d4994a4ba"
+    },
+    "base.py": {
+      "upstream_path": "num2words/base.py",
+      "git_blob": "243045ffc701ce2986f12f02101f2cbca92960a5"
+    },
+    "utils.py": {
+      "upstream_path": "num2words/utils.py",
+      "git_blob": "b5e4611be5fafe19324a00594b2648d75bd17bd8"
+    },
+    "compat.py": {
+      "upstream_path": "num2words/compat.py",
+      "git_blob": "321cd2e84e11335163afc5902b1b136196fee889"
+    },
+    "currency.py": {
+      "upstream_path": "num2words/currency.py",
+      "git_blob": "4982251ec4f8a15c286dab82388154daf26b706d"
+    },
+    "COPYING": {
+      "upstream_path": "COPYING",
+      "git_blob": "a7b7406f02f769167539316e5093cd58f609dce5"
+    }
+  }
+}

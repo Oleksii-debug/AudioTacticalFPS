@@ -248,6 +248,22 @@ def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
     metadata.text = raw.decode('utf-8')
     part = Part(PackURI('/' + _PART), 'application/xml', etree.tostring(metadata,
                 xml_declaration=True, encoding='UTF-8', standalone=True))
+    # A standard datastore identity makes the same payload addressable through
+    # Word.CustomXMLParts. The UUID identifies this part, not source authority.
+    from uuid import NAMESPACE_URL, uuid5
+    properties_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/customXml'
+    properties = etree.Element('{%s}datastoreItem' % properties_namespace,
+                               nsmap={'ds': properties_namespace})
+    properties.set('{%s}itemID' % properties_namespace,
+                   '{' + str(uuid5(NAMESPACE_URL, _NAMESPACE + ':' + sha256(raw).hexdigest())).upper() + '}')
+    references = etree.SubElement(properties, '{%s}schemaRefs' % properties_namespace)
+    etree.SubElement(references, '{%s}schemaRef' % properties_namespace).set(
+        '{%s}uri' % properties_namespace, _NAMESPACE)
+    properties_part = Part(PackURI('/customXml/carr-citations-props.xml'),
+        'application/vnd.openxmlformats-officedocument.customXmlProperties+xml',
+        etree.tostring(properties, xml_declaration=True, encoding='UTF-8', standalone=True))
+    part.relate_to(properties_part,
+        'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps')
     document.part.relate_to(part, RT.CUSTOM_XML)
     output = BytesIO()
     document.save(output)
@@ -276,8 +292,74 @@ def read_citation_docx(source: str | Path) -> dict:
     return _read_citation_docx_bytes(raw)
 
 
+def _citation_xml(snapshot: dict) -> bytes:
+    """Encode the existing schema-1 payload; native Word uses this same codec."""
+    raw = _json(snapshot)
+    if len(raw) > 16_000_000:
+        raise CitationError('The citation document provenance exceeds its size budget.')
+    node = etree.Element('{%s}citations' % _NAMESPACE, nsmap={None: _NAMESPACE})
+    node.set('schema', '1')
+    node.set('sha256', sha256(raw).hexdigest())
+    node.text = raw.decode('utf-8')
+    return etree.tostring(node, xml_declaration=True, encoding='UTF-8', standalone=True)
+
+
+def _citation_node(raw: bytes):
+    if type(raw) is not bytes or len(raw) > 16_000_000:
+        raise CitationError('The citation document provenance exceeds its size budget.')
+    try:
+        node = etree.fromstring(raw, etree.XMLParser(
+            resolve_entities=False, no_network=True, load_dtd=False))
+    except (ValueError, etree.XMLSyntaxError) as exc:
+        raise CitationError('The document citation snapshot is invalid.') from exc
+    # This also detects UTF-16 declarations after Word's own save operation.
+    if node.getroottree().docinfo.doctype or any(
+            isinstance(child, etree._Entity) for child in node.iter()):
+        raise CitationError('Citation provenance must not contain external entities.')
+    return node
+
+
+def _read_citation_xml_bytes(raw: bytes) -> dict:
+    node = _citation_node(raw)
+    if (node.tag != '{%s}citations' % _NAMESPACE or node.get('schema') != '1'
+            or len(node)):
+        raise CitationError('The document citation snapshot uses an unsupported schema.')
+    payload = (node.text or '').encode('utf-8')
+    if sha256(payload).hexdigest() != node.get('sha256'):
+        raise CitationError('The document citation snapshot failed its integrity check.')
+    try:
+        result = json.loads(payload)
+        if not isinstance(result, dict) or result.get('schema') != 1:
+            raise CitationError('The document citation snapshot is invalid.')
+        return result
+    except (ValueError, RecursionError) as exc:
+        if isinstance(exc, CitationError):
+            raise
+        raise CitationError('The document citation snapshot is invalid.') from exc
+
+
+def _read_citation_xml(value: str) -> dict:
+    """Read the Unicode CustomXMLPart.XML value without trusting its encoding label."""
+    if type(value) is not str or len(value) > 16_000_000:
+        raise CitationError('The citation document provenance exceeds its size budget.')
+    # COM has already decoded this string. Word may retain an UTF-16 XML
+    # declaration; remove only that leading declaration before our UTF-8 encode.
+    import re
+    text = value.lstrip('\ufeff')
+    if text.startswith('<?xml'):
+        end = text.find('?>', 0, 256)
+        if end < 0 or not re.fullmatch(r'<\?xml\s[^?]*\?>', text[:end + 2]):
+            raise CitationError('The document citation snapshot has an invalid XML declaration.')
+        text = text[end + 2:]
+    return _read_citation_xml_bytes(text.encode('utf-8'))
+
+
 def _read_citation_docx_bytes(document_bytes: bytes) -> dict:
-    """Parse one bounded immutable snapshot, including its embedded checksum."""
+    """Parse one bounded immutable snapshot, including its embedded checksum.
+
+    Word can rename a custom XML part when it saves an editable document. Only
+    the unique exact CARR namespace is selected; a filename alone is not authority.
+    """
     if type(document_bytes) is not bytes or len(document_bytes) > _MAX_DOCUMENT:
         raise CitationError('The citation document exceeds its size budget.')
     try:
@@ -285,26 +367,26 @@ def _read_citation_docx_bytes(document_bytes: bytes) -> dict:
             infos = archive.infolist()
             if len(infos) > 10_000 or sum(i.file_size for i in infos) > 100_000_000:
                 raise CitationError('The citation document exceeds its archive budget.')
-            matching = [x for x in infos if x.filename == _PART]
-            if len(matching) != 1 or matching[0].file_size > 16_000_000:
+            names = [info.filename for info in infos]
+            if len(names) != len(set(names)) or len(names) != len({name.casefold() for name in names}):
+                raise CitationError('The citation document has duplicate or aliased archive parts.')
+            matching = []
+            for info in infos:
+                if (not info.filename.startswith('customXml/')
+                        or info.filename.count('/') != 1 or not info.filename.endswith('.xml')):
+                    continue
+                if info.file_size > 16_000_000:
+                    raise CitationError('The document has no unique bounded CARR citation snapshot.')
+                raw = archive.read(info)
+                node = _citation_node(raw)
+                if node.tag == '{%s}citations' % _NAMESPACE:
+                    matching.append(raw)
+                elif info.filename == _PART:
+                    raise CitationError('The document citation snapshot uses an unsupported schema.')
+                if len(matching) > 1:
+                    raise CitationError('The document has no unique bounded CARR citation snapshot.')
+            if len(matching) != 1:
                 raise CitationError('The document has no unique bounded CARR citation snapshot.')
-            raw = archive.read(matching[0])
+            return _read_citation_xml_bytes(matching[0])
     except (OSError, BadZipFile) as exc:
         raise CitationError('The citation document is not a readable DOCX archive.') from exc
-    if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
-        raise CitationError('Citation provenance must not contain external entities.')
-    try:
-        node = etree.fromstring(raw, etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False))
-        if node.tag != '{%s}citations' % _NAMESPACE or node.get('schema') != '1':
-            raise CitationError('The document citation snapshot uses an unsupported schema.')
-        payload = (node.text or '').encode('utf-8')
-        if sha256(payload).hexdigest() != node.get('sha256'):
-            raise CitationError('The document citation snapshot failed its integrity check.')
-        result = json.loads(payload)
-        if not isinstance(result, dict) or result.get('schema') != 1:
-            raise CitationError('The document citation snapshot is invalid.')
-        return result
-    except (ValueError, etree.XMLSyntaxError) as exc:
-        if isinstance(exc, CitationError):
-            raise
-        raise CitationError('The document citation snapshot is invalid.') from exc

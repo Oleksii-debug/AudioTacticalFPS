@@ -36,6 +36,7 @@ license-files = [
   "src/carr_library/extract/TESSDATA_FAST_LICENSE",
   "src/carr_library/extract/TESSDATA_BEST_LICENSE",
   "src/carr_library/extract/PY3LANGID_LICENSE",
+  "src/carr_library/reader/_vendor_num2words/COPYING",
 ]
 
 [project.optional-dependencies]
@@ -92,6 +93,7 @@ packages = [
   "carr_library.extract",
   "carr_library.ingest",
   "carr_library.reader",
+  "carr_library.reader._vendor_num2words",
   "carr_library.research",
   "carr_library.research._vendor_rispy",
   "carr_library.search",
@@ -129,6 +131,7 @@ bootstrap = "bootstrap"
 "carr_library.language_qualification" = ["data/*.md"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
 "carr_library.speech" = ["COMTYPES_LICENSE.txt", "spellcheck_backend.json"]
+"carr_library.reader._vendor_num2words" = ["COPYING", "UPSTREAM.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

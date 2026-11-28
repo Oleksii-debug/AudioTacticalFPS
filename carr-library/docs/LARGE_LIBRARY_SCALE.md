@@ -8,6 +8,70 @@ The import and retrieval benchmark scripts use the existing product routes. `scr
 
 The default import limits remain unchanged. Large sources use an explicit, frozen `ImportBudget`; its allowance does not grant source authority. Original identity, whole-source digest, sealed segments, publication attempts and source-backed quotations retain their current checks.
 
+### Latest completed index publication correction
+
+The [actual Windows 512 MiB protocol](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46112104315)
+passed at exact head `04ef743f2b68069516e19adefd39ef405097938a`.
+It generated and verified a real 536,871,085-byte original with 250 segments,
+admitted it through the public product API, reached the genuine committed
+interruption, resumed the same saved queue, and completed catalog and full-scope
+retrieval. The original 671,088,813-byte worker scratch allowance, 600-second
+worker deadline and saved resource policy were retained. There was no marker,
+observer, replacement process runner or hand-seeded index in this completed run.
+
+| Actual measurement | Windows result |
+| --- | ---: |
+| Public import/resume measurement | 71.033 s |
+| Measured source scan | 2.683 s |
+| Complete catalog verification | 9.399 s |
+| Complete retrieval protocol | 1791.572 s |
+| Literal windows, 17 samples, P50 / P95 | 13.375 / 14.165 s |
+| Scoped title anchors, 50 samples, P50 / P95 | 9.199 / 9.282 s |
+| First complete-scope ranking / unchanged-cache reopen | 29.399 / 30.399 s |
+| Ranking rows rebuilt on first call / reopen | 250 / 0 |
+| Actual worker's own observed peak | 69,058,560 bytes |
+| Coordinator's own observed peak | 1,836,339,200 bytes |
+| Application profile logical bytes | 2,821,986,267 bytes |
+
+Worker and coordinator figures are separate Windows process observations. They
+are not a concurrent process-family peak, physical allocation measurement or a
+claim that the 1 GiB accounting allowance enforces an OS memory ceiling.
+Application profile bytes include the retained originals and SQLite files; the
+categories overlap and must not be added again. The full record, exact source,
+package identity, original hash, saved budgets and raw log are retained in
+evidence `18a9c2c04c248166a5e7b323d0a3c33dc39ad074`, raw
+`9b48bcf1e1ce377fac667a78da47f4ced39fdcad`.
+
+The source correction is limited to the two existing index-fill paths. They
+iterate the selected page IDs through the current cursor and execute one scalar
+primary-key-backed insert for each ID. Existing savepoints, triggers, receipts,
+foreign-row guards and complete integrity checks stay in place. The
+[24-suite publication gate](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46112053954),
+head `409d2d7bebdeae13dc5c7ac97aa5d5304f331a8c`, passed 306 source and
+306 isolated installed cases on each OS, with three subtests per context.
+It exercises actual rollback after three real inserts for ordinary exceptions,
+KeyboardInterrupt and SystemExit; independent readers/writers; and the prior
+canonical validation oracle. All four contexts bound the complete 406-file
+Python package and 15 selected origins before and after execution. Evidence:
+`e0ff493a9ebac6bdfb6817e33693023efc3044e1`.
+
+The preceding diagnostic is retained as failure evidence. On the old SQL path,
+one sequential original-stat check observed the 536,871,085-byte source, a
+146,620,416-byte SQLite temporary file, the 332-byte request and the zero-byte
+before-insert marker: 683,491,833 sampled logical bytes against the unchanged
+671,088,813-byte quota. The after-insert marker was not observed. This is a
+sequential sample, not an atomic allocation snapshot or proof of an exact CPU
+instruction. The marker/observer are absent from the shipped product.
+Its record is `9a39e59a88222ca9925191c2c7fc0cd166802ffd`.
+Separate actual native SQLite plan evidence is retained in
+`f3f978f0f49990e17f9c05fdd4a87b1368d8608f`.
+
+This completed 512 MiB component does not establish the final 12-tier result.
+The exact final composed head still requires every tier below, including actual
+50,000-book and 2 GiB sources on both operating systems and the largest-tier
+backup/fresh-restore protocols. Their completed Actions records, rather than
+this predecessor measurement, determine the final capacity qualification.
+
 ### Executed predecessor results, 28 November 2026
 
 These are exact-run observations. No row below is a completed 12-tier acceptance.

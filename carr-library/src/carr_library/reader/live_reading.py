@@ -262,6 +262,9 @@ class LiveReader:
         self._future = None
         self._closed = self._pause = False
         self._pending_seek = None
+        self._repeat_range = None
+        self._repeat_pass = 0
+        self._sleep_deadline = None
         self._output_device = None
         self._listening_settings = ListeningSettings()
         self._playback_levels = PlaybackLevels()
@@ -335,6 +338,36 @@ class LiveReader:
         with self._lock:
             return self._status
 
+    def navigation_status(self):
+        """Session-only text repeat and monotonic sleep; no saved authority."""
+        with self._lock:
+            remaining = (max(0.0, self._sleep_deadline - self.clock())
+                         if self._sleep_deadline is not None else None)
+            return dict(active=self.busy and self._status.state in ('loading', 'rendering', 'preparing_playback', 'playing', 'paused'),
+                        repeat_range=self._repeat_range, repeat_pass=self._repeat_pass,
+                        sleep_remaining=remaining)
+
+    def set_sleep(self, seconds):
+        """The same worker observes this deadline during render, play and pause."""
+        if (type(seconds) not in (int, float) or not math.isfinite(seconds)
+                or not 1 <= seconds <= 24 * 3600):
+            raise ValueError('Choose a finite sleep duration from 1 second to 24 hours.')
+        with self._lock:
+            if (self._closed or not self.busy or self._cancel.is_set()
+                    or self._status.state not in ('loading', 'rendering', 'preparing_playback', 'playing', 'paused')):
+                raise ValueError('Start source reading before setting its sleep timer.')
+            self._sleep_deadline = self.clock() + float(seconds)
+            self._emit()
+        self._wake.set()
+
+    def cancel_sleep(self):
+        with self._lock:
+            if self._closed:
+                raise ValueError('This live reader is closed.')
+            self._sleep_deadline = None
+            self._emit()
+        self._wake.set()
+
     def _emit(self, **changes):
         with self._lock:
             if self._closed:
@@ -344,7 +377,17 @@ class LiveReader:
             self._status = replace(self._status, sequence=self._status.sequence + 1, **changes)
 
     def _stopped(self):
-        return self._closed or self._cancel.is_set()
+        with self._lock:
+            if self._closed or self._cancel.is_set():
+                return True
+            if self._sleep_deadline is not None and self.clock() >= self._sleep_deadline:
+                self._sleep_deadline = None
+                self._repeat_range = None
+                self._stop_message = 'The sleep timer expired. No later source chunk will be started.'
+                self._cancel.set()
+                self._wake.set()
+                return True
+            return False
 
     def _check(self):
         if self._stopped():
@@ -379,6 +422,7 @@ class LiveReader:
             self._cancel = threading.Event()
             self._pause = False
             self._pending_seek = None
+            self._repeat_range, self._repeat_pass, self._sleep_deadline = None, 0, None
             self._stop_message = "Live reading stopped. Resume restarts the current verified chunk."
             if initial is not None:
                 # A queued discovery is already discovery. Source acceptance
@@ -399,6 +443,11 @@ class LiveReader:
                 self._emit(state="stopped", message=self._stop_message)
             else:
                 self._emit(state="error", message=str(exc))
+        finally:
+            # _read has already drained or retained its exact device/directory.
+            # Neither an old repeat nor an expired timer arms a later future.
+            with self._lock:
+                self._repeat_range, self._repeat_pass, self._sleep_deadline = None, 0, None
 
     def discover_voices(self):
         def work():
@@ -415,20 +464,22 @@ class LiveReader:
                             message="Discovering installed local voices…", warning=""))
 
     def start(self, ordinal, voice_id, *, start=0, end=None, rate=1.0, volume=1.0,
-              continuous=False, resume=False):
+              continuous=False, resume=False, repeat=False):
         voices = self.status().voices
         if not any(voice.id == voice_id for voice in voices):
             raise ValueError("Choose one of the discovered local voices explicitly before reading.")
         if (type(rate) not in (int, float) or not math.isfinite(rate) or not .5 <= rate <= 2
                 or type(volume) not in (int, float) or not math.isfinite(volume) or not 0 <= volume <= 1
-                or type(continuous) is not bool or type(resume) is not bool):
+                or type(continuous) is not bool or type(resume) is not bool or type(repeat) is not bool):
             raise ValueError("Invalid live-reading voice settings.")
+        if repeat and (continuous or resume):
+            raise ValueError('A–B text repeat requires one explicit current range, without automatic continuation or saved resume.')
         voice = next(voice for voice in voices if voice.id == voice_id)
         with self._lock:
             selected = self._output_device
             listening = self._listening_settings
             return self._submit(lambda: self._read(ordinal, start, end, voice, rate, volume, continuous, resume,
-                                                   output_device=selected, listening=listening))
+                                                   output_device=selected, listening=listening, repeat=repeat))
 
     def toggle_pause(self):
         if not self.busy or self.status().state in ("discovering", "stopping"):
@@ -452,9 +503,11 @@ class LiveReader:
         self._wake.set()
 
     def stop(self, reason=None):
-        if reason:
-            self._stop_message = str(reason)
-        self._cancel.set()
+        with self._lock:
+            if reason:
+                self._stop_message = str(reason)
+            self._repeat_range, self._repeat_pass, self._sleep_deadline = None, 0, None
+            self._cancel.set()
         self._wake.set()
         if self.busy:
             self._emit(state="stopping", section=None, message="Stopping local synthesis or playback…")
@@ -465,6 +518,7 @@ class LiveReader:
             if self._closed:
                 return self._future
             self._closed = True
+            self._repeat_range, self._repeat_pass, self._sleep_deadline = None, 0, None
             self._cancel.set()
             self._wake.set()
             self._status = replace(self._status, state="closed", sequence=self._status.sequence + 1)
@@ -490,7 +544,8 @@ class LiveReader:
             # A full disk must not silently erase an earlier valid resume point.
             self._emit(warning="The current chunk position could not be saved: " + str(exc))
 
-    def _read(self, ordinal, start, end, voice, rate, volume, continuous, resume, *, output_device=None, listening=ListeningSettings()):
+    def _read(self, ordinal, start, end, voice, rate, volume, continuous, resume, *, output_device=None,
+              listening=ListeningSettings(), repeat=False):
         began = self.clock()
         self._emit(state="loading", message="Checking the exact reading source…", warning="",
                    audio_seconds=0.0, duration_seconds=0.0)
@@ -510,6 +565,12 @@ class LiveReader:
         end = len(section.text) if end is None else end
         if (type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(section.text)):
             raise ValueError("Choose a reading range within the exact source text.")
+        if repeat and (start == end or not section.text[start:end].strip()):
+            raise ValueError('Choose a nonempty spoken A–B text range before repeating.')
+        repeat_start, repeat_end = start, end
+        if repeat:
+            with self._lock:
+                self._repeat_range, self._repeat_pass = (section.ordinal, start, end), 1
         if start == end:
             self._emit(state="complete", section=section, chunk_start=end, chunk_end=end,
                        range_end=end, message="The saved or selected reading range is complete.")
@@ -670,6 +731,17 @@ class LiveReader:
                     target.unlink()
                     total_characters += len(text)
                     total_seconds += heard_duration
+                if repeat:
+                    # The captured source section and its exact raw offsets stay
+                    # fixed across chunks. Full reauthorization still precedes
+                    # every pass; no rendered output or permission is reused.
+                    self._check()
+                    self.source.check(section, self._stopped, full=True)
+                    start, end = repeat_start, repeat_end
+                    with self._lock:
+                        self._repeat_pass += 1
+                    self._emit(state="loading", message="Repeating the same explicitly selected A–B text range…")
+                    continue
                 if not continuous or end != len(section.text) or section.ordinal >= section.total:
                     self._emit(state="complete", chunk_start=end, chunk_end=end, audio_seconds=0.0,
                                duration_seconds=0.0, message="The requested reading range is complete.")

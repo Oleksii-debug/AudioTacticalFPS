@@ -347,6 +347,29 @@
           "value": "2221d7ba925849f78981d97d610fec208a89ed97"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-vendored-num2words-sk@0.5.14",
+      "name": "num2words (vendored Slovak runtime closure)",
+      "version": "0.5.14",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1-or-later"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/savoirfairelinux/num2words/tree/6abe2c64714a38e41de23fe20fa319d0ad2fd845"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:scope",
+          "value": "Unmodified lang_SK.py/base.py/utils.py/compat.py/currency.py; full COPYING and per-file Git identities in reader/_vendor_num2words/UPSTREAM.json; local inert initializer. No upstream eager initializer, CLI or docopt dependency."
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -402,7 +425,8 @@
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
         "carr-academic-quickjs-ng@0.18.0.2",
-        "carr-ocr-py3langid@0.4.0"
+        "carr-ocr-py3langid@0.4.0",
+        "carr-vendored-num2words-sk@0.5.14"
       ]
     },
     {
@@ -431,6 +455,9 @@
       "dependsOn": [
         "numpy-4@2.4.6"
       ]
+    },
+    {
+      "ref": "carr-vendored-num2words-sk@0.5.14"
     }
   ]
 }

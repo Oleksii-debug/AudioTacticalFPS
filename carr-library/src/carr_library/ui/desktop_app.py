@@ -696,6 +696,12 @@ class DesktopFrame(WorkspaceFrame):
                         'research.advanced_query', 'Build advanced query', 'main', 'Ctrl+Alt+Q'), item)
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
+        from .about_dialog import install_about_actions
+        install_about_actions(self)
+        from .diagnostics_dialog import install_diagnostics_actions
+        install_diagnostics_actions(self)
+        from .research_merge_dialog import install_research_merge_actions
+        install_research_merge_actions(self)
         cancel = wx.Button(self.host, label='Cancel current operation')
         cancel.Bind(wx.EVT_BUTTON, self.cancel_current_operation)
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)

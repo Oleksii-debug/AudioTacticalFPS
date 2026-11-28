@@ -43,6 +43,39 @@ canonical progress settings. Discovery does not select a voice or turn on spoken
 progress. The existing progress mode remains the user's choice; cancelled or
 closed dialogs release an unused prepared provider.
 
+## A–B text repeat and sleep
+
+**A–B text repeat and sleep...** is available in both existing live reader hosts.
+Opening it is passive. Select the current source text first, or enter A and B
+as exact character offsets in that displayed source or reading copy. A is
+included and B is excluded. **Use current selected A–B range** resolves the
+native Unicode/CRLF selection through the same existing source-position mapper.
+
+**Start A–B text repeat** requires an explicit current voice and an idle reader.
+It repeats only that nonempty source range, including ranges spanning several
+synthesized chunks. It never continues into another page or source location.
+The same reader worker, selected output device and canonical player own every
+pass. Source authorization and complete retained text are checked again before
+each chunk and at the next pass. A changed source, edited copy, voice setting or
+closed owner refuses a stale pending start. Every pass counts toward the normal
+session character, audio and elapsed-time limits; repeat does not reset them.
+
+**Set sleep timer** accepts 1 second through 24 hours for an active reading
+operation. It uses monotonic elapsed time, including pause and synthesis.
+The current worker observes expiry through its existing cancellation callback,
+so an in-flight synthesis request is cancelled and no later chunk is admitted.
+Temporary WAVs and device ownership remain held until actual cleanup completes.
+A failed device stop or close retains the existing uncertain-silence warning
+and ownership; timer expiry alone is not proof that a device is silent.
+
+**Cancel sleep timer** removes only the deadline and does not pause, restart or
+stop the current chunk. **Stop voice, repeat and sleep** cancels all three.
+Closing only this small controls window leaves active reading running; closing
+the owning reader requests its normal cancellation and cleanup. Repeat and the
+sleep deadline are session-only: saved positions, recovered drafts and backups
+never restart either feature automatically. The existing reader timer refreshes
+these controls without moving focus or creating another timer.
+
 ## Exact source and position meaning
 
 Native selection positions are resolved through `TextCtrl.GetRange` prefixes,
@@ -73,7 +106,11 @@ positions.
 
 Canonical `.reader.json` sessions use version 1 with the canonical document
 inside: independent documents remain `reading-copy.v1`, and source-bound
-documents use `reading-copy.v2` with an explicit `source_anchor`. The compatibility
+documents use `reading-copy.v2` with an explicit `source_anchor`. Explicit speech
+preparation can additionally produce `reading-copy.v3`, which stores its bounded
+compound change as one reversible history entry while preserving unchanged
+interior source positions. The same canonical session, recovery and backup
+readers validate it; ordinary edits keep their existing format. The compatibility
 view of ordered source locations is derived from that anchor. Strict interim
 `reader-session.v2` envelopes remain readable; an envelope cannot override a
 different canonical anchor. Neither a filename nor an imported anchor grants
