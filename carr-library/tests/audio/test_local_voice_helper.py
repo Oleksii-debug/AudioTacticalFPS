@@ -470,9 +470,10 @@ def _hold_private_directory_without_delete_sharing(path):
     create.restype = wintypes.HANDLE
     close = kernel.CloseHandle
     close.argtypes, close.restype = [wintypes.HANDLE], wintypes.BOOL
-    # FILE_READ_ATTRIBUTES; share read/write, deliberately not delete;
+    # FILE_LIST_DIRECTORY participates in the native read-data sharing check;
+    # FILE_READ_ATTRIBUTES alone does not. Share read/write, deliberately not delete.
     # OPEN_EXISTING; directory backup semantics and no reparse following.
-    handle = create(str(path), 0x80, 0x3, None, 3, 0x02000000 | 0x00200000, None)
+    handle = create(str(path), 0x80 | 0x1, 0x3, None, 3, 0x02000000 | 0x00200000, None)
     if handle == ctypes.c_void_p(-1).value:
         raise ctypes.WinError(ctypes.get_last_error())
     retained = [handle]
