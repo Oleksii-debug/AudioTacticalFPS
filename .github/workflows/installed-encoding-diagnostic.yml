@@ -1,0 +1,187 @@
+name: CARR installed Python encoding diagnosis
+
+on:
+  push:
+    branches: [carr/ci-installed-encoding-20261128]
+
+permissions:
+  contents: read
+
+jobs:
+  installed-encoding:
+    if: github.repository == 'Oleksii-debug/AudioTacticalFPS' && github.ref == 'refs/heads/carr/ci-installed-encoding-20261128'
+    name: Installed Python encoding / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact desktop package in a fresh environment
+        if: runner.os == 'Windows'
+        id: install-runtime
+        timeout-minutes: 5
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-installed-encoding-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-installed-encoding' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-installed-encoding/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-installed-encoding/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-installed-encoding/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify exact installed Python source and checkout identity
+        id: installed-origin
+        timeout-minutes: 2
+        run: |
+          $proof = @'
+          import hashlib, json, os, pathlib, subprocess, sys
+          import carr_library
+          checkout = pathlib.Path.cwd().parent.resolve()
+          source = (checkout / 'carr-library/src/carr_library').resolve()
+          installed = pathlib.Path(carr_library.__file__).resolve().parent
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          assert not installed.is_relative_to(checkout)
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert commit == os.environ['GITHUB_SHA']
+          paths = sorted(source.rglob('*.py'))
+          assert len(paths) == 342
+          hashes = {}
+          for selected in paths:
+              relative = selected.relative_to(source)
+              expected = selected.read_bytes()
+              assert (installed / relative).read_bytes() == expected, str(relative)
+              hashes[relative.as_posix()] = hashlib.sha256(expected).hexdigest()
+          report = dict(status='PASS', source_commit=commit, installed_root=str(installed),
+                        installed_python_files=len(hashes), source_hashes=hashes,
+                        scope='installed Python source equality; no model or sealed-bundle qualification')
+          pathlib.Path('ci-installed-encoding/installed-source.json').write_text(
+              json.dumps(report, sort_keys=True, allow_nan=False) + '\n', encoding='utf-8')
+          print(json.dumps(dict(status='PASS', source_commit=commit,
+                                installed_python_files=len(hashes), installed_root=str(installed))))
+          '@
+          $proof | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-installed-encoding/installed-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Compare the two unchanged Unicode controls under isolated Python
+        timeout-minutes: 12
+        run: |
+          $controls = @'
+          import hashlib, importlib.util, json, os, pathlib, sys
+          import xml.etree.ElementTree as ET
+          
+          runner_path = pathlib.Path('scripts/ci_check.py').resolve()
+          runner_sha = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+          assert runner_sha == '70281591d047dbe5f464db95457c35604b988b2aa0994e0706e4b317385a6ca6'
+          spec = importlib.util.spec_from_file_location('_carr_encoding_ci_check', runner_path)
+          runner = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = runner
+          spec.loader.exec_module(runner)
+          selectors = [
+              'tests/packaging/test_standard_installer.py::test_repair_retains_changed_and_foreign_files_then_rebuilds',
+              'tests/packaging/test_standard_installer.py::test_uninstall_removes_only_owned_program_and_leaves_external_data',
+          ]
+          output = pathlib.Path('ci-installed-encoding')
+          outcomes = []
+          prelude = (
+              "import json,locale,sys; "
+              "print(json.dumps(dict(encoding_probe=True,isolated=sys.flags.isolated,"
+              "utf8_mode=sys.flags.utf8_mode,locale_encoding=locale.getencoding())),flush=True)\n"
+          )
+          for mode, options in [('isolated-current', []), ('isolated-explicit-utf8', ['-X', 'utf8'])]:
+              with runner._report_directory(mode) as directory:
+                  report = pathlib.Path(directory) / 'junit.xml'
+                  command = [sys.executable, '-I', '-B', *options, '-c', prelude + runner.PYTEST_CHILD,
+                             '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+                             '--import-mode=importlib', '--junitxml', str(report),
+                             '--basetemp', str(pathlib.Path(directory) / 'pytest'), '--', *selectors]
+                  code = runner._run_test_process(command, env=dict(os.environ))
+                  with report.open('rb') as stream:
+                      raw = stream.read(2 * 1024 * 1024 + 1)
+                  assert len(raw) <= 2 * 1024 * 1024
+                  destination = output / (mode + '.xml')
+                  with destination.open('xb') as stream:
+                      stream.write(raw)
+                  assert b'<!DOCTYPE' not in raw and b'<!ENTITY' not in raw
+                  cases = list(ET.fromstring(raw).iter('testcase'))
+                  assert len(cases) == 2
+                  assert {case.get('name') for case in cases} == {value.split('::')[1] for value in selectors}
+                  assert not any(case.find('skipped') is not None for case in cases)
+                  failures = [case.find('failure') for case in cases if case.find('failure') is not None]
+                  errors = [case.find('error') for case in cases if case.find('error') is not None]
+                  outcomes.append(dict(mode=mode, exit_code=code, total=len(cases),
+                      failed=len(failures), errors=len(errors), passed=len(cases)-len(failures)-len(errors),
+                      report=dict(path=destination.name, bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()),
+                      failure_types=[item.get('message', '') for item in failures],
+                      exact_unicode_encoding_failures=all('UnicodeEncodeError' in (item.text or '') for item in failures)))
+          receipt = dict(schema='carr-installed-python-encoding-diagnosis/1',
+              tested_commit=os.environ['GITHUB_SHA'],
+              source_component_commit='de4b18f60d6f44811cdd23dafd1822a4e9b59d5e',
+              ci_check_sha256=runner_sha, selectors=selectors, outcomes=outcomes,
+              scope='Two unchanged real filesystem/lease controls under the actual isolated Windows CPython flags; no sealed-bundle or native Inno acceptance.')
+          with (output / 'encoding-evidence.json').open('x', encoding='utf-8') as stream:
+              json.dump(receipt, stream, ensure_ascii=True, sort_keys=True, allow_nan=False)
+              stream.write('\n')
+          print(json.dumps(receipt, ensure_ascii=True, sort_keys=True, allow_nan=False), flush=True)
+          legacy, explicit = outcomes
+          assert legacy['exit_code'] == 1 and legacy['failed'] == 2 and legacy['errors'] == 0
+          assert legacy['exact_unicode_encoding_failures']
+          assert explicit['exit_code'] == 0 and explicit['passed'] == 2 and explicit['failed'] == explicit['errors'] == 0
+          print('CONFIRMED: these unchanged controls need explicit UTF-8 with isolated Windows Python.', flush=True)
+          '@
+          $controls | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-installed-encoding/encoding-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve exact source proof and both complete encoding reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-installed-encoding-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            carr-library/ci-installed-encoding/*.txt
+            carr-library/ci-installed-encoding/*.json
+            carr-library/ci-installed-encoding/*.xml
+          if-no-files-found: error
+          retention-days: 3
