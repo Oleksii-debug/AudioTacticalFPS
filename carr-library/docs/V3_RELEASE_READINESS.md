@@ -16,7 +16,54 @@ remain authoritative. The
 [machine-readable matrix](validation/RESONANCE_REQUIREMENT_STATUS_20261127.json)
 keeps their exact source blobs and separate evidence dimensions.
 
-## 28 November: observed source PASS, loopback failure and reviewed successor
+## 28 November: current concurrency corrections and required successor execution
+
+The exact `014b128` main job completed **FAILURE** at02:09:19 UTC.
+The early local-planning fixture passed **14/14**. The source invocation retained
+all451 selectors and reported **448 passing suites / 3 failing suites**.
+Its450 completed receipts contain10,797 passes and2 failures; the unfinished
+assistant invocation has613 start markers and no passing result.
+The protected-source gate and all later native, bundle, installed and standard
+stages were skipped. The [completed failure record](evidence/MAIN_014B_SOURCE_FAILURE_20261128.md)
+preserves that boundary.
+
+Three separately reviewed corrections are composed for the next exact candidate:
+
+- The resource-lock owner retains strict raw path validation and derives its
+  ephemeral leaf from the independently validated existing parent. A disappearing
+  Windows lock leaf can no longer promote the resolver's temporary device-prefixed
+  spelling into caller authority. The new regression uses the actual Windows
+  resolver and real lock ownership; all previous32 cases remain, with8 additions.
+  [Source correction](evidence/resource-ephemeral-lock-resolution-repair-20261128.json).
+- The idle-renewal fixture observes the actual signed sequence within its existing
+  bounded wait, retrying only ordinary `BusyError`. The periodic host remains
+  active and production trust locking is unchanged.
+  [Fixture correction](evidence/idle-renewal-observation-fixture-repair-20261128.json).
+- Only the broad656-case assistant selector receives a900-second aggregate bound.
+  The prior run completed it in539.06s;014 reached613 ordered starts near600s.
+  Default and other suite limits, per-case watchdog, strict outcomes, three-worker
+  scheduling and the90-minute source /360-minute job bounds remain unchanged.
+  [Measured deadline](evidence/assistant-suite-measured-deadline-20261128.json).
+
+The exact current protected declarations are **5,821 source / 5,493 installed**
+cases across the same252/239 modules. The resource module is40 cases; the separate
+canonical-boundaries selection is60=retained36+added24. The shared focused911
+selection is unchanged. [Additive gate alignment](evidence/resource-regression-gate-alignment-20261128.json)
+retains every earlier function and multiplicity.
+
+A short Windows preflight selects the complete resource, idle-renewal and
+local-model-manifest modules through the existing strict offline runner. This
+source snapshot records its execution as **NOT_RUN**; the candidate's actual
+PR/run receipts must supply the result. Full integrated source, installed,
+native, bundle, standard and independent artifact gates remain required.
+
+All five [014 auxiliary jobs](evidence/pr209-014-auxiliary-observed-results-20261128.md)
+passed within their separate scopes. Seven audio skips and physical playback
+unavailability remain explicit. These results do not qualify the successor.
+The one-substring RUNNING.md command now names the declared dev2 wheel before the
+successor build; its new wheel and metadata require their own source identity.
+
+## Earlier 28 November: f77 source PASS and loopback failure
 
 The exact `f77cdd445c158f3f66d13c03d920418965840d16` integrated Windows job
 [46078342596 / 140771249163](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078342596/job/140771249163)
@@ -66,8 +113,8 @@ source/tree, wheel, dependency/runtime packs, commands and outcomes. This
 document neither adds overlapping test counts nor carries PASS to a later
 source tree.
 
-The reviewed full regression oracle currently declares **5,813 protected source
-cases and 5,485 protected installed cases**. The shared focused selection declares
+The current reviewed full regression oracle declares **5,821 protected source
+cases and 5,493 protected installed cases**. The shared focused selection declares
 911 per mode; Studio controls have a separate exact 211-case selection in each mode. These are selected populations, not
 execution results. The finite existing native families, strict failure/skip
 checks, immutable-original guards and complete runtime inventories remain in

@@ -596,6 +596,99 @@ def test_unheld_lock_inspection_errors_never_become_absence(tmp_path, monkeypatc
             lock.release()
 
 
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership(
+        tmp_path, monkeypatch, phase):
+    """Exercise the actual Windows resolver race; keep portable ownership coverage."""
+    import ntpath
+    from pathlib import PureWindowsPath
+    from carr_library.operations import _locks
+
+    path = tmp_path.resolve() / 'resolved-and-released.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    actual_asset = _locks._asset_path
+    actual_final = getattr(ntpath, '_getfinalpathname', None)
+    removed, resolved = [], []
+    peer = None
+
+    def final_path(value):
+        result = actual_final(value)
+        if Path(value) == path and not removed:
+            # The first GetFinalPathNameByHandle succeeded. The second probe
+            # sees real absence, so unmodified ntpath.realpath keeps its prefix.
+            path.unlink()
+            removed.append(True)
+        return result
+
+    def asset(candidate, *, must_exist=True):
+        result = actual_asset(candidate, must_exist=must_exist)
+        if Path(candidate) == path and not resolved:
+            assert must_exist is False
+            if actual_final is None:
+                # POSIX has no Windows final-path API. Simulate only its
+                # returned spelling after the same real leaf disappearance;
+                # all later filesystem and native-lock checks remain actual.
+                path.unlink()
+                removed.append(True)
+                result = PureWindowsPath(r'\\?\C:\reviewed-local\resolved-and-released.lock')
+            assert str(result).startswith('\\\\?\\')
+            assert not path.exists()
+            resolved.append(str(result))
+        return result
+
+    try:
+        with monkeypatch.context() as scoped:
+            if actual_final is not None:
+                scoped.setattr(ntpath, '_getfinalpathname', final_path)
+            scoped.setattr(_locks, '_asset_path', asset)
+            if lock is None:
+                lock = _locks.NativeLock(path)
+            assert lock.path == path
+            assert lock.acquire()
+        assert removed == [True] and len(resolved) == 1 and lock.held
+        current = _locks.regular(path)
+        held = os.fstat(lock.lock._context.lock_file_fd)
+        assert (held.st_dev, held.st_ino) == (current.st_dev, current.st_ino)
+        peer = _locks.NativeLock(path)
+        assert peer.acquire() is False
+        assert lock.held and not peer.held
+        lock.release()
+        assert peer.acquire()
+        peer.release()
+        assert not lock.held and not peer.held
+    finally:
+        if peer is not None:
+            peer.release()
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('candidate', [
+    r'\\server\share\untrusted.lock',
+    '//server/share/untrusted.lock',
+    r'\\?\C:\untrusted.lock',
+    r'\\.\C:\untrusted.lock',
+    r'\\?\UNC\server\share\untrusted.lock',
+    'untrusted.lock:alternate',
+], ids=['unc-backslash', 'unc-slash', 'extended-local', 'device-local', 'extended-unc', 'ads'])
+def test_unheld_lock_rejects_caller_namespaces_before_parent_admission(
+        tmp_path, monkeypatch, candidate):
+    from carr_library.audio.model_manifest import ModelManifestError
+    from carr_library.operations import _locks
+
+    value = candidate if candidate.startswith(('\\\\', '//')) else tmp_path / candidate
+    before = {path.name: path.lstat().st_ino for path in tmp_path.iterdir()}
+
+    def forbidden_parent(*args, **kwargs):
+        raise AssertionError('A forbidden caller path reached parent admission.')
+
+    monkeypatch.setattr(_locks, 'local_path', forbidden_parent)
+    with pytest.raises(ModelManifestError, match='network share|Alternate streams'):
+        _locks.NativeLock(value)
+    assert {path.name: path.lstat().st_ino for path in tmp_path.iterdir()} == before
+
+
 if __name__ == '__main__':
     if sys.argv[2] == 'crash':
         test_actual_spawned_process_crash_releases_without_pid_reaping(ResourceBroker(Path(sys.argv[3])))

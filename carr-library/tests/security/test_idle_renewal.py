@@ -5,7 +5,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.delivery_contract import CONTRACT_VERSION, Capability, ProviderCapabilities
-from carr_library.security._files import TrustError
+from carr_library.security._files import BusyError, TrustError
 from carr_library.security.entitlements import EntitlementStore
 from carr_library.security.refresh import IdleRenewalHost, RefreshWorker
 from .conftest import MemoryAnchor, REFERENCE, RenewalProvider, accept, envelope, grant
@@ -33,6 +33,19 @@ def test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt
             called.set()
             return envelope(signer, grant(clock, sequence=request.after_sequence + 1, request_nonce=request.nonce))
     worker = RefreshWorker(store, Provider(), REFERENCE, profile_id='trust-test', clock=clock)
+
+    def renewed(sequence):
+        # A live periodic host can start another trust read immediately after
+        # running becomes false. Observe the signed state inside the bounded
+        # wait; only ordinary lock contention is retryable by this fixture.
+        if worker.running:
+            return False
+        try:
+            current = store.current()
+        except BusyError:
+            return False
+        return current is not None and current.sequence == sequence
+
     disabled = IdleRenewalHost(worker)
     disabled.set_idle(True)
     assert not disabled.start() and disabled._thread is None
@@ -43,19 +56,20 @@ def test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt
         assert not called.wait(.05)  # An active user job has not signalled idle.
         host.set_idle(True)
         assert called.wait(1)
-        wait_until(lambda: not worker.running)
-        assert store.current().sequence == 2
+        wait_until(lambda: renewed(2))
+        assert len(calls) == 1
         assert calls[0][1] != threading.get_ident()
         assert calls[0][0].credential_profile_id == 'trust-test'
         assert calls[0][0].credential_reference == REFERENCE
         called.clear()
         clock.now += 7 * 86400
         assert called.wait(1)  # The periodic host checks without another UI action.
-        wait_until(lambda: not worker.running)
-        assert store.current().sequence == 3 and len(calls) == 2
+        wait_until(lambda: renewed(3))
+        assert len(calls) == 2
     finally:
         host.close()
     assert not host._thread.is_alive() and not worker.running
+    assert store.current().sequence == 3
 
 
 def test_blocked_vault_check_does_not_block_data_save_or_shutdown_and_cannot_launch_late(

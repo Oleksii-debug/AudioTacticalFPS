@@ -1,0 +1,296 @@
+{
+  "schema": "carr.measured-assistant-suite-deadline.v1",
+  "status": "SOURCE_ONLY_RUNTIME_NOT_RUN",
+  "parent_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+  "parent_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+  "change": {
+    "path": "carr-library/scripts/ci_check.py",
+    "old_blob": "5937231e2f3a00a163b0e10b9707df27f279b134",
+    "old_sha256": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df",
+    "new_sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7",
+    "selector": "tests/assistant",
+    "old_limit_seconds": 600,
+    "new_limit_seconds": 900,
+    "default_limit_seconds": 600,
+    "existing_overrides": {
+      "tests/citations/test_word_com.py": 1800,
+      "tests/audio/test_book_duration.py": 1200
+    }
+  },
+  "measured_prior": {
+    "source_commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+    "source_tree": "88a99ee91806d71dca04c75c0aca8c963f5292e1",
+    "run_id": 46078342596,
+    "job_id": 140771249163,
+    "decoded_log": {
+      "characters": 4762934,
+      "utf8_bytes": 4762940,
+      "sha256": "aa8fc252ae1da3edab7e74793b67970f53c563bb13b1612a4c840c429f963292"
+    },
+    "selector": "tests/assistant",
+    "collected": 656,
+    "passed": 656,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "pytest_elapsed_seconds": 539.06,
+    "first_case": {
+      "time": "2026-11-27T23:19:15.6704085Z",
+      "case": "tests/assistant/test_backup_receipt.py::test_whole_database_counts_towards_approved_budget"
+    },
+    "last_case": {
+      "time": "2026-11-27T23:28:10.6221476Z",
+      "case": "tests/assistant/test_workflow_templates.py::test_restored_interactive_template_retains_no_dispatch_authority"
+    },
+    "verdict": "2026-11-27T23:28:18.2813717Z PASS: tests/assistant: junit_passed=656, failed=0, skipped=0, pytest_exit=0"
+  },
+  "measured_failure": {
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "source_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+    "run_id": 46089514448,
+    "job_id": 140806885393,
+    "decoded_log": {
+      "characters": 4740167,
+      "utf8_bytes": 4740173,
+      "sha256": "1a1decd5250c4c2535748cc407d58548afe5491cd92d482c2c13fdebfc7bb01f"
+    },
+    "selector": "tests/assistant",
+    "collected": 656,
+    "started": 613,
+    "unstarted": 43,
+    "passed": null,
+    "final_junit_receipt": "ABSENT",
+    "outcome": "TimeoutExpired",
+    "first_case": {
+      "time": "2026-11-28T00:57:23.5424604Z",
+      "case": "tests/assistant/test_backup_receipt.py::test_whole_database_counts_towards_approved_budget"
+    },
+    "last_case": {
+      "time": "2026-11-28T01:07:19.9730517Z",
+      "case": "tests/assistant/test_workflow_templates.py::test_reading_empty_templates_never_creates_a_store_or_job"
+    },
+    "timeout_at": "2026-11-28T01:07:28.0215693Z",
+    "unstarted_module": "tests/assistant/test_workflow_templates.py",
+    "normalized_case_start_sequence_is_exact_prior_prefix": true,
+    "normalized_case_start_prefix_sha256": "859f2ccda6f794e06391a9e271001d347fed751f9458ea31f5a3dd34eced2c4c",
+    "remaining_normalized_case_start_counter": {
+      "tests/assistant/test_workflow_templates.py::test_loaded_workflow_requires_fresh_preview_and_separate_actual_run": 1,
+      "tests/assistant/test_workflow_templates.py::test_saved_and_returned_arguments_do_not_alias_the_input_plan": 1,
+      "tests/assistant/test_workflow_templates.py::test_two_instances_require_exact_revision_for_save_remove_and_export": 1,
+      "tests/assistant/test_workflow_templates.py::test_name_collision_cannot_overwrite_another_template": 1,
+      "tests/assistant/test_workflow_templates.py::test_export_import_creates_new_identity_without_saved_scope": 1,
+      "tests/assistant/test_workflow_templates.py::test_import_rejects_authority_or_invalid_shape_before_saving": 10,
+      "tests/assistant/test_workflow_templates.py::test_import_uses_shared_strict_json_parser": 4,
+      "tests/assistant/test_workflow_templates.py::test_batch_expands_only_selected_typed_steps_in_reviewed_order": 1,
+      "tests/assistant/test_workflow_templates.py::test_cancellation_after_inventory_refuses_a_real_state_write": 1,
+      "tests/assistant/test_workflow_templates.py::test_collection_budget_counts_real_file_bytes_and_record_count": 1,
+      "tests/assistant/test_workflow_templates.py::test_real_hard_link_is_refused_before_template_import": 1,
+      "tests/assistant/test_workflow_templates.py::test_post_commit_directory_sync_failure_preserves_exact_change_receipt": 2,
+      "tests/assistant/test_workflow_templates.py::test_saved_job_reuse_discards_old_approval_without_opening_old_paths": 1,
+      "tests/assistant/test_workflow_templates.py::test_complete_backup_restores_inert_templates_without_inspecting_literal_paths": 1,
+      "tests/assistant/test_workflow_templates.py::test_rehashed_backup_cannot_import_template_scope": 1,
+      "tests/assistant/test_workflow_templates.py::test_create_only_racing_same_bytes_remain_another_publishers_change": 1,
+      "tests/assistant/test_workflow_templates.py::test_template_write_cannot_change_actual_backup_inventory": 2,
+      "tests/assistant/test_workflow_templates.py::test_existing_native_guards_refuse_template_publication": 2,
+      "tests/assistant/test_workflow_templates.py::test_unknown_or_linked_template_entries_never_disappear_from_backup": 4,
+      "tests/assistant/test_workflow_templates.py::test_only_exact_private_uncommitted_scratch_is_excluded": 1,
+      "tests/assistant/test_workflow_templates.py::test_manifest_keeps_independent_template_and_existing_job_budgets": 3,
+      "tests/assistant/test_workflow_templates.py::test_replaced_library_identity_cannot_retarget_existing_store": 1,
+      "tests/assistant/test_workflow_templates.py::test_restored_interactive_template_retains_no_dispatch_authority": 1
+    },
+    "normalization": "Existing CASE_START output omits parameter suffixes. The comparison preserves ordered function identities and their multiplicities, not unprinted parameter labels.",
+    "progress_limit": "Started is not passed. Concurrent dots cannot identify the final assistant case's outcome. No assistant-specific CASE_DIAGNOSTIC was observed; that alone does not prove absence of a possible later hang."
+  },
+  "comparison": {
+    "same_last_started_case": "tests/assistant/test_workflow_templates.py::test_reading_empty_templates_never_creates_a_store_or_job",
+    "prior_seconds_from_first_case_to_that_start": 467.671,
+    "current_seconds_from_first_case_to_that_start": 596.431,
+    "prior_remaining_case_start_span_seconds": 67.281,
+    "fixtures_unchanged": [
+      {
+        "path": "carr-library/tests/assistant/interactive_fixture.py",
+        "mode": "100644",
+        "sha": "e27c0a893ff442a68b6a542b5b9e84576734a2b0"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_backup_receipt.py",
+        "mode": "100644",
+        "sha": "0ef6686668ee7cc9ed4209ed9dc93e42df0b3130"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_canonical_backup.py",
+        "mode": "100644",
+        "sha": "4825869652275015c0e94b4f2ca29ba4c230efdf"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_checkpoint_publication.py",
+        "mode": "100644",
+        "sha": "21b712a36aff982380c984e3cdd6827064d68f97"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_derived_tools.py",
+        "mode": "100644",
+        "sha": "e03e465f6017dbdf5282e10c46783ca23407694e"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_dialog_lifecycle.py",
+        "mode": "100644",
+        "sha": "680beec49ed29d936930ca42a0b2e80b6ef38cd6"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_interactive_service.py",
+        "mode": "100644",
+        "sha": "9872e0bca20bff253a0c7e26cddbddff7f56736a"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_interactive_tools.py",
+        "mode": "100644",
+        "sha": "d9e0d9dac43ee53e0080c7bc58626c6f6bd27ad3"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "mode": "100644",
+        "sha": "90cf074af9d76842765544483f0c580d5848e49f"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_local_llm.py",
+        "mode": "100644",
+        "sha": "e8187a1a11f668f76aaf116c49d20b6cbf36e6f1"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "mode": "100644",
+        "sha": "06db42c09f75de6c84b858bdfc68ca3d25ea20c4"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_planning_runtime.py",
+        "mode": "100644",
+        "sha": "46d1a7408d9ba9e2b817834cfb2db87bb939ccc9"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_production_bridge.py",
+        "mode": "100644",
+        "sha": "03ca3daa63bef15544f8611e1a452f2963490bf1"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_state_validation.py",
+        "mode": "100644",
+        "sha": "3a6c4396ad78ceb161c8d9b08498c4591e1ef869"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_topic_crash_recovery.py",
+        "mode": "100644",
+        "sha": "d2c868615b14df2d6dcee6e19ddd793030cb0c6d"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_topic_state.py",
+        "mode": "100644",
+        "sha": "cefec33f947bc89895f747a6d0b730c5f7a43085"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_topic_tools.py",
+        "mode": "100644",
+        "sha": "12f3b139024483a730f29315a936106a61418725"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_transcription_cli.py",
+        "mode": "100644",
+        "sha": "ab0da7a98c4ec2f2026874a4d8598b616b8dd6e4"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_transcription_recovery.py",
+        "mode": "100644",
+        "sha": "fc058054c8910e562c8dd3524305c47766f943b2"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_transcription_tools.py",
+        "mode": "100644",
+        "sha": "5956c77bf83c0ea92d39e458b12634c7becc7d0e"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "mode": "100644",
+        "sha": "1bc4d65f2e49753ec2da982c3ac400b91002ceed"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_translation_advanced.py",
+        "mode": "100644",
+        "sha": "2865908807b09a531f657c68bad90629256a047f"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_translation_scopes.py",
+        "mode": "100644",
+        "sha": "8f539dd55f732d4762dbc7b8c2de6e03febe6f10"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_workflow_template_binding.py",
+        "mode": "100644",
+        "sha": "96771dd09b106629139f6c7c947d40ce8654fbe4"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_workflow_template_cli.py",
+        "mode": "100644",
+        "sha": "d9cb7e841e9d15476d22faf1cd03d46c0a0bbe83"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_workflow_template_handlers.py",
+        "mode": "100644",
+        "sha": "c8141167ebbfeb54d51a7f7e2244f34be83f5ac8"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_workflow_templates.py",
+        "mode": "100644",
+        "sha": "104b29ed28c8c00e76e0c9f468f0773551a27f52"
+      },
+      {
+        "path": "carr-library/tests/assistant/transcription_fixture.py",
+        "mode": "100644",
+        "sha": "e92b0c7cf492a569ed04f9f3f49b0d74d8a1cfe9"
+      }
+    ],
+    "source_workflow_block_byte_identical": true,
+    "source_selector_count": 451,
+    "source_selector_order_sha256": "95c69c4921c05b7cf07cc7c1ca18d3ebfd1ea24b22edfdf51a173765d54f5985",
+    "concurrent_suites": 3,
+    "source_step_timeout_minutes": 90,
+    "job_timeout_minutes": 360,
+    "parallel_observation": "Both late assistant intervals overlap active library-backup and reading-state source suites under the same three-worker invocation. No host CPU/disk metric was captured, so the slowdown is not attributed to a specific host resource.",
+    "justification": "The 656-case aggregate already used539.06s of600s in the passing run. The unchanged collection reached613 ordered starts near600s in014 and still had43 cases to start. A selector-specific900s bound permits this measured aggregate workload without altering the600s default, scheduling, per-case diagnostic, strict result checks or global bounds. It does not claim the next run will pass."
+  },
+  "preserved": {
+    "source_selectors": 451,
+    "protected_source_cases": 5813,
+    "protected_installed_cases": 5485,
+    "watchdog_path": "carr-library/scripts/ci_watchdog.py",
+    "watchdog_blob": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+    "per_case_diagnostic_seconds": 90,
+    "watchdog_is": "Bounded diagnostic; not an independent hard per-case execution timeout.",
+    "owned_process_settlement": "Unchanged",
+    "network_policy": "Unchanged",
+    "no_skips_or_xfail": "Unchanged",
+    "JUnit_predicates": "Unchanged",
+    "workflow_order": "Unchanged"
+  },
+  "inverse_diff": {
+    "before": "# Exact measured native suites retain every case and the existing per-case\n# watchdog. Word r5 reached 10 cases at 600 s; the 7959 duration run made\n# continuous progress through 34/51 cases at 600 s, including all 10 codecs.\n# All other required suites keep the existing ten-minute process deadline.\nSUITE_SECONDS = {'tests/citations/test_word_com.py': 1800,\n                 'tests/audio/test_book_duration.py': 1200}\n",
+    "after": "# Exact measured suites retain every case and the existing per-case\n# watchdog. Word r5 reached 10 cases at 600 s; the 7959 duration run made\n# continuous progress through 34/51 cases at 600 s, including all 10 codecs.\n# The 656-case assistant selector passed in 539.06 s on f77; 014 reached\n# 613 case starts at its 600 s limit, with 43 cases still unstarted.\n# All other required suites keep the existing ten-minute process deadline.\nSUITE_SECONDS = {'tests/assistant': 900,\n                 'tests/citations/test_word_com.py': 1800,\n                 'tests/audio/test_book_duration.py': 1200}\n",
+    "proof": "Replacing this exact new comment/map block with the old block reproduces the complete original5937231 runner byte-for-byte. No other runner bytes changed."
+  },
+  "binding_followup": {
+    "path": "carr-library/scripts/ci_check.py",
+    "before_blob": "5937231e2f3a00a163b0e10b9707df27f279b134",
+    "before_sha256": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df",
+    "after_sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7",
+    "required": "The reviewed full-main reader config currently pins this runner. Root must author an explicit additional finite successor binding for the new blob. Historical configs, plans and completed-run proofs remain unchanged in this component."
+  },
+  "validation": {
+    "source_readback": "Required before handoff",
+    "existing_runner_test_review": "test_ci_check.py8d08c67 patches the default deadline in its controlled timeout fixture and contains no exact whole-map assertion invalidated by this selector-only addition.",
+    "executed": "NOT_RUN",
+    "refs_changed": false
+  },
+  "related_current_failure_proof": {
+    "commit": "56c90123d894ceca8e5491c2401d919f92f95fd2",
+    "path": "carr-library/docs/evidence/main-014b-source-failure-20261128.json"
+  }
+}

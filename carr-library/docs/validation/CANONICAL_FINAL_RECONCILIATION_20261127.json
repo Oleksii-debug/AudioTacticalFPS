@@ -6468,5 +6468,206 @@
       "full_platform": "NOT_QUALIFIED",
       "real_models_manual_nvda_audio_corpus_rights": "Separate actual acceptance remains required."
     }
+  },
+  "post_014_windows_concurrency_repair": {
+    "schema": "carr-post-014-windows-concurrency-repair/1",
+    "status": "SOURCE_REVIEWED_REQUIRES_EXACT_SUCCESSOR_RUNTIME",
+    "baseline": {
+      "commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+      "tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b"
+    },
+    "evidence_parent": {
+      "commit": "3af6e4992235e601d04aaddcbdefca80e3e73059",
+      "tree": "9f2a6e25bedcaa211148bfc8e65c15eddec779dd",
+      "scope": "Retained parser-control, auxiliary, delivery/menu and completed014 failure evidence; reviewed RUNNING.md dev2 correction. No application change."
+    },
+    "observed_predecessor": {
+      "run_id": 46089514448,
+      "job_id": 140806885393,
+      "run_attempt": 1,
+      "completed_at": "2026-11-28T02:09:19Z",
+      "status": "FAILURE",
+      "loopback": {
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0
+      },
+      "source": {
+        "selectors": 451,
+        "passed_suites": 448,
+        "failed_suites": 3,
+        "completed_suite_receipts": 450,
+        "completed_passed_events": 10797,
+        "completed_failed_events": 2,
+        "completed_skipped_events": 0,
+        "partial_assistant": {
+          "collected": 656,
+          "started": 613,
+          "passed": null
+        }
+      },
+      "failed_boundaries": [
+        "tests/assistant aggregate600s limit",
+        "resource lease release after ephemeral Windows path resolution",
+        "idle-renewal test observation while periodic trust reads continue"
+      ],
+      "protected_source_and_later_native_bundle_installed_standard": "SKIPPED",
+      "evidence": "carr-library/docs/evidence/main-014b-source-failure-20261128.json",
+      "artifact": {
+        "id": 15242629034,
+        "bytes": 304113,
+        "sha256": "96deebbd3952c15beaa4faa93c0f70d89e85c704245f225338575bfca3f4205c"
+      },
+      "all_five_auxiliary_jobs": "SUCCESS within exact014 scopes; seven explicit audio skips and physical playback unavailable; no PASS transfer."
+    },
+    "reviewed_components": [
+      {
+        "name": "resource",
+        "commit": "8932165be1fd1787bbf1cfcde4c16658984ae903"
+      },
+      {
+        "name": "idle",
+        "commit": "7868769df8bbc554d23a4c9587b8c002ce8ac479"
+      },
+      {
+        "name": "timing",
+        "commit": "95f295e7ac0cd175fce599b7263a9c643495e687"
+      },
+      {
+        "name": "gates",
+        "commit": "2ed194105936124da195f606d8c42c7c26e7a2f0"
+      }
+    ],
+    "reviewed_path_changes": [
+      {
+        "path": "carr-library/docs/evidence/resource-ephemeral-lock-resolution-repair-20261128.json",
+        "before": null,
+        "after": "9f0d61130c6b8dc1fcac2486f82d91b5b40a3ef5",
+        "component": "8932165be1fd1787bbf1cfcde4c16658984ae903"
+      },
+      {
+        "path": "carr-library/src/carr_library/operations/_locks.py",
+        "before": "28f87df67da626ea153f44e03b5625d6a6789a77",
+        "after": "2c5dfc67a8c8b5162384f1b785fc74eb0b4f48bd",
+        "component": "8932165be1fd1787bbf1cfcde4c16658984ae903"
+      },
+      {
+        "path": "carr-library/tests/operations/test_resources.py",
+        "before": "e9052925a507e1b0347a7be446c58a190cf453e6",
+        "after": "9dd24a64f10f737551fe2742d094d4291b6ebe4a",
+        "component": "8932165be1fd1787bbf1cfcde4c16658984ae903"
+      },
+      {
+        "path": "carr-library/docs/evidence/idle-renewal-observation-fixture-repair-20261128.json",
+        "before": null,
+        "after": "d067fe6e305e15ccb59e449f7ed52bc4123eb03f",
+        "component": "7868769df8bbc554d23a4c9587b8c002ce8ac479"
+      },
+      {
+        "path": "carr-library/tests/security/test_idle_renewal.py",
+        "before": "04cb8cc027ffbab8ec6ddebb6847819c91dd9caa",
+        "after": "dd20915259458eac119a9384ee5d610daec2275a",
+        "component": "7868769df8bbc554d23a4c9587b8c002ce8ac479"
+      },
+      {
+        "path": "carr-library/docs/evidence/assistant-suite-measured-deadline-20261128.json",
+        "before": null,
+        "after": "f9d93867831b2fff54e3712b9a184640bb20f5d0",
+        "component": "95f295e7ac0cd175fce599b7263a9c643495e687"
+      },
+      {
+        "path": "carr-library/scripts/ci_check.py",
+        "before": "5937231e2f3a00a163b0e10b9707df27f279b134",
+        "after": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+        "component": "95f295e7ac0cd175fce599b7263a9c643495e687"
+      },
+      {
+        "path": "carr-library/docs/evidence/resource-regression-gate-alignment-20261128.json",
+        "before": null,
+        "after": "68f452617bd50a7d59c6cc2a1ba77c356a0bd195",
+        "component": "2ed194105936124da195f606d8c42c7c26e7a2f0"
+      },
+      {
+        "path": "carr-library/scripts/canonical_boundary_acceptance.py",
+        "before": "4bea3f7f841320eac757ff5b245755e62fcd25f0",
+        "after": "70ceac1ee0a95ea60ff95cce55dba2af99cdf9ab",
+        "component": "2ed194105936124da195f606d8c42c7c26e7a2f0"
+      },
+      {
+        "path": "carr-library/scripts/canonical_boundary_oracle.json",
+        "before": "2c013bc087bc1b67cb57e2371101cc4205b7564d",
+        "after": "720ff18cbbdb62496aa6383e097a9082c36fd514",
+        "component": "2ed194105936124da195f606d8c42c7c26e7a2f0"
+      },
+      {
+        "path": "carr-library/scripts/v3_acceptance_oracles.json",
+        "before": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+        "after": "b350bdab38415c42d13c69116dd876747e8f0354",
+        "component": "2ed194105936124da195f606d8c42c7c26e7a2f0"
+      }
+    ],
+    "application_source": {
+      "prefix": "carr-library/src/carr_library/",
+      "blob_count": 425,
+      "changed_paths": [
+        "carr-library/src/carr_library/operations/_locks.py"
+      ],
+      "unchanged_blobs": 424
+    },
+    "repair_semantics": {
+      "resource": "Retain raw caller namespace/ADS/alias validation, then derive the ephemeral native lock from its separately validated existing lexical parent and leaf. Existing descriptor/inode, fork, release and process contention remain. The failed run did not capture the intermediate prefix; the CPython source mechanism is inferred and the new fixture deterministically exercises it.",
+      "idle": "The existing finite2s wait observes actual signed sequence while retrying only BusyError. Real periodic host stays enabled; default-off, active-user, exact credential/thread/call-count and final settled sequence assertions remain. Production trust behavior unchanged.",
+      "assistant": "Only tests/assistant gets a900s aggregate bound. Its exact656-case prior execution passed in539.06s;014 produced613 ordered starts before600s. Default600, existing Word1800/duration1200, per-case watchdog, ownership, strictJUnit and global90min/360min remain.",
+      "gates": "Add exact2+6 resource cases in source and installed oracle Counters. Keep every old identity/multiplicity; canonical-boundaries60=retained36+added24. Request-cleanup911 remains unchanged."
+    },
+    "current_automatic_populations": {
+      "source_protected": 5821,
+      "installed_protected": 5493,
+      "source_modules": 252,
+      "installed_modules": 239,
+      "source_selectors": 451,
+      "resource_cases": 40,
+      "source_loopback_cases": 14,
+      "installed_loopback_cases": 14,
+      "request_cleanup_cases_per_mode": 911,
+      "canonical_boundary_cases_per_mode": 60,
+      "r7_native_families": 21
+    },
+    "added_resource_counter": {
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "preflight": {
+      "component": "378e28ba3b00e04dd27545878625f0dc53de998d",
+      "workflow": ".github/workflows/carr-regression-preflight.yml",
+      "workflow_blob": "a495aced2fbdbbb42ede3a3c2ce6982b64f14da4",
+      "scope": "Three complete Windows source modules under the existing offline strict runner and exact56-pin runtime, before the required integrated run.",
+      "runtime": "NOT_RUN"
+    },
+    "documentation": {
+      "path": "carr-library/docs/RUNNING.md",
+      "before": "4ca6971c523f0b1e4edb835857660b0ccd5a4b05",
+      "after": "1f8779c9f9b3580d8df70c79a6b7e1fb5d6e88ac",
+      "component": "5ff6d92e4b493aa10dd8dad311c91c246024b284",
+      "scope": "One dev1→dev2 wheel-command correction included before successor build; declared project readme, so successor wheel must retain its own identity."
+    },
+    "preserved_bindings": {
+      ".github/workflows/carr-windows.yml": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+      "carr-library/tests/loopback/test_local_planning.py": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab",
+      "carr-library/scripts/ci_watchdog.py": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+      "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+      "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json": "955081bda0d4a47d8eff6200a010943da7bd0cf2"
+    },
+    "historical_binding_scope": "Earlier fields retain their exact historical source snapshots and results. This additive record defines the current corrected source mapping and increased populations. The immutable final-artifact plan and014 reader controls remain historical; final reader tooling requires an explicit independently reviewed successor overlay.",
+    "review": {
+      "root_components": "GO",
+      "independent_components": "GO",
+      "new_runtime": "NOT_RUN"
+    },
+    "qualification": {
+      "successor": "Requires its own complete source, installed, native, bundle, standard and independent artifact read.",
+      "full_platform": "NOT_QUALIFIED",
+      "external_acceptance": "Real models/languages/acoustics, manual Windows11/NVDA and hardware, real corpus and distribution rights remain separate."
+    }
   }
 }

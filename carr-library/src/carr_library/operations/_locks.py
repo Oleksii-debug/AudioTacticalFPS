@@ -43,8 +43,14 @@ def _unheld_path(value):
     between validation calls. Missing parents, aliases and validation errors
     still fail; the owned descriptor/path checks below remain strict.
     """
-    path = _asset_path(value, must_exist=False)
-    parent = local_path(path.parent, exists=True)
+    # Resolving a Windows leaf that disappears between final-path probes can
+    # retain a device prefix. Validate the caller's original spelling, but do
+    # not promote that transient resolved spelling into path authority.
+    raw = os.fspath(value)
+    _asset_path(raw, must_exist=False)
+    lexical = Path(raw).absolute()
+    parent = local_path(lexical.parent, exists=True)
+    path = parent / lexical.name
     regular(parent, directory=True)
     try:
         regular(path)

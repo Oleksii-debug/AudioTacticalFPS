@@ -471,7 +471,9 @@
       "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
       "test_lock_leaf_disappears_during_local_asset_check": 2,
       "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
-      "test_unheld_lock_inspection_errors_never_become_absence": 4
+      "test_unheld_lock_inspection_errors_never_become_absence": 4,
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
     },
     "tests.storage.test_legacy_state_portability": {
       "test_invalid_legacy_names_are_refused_before_any_filesystem_read": 15,
@@ -3708,7 +3710,9 @@
       "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
       "test_lock_leaf_disappears_during_local_asset_check": 2,
       "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
-      "test_unheld_lock_inspection_errors_never_become_absence": 4
+      "test_unheld_lock_inspection_errors_never_become_absence": 4,
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
     },
     "tests.storage.test_legacy_state_portability": {
       "test_invalid_legacy_names_are_refused_before_any_filesystem_read": 15,
