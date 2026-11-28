@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run": 46098474617,
+  "job": 140835230479,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/completed-job.decoded.log",
+      "sha256": "ac82c21e347bb9774906cb11243cce429ad9c190f3810741e1ef2680930589e3",
+      "bytes": 2066062
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/source-module-verdicts.json",
+      "sha256": "6cac4699cb4a87f08354d239a5fdd6faf2d04840381a87c3cb10e092c3aa37f1",
+      "bytes": 76380
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/qualification.json",
+      "sha256": "ab42985538b5263414d32bd1d4f88eeb1429549a1250dc7ecb9e71b016b9d123",
+      "bytes": 4038
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/staging-directory-race.trace.log",
+      "sha256": "9c19312c4bb74113b1a7a61243c02c9894edba47dc717195427ed9fba7131458",
+      "bytes": 5234
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/completed-job-metadata.json",
+      "sha256": "1cf60ffb450395bb38b6224bc8b5cfb5dadac4b8c760304e21b88bc4ac2c9b06",
+      "bytes": 20454
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/uploaded-artifacts.json",
+      "sha256": "403610a45fce904a4b728f3b1fa91ad164a074f574b69f198255bad631a5f0db",
+      "bytes": 3601
+    }
+  ],
+  "qualification_transfer": false
+}

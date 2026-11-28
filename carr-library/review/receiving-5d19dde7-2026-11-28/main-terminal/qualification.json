@@ -1,0 +1,92 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "source_tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a",
+  "run_id": 46098474617,
+  "run_attempt": 1,
+  "workflow": ".github/workflows/carr-windows.yml",
+  "workflow_blob": "4265fb9912cfea14a2deda24d216c62c72078396",
+  "job_id": 140835230479,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474617/job/140835230479",
+  "terminal": {
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-11-28T02:41:37Z",
+    "completed_at": "2026-11-28T04:07:14Z"
+  },
+  "complete_decoded_log": {
+    "file": "completed-job.decoded.log",
+    "characters": 2065748,
+    "utf8_bytes": 2066062,
+    "utf8_sha256": "ac82c21e347bb9774906cb11243cce429ad9c190f3810741e1ef2680930589e3",
+    "original_archive_bytes_claimed": false
+  },
+  "required_source": {
+    "selected_modules": 445,
+    "completed_modules": 445,
+    "passed_modules": 443,
+    "failed_modules": 2,
+    "exact_selector_membership": true,
+    "cases": {
+      "passed": 11417,
+      "failed": 25,
+      "skipped": 0
+    },
+    "bootstrap_selector_included": "bootstrap/semantic_compat/test_probe.py",
+    "bootstrap_passed": 6,
+    "verdicts_file": "source-module-verdicts.json"
+  },
+  "observed_failures": [
+    {
+      "step": 26,
+      "scope": "Actual selected virtual-input capture",
+      "status": "FAIL",
+      "details": "Earlier raw immutable capture evidence retains DirectShow no output pin; WinMM open errors and WASAPI0x80070005 with read-only consent observations. No device/privacy setting changed.",
+      "existing_evidence": "carr-library/review/receiving-5d19dde7-2026-11-28"
+    },
+    {
+      "step": 66,
+      "scope": "Installed complete-bundle pytest",
+      "status": "FAIL",
+      "collected": 9001,
+      "passed": 1339,
+      "test_failures": 1,
+      "internal_errors": 1,
+      "unexecuted_collected": 7661,
+      "details": "Voice-profile fixture used locale-default JSON decoding; the observer then failed to encode its Unicode traceback on a CP1252 stream. Original JUnit retained separately.",
+      "existing_evidence": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving"
+    },
+    {
+      "step": 70,
+      "module": "tests/search/test_source_page_benchmark.py",
+      "passed": 18,
+      "failed": 1,
+      "details": "Observed FileNotFoundError/WinError3 from os.scandir(path) after lstat succeeded while a real owned child removed temporary .carr-original-* staging directory.",
+      "trace_file": "staging-directory-race.trace.log",
+      "product_blob": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c"
+    },
+    {
+      "step": 70,
+      "module": "tests/studio/test_clip_dialog.py",
+      "passed": 30,
+      "failed": 24,
+      "details": "This source predates the schema2 clip fixture correction in78dc8ab. Its original failure remains recorded; later candidates have separate execution evidence."
+    }
+  ],
+  "release_artifact_step": {
+    "name": "Retain the exact wheel only after the full Windows aggregate succeeds",
+    "status": "completed",
+    "conclusion": "skipped",
+    "number": 71,
+    "started_at": "2026-11-28T04:07:09Z",
+    "completed_at": "2026-11-28T04:07:09Z"
+  },
+  "qualification_limits": [
+    "This is the historical5d19dde7 execution only. Neither completed results nor failures are transferred to another commit.",
+    "The aggregate is FAIL. The complete Windows source harness finished all445 configured modules with two failed modules; there is no source timeout or skipped required module.",
+    "Full-bundle, selected capture, native probes and source cases are separate scopes and are not summed into one acceptance count.",
+    "Artifact metadata is matching GitHub API/upload evidence; the final archive's original bytes were not downloaded or rehashed.",
+    "Complete decoded public job text is preserved as returned. No executable/model/recording/private asset is included."
+  ]
+}

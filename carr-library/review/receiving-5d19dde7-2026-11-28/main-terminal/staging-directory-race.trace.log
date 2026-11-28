@@ -1,0 +1,87 @@
+_____ test_owned_child_refuses_changed_harness_and_keeps_partial_evidence _____
+
+benchmark = <module '_source_page_benchmark_test' from 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\benchmark_semantic_cache.py'>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-fc39to_u/pytest/test_owned_child_refuses_chang0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001E2BBEFE450>
+
+    def test_owned_child_refuses_changed_harness_and_keeps_partial_evidence(
+            benchmark, tmp_path, monkeypatch):
+        output = tmp_path / 'new-benchmark'
+        original = process.run_process
+        calls = []
+    
+        def mutate_after_build(argv, **kwargs):
+            result = original(argv, **kwargs)
+            calls.append(tuple(argv))
+            if len(calls) == 1:
+                harness = output / 'benchmark-harness.py'
+                harness.write_bytes(harness.read_bytes() + b'\n# Changed after the admitted build.\n')
+            return result
+    
+        monkeypatch.setattr(process, 'run_process', mutate_after_build)
+        with pytest.raises(AudioError, match='harness snapshot changed'):
+>           benchmark._source_pages_main(options(output))
+
+tests\search\test_source_page_benchmark.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+scripts\benchmark_semantic_cache.py:561: in _source_pages_main
+    result = run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-X', 'utf8',
+tests\search\test_source_page_benchmark.py:143: in mutate_after_build
+    result = original(argv, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\audio\process.py:541: in run_process
+    check()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def check():
+        nonlocal last_progress, stopped_at
+        # A cancellation callback may also verify a completed checkpoint. Take
+        # positive process evidence before that work, never backdate an exit
+        # first observed after the allowance or during a slow callback.
+        if exit_time() is None and process.poll() is not None:
+            record_exit()
+        if cancelled():
+            raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
+        if (stop_requested is not None and stopped_at is None
+                and stop_requested() and process.poll() is None):
+            stopped_at = time.monotonic()
+            try:
+                process.stdin.write(b'q\n')
+                process.stdin.flush()
+                process.stdin.close()
+            except BrokenPipeError:
+                pass  # A concurrent exit is checked by the normal result path.
+        if stopped_at is not None and time.monotonic() - stopped_at > 5 and process.poll() is None:
+            raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
+        if reader_failures:
+            raise AudioError('Audio worker diagnostic stream could not be read.') from reader_failures[0]
+        if overflow.is_set():
+            raise AudioError('Audio worker exceeded its diagnostic output budget.')
+        worker_until = exit_time()
+        if worker_until is None:
+            worker_until = time.monotonic()
+        if worker_until - started > budget.timeout:
+            raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
+        total, count = 0, 0
+        pending = list(watched)
+        while pending:
+            if cancelled():
+                raise AudioCancelled('Audio operation cancelled during staging inspection.')
+            path = pending.pop()
+            try:
+                info = path.lstat()
+            except FileNotFoundError:
+                continue
+            if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                raise AudioError('Audio worker output is not a regular file.')
+            if stat.S_ISDIR(info.st_mode):
+>               with os.scandir(path) as entries:
+                     ^^^^^^^^^^^^^^^^
+E               FileNotFoundError: [WinError 3] The system cannot find the path specified: 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-ci-fc39to_u\\pytest\\test_owned_child_refuses_chang0\\new-benchmark\\33\\library\\originals\\.carr-original-692h33vb'
+
+src\carr_library\audio\process.py:512: FileNotFoundError
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-fc39to_u\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/search/test_source_page_benchmark.py::test_owned_child_refuses_changed_harness_and_keeps_partial_evidence - FileNotFoundError: [WinError 3] The system cannot find the path specified: 'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-ci-fc39to_u\\pytest\\test_owned_child_refuses_chang0\\new-benchmark\\33\\library\\originals\\.carr-original-692h33vb'
+======================== 1 failed, 18 passed in 9.39s =========================
+.FAIL: tests/search/test_source_page_benchmark.py: junit_passed=18, failed=1, skipped=0, pytest_exit=1

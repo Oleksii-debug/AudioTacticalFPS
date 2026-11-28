@@ -37,6 +37,14 @@
       "sparse_tree": "18e359f73faa715ae44b5d70fcfd2e816567aa05",
       "kind": "terminal Linux supplied bridge",
       "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/supplied-bridge-linux/qualification.json"
+    },
+    {
+      "tested_source": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+      "run": 46098474617,
+      "job": 140835230479,
+      "sparse_tree": "0bc596e74bf8762b437ca794f045ee8feaa6e3e5",
+      "kind": "terminal failed MAIN; all445 source modules completed",
+      "qualification": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/qualification.json"
     }
   ],
   "application_changes": [],
