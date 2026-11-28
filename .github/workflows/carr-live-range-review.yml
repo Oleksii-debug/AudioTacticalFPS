@@ -1,0 +1,235 @@
+name: Live source A-B repeat and sleep
+on:
+  push:
+    branches: [carr/live-range-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-live-range-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: live-range-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    name: Live source repeat, sleep and ownership / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      CARR_LIVE_RANGE_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        run: |
+          python -m pip install ".[test]"
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+      - name: Prepare actual Linux audio tools
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p ci-live-range
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          ffmpeg -version > ci-live-range/ffmpeg-version.txt
+          ffprobe -version > ci-live-range/ffprobe-version.txt
+      - name: Prepare pinned Windows audio tools
+        id: audio
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-live-range' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-live-range-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-live-range/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_LIVE_RANGE_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare exact source and installed acceptance harness
+        run: |
+          mkdir -p ci-live-range
+          cat > ci-live-range/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import subprocess
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-live-range"
+          suites = ["tests/reader/test_speech_normalization.py","tests/speech/test_preparation.py","tests/ui/test_speech_preparation.py","tests/ui/test_speech_preparation_hooks.py","tests/speech/test_reading.py","tests/speech/test_session.py","tests/speech/test_source.py","tests/speech/test_pronunciation_review.py","tests/speech/test_pronunciation_handlers.py","tests/speech/test_pronunciation_reader_hook.py","tests/speech/test_pronunciation_formats.py","tests/speech/test_pronunciation_formats_handlers.py","tests/studio/test_pronunciation.py","tests/studio/test_pronunciation_dialog.py","tests/storage/test_library_backup_reading_state.py","tests/ui/test_reading_copy_save_guard.py","tests/ui/test_reader_dialog_lifetime.py","tests/speech/test_reader_native_lifetime.py","tests/reader/test_live_reading.py","tests/ui/test_live_reading_controls.py","tests/ui/test_live_range_controls.py","tests/reader/test_live_listening.py","tests/reader/test_live_player.py","tests/assistant/test_player_tools.py","tests/ui/test_reader_background.py","tests/speech/test_output_device_playback.py","tests/speech/test_listening.py"]
+
+          names = ["carr_library.speech.reading","carr_library.speech.preparation","carr_library.speech.session","carr_library.speech.source","carr_library.reader.speech_normalization","carr_library.reader._vendor_num2words.lang_SK","carr_library.reader._vendor_num2words.base","carr_library.reader._vendor_num2words.utils","carr_library.reader._vendor_num2words.compat","carr_library.reader._vendor_num2words.currency","carr_library.ui.speech_preparation","carr_library.ui.speech_dialog","carr_library.ui.studio_pronunciation","carr_library.ui.pronunciation_dialog","carr_library.studio.pronunciation","carr_library.reader.live_reading","carr_library.backup_extensions","carr_library.speech.pronunciation_formats","carr_library.library_backup","carr_library.durable_state","carr_library.audio.cleanup","carr_library.ui.live_range_controls","carr_library.ui.live_reading","carr_library.reader.live_player","carr_library.reader.live_state","carr_library.speech.listening","carr_library.speech.player","carr_library.speech._wave_output","carr_library.ui.reader_background","carr_library.assistant.player_tools","carr_library.audio.process","carr_library.audio.windows_job"]
+          # Compile selected real source and test bytes without importing UI/native code.
+          for name in names:
+              path = source.joinpath(*name.split(".")[1:]).with_suffix(".py")
+              compile(path.read_bytes(), str(path), "exec")
+          for suite in suites:
+              path = root / suite
+              compile(path.read_bytes(), str(path), "exec")
+          
+          def checkout_head():
+              value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()
+              assert value == os.environ["CARR_LIVE_RANGE_HEAD"], (value, os.environ["CARR_LIVE_RANGE_HEAD"])
+              return value
+
+          commit_before = checkout_head()
+          helper_before = sha256(Path(__file__).read_bytes()).hexdigest()
+          tests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}
+
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              for relative in ("reader/_vendor_num2words/COPYING", "reader/_vendor_num2words/UPSTREAM.json"):
+                  path = directory / relative
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[relative] = sha256(path.read_bytes()).hexdigest()
+              return result
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      # Preserve the original collection failure before the
+                      # required nonempty-suite assertion can terminate pytest.
+                      print("FAILED COLLECTION: " + report.nodeid, flush=True)
+                      print(str(report.longrepr)[:16384], flush=True)
+          
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "--durations=20", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-live-range-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              assert checkout_head() == commit_before, "The checked-out commit changed."
+              assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, "The executed proof helper changed."
+              assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, "Executed test bytes changed."
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "qualification": "LIVE_SOURCE_RANGE_REPEAT_SLEEP_OWNERSHIP",
+                        "native_live_range_controls": "NOT_RUN",
+                        "actual_neural_model_quality": "NOT_RUN",
+                        "commit": commit_before, "proof_helper_sha256": helper_before,
+                        "test_files": tests_before,
+                        "selected_suites": proof.collected, "package_python_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require actual source repeat, sleep and existing reading contracts
+        if: "!cancelled()"
+        timeout-minutes: 20
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -B -X utf8 ci-live-range/check.py source 2>&1 | tee ci-live-range/source.txt
+      - name: Require isolated installed origins and the same live reading contracts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-live-range/check.py installed 2>&1 | tee ci-live-range/installed.txt
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-live-range
+          git rev-parse HEAD > ci-live-range/commit.txt
+          git rev-parse HEAD^{tree} > ci-live-range/tree.txt
+          python -m pip freeze > ci-live-range/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: live-range-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-live-range
+          if-no-files-found: error

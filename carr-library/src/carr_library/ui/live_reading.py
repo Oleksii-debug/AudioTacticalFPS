@@ -122,6 +122,7 @@ class LiveReadingControls:
         self._sequence = -1
         self._voices = ()
         self._section = None
+        self._range_listeners = set()
         self.command_buttons = command_buttons if command_buttons is not None else {}
         self._host = _top_host(host or dialog)
         self._previous_media = getattr(self._host, "progress_media_busy", False)
@@ -171,6 +172,7 @@ class LiveReadingControls:
         self.pause_button = self._button(buttons, "Pause or resume voice", self.pause, "reader.speech_pause")
         self.stop_button = self._button(buttons, "Stop voice reading", self.stop, "reader.speech_stop")
         self.seek_button = self._button(buttons, "Seek within current speech chunk", self.seek, "reader.speech_seek")
+        self._button(buttons, 'A–B text repeat and sleep...', self.repeat_and_sleep, 'reader.repeat_sleep')
         self.resume_button = self._button(buttons, "Resume saved voice position", self.resume, "reader.speech_resume")
         self._button(buttons, "Voice reading status", self.focus_status, "reader.speech_status")
         layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 3)
@@ -367,6 +369,69 @@ class LiveReadingControls:
         except Exception as exc:
             self._report(exc)
 
+    def repeat_and_sleep(self, event=None):
+        """Configure exact source ranges without borrowing a disposable WAV."""
+        if self.closed:
+            return
+        from .live_range_controls import show_live_range_controls
+        core = self.core
+        def guard():
+            if self.closed or not self.dialog or self.core is not core:
+                raise ValueError('This live reading owner is no longer available.')
+            self.source.guard()
+        try:
+            guard()
+            if not self.ready():
+                raise ValueError('Wait for the current source operation before configuring repeat.')
+            view = core.status()
+            if core.busy:
+                if view.section is None or view.state in ('discovering', 'stopping'):
+                    raise ValueError('Wait until the current source range is checked.')
+                ordinal, raw = view.section.ordinal, view.section.text
+            else:
+                ordinal, raw = self.current()
+            voice_settings = self._voice_settings()
+            native_first, native_last = self.text.GetSelection()
+            initial = (reading_range(self.text, raw, 'selection')
+                       if native_first != native_last else (0, len(raw)))
+            def current():
+                guard()
+                if not self.ready() or core.busy:
+                    raise ValueError('Stop reading and wait for its owned cleanup before changing the A–B range.')
+                current_ordinal, current_text = self.current()
+                if ((current_ordinal, current_text) != (ordinal, raw)
+                        or self._voice_settings() != voice_settings):
+                    raise ValueError('The source, reading copy or selected voice changed. Reopen A–B controls.')
+                return current_text
+            def start_repeat(first, last):
+                generation = getattr(self, '_start_generation', 0)
+                current_text = current()
+                if (type(first) is not int or type(last) is not int
+                        or not 0 <= first < last <= len(current_text) or not current_text[first:last].strip()):
+                    raise ValueError('Choose a nonempty spoken A–B range in this exact source.')
+                voice, rate, volume = voice_settings
+                if getattr(self, '_start_generation', 0) != generation:
+                    raise InterruptedError('The pending A–B start was cancelled.')
+                self._quiet_begin()
+                guard()
+                if getattr(self, '_start_generation', 0) != generation:
+                    raise InterruptedError('The pending A–B start was cancelled.')
+                core.start(ordinal, voice, start=first, end=last, rate=rate,
+                           volume=volume, continuous=False, repeat=True)
+            def selected_range():
+                return reading_range(self.text, current(), 'selection')
+            def subscribe(callback):
+                self._range_listeners.add(callback)
+                return lambda: self._range_listeners.discard(callback)
+            show_live_range_controls(self.dialog, length=len(raw), initial=initial,
+                start_repeat=start_repeat, selected_range=selected_range,
+                set_sleep=core.set_sleep, cancel_sleep=core.cancel_sleep,
+                stop=self.stop, status=core.navigation_status, subscribe=subscribe,
+                guard=guard, alive=lambda: not self.closed and self.core is core,
+                wx_module=self.wx)
+        except Exception as exc:
+            self._report(exc)
+
     def playback_settings(self, event=None):
         if self.closed:
             return
@@ -410,6 +475,11 @@ class LiveReadingControls:
             return
         view = self.core.status()
         busy = self.core.busy
+        for callback in tuple(getattr(self, '_range_listeners', ())):
+            try:
+                callback()
+            except Exception as exc:
+                self._report(exc)
         available = self.ready() and not busy
         for button in self.read_buttons:
             button.Enable(available)
@@ -462,6 +532,8 @@ class LiveReadingControls:
         if self.closed:
             return
         self.closed = True
+        for callback in tuple(getattr(self, '_range_listeners', ())):
+            self._range_listeners.discard(callback)
         from .reader_background import close_session_controls
         close_session_controls(self)
         try:

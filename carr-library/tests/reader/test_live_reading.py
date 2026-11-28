@@ -880,3 +880,280 @@ def test_explicit_output_never_silently_falls_back_to_an_unsupported_player(sour
     assert 'explicit output device' in reader.status().message
     assert not renderer.requests and player.play_count == 0
     assert player.close_count > 0 and not list(app.root.glob('.live-reading-*'))
+
+
+# Explicit live-text A–B and sleep use the existing source/player/worker.
+def test_source_ab_repeats_multiple_exact_chunks_on_one_selected_device_and_stop_revokes_future(source, make_reader):
+    from carr_library.audio.output_devices import OutputDevice
+    app, _workspace, book, desk, pages = source
+    first, last = 3, len(pages[0]) - 4
+    expected = pages[0][first:last]
+    original = app.assets.resolve(book['asset']).read_bytes()
+    threads, passes = [], []
+    class SelectedPlayer(SyntheticPlayer):
+        def __init__(self):
+            super().__init__()
+            self.outputs = []
+        def select_output(self, selected):
+            assert self.handle is None and all(not path.exists() for path in self.paths)
+            self.outputs.append(selected)
+    player = SelectedPlayer()
+    renderer = SyntheticRender()
+    reader, _, _ = make_reader(SourceSequence(desk), renderer=renderer, player=player)
+    def before(request, target, options):
+        threads.append(threading.get_ident())
+        passes.append(reader.navigation_status()['repeat_pass'])
+        if ''.join(item.text for item in renderer.requests[:-1]) == expected * 2:
+            reader.stop()
+    renderer.before = before
+    endpoint = OutputDevice(2, 'fixture-same-live-output', 'Explicit retained output')
+    reader.set_output_device(endpoint)
+    reader.start(1, VOICE.id, start=first, end=last, repeat=True).result(8)
+    assert reader.status().state == 'stopped', reader.status()
+    assert ''.join(item.text for item in renderer.requests[:-1]) == expected * 2
+    assert len(renderer.requests[:-1]) >= 4 and all(len(item.text) <= 64 for item in renderer.requests)
+    assert player.play_count == len(renderer.requests) - 1 and player.outputs == [endpoint]
+    assert set(passes) >= {1, 2, 3}
+    assert len(set(threads)) == 1 and threads[0] != threading.get_ident()
+    assert reader.navigation_status() == dict(active=False, repeat_range=None, repeat_pass=0, sleep_remaining=None)
+    assert player.handle is None and all(not path.exists() for path in player.paths)
+    assert not list(app.root.glob('.live-reading-*')) and app.assets.resolve(book['asset']).read_bytes() == original
+    previous = len(renderer.requests)
+    renderer.before = None
+    reader.start(1, VOICE.id, start=first, end=last).result(8)
+    assert reader.status().state == 'complete'
+    assert ''.join(item.text for item in renderer.requests[previous:]) == expected
+    assert player.outputs == [endpoint, endpoint]
+
+
+@pytest.mark.parametrize('arguments', [
+    {'repeat': 1}, {'repeat': 'yes'}, {'repeat': True, 'continuous': True},
+    {'repeat': True, 'resume': True},
+])
+def test_repeat_requires_explicit_boolean_and_one_current_range(source, make_reader, arguments):
+    reader, render, player = make_reader(SourceSequence(source[3]))
+    with pytest.raises(ValueError):
+        reader.start(1, VOICE.id, **arguments)
+    assert not render.requests and not player.paths and reader.navigation_status()['repeat_range'] is None
+
+
+def test_repeat_refuses_empty_or_silent_range_without_opening_a_device(source, make_reader):
+    reader, renderer, player = make_reader(SourceSequence(source[3]))
+    reader.start(1, VOICE.id, start=0, end=0, repeat=True).result(5)
+    assert reader.status().state == 'error' and not renderer.requests and not player.paths
+    reader.start(2, VOICE.id, repeat=True).result(5)
+    assert reader.status().state == 'error' and not renderer.requests and not player.paths
+
+
+def test_repeat_rechecks_real_retained_original_before_the_next_pass_can_play(source, make_reader):
+    app, _workspace, book, desk, pages = source
+    asset = app.assets.resolve(book['asset'])
+    original = asset.read_bytes()
+    selected = pages[0][:100]
+    renderer = SyntheticRender()
+    reader, _, player = make_reader(SourceSequence(desk), renderer=renderer)
+    def change_after_first_pass(request, target, options):
+        if ''.join(item.text for item in renderer.requests[:-1]) == selected:
+            changed = bytearray(original)
+            changed[-1] ^= 1
+            asset.write_bytes(changed)
+    renderer.before = change_after_first_pass
+    try:
+        reader.start(1, VOICE.id, start=0, end=100, repeat=True).result(8)
+        assert reader.status().state == 'error', reader.status()
+        assert ''.join(item.text for item in renderer.requests[:-1]) == selected
+        assert player.play_count == len(renderer.requests) - 1 >= 2
+        assert player.handle is None and all(not path.exists() for path in player.paths)
+        assert not list(app.root.glob('.live-reading-*'))
+    finally:
+        asset.write_bytes(original)
+
+
+def test_repeated_derivative_keeps_current_map_and_rejects_a_real_document_reprepare(source, make_reader):
+    app, _workspace, _book, _desk, pages = source
+    document = ReadingDocument(pages[0])
+    document.replace(0, 0, 'Reviewed manual words. ')
+    original = document.to_dict()
+    sequence = DocumentSequence(app.root, document)
+    renderer = SyntheticRender()
+    reader, _, player = make_reader(sequence, renderer=renderer)
+    expected = document.text[3:103]
+    def changed_copy(request, target, options):
+        if ''.join(item.text for item in renderer.requests[:-1]) == expected:
+            foreign = ReadingDocument(document.text + ' Actual new reading revision.')
+            sequence.prepare(foreign)
+    renderer.before = changed_copy
+    reader.start(1, VOICE.id, start=3, end=103, repeat=True).result(8)
+    assert reader.status().state == 'error' and 'revision changed' in reader.status().message
+    assert document.to_dict() == original
+    assert ''.join(item.text for item in renderer.requests[:-1]) == expected
+    assert player.play_count == len(renderer.requests) - 1 >= 2
+
+
+def test_repeat_counts_all_completed_passes_in_existing_character_budget(source, make_reader):
+    budget = LiveBudget(chunk_characters=64, session_characters=160, minimum_free_bytes=1)
+    reader, renderer, player = make_reader(SourceSequence(source[3]), budget=budget)
+    reader.start(1, VOICE.id, start=0, end=100, repeat=True).result(8)
+    assert reader.status().state == 'error' and 'resource budget' in reader.status().message
+    assert 100 <= sum(len(item.text) for item in renderer.requests) <= 160
+    assert player.play_count == len(renderer.requests) and player.handle is None
+    assert reader.navigation_status()['repeat_range'] is None
+
+
+@pytest.mark.parametrize('paused', [False, True])
+def test_actual_monotonic_sleep_stops_playing_or_paused_repeat_and_releases_same_wav(source, make_reader, paused):
+    app, _workspace, book, desk, pages = source
+    original = app.assets.resolve(book['asset']).read_bytes()
+    reader, renderer, player = make_reader(SourceSequence(desk), player=SyntheticPlayer(automatic=False))
+    future = reader.start(1, VOICE.id, start=0, end=100, repeat=True)
+    until(lambda: reader.status().state == 'playing')
+    if paused:
+        reader.toggle_pause()
+        until(lambda: reader.status().state == 'paused')
+    plays = player.play_count
+    reader.set_sleep(1)
+    assert 0 < reader.navigation_status()['sleep_remaining'] <= 1
+    future.result(5)
+    assert reader.status().state == 'stopped' and 'sleep timer expired' in reader.status().message
+    assert player.play_count == plays == 1 and player.handle is None
+    assert all(not path.exists() for path in player.paths) and not list(app.root.glob('.live-reading-*'))
+    assert reader.quiescent and not reader.silence_uncertain
+    assert reader.navigation_status() == dict(active=False, repeat_range=None, repeat_pass=0, sleep_remaining=None)
+    assert app.assets.resolve(book['asset']).read_bytes() == original and renderer.requests[0].text in pages[0]
+
+
+def test_sleep_cancels_actual_owned_renderer_child_before_any_pcm_is_adopted(source, make_reader, tmp_path, monkeypatch):
+    import sys
+    from carr_library.audio import process as process_module
+    from carr_library.audio.models import AudioBudget
+    started = tmp_path / 'actual-renderer-pid.txt'
+    children = []
+    if process_module.os.name == 'nt':
+        from carr_library.audio import windows_job
+        launch_owner, launch_name = windows_job, 'JobProcess'
+    else:
+        launch_owner, launch_name = process_module.subprocess, 'Popen'
+    actual_launch = getattr(launch_owner, launch_name)
+    def observed(*args, **kwargs):
+        child = actual_launch(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(launch_owner, launch_name, observed)
+    def actual_child(request, target, options):
+        program = ('import os,sys,time; from pathlib import Path; '
+                   'Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(30)')
+        process_module.run_process([sys.executable, '-I', '-B', '-c', program, str(started)],
+            cancelled=options['cancelled'], budget=AudioBudget(timeout=5, max_log_bytes=4096),
+            owned_tree=True)
+    reader, renderer, player = make_reader(SourceSequence(source[3]), renderer=SyntheticRender(actual_child))
+    future = reader.start(1, VOICE.id, start=0, end=100, repeat=True)
+    until(started.is_file)
+    assert reader.status().state == 'rendering' and len(children) == 1
+    reader.set_sleep(1)
+    future.result(8)
+    assert reader.status().state == 'stopped' and 'sleep timer expired' in reader.status().message
+    assert children[0].poll() is not None and not renderer.requests[1:]
+    assert int(started.read_text()) > 0, 'The actual renderer child wrote its own PID.'
+    if process_module.os.name == 'nt':
+        assert children[0]._job is None and children[0]._process.hProcess is None
+        assert not children[0]._member_handles, 'No owned native family handle may remain.'
+    else:
+        assert int(started.read_text()) == children[0].pid
+    assert not player.paths and not list(source[0].root.glob('.live-reading-*'))
+
+
+def test_source_revocation_while_paused_repeat_preempts_later_sleep_or_play(source, make_reader):
+    app, workspace, _book, desk, _pages = source
+    reader, renderer, player = make_reader(SourceSequence(desk), player=SyntheticPlayer(automatic=False))
+    future = reader.start(1, VOICE.id, start=0, end=100, repeat=True)
+    until(lambda: reader.status().state == 'playing')
+    reader.toggle_pause()
+    until(lambda: reader.status().state == 'paused')
+    reader.set_sleep(60)
+    app.archive_workspace(workspace)
+    future.result(5)
+    assert reader.status().state == 'error' and 'archived' in reader.status().message.lower()
+    assert player.play_count == 1 and player.resume_count == 0 and len(renderer.requests) == 1
+    assert player.handle is None and reader.navigation_status()['sleep_remaining'] is None
+
+
+def test_cancel_sleep_is_explicit_and_never_stops_or_restarts_the_current_chunk(source, make_reader):
+    reader, renderer, player = make_reader(SourceSequence(source[3]), player=SyntheticPlayer(automatic=False))
+    future = reader.start(1, VOICE.id, start=0, end=15)
+    until(lambda: reader.status().state == 'playing')
+    reader.set_sleep(1)
+    reader.cancel_sleep()
+    assert reader.navigation_status()['sleep_remaining'] is None
+    time.sleep(1.05)
+    assert not future.done() and player.play_count == 1 and len(renderer.requests) == 1
+    player.advance(.2)
+    future.result(5)
+    assert reader.status().state == 'complete' and player.resume_count == 0
+
+
+@pytest.mark.parametrize('value', [True, False, None, '1', 0, .5, 86401, float('nan'), float('inf')])
+def test_sleep_refuses_nonfinite_wrong_type_or_outside_explicit_bound(source, make_reader, value):
+    reader, _renderer, _player = make_reader(SourceSequence(source[3]))
+    with pytest.raises(ValueError):
+        reader.set_sleep(value)
+    assert reader.navigation_status()['sleep_remaining'] is None
+
+
+def test_sleep_cannot_arm_an_idle_closed_or_already_terminal_future(source, make_reader):
+    entered, release = threading.Event(), threading.Event()
+    class HeldFinalClose(SyntheticPlayer):
+        def close(self):
+            if self.close_count and self.handle is None:
+                entered.set()
+                assert release.wait(5)
+            return super().close()
+    reader, _renderer, player = make_reader(SourceSequence(source[3]), player=HeldFinalClose())
+    with pytest.raises(ValueError, match='Start source'):
+        reader.set_sleep(5)
+    future = reader.start(1, VOICE.id, start=0, end=15)
+    try:
+        assert entered.wait(5) and reader.status().state == 'complete' and not future.done()
+        assert reader.navigation_status()['active'] is False
+        with pytest.raises(ValueError, match='Start source'):
+            reader.set_sleep(5)
+    finally:
+        release.set()
+    future.result(5)
+    reader.close()
+    with pytest.raises(ValueError):
+        reader.set_sleep(5)
+    with pytest.raises(ValueError):
+        reader.cancel_sleep()
+
+
+def test_sleep_retains_failed_native_cleanup_without_claiming_silence(source, make_reader):
+    from carr_library.reader.live_reading import _RETAINED_MEDIA
+    class RefusedClose(SyntheticPlayer):
+        failed = True
+        def stop(self):
+            if self.failed:
+                raise RuntimeError('Actual synthetic output stop refused.')
+            return super().stop()
+        def close(self):
+            if self.failed and self.handle is not None:
+                raise RuntimeError('Actual synthetic output close refused.')
+            return super().close()
+    player = RefusedClose(automatic=False)
+    reader, _renderer, _player = make_reader(SourceSequence(source[3]), player=player)
+    future = reader.start(1, VOICE.id, start=0, end=100, repeat=True)
+    until(lambda: reader.status().state == 'playing')
+    reader.set_sleep(1)
+    future.result(5)
+    try:
+        assert player.handle is not None and player.paths[-1].is_file()
+        assert reader._retained_resources in _RETAINED_MEDIA
+        assert reader.silence_uncertain and not reader.quiescent
+        assert 'retained' in reader.status().warning and reader.navigation_status()['repeat_range'] is None
+    finally:
+        player.failed = False
+        player.close()
+        retained = reader._retained_resources
+        retained[1].cleanup()
+        _RETAINED_MEDIA.remove(retained)
+        reader._retained_resources = None
+        reader._possibly_audible = False
