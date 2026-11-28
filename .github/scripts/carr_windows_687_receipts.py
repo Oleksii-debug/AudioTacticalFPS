@@ -14,18 +14,15 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46103182988
-HEAD = "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b"
-BRANCH = "carr/ci-endpoint-evaluation-20261127"
+RUN = 46105059505
+HEAD = "f8311d17fa960448b350cb739b5a90584c30c74b"
+BRANCH = "carr/v3-integrated-final-dbbb-20261126"
 SOURCES = (
-    ("main", 15247277543, 324087,
-     "3b67d07e32140ac060ff4e6b3b9414f9b3c8f79f8ee364cea644945b49d8c097",
+    ("main", 15248337235, 181516,
+     "19a5855ed23fa6c050fcbdd653493bd6001086b3b168d00ee241dc754a9b4aa9",
      "carr-windows-pre-source-" + HEAD + "-1"),
-    ("recording", 15246148009, 16765,
-     "0fddda1b2cfa683277364246e796cf8b4671bc6a31c2d0ed4ff93b83b1a66f63",
-     "carr-windows-recording-" + HEAD + "-1"),
-    ("endpoint", 15246751161, 3945,
-     "85e25f2103a6b6c55999933f8861da2c02fa1628cf9b6f3978cd677d020e78d8",
+    ("endpoint", 15248185042, 1003,
+     "a21838dcfae9da784665586892ab69bab78064aed0459dfc76bcdd83e747166d",
      "carr-windows-audio-endpoint-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
