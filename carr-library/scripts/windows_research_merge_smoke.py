@@ -472,8 +472,18 @@ def native():
         first_result = actions.result
         report = result_dialog()
         texts = [child.GetValue() for child in report.GetChildren() if isinstance(child, wx.TextCtrl)]
+        check('the actual read-only completion body matches the genuine result dialog',
+              len(texts) == 1 and not next(child for child in report.GetChildren()
+                                           if isinstance(child, wx.TextCtrl)).IsEditable()
+              and texts[0] == answers.reports[-1][1])
+        # The native report contains JSON: Windows path backslashes are escaped
+        # in its displayed text and must be decoded before exact comparison.
+        displayed = json.loads(texts[0].partition('\n\n')[2])
         criterion('actual_final_report_matches_committed_result',
-                  any(str(first_result.path) in value and first_result.preview_sha256 in value for value in texts))
+                  displayed == dict(path=str(first_result.path), profile=first_result.profile,
+                      preview_sha256=first_result.preview_sha256,
+                      choices=[list(item) for item in first_result.choices],
+                      omitted=[[side, list(items)] for side, items in first_result.omitted]))
         press(report.FindWindow(wx.ID_CANCEL))
         yield waiting(lambda: not report and quiet(), 'The genuine completion report did not return')
         verify_output(first_result, 'RIGHT exact note')
