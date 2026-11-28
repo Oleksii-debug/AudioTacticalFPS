@@ -1,4 +1,4 @@
-name: CARR isolated native EPUB and document diagnostics
+name: CARR isolated composed recovery diagnostics
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scope: [native-epub]
+        scope: [composed-recovery]
     defaults:
       run:
         shell: pwsh
@@ -119,145 +119,18 @@ jobs:
           "CARR_V3_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Inspect and start native Windows audio services
-        timeout-minutes: 2
-        run: |
-          $audioServiceNames = @('AudioEndpointBuilder', 'Audiosrv')
-          $audioBefore = [ordered]@{
-            phase = 'before'
-            services = @(Get-CimInstance Win32_Service -Filter "Name='AudioEndpointBuilder' OR Name='Audiosrv'" | Select-Object Name, State, StartMode)
-            sound_devices = @(Get-CimInstance Win32_SoundDevice | Select-Object Name, Status, ConfigManagerErrorCode)
-          }
-          $audioBefore | ConvertTo-Json -Depth 5 -Compress | Tee-Object 'ci-native-audio-diagnostic/audio-services-before.json'
-          $audioServiceFailure = $null
-          try {
-            foreach ($audioServiceName in $audioServiceNames) {
-              $audioService = Get-Service -Name $audioServiceName -ErrorAction Stop
-              if ($audioService.StartType -eq 'Disabled') {
-                Set-Service -Name $audioServiceName -StartupType Manual -ErrorAction Stop
-              }
-              Start-Service -Name $audioServiceName -ErrorAction Stop
-              $audioService.Refresh()
-              $audioService.WaitForStatus('Running', [TimeSpan]::FromSeconds(15))
-            }
-          } catch {
-            $audioServiceFailure = $_.Exception.Message
-          }
-          $audioAfter = [ordered]@{
-            phase = 'after'
-            service_error = $audioServiceFailure
-            services = @(Get-CimInstance Win32_Service -Filter "Name='AudioEndpointBuilder' OR Name='Audiosrv'" | Select-Object Name, State, StartMode)
-            sound_devices = @(Get-CimInstance Win32_SoundDevice | Select-Object Name, Status, ConfigManagerErrorCode)
-          }
-          $audioAfter | ConvertTo-Json -Depth 5 -Compress | Tee-Object 'ci-native-audio-diagnostic/audio-services-after.json'
-          $audioInventory = @'
-          import ctypes as C
-          import json
-          from dataclasses import asdict
-          from carr_library.audio.recording_monitor import _WaveFormat, _api
-          from carr_library.speech.playback_devices import output_devices
-          library = _api()
-          library.waveOutGetNumDevs.argtypes = []
-          library.waveOutGetNumDevs.restype = C.c_uint32
-          library.mciGetErrorStringW.argtypes = [C.c_uint32, C.c_wchar_p, C.c_uint32]
-          library.mciGetErrorStringW.restype = C.c_int
-          message = C.create_unicode_buffer(1024)
-          translated = bool(library.mciGetErrorStringW(326, message, len(message)))
-          formats = []
-          for rate in (24000, 44100, 48000):
-              for channels in (1, 2):
-                  pcm = _WaveFormat(1, channels, rate, rate * channels * 2, channels * 2, 16, 0)
-                  code = int(library.waveOutOpen(None, 0xFFFFFFFF, C.byref(pcm), 0, 0, 1))
-                  formats.append(dict(sample_rate=rate, channels=channels, bits=16, winmm_result=code))
-          print(json.dumps(dict(winmm_output_count=int(library.waveOutGetNumDevs()),
-              outputs=[asdict(value) for value in output_devices()],
-              mci_326_message=message.value if translated else None,
-              pcm_format_queries=formats,
-              qualification="Native inventory and format queries only; real playback remains required"),
-              ensure_ascii=True), flush=True)
-          '@
-          $audioInventory | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/audio-output-inventory.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ($null -ne $audioServiceFailure) { throw $audioServiceFailure }
-
-      - name: Require EPUB mapping and import control source regressions
+      - name: Require actual composed recovery and cancellation boundaries
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
-        timeout-minutes: 3
+        timeout-minutes: 12
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/reader/test_ebook_audio.py tests/ui/test_ebook_dialog.py tests/ui/test_import_center.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/epub-source-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_composed_recovery.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/composed-recovery-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Require the corrected import installer and reporting regressions
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/e2e/test_application.py tests/e2e/test_import_batches.py tests/ingest/test_batch_scan.py tests/packaging/test_install_bytecode.py tests/search/test_retrieval_evaluation.py tests/ingest/test_import_publication_point.py tests/ingest/test_import_replay_identity.py tests/ingest/test_txt_replay_registration.py tests/e2e/test_epub_library.py tests/ingest/test_terminal_replay_registration.py tests/storage/test_composed_recovery.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/prior-failure-source-tests.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual installed recorded EPUB with bounded stack observations
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          $diagnose = @'
-          import json, os, pathlib, runpy, sys, threading, traceback
-          stop_observer = threading.Event()
-          observer_stream = os.fdopen(os.dup(sys.__stdout__.fileno()), 'w',
-                                      encoding='utf-8', errors='backslashreplace', buffering=1)
-          def observe():
-              for number in range(1, 5):
-                  if stop_observer.wait(30):
-                      return
-                  snapshots = sys._current_frames()
-                  try:
-                      threads = []
-                      for identifier, frame in list(snapshots.items())[:8]:
-                          frames = traceback.extract_stack(frame, limit=32)
-                          threads.append(dict(thread=hex(identifier), frames=[
-                              dict(filename=item.filename, function=item.name, line=item.lineno)
-                              for item in frames]))
-                      print('CARR_EPUB_STACK ' + json.dumps(dict(
-                          pid=os.getpid(), sample=number, threads=threads),
-                          ensure_ascii=True), file=observer_stream, flush=True)
-                  except Exception as error:
-                      print('CARR_EPUB_STACK ' + json.dumps(dict(
-                          pid=os.getpid(), sample=number,
-                          observation_error=type(error).__name__ + ': ' + str(error)[:256]),
-                          ensure_ascii=True), file=observer_stream, flush=True)
-                  finally:
-                      snapshots.clear()
-          observer = threading.Thread(target=observe, name='epub-native-observer', daemon=True)
-          observer.start()
-          try:
-              runpy.run_path(str(pathlib.Path.cwd() / 'scripts/windows_epub_reading_smoke.py'),
-                             run_name='__main__')
-          finally:
-              stop_observer.set()
-              observer.join(timeout=2)
-              if not observer.is_alive():
-                  observer_stream.close()
-          '@
-          $diagnose | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-epub.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Compare standalone installed MCI playback with EPUB admission
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B scripts/windows_reader_player_smoke.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-reader-player.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual installed document import and reading controls
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-document-formats.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Preserve only diagnostic source and native text evidence
+      - name: Preserve composed recovery diagnostic evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: carr-native-audio-diagnostic-${{ matrix.scope }}-${{ github.sha }}
+          name: carr-composed-recovery-diagnostic-${{ github.sha }}
           path: |
             carr-library/ci-native-audio-diagnostic/*.txt
             carr-library/ci-native-audio-diagnostic/*.json
