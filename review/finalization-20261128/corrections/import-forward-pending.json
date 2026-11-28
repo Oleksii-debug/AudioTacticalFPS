@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "status": "SOURCE_APPROVED_PUBLISHED_RUNTIME_PENDING",
+  "branch": "carr/import-cancellation-review-20261128",
+  "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+  "tree": "ed9916eec86957687ccd265b1cfd044a9bb84f59",
+  "files": 1568,
+  "parent": "6d288d2afea3bbb41eb164b6ec8db6311a6a214e",
+  "delta": {
+    "path": "carr-library/tests/operations/test_ocr_admission.py",
+    "base": "861ed64528e25712f0301f9e1ed5ceafc603c07d",
+    "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+  },
+  "predecessor_manifest": "8f92e97d6913b2126e72aa11a9374a57d9d0de9b",
+  "predecessor_failure_evidence": "0e0ded4a4475cfde139b59817ac46a0b0250f8b3",
+  "product_sources_unchanged": {
+    "worker": "63f5d2ef09c584d94f0be761b6c264b31f568802",
+    "pipeline": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+  },
+  "workflow_unchanged": "87039eafedab8f3b43fc0625fafc01816f695e6f"
+}

@@ -1,9 +1,16 @@
 # Finalization evidence
 
-This directory retains immutable public engineering records for [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
+The source snapshot on this branch is PR143 head `71ca92be691455d0ff51ed163b1d91749e5ae62e`. Its current required acceptance has failed; it must not merge.
 
-The current source candidate is `71ca92be691455d0ff51ed163b1d91749e5ae62e`, tree `73c43b7486974a7b301aa8c210c891b4d94ddb0d`. The source tree contains 1,567 files and seven maintained workflows. The status record is an observed checkpoint; it does not predeclare a successful final gate or a release.
+[Current status](status.json) and [continuation checkpoint](checkpoints/correction-cycle-17.json) record actual results and the remaining work. [Correction candidates](checkpoints/correction-candidates-17.json) identify the exact reviewed source, tests, workflow trees and separate pending runs. [PR description](pull-request.md) records the reviewable scope and qualification boundaries.
 
-Component records preserve their own actual head, installed inventory, commands, results and limits. Their test selections overlap. No count or PASS is transferred to the final candidate. Evidence-branch commits only retain these records; they are not a replacement source candidate.
+## Evidence groups
 
-See [status.json](status.json), [the recorded PR description](pull-request.md), [component records](components) and [independent review](reviews/final-documentation-and-workflow.json).
+- `components/`: independently executed source, installed and native component contracts; each result belongs to its recorded head.
+- `gates/`: the seven maintained workflows on the actual PR head, including failed outcomes and completed independent successes.
+- `preflights/`: actual composed syntax/native outcomes; skipped native work is not labelled passed.
+- `reviews/`: finite source reviews, explicitly separate from runtime evidence.
+- `corrections/`: fixture/product correction evidence, including the failed newly authored fixture before its forward correction.
+- `capacity/`: fixed artifact selections and bounded read-only extraction checkpoints for actual saved quantitative reports.
+
+The earlier evidence is retained. No predecessor or isolated component PASS qualifies a changed final head. A future final merge requires all maintained gates and the complete actual scale matrix on that exact source, followed by an expected-head merge.

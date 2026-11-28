@@ -1,0 +1,50 @@
+{
+  "schema": "carr-ocr-fresh-admission-regressions/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "test": {
+    "path": "carr-library/tests/operations/test_ocr_admission.py",
+    "before": "8ca4090c270fe337d26283a66f409c96a5763d79",
+    "after": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8",
+    "old_prefix": "Exact 160-line original retained; no existing assertion changed",
+    "added_cases": 4,
+    "previous_candidate": "861ed64528e25712f0301f9e1ed5ceafc603c07d"
+  },
+  "producer": {
+    "owner": "import_recovery_review",
+    "path": "carr-library/src/carr_library/ingest/worker.py",
+    "before": "4b78e411e37c3b5e68fd6496cb72448e8fcb0b4f",
+    "after": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+  },
+  "scenarios": [
+    "Fresh precancelled real PDF request: durable outcome and public listing agree; no attempt/native work; repeated cancelled resume keeps exact bytes; genuine same-ID worker resume completes.",
+    "Explicitly prepared request stays byte-identical pending during cancelled resume, without native launch.",
+    "Actual occupied broker plus real progress writer changes a full current record while stable request identity stays exact; subsequent cancellation refuses overwrite.",
+    "Same occupied/current-record scenario with actual admission timeout refuses overwrite."
+  ],
+  "proofs": [
+    "Original PDF bytes unchanged",
+    "No parser call before real admission",
+    "Real same-ID resumed _invoke delegates to existing worker",
+    "No manufactured receipt or complete result",
+    "Request lock released and broker leases drained",
+    "Current app cursor owner closes"
+  ],
+  "reviews": {
+    "tests": "import_recovery_review SOURCE APPROVE both original appended controls and the exact fixture-only correction0eb4 after complete current registration API comparison",
+    "producer": "release_audit and reader_review SOURCE APPROVE finite new=True settlement hunk"
+  },
+  "runtime": "NOT_RUN; importer owns bounded correction gate",
+  "ref_mutations": "None for this test lane",
+  "supersedes": "f7d8ee66f5ec15bcc9829518c555f365b14cef12",
+  "fixture_correction": {
+    "base": "861ed64528e25712f0301f9e1ed5ceafc603c07d",
+    "after": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8",
+    "cause": "The new explicitly prepared-request fixture passed incomplete metadata, so the existing strict publication registration refused before the cancellation boundary.",
+    "change": "Only replace {} at that prepare_request call with the exact eight LibraryApp.import_file metadata defaults. Existing prepare_request still generates the actual title/work/edition IDs.",
+    "registration_schema": "ec8aca38a463c592c284df9aaf4b1b63bc4fdb89",
+    "original_refusal_assertions": "All retained byte-for-byte",
+    "prior_run": "6d288d2afea3bbb41eb164b6ec8db6311a6a214e",
+    "prior_linux_raw_from_importer": "35287c44e86e2695d7b7115e00629aafb7c75886"
+  }
+}

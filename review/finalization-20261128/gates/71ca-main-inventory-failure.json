@@ -1,0 +1,246 @@
+{
+  "schema": "carr-final-required-gate-failure/1",
+  "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+  "run_id": 46124998890,
+  "job_id": 140917531388,
+  "status": "FAIL",
+  "workflow": ".github/workflows/carr-windows.yml",
+  "workflow_blob": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+  "actual_failed_step": {
+    "number": 12,
+    "name": "Match production dependencies before required source suites",
+    "log": "52 hash-pinned semantic pip distributions installed; pip check reported no broken requirements; the following assertion refused a BOM containing those pip components plus one reviewed embedded Slovak source component.",
+    "root_cause": "The old validator compared pip pin count/dictionary against every CycloneDX component. The reviewed embedded source is intentionally not an installed pip distribution.",
+    "lock_blob": "d02dc8bc788a6b7e416c6588e7b885e61c489e71",
+    "sbom_blob": "f9d12fbbecc28a7793e59062088b70951466bc2d",
+    "pip_pins": 52,
+    "sbom_components": 53
+  },
+  "raw_log_blob": "3499bfa24a264aa0714e19fe58d54ed01d626907",
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Check out the exact event commit",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Set up native x64 CPython",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Install the actual desktop package in a fresh environment",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Check the installed application through its self-test entrypoint",
+      "conclusion": "success"
+    },
+    {
+      "number": 6,
+      "name": "Check the installed offline OCR catalogue and console entrypoint",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Verify bibliography import and publication boundaries",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Exercise installed BibTeX import and real overwrite confirmation",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Exercise the installed native OCR catalogue and model manager",
+      "conclusion": "success"
+    },
+    {
+      "number": 10,
+      "name": "Exercise native academic references and reading controls",
+      "conclusion": "success"
+    },
+    {
+      "number": 11,
+      "name": "Retain core-only fallback and offline startup coverage",
+      "conclusion": "success"
+    },
+    {
+      "number": 12,
+      "name": "Match production dependencies before required source suites",
+      "conclusion": "failure"
+    },
+    {
+      "number": 13,
+      "name": "Prepare the verified OCR engine before its required source regression",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 14,
+      "name": "Exercise actual managed OCR with Unicode Windows paths",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 15,
+      "name": "Exercise native Import Center and durable batch workflow",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 16,
+      "name": "Exercise installed measured progress and real busy-time keys",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 17,
+      "name": "Exercise native wx startup and source-opening events",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 18,
+      "name": "Exercise native saved-evidence page selection and note recovery",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 19,
+      "name": "Exercise native reference metadata review and historical outline export",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 20,
+      "name": "Exercise native research-notebook search and keyboard actions",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 21,
+      "name": "Exercise native EPUB section navigation and image descriptions",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 22,
+      "name": "Exercise native library reports and academic exports",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 23,
+      "name": "Exercise native EPUB contents and exact chapter search",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 24,
+      "name": "Exercise native full-source reader and page bookmarks",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 25,
+      "name": "Exercise native catalog reports and source comparison export",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 26,
+      "name": "Exercise installed local proposal review with an explicit loopback fixture",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 27,
+      "name": "Prepare the pinned local model through the existing upstream verifier",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 28,
+      "name": "Locate the installed native launcher compiler",
+      "conclusion": "success"
+    },
+    {
+      "number": 29,
+      "name": "Build the native bundle launcher outside the worktree",
+      "conclusion": "success"
+    },
+    {
+      "number": 30,
+      "name": "Verify the exact native launcher before sealing it into the bundle",
+      "conclusion": "success"
+    },
+    {
+      "number": 31,
+      "name": "Prepare the pinned EPUB conformance validator outside the application",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 32,
+      "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 33,
+      "name": "Restore this run's runtime egress test policy after every bundle outcome",
+      "conclusion": "success"
+    },
+    {
+      "number": 34,
+      "name": "Run required integrated source workflows",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 35,
+      "name": "Preserve exact-commit runtime and test evidence",
+      "conclusion": "success"
+    },
+    {
+      "number": 69,
+      "name": "Post Set up native x64 CPython",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 70,
+      "name": "Post Check out the exact event commit",
+      "conclusion": "success"
+    },
+    {
+      "number": 71,
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15255294860,
+      "name": "carr-windows-ca9a1b324987088f2c3e8eae5dca69eefdac47eb-1",
+      "size_in_bytes": 13395,
+      "digest": "sha256:7940825a87e3030fe6d7f93a99c352b547e7592a9266dd1b135974ab644b9ae8"
+    }
+  ],
+  "artifact_event_sha": "ca9a1b324987088f2c3e8eae5dca69eefdac47eb",
+  "artifact_event_note": "The artifact name uses the pull-request event merge SHA; the checkout used the explicitly selected PR head, 71ca. The merge event tree matches 73c.",
+  "correction": {
+    "status": "SOURCE_APPROVED; PENDING_RUNTIME",
+    "source_review": "b0aee49e06677b454e120fac1f60ecdb783b933e",
+    "windows_wrapper_review": "3bfbd909fddec80f3d2d8b61a98c644b3f1db3bc",
+    "candidate": {
+      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
+      "tree": "c49a627deddf32e5f5bfd9ac43dda2cebbfd02ec",
+      "files": 1568,
+      "branch": "carr/sbom-vendor-review-20261128",
+      "ref_readback": true,
+      "status": "PENDING_RUNTIME"
+    },
+    "run_id": 46130223315
+  },
+  "separate_syntax_failure": {
+    "note": "The current main workflow also contained a source-suite delimiter error. It did not cause this earlier step-12 runtime failure. The delimiter-only correction passed the actual PowerShell parser on its own preflight head.",
+    "evidence": "5e6e1b1a34a9a125903f05658850628cb31ec1c2"
+  },
+  "limits": [
+    "Full bundle/offline and selected source suites did not run after step 12 failed.",
+    "Initial completed installed/native and launcher phases remain their own observed results; the overall required gate failed.",
+    "No result is transferred to the correction head."
+  ]
+}

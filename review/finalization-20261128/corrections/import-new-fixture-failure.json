@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "status": "FAILED_NEW_FIXTURE_ONLY_BOTH_OS",
+  "run": 46128803021,
+  "head": "6d288d2afea3bbb41eb164b6ec8db6311a6a214e",
+  "tree": "f475ce842dadd67a52a81109d49923503b5d1bb5",
+  "failure": {
+    "case": "tests/operations/test_ocr_admission.py::test_precancelled_resume_does_not_rewrite_an_explicitly_prepared_request",
+    "error": "ValueError: Invalid publication registration.",
+    "observed_metadata_fields": [
+      "edition_id",
+      "title",
+      "work_id"
+    ],
+    "cause": "New fixture passes incomplete {} registration to worker.prepare_request; exact current publication_identity requires the complete metadata fields before admission."
+  },
+  "original_three_assertions": "PASS in both contexts; original source bytes unchanged",
+  "new_txt_controls": "All four actual descriptor, commit, precommit cancellation, postcommit mutation and genuine recovery cases PASS in both contexts",
+  "proof_limit": "The final identity block is intentionally not reached after a failed test. This failed job is not a completed full after-test identity qualification.",
+  "contexts": [
+    {
+      "os": "ubuntu-24.04",
+      "job": 140929224123,
+      "raw": "35287c44e86e2695d7b7115e00629aafb7c75886",
+      "source": {
+        "collected": 141,
+        "passed": 140,
+        "failed": 1,
+        "seconds": 52.63
+      },
+      "installed": {
+        "collected": 141,
+        "passed": 140,
+        "failed": 1,
+        "seconds": 38.11
+      }
+    },
+    {
+      "os": "windows-2022",
+      "job": 140929224339,
+      "raw": "c733c0069ef29f1f0d19028ec3e7c6fb7c224835",
+      "source": {
+        "collected": 141,
+        "passed": 140,
+        "failed": 1,
+        "seconds": 182.26
+      },
+      "installed": {
+        "collected": 141,
+        "passed": 140,
+        "failed": 1,
+        "seconds": 175.62
+      }
+    }
+  ],
+  "corrected_fixture": {
+    "path": "carr-library/tests/operations/test_ocr_admission.py",
+    "preimage": "861ed64528e25712f0301f9e1ed5ceafc603c07d",
+    "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8",
+    "source_approved": true,
+    "delta": "Supply the existing complete eight-field LibraryApp.import_file metadata shape; all assertions and product bytes unchanged."
+  },
+  "scope": "All original three V3 import assertions and all four new TXT ownership controls passed in all four contexts. Completed job outcomes remain FAILURE because the new prepared-request fixture supplied incomplete registration. No after-test full identity claim."
+}

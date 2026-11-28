@@ -1,0 +1,1272 @@
+﻿2026-11-28T08:38:41.2735380Z Current runner version: '2.338.2'
+2026-11-28T08:38:41.2754700Z ##[group]Runner Image Provisioner
+2026-11-28T08:38:41.2755563Z Hosted Compute Agent
+2026-11-28T08:38:41.2755920Z Version: 20261111.635
+2026-11-28T08:38:41.2756308Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T08:38:41.2756764Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T08:38:41.2757185Z Worker ID: {a342ee42-b2dc-4687-bbb6-3fb09665981f}
+2026-11-28T08:38:41.2757625Z Region: centralus
+2026-11-28T08:38:41.2757945Z Cloud: Azure
+2026-11-28T08:38:41.2758257Z ##[endgroup]
+2026-11-28T08:38:41.2759209Z ##[group]Operating System
+2026-11-28T08:38:41.2759597Z Microsoft Windows Server 2022
+2026-11-28T08:38:41.2759968Z 10.0.20348
+2026-11-28T08:38:41.2760289Z Datacenter
+2026-11-28T08:38:41.2760599Z ##[endgroup]
+2026-11-28T08:38:41.2760913Z ##[group]Runner Image
+2026-11-28T08:38:41.2761259Z Image: windows-2022
+2026-11-28T08:38:41.2761591Z Version: 20261123.376.1
+2026-11-28T08:38:41.2762548Z Included Software: https://github.com/actions/runner-images/blob/win22/20261123.376/images/windows/Windows2022-Readme.md
+2026-11-28T08:38:41.2763533Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20261123.376
+2026-11-28T08:38:41.2764141Z ##[endgroup]
+2026-11-28T08:38:41.2764828Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T08:38:41.2766163Z Contents: read
+2026-11-28T08:38:41.2766508Z Metadata: read
+2026-11-28T08:38:41.2766825Z ##[endgroup]
+2026-11-28T08:38:41.2768309Z Secret source: Actions
+2026-11-28T08:38:41.2768857Z Cache mode: write
+2026-11-28T08:38:41.2769280Z Prepare workflow directory
+2026-11-28T08:38:41.3219048Z Prepare all required actions
+2026-11-28T08:38:41.3257316Z Getting action download info
+2026-11-28T08:38:41.6043329Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T08:38:41.6986208Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T08:38:41.8000917Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T08:38:42.0064267Z Complete job name: Windows x64 / CPython 3.11 / integrated desktop
+2026-11-28T08:38:42.3061243Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T08:38:42.3062637Z with:
+2026-11-28T08:38:42.3062964Z   ref: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:42.3063396Z   persist-credentials: false
+2026-11-28T08:38:42.3063784Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:38:42.3067058Z   token: ***
+2026-11-28T08:38:42.3067351Z   ssh-strict: true
+2026-11-28T08:38:42.3067646Z   ssh-user: git
+2026-11-28T08:38:42.3067928Z   clean: true
+2026-11-28T08:38:42.3068234Z   sparse-checkout-cone-mode: true
+2026-11-28T08:38:42.3068594Z   fetch-depth: 1
+2026-11-28T08:38:42.3068883Z   fetch-tags: false
+2026-11-28T08:38:42.3069193Z   show-progress: true
+2026-11-28T08:38:42.3069540Z   lfs: false
+2026-11-28T08:38:42.3069823Z   submodules: false
+2026-11-28T08:38:42.3070133Z   set-safe-directory: true
+2026-11-28T08:38:42.3070482Z   allow-unsafe-pr-checkout: false
+2026-11-28T08:38:42.3070985Z env:
+2026-11-28T08:38:42.3071288Z   PYTHONUTF8: 1
+2026-11-28T08:38:42.3071583Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:38:42.3071911Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:38:42.3072411Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:42.3072936Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:38:42.3073254Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:38:42.3073557Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:38:42.3073905Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:38:42.3074262Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:38:42.3074580Z   DO_NOT_TRACK: 1
+2026-11-28T08:38:42.3074866Z ##[endgroup]
+2026-11-28T08:38:42.4280781Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:38:42.4282141Z ##[group]Getting Git version info
+2026-11-28T08:38:42.4284761Z Working directory is 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T08:38:42.5796575Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T08:38:43.2162975Z git version 2.56.1.windows.1
+2026-11-28T08:38:43.2193621Z ##[endgroup]
+2026-11-28T08:38:43.2205004Z Temporarily overriding HOME='D:\a\_temp\77b9b0e8-3eba-4896-b72f-9a3a5dd2d0fb' before making global git config changes
+2026-11-28T08:38:43.2205709Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:38:43.2213337Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T08:38:43.2746993Z Deleting the contents of 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T08:38:43.2750211Z ##[group]Determining repository object format
+2026-11-28T08:38:43.2751774Z ##[endgroup]
+2026-11-28T08:38:43.2759670Z ##[group]Initializing the repository
+2026-11-28T08:38:43.2760193Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T08:38:43.3335410Z Initialized empty Git repository in D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T08:38:43.3365918Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:38:43.3909486Z ##[endgroup]
+2026-11-28T08:38:43.3910210Z ##[group]Disabling automatic garbage collection
+2026-11-28T08:38:43.3916580Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-28T08:38:43.4147892Z ##[endgroup]
+2026-11-28T08:38:43.4148677Z ##[group]Setting up auth
+2026-11-28T08:38:43.4149152Z Removing SSH command configuration
+2026-11-28T08:38:43.4156744Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:38:43.4392228Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T08:38:45.3433005Z Removing HTTP extra header
+2026-11-28T08:38:45.3441159Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:38:45.3685888Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T08:38:45.7904093Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:38:45.7913513Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:38:45.8160899Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T08:38:46.2294897Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-28T08:38:46.2543704Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D:\a\_temp\git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:46.2786429Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D:\a\_temp\git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:46.3082446Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:46.3335014Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:46.3583216Z ##[endgroup]
+2026-11-28T08:38:46.3583665Z ##[group]Fetching the repository
+2026-11-28T08:38:46.3598539Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:48.2798883Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:38:48.2800041Z  * branch            71ca92be691455d0ff51ed163b1d91749e5ae62e -> FETCH_HEAD
+2026-11-28T08:38:48.2838291Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 71ca92be691455d0ff51ed163b1d91749e5ae62e^{object}
+2026-11-28T08:38:48.3094581Z 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:48.3116131Z ##[endgroup]
+2026-11-28T08:38:48.3116450Z ##[group]Determining the checkout info
+2026-11-28T08:38:48.3117068Z ##[endgroup]
+2026-11-28T08:38:48.3124462Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-28T08:38:48.3392807Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-28T08:38:48.3620948Z ##[group]Checking out the ref
+2026-11-28T08:38:48.3627747Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:48.6952083Z Note: switching to '71ca92be691455d0ff51ed163b1d91749e5ae62e'.
+2026-11-28T08:38:48.6952635Z 
+2026-11-28T08:38:48.6952858Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T08:38:48.6953400Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T08:38:48.6954171Z state without impacting any branches by switching back to a branch.
+2026-11-28T08:38:48.6954404Z 
+2026-11-28T08:38:48.6954557Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T08:38:48.6954900Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T08:38:48.6955181Z 
+2026-11-28T08:38:48.6955314Z   git switch -c <new-branch-name>
+2026-11-28T08:38:48.6955456Z 
+2026-11-28T08:38:48.6955530Z Or undo this operation with:
+2026-11-28T08:38:48.6955671Z 
+2026-11-28T08:38:48.6955732Z   git switch -
+2026-11-28T08:38:48.6955844Z 
+2026-11-28T08:38:48.6956882Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T08:38:48.6957172Z 
+2026-11-28T08:38:48.6957479Z HEAD is now at 71ca92b Complete current Resonance finalization scope and require exact installed acceptance
+2026-11-28T08:38:48.7270523Z ##[endgroup]
+2026-11-28T08:38:48.7608838Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T08:38:48.7827087Z 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:48.7853775Z ##[group]Removing auth
+2026-11-28T08:38:48.7854115Z Removing SSH command configuration
+2026-11-28T08:38:48.7864094Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:38:48.8118518Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T08:38:49.2362650Z Removing HTTP extra header
+2026-11-28T08:38:49.2370704Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:38:49.2610209Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T08:38:49.6740872Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:38:49.6747813Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:38:49.6970372Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:38:49.6971437Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:38:49.6971902Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:38:49.6972251Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:38:49.7002947Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:38:49.7222583Z D:\a\_temp\git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:49.7252431Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D\:\\a\\_temp\\git\-credentials\-f3046adb\-9ce7\-41b6\-a24f\-5f8bf63d6610\.config
+2026-11-28T08:38:49.7501363Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:38:49.7714251Z D:\a\_temp\git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:49.7743325Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-f3046adb\-9ce7\-41b6\-a24f\-5f8bf63d6610\.config
+2026-11-28T08:38:49.7992125Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:38:49.8203276Z /github/runner_temp/git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:49.8230920Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-f3046adb\-9ce7\-41b6\-a24f\-5f8bf63d6610\.config
+2026-11-28T08:38:49.8476800Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:38:49.8691480Z /github/runner_temp/git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config
+2026-11-28T08:38:49.8718900Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-f3046adb\-9ce7\-41b6\-a24f\-5f8bf63d6610\.config
+2026-11-28T08:38:49.8963444Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T08:38:50.3308378Z Removing credentials config 'D:\a\_temp\git-credentials-f3046adb-9ce7-41b6-a24f-5f8bf63d6610.config'
+2026-11-28T08:38:50.3316540Z ##[endgroup]
+2026-11-28T08:38:50.3649252Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T08:38:50.3649636Z with:
+2026-11-28T08:38:50.3649796Z   python-version: 3.11
+2026-11-28T08:38:50.3649969Z   architecture: x64
+2026-11-28T08:38:50.3650125Z   check-latest: false
+2026-11-28T08:38:50.3652239Z   token: ***
+2026-11-28T08:38:50.3652496Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T08:38:50.3652829Z   update-environment: true
+2026-11-28T08:38:50.3653011Z   allow-prereleases: false
+2026-11-28T08:38:50.3653177Z   freethreaded: false
+2026-11-28T08:38:50.3653332Z env:
+2026-11-28T08:38:50.3653464Z   PYTHONUTF8: 1
+2026-11-28T08:38:50.3653612Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:38:50.3653788Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:38:50.3654079Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:50.3654365Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:38:50.3654532Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:38:50.3654724Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:38:50.3654909Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:38:50.3655105Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:38:50.3655262Z   DO_NOT_TRACK: 1
+2026-11-28T08:38:50.3655410Z ##[endgroup]
+2026-11-28T08:38:50.4813061Z ##[group]Installed versions
+2026-11-28T08:38:50.5408187Z Successfully set up CPython (3.11.9)
+2026-11-28T08:38:50.5408908Z ##[endgroup]
+2026-11-28T08:38:50.5624272Z ##[group]Run $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+2026-11-28T08:38:50.5624845Z [36;1m$environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'[0m
+2026-11-28T08:38:50.5625190Z [36;1mpython -m venv $environment[0m
+2026-11-28T08:38:50.5625442Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5625746Z [36;1m$python = Join-Path $environment 'Scripts/python.exe'[0m
+2026-11-28T08:38:50.5626140Z [36;1m"CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T08:38:50.5626547Z [36;1mNew-Item -ItemType Directory -Force 'ci-results' | Out-Null[0m
+2026-11-28T08:38:50.5626901Z [36;1mgit rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'[0m
+2026-11-28T08:38:50.5627251Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5627692Z [36;1m& $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock[0m
+2026-11-28T08:38:50.5628146Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5628569Z [36;1m& $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0[0m
+2026-11-28T08:38:50.5629025Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5629418Z [36;1m& $python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock[0m
+2026-11-28T08:38:50.5629809Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5630119Z [36;1m$spellInput = Join-Path $env:RUNNER_TEMP 'carr-spell-input'[0m
+2026-11-28T08:38:50.5630471Z [36;1m$spellDerived = Join-Path $env:RUNNER_TEMP 'carr-spell-derived'[0m
+2026-11-28T08:38:50.5630867Z [36;1mNew-Item -ItemType Directory -Force $spellInput, $spellDerived | Out-Null[0m
+2026-11-28T08:38:50.5631326Z [36;1m& $python -m pip download --only-binary=:all: --no-deps spylls==0.1.7 --dest $spellInput[0m
+2026-11-28T08:38:50.5631714Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5632489Z [36;1m& $python -I -B scripts/repack_spellcheck.py (Join-Path $spellInput 'spylls-0.1.7-py2.py3-none-any.whl') (Join-Path $spellDerived 'spylls-0.1.7+carr.1-py2.py3-none-any.whl') | Tee-Object 'ci-results/spellcheck-repack.json'[0m
+2026-11-28T08:38:50.5633261Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5633724Z [36;1m& $python -m pip install --no-index --no-deps --require-hashes --find-links $spellDerived -r packaging/spellcheck.lock[0m
+2026-11-28T08:38:50.5634192Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5634589Z [36;1m"CARR_SPELL_WHEELHOUSE=$spellDerived" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T08:38:50.5634988Z [36;1m& $python -m pip install --no-deps .[0m
+2026-11-28T08:38:50.5635239Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5635485Z [36;1m& $python -m pip check[0m
+2026-11-28T08:38:50.5635698Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5636069Z [36;1m& $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'[0m
+2026-11-28T08:38:50.5636433Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5637437Z [36;1m& $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'[0m
+2026-11-28T08:38:50.5638448Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:38:50.5772512Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:38:50.5772820Z env:
+2026-11-28T08:38:50.5772978Z   PYTHONUTF8: 1
+2026-11-28T08:38:50.5773132Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:38:50.5775587Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:38:50.5775911Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:38:50.5776214Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:38:50.5776389Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:38:50.5776546Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:38:50.5776731Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:38:50.5776921Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:38:50.5777080Z   DO_NOT_TRACK: 1
+2026-11-28T08:38:50.5777294Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:38:50.5777698Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:38:50.5778057Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:38:50.5778375Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:38:50.5778697Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:38:50.5778965Z ##[endgroup]
+2026-11-28T08:38:58.7778458Z Collecting comtypes==1.5.0 (from -r packaging/windows-cp311.lock (line 1))
+2026-11-28T08:38:58.9625719Z   Downloading comtypes-1.5.0-py3-none-any.whl (325 kB)
+2026-11-28T08:38:59.0654332Z      -------------------------------------- 325.6/325.6 kB 3.4 MB/s eta 0:00:00
+2026-11-28T08:38:59.1054572Z Collecting defusedxml==0.7.1 (from -r packaging/windows-cp311.lock (line 3))
+2026-11-28T08:38:59.1199133Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T08:38:59.2290332Z Collecting filelock==3.29.0 (from -r packaging/windows-cp311.lock (line 5))
+2026-11-28T08:38:59.2436649Z   Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T08:38:59.5991002Z Collecting lxml==6.1.3 (from -r packaging/windows-cp311.lock (line 8))
+2026-11-28T08:38:59.6163902Z   Downloading lxml-6.1.3-cp311-cp311-win_amd64.whl (4.0 MB)
+2026-11-28T08:38:59.7228334Z      ---------------------------------------- 4.0/4.0 MB 36.9 MB/s eta 0:00:00
+2026-11-28T08:39:00.0364376Z Collecting numpy==2.4.6 (from -r packaging/windows-cp311.lock (line 185))
+2026-11-28T08:39:00.0543457Z   Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl (12.6 MB)
+2026-11-28T08:39:00.1668153Z      -------------------------------------- 12.6/12.6 MB 108.7 MB/s eta 0:00:00
+2026-11-28T08:39:00.3915940Z Collecting pillow==13.0.0 (from -r packaging/windows-cp311.lock (line 258))
+2026-11-28T08:39:00.4064290Z   Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl (7.3 MB)
+2026-11-28T08:39:00.5016060Z      ---------------------------------------- 7.3/7.3 MB 78.2 MB/s eta 0:00:00
+2026-11-28T08:39:00.5541213Z Collecting platformdirs==4.10.0 (from -r packaging/windows-cp311.lock (line 342))
+2026-11-28T08:39:00.5682819Z   Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T08:39:00.6357081Z Collecting pypdf==7.1.1 (from -r packaging/windows-cp311.lock (line 345))
+2026-11-28T08:39:00.6500912Z   Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T08:39:00.6676364Z      ------------------------------------- 421.0/421.0 kB 25.7 MB/s eta 0:00:00
+2026-11-28T08:39:00.7903878Z Collecting pypdfium2==5.13.0 (from -r packaging/windows-cp311.lock (line 348))
+2026-11-28T08:39:00.8063540Z   Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl (3.9 MB)
+2026-11-28T08:39:00.8790275Z      ---------------------------------------- 3.9/3.9 MB 49.7 MB/s eta 0:00:00
+2026-11-28T08:39:00.9184647Z Collecting python-docx==1.2.0 (from -r packaging/windows-cp311.lock (line 371))
+2026-11-28T08:39:00.9327251Z   Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T08:39:01.0015088Z      -------------------------------------- 253.0/253.0 kB 3.1 MB/s eta 0:00:00
+2026-11-28T08:39:01.0392657Z Collecting typing-extensions==4.16.0 (from -r packaging/windows-cp311.lock (line 374))
+2026-11-28T08:39:01.0534611Z   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T08:39:01.1494452Z      -------------------------------------- 45.6/45.6 kB 375.9 kB/s eta 0:00:00
+2026-11-28T08:39:01.2910687Z Collecting wxpython==4.2.4 (from -r packaging/windows-cp311.lock (line 377))
+2026-11-28T08:39:01.3082112Z   Downloading wxpython-4.2.4-cp311-cp311-win_amd64.whl (16.5 MB)
+2026-11-28T08:39:01.4004160Z      -------------------------------------- 16.5/16.5 MB 162.2 MB/s eta 0:00:00
+2026-11-28T08:39:01.5220335Z Collecting bibtexparser==2.1.0 (from -r packaging/windows-cp311.lock (line 407))
+2026-11-28T08:39:01.5367395Z   Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T08:39:01.5598641Z      ---------------------------------------- 50.1/50.1 kB 2.7 MB/s eta 0:00:00
+2026-11-28T08:39:01.6505915Z Collecting pylatexenc==2.11 (from -r packaging/windows-cp311.lock (line 409))
+2026-11-28T08:39:01.6651693Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T08:39:01.7701607Z      -------------------------------------- 137.5/137.5 kB 1.4 MB/s eta 0:00:00
+2026-11-28T08:39:01.8119525Z Collecting quickjs-ng==0.18.0.2 (from -r packaging/windows-cp311.lock (line 411))
+2026-11-28T08:39:01.8299510Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl (401 kB)
+2026-11-28T08:39:01.8469990Z      ---------------------------------------- 401.4/401.4 kB ? eta 0:00:00
+2026-11-28T08:39:01.8793870Z Collecting py3langid==0.4.0 (from -r packaging/windows-cp311.lock (line 415))
+2026-11-28T08:39:01.8976702Z   Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T08:39:01.9438866Z      ---------------------------------------- 4.6/4.6 MB 99.8 MB/s eta 0:00:00
+2026-11-28T08:39:02.0681977Z Installing collected packages: pylatexenc, typing-extensions, quickjs-ng, pypdfium2, pypdf, platformdirs, pillow, numpy, lxml, filelock, defusedxml, comtypes, bibtexparser, wxpython, python-docx, py3langid
+2026-11-28T08:39:07.0189230Z Successfully installed bibtexparser-2.1.0 comtypes-1.5.0 defusedxml-0.7.1 filelock-3.29.0 lxml-6.1.3 numpy-2.4.6 pillow-13.0.0 platformdirs-4.10.0 py3langid-0.4.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 python-docx-1.2.0 quickjs-ng-0.18.0.2 typing-extensions-4.16.0 wxpython-4.2.4
+2026-11-28T08:39:08.3955862Z Collecting pytest==9.0.2
+2026-11-28T08:39:08.5639031Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T08:39:08.7481494Z Collecting reportlab==4.4.9
+2026-11-28T08:39:08.7598312Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T08:39:08.8401417Z Collecting openpyxl==3.1.5
+2026-11-28T08:39:08.8517255Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:39:08.9307999Z Collecting et-xmlfile==2.0.0
+2026-11-28T08:39:08.9423409Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-11-28T08:39:08.9997261Z Collecting colorama>=0.4 (from pytest==9.0.2)
+2026-11-28T08:39:09.0113293Z   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+2026-11-28T08:39:09.0916388Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2)
+2026-11-28T08:39:09.1028883Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T08:39:09.2009278Z Collecting packaging>=22 (from pytest==9.0.2)
+2026-11-28T08:39:09.2138749Z   Downloading packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T08:39:09.3097767Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2)
+2026-11-28T08:39:09.3211849Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T08:39:09.5486949Z Collecting pygments>=2.7.2 (from pytest==9.0.2)
+2026-11-28T08:39:09.5606200Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:39:09.5811092Z Requirement already satisfied: pillow>=9.0.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from reportlab==4.4.9) (13.0.0)
+2026-11-28T08:39:09.7275331Z Collecting charset-normalizer (from reportlab==4.4.9)
+2026-11-28T08:39:09.7406237Z   Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl.metadata (44 kB)
+2026-11-28T08:39:09.7764306Z      ---------------------------------------- 44.2/44.2 kB 1.1 MB/s eta 0:00:00
+2026-11-28T08:39:09.8196268Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T08:39:09.8747737Z    ---------------------------------------- 374.8/374.8 kB 7.8 MB/s eta 0:00:00
+2026-11-28T08:39:09.8861997Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T08:39:10.0504797Z    ---------------------------------------- 2.0/2.0 MB 12.5 MB/s eta 0:00:00
+2026-11-28T08:39:10.0617544Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-11-28T08:39:10.1027124Z    ---------------------------------------- 250.9/250.9 kB 7.8 MB/s eta 0:00:00
+2026-11-28T08:39:10.1139131Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-11-28T08:39:10.1379614Z Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+2026-11-28T08:39:10.1635296Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T08:39:10.1867383Z Downloading packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T08:39:10.2104676Z    ---------------------------------------- 140.0/140.0 kB 4.2 MB/s eta 0:00:00
+2026-11-28T08:39:10.2216991Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T08:39:10.2469762Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T08:39:10.3207811Z    ---------------------------------------- 1.3/1.3 MB 15.9 MB/s eta 0:00:00
+2026-11-28T08:39:10.3322022Z Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl (212 kB)
+2026-11-28T08:39:10.3539718Z    --------------------------------------- 212.9/212.9 kB 12.7 MB/s eta 0:00:00
+2026-11-28T08:39:10.4808131Z Installing collected packages: pygments, pluggy, packaging, iniconfig, et-xmlfile, colorama, charset-normalizer, reportlab, pytest, openpyxl
+2026-11-28T08:39:12.4314130Z Successfully installed charset-normalizer-3.5.3 colorama-0.4.6 et-xmlfile-2.0.0 iniconfig-2.3.1 openpyxl-3.1.5 packaging-26.4 pluggy-1.7.0 pygments-2.21.0 pytest-9.0.2 reportlab-4.4.9
+2026-11-28T08:39:13.8258763Z Collecting cffi==2.1.1 (from -r packaging/trusted-client.lock (line 4))
+2026-11-28T08:39:14.0062366Z   Downloading cffi-2.1.1-cp311-cp311-win_amd64.whl (185 kB)
+2026-11-28T08:39:14.1256430Z      -------------------------------------- 185.1/185.1 kB 1.6 MB/s eta 0:00:00
+2026-11-28T08:39:14.3702313Z Collecting cryptography==50.0.2 (from -r packaging/trusted-client.lock (line 104))
+2026-11-28T08:39:14.3851569Z   Downloading cryptography-50.0.2-cp311-abi3-win_amd64.whl (3.8 MB)
+2026-11-28T08:39:14.7394943Z      ---------------------------------------- 3.8/3.8 MB 11.1 MB/s eta 0:00:00
+2026-11-28T08:39:14.7756333Z Collecting pycparser==3.12 (from -r packaging/trusted-client.lock (line 163))
+2026-11-28T08:39:14.7897708Z   Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+2026-11-28T08:39:14.8060822Z      ---------------------------------------- 62.6/62.6 kB ? eta 0:00:00
+2026-11-28T08:39:14.8437883Z Collecting securesystemslib==1.6.0 (from -r packaging/trusted-client.lock (line 165))
+2026-11-28T08:39:14.8584074Z   Downloading securesystemslib-1.6.0-py3-none-any.whl (874 kB)
+2026-11-28T08:39:14.9047940Z      ------------------------------------- 874.8/874.8 kB 18.4 MB/s eta 0:00:00
+2026-11-28T08:39:14.9467666Z Collecting tuf==7.0.1 (from -r packaging/trusted-client.lock (line 167))
+2026-11-28T08:39:14.9607080Z   Downloading tuf-7.0.1-py3-none-any.whl (56 kB)
+2026-11-28T08:39:14.9813107Z      ---------------------------------------- 56.3/56.3 kB 1.4 MB/s eta 0:00:00
+2026-11-28T08:39:15.0287836Z Collecting urllib3==2.8.0 (from -r packaging/trusted-client.lock (line 169))
+2026-11-28T08:39:15.0432943Z   Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+2026-11-28T08:39:15.0710840Z      -------------------------------------- 135.7/135.7 kB 7.8 MB/s eta 0:00:00
+2026-11-28T08:39:15.2019496Z Installing collected packages: urllib3, securesystemslib, pycparser, tuf, cffi, cryptography
+2026-11-28T08:39:15.7408211Z Successfully installed cffi-2.1.1 cryptography-50.0.2 pycparser-3.12 securesystemslib-1.6.0 tuf-7.0.1 urllib3-2.8.0
+2026-11-28T08:39:17.1221065Z Collecting spylls==0.1.7
+2026-11-28T08:39:17.2855479Z   Downloading spylls-0.1.7-py2.py3-none-any.whl.metadata (3.0 kB)
+2026-11-28T08:39:17.3159794Z Downloading spylls-0.1.7-py2.py3-none-any.whl (1.5 MB)
+2026-11-28T08:39:17.4750467Z    ---------------------------------------- 1.5/1.5 MB 10.6 MB/s eta 0:00:00
+2026-11-28T08:39:17.4936767Z Saved d:\a\_temp\carr-spell-input\spylls-0.1.7-py2.py3-none-any.whl
+2026-11-28T08:39:17.4955501Z Successfully downloaded spylls
+2026-11-28T08:39:17.6000564Z {"provenance": {"license": "MPL-2.0", "removed": ["spylls/hunspell/data/en/en_US.aff", "spylls/hunspell/data/en/en_US.dic", "spylls/hunspell/data/ru/ru.aff", "spylls/hunspell/data/ru/ru.dic", "spylls/hunspell/data/sv/sv_SE.aff", "spylls/hunspell/data/sv/sv_SE.dic"], "schema": 1, "unchanged_python_sha256": {"spylls/__init__.py": "20c8e430ededc2143396e553a3c67aac4ec483ef54efdfcb18a31cb162ca0646", "spylls/hunspell/__init__.py": "1520fb1f5297709e2f5347dac048a87978b07e39838cbbefd74c0528f6909322", "spylls/hunspell/algo/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "spylls/hunspell/algo/capitalization.py": "6082fb9bc6cad3438fb7d41b1c8056b30b0d223cf16628561812f593a0cb0cac", "spylls/hunspell/algo/lookup.py": "75e5bdf7290a409be1060b88f974fc7756184ae193363e06dec31218d30c4e8d", "spylls/hunspell/algo/ngram_suggest.py": "b3bbd435475f7691c9efa338a5303ee4f2adf2eaae38970e5572e07133b0bd38", "spylls/hunspell/algo/permutations.py": "acc56a0b94f5dbd9141f45913b656e91de2b5954aea5d5d1a09e84b5c428e7b5", "spylls/hunspell/algo/phonet_suggest.py": "696214842a75a5c830b43b77cfc7ae220819cb54bdd6c3c2b5e5df66ed204a49", "spylls/hunspell/algo/string_metrics.py": "7bd3e237798786e195914bcd869943d0565ca495325c873cd0c67a4acdbdf302", "spylls/hunspell/algo/suggest.py": "9f3764e093d5d099556320fec138f8f991d4c9316251614a029c044d46a6be9f", "spylls/hunspell/algo/trie.py": "0804af6c62179e84e5dc1ea92575397274456f07315282205cbc7ee1d5810e0c", "spylls/hunspell/data/__init__.py": "c75b53d450286bdb1f45803b43ff211ed426a93f905e1ffc4d73e57384166555", "spylls/hunspell/data/aff.py": "8f8e2ca0cee0ab4fb5be9188790b9e823ebcde9c967a7ad08fbadf60d7fb66e2", "spylls/hunspell/data/dic.py": "31dc9aea0189080fa8fb5cd13eb634175be28620ad823634d8ea88bbdb118cde", "spylls/hunspell/dictionary.py": "69746a91a30d5611cb374ddabae6a4d8ffc2eefa2916f6024fff09feb30cd855", "spylls/hunspell/readers/__init__.py": "5d1a9039b702f5a647821e1ef88d8280d3f9a64f3a794174ee52a5d4c73dcc8c", "spylls/hunspell/readers/aff.py": "45ef90f76c8dd77a5cd7ca4489c5ab9a0c578686de3ef94513a6d207494a9883", "spylls/hunspell/readers/dic.py": "4867c696de90372d506892f1788d797dd495d19b158ba688023cacf44081cdd5", "spylls/hunspell/readers/file_reader.py": "8d92e0c9fa960e634b08770841504934899eb26e9c69d46f955a57c7ea04fc99", "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "tests/test_spyll.py": "d37a84bcc4f497393192b06f34b2ea0c820e25cd827be4d42a5689bb082a9e40"}, "upstream_sha256": "0c7fa4b66615f390bd12fd37939b85934c012309fd3cce8584844c54270b7776", "upstream_size": 1509482, "upstream_wheel": "spylls-0.1.7-py2.py3-none-any.whl", "version": "0.1.7+carr.1"}, "sha256": "10b65cc18b2166c2fe4ae2aba1ee0839e7a0a4a0f5aa2a76d13ec653f9c71b66", "size": 224323, "wheel": "spylls-0.1.7+carr.1-py2.py3-none-any.whl"}
+2026-11-28T08:39:18.5301779Z Looking in links: d:\a\_temp\carr-spell-derived
+2026-11-28T08:39:18.5459798Z Processing d:\a\_temp\carr-spell-derived\spylls-0.1.7+carr.1-py2.py3-none-any.whl (from -r packaging/spellcheck.lock (line 2))
+2026-11-28T08:39:18.5499026Z Installing collected packages: spylls
+2026-11-28T08:39:18.5925760Z Successfully installed spylls-0.1.7+carr.1
+2026-11-28T08:39:19.5785443Z Processing d:\a\audiotacticalfps\audiotacticalfps\carr-library
+2026-11-28T08:39:19.5820422Z   Installing build dependencies: started
+2026-11-28T08:39:24.7732136Z   Installing build dependencies: finished with status 'done'
+2026-11-28T08:39:24.7745682Z   Getting requirements to build wheel: started
+2026-11-28T08:39:25.3505567Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T08:39:25.3526921Z   Preparing metadata (pyproject.toml): started
+2026-11-28T08:39:25.9507980Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T08:39:25.9556025Z Building wheels for collected packages: universal-research-library
+2026-11-28T08:39:25.9575334Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T08:39:27.3243069Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T08:39:27.3280886Z   Created wheel for universal-research-library: filename=universal_research_library-0.3.0.dev1-py3-none-any.whl size=2766532 sha256=7181c1215694fe639ca0a968d0354b598cbebf90461755264fa95f724c3fd3ff
+2026-11-28T08:39:27.3282075Z   Stored in directory: c:\users\runneradmin\appdata\local\pip\cache\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+2026-11-28T08:39:27.3365956Z Successfully built universal-research-library
+2026-11-28T08:39:27.3367749Z Installing collected packages: universal-research-library
+2026-11-28T08:39:28.7430509Z Successfully installed universal-research-library-0.3.0.dev1
+2026-11-28T08:39:29.2910679Z No broken requirements found.
+2026-11-28T08:39:29.9162177Z {"python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "windows": "Windows-10-10.0.20348-SP0", "sqlite": "3.45.1", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T08:39:29.9580902Z ##[group]Run & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
+2026-11-28T08:39:29.9581603Z [36;1m& $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'[0m
+2026-11-28T08:39:29.9582039Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:39:29.9613172Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:39:29.9613447Z env:
+2026-11-28T08:39:29.9613597Z   PYTHONUTF8: 1
+2026-11-28T08:39:29.9613762Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:39:29.9613941Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:39:29.9614225Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:39:29.9614548Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:29.9614732Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:39:29.9614891Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:29.9615085Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:39:29.9615321Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:39:29.9615488Z   DO_NOT_TRACK: 1
+2026-11-28T08:39:29.9615707Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:29.9616081Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:39:29.9616444Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:29.9616760Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:29.9617075Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:29.9617384Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:39:29.9617674Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:39:29.9617908Z ##[endgroup]
+2026-11-28T08:39:32.1131531Z {"status": "PASS", "checks": ["original import", "scoped search", "exact quotation", "workspace isolation", "saved research", "reopen persistence", "academic reading list", "bibliography export", "backup and restore"], "native_gui": "NOT_RUN", "windows_nvda": "NOT_RUN"}
+2026-11-28T08:39:32.1898544Z ##[group]Run & $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'
+2026-11-28T08:39:32.1899251Z [36;1m& $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'[0m
+2026-11-28T08:39:32.1899675Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:39:32.1900047Z [36;1m$ocrModels = Join-Path (Split-Path $env:CARR_PYTHON) 'research-library-ocr-models.exe'[0m
+2026-11-28T08:39:32.1900553Z [36;1m& $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'[0m
+2026-11-28T08:39:32.1901126Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:39:32.1930260Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:39:32.1930548Z env:
+2026-11-28T08:39:32.1930693Z   PYTHONUTF8: 1
+2026-11-28T08:39:32.1930853Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:39:32.1931072Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:39:32.1931357Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:39:32.1931660Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:32.1931833Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:39:32.1931999Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:32.1932189Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:39:32.1932380Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:39:32.1932544Z   DO_NOT_TRACK: 1
+2026-11-28T08:39:32.1932759Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.1933118Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:39:32.1933471Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.1933783Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.1934092Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.1934408Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:39:32.1934700Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:39:32.1934937Z ##[endgroup]
+2026-11-28T08:39:32.7066243Z {"status": "PASS", "installed_package": true, "platform": "win32", "catalogue_models": {"fast": 162, "best": 162}, "module_cli": "PASS", "real_bundled_model_preparation": "NOT_REQUESTED", "nvda": "NOT_RUN"}
+2026-11-28T08:39:32.8172291Z [
+2026-11-28T08:39:32.8173325Z   {
+2026-11-28T08:39:32.8174765Z     "profile": "best",
+2026-11-28T08:39:32.8176083Z     "code": "ukr",
+2026-11-28T08:39:32.8177570Z     "name": "Ukrainian",
+2026-11-28T08:39:32.8178903Z     "kind": "language",
+2026-11-28T08:39:32.8180329Z     "size": 10859081,
+2026-11-28T08:39:32.8181877Z     "git_blob_sha1": "be88f63252a3d9e81cdac161e11e4e8498129cfa",
+2026-11-28T08:39:32.8183237Z     "path": "ukr.traineddata",
+2026-11-28T08:39:32.8185293Z     "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/ukr.traineddata"
+2026-11-28T08:39:32.8186135Z   }
+2026-11-28T08:39:32.8187836Z ]
+2026-11-28T08:39:32.8710974Z ##[group]Run & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
+2026-11-28T08:39:32.8713504Z [36;1m& $env:CARR_PYTHON scripts/ci_check.py --jobs 3 tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'[0m
+2026-11-28T08:39:32.8714835Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:39:32.8744536Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:39:32.8744823Z env:
+2026-11-28T08:39:32.8744978Z   PYTHONUTF8: 1
+2026-11-28T08:39:32.8745141Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:39:32.8745316Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:39:32.8745597Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:39:32.8745887Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:32.8746062Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:39:32.8746225Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:32.8746401Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:39:32.8746592Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:39:32.8746899Z   DO_NOT_TRACK: 1
+2026-11-28T08:39:32.8747108Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.8747447Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:39:32.8747780Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.8748084Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.8748384Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:32.8748691Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:39:32.8748976Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:39:32.8749208Z ##[endgroup]
+2026-11-28T08:39:33.5678736Z ============================= test session starts =============================
+2026-11-28T08:39:33.5690103Z ============================= test session starts =============================
+2026-11-28T08:39:33.5694063Z ============================= test session starts =============================
+2026-11-28T08:39:33.5695279Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:33.5696271Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-libraryplatform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:33.5697289Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:39:33.5697922Z configfile: pyproject.toml
+2026-11-28T08:39:33.5698444Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:33.5698904Z 
+2026-11-28T08:39:33.5699132Z configfile: pyproject.toml
+2026-11-28T08:39:33.5699634Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:39:33.5700248Z configfile: pyproject.toml
+2026-11-28T08:39:33.6833048Z collected 95 items
+2026-11-28T08:39:33.6875408Z 
+2026-11-28T08:39:33.7183222Z tests\research\test_bibtex_import.py .collected 104 items
+2026-11-28T08:39:33.7183944Z 
+2026-11-28T08:39:33.7629983Z tests\reader\test_export_no_clobber.py ......collected 8 items
+2026-11-28T08:39:33.7630641Z 
+2026-11-28T08:39:34.2267707Z tests\catalog\test_ris_apply.py ................................ [ 31%]
+2026-11-28T08:39:40.0191039Z ......................................................................................... [ 36%]
+2026-11-28T08:39:45.9260091Z .......................................................................             [100%]
+2026-11-28T08:39:45.9260666Z 
+2026-11-28T08:39:45.9261311Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-0ajps0au\junit.xml -
+2026-11-28T08:39:45.9262136Z ============================= 95 passed in 12.37s =============================
+2026-11-28T08:39:46.0184398Z PASS: tests/research/test_bibtex_import.py: junit_passed=95, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:46.2388955Z ============================= test session starts =============================
+2026-11-28T08:39:46.2436103Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:46.2455100Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:39:46.2455938Z configfile: pyproject.toml
+2026-11-28T08:39:46.3111394Z collected 16 items
+2026-11-28T08:39:46.3112134Z 
+2026-11-28T08:39:46.9970453Z tests\storage\test_durable_state_publication.py .........                                 [100%]
+2026-11-28T08:39:46.9972596Z 
+2026-11-28T08:39:46.9973105Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-l4ye7fku\junit.xml -
+2026-11-28T08:39:46.9973804Z ============================= 8 passed in 13.44s ==============================
+2026-11-28T08:39:47.0790879Z PASS: tests/catalog/test_ris_apply.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:47.3112523Z .........         [100%]
+2026-11-28T08:39:47.3114576Z 
+2026-11-28T08:39:47.3143357Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-wlfwjk2t\junit.xml -
+2026-11-28T08:39:47.3144171Z ============================= 16 passed in 1.08s ==============================
+2026-11-28T08:39:47.3432644Z ============================= test session starts =============================
+2026-11-28T08:39:47.3462342Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:47.3463391Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:39:47.3463950Z configfile: pyproject.toml
+2026-11-28T08:39:47.3689204Z PASS: tests/storage/test_durable_state_publication.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:47.4537251Z collected 5 items
+2026-11-28T08:39:47.4538842Z 
+2026-11-28T08:39:47.5423309Z tests\ui\test_export_destination.py .....                                [100%]
+2026-11-28T08:39:47.5470139Z 
+2026-11-28T08:39:47.5515440Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-awgd3wp9\junit.xml -
+2026-11-28T08:39:47.5575810Z ============================== 5 passed in 0.19s ==============================
+2026-11-28T08:39:47.5976661Z PASS: tests/ui/test_export_destination.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:47.6291534Z ============================= test session starts =============================
+2026-11-28T08:39:47.6323099Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:47.6324795Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:39:47.6325347Z configfile: pyproject.toml
+2026-11-28T08:39:47.7909811Z collected 4 items
+2026-11-28T08:39:47.7911676Z 
+2026-11-28T08:39:47.8356677Z tests\ingest\test_initial_publication_completion.py ============================= test session starts =============================
+2026-11-28T08:39:47.8382356Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:39:47.8383079Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:39:47.8383610Z configfile: pyproject.toml
+2026-11-28T08:39:48.2912216Z .collected 30 items
+2026-11-28T08:39:48.2917250Z 
+2026-11-28T08:39:50.7236097Z tests\ui\test_profile_project_exports.py ...................                 [100%]
+2026-11-28T08:39:50.7236789Z 
+2026-11-28T08:39:50.7237260Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-87j7yu2t\junit.xml -
+2026-11-28T08:39:50.7237942Z ============================== 4 passed in 3.09s ==============================
+2026-11-28T08:39:50.8356694Z .PASS: tests/ingest/test_initial_publication_completion.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:52.3258624Z ..............  [100%]
+2026-11-28T08:39:52.3258881Z 
+2026-11-28T08:39:52.3261815Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-sejfav2q\junit.xml -
+2026-11-28T08:39:52.3262473Z ============================= 30 passed in 4.49s ==============================
+2026-11-28T08:39:52.4484756Z PASS: tests/ui/test_profile_project_exports.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:56.9074644Z .....  [100%]
+2026-11-28T08:39:56.9074866Z 
+2026-11-28T08:39:56.9075206Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-xsj8lbnz\junit.xml -
+2026-11-28T08:39:56.9075795Z ============================ 104 passed in 23.35s =============================
+2026-11-28T08:39:57.0331723Z PASS: tests/reader/test_export_no_clobber.py: junit_passed=104, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:39:57.0332400Z Required suites complete: 7; passed=7; failed=0
+2026-11-28T08:39:57.0891277Z ##[group]Run & $env:CARR_PYTHON -I -B scripts/windows_bibliography_interchange_smoke.py 2>&1 | Tee-Object 'ci-results/native-bibliography-interchange.txt'
+2026-11-28T08:39:57.0892280Z [36;1m& $env:CARR_PYTHON -I -B scripts/windows_bibliography_interchange_smoke.py 2>&1 | Tee-Object 'ci-results/native-bibliography-interchange.txt'[0m
+2026-11-28T08:39:57.0892844Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:39:57.0923795Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:39:57.0924079Z env:
+2026-11-28T08:39:57.0924219Z   PYTHONUTF8: 1
+2026-11-28T08:39:57.0924532Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:39:57.0924710Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:39:57.0924991Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:39:57.0925282Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:57.0925448Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:39:57.0925599Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:39:57.0925821Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:39:57.0926005Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:39:57.0926167Z   DO_NOT_TRACK: 1
+2026-11-28T08:39:57.0926374Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:57.0926717Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:39:57.0927065Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:57.0927375Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:57.0927690Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:39:57.0927998Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:39:57.0928284Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:39:57.0928515Z ##[endgroup]
+2026-11-28T08:39:57.5029799Z PASS: isolated installed CPython 3.11 x64 is running
+2026-11-28T08:39:57.5032560Z PASS: all interchange modules come from the installed package
+2026-11-28T08:39:57.5035204Z PASS: wx uses native Windows controls and the pinned import dependencies
+2026-11-28T08:39:58.1571547Z PASS: the real academic library starts without active imported references
+2026-11-28T08:39:58.1574129Z PASS: native action button is keyboard reachable
+2026-11-28T08:39:58.1578069Z {"foreground_handle": 328150, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [], "thread_focus_handle": 131518, "top_handle": 328150, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:39:58.1992444Z PASS: native import requests the actual BibTeX-capable local picker
+2026-11-28T08:39:58.2948003Z PASS: native BibTeX review has two unchecked entries and has not imported anything
+2026-11-28T08:39:58.2948898Z PASS: actual BibTeX preview resolves macros and Unicode while retaining source provenance
+2026-11-28T08:39:58.2951870Z {"foreground_handle": 66144, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "thread_focus_handle": 66150, "top_handle": 66144, "wx_focus": "References to import; Space selects or clears an entry", "wx_focus_class": "CheckListBox"}
+2026-11-28T08:39:58.4332221Z PASS: real Space selects only the intended import entry
+2026-11-28T08:39:58.4333374Z PASS: native action button is keyboard reachable
+2026-11-28T08:39:58.4348114Z {"foreground_handle": 66144, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}], "thread_focus_handle": 66162, "top_handle": 66144, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:39:58.5763155Z PASS: the real import assigns application identity and preserves the BibTeX key separately
+2026-11-28T08:39:58.5763868Z PASS: native import leaves the selected bibliography file unchanged
+2026-11-28T08:39:58.5778069Z PASS: native action button is keyboard reachable
+2026-11-28T08:39:58.5788824Z {"foreground_handle": 328150, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "thread_focus_handle": 131508, "top_handle": 328150, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:39:58.7157314Z PASS: real export options expose formats with all-active scope and private notes excluded
+2026-11-28T08:39:58.7159267Z {"foreground_handle": 131680, "main_loop_exists": true, "native_input_diagnostic": "before native key 313", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "thread_focus_handle": 131700, "top_handle": 131680, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:39:58.8577524Z {"foreground_handle": 131680, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}], "thread_focus_handle": 131700, "top_handle": 131680, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:39:58.9991731Z {"foreground_handle": 131680, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 131700, "top_handle": 131680, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:39:59.1391403Z PASS: actual native keys select the requested academic export format
+2026-11-28T08:39:59.1392622Z PASS: native action button is keyboard reachable
+2026-11-28T08:39:59.1403195Z {"foreground_handle": 131680, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 131686, "top_handle": 131680, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:39:59.1878665Z PASS: native export uses only a save picker before explicit confirmation
+2026-11-28T08:39:59.2799480Z PASS: the overwrite question is the owned foreground native modal dialog
+2026-11-28T08:39:59.2806896Z {"foreground_handle": 131682, "main_loop_exists": true, "native_input_diagnostic": "before native key 13", "overwrite_prompt_handle": 131682, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 66198, "top_handle": null, "wx_focus": null, "wx_focus_class": null}
+2026-11-28T08:39:59.4206026Z PASS: default Enter declines without export attempts, status errors or file changes
+2026-11-28T08:39:59.4206605Z PASS: native action button is keyboard reachable
+2026-11-28T08:39:59.4212499Z {"foreground_handle": 328150, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}], "thread_focus_handle": 131508, "top_handle": 328150, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:39:59.5612703Z PASS: real export options expose formats with all-active scope and private notes excluded
+2026-11-28T08:39:59.5615863Z {"foreground_handle": 197216, "main_loop_exists": true, "native_input_diagnostic": "before native key 313", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "thread_focus_handle": 197220, "top_handle": 197216, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:39:59.7024857Z {"foreground_handle": 197216, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}], "thread_focus_handle": 197220, "top_handle": 197216, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:39:59.8432242Z {"foreground_handle": 197216, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 197220, "top_handle": 197216, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:39:59.9831684Z PASS: actual native keys select the requested academic export format
+2026-11-28T08:39:59.9832354Z PASS: native action button is keyboard reachable
+2026-11-28T08:39:59.9843520Z {"foreground_handle": 197216, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 197236, "top_handle": 197216, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:40:00.0315169Z PASS: native export uses only a save picker before explicit confirmation
+2026-11-28T08:40:00.1236046Z PASS: the overwrite question is the owned foreground native modal dialog
+2026-11-28T08:40:00.1240530Z {"foreground_handle": 197218, "main_loop_exists": true, "native_input_diagnostic": "before native key 9", "overwrite_prompt_handle": 197218, "recent_key_events": [{"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 131706, "top_handle": null, "wx_focus": null, "wx_focus_class": null}
+2026-11-28T08:40:00.2652164Z {"foreground_handle": 197218, "main_loop_exists": true, "native_input_diagnostic": "before native key 13", "overwrite_prompt_handle": 197218, "recent_key_events": [{"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 131710, "top_handle": null, "wx_focus": null, "wx_focus_class": null}
+2026-11-28T08:40:00.4049285Z PASS: real Shift+Tab and Enter close the question and enter the actual export once
+2026-11-28T08:40:00.4088977Z PASS: real Yes replaces the approved file with an importable scoped BibTeX bibliography
+2026-11-28T08:40:00.4092394Z PASS: native action button is keyboard reachable
+2026-11-28T08:40:00.4106912Z {"foreground_handle": 328150, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 131508, "top_handle": 328150, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:40:00.5458952Z PASS: real export options expose formats with all-active scope and private notes excluded
+2026-11-28T08:40:00.5462856Z {"foreground_handle": 262752, "main_loop_exists": true, "native_input_diagnostic": "before native key 313", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "thread_focus_handle": 262770, "top_handle": 262752, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:40:00.6874071Z {"foreground_handle": 262752, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}], "thread_focus_handle": 262770, "top_handle": 262752, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:40:00.8181563Z {"foreground_handle": 262752, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "button", "event": "up", "key": 13}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 262770, "top_handle": 262752, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:40:00.9686222Z {"foreground_handle": 262752, "main_loop_exists": true, "native_input_diagnostic": "before native key 317", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 262770, "top_handle": 262752, "wx_focus": "Export format", "wx_focus_class": "Choice"}
+2026-11-28T08:40:01.1088070Z PASS: actual native keys select the requested academic export format
+2026-11-28T08:40:01.1088584Z PASS: native action button is keyboard reachable
+2026-11-28T08:40:01.1102364Z {"foreground_handle": 262752, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 262756, "top_handle": 262752, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T08:40:01.1571950Z PASS: native export uses only a save picker before explicit confirmation
+2026-11-28T08:40:01.2493638Z PASS: the overwrite question is the owned foreground native modal dialog
+2026-11-28T08:40:01.2497353Z PASS: the competing save happens while the actual overwrite modal is still open
+2026-11-28T08:40:01.2504414Z {"foreground_handle": 262754, "main_loop_exists": true, "native_input_diagnostic": "before native key 9", "overwrite_prompt_handle": 262754, "recent_key_events": [{"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 197270, "top_handle": null, "wx_focus": null, "wx_focus_class": null}
+2026-11-28T08:40:01.3905215Z {"foreground_handle": 262754, "main_loop_exists": true, "native_input_diagnostic": "before native key 13", "overwrite_prompt_handle": 262754, "recent_key_events": [{"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 197266, "top_handle": null, "wx_focus": null, "wx_focus_class": null}
+2026-11-28T08:40:01.5310590Z PASS: real Shift+Tab and Enter close the question and enter the actual export once
+2026-11-28T08:40:01.5311283Z PASS: real Yes cannot replace a destination changed since the question was opened
+2026-11-28T08:40:01.5570473Z PASS: native export keeps references, original sources and exact saved evidence unchanged
+2026-11-28T08:40:01.5571278Z PASS: all controlled file choices are disposed and native confirmation stays real
+2026-11-28T08:40:01.5590744Z {"foreground_handle": 328150, "main_loop_exists": true, "native_input_diagnostic": "before native key 27", "overwrite_prompt_handle": 0, "recent_key_events": [{"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Export format", "event": "down", "key": 313}, {"control": "Export format", "event": "char", "key": 313}, {"control": "Export format", "event": "up", "key": 313}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}, {"control": "Export format", "event": "down", "key": 317}, {"control": "Export format", "event": "char", "key": 317}, {"control": "Export format", "event": "up", "key": 317}], "thread_focus_handle": 196768, "top_handle": 328150, "wx_focus": "Academic references", "wx_focus_class": "ListBox"}
+2026-11-28T08:40:01.6873987Z PASS: real Escape closes the academic window
+2026-11-28T08:40:01.6874415Z PASS: all interchange operations stayed offline
+2026-11-28T08:40:01.6995689Z {"checks": 40, "file_choices": "controlled temporary paths only", "installed_modules": {"carr_library.research.academic_library": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32", "carr_library.research.bibtex_import": "1aa6ba1a25a52ff5df759464de629f30544ee1caa52948a3735fc626d9a19379", "carr_library.research.export_file": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1", "carr_library.ui.academic_library_dialog": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597"}, "installer": "NOT_RUN", "manual_keyboard": "NOT_RUN", "native_bibtex_import": "PASS", "native_export_options": "PASS", "native_file_pickers": "NOT_RUN", "native_keyboard": "PASS", "native_overwrite_accessible_focus": "NOT_RUN", "native_overwrite_confirmation": "PASS", "nvda": "NOT_RUN", "platform": "Windows-10-10.0.20348-SP0", "python": "3.11.9", "result": "PASS", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T08:40:01.8121279Z ##[group]Run & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
+2026-11-28T08:40:01.8122583Z [36;1m& $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'[0m
+2026-11-28T08:40:01.8123097Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:01.8153577Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:01.8153939Z env:
+2026-11-28T08:40:01.8154144Z   PYTHONUTF8: 1
+2026-11-28T08:40:01.8154355Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:01.8154579Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:01.8154930Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:01.8155289Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:01.8171240Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:01.8171433Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:01.8171666Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:01.8171865Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:01.8172028Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:01.8172235Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:01.8172605Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:01.8172961Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:01.8173272Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:01.8173573Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:01.8173896Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:01.8174189Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:01.8174448Z ##[endgroup]
+2026-11-28T08:40:02.1316969Z PASS: installed wheel records carr_library/extract/model_catalog.py
+2026-11-28T08:40:02.1319101Z PASS: installed file is outside the source checkout: carr_library/extract/model_catalog.py
+2026-11-28T08:40:02.1320666Z PASS: installed wheel checksum and size match: carr_library/extract/model_catalog.py
+2026-11-28T08:40:02.1322013Z PASS: installed wheel records carr_library/extract/ocr_model_store.py
+2026-11-28T08:40:02.1323468Z PASS: installed file is outside the source checkout: carr_library/extract/ocr_model_store.py
+2026-11-28T08:40:02.1324675Z PASS: installed wheel checksum and size match: carr_library/extract/ocr_model_store.py
+2026-11-28T08:40:02.1326133Z PASS: installed wheel records carr_library/extract/managed_ocr.py
+2026-11-28T08:40:02.1327548Z PASS: installed file is outside the source checkout: carr_library/extract/managed_ocr.py
+2026-11-28T08:40:02.1330594Z PASS: installed wheel checksum and size match: carr_library/extract/managed_ocr.py
+2026-11-28T08:40:02.1331492Z PASS: installed wheel records carr_library/extract/ocr_model_catalog.py
+2026-11-28T08:40:02.1332980Z PASS: installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py
+2026-11-28T08:40:02.1334133Z PASS: installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py
+2026-11-28T08:40:02.1335439Z PASS: installed wheel records carr_library/extract/ocr-model-catalog.json
+2026-11-28T08:40:02.1336900Z PASS: installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json
+2026-11-28T08:40:02.1337855Z PASS: installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json
+2026-11-28T08:40:02.1339191Z PASS: installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE
+2026-11-28T08:40:02.1340539Z PASS: installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE
+2026-11-28T08:40:02.1341516Z PASS: installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE
+2026-11-28T08:40:02.1342659Z PASS: installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE
+2026-11-28T08:40:02.1346718Z PASS: installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE
+2026-11-28T08:40:02.1347661Z PASS: installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE
+2026-11-28T08:40:02.1348578Z PASS: installed wheel records carr_library/ui/ocr_model_manager.py
+2026-11-28T08:40:02.1349248Z PASS: installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py
+2026-11-28T08:40:02.1349996Z PASS: installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py
+2026-11-28T08:40:02.1350505Z PASS: installed wheel records carr_library/__main__.py
+2026-11-28T08:40:02.1352666Z PASS: installed file is outside the source checkout: carr_library/__main__.py
+2026-11-28T08:40:02.1353543Z PASS: installed wheel checksum and size match: carr_library/__main__.py
+2026-11-28T08:40:02.1512559Z PASS: catalogue and UI imports resolve to the verified installed wheel
+2026-11-28T08:40:02.1603495Z PASS: catalogue API fingerprints the installed JSON bytes
+2026-11-28T08:40:02.1604161Z PASS: fast catalogue contains language and script models
+2026-11-28T08:40:02.1605816Z PASS: fast license matches both its reviewed Git blob and wheel record
+2026-11-28T08:40:02.1607309Z PASS: best catalogue contains language and script models
+2026-11-28T08:40:02.1608291Z PASS: best license matches both its reviewed Git blob and wheel record
+2026-11-28T08:40:02.2867210Z PASS: fast installed CLI exits successfully without downloads
+2026-11-28T08:40:02.2869063Z PASS: fast installed CLI reads the exact catalogue and empty private store
+2026-11-28T08:40:02.3999572Z PASS: best installed CLI exits successfully without downloads
+2026-11-28T08:40:02.4000778Z PASS: best installed CLI reads the exact catalogue and empty private store
+2026-11-28T08:40:02.4001971Z PASS: catalogue and CLI inspection create no model or application files
+2026-11-28T08:40:02.4226444Z PASS: native wx platform matches the requested acceptance platform
+2026-11-28T08:40:02.4795283Z PASS: native model-manager controls expose readable accessibility names
+2026-11-28T08:40:02.4796496Z PASS: model profile and selectable list use native wx controls
+2026-11-28T08:40:02.4797474Z PASS: model details, estimates, source and status are read-only
+2026-11-28T08:40:02.4799375Z PASS: native model manager starts with the full Fast catalogue and no selection
+2026-11-28T08:40:02.4812179Z PASS: native event reaches Find OCR models by language, script or identifier
+2026-11-28T08:40:02.4910808Z PASS: native search readback preserves Ukrainian
+2026-11-28T08:40:02.4911681Z PASS: Ukrainian search resolves the native ukr row
+2026-11-28T08:40:02.4917467Z PASS: native event reaches OCR models; Space selects or clears a model
+2026-11-28T08:40:02.4922096Z PASS: native details read back the selected language and exact revision
+2026-11-28T08:40:02.4923833Z PASS: native event reaches OCR models; Space selects or clears a model
+2026-11-28T08:40:02.4930241Z PASS: native checklist selection updates the spoken-text summary
+2026-11-28T08:40:02.4943922Z PASS: native event reaches Find OCR models by language, script or identifier
+2026-11-28T08:40:02.4962365Z PASS: native search readback preserves Latin
+2026-11-28T08:40:02.4964506Z PASS: Latin search exposes the official script model
+2026-11-28T08:40:02.4966374Z PASS: filtering retains and discloses the hidden Ukrainian selection
+2026-11-28T08:40:02.4976846Z PASS: native event reaches button
+2026-11-28T08:40:02.5018448Z PASS: Select all shown checks actual visible native rows
+2026-11-28T08:40:02.5048870Z PASS: native event reaches OCR model profile
+2026-11-28T08:40:02.5067224Z PASS: Best profile has separate selections and its own exact revision
+2026-11-28T08:40:02.5069747Z PASS: native event reaches button
+2026-11-28T08:40:02.5111213Z PASS: native event reaches OCR model profile
+2026-11-28T08:40:02.5130521Z PASS: returning to Fast preserves all Fast selections and estimate
+2026-11-28T08:40:02.5158787Z PASS: native event reaches OCR model profile
+2026-11-28T08:40:02.5186909Z PASS: returning to Best preserves its independent selection
+2026-11-28T08:40:02.5203357Z PASS: native event reaches button
+2026-11-28T08:40:02.5218709Z PASS: Clear selection clears every Best selection
+2026-11-28T08:40:02.5247474Z PASS: native event reaches OCR model profile
+2026-11-28T08:40:02.5267560Z PASS: clearing Best leaves Fast selections unchanged
+2026-11-28T08:40:02.5289217Z PASS: native event reaches button
+2026-11-28T08:40:02.5317412Z PASS: native event reaches Find OCR models by language, script or identifier
+2026-11-28T08:40:02.5327609Z PASS: native search readback preserves no-model-matches-this-fixture
+2026-11-28T08:40:02.5328377Z PASS: an empty native search has readable recovery guidance
+2026-11-28T08:40:02.5346151Z PASS: native event reaches Find OCR models by language, script or identifier
+2026-11-28T08:40:02.5365017Z PASS: native search readback preserves Latin
+2026-11-28T08:40:02.5366382Z PASS: native search recovers without restoring cleared selections
+2026-11-28T08:40:02.5367878Z PASS: inspection has not started an installation or selected a source folder
+2026-11-28T08:40:02.5369234Z PASS: parent unsaved note is unchanged while the model dialog is open
+2026-11-28T08:40:02.5380089Z PASS: native event reaches button
+2026-11-28T08:40:02.5402517Z PASS: Close completes the actual native modal without installing models
+2026-11-28T08:40:02.5414090Z PASS: parent note and usable parent window survive dialog closure
+2026-11-28T08:40:02.5415471Z PASS: native model inspection creates no model or application files
+2026-11-28T08:40:02.5463308Z PASS: no Python network operation was attempted
+2026-11-28T08:40:02.5514403Z {"status": "PASS", "checks": 81, "cases": ["installed wheel records carr_library/extract/model_catalog.py", "installed file is outside the source checkout: carr_library/extract/model_catalog.py", "installed wheel checksum and size match: carr_library/extract/model_catalog.py", "installed wheel records carr_library/extract/ocr_model_store.py", "installed file is outside the source checkout: carr_library/extract/ocr_model_store.py", "installed wheel checksum and size match: carr_library/extract/ocr_model_store.py", "installed wheel records carr_library/extract/managed_ocr.py", "installed file is outside the source checkout: carr_library/extract/managed_ocr.py", "installed wheel checksum and size match: carr_library/extract/managed_ocr.py", "installed wheel records carr_library/extract/ocr_model_catalog.py", "installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py", "installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py", "installed wheel records carr_library/extract/ocr-model-catalog.json", "installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json", "installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json", "installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE", "installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE", "installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE", "installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE", "installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE", "installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE", "installed wheel records carr_library/ui/ocr_model_manager.py", "installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py", "installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py", "installed wheel records carr_library/__main__.py", "installed file is outside the source checkout: carr_library/__main__.py", "installed wheel checksum and size match: carr_library/__main__.py", "catalogue and UI imports resolve to the verified installed wheel", "catalogue API fingerprints the installed JSON bytes", "fast catalogue contains language and script models", "fast license matches both its reviewed Git blob and wheel record", "best catalogue contains language and script models", "best license matches both its reviewed Git blob and wheel record", "fast installed CLI exits successfully without downloads", "fast installed CLI reads the exact catalogue and empty private store", "best installed CLI exits successfully without downloads", "best installed CLI reads the exact catalogue and empty private store", "catalogue and CLI inspection create no model or application files", "native wx platform matches the requested acceptance platform", "native model-manager controls expose readable accessibility names", "model profile and selectable list use native wx controls", "model details, estimates, source and status are read-only", "native model manager starts with the full Fast catalogue and no selection", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves Ukrainian", "Ukrainian search resolves the native ukr row", "native event reaches OCR models; Space selects or clears a model", "native details read back the selected language and exact revision", "native event reaches OCR models; Space selects or clears a model", "native checklist selection updates the spoken-text summary", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves Latin", "Latin search exposes the official script model", "filtering retains and discloses the hidden Ukrainian selection", "native event reaches button", "Select all shown checks actual visible native rows", "native event reaches OCR model profile", "Best profile has separate selections and its own exact revision", "native event reaches button", "native event reaches OCR model profile", "returning to Fast preserves all Fast selections and estimate", "native event reaches OCR model profile", "returning to Best preserves its independent selection", "native event reaches button", "Clear selection clears every Best selection", "native event reaches OCR model profile", "clearing Best leaves Fast selections unchanged", "native event reaches button", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves no-model-matches-this-fixture", "an empty native search has readable recovery guidance", "native event reaches Find OCR models by language, script or identifier", "native search readback preserves Latin", "native search recovers without restoring cleared selections", "inspection has not started an installation or selected a source folder", "parent unsaved note is unchanged while the model dialog is open", "native event reaches button", "Close completes the actual native modal without installing models", "parent note and usable parent window survive dialog closure", "native model inspection creates no model or application files", "no Python network operation was attempted"], "installed_file_sha256": {"carr_library/extract/model_catalog.py": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12", "carr_library/extract/ocr_model_store.py": "b08197865eb30d50124d8c23a9513af5892b91ac6e1134897e9af07f6f8919ba", "carr_library/extract/managed_ocr.py": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477", "carr_library/extract/ocr_model_catalog.py": "b053b60760e2ca7b2c2505c1f82be479e9b8ba3e286d0b730a482c236cbb24da", "carr_library/extract/ocr-model-catalog.json": "1e55383fc79da1ce2d72ffca2dcd4b4fb24d69e29cd23425562cc20af7775e0b", "carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30", "carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9", "carr_library/ui/ocr_model_manager.py": "8e8b7f04f85ad3fa03fda546782a09882801525562c698b6e643fab70f13a4c1", "carr_library/__main__.py": "09ca4d0f7b077cfd6c6c62bd70ecd581e12cd2ed2fa4425de63bb39d9290eff9"}, "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8", "wx_platform": "__WXMSW__", "native_gui": "PASS", "windows_execution": "PASS", "manual_keyboard": "NOT_RUN", "nvda": "NOT_RUN", "models_installed": false, "models_downloaded": false, "network_guard": "Python socket operations denied"}
+2026-11-28T08:40:02.6391455Z ##[group]Run & $env:CARR_PYTHON -I -B scripts/windows_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-library.txt'
+2026-11-28T08:40:02.6392366Z [36;1m& $env:CARR_PYTHON -I -B scripts/windows_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-library.txt'[0m
+2026-11-28T08:40:02.6392817Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:02.6425837Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:02.6426108Z env:
+2026-11-28T08:40:02.6426253Z   PYTHONUTF8: 1
+2026-11-28T08:40:02.6426403Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:02.6426574Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:02.6426846Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:02.6427127Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:02.6427288Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:02.6427439Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:02.6427776Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:02.6427964Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:02.6428117Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:02.6428318Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:02.6428669Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:02.6428997Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:02.6429299Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:02.6429599Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:02.6429887Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:02.6430159Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:02.6430443Z ##[endgroup]
+2026-11-28T08:40:03.1271333Z PASS: academic UI comes from the installed package
+2026-11-28T08:40:03.1273525Z PASS: wx uses real native Windows controls
+2026-11-28T08:40:04.0545033Z PASS: normal desktop startup visibly exposes named citation processor attribution
+2026-11-28T08:40:04.0546266Z PASS: real desktop exposes the Academic menu
+2026-11-28T08:40:04.0548456Z PASS: academic library has its keyboard shortcut
+2026-11-28T08:40:04.1125304Z PASS: native academic filters have readable names
+2026-11-28T08:40:04.1126394Z PASS: native reference details are read only
+2026-11-28T08:40:04.1529940Z PASS: native reference editor has separate bibliography and reading pages
+2026-11-28T08:40:04.2687159Z PASS: native modal action returned its expected result
+2026-11-28T08:40:04.2688759Z PASS: native create saved real metadata and reading state
+2026-11-28T08:40:04.2795484Z PASS: native reference list accepts actual keyboard focus
+2026-11-28T08:40:04.2796540Z PASS: native detail view displays the selected saved reference
+2026-11-28T08:40:04.3589677Z PASS: validation failure focuses actual native status
+2026-11-28T08:40:04.3590222Z PASS: validation failure preserves typed notes and invalid field
+2026-11-28T08:40:04.3591403Z PASS: declining discard keeps the native editor and draft
+2026-11-28T08:40:04.3893088Z PASS: native modal action returned its expected result
+2026-11-28T08:40:04.3893768Z PASS: native edit persists its explicit reading choices
+2026-11-28T08:40:04.4902139Z PASS: stale native form keeps its draft and exposes the conflict
+2026-11-28T08:40:04.4912322Z PASS: native modal action returned its expected result
+2026-11-28T08:40:04.4928338Z PASS: stale native edit cannot overwrite saved notes
+2026-11-28T08:40:04.4994570Z PASS: native filters use real scoped reading and tag queries
+2026-11-28T08:40:04.5245465Z PASS: duplicate suggestions retain both references and explain a reason
+2026-11-28T08:40:04.5322980Z PASS: native import preview does not preselect any reference
+2026-11-28T08:40:04.5412386Z PASS: native import details correspond to the selected entry
+2026-11-28T08:40:04.5689458Z PASS: native modal action returned its expected result
+2026-11-28T08:40:04.5707901Z PASS: only the explicitly checked import was saved
+2026-11-28T08:40:04.5838529Z PASS: native export action exports all active references despite visible filters
+2026-11-28T08:40:04.5839588Z PASS: native export action excludes private notes by default
+2026-11-28T08:40:04.5951293Z PASS: explicit personal-note export includes the requested notes
+2026-11-28T08:40:04.6431036Z PASS: linked-document action passes a verified viewing copy to the launcher callback
+2026-11-28T08:40:04.6483177Z PASS: missing native selection does not copy an arbitrary last reference
+2026-11-28T08:40:04.7607746Z PASS: native first page reports more results without hiding them
+2026-11-28T08:40:04.7661143Z PASS: native next page reaches the remaining references exactly once
+2026-11-28T08:40:04.7980683Z PASS: native previous page returns to the same records
+2026-11-28T08:40:04.8294161Z PASS: archived references leave the default native results
+2026-11-28T08:40:04.8327032Z PASS: native archive view exposes a restore action for the correct reference
+2026-11-28T08:40:04.8607782Z PASS: restored reference returns with active metadata
+2026-11-28T08:40:04.8859862Z PASS: academic operations preserve retained original bytes and saved source evidence
+2026-11-28T08:40:04.8903784Z PASS: closing the academic modal preserves the parent notebook, scope and draft
+2026-11-28T08:40:04.8904475Z PASS: keyboard focus can return to the retained native research draft
+2026-11-28T08:40:04.8968134Z {"checks": 40, "external_viewer": "recording callback only", "installed_ui_sha256": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597", "manual_keyboard": "NOT_RUN", "native_file_pickers": "NOT_RUN", "nvda": "NOT_RUN", "platform": "Windows", "result": "PASS", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T08:40:05.0520487Z ##[group]Run & $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
+2026-11-28T08:40:05.0521538Z [36;1m& $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"[0m
+2026-11-28T08:40:05.0522161Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:05.0522808Z [36;1m& $env:CARR_PYTHON scripts/ci_check.py --jobs 3 tests/e2e/test_semantic_fallback_status.py tests/e2e/test_offline_startup.py 2>&1 | Tee-Object 'ci-results/core-fallback.txt'[0m
+2026-11-28T08:40:05.0523420Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:05.0553520Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:05.0553796Z env:
+2026-11-28T08:40:05.0553943Z   PYTHONUTF8: 1
+2026-11-28T08:40:05.0554137Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:05.0554317Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:05.0554611Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:05.0554915Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:05.0555082Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:05.0555238Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:05.0555426Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:05.0555630Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:05.0555789Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:05.0556001Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:05.0556356Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:05.0556707Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:05.0557018Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:05.0557325Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:05.0557633Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:05.0557922Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:05.0558158Z ##[endgroup]
+2026-11-28T08:40:05.6232547Z ============================= test session starts =============================
+2026-11-28T08:40:05.6235757Z ============================= test session starts =============================
+2026-11-28T08:40:05.6238109Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:40:05.6240441Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:40:05.6242559Z configfile: pyproject.toml
+2026-11-28T08:40:05.6244673Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T08:40:05.6246897Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T08:40:05.6248768Z configfile: pyproject.toml
+2026-11-28T08:40:05.6417097Z collected 7 items
+2026-11-28T08:40:05.6418208Z 
+2026-11-28T08:40:05.7713385Z tests\e2e\test_offline_startup.py .collected 1 item
+2026-11-28T08:40:05.7714129Z 
+2026-11-28T08:40:06.1491836Z tests\e2e\test_semantic_fallback_status.py .....                             [100%]
+2026-11-28T08:40:06.1492708Z 
+2026-11-28T08:40:06.1496849Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-ds_dfv7m\junit.xml -
+2026-11-28T08:40:06.1498021Z ============================== 1 passed in 0.53s ==============================
+2026-11-28T08:40:06.2186177Z .PASS: tests/e2e/test_semantic_fallback_status.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:40:06.2576935Z .                                [100%]
+2026-11-28T08:40:06.2577777Z 
+2026-11-28T08:40:06.2580187Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-hizpa0np\junit.xml -
+2026-11-28T08:40:06.2581080Z ============================== 7 passed in 0.64s ==============================
+2026-11-28T08:40:06.2972993Z PASS: tests/e2e/test_offline_startup.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T08:40:06.2975407Z Required suites complete: 2; passed=2; failed=0
+2026-11-28T08:40:06.3631016Z ##[group]Run & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+2026-11-28T08:40:06.3631880Z [36;1m& $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock[0m
+2026-11-28T08:40:06.3632354Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:06.3632640Z [36;1m& $env:CARR_PYTHON -m pip check[0m
+2026-11-28T08:40:06.3632903Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:06.3635007Z [36;1m& $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert pins and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'[0m
+2026-11-28T08:40:06.3636987Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:06.3667425Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:06.3667709Z env:
+2026-11-28T08:40:06.3667849Z   PYTHONUTF8: 1
+2026-11-28T08:40:06.3668003Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:06.3668173Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:06.3668450Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:06.3668742Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:06.3668912Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:06.3669063Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:06.3669242Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:06.3669437Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:06.3669598Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:06.3669801Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:06.3670153Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:06.3670498Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:06.3670989Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:06.3671315Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:06.3671640Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:06.3671932Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:06.3672164Z ##[endgroup]
+2026-11-28T08:40:07.4954583Z Requirement already satisfied: comtypes==1.5.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1)) (1.5.0)
+2026-11-28T08:40:07.4978901Z Requirement already satisfied: defusedxml==0.7.1 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 3)) (0.7.1)
+2026-11-28T08:40:07.6955361Z Collecting annotated-doc==0.0.7 (from -r packaging/windows-semantic-cp311.lock (line 5))
+2026-11-28T08:40:07.8825608Z   Downloading annotated_doc-0.0.7-py3-none-any.whl (5.3 kB)
+2026-11-28T08:40:07.9306096Z Collecting annotated-types==0.8.0 (from -r packaging/windows-semantic-cp311.lock (line 8))
+2026-11-28T08:40:07.9474409Z   Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-11-28T08:40:08.0403086Z Collecting anyio==4.16.0 (from -r packaging/windows-semantic-cp311.lock (line 11))
+2026-11-28T08:40:08.0582361Z   Downloading anyio-4.16.0-py3-none-any.whl (134 kB)
+2026-11-28T08:40:08.1163248Z      -------------------------------------- 134.5/134.5 kB 2.6 MB/s eta 0:00:00
+2026-11-28T08:40:08.1675953Z Collecting certifi==2026.11.20 (from -r packaging/windows-semantic-cp311.lock (line 14))
+2026-11-28T08:40:08.1846557Z   Downloading certifi-2026.11.20-py3-none-any.whl (127 kB)
+2026-11-28T08:40:08.2042819Z      -------------------------------------- 127.9/127.9 kB 7.8 MB/s eta 0:00:00
+2026-11-28T08:40:08.2076765Z Requirement already satisfied: charset-normalizer==3.5.3 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 17)) (3.5.3)
+2026-11-28T08:40:08.2089887Z Requirement already satisfied: colorama==0.4.6 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 190)) (0.4.6)
+2026-11-28T08:40:08.2502406Z Collecting fastembed==0.9.1 (from -r packaging/windows-semantic-cp311.lock (line 193))
+2026-11-28T08:40:08.2679767Z   Downloading fastembed-0.9.1-py3-none-any.whl (150 kB)
+2026-11-28T08:40:08.2851308Z      -------------------------------------- 150.2/150.2 kB 8.7 MB/s eta 0:00:00
+2026-11-28T08:40:08.2877872Z Requirement already satisfied: filelock==3.29.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 196)) (3.29.0)
+2026-11-28T08:40:08.3228799Z Collecting flatbuffers==25.12.19 (from -r packaging/windows-semantic-cp311.lock (line 199))
+2026-11-28T08:40:08.3396274Z   Downloading flatbuffers-25.12.19-py2.py3-none-any.whl (26 kB)
+2026-11-28T08:40:08.4234731Z Collecting fsspec==2026.9.0 (from -r packaging/windows-semantic-cp311.lock (line 201))
+2026-11-28T08:40:08.4402643Z   Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+2026-11-28T08:40:08.4599324Z      ------------------------------------- 221.7/221.7 kB 14.1 MB/s eta 0:00:00
+2026-11-28T08:40:08.4941420Z Collecting h11==0.16.0 (from -r packaging/windows-semantic-cp311.lock (line 204))
+2026-11-28T08:40:08.5106597Z   Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-11-28T08:40:08.6051971Z Collecting hf-xet==1.8.0 (from -r packaging/windows-semantic-cp311.lock (line 207))
+2026-11-28T08:40:08.6238489Z   Downloading hf_xet-1.8.0-cp38-abi3-win_amd64.whl (3.9 MB)
+2026-11-28T08:40:08.6929573Z      ---------------------------------------- 3.9/3.9 MB 61.9 MB/s eta 0:00:00
+2026-11-28T08:40:08.7359623Z Collecting httpcore==1.0.9 (from -r packaging/windows-semantic-cp311.lock (line 225))
+2026-11-28T08:40:08.7525956Z   Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-11-28T08:40:08.7707062Z      ---------------------------------------- 78.8/78.8 kB 4.3 MB/s eta 0:00:00
+2026-11-28T08:40:08.8127790Z Collecting httpx==0.28.1 (from -r packaging/windows-semantic-cp311.lock (line 228))
+2026-11-28T08:40:08.8292884Z   Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-11-28T08:40:08.8461743Z      ---------------------------------------- 73.5/73.5 kB 4.0 MB/s eta 0:00:00
+2026-11-28T08:40:08.9182263Z Collecting huggingface-hub==1.16.1 (from -r packaging/windows-semantic-cp311.lock (line 231))
+2026-11-28T08:40:08.9356900Z   Downloading huggingface_hub-1.16.1-py3-none-any.whl (668 kB)
+2026-11-28T08:40:08.9567333Z      ------------------------------------- 668.2/668.2 kB 43.9 MB/s eta 0:00:00
+2026-11-28T08:40:08.9945999Z Collecting idna==3.20 (from -r packaging/windows-semantic-cp311.lock (line 234))
+2026-11-28T08:40:09.0114046Z   Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-11-28T08:40:09.0283916Z      ---------------------------------------- 69.6/69.6 kB 3.7 MB/s eta 0:00:00
+2026-11-28T08:40:09.0625211Z Collecting loguru==0.7.3 (from -r packaging/windows-semantic-cp311.lock (line 237))
+2026-11-28T08:40:09.0790445Z   Downloading loguru-0.7.3-py3-none-any.whl (61 kB)
+2026-11-28T08:40:09.0961737Z      ---------------------------------------- 61.6/61.6 kB 3.2 MB/s eta 0:00:00
+2026-11-28T08:40:09.0986405Z Requirement already satisfied: lxml==6.1.3 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 240)) (6.1.3)
+2026-11-28T08:40:09.1346111Z Collecting markdown-it-py==4.3.0 (from -r packaging/windows-semantic-cp311.lock (line 417))
+2026-11-28T08:40:09.1509540Z   Downloading markdown_it_py-4.3.0-py3-none-any.whl (96 kB)
+2026-11-28T08:40:09.1703786Z      ---------------------------------------- 97.0/97.0 kB 5.8 MB/s eta 0:00:00
+2026-11-28T08:40:09.2029461Z Collecting mdurl==0.1.2 (from -r packaging/windows-semantic-cp311.lock (line 420))
+2026-11-28T08:40:09.2193410Z   Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-11-28T08:40:09.3073986Z Collecting mmh3==5.3.1 (from -r packaging/windows-semantic-cp311.lock (line 423))
+2026-11-28T08:40:09.3248492Z   Downloading mmh3-5.3.1-cp311-cp311-win_amd64.whl (41 kB)
+2026-11-28T08:40:09.3403506Z      ---------------------------------------- 41.7/41.7 kB 2.0 MB/s eta 0:00:00
+2026-11-28T08:40:09.5610179Z Collecting numpy==2.3.5 (from -r packaging/windows-semantic-cp311.lock (line 584))
+2026-11-28T08:40:09.5787881Z   Downloading numpy-2.3.5-cp311-cp311-win_amd64.whl (13.1 MB)
+2026-11-28T08:40:09.6721305Z      -------------------------------------- 13.1/13.1 MB 131.0 MB/s eta 0:00:00
+2026-11-28T08:40:09.8034621Z Collecting onnxruntime==1.32.0 (from -r packaging/windows-semantic-cp311.lock (line 659))
+2026-11-28T08:40:09.8232227Z   Downloading onnxruntime-1.32.0-cp311-cp311-win_amd64.whl (16.7 MB)
+2026-11-28T08:40:09.9330736Z      -------------------------------------- 16.7/16.7 MB 164.9 MB/s eta 0:00:00
+2026-11-28T08:40:09.9525925Z Requirement already satisfied: packaging==26.4 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 684)) (26.4)
+2026-11-28T08:40:09.9536727Z Requirement already satisfied: pillow==13.0.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 687)) (13.0.0)
+2026-11-28T08:40:09.9545309Z Requirement already satisfied: platformdirs==4.10.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 771)) (4.10.0)
+2026-11-28T08:40:10.1170170Z Collecting protobuf==7.36.2 (from -r packaging/windows-semantic-cp311.lock (line 774))
+2026-11-28T08:40:10.1345928Z   Downloading protobuf-7.36.2-cp310-abi3-win_amd64.whl (456 kB)
+2026-11-28T08:40:10.1517876Z      ---------------------------------------- 456.5/456.5 kB ? eta 0:00:00
+2026-11-28T08:40:10.1973139Z Collecting py-rust-stemmers==0.1.8 (from -r packaging/windows-semantic-cp311.lock (line 783))
+2026-11-28T08:40:10.2151805Z   Downloading py_rust_stemmers-0.1.8-cp311-cp311-win_amd64.whl (208 kB)
+2026-11-28T08:40:10.2323216Z      ------------------------------------- 208.4/208.4 kB 12.4 MB/s eta 0:00:00
+2026-11-28T08:40:10.4024889Z Collecting pydantic==2.14.4 (from -r packaging/windows-semantic-cp311.lock (line 839))
+2026-11-28T08:40:10.4195421Z   Downloading pydantic-2.14.4-py3-none-any.whl (494 kB)
+2026-11-28T08:40:10.4368662Z      ------------------------------------- 494.9/494.9 kB 30.3 MB/s eta 0:00:00
+2026-11-28T08:40:11.1203435Z Collecting pydantic-core==2.50.5 (from -r packaging/windows-semantic-cp311.lock (line 842))
+2026-11-28T08:40:11.1394483Z   Downloading pydantic_core-2.50.5-cp311-cp311-win_amd64.whl (2.3 MB)
+2026-11-28T08:40:11.1693179Z      ---------------------------------------- 2.3/2.3 MB 141.3 MB/s eta 0:00:00
+2026-11-28T08:40:11.1738593Z Requirement already satisfied: pygments==2.21.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 983)) (2.21.0)
+2026-11-28T08:40:11.1748805Z Requirement already satisfied: pypdf==7.1.1 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 986)) (7.1.1)
+2026-11-28T08:40:11.1773203Z Requirement already satisfied: pypdfium2==5.13.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 989)) (5.13.0)
+2026-11-28T08:40:11.1787613Z Requirement already satisfied: python-docx==1.2.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1012)) (1.2.0)
+2026-11-28T08:40:11.2358561Z Collecting pyyaml==6.0.4 (from -r packaging/windows-semantic-cp311.lock (line 1015))
+2026-11-28T08:40:11.2535932Z   Downloading pyyaml-6.0.4-cp311-cp311-win_amd64.whl (161 kB)
+2026-11-28T08:40:11.2702380Z      -------------------------------------- 161.8/161.8 kB 9.5 MB/s eta 0:00:00
+2026-11-28T08:40:11.3844000Z Collecting requests==2.34.2 (from -r packaging/windows-semantic-cp311.lock (line 1091))
+2026-11-28T08:40:11.4012293Z   Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+2026-11-28T08:40:11.4173364Z      ---------------------------------------- 73.1/73.1 kB 3.9 MB/s eta 0:00:00
+2026-11-28T08:40:11.4754980Z Collecting rich==15.0.0 (from -r packaging/windows-semantic-cp311.lock (line 1094))
+2026-11-28T08:40:11.4925350Z   Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-11-28T08:40:11.5108947Z      -------------------------------------- 310.7/310.7 kB 9.7 MB/s eta 0:00:00
+2026-11-28T08:40:11.5478002Z Collecting shellingham==1.5.4 (from -r packaging/windows-semantic-cp311.lock (line 1097))
+2026-11-28T08:40:11.5641532Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-11-28T08:40:11.7208889Z Collecting tokenizers==0.23.3 (from -r packaging/windows-semantic-cp311.lock (line 1100))
+2026-11-28T08:40:11.7420944Z   Downloading tokenizers-0.23.3-cp310-abi3-win_amd64.whl (2.9 MB)
+2026-11-28T08:40:11.7769138Z      ---------------------------------------- 2.9/2.9 MB 92.3 MB/s eta 0:00:00
+2026-11-28T08:40:11.8331510Z Collecting tqdm==4.70.1 (from -r packaging/windows-semantic-cp311.lock (line 1125))
+2026-11-28T08:40:11.8501359Z   Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-28T08:40:11.8671418Z      ---------------------------------------- 80.2/80.2 kB 4.4 MB/s eta 0:00:00
+2026-11-28T08:40:11.9098879Z Collecting typer==0.29.3 (from -r packaging/windows-semantic-cp311.lock (line 1128))
+2026-11-28T08:40:11.9265297Z   Downloading typer-0.29.3-py3-none-any.whl (121 kB)
+2026-11-28T08:40:11.9431829Z      -------------------------------------- 121.1/121.1 kB 6.9 MB/s eta 0:00:00
+2026-11-28T08:40:11.9456376Z Requirement already satisfied: typing-extensions==4.16.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1131)) (4.16.0)
+2026-11-28T08:40:11.9774198Z Collecting typing-inspection==0.4.5 (from -r packaging/windows-semantic-cp311.lock (line 1134))
+2026-11-28T08:40:11.9938150Z   Downloading typing_inspection-0.4.5-py3-none-any.whl (14 kB)
+2026-11-28T08:40:12.0099682Z Requirement already satisfied: urllib3==2.8.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1137)) (2.8.0)
+2026-11-28T08:40:12.0433749Z Collecting win32-setctime==1.2.1 (from -r packaging/windows-semantic-cp311.lock (line 1140))
+2026-11-28T08:40:12.0609674Z   Downloading win32_setctime-1.2.1-py3-none-any.whl (4.2 kB)
+2026-11-28T08:40:12.0797385Z Requirement already satisfied: wxpython==4.2.4 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1143)) (4.2.4)
+2026-11-28T08:40:12.0806854Z Requirement already satisfied: bibtexparser==2.1.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1173)) (2.1.0)
+2026-11-28T08:40:12.0815352Z Requirement already satisfied: pylatexenc==2.11 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1175)) (2.11)
+2026-11-28T08:40:12.0826548Z Requirement already satisfied: quickjs-ng==0.18.0.2 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1177)) (0.18.0.2)
+2026-11-28T08:40:12.0836007Z Requirement already satisfied: py3langid==0.4.0 in d:\a\_temp\carr-windows-python\lib\site-packages (from -r packaging/windows-semantic-cp311.lock (line 1181)) (0.4.0)
+2026-11-28T08:40:12.7858258Z Installing collected packages: flatbuffers, win32-setctime, typing-inspection, tqdm, shellingham, pyyaml, pydantic-core, py-rust-stemmers, protobuf, numpy, mmh3, mdurl, idna, hf-xet, h11, fsspec, certifi, annotated-types, annotated-doc, requests, pydantic, onnxruntime, markdown-it-py, loguru, httpcore, anyio, rich, httpx, typer, huggingface-hub, tokenizers, fastembed
+2026-11-28T08:40:13.1379381Z   Attempting uninstall: numpy
+2026-11-28T08:40:13.1448436Z     Found existing installation: numpy 2.4.6
+2026-11-28T08:40:13.2370039Z     Uninstalling numpy-2.4.6:
+2026-11-28T08:40:13.2586359Z       Successfully uninstalled numpy-2.4.6
+2026-11-28T08:40:18.4848941Z Successfully installed annotated-doc-0.0.7 annotated-types-0.8.0 anyio-4.16.0 certifi-2026.11.20 fastembed-0.9.1 flatbuffers-25.12.19 fsspec-2026.9.0 h11-0.16.0 hf-xet-1.8.0 httpcore-1.0.9 httpx-0.28.1 huggingface-hub-1.16.1 idna-3.20 loguru-0.7.3 markdown-it-py-4.3.0 mdurl-0.1.2 mmh3-5.3.1 numpy-2.3.5 onnxruntime-1.32.0 protobuf-7.36.2 py-rust-stemmers-0.1.8 pydantic-2.14.4 pydantic-core-2.50.5 pyyaml-6.0.4 requests-2.34.2 rich-15.0.0 shellingham-1.5.4 tokenizers-0.23.3 tqdm-4.70.1 typer-0.29.3 typing-inspection-0.4.5 win32-setctime-1.2.1
+2026-11-28T08:40:19.8605107Z No broken requirements found.
+2026-11-28T08:40:20.0668631Z Traceback (most recent call last):
+2026-11-28T08:40:20.0673730Z   File "<string>", line 1, in <module>
+2026-11-28T08:40:20.0673982Z AssertionError
+2026-11-28T08:40:20.0939937Z ##[error]Process completed with exit code 1.
+2026-11-28T08:40:20.1123874Z ##[group]Run $vswhere = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio/Installer/vswhere.exe'
+2026-11-28T08:40:20.1124719Z [36;1m$vswhere = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio/Installer/vswhere.exe'[0m
+2026-11-28T08:40:20.1125465Z [36;1m$vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath[0m
+2026-11-28T08:40:20.1126096Z [36;1mif ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }[0m
+2026-11-28T08:40:20.1126619Z [36;1m"CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T08:40:20.1156335Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:20.1156610Z env:
+2026-11-28T08:40:20.1156766Z   PYTHONUTF8: 1
+2026-11-28T08:40:20.1156921Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:20.1157138Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:20.1157423Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:20.1157722Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:20.1158567Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:20.1158722Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:20.1158908Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:20.1159096Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:20.1159259Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:20.1159477Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.1159831Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:20.1160176Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.1160483Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.1160795Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.1161104Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:20.1161393Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:20.1161622Z ##[endgroup]
+2026-11-28T08:40:20.9158830Z ##[group]Run call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+2026-11-28T08:40:20.9159310Z [36;1mcall "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64[0m
+2026-11-28T08:40:20.9159604Z [36;1mif errorlevel 1 exit /b %errorlevel%[0m
+2026-11-28T08:40:20.9160241Z [36;1mpowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "packaging\native-launcher\build_msvc.ps1" -OutputDirectory "%RUNNER_TEMP%\carr-bundle-launcher-private"[0m
+2026-11-28T08:40:20.9160857Z [36;1mif errorlevel 1 exit /b %errorlevel%[0m
+2026-11-28T08:40:20.9177286Z shell: C:\Windows\system32\cmd.EXE /D /E:ON /V:OFF /S /C "CALL "{0}""
+2026-11-28T08:40:20.9177569Z env:
+2026-11-28T08:40:20.9177707Z   PYTHONUTF8: 1
+2026-11-28T08:40:20.9177864Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:20.9178042Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:20.9178328Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:20.9178629Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:20.9179031Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:20.9179194Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:20.9179387Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:20.9179575Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:20.9179734Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:20.9179946Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.9180307Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:20.9180653Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.9180967Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.9181275Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:20.9181586Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:20.9181878Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:20.9182273Z   CARR_VSDEVCMD: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat
+2026-11-28T08:40:20.9182626Z ##[endgroup]
+2026-11-28T08:40:28.3991206Z launcher.c
+2026-11-28T08:40:32.6257214Z windows_child_probe.c
+2026-11-28T08:40:32.8074990Z test_launcher_core.c
+2026-11-28T08:40:34.5188736Z PASS: quoting, Unicode paths, command bounds and installation lifecycle
+2026-11-28T08:40:35.4161222Z {
+2026-11-28T08:40:35.4161537Z     "source_sha256":  {
+2026-11-28T08:40:35.4162029Z                           "launcher.c":  "052c2d285d6be44013e0da3b9ca1a155e5d6bcf991ba1e9fa30ebde03d1752bd",
+2026-11-28T08:40:35.4162763Z                           "probe_pe.py":  "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+2026-11-28T08:40:35.4163475Z                           "windows_child_probe.c":  "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+2026-11-28T08:40:35.4164209Z                           "launcher_core.h":  "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+2026-11-28T08:40:35.4164794Z                           "launcher.manifest":  "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+2026-11-28T08:40:35.4165586Z                           "launcher.rc":  "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+2026-11-28T08:40:35.4166095Z                           "build_msvc.ps1":  "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+2026-11-28T08:40:35.4166451Z                       },
+2026-11-28T08:40:35.4166615Z     "pe":  {
+2026-11-28T08:40:35.4166760Z                "schema":  1,
+2026-11-28T08:40:35.4166957Z                "file":  "ResearchLibrary.exe",
+2026-11-28T08:40:35.4167169Z                "bytes":  15872,
+2026-11-28T08:40:35.4167461Z                "sha256":  "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+2026-11-28T08:40:35.4167785Z                "machine":  "x86_64",
+2026-11-28T08:40:35.4167981Z                "subsystem":  "windows-gui",
+2026-11-28T08:40:35.4168192Z                "aslr":  true,
+2026-11-28T08:40:35.4170412Z                "high_entropy_aslr":  true,
+2026-11-28T08:40:35.4170797Z                "dep":  true,
+2026-11-28T08:40:35.4171005Z                "timestamp":  3641759729,
+2026-11-28T08:40:35.4171211Z                "imports":  [
+2026-11-28T08:40:35.4171395Z                                "KERNEL32.dll",
+2026-11-28T08:40:35.4171609Z                                "USER32.dll",
+2026-11-28T08:40:35.4171806Z                                "SHELL32.dll"
+2026-11-28T08:40:35.4171994Z                            ],
+2026-11-28T08:40:35.4172189Z                "reproducible_build_marker":  true,
+2026-11-28T08:40:35.4172415Z                "embedded_as_invoker":  true,
+2026-11-28T08:40:35.4172636Z                "certificate_table_present":  false,
+2026-11-28T08:40:35.4172862Z                "authenticode_signed":  false,
+2026-11-28T08:40:35.4173134Z                "windows_execution_verified":  false,
+2026-11-28T08:40:35.4173483Z                "nvda_verified":  false
+2026-11-28T08:40:35.4173681Z            },
+2026-11-28T08:40:35.4173823Z     "schema":  1,
+2026-11-28T08:40:35.4174010Z     "release_status":  "unsigned-private-candidate",
+2026-11-28T08:40:35.4174231Z     "toolchain":  {
+2026-11-28T08:40:35.4174381Z                       "link.exe":  {
+2026-11-28T08:40:35.4174588Z                                        "version":  "14.44.35230.0",
+2026-11-28T08:40:35.4174964Z                                        "sha256":  "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+2026-11-28T08:40:35.4175301Z                                    },
+2026-11-28T08:40:35.4175494Z                       "cl.exe":  {
+2026-11-28T08:40:35.4175697Z                                      "version":  "19.44.35230.0",
+2026-11-28T08:40:35.4176060Z                                      "sha256":  "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+2026-11-28T08:40:35.4176393Z                                  },
+2026-11-28T08:40:35.4176574Z                       "rc.exe":  {
+2026-11-28T08:40:35.4176817Z                                      "version":  "10.0.26100.9457 (WinBuild.160101.0800)",
+2026-11-28T08:40:35.4177221Z                                      "sha256":  "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+2026-11-28T08:40:35.4177552Z                                  }
+2026-11-28T08:40:35.4177716Z                   },
+2026-11-28T08:40:35.4177881Z     "target":  "Windows x64 / MSVC"
+2026-11-28T08:40:35.4178052Z }
+2026-11-28T08:40:35.4496710Z ##[group]Run $private = Join-Path $env:RUNNER_TEMP 'carr-bundle-launcher-private'
+2026-11-28T08:40:35.4497541Z [36;1m$private = Join-Path $env:RUNNER_TEMP 'carr-bundle-launcher-private'[0m
+2026-11-28T08:40:35.4498104Z [36;1m$launcher = Join-Path $private 'ResearchLibrary.exe'[0m
+2026-11-28T08:40:35.4499227Z [36;1m& $env:CARR_PYTHON -I -B packaging/native-launcher/probe_windows.py --launcher $launcher --child (Join-Path $private 'windows_child_probe.exe') --report 'ci-results/native-launcher-process.json'[0m
+2026-11-28T08:40:35.4500642Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:35.4501329Z [36;1m$build = Get-Content -LiteralPath (Join-Path $private 'build-evidence.json') -Raw | ConvertFrom-Json[0m
+2026-11-28T08:40:35.4501991Z [36;1m$probe = Get-Content -LiteralPath 'ci-results/native-launcher-process.json' -Raw | ConvertFrom-Json[0m
+2026-11-28T08:40:35.4502568Z [36;1m$digest = (Get-FileHash -LiteralPath $launcher -Algorithm SHA256).Hash.ToLowerInvariant()[0m
+2026-11-28T08:40:35.4503403Z [36;1mif ($probe.status -ne 'passed' -or $probe.check_count -ne 9 -or $probe.launcher_sha256 -ne $digest -or $build.pe.sha256 -ne $digest) { throw 'Native process acceptance must identify the exact bundle launcher.' }[0m
+2026-11-28T08:40:35.4504127Z [36;1m$nativeSourceCommit = (git rev-parse HEAD).Trim()[0m
+2026-11-28T08:40:35.4504418Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:35.4505436Z [36;1m& $env:CARR_PYTHON -I -B packaging/native-launcher/verify_launcher.py --launcher $launcher --build-evidence (Join-Path $private 'build-evidence.json') --native-probe 'ci-results/native-launcher-process.json' --source-commit $nativeSourceCommit | Tee-Object 'ci-results/native-launcher-source.json'[0m
+2026-11-28T08:40:35.4506433Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:40:35.4506909Z [36;1mCopy-Item -LiteralPath (Join-Path $private 'build-evidence.json') -Destination 'ci-results/native-launcher-build.json'[0m
+2026-11-28T08:40:35.4507476Z [36;1m"CARR_NATIVE_LAUNCHER=$launcher" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T08:40:35.4507935Z [36;1m"CARR_NATIVE_LAUNCHER_DIR=$private" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T08:40:35.4508403Z [36;1m"CARR_NATIVE_LAUNCHER_SHA256=$digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T08:40:35.4538544Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:35.4538829Z env:
+2026-11-28T08:40:35.4538992Z   PYTHONUTF8: 1
+2026-11-28T08:40:35.4539151Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:35.4539323Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:35.4539599Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:35.4539882Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:35.4540046Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:35.4540193Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:35.4540377Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:35.4540566Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:35.4540720Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:35.4540922Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:35.4541259Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:35.4541586Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:35.4541889Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:35.4542177Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:35.4542475Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:35.4542748Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:35.4543114Z   CARR_VSDEVCMD: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat
+2026-11-28T08:40:35.4543460Z ##[endgroup]
+2026-11-28T08:40:35.9178659Z {
+2026-11-28T08:40:35.9180448Z   "schema": 1,
+2026-11-28T08:40:35.9180806Z   "status": "passed",
+2026-11-28T08:40:35.9181047Z   "checks": [
+2026-11-28T08:40:35.9181364Z     "unicode-spaces-fixed-argv-offline-optional-runtimes",
+2026-11-28T08:40:35.9181802Z     "read-only-ready-probe",
+2026-11-28T08:40:35.9182066Z     "fixed-installation-check",
+2026-11-28T08:40:35.9182358Z     "child-exit-status-propagated",
+2026-11-28T08:40:35.9182659Z     "extra-arguments-rejected",
+2026-11-28T08:40:35.9182987Z     "incomplete-state-preserved-without-reinstall",
+2026-11-28T08:40:35.9183582Z     "missing-runtime-does-not-search-path",
+2026-11-28T08:40:35.9183944Z     "fresh-package-reuses-fixed-offline-installer",
+2026-11-28T08:40:35.9184304Z     "research-data-sentinel-preserved"
+2026-11-28T08:40:35.9184571Z   ],
+2026-11-28T08:40:35.9184744Z   "check_count": 9,
+2026-11-28T08:40:35.9185156Z   "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+2026-11-28T08:40:35.9185848Z   "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+2026-11-28T08:40:35.9186404Z   "native_launcher_execution_verified": true,
+2026-11-28T08:40:35.9186740Z   "actual_python_installation_verified": false,
+2026-11-28T08:40:35.9187042Z   "nvda_verified": false,
+2026-11-28T08:40:35.9187278Z   "authenticode_verified": false
+2026-11-28T08:40:35.9187521Z }
+2026-11-28T08:40:36.3074358Z {"schema": 1, "status": "PASS", "source_commit": "71ca92be691455d0ff51ed163b1d91749e5ae62e", "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a", "bytes": 15872, "evidence_scope": "matching owner-supplied build/native-process reports and exact committed sources", "native_execution_performed_by_this_check": false, "authenticode_verified": false}
+2026-11-28T08:40:36.3640290Z ##[group]Run $statePath = 'ci-results/full-bundle-firewall-recovery.json'
+2026-11-28T08:40:36.3640826Z [36;1m$statePath = 'ci-results/full-bundle-firewall-recovery.json'[0m
+2026-11-28T08:40:36.3641202Z [36;1m$statusPath = 'ci-results/full-bundle-firewall-restored.json'[0m
+2026-11-28T08:40:36.3641534Z [36;1mif (!(Test-Path -LiteralPath $statePath)) {[0m
+2026-11-28T08:40:36.3642139Z [36;1m  @{ status = 'NOT_STARTED'; reason = 'No runtime egress policy was changed by this bundle step.' } | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8[0m
+2026-11-28T08:40:36.3642687Z [36;1m  exit 0[0m
+2026-11-28T08:40:36.3642834Z [36;1m}[0m
+2026-11-28T08:40:36.3643070Z [36;1m$state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json[0m
+2026-11-28T08:40:36.3643938Z [36;1mif ($state.schema -ne 'carr-ci-firewall-recovery/1' -or [string]$state.run_id -ne [string]$env:GITHUB_RUN_ID -or $state.prefix -notmatch '^CARR-offline-[0-9a-f]{32}$') { throw 'Runtime firewall recovery identity changed.' }[0m
+2026-11-28T08:40:36.3644650Z [36;1m$names = @($state.rule_names)[0m
+2026-11-28T08:40:36.3645201Z [36;1mif ($names.Count -eq 0 -or $names.Count -gt 512 -or @($names | Sort-Object -Unique).Count -ne $names.Count) { throw 'Invalid exact runtime firewall rule inventory.' }[0m
+2026-11-28T08:40:36.3645773Z [36;1mforeach ($name in $names) {[0m
+2026-11-28T08:40:36.3646228Z [36;1m  if ($name -notmatch ('^' + [regex]::Escape($state.prefix) + '-[0-9]+$')) { throw 'Recovery must address only this run''s exact rules.' }[0m
+2026-11-28T08:40:36.3646888Z [36;1m  Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction Stop[0m
+2026-11-28T08:40:36.3647344Z [36;1m}[0m
+2026-11-28T08:40:36.3647499Z [36;1m$profiles = @($state.profiles)[0m
+2026-11-28T08:40:36.3647984Z [36;1mif ($profiles.Count -ne 3 -or @($profiles.name | Sort-Object -Unique).Count -ne 3) { throw 'Invalid original firewall profile inventory.' }[0m
+2026-11-28T08:40:36.3648464Z [36;1mforeach ($profile in $profiles) {[0m
+2026-11-28T08:40:36.3649013Z [36;1m  if ($profile.name -notin @('Domain','Private','Public') -or $profile.enabled -notin @('True','False','NotConfigured')) { throw 'Invalid original firewall profile.' }[0m
+2026-11-28T08:40:36.3649719Z [36;1m  Set-NetFirewallProfile -Profile $profile.name -Enabled $profile.enabled -ErrorAction Stop[0m
+2026-11-28T08:40:36.3650082Z [36;1m}[0m
+2026-11-28T08:40:36.3650454Z [36;1m$remaining = @(Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction Stop | Where-Object { $_.Name -in $names })[0m
+2026-11-28T08:40:36.3651076Z [36;1mif ($remaining.Count -ne 0) { throw 'Runtime egress rules remain active after cleanup.' }[0m
+2026-11-28T08:40:36.3651621Z [36;1m$observed = @(Get-NetFirewallProfile -ErrorAction Stop)[0m
+2026-11-28T08:40:36.3652129Z [36;1mforeach ($profile in $profiles) {[0m
+2026-11-28T08:40:36.3652532Z [36;1m  $actual = @($observed | Where-Object { $_.Name -eq $profile.name })[0m
+2026-11-28T08:40:36.3653175Z [36;1m  if ($actual.Count -ne 1 -or [string]$actual[0].Enabled -ne [string]$profile.enabled) { throw 'Original firewall profile state was not restored.' }[0m
+2026-11-28T08:40:36.3653726Z [36;1m}[0m
+2026-11-28T08:40:36.3654357Z [36;1m@{ status = 'PASS'; run_id = $env:GITHUB_RUN_ID; removed_rule_names = $names; restored_profiles = $profiles } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding utf8[0m
+2026-11-28T08:40:36.3685015Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:40:36.3685369Z env:
+2026-11-28T08:40:36.3685601Z   PYTHONUTF8: 1
+2026-11-28T08:40:36.3685838Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:36.3686085Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:36.3686438Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:36.3686796Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:36.3687117Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:36.3688777Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:36.3689097Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:36.3689367Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:36.3689587Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:36.3689886Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.3690315Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:36.3690734Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.3691147Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.3691535Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.3691983Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:36.3692351Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:36.3692815Z   CARR_VSDEVCMD: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat
+2026-11-28T08:40:36.3693379Z   CARR_NATIVE_LAUNCHER: D:\a\_temp\carr-bundle-launcher-private\ResearchLibrary.exe
+2026-11-28T08:40:36.3693884Z   CARR_NATIVE_LAUNCHER_DIR: D:\a\_temp\carr-bundle-launcher-private
+2026-11-28T08:40:36.3694409Z   CARR_NATIVE_LAUNCHER_SHA256: d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a
+2026-11-28T08:40:36.3694828Z ##[endgroup]
+2026-11-28T08:40:36.6990649Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T08:40:36.6991037Z with:
+2026-11-28T08:40:36.6991268Z   name: carr-windows-ca9a1b324987088f2c3e8eae5dca69eefdac47eb-1
+2026-11-28T08:40:36.6991561Z   path: carr-library/ci-results/
+2026-11-28T08:40:36.6991763Z   if-no-files-found: warn
+2026-11-28T08:40:36.6991946Z   retention-days: 7
+2026-11-28T08:40:36.6992105Z   compression-level: 6
+2026-11-28T08:40:36.6992281Z   overwrite: false
+2026-11-28T08:40:36.6992441Z   include-hidden-files: false
+2026-11-28T08:40:36.6992617Z   archive: true
+2026-11-28T08:40:36.6992751Z env:
+2026-11-28T08:40:36.6992880Z   PYTHONUTF8: 1
+2026-11-28T08:40:36.6993022Z   PYTHONUNBUFFERED: 1
+2026-11-28T08:40:36.6993191Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T08:40:36.6993480Z   CARR_FINAL_SCOPE_EXPECTED_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:40:36.6993775Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:36.6993975Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:36.6994129Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T08:40:36.6994305Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T08:40:36.6994486Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:36.6994648Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:36.6994859Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.6995218Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:36.6995565Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.6996053Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.6996361Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:36.6996667Z   CARR_PYTHON: D:\a\_temp\carr-windows-python\Scripts\python.exe
+2026-11-28T08:40:36.6996956Z   CARR_SPELL_WHEELHOUSE: D:\a\_temp\carr-spell-derived
+2026-11-28T08:40:36.6997346Z   CARR_VSDEVCMD: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat
+2026-11-28T08:40:36.6997820Z   CARR_NATIVE_LAUNCHER: D:\a\_temp\carr-bundle-launcher-private\ResearchLibrary.exe
+2026-11-28T08:40:36.6998216Z   CARR_NATIVE_LAUNCHER_DIR: D:\a\_temp\carr-bundle-launcher-private
+2026-11-28T08:40:36.6998623Z   CARR_NATIVE_LAUNCHER_SHA256: d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a
+2026-11-28T08:40:36.6998966Z ##[endgroup]
+2026-11-28T08:40:36.8424462Z With the provided path, there will be 16 files uploaded
+2026-11-28T08:40:36.8428447Z Artifact name is valid!
+2026-11-28T08:40:36.8429681Z Root directory input is valid!
+2026-11-28T08:40:37.1013300Z Uploading artifact: carr-windows-ca9a1b324987088f2c3e8eae5dca69eefdac47eb-1.zip
+2026-11-28T08:40:37.1042928Z Beginning upload of artifact content to blob storage
+2026-11-28T08:40:37.2842554Z Uploaded bytes 13395
+2026-11-28T08:40:37.3210713Z Finished uploading artifact content to blob storage!
+2026-11-28T08:40:37.3211472Z SHA256 digest of uploaded artifact is 7940825a87e3030fe6d7f93a99c352b547e7592a9266dd1b135974ab644b9ae8
+2026-11-28T08:40:37.3212068Z Finalizing artifact upload
+2026-11-28T08:40:37.7312807Z Artifact carr-windows-ca9a1b324987088f2c3e8eae5dca69eefdac47eb-1 successfully finalized. Artifact ID 15255294860
+2026-11-28T08:40:37.7313577Z Artifact carr-windows-ca9a1b324987088f2c3e8eae5dca69eefdac47eb-1 has been successfully uploaded! Final size is 13395 bytes. Artifact ID is 15255294860
+2026-11-28T08:40:37.7319118Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124998890/artifacts/15255294860
+2026-11-28T08:40:37.7587200Z Post job cleanup.
+2026-11-28T08:40:37.8978364Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T08:40:37.9216615Z git version 2.56.1.windows.1
+2026-11-28T08:40:37.9267588Z Temporarily overriding HOME='D:\a\_temp\22399bbe-08dd-4e17-91c8-fff6f2dab63c' before making global git config changes
+2026-11-28T08:40:37.9268203Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:40:37.9277453Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T08:40:37.9538679Z Removing SSH command configuration
+2026-11-28T08:40:37.9548749Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:40:37.9871402Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T08:40:38.4122578Z Removing HTTP extra header
+2026-11-28T08:40:38.4131873Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:40:38.4397292Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T08:40:38.8845388Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:40:38.8855583Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:40:38.9120048Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T08:40:39.3704740Z Cleaning up orphan processes
+2026-11-28T08:40:39.3977020Z Terminate orphan process: pid (8176) (vctip)

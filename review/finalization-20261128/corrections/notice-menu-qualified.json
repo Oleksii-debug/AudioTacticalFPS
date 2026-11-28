@@ -1,0 +1,533 @@
+{
+  "schema": "carr-menu-notice-fixture-evidence/1",
+  "status": "PASS",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "9fe7029c2ef393916d9581d94b3cf877c32deadf",
+  "tree": "fcc76739051f049d2fc902d896987c514f67becb",
+  "manifest": "71db3b75de1806900b464de69335bd6b14a13e8d",
+  "run": 46128142463,
+  "linux": {
+    "job": 140927219331,
+    "status": "SUCCESS",
+    "raw_log_blob": "c55d306e65e0f420cfeeab56741543c641a8c186",
+    "source_passed": 61,
+    "installed_passed": 61,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "xfail": 0,
+    "source_seconds": 2.04,
+    "installed_seconds": 1.67,
+    "records": [
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 61,
+        "commit": "9fe7029c2ef393916d9581d94b3cf877c32deadf",
+        "installed_distribution": {
+          "files": {
+            "universal_research_library-0.3.0.dev1.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+            "universal_research_library-0.3.0.dev1.dist-info/METADATA": "bb31f636add6e19b467f939ea277c9248e530b108e08417e0853a711f21c45f4",
+            "universal_research_library-0.3.0.dev1.dist-info/RECORD": "e16b857e2dfa3f3706939db20c1d8730fd25bca459700081ef30ec9f154e1ac3",
+            "universal_research_library-0.3.0.dev1.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "universal_research_library-0.3.0.dev1.dist-info/WHEEL": "98e75747d0b7c0c568bfb71263c3d8f970b3a374a6996087bc642be5cb09a1aa",
+            "universal_research_library-0.3.0.dev1.dist-info/direct_url.json": "5c5e1cc3c5a482d6e44710d5ab538c7d794bb4c9362dc457203813613d485981",
+            "universal_research_library-0.3.0.dev1.dist-info/entry_points.txt": "2b5b153f7925a11a26aab1893ea2a2f937b0c6431b86e38c2c53feb75aed42b4",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/bootstrap/vendor/cairn_extractors/LICENSE": "9182eb4c365314dc8a3d4369778b1eddb78894d536c6d693c5134e8504b735ad",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_filetype/LICENSE": "8e44e2aa35b371bdcc856bcf0d2442a410dd55fde66b0dfc2fcdf076d97946ac",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_rispy_LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/AGPLv3": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/CPAL": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/LICENSE": "b96ca8e1716f93449b480083c7510c18d129fa9afa4644d62c6347c06177ce30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/PY3LANGID_LICENSE": "1694ffed7731df5c6e3d95ad5aa2398bf64f9377636ead34a23f385dd3598a0c",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/reader/_vendor_num2words/COPYING": "1457a03d928aeb06af3ea75ef065c517e915d7e41283d550dd4fa18ab20cda12",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/research/_vendor_rispy/LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/search/_vendor/rifflux/LICENSE": "7756d013b1515cc5784d00d90644511652282b988feead73fc3a7e8384888c99",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/speech/COMTYPES_LICENSE.txt": "3b1767f010980b46926b23bf0afce5d72f3359ee5e2b27baca71b9b4209ab383",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/ui/_vendor/wx_grid/LICENSE": "c90a6248d1dda1ab4251364824144fdc9ed17248f07427e1b2b9b3b57801cb8d",
+            "universal_research_library-0.3.0.dev1.dist-info/top_level.txt": "42efc0d3b21c755d3813ef11fbef46823731ff99019f77f2a92a9f6cc14b9379"
+          },
+          "license_files": [
+            "bootstrap/vendor/cairn_extractors/LICENSE",
+            "src/carr_library/catalog/_filetype/LICENSE",
+            "src/carr_library/catalog/_rispy_LICENSE",
+            "src/carr_library/research/_vendor_rispy/LICENSE",
+            "src/carr_library/search/_vendor/rifflux/LICENSE",
+            "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+            "src/carr_library/speech/COMTYPES_LICENSE.txt",
+            "src/carr_library/citations/_vendor_citeproc/LICENSE",
+            "src/carr_library/citations/_vendor_citeproc/CPAL",
+            "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+            "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+            "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+            "src/carr_library/extract/PY3LANGID_LICENSE",
+            "src/carr_library/reader/_vendor_num2words/COPYING"
+          ],
+          "name": "universal-research-library",
+          "version": "0.3.0.dev1"
+        },
+        "mode": "source",
+        "native_gui": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.component_notices": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/component_notices.py",
+            "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+          },
+          "carr_library.durable_state": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.reader._vendor_num2words.lang_SK": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/_vendor_num2words/lang_SK.py",
+            "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+          },
+          "carr_library.ui.about_dialog": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/about_dialog.py",
+            "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/desktop_app.py",
+            "sha256": "f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c"
+          },
+          "carr_library.ui.diagnostics_dialog": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/diagnostics_dialog.py",
+            "sha256": "02e1100f1a63b2595706fa4d2d234e9e895cc66fa4e1d6d939089896b6699927"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_entries": 428,
+        "package_inventory_sha256": "70ce285f34d9106c491b072564339d200c5cd021ed67df48c9638e8d8f9b531b",
+        "package_python_files": 426,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "5698ff505bf4fce586c8cf238e230efcd73504534fb161870b8d39efa5b82211",
+        "qualification": "OBSERVED_MENU_AND_INSTALLED_NOTICE_FIXTURE_CORRECTIONS",
+        "selected_suites": {
+          "tests/packaging/test_preparation_notice_closure.py": 1,
+          "tests/ui/test_desktop_handlers.py": 60
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/packaging/test_preparation_notice_closure.py": "b4294aab062c1250569800a1b19921e75050b39ae04141f897bc09a2f0f55af3",
+          "tests/ui/test_desktop_handlers.py": "8a74a3afab30779ab6d3c1d96e5cbdf24c2d2cc273790dc1d39f89fc37366ccf"
+        }
+      },
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 61,
+        "commit": "9fe7029c2ef393916d9581d94b3cf877c32deadf",
+        "installed_distribution": {
+          "files": {
+            "universal_research_library-0.3.0.dev1.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+            "universal_research_library-0.3.0.dev1.dist-info/METADATA": "bb31f636add6e19b467f939ea277c9248e530b108e08417e0853a711f21c45f4",
+            "universal_research_library-0.3.0.dev1.dist-info/RECORD": "e16b857e2dfa3f3706939db20c1d8730fd25bca459700081ef30ec9f154e1ac3",
+            "universal_research_library-0.3.0.dev1.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "universal_research_library-0.3.0.dev1.dist-info/WHEEL": "98e75747d0b7c0c568bfb71263c3d8f970b3a374a6996087bc642be5cb09a1aa",
+            "universal_research_library-0.3.0.dev1.dist-info/direct_url.json": "5c5e1cc3c5a482d6e44710d5ab538c7d794bb4c9362dc457203813613d485981",
+            "universal_research_library-0.3.0.dev1.dist-info/entry_points.txt": "2b5b153f7925a11a26aab1893ea2a2f937b0c6431b86e38c2c53feb75aed42b4",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/bootstrap/vendor/cairn_extractors/LICENSE": "9182eb4c365314dc8a3d4369778b1eddb78894d536c6d693c5134e8504b735ad",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_filetype/LICENSE": "8e44e2aa35b371bdcc856bcf0d2442a410dd55fde66b0dfc2fcdf076d97946ac",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_rispy_LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/AGPLv3": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/CPAL": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/LICENSE": "b96ca8e1716f93449b480083c7510c18d129fa9afa4644d62c6347c06177ce30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/PY3LANGID_LICENSE": "1694ffed7731df5c6e3d95ad5aa2398bf64f9377636ead34a23f385dd3598a0c",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/reader/_vendor_num2words/COPYING": "1457a03d928aeb06af3ea75ef065c517e915d7e41283d550dd4fa18ab20cda12",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/research/_vendor_rispy/LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/search/_vendor/rifflux/LICENSE": "7756d013b1515cc5784d00d90644511652282b988feead73fc3a7e8384888c99",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/speech/COMTYPES_LICENSE.txt": "3b1767f010980b46926b23bf0afce5d72f3359ee5e2b27baca71b9b4209ab383",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/ui/_vendor/wx_grid/LICENSE": "c90a6248d1dda1ab4251364824144fdc9ed17248f07427e1b2b9b3b57801cb8d",
+            "universal_research_library-0.3.0.dev1.dist-info/top_level.txt": "42efc0d3b21c755d3813ef11fbef46823731ff99019f77f2a92a9f6cc14b9379"
+          },
+          "license_files": [
+            "bootstrap/vendor/cairn_extractors/LICENSE",
+            "src/carr_library/catalog/_filetype/LICENSE",
+            "src/carr_library/catalog/_rispy_LICENSE",
+            "src/carr_library/research/_vendor_rispy/LICENSE",
+            "src/carr_library/search/_vendor/rifflux/LICENSE",
+            "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+            "src/carr_library/speech/COMTYPES_LICENSE.txt",
+            "src/carr_library/citations/_vendor_citeproc/LICENSE",
+            "src/carr_library/citations/_vendor_citeproc/CPAL",
+            "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+            "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+            "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+            "src/carr_library/extract/PY3LANGID_LICENSE",
+            "src/carr_library/reader/_vendor_num2words/COPYING"
+          ],
+          "name": "universal-research-library",
+          "version": "0.3.0.dev1"
+        },
+        "mode": "installed",
+        "native_gui": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.component_notices": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/component_notices.py",
+            "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+          },
+          "carr_library.durable_state": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.reader._vendor_num2words.lang_SK": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/_vendor_num2words/lang_SK.py",
+            "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+          },
+          "carr_library.ui.about_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/about_dialog.py",
+            "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/desktop_app.py",
+            "sha256": "f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c"
+          },
+          "carr_library.ui.diagnostics_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/diagnostics_dialog.py",
+            "sha256": "02e1100f1a63b2595706fa4d2d234e9e895cc66fa4e1d6d939089896b6699927"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_entries": 428,
+        "package_inventory_sha256": "70ce285f34d9106c491b072564339d200c5cd021ed67df48c9638e8d8f9b531b",
+        "package_python_files": 426,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "5698ff505bf4fce586c8cf238e230efcd73504534fb161870b8d39efa5b82211",
+        "qualification": "OBSERVED_MENU_AND_INSTALLED_NOTICE_FIXTURE_CORRECTIONS",
+        "selected_suites": {
+          "tests/packaging/test_preparation_notice_closure.py": 1,
+          "tests/ui/test_desktop_handlers.py": 60
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/packaging/test_preparation_notice_closure.py": "b4294aab062c1250569800a1b19921e75050b39ae04141f897bc09a2f0f55af3",
+          "tests/ui/test_desktop_handlers.py": "8a74a3afab30779ab6d3c1d96e5cbdf24c2d2cc273790dc1d39f89fc37366ccf"
+        }
+      }
+    ],
+    "artifact": {
+      "id": 15257161112,
+      "node_id": "MDg6QXJ0aWZhY3QxNTI1NzE2MTExMg==",
+      "name": "menu-notice-ubuntu-24.04-9fe7029c2ef393916d9581d94b3cf877c32deadf",
+      "size_in_bytes": 60740,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257161112",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257161112/zip",
+      "expired": false,
+      "digest": "sha256:67399ad7203485c6ea0b888839efd1d29a6a5bce615eacde7e708aff56b1458b",
+      "created_at": "2026-11-28T09:04:01Z",
+      "updated_at": "2026-11-28T09:04:01Z",
+      "expires_at": "2027-02-26T08:56:44Z",
+      "workflow_run": {
+        "id": 46128142463,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/menu-notice-review-20261128",
+        "head_sha": "9fe7029c2ef393916d9581d94b3cf877c32deadf"
+      }
+    }
+  },
+  "windows": {
+    "job": 140927219143,
+    "status": "SUCCESS",
+    "raw_log_blob": "ddde4330a34c17bfc5b03e7b422a868e0117cd54",
+    "source_passed": 61,
+    "installed_passed": 61,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "xfail": 0,
+    "source_seconds": 6.11,
+    "installed_seconds": 4.96,
+    "records": [
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 61,
+        "commit": "9fe7029c2ef393916d9581d94b3cf877c32deadf",
+        "installed_distribution": {
+          "files": {
+            "universal_research_library-0.3.0.dev1.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+            "universal_research_library-0.3.0.dev1.dist-info/METADATA": "f2ee57a1285b86d1f2fb827ade29a8e969c5d1c1ac52c7d192dfb9fa82305b5a",
+            "universal_research_library-0.3.0.dev1.dist-info/RECORD": "5da41c7f1b8cdffa8a05909b6340f767a10fe62f79d56365cf82487c00f0ed13",
+            "universal_research_library-0.3.0.dev1.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "universal_research_library-0.3.0.dev1.dist-info/WHEEL": "98e75747d0b7c0c568bfb71263c3d8f970b3a374a6996087bc642be5cb09a1aa",
+            "universal_research_library-0.3.0.dev1.dist-info/direct_url.json": "e4eb7cdc58a0928a46fcc423ebdc1160446ea76c5b578493933d7d237e1a8b99",
+            "universal_research_library-0.3.0.dev1.dist-info/entry_points.txt": "2b5b153f7925a11a26aab1893ea2a2f937b0c6431b86e38c2c53feb75aed42b4",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/bootstrap/vendor/cairn_extractors/LICENSE": "9182eb4c365314dc8a3d4369778b1eddb78894d536c6d693c5134e8504b735ad",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_filetype/LICENSE": "8e44e2aa35b371bdcc856bcf0d2442a410dd55fde66b0dfc2fcdf076d97946ac",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_rispy_LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/AGPLv3": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/CPAL": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/LICENSE": "b96ca8e1716f93449b480083c7510c18d129fa9afa4644d62c6347c06177ce30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/PY3LANGID_LICENSE": "1694ffed7731df5c6e3d95ad5aa2398bf64f9377636ead34a23f385dd3598a0c",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/reader/_vendor_num2words/COPYING": "1457a03d928aeb06af3ea75ef065c517e915d7e41283d550dd4fa18ab20cda12",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/research/_vendor_rispy/LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/search/_vendor/rifflux/LICENSE": "7756d013b1515cc5784d00d90644511652282b988feead73fc3a7e8384888c99",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/speech/COMTYPES_LICENSE.txt": "3b1767f010980b46926b23bf0afce5d72f3359ee5e2b27baca71b9b4209ab383",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/ui/_vendor/wx_grid/LICENSE": "c90a6248d1dda1ab4251364824144fdc9ed17248f07427e1b2b9b3b57801cb8d",
+            "universal_research_library-0.3.0.dev1.dist-info/top_level.txt": "42efc0d3b21c755d3813ef11fbef46823731ff99019f77f2a92a9f6cc14b9379"
+          },
+          "license_files": [
+            "bootstrap/vendor/cairn_extractors/LICENSE",
+            "src/carr_library/catalog/_filetype/LICENSE",
+            "src/carr_library/catalog/_rispy_LICENSE",
+            "src/carr_library/research/_vendor_rispy/LICENSE",
+            "src/carr_library/search/_vendor/rifflux/LICENSE",
+            "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+            "src/carr_library/speech/COMTYPES_LICENSE.txt",
+            "src/carr_library/citations/_vendor_citeproc/LICENSE",
+            "src/carr_library/citations/_vendor_citeproc/CPAL",
+            "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+            "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+            "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+            "src/carr_library/extract/PY3LANGID_LICENSE",
+            "src/carr_library/reader/_vendor_num2words/COPYING"
+          ],
+          "name": "universal-research-library",
+          "version": "0.3.0.dev1"
+        },
+        "mode": "source",
+        "native_gui": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.component_notices": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\component_notices.py",
+            "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+          },
+          "carr_library.durable_state": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.reader._vendor_num2words.lang_SK": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\_vendor_num2words\\lang_SK.py",
+            "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+          },
+          "carr_library.ui.about_dialog": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\about_dialog.py",
+            "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+            "sha256": "f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c"
+          },
+          "carr_library.ui.diagnostics_dialog": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\diagnostics_dialog.py",
+            "sha256": "02e1100f1a63b2595706fa4d2d234e9e895cc66fa4e1d6d939089896b6699927"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_entries": 428,
+        "package_inventory_sha256": "70ce285f34d9106c491b072564339d200c5cd021ed67df48c9638e8d8f9b531b",
+        "package_python_files": 426,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "5698ff505bf4fce586c8cf238e230efcd73504534fb161870b8d39efa5b82211",
+        "qualification": "OBSERVED_MENU_AND_INSTALLED_NOTICE_FIXTURE_CORRECTIONS",
+        "selected_suites": {
+          "tests/packaging/test_preparation_notice_closure.py": 1,
+          "tests/ui/test_desktop_handlers.py": 60
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/packaging/test_preparation_notice_closure.py": "b4294aab062c1250569800a1b19921e75050b39ae04141f897bc09a2f0f55af3",
+          "tests/ui/test_desktop_handlers.py": "8a74a3afab30779ab6d3c1d96e5cbdf24c2d2cc273790dc1d39f89fc37366ccf"
+        }
+      },
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 61,
+        "commit": "9fe7029c2ef393916d9581d94b3cf877c32deadf",
+        "installed_distribution": {
+          "files": {
+            "universal_research_library-0.3.0.dev1.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+            "universal_research_library-0.3.0.dev1.dist-info/METADATA": "f2ee57a1285b86d1f2fb827ade29a8e969c5d1c1ac52c7d192dfb9fa82305b5a",
+            "universal_research_library-0.3.0.dev1.dist-info/RECORD": "5da41c7f1b8cdffa8a05909b6340f767a10fe62f79d56365cf82487c00f0ed13",
+            "universal_research_library-0.3.0.dev1.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "universal_research_library-0.3.0.dev1.dist-info/WHEEL": "98e75747d0b7c0c568bfb71263c3d8f970b3a374a6996087bc642be5cb09a1aa",
+            "universal_research_library-0.3.0.dev1.dist-info/direct_url.json": "e4eb7cdc58a0928a46fcc423ebdc1160446ea76c5b578493933d7d237e1a8b99",
+            "universal_research_library-0.3.0.dev1.dist-info/entry_points.txt": "2b5b153f7925a11a26aab1893ea2a2f937b0c6431b86e38c2c53feb75aed42b4",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/bootstrap/vendor/cairn_extractors/LICENSE": "9182eb4c365314dc8a3d4369778b1eddb78894d536c6d693c5134e8504b735ad",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_filetype/LICENSE": "8e44e2aa35b371bdcc856bcf0d2442a410dd55fde66b0dfc2fcdf076d97946ac",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/catalog/_rispy_LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/AGPLv3": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/CPAL": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/citations/_vendor_citeproc/LICENSE": "b96ca8e1716f93449b480083c7510c18d129fa9afa4644d62c6347c06177ce30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/PY3LANGID_LICENSE": "1694ffed7731df5c6e3d95ad5aa2398bf64f9377636ead34a23f385dd3598a0c",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/reader/_vendor_num2words/COPYING": "1457a03d928aeb06af3ea75ef065c517e915d7e41283d550dd4fa18ab20cda12",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/research/_vendor_rispy/LICENSE": "e22704b888033bf3ae2c740003266f879066e421c55795d6c693735c6216afc0",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/search/_vendor/rifflux/LICENSE": "7756d013b1515cc5784d00d90644511652282b988feead73fc3a7e8384888c99",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/speech/COMTYPES_LICENSE.txt": "3b1767f010980b46926b23bf0afce5d72f3359ee5e2b27baca71b9b4209ab383",
+            "universal_research_library-0.3.0.dev1.dist-info/licenses/src/carr_library/ui/_vendor/wx_grid/LICENSE": "c90a6248d1dda1ab4251364824144fdc9ed17248f07427e1b2b9b3b57801cb8d",
+            "universal_research_library-0.3.0.dev1.dist-info/top_level.txt": "42efc0d3b21c755d3813ef11fbef46823731ff99019f77f2a92a9f6cc14b9379"
+          },
+          "license_files": [
+            "bootstrap/vendor/cairn_extractors/LICENSE",
+            "src/carr_library/catalog/_filetype/LICENSE",
+            "src/carr_library/catalog/_rispy_LICENSE",
+            "src/carr_library/research/_vendor_rispy/LICENSE",
+            "src/carr_library/search/_vendor/rifflux/LICENSE",
+            "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+            "src/carr_library/speech/COMTYPES_LICENSE.txt",
+            "src/carr_library/citations/_vendor_citeproc/LICENSE",
+            "src/carr_library/citations/_vendor_citeproc/CPAL",
+            "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+            "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+            "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+            "src/carr_library/extract/PY3LANGID_LICENSE",
+            "src/carr_library/reader/_vendor_num2words/COPYING"
+          ],
+          "name": "universal-research-library",
+          "version": "0.3.0.dev1"
+        },
+        "mode": "installed",
+        "native_gui": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.component_notices": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+            "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+          },
+          "carr_library.durable_state": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.reader._vendor_num2words.lang_SK": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\lang_SK.py",
+            "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+          },
+          "carr_library.ui.about_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+            "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "sha256": "f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c"
+          },
+          "carr_library.ui.diagnostics_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\diagnostics_dialog.py",
+            "sha256": "02e1100f1a63b2595706fa4d2d234e9e895cc66fa4e1d6d939089896b6699927"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_entries": 428,
+        "package_inventory_sha256": "70ce285f34d9106c491b072564339d200c5cd021ed67df48c9638e8d8f9b531b",
+        "package_python_files": 426,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "5698ff505bf4fce586c8cf238e230efcd73504534fb161870b8d39efa5b82211",
+        "qualification": "OBSERVED_MENU_AND_INSTALLED_NOTICE_FIXTURE_CORRECTIONS",
+        "selected_suites": {
+          "tests/packaging/test_preparation_notice_closure.py": 1,
+          "tests/ui/test_desktop_handlers.py": 60
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/packaging/test_preparation_notice_closure.py": "b4294aab062c1250569800a1b19921e75050b39ae04141f897bc09a2f0f55af3",
+          "tests/ui/test_desktop_handlers.py": "8a74a3afab30779ab6d3c1d96e5cbdf24c2d2cc273790dc1d39f89fc37366ccf"
+        }
+      }
+    ],
+    "artifact": {
+      "id": 15257032271,
+      "node_id": "MDg6QXJ0aWZhY3QxNTI1NzAzMjI3MQ==",
+      "name": "menu-notice-windows-2022-9fe7029c2ef393916d9581d94b3cf877c32deadf",
+      "size_in_bytes": 61022,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257032271",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257032271/zip",
+      "expired": false,
+      "digest": "sha256:da5855a4bd6657a28d61ec750d8144c5554cbff7934ea974fa87dc0fd4ed305b",
+      "created_at": "2026-11-28T09:09:19Z",
+      "updated_at": "2026-11-28T09:09:19Z",
+      "expires_at": "2027-02-26T08:56:44Z",
+      "workflow_run": {
+        "id": 46128142463,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/menu-notice-review-20261128",
+        "head_sha": "9fe7029c2ef393916d9581d94b3cf877c32deadf"
+      }
+    }
+  },
+  "limits": {
+    "two_observed_fixture_corrections_only": true,
+    "product_source_changed": false,
+    "native_gui": "NOT_RUN",
+    "final_71ca": "Original observed five portable failures remain historical; this isolated candidate does not change final71ca",
+    "later_corrected_composition": "NOT_QUALIFIED"
+  },
+  "supersedes": "ae3a0e83faadacec5bbf75cf972faf4ed1dba684",
+  "outcome": "Both observed fixture corrections passed all61 cases in all4 source/installed OS contexts; no product source was changed.",
+  "qualification": {
+    "fixture_paths": [
+      {
+        "path": "carr-library/tests/ui/test_desktop_handlers.py",
+        "before": "6b2473037fbc2fe9af35559845e6cb74408488c3",
+        "sha": "6ef37550a8463a125de82e1f0628244d5e0e1d17"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_preparation_notice_closure.py",
+        "before": "d5065ef28e8ded417a535b25d8a8ad7215fc4f95",
+        "sha": "72ba5770af6fd355189fff990716c679b178943c"
+      }
+    ],
+    "workflow": "8008f280626d09f4e0de5cbebc8be7168d515a08",
+    "python_files": 426,
+    "inventory_entries": 428,
+    "selected_origins": 9,
+    "installed_distribution_files": 22,
+    "declared_license_files": 14,
+    "inventory_sha256": "70ce285f34d9106c491b072564339d200c5cd021ed67df48c9638e8d8f9b531b"
+  }
+}

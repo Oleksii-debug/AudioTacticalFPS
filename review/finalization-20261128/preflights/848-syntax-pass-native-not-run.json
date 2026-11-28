@@ -1,0 +1,67 @@
+{
+  "schema": "carr-final-composition-preflight/1",
+  "head": "84816b20f32ca8142b9e07591a7ec3fd1b4dce17",
+  "tree": "b7990002f96fbed9477d192b2920bd1d2011eae7",
+  "run_id": 46126153255,
+  "overall": "FAIL",
+  "scope": "Actual syntax succeeds; installed notice fixture stops native execution",
+  "syntax": {
+    "job_id": 140921090411,
+    "status": "PASS",
+    "python": {
+      "entrypoints": 6,
+      "head": "84816b20f32ca8142b9e07591a7ec3fd1b4dce17",
+      "powershell_blocks_pending": 43,
+      "python_blocks": 10,
+      "python_files": 1246,
+      "scope": "Python compile, duplicate-free YAML, current workflow module/native paths",
+      "status": "PASS",
+      "workflows": [
+        ".github/workflows/carr-bibliography.yml",
+        ".github/workflows/carr-calibre-reading-review.yml",
+        ".github/workflows/carr-final-scope-preflight.yml",
+        ".github/workflows/carr-legacy-reading-review.yml",
+        ".github/workflows/carr-library-scale.yml",
+        ".github/workflows/carr-native-launcher.yml",
+        ".github/workflows/carr-v3.yml",
+        ".github/workflows/carr-windows.yml"
+      ]
+    },
+    "powershell": {
+      "status": "PASS",
+      "blocks": 43,
+      "errors": []
+    },
+    "raw_log_blob": "f44da9cfd3d9d1893c4992b5140a5a6c27a014ad"
+  },
+  "native": {
+    "job_id": 140926480244,
+    "status": "NOT_RUN",
+    "executed_native_scope_probes": 0,
+    "failed_step_number": 6,
+    "failed_step_name": "Verify the actual installed preparation notice in the About inventory",
+    "failure": "The old fixture d5065ef28e8ded417a535b25d8a8ad7215fc4f95 searched the About inventory for carr-library; the actual installed distribution is universal-research-library. The len(components)==1 assertion correctly refused the mismatched fixture.",
+    "raw_log_blob": "63858ca40f1916f29e0fbb323ce22e04036f2dfa",
+    "independently_qualified_fixture_correction": "72ba5770af6fd355189fff990716c679b178943c",
+    "correction_evidence": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e"
+  },
+  "artifacts": [
+    {
+      "id": 15256671207,
+      "name": "final-composition-syntax-84816b20f32ca8142b9e07591a7ec3fd1b4dce17",
+      "size_in_bytes": 101791,
+      "digest": "sha256:6f5ef80e73d33271acbec55b9ec5cb872b32484db4012878bacecf24adddb526"
+    },
+    {
+      "id": 15256447588,
+      "name": "final-scope-native-84816b20f32ca8142b9e07591a7ec3fd1b4dce17",
+      "size_in_bytes": 1857,
+      "digest": "sha256:91e6a2805287b8e53d4b8dab35bd78fd234ebb53e5b5d7015e4a846c134f83df"
+    }
+  ],
+  "limits": [
+    "This is not a final required gate success.",
+    "The eight native scope probes were skipped after the actual notice-fixture failure.",
+    "No PASS is transferred to a changed source head."
+  ]
+}

@@ -1,0 +1,356 @@
+﻿2026-11-28T08:53:12.9296253Z Current runner version: '2.338.2'
+2026-11-28T08:53:12.9315511Z ##[group]Runner Image Provisioner
+2026-11-28T08:53:12.9316152Z Hosted Compute Agent
+2026-11-28T08:53:12.9316617Z Version: 20261111.635
+2026-11-28T08:53:12.9317061Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T08:53:12.9317622Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T08:53:12.9318122Z Worker ID: {27322a4e-1ce3-4551-b756-f4df2adc7653}
+2026-11-28T08:53:12.9318611Z Region: us-west-2
+2026-11-28T08:53:12.9319008Z Cloud: AWS
+2026-11-28T08:53:12.9319375Z ##[endgroup]
+2026-11-28T08:53:12.9320585Z ##[group]Operating System
+2026-11-28T08:53:12.9321055Z Ubuntu
+2026-11-28T08:53:12.9321415Z 24.04.5
+2026-11-28T08:53:12.9321770Z LTS
+2026-11-28T08:53:12.9322361Z ##[endgroup]
+2026-11-28T08:53:12.9322770Z ##[group]Runner Image
+2026-11-28T08:53:12.9323234Z Image: ubuntu-24.04
+2026-11-28T08:53:12.9323630Z Version: 20261122.23.1
+2026-11-28T08:53:12.9324554Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261122.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-28T08:53:12.9325654Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261122.23
+2026-11-28T08:53:12.9326357Z ##[endgroup]
+2026-11-28T08:53:12.9327109Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T08:53:12.9328900Z Contents: read
+2026-11-28T08:53:12.9329303Z Metadata: read
+2026-11-28T08:53:12.9329722Z ##[endgroup]
+2026-11-28T08:53:12.9331289Z Secret source: Actions
+2026-11-28T08:53:12.9332155Z Cache mode: write
+2026-11-28T08:53:12.9332773Z Prepare workflow directory
+2026-11-28T08:53:12.9559301Z Prepare all required actions
+2026-11-28T08:53:12.9595793Z Getting action download info
+2026-11-28T08:53:13.3192407Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T08:53:14.2647738Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T08:53:14.4345109Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T08:53:14.7784921Z Complete job name: syntax
+2026-11-28T08:53:14.8521795Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T08:53:14.8523598Z with:
+2026-11-28T08:53:14.8524347Z   persist-credentials: false
+2026-11-28T08:53:14.8525258Z   ref: 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T08:53:14.8526333Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:53:14.8533373Z   token: ***
+2026-11-28T08:53:14.8534142Z   ssh-strict: true
+2026-11-28T08:53:14.8534968Z   ssh-user: git
+2026-11-28T08:53:14.8535673Z   clean: true
+2026-11-28T08:53:14.8536461Z   sparse-checkout-cone-mode: true
+2026-11-28T08:53:14.8537342Z   fetch-depth: 1
+2026-11-28T08:53:14.8538097Z   fetch-tags: false
+2026-11-28T08:53:14.8538872Z   show-progress: true
+2026-11-28T08:53:14.8539633Z   lfs: false
+2026-11-28T08:53:14.8540352Z   submodules: false
+2026-11-28T08:53:14.8541133Z   set-safe-directory: true
+2026-11-28T08:53:14.8542178Z   allow-unsafe-pr-checkout: false
+2026-11-28T08:53:14.8543408Z ##[endgroup]
+2026-11-28T08:53:16.7104751Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:53:16.7106009Z ##[group]Getting Git version info
+2026-11-28T08:53:16.7106525Z Working directory is '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T08:53:16.7107458Z [command]/usr/bin/git version
+2026-11-28T08:53:16.8635652Z git version 2.56.1
+2026-11-28T08:53:16.8650026Z ##[endgroup]
+2026-11-28T08:53:16.8658371Z Temporarily overriding HOME='/home/runner/work/_temp/71ee9da8-faaf-4b35-bbb6-b956ed5d999e' before making global git config changes
+2026-11-28T08:53:16.8659452Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:53:16.8663388Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T08:53:16.8706828Z Deleting the contents of '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T08:53:16.8709412Z ##[group]Determining repository object format
+2026-11-28T08:53:16.8710917Z ##[endgroup]
+2026-11-28T08:53:16.8711532Z ##[group]Initializing the repository
+2026-11-28T08:53:16.8714312Z [command]/usr/bin/git init /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T08:53:16.9093175Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-28T08:53:16.9094021Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-28T08:53:16.9094495Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-28T08:53:16.9094930Z hint: call:
+2026-11-28T08:53:16.9095174Z hint:
+2026-11-28T08:53:16.9095490Z hint: 	git config --global init.defaultBranch <name>
+2026-11-28T08:53:16.9096470Z hint:
+2026-11-28T08:53:16.9096801Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-28T08:53:16.9097302Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-28T08:53:16.9097745Z hint:
+2026-11-28T08:53:16.9098012Z hint: 	git branch -m <name>
+2026-11-28T08:53:16.9098306Z hint:
+2026-11-28T08:53:16.9098692Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-28T08:53:16.9100006Z Initialized empty Git repository in /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T08:53:16.9109488Z [command]/usr/bin/git remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:53:16.9153291Z ##[endgroup]
+2026-11-28T08:53:16.9153846Z ##[group]Disabling automatic garbage collection
+2026-11-28T08:53:16.9155328Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-28T08:53:16.9179193Z ##[endgroup]
+2026-11-28T08:53:16.9179683Z ##[group]Setting up auth
+2026-11-28T08:53:16.9180198Z Removing SSH command configuration
+2026-11-28T08:53:16.9184390Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:53:16.9210989Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T08:53:17.1723181Z Removing HTTP extra header
+2026-11-28T08:53:17.1726897Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:53:17.1752329Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T08:53:17.1904959Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:53:17.1914376Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:53:17.1938873Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T08:53:17.2094172Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-28T08:53:17.2123493Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path /home/runner/work/_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:17.2148141Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:17.2170054Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:17.2190894Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:17.2211509Z ##[endgroup]
+2026-11-28T08:53:17.2212237Z ##[group]Fetching the repository
+2026-11-28T08:53:17.2215945Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T08:53:18.4715519Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:53:18.4716314Z  * branch            84816b20f32ca8142b9e07591a7ec3fd1b4dce17 -> FETCH_HEAD
+2026-11-28T08:53:18.4723194Z [command]/usr/bin/git rev-parse --verify --quiet 84816b20f32ca8142b9e07591a7ec3fd1b4dce17^{object}
+2026-11-28T08:53:18.4745440Z 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T08:53:18.4747776Z ##[endgroup]
+2026-11-28T08:53:18.4748410Z ##[group]Determining the checkout info
+2026-11-28T08:53:18.4749023Z ##[endgroup]
+2026-11-28T08:53:18.4763868Z [command]/usr/bin/git sparse-checkout disable
+2026-11-28T08:53:18.4819407Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-28T08:53:18.4836490Z ##[group]Checking out the ref
+2026-11-28T08:53:18.4839561Z [command]/usr/bin/git checkout --progress --force 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T08:53:18.5863239Z Note: switching to '84816b20f32ca8142b9e07591a7ec3fd1b4dce17'.
+2026-11-28T08:53:18.5863580Z 
+2026-11-28T08:53:18.5863797Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T08:53:18.5864411Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T08:53:18.5865059Z state without impacting any branches by switching back to a branch.
+2026-11-28T08:53:18.5865354Z 
+2026-11-28T08:53:18.5865620Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T08:53:18.5866103Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T08:53:18.5866402Z 
+2026-11-28T08:53:18.5866531Z   git switch -c <new-branch-name>
+2026-11-28T08:53:18.5866804Z 
+2026-11-28T08:53:18.5866926Z Or undo this operation with:
+2026-11-28T08:53:18.5867181Z 
+2026-11-28T08:53:18.5867333Z   git switch -
+2026-11-28T08:53:18.5867512Z 
+2026-11-28T08:53:18.5867778Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T08:53:18.5868367Z 
+2026-11-28T08:53:18.5868706Z HEAD is now at 84816b2 Correct PowerShell selector delimiters and validate complete native composition
+2026-11-28T08:53:18.5875444Z ##[endgroup]
+2026-11-28T08:53:18.5918928Z [command]/usr/bin/git log -1 --format=%H
+2026-11-28T08:53:18.5953342Z 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T08:53:18.5961374Z ##[group]Removing auth
+2026-11-28T08:53:18.5961702Z Removing SSH command configuration
+2026-11-28T08:53:18.5962327Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:53:18.5980323Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T08:53:18.6136849Z Removing HTTP extra header
+2026-11-28T08:53:18.6139713Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:53:18.6165965Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T08:53:18.6313217Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:53:18.6315733Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:53:18.6337881Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:53:18.6338769Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:53:18.6339654Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:53:18.6340287Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:53:18.6344581Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:53:18.6369917Z /home/runner/work/_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:18.6377473Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-31916ec2\-6d51\-4760\-a033\-75ed247156b2\.config
+2026-11-28T08:53:18.6409053Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:53:18.6431234Z /home/runner/work/_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:18.6438127Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-31916ec2\-6d51\-4760\-a033\-75ed247156b2\.config
+2026-11-28T08:53:18.6464571Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:53:18.6489292Z /github/runner_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:18.6503969Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-31916ec2\-6d51\-4760\-a033\-75ed247156b2\.config
+2026-11-28T08:53:18.6526530Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:53:18.6544985Z /github/runner_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config
+2026-11-28T08:53:18.6549314Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-31916ec2\-6d51\-4760\-a033\-75ed247156b2\.config
+2026-11-28T08:53:18.6593715Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T08:53:18.6718177Z Removing credentials config '/home/runner/work/_temp/git-credentials-31916ec2-6d51-4760-a033-75ed247156b2.config'
+2026-11-28T08:53:18.6725170Z ##[endgroup]
+2026-11-28T08:53:18.6913716Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T08:53:18.6914052Z with:
+2026-11-28T08:53:18.6914296Z   python-version: 3.11
+2026-11-28T08:53:18.6914556Z   check-latest: false
+2026-11-28T08:53:18.6916517Z   token: ***
+2026-11-28T08:53:18.6916805Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T08:53:18.6917142Z   update-environment: true
+2026-11-28T08:53:18.6917410Z   allow-prereleases: false
+2026-11-28T08:53:18.6917679Z   freethreaded: false
+2026-11-28T08:53:18.6917907Z ##[endgroup]
+2026-11-28T08:53:18.7812865Z ##[group]Installed versions
+2026-11-28T08:53:18.9693962Z Successfully set up CPython (3.11.18)
+2026-11-28T08:53:18.9694598Z ##[endgroup]
+2026-11-28T08:53:18.9814752Z ##[group]Run python -m pip install PyYAML==6.0.2
+2026-11-28T08:53:18.9815309Z [36;1mpython -m pip install PyYAML==6.0.2[0m
+2026-11-28T08:53:19.2045776Z shell: /usr/bin/bash -e {0}
+2026-11-28T08:53:19.2046143Z env:
+2026-11-28T08:53:19.2046457Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:19.2046914Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:53:19.2047284Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:19.2047634Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:19.2047966Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:19.2048292Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:53:19.2048750Z ##[endgroup]
+2026-11-28T08:53:23.1896318Z Collecting PyYAML==6.0.2
+2026-11-28T08:53:23.2434442Z   Downloading PyYAML-6.0.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.1 kB)
+2026-11-28T08:53:23.2551703Z Downloading PyYAML-6.0.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (762 kB)
+2026-11-28T08:53:23.3139149Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 763.0/763.0 kB 17.2 MB/s  0:00:00
+2026-11-28T08:53:23.5412441Z Installing collected packages: PyYAML
+2026-11-28T08:53:23.5776675Z Successfully installed PyYAML-6.0.2
+2026-11-28T08:53:23.6282903Z ##[group]Run python - <<'PY'
+2026-11-28T08:53:23.6283387Z [36;1mpython - <<'PY'[0m
+2026-11-28T08:53:23.6283671Z [36;1mfrom pathlib import Path[0m
+2026-11-28T08:53:23.6283959Z [36;1mfrom hashlib import sha256[0m
+2026-11-28T08:53:23.6284238Z [36;1mimport ast, json, re, subprocess, warnings[0m
+2026-11-28T08:53:23.6284512Z [36;1mimport yaml[0m
+2026-11-28T08:53:23.6284728Z [36;1m[0m
+2026-11-28T08:53:23.6284967Z [36;1mclass UniqueLoader(yaml.BaseLoader):[0m
+2026-11-28T08:53:23.6285242Z [36;1m    pass[0m
+2026-11-28T08:53:23.6285459Z [36;1mdef mapping(loader, node):[0m
+2026-11-28T08:53:23.6285688Z [36;1m    result = {}[0m
+2026-11-28T08:53:23.6285957Z [36;1m    for key_node, value_node in node.value:[0m
+2026-11-28T08:53:23.6286337Z [36;1m        key = loader.construct_object(key_node, deep=True)[0m
+2026-11-28T08:53:23.6286653Z [36;1m        if key in result:[0m
+2026-11-28T08:53:23.6286942Z [36;1m            raise ValueError('Duplicate YAML key: ' + str(key))[0m
+2026-11-28T08:53:23.6287418Z [36;1m        result[key] = loader.construct_object(value_node, deep=True)[0m
+2026-11-28T08:53:23.6287750Z [36;1m    return result[0m
+2026-11-28T08:53:23.6288116Z [36;1mUniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)[0m
+2026-11-28T08:53:23.6288601Z [36;1mroot = Path.cwd()[0m
+2026-11-28T08:53:23.6288860Z [36;1mout = root / 'ci-syntax'[0m
+2026-11-28T08:53:23.6289116Z [36;1mout.mkdir()[0m
+2026-11-28T08:53:23.6289407Z [36;1mwarnings.simplefilter('error', SyntaxWarning)[0m
+2026-11-28T08:53:23.6289825Z [36;1mpython_files, python_blocks, workflows, powershell, identities = [], [], [], [], {}[0m
+2026-11-28T08:53:23.6290397Z [36;1mfor relative in subprocess.run(['git', 'ls-files', '-z'], check=True, capture_output=True).stdout.decode().split('\0'):[0m
+2026-11-28T08:53:23.6290866Z [36;1m    if not relative:[0m
+2026-11-28T08:53:23.6291109Z [36;1m        continue[0m
+2026-11-28T08:53:23.6291387Z [36;1m    path = root / relative[0m
+2026-11-28T08:53:23.6291723Z [36;1m    if relative.startswith('carr-library/') and relative.endswith('.py'):[0m
+2026-11-28T08:53:23.6292270Z [36;1m        raw = path.read_bytes()[0m
+2026-11-28T08:53:23.6292593Z [36;1m        compile(raw, relative, 'exec', dont_inherit=True)[0m
+2026-11-28T08:53:23.6292908Z [36;1m        python_files.append(relative)[0m
+2026-11-28T08:53:23.6293237Z [36;1m        identities[relative] = sha256(raw).hexdigest()[0m
+2026-11-28T08:53:23.6293520Z [36;1mimport tomllib[0m
+2026-11-28T08:53:23.6293891Z [36;1mproject = tomllib.loads((root / 'carr-library/pyproject.toml').read_text(encoding='utf-8'))[0m
+2026-11-28T08:53:23.6294359Z [36;1mentrypoints = project['project'].get('scripts', {})[0m
+2026-11-28T08:53:23.6294658Z [36;1massert entrypoints[0m
+2026-11-28T08:53:23.6294987Z [36;1mfor name, target in entrypoints.items():[0m
+2026-11-28T08:53:23.6295293Z [36;1m    module, attribute = target.split(':', 1)[0m
+2026-11-28T08:53:23.6295593Z [36;1m    assert module and attribute, name[0m
+2026-11-28T08:53:23.6295915Z [36;1m    source = root / 'carr-library/src' / Path(*module.split('.'))[0m
+2026-11-28T08:53:23.6296336Z [36;1m    assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (name, target)[0m
+2026-11-28T08:53:23.6296805Z [36;1mfor path in sorted((root / '.github/workflows').glob('*.yml')):[0m
+2026-11-28T08:53:23.6297200Z [36;1m    data = yaml.load(path.read_text(encoding='utf-8'), Loader=UniqueLoader)[0m
+2026-11-28T08:53:23.6297708Z [36;1m    assert isinstance(data, dict) and 'on' in data and isinstance(data.get('jobs'), dict), str(path)[0m
+2026-11-28T08:53:23.6298132Z [36;1m    workflows.append(str(path.relative_to(root)))[0m
+2026-11-28T08:53:23.6298471Z [36;1m    if path.name not in {'carr-windows.yml', 'carr-v3.yml'}:[0m
+2026-11-28T08:53:23.6298965Z [36;1m        continue[0m
+2026-11-28T08:53:23.6299236Z [36;1m    for job_id, job in data['jobs'].items():[0m
+2026-11-28T08:53:23.6299659Z [36;1m        default_shell = job.get('defaults', {}).get('run', {}).get('shell', '')[0m
+2026-11-28T08:53:23.6300071Z [36;1m        for index, step in enumerate(job.get('steps', [])):[0m
+2026-11-28T08:53:23.6300378Z [36;1m            run = step.get('run')[0m
+2026-11-28T08:53:23.6300678Z [36;1m            if not isinstance(run, str):[0m
+2026-11-28T08:53:23.6300945Z [36;1m                continue[0m
+2026-11-28T08:53:23.6301224Z [36;1m            shell = step.get('shell', default_shell)[0m
+2026-11-28T08:53:23.6301560Z [36;1m            label = path.name + ':' + job_id + ':' + str(index + 1)[0m
+2026-11-28T08:53:23.6302063Z [36;1m            if 'pwsh' in shell or 'powershell' in shell:[0m
+2026-11-28T08:53:23.6302630Z [36;1m                powershell.append({'label': label, 'script': re.sub(r'\$\{\{.*?\}\}', 'CI_EXPRESSION', run, flags=re.S)})[0m
+2026-11-28T08:53:23.6303118Z [36;1m            blocks = re.findall(r"(?ms)^\s*\$\w+\s*=\s*@'\s*\n(.*?)^\s*'@\s*$", run)[0m
+2026-11-28T08:53:23.6303486Z [36;1m            for number, block in enumerate(blocks):[0m
+2026-11-28T08:53:23.6303858Z [36;1m                first = block.lstrip().splitlines()[0] if block.strip() else ''[0m
+2026-11-28T08:53:23.6304304Z [36;1m                if first.startswith(('import ', 'from ')):[0m
+2026-11-28T08:53:23.6304999Z [36;1m                    compile(block, label + ':python:' + str(number), 'exec', dont_inherit=True)[0m
+2026-11-28T08:53:23.6305426Z [36;1m                    python_blocks.append(label + ':' + str(number))[0m
+2026-11-28T08:53:23.6305830Z [36;1m            for module in set(re.findall(r"""['"](carr_library(?:\.[A-Za-z_]\w*)*)['"]""", run)):[0m
+2026-11-28T08:53:23.6306294Z [36;1m                source = root / 'carr-library/src' / Path(*module.split('.'))[0m
+2026-11-28T08:53:23.6306830Z [36;1m                assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (label, module)[0m
+2026-11-28T08:53:23.6307366Z [36;1m            for native in set(re.findall(r'(scripts/windows_[A-Za-z0-9_]+\.py)', run)):[0m
+2026-11-28T08:53:23.6307776Z [36;1m                assert (root / 'carr-library' / native).is_file(), (label, native)[0m
+2026-11-28T08:53:23.6308145Z [36;1massert python_files and python_blocks and powershell[0m
+2026-11-28T08:53:23.6308537Z [36;1m(out / 'powershell.json').write_text(json.dumps(powershell), encoding='utf-8')[0m
+2026-11-28T08:53:23.6309052Z [36;1mproof = {'status': 'PASS', 'scope': 'Python compile, duplicate-free YAML, current workflow module/native paths',[0m
+2026-11-28T08:53:23.6309629Z [36;1m         'head': subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip(),[0m
+2026-11-28T08:53:23.6310207Z [36;1m         'python_files': len(python_files), 'python_blocks': len(python_blocks), 'entrypoints': len(entrypoints),[0m
+2026-11-28T08:53:23.6310749Z [36;1m         'workflows': workflows, 'powershell_blocks_pending': len(powershell), 'source_sha256': identities}[0m
+2026-11-28T08:53:23.6311297Z [36;1m(out / 'python-yaml.json').write_text(json.dumps(proof, indent=2, sort_keys=True), encoding='utf-8')[0m
+2026-11-28T08:53:23.6311788Z [36;1mprint(json.dumps({k: v for k, v in proof.items() if k != 'source_sha256'}, sort_keys=True))[0m
+2026-11-28T08:53:23.6312311Z [36;1mPY[0m
+2026-11-28T08:53:23.6339593Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:53:23.6339921Z env:
+2026-11-28T08:53:23.6340188Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:23.6340576Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:53:23.6340937Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:23.6341290Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:23.6341743Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:23.6342283Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:53:23.6342611Z ##[endgroup]
+2026-11-28T08:53:25.7634269Z {"entrypoints": 6, "head": "84816b20f32ca8142b9e07591a7ec3fd1b4dce17", "powershell_blocks_pending": 43, "python_blocks": 10, "python_files": 1246, "scope": "Python compile, duplicate-free YAML, current workflow module/native paths", "status": "PASS", "workflows": [".github/workflows/carr-bibliography.yml", ".github/workflows/carr-calibre-reading-review.yml", ".github/workflows/carr-final-scope-preflight.yml", ".github/workflows/carr-legacy-reading-review.yml", ".github/workflows/carr-library-scale.yml", ".github/workflows/carr-native-launcher.yml", ".github/workflows/carr-v3.yml", ".github/workflows/carr-windows.yml"]}
+2026-11-28T08:53:25.7738575Z ##[group]Run $ErrorActionPreference = 'Stop'
+2026-11-28T08:53:25.7738944Z [36;1m$ErrorActionPreference = 'Stop'[0m
+2026-11-28T08:53:25.7739400Z [36;1m$blocks = Get-Content -LiteralPath 'ci-syntax/powershell.json' -Raw | ConvertFrom-Json[0m
+2026-11-28T08:53:25.7739800Z [36;1m$failures = @()[0m
+2026-11-28T08:53:25.7740045Z [36;1mforeach ($block in $blocks) {[0m
+2026-11-28T08:53:25.7740316Z [36;1m  $tokens = $null[0m
+2026-11-28T08:53:25.7740554Z [36;1m  $errors = $null[0m
+2026-11-28T08:53:25.7741052Z [36;1m  $null = [System.Management.Automation.Language.Parser]::ParseInput([string]$block.script, [ref]$tokens, [ref]$errors)[0m
+2026-11-28T08:53:25.7741535Z [36;1m  foreach ($problem in $errors) {[0m
+2026-11-28T08:53:25.7742165Z [36;1m    $failures += @{ block = $block.label; line = $problem.Extent.StartLineNumber; message = $problem.Message }[0m
+2026-11-28T08:53:25.7742628Z [36;1m  }[0m
+2026-11-28T08:53:25.7742833Z [36;1m}[0m
+2026-11-28T08:53:25.7743377Z [36;1m$result = @{ status = $(if ($failures.Count -eq 0) { 'PASS' } else { 'FAIL' }); blocks = $blocks.Count; errors = $failures }[0m
+2026-11-28T08:53:25.7743961Z [36;1m$result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath 'ci-syntax/powershell-result.json' -Encoding utf8[0m
+2026-11-28T08:53:25.7744407Z [36;1m$result | ConvertTo-Json -Depth 5[0m
+2026-11-28T08:53:25.7744812Z [36;1mif ($failures.Count -ne 0) { throw 'Current workflow PowerShell syntax did not pass.' }[0m
+2026-11-28T08:53:25.8099328Z shell: /usr/bin/pwsh -command ". '{0}'"
+2026-11-28T08:53:25.8099638Z env:
+2026-11-28T08:53:25.8100165Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:25.8100549Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:53:25.8100922Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:25.8101271Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:25.8101647Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:25.8102216Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:53:25.8102515Z ##[endgroup]
+2026-11-28T08:53:28.7302606Z {
+2026-11-28T08:53:28.7302875Z   "status": "PASS",
+2026-11-28T08:53:28.7303225Z   "errors": [],
+2026-11-28T08:53:28.7303488Z   "blocks": 43
+2026-11-28T08:53:28.7303706Z }
+2026-11-28T08:53:28.8185188Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T08:53:28.8185560Z with:
+2026-11-28T08:53:28.8185871Z   name: final-composition-syntax-84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T08:53:28.8186287Z   path: ci-syntax/
+2026-11-28T08:53:28.8186548Z   if-no-files-found: error
+2026-11-28T08:53:28.8186820Z   compression-level: 6
+2026-11-28T08:53:28.8187052Z   overwrite: false
+2026-11-28T08:53:28.8187265Z   include-hidden-files: false
+2026-11-28T08:53:28.8187541Z   archive: true
+2026-11-28T08:53:28.8187747Z env:
+2026-11-28T08:53:28.8188003Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:28.8188382Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:53:28.8188749Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:28.8189298Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:28.8189682Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:53:28.8190061Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:53:28.8190352Z ##[endgroup]
+2026-11-28T08:53:28.9348089Z With the provided path, there will be 3 files uploaded
+2026-11-28T08:53:28.9348822Z Artifact name is valid!
+2026-11-28T08:53:28.9349165Z Root directory input is valid!
+2026-11-28T08:53:29.3548475Z Uploading artifact: final-composition-syntax-84816b20f32ca8142b9e07591a7ec3fd1b4dce17.zip
+2026-11-28T08:53:29.3576397Z Beginning upload of artifact content to blob storage
+2026-11-28T08:53:30.0759739Z Uploaded bytes 101791
+2026-11-28T08:53:30.1629718Z Finished uploading artifact content to blob storage!
+2026-11-28T08:53:30.1630490Z SHA256 digest of uploaded artifact is 6f5ef80e73d33271acbec55b9ec5cb872b32484db4012878bacecf24adddb526
+2026-11-28T08:53:30.1631194Z Finalizing artifact upload
+2026-11-28T08:53:30.7266145Z Artifact final-composition-syntax-84816b20f32ca8142b9e07591a7ec3fd1b4dce17 successfully finalized. Artifact ID 15256671207
+2026-11-28T08:53:30.7267319Z Artifact final-composition-syntax-84816b20f32ca8142b9e07591a7ec3fd1b4dce17 has been successfully uploaded! Final size is 101791 bytes. Artifact ID is 15256671207
+2026-11-28T08:53:30.7269600Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46126153255/artifacts/15256671207
+2026-11-28T08:53:30.7402722Z Post job cleanup.
+2026-11-28T08:53:30.8344455Z Post job cleanup.
+2026-11-28T08:53:30.9058702Z [command]/usr/bin/git version
+2026-11-28T08:53:30.9087340Z git version 2.56.1
+2026-11-28T08:53:30.9109941Z Temporarily overriding HOME='/home/runner/work/_temp/46f4199a-8ae8-45be-9fb3-03dd1f24b454' before making global git config changes
+2026-11-28T08:53:30.9111144Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:53:30.9114542Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T08:53:30.9136573Z Removing SSH command configuration
+2026-11-28T08:53:30.9140668Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:53:30.9164727Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T08:53:30.9324506Z Removing HTTP extra header
+2026-11-28T08:53:30.9328326Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:53:30.9352783Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T08:53:30.9564652Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:53:30.9573125Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:53:30.9603943Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T08:53:30.9955493Z Cleaning up orphan processes

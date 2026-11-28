@@ -1,0 +1,96 @@
+{
+  "schema": "carr-final-scale-evidence-harvester-checkpoint/1",
+  "status": "PUBLISHED_RUNTIME_PENDING",
+  "scope": "READ_ONLY_SAVED_ARTIFACTS_NO_CORPUS_REPLAY",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "branch": "carr/final-corpus-evidence-review-20261128",
+  "sha": "ce8a6c326988c5b8d73bb107a0dcf043c9f2b151",
+  "tree": "ea0b730e596b1b4a37e6736693a6676802c9a09d",
+  "files": 1570,
+  "parent": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "selection": "d70b3d64103df0beef34996a44eacd276a03a2a2",
+  "reviewed_script": "948b6a122ad960a70ec52921a752da9d26d623a8",
+  "reviewed_workflow": "c4b70df30fd2dd9d037206772f6e29de115c6908",
+  "source_review": "Importer independently approved fixed API/redirect credential separation, compressed SHA/ZIP/JSON limits and exact original outcome/phase proof.",
+  "changes": [
+    {
+      "path": ".github/diagnostics/harvest_final_scale_artifacts.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "948b6a122ad960a70ec52921a752da9d26d623a8"
+    },
+    {
+      "path": ".github/diagnostics/final_scale_artifacts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d70b3d64103df0beef34996a44eacd276a03a2a2"
+    },
+    {
+      "path": ".github/workflows/carr-final-corpus-evidence-review.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4b70df30fd2dd9d037206772f6e29de115c6908"
+    }
+  ],
+  "original_run": 46124999025,
+  "original_head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "fixed_completed_selection": [
+    {
+      "job_id": 140917529551,
+      "artifact_id": 15255746478,
+      "tier": "books-1000",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 1774585,
+      "sha256": "ec8d6d808b7b08204ee61efac2b784b282f96ef0810d1fb950e5e1885d42f80f"
+    },
+    {
+      "job_id": 140917529723,
+      "artifact_id": 15256096563,
+      "tier": "text-65m",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 82785,
+      "sha256": "610305ccd3fd7de7068dadfc0728f73de81c159ef46b7df8ccc7e8cd8eab797c"
+    },
+    {
+      "job_id": 140917529744,
+      "artifact_id": 15256755017,
+      "tier": "books-1000",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 1774578,
+      "sha256": "384d03a895146d5d5844f5500e8e0efcc7b56a8d36465bc97f0726c48cfe622a"
+    },
+    {
+      "job_id": 140917529780,
+      "artifact_id": 15257370813,
+      "tier": "text-129m",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 83548,
+      "sha256": "68747e744847e77cadf70cfd0d29df1d92f2280ae895d37addb8af225b6ffce2"
+    },
+    {
+      "job_id": 140917529794,
+      "artifact_id": 15256997095,
+      "tier": "text-129m",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 83557,
+      "sha256": "d1e9ba9ad012eb06e07308e9031eb166622b9dc5ae2aaecce93db07c71527c3b"
+    },
+    {
+      "job_id": 140917529810,
+      "artifact_id": 15257202190,
+      "tier": "text-65m",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 82729,
+      "sha256": "3b90dbba1ed854c5efceb6e5d8d4ec017b57f571207c1fe5969c09b2c01f4321"
+    }
+  ],
+  "full_tree_verified": 1570,
+  "final_refs_changed": false,
+  "omitted_tiers": "Remaining six active 10k/50k/2GiB jobs are not part of this completed selection."
+}

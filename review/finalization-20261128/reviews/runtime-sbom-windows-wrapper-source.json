@@ -1,0 +1,24 @@
+{
+  "schema": "carr-main-sbom-windows-wrapper-review/1",
+  "before": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+  "after": "2d088e5e7fa622024a1706002674fe0a519da97a",
+  "builder": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971",
+  "verdict": "SOURCE_APPROVE",
+  "scope": [
+    "Two source-array delimiter corrections; all512 selected literals and their order unchanged",
+    "All workflow timeout declarations unchanged",
+    "Literal PowerShell here-string extraction/one -c argument;902-byte Python body; existing nonzero-exit handling",
+    "Actual installed package selected under -I and exact8-file vendored closure validated without vendor import",
+    "Canonical exact pip-name/version inventory remains distinct from reviewed embedded-source component",
+    "Complete SBOM component list and existing root/vendor dependency edge retained while runtime additions are appended; full SBOM revalidated before write"
+  ],
+  "primary_docs": [
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_quoting_rules?view=powershell-7.5#here-strings",
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_parsing?view=powershell-7.5#argument-mode"
+  ],
+  "limits": {
+    "native_powershell_execution": "NOT_RUN by this source review; root owns focused exact-step gate",
+    "installed_52_distribution_and_vendor_runtime": "NOT_RUN by this review",
+    "files_modified": false
+  }
+}

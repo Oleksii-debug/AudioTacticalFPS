@@ -1,0 +1,140 @@
+{
+  "schema": "carr-finite-correction-candidates/1",
+  "created_utc": "2026-11-28 09:27:48 UTC",
+  "current_pr_head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "current_pr_tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+  "runtime_sbom": {
+    "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
+    "tree": "c49a627deddf32e5f5bfd9ac43dda2cebbfd02ec",
+    "files": 1568,
+    "branch": "carr/sbom-vendor-review-20261128",
+    "ref_readback": true,
+    "status": "PENDING_RUNTIME",
+    "run_id": 46130223315,
+    "source_review": "b0aee49e06677b454e120fac1f60ecdb783b933e",
+    "windows_wrapper_review": "3bfbd909fddec80f3d2d8b61a98c644b3f1db3bc",
+    "changes": [
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971"
+      },
+      {
+        "path": "carr-library/packaging/refresh_private_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a0ada7add5d2b10c820579463bb1bef99a9e5c54"
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2d088e5e7fa622024a1706002674fe0a519da97a"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_windows_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "35bfe2d17d47c4ed6e2039121fff36450f765fdc"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "796bf728f42157721ff7754ff0577f3ab1c584d4"
+      },
+      {
+        "path": ".github/workflows/carr-sbom-vendor-review.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6f307646530774cc2857b8901b0de6966a845a0d"
+      }
+    ]
+  },
+  "composed_preflight": {
+    "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "tree": "9247d7f1378722a0554f4bcaac04ec18874b4a32",
+    "files": 1568,
+    "branch": "carr/final-scope-preflight-20261128",
+    "ref_readback": true,
+    "status": "PENDING_RUNTIME",
+    "public_changes": 11,
+    "run_id": 46130308277,
+    "changes": [
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971"
+      },
+      {
+        "path": "carr-library/packaging/refresh_private_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a0ada7add5d2b10c820579463bb1bef99a9e5c54"
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2d088e5e7fa622024a1706002674fe0a519da97a"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_windows_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "35bfe2d17d47c4ed6e2039121fff36450f765fdc"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "796bf728f42157721ff7754ff0577f3ab1c584d4"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/worker.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/pipeline.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+      },
+      {
+        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+      },
+      {
+        "path": "carr-library/tests/operations/test_ocr_admission.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_preparation_notice_closure.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "72ba5770af6fd355189fff990716c679b178943c"
+      },
+      {
+        "path": "carr-library/tests/ui/test_desktop_handlers.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6ef37550a8463a125de82e1f0628244d5e0e1d17"
+      },
+      {
+        "path": ".github/workflows/carr-final-scope-preflight.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9512dd57563a3fe28b65ebee8214b1ebe97d1d4b"
+      }
+    ]
+  },
+  "qualification": "PENDING_RUNTIME; source reviews and verified trees do not establish runtime PASS."
+}

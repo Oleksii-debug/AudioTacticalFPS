@@ -1,0 +1,1652 @@
+﻿2026-11-28T08:40:43.0840485Z Current runner version: '2.338.2'
+2026-11-28T08:40:43.0866399Z ##[group]Runner Image Provisioner
+2026-11-28T08:40:43.0867328Z Hosted Compute Agent
+2026-11-28T08:40:43.0867910Z Version: 20261111.635
+2026-11-28T08:40:43.0868549Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T08:40:43.0869535Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T08:40:43.0870284Z Worker ID: {aafec968-d114-46a3-8a89-ab464f6abea9}
+2026-11-28T08:40:43.0870937Z Region: eastus2
+2026-11-28T08:40:43.0871316Z Cloud: Azure
+2026-11-28T08:40:43.0871706Z ##[endgroup]
+2026-11-28T08:40:43.0872799Z ##[group]Operating System
+2026-11-28T08:40:43.0873260Z Microsoft Windows Server 2022
+2026-11-28T08:40:43.0873703Z 10.0.20348
+2026-11-28T08:40:43.0874092Z Datacenter
+2026-11-28T08:40:43.0874489Z ##[endgroup]
+2026-11-28T08:40:43.0874905Z ##[group]Runner Image
+2026-11-28T08:40:43.0875317Z Image: windows-2022
+2026-11-28T08:40:43.0875730Z Version: 20261123.376.1
+2026-11-28T08:40:43.0876889Z Included Software: https://github.com/actions/runner-images/blob/win22/20261123.376/images/windows/Windows2022-Readme.md
+2026-11-28T08:40:43.0878052Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20261123.376
+2026-11-28T08:40:43.0878766Z ##[endgroup]
+2026-11-28T08:40:43.0879580Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T08:40:43.0880996Z Contents: read
+2026-11-28T08:40:43.0881540Z Metadata: read
+2026-11-28T08:40:43.0881940Z ##[endgroup]
+2026-11-28T08:40:43.0883648Z Secret source: Actions
+2026-11-28T08:40:43.0884317Z Cache mode: write
+2026-11-28T08:40:43.0884811Z Prepare workflow directory
+2026-11-28T08:40:43.1314142Z Prepare all required actions
+2026-11-28T08:40:43.1355088Z Getting action download info
+2026-11-28T08:40:43.3084434Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T08:40:43.3977778Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T08:40:43.4973664Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T08:40:43.6802874Z Complete job name: Installed Word controls and separate Office status / windows-2022
+2026-11-28T08:40:43.8197604Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T08:40:43.8198652Z with:
+2026-11-28T08:40:43.8198988Z   ref: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:43.8199799Z   persist-credentials: false
+2026-11-28T08:40:43.8200250Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:40:43.8203545Z   token: ***
+2026-11-28T08:40:43.8203841Z   ssh-strict: true
+2026-11-28T08:40:43.8204145Z   ssh-user: git
+2026-11-28T08:40:43.8204435Z   clean: true
+2026-11-28T08:40:43.8204742Z   sparse-checkout-cone-mode: true
+2026-11-28T08:40:43.8205111Z   fetch-depth: 1
+2026-11-28T08:40:43.8205398Z   fetch-tags: false
+2026-11-28T08:40:43.8205726Z   show-progress: true
+2026-11-28T08:40:43.8206032Z   lfs: false
+2026-11-28T08:40:43.8206310Z   submodules: false
+2026-11-28T08:40:43.8206627Z   set-safe-directory: true
+2026-11-28T08:40:43.8206980Z   allow-unsafe-pr-checkout: false
+2026-11-28T08:40:43.8207544Z env:
+2026-11-28T08:40:43.8207950Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:43.8208435Z   PYTHONUTF8: 1
+2026-11-28T08:40:43.8208744Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:40:43.8209080Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:43.8209381Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:43.8209705Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:43.8210011Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:40:43.8210366Z ##[endgroup]
+2026-11-28T08:40:43.9375323Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:40:43.9376676Z ##[group]Getting Git version info
+2026-11-28T08:40:43.9377199Z Working directory is 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T08:40:43.9954691Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T08:40:44.2825734Z git version 2.56.1.windows.1
+2026-11-28T08:40:44.2856569Z ##[endgroup]
+2026-11-28T08:40:44.2868437Z Temporarily overriding HOME='D:\a\_temp\391e57ff-44e2-4882-806e-8f68687c330b' before making global git config changes
+2026-11-28T08:40:44.2869426Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:40:44.2876850Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T08:40:44.3366695Z Deleting the contents of 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T08:40:44.3369850Z ##[group]Determining repository object format
+2026-11-28T08:40:44.3371416Z ##[endgroup]
+2026-11-28T08:40:44.3372125Z ##[group]Initializing the repository
+2026-11-28T08:40:44.3379226Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T08:40:44.3924739Z Initialized empty Git repository in D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T08:40:44.3954130Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:40:44.4437563Z ##[endgroup]
+2026-11-28T08:40:44.4438167Z ##[group]Disabling automatic garbage collection
+2026-11-28T08:40:44.4444695Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-28T08:40:44.4676751Z ##[endgroup]
+2026-11-28T08:40:44.4677803Z ##[group]Setting up auth
+2026-11-28T08:40:44.4678540Z Removing SSH command configuration
+2026-11-28T08:40:44.4685506Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:40:44.4993788Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T08:40:45.7098349Z Removing HTTP extra header
+2026-11-28T08:40:45.7111726Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:40:45.7363233Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T08:40:46.1790837Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:40:46.1800936Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:40:46.2080697Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T08:40:46.6812895Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-28T08:40:46.7122190Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D:\a\_temp\git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:46.7377177Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D:\a\_temp\git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:46.7672226Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:46.7916218Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:46.8233837Z ##[endgroup]
+2026-11-28T08:40:46.8234320Z ##[group]Fetching the repository
+2026-11-28T08:40:46.8248698Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:48.4633975Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:40:48.4634849Z  * branch            429a5e60685b4c4ac38efd204d8fb4d57a6604c5 -> FETCH_HEAD
+2026-11-28T08:40:48.4666322Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 429a5e60685b4c4ac38efd204d8fb4d57a6604c5^{object}
+2026-11-28T08:40:48.4936089Z 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:48.4959753Z ##[endgroup]
+2026-11-28T08:40:48.4960141Z ##[group]Determining the checkout info
+2026-11-28T08:40:48.4960737Z ##[endgroup]
+2026-11-28T08:40:48.4968659Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-28T08:40:48.5258141Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-28T08:40:48.5497026Z ##[group]Checking out the ref
+2026-11-28T08:40:48.5503972Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:48.8914838Z Note: switching to '429a5e60685b4c4ac38efd204d8fb4d57a6604c5'.
+2026-11-28T08:40:48.8916097Z 
+2026-11-28T08:40:48.8916443Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T08:40:48.8916911Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T08:40:48.8917316Z state without impacting any branches by switching back to a branch.
+2026-11-28T08:40:48.8917568Z 
+2026-11-28T08:40:48.8917722Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T08:40:48.8918107Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T08:40:48.8918304Z 
+2026-11-28T08:40:48.8918460Z   git switch -c <new-branch-name>
+2026-11-28T08:40:48.8918598Z 
+2026-11-28T08:40:48.8918696Z Or undo this operation with:
+2026-11-28T08:40:48.8918827Z 
+2026-11-28T08:40:48.8918918Z   git switch -
+2026-11-28T08:40:48.8919014Z 
+2026-11-28T08:40:48.8919197Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T08:40:48.8919421Z 
+2026-11-28T08:40:48.8920517Z HEAD is now at 429a5e6 Read final nonempty Word native result without relaxing scoped acceptance
+2026-11-28T08:40:48.9007968Z ##[endgroup]
+2026-11-28T08:40:48.9366483Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T08:40:48.9595957Z 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:48.9623717Z ##[group]Removing auth
+2026-11-28T08:40:48.9624148Z Removing SSH command configuration
+2026-11-28T08:40:48.9632065Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:40:48.9884096Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T08:40:49.4061877Z Removing HTTP extra header
+2026-11-28T08:40:49.4070452Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:40:49.4314177Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T08:40:49.8780996Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:40:49.8789238Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:40:49.9017752Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:40:49.9018875Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:40:49.9019420Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:40:49.9020313Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:40:49.9054358Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:40:49.9271858Z D:\a\_temp\git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:49.9302401Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D\:\\a\\_temp\\git\-credentials\-7ecda2fb\-a805\-432a\-b8a6\-a1187fe92304\.config
+2026-11-28T08:40:49.9557635Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:40:49.9841595Z D:\a\_temp\git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:49.9877491Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-7ecda2fb\-a805\-432a\-b8a6\-a1187fe92304\.config
+2026-11-28T08:40:50.0155731Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:40:50.0386432Z /github/runner_temp/git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:50.0423144Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-7ecda2fb\-a805\-432a\-b8a6\-a1187fe92304\.config
+2026-11-28T08:40:50.0675701Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:40:50.0897106Z /github/runner_temp/git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config
+2026-11-28T08:40:50.0925552Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-7ecda2fb\-a805\-432a\-b8a6\-a1187fe92304\.config
+2026-11-28T08:40:50.1178533Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T08:40:50.5340489Z Removing credentials config 'D:\a\_temp\git-credentials-7ecda2fb-a805-432a-b8a6-a1187fe92304.config'
+2026-11-28T08:40:50.5351062Z ##[endgroup]
+2026-11-28T08:40:50.5721497Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T08:40:50.5721848Z with:
+2026-11-28T08:40:50.5722008Z   python-version: 3.11
+2026-11-28T08:40:50.5722189Z   check-latest: false
+2026-11-28T08:40:50.5724192Z   token: ***
+2026-11-28T08:40:50.5724448Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T08:40:50.5724748Z   update-environment: true
+2026-11-28T08:40:50.5724922Z   allow-prereleases: false
+2026-11-28T08:40:50.5725085Z   freethreaded: false
+2026-11-28T08:40:50.5725263Z env:
+2026-11-28T08:40:50.5725454Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:50.5725699Z   PYTHONUTF8: 1
+2026-11-28T08:40:50.5725856Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:40:50.5726024Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:50.5726172Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:50.5726332Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:50.5726486Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:40:50.5726710Z ##[endgroup]
+2026-11-28T08:40:50.6838472Z ##[group]Installed versions
+2026-11-28T08:40:50.6953656Z Successfully set up CPython (3.11.9)
+2026-11-28T08:40:50.6954132Z ##[endgroup]
+2026-11-28T08:40:50.7154377Z ##[group]Run python -m pip install ".[test,sync]"
+2026-11-28T08:40:50.7154771Z [36;1mpython -m pip install ".[test,sync]"[0m
+2026-11-28T08:40:50.7155176Z [36;1mpython -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock[0m
+2026-11-28T08:40:50.7213819Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:40:50.7214302Z env:
+2026-11-28T08:40:50.7214515Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:40:50.7214766Z   PYTHONUTF8: 1
+2026-11-28T08:40:50.7214927Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:40:50.7215103Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:40:50.7215254Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:40:50.7215415Z   DO_NOT_TRACK: 1
+2026-11-28T08:40:50.7215578Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:40:50.7215828Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:50.7216239Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:40:50.7216573Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:50.7216869Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:50.7217164Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:40:50.7217401Z ##[endgroup]
+2026-11-28T08:40:55.1392375Z Processing .\.
+2026-11-28T08:40:55.1421887Z   Installing build dependencies: started
+2026-11-28T08:40:57.5387483Z   Installing build dependencies: finished with status 'done'
+2026-11-28T08:40:57.5404270Z   Getting requirements to build wheel: started
+2026-11-28T08:40:58.1702934Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T08:40:58.1725380Z   Preparing metadata (pyproject.toml): started
+2026-11-28T08:40:58.8273623Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T08:40:59.0175576Z Collecting pypdf==7.1.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.1579920Z   Downloading pypdf-7.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T08:40:59.2954144Z Collecting pypdfium2==5.13.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.3046297Z   Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl.metadata (67 kB)
+2026-11-28T08:40:59.3826396Z Collecting python-docx==1.2.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.3908091Z   Downloading python_docx-1.2.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T08:40:59.4656488Z Collecting platformdirs==4.10.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.4736758Z   Downloading platformdirs-4.10.0-py3-none-any.whl.metadata (5.5 kB)
+2026-11-28T08:40:59.5520060Z Collecting filelock==3.29.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.5602572Z   Downloading filelock-3.29.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T08:40:59.7303577Z Collecting Pillow==13.0.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.7392033Z   Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl.metadata (9.3 kB)
+2026-11-28T08:40:59.7871716Z Collecting py3langid==0.4.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.7949157Z   Downloading py3langid-0.4.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T08:40:59.8431928Z Collecting defusedxml==0.7.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.8509873Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-11-28T08:40:59.9099261Z Collecting comtypes==1.5.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.9178128Z   Downloading comtypes-1.5.0-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T08:40:59.9610702Z Collecting bibtexparser==2.1.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:40:59.9689531Z   Downloading bibtexparser-2.1.0-py3-none-any.whl.metadata (6.3 kB)
+2026-11-28T08:41:00.0198198Z Collecting pylatexenc==2.11 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.0279261Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl.metadata (3.9 kB)
+2026-11-28T08:41:00.0747707Z Collecting quickjs-ng==0.18.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.0833588Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl.metadata (8.2 kB)
+2026-11-28T08:41:00.2751265Z Collecting cryptography==50.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.2834326Z   Downloading cryptography-50.0.2-cp311-abi3-win_amd64.whl.metadata (4.4 kB)
+2026-11-28T08:41:00.3312751Z Collecting pytest==9.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.3387500Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T08:41:00.4011232Z Collecting beautifulsoup4<5,>=4.12 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.4095096Z   Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
+2026-11-28T08:41:00.4494622Z Collecting openpyxl<4,>=3.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.4571792Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:41:00.4770515Z Collecting packaging<27,>=25 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.4800271Z   Using cached packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T08:41:00.5408167Z Collecting huggingface-hub==1.16.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.5488178Z   Downloading huggingface_hub-1.16.1-py3-none-any.whl.metadata (14 kB)
+2026-11-28T08:41:00.6975358Z Collecting reportlab==4.4.9 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.7056561Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T08:41:00.7400902Z Collecting pytesseract==0.3.13 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:00.7487259Z   Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 kB)
+2026-11-28T08:41:01.1737834Z Collecting rapidfuzz==3.14.6 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.1831967Z   Downloading rapidfuzz-3.14.6-cp311-cp311-win_amd64.whl.metadata (12 kB)
+2026-11-28T08:41:01.2285857Z Collecting nltk==3.9.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.2361015Z   Downloading nltk-3.9.2-py3-none-any.whl.metadata (3.2 kB)
+2026-11-28T08:41:01.3168130Z Collecting zstandard==0.25.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.3275584Z   Downloading zstandard-0.25.0-cp311-cp311-win_amd64.whl.metadata (3.3 kB)
+2026-11-28T08:41:01.4620611Z Collecting cffi>=2.0.0 (from cryptography==50.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.4700793Z   Downloading cffi-2.1.1-cp311-cp311-win_amd64.whl.metadata (2.6 kB)
+2026-11-28T08:41:01.5214130Z Collecting fsspec>=2023.5.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.5294051Z   Downloading fsspec-2026.9.0-py3-none-any.whl.metadata (10 kB)
+2026-11-28T08:41:01.6007741Z Collecting hf-xet<2.0.0,>=1.4.3 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.6126792Z   Downloading hf_xet-1.8.0-cp38-abi3-win_amd64.whl.metadata (4.9 kB)
+2026-11-28T08:41:01.6578329Z Collecting httpx<1,>=0.23.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.6657677Z   Downloading httpx-0.29.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T08:41:01.7547858Z Collecting pyyaml>=5.1 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.7628675Z   Downloading pyyaml-6.0.4-cp311-cp311-win_amd64.whl.metadata (2.4 kB)
+2026-11-28T08:41:01.8277766Z Collecting tqdm>=4.42.1 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.8396464Z   Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+2026-11-28T08:41:01.9734924Z Collecting typer>=0.20.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:01.9883819Z   Downloading typer-0.29.3-py3-none-any.whl.metadata (16 kB)
+2026-11-28T08:41:02.0283940Z Collecting typing-extensions>=4.1.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.0361449Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-28T08:41:02.0927334Z Collecting click (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.1038962Z   Downloading click-8.5.1-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T08:41:02.1499952Z Collecting joblib (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.1581295Z   Downloading joblib-1.6.0-py3-none-any.whl.metadata (6.5 kB)
+2026-11-28T08:41:02.5452301Z Collecting regex>=2021.8.3 (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.5539561Z   Downloading regex-2026.11.25-cp311-cp311-win_amd64.whl.metadata (41 kB)
+2026-11-28T08:41:02.7324625Z Collecting numpy>=2.0.0 (from py3langid==0.4.0->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.7454197Z   Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl.metadata (6.6 kB)
+2026-11-28T08:41:02.8032047Z Collecting colorama>=0.4 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.8141189Z   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+2026-11-28T08:41:02.8845966Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.8978524Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T08:41:02.9573384Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:02.9649263Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T08:41:03.0107223Z Collecting pygments>=2.7.2 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.0185261Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:41:03.2607259Z Collecting lxml>=3.1.0 (from python-docx==1.2.0->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.2696318Z   Downloading lxml-6.2.0-cp311-cp311-win_amd64.whl.metadata (5.7 kB)
+2026-11-28T08:41:03.4081265Z Collecting charset-normalizer (from reportlab==4.4.9->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.4160212Z   Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl.metadata (44 kB)
+2026-11-28T08:41:03.4698634Z Collecting soupsieve>=1.6.1 (from beautifulsoup4<5,>=4.12->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.4773554Z   Downloading soupsieve-4.1.3-py3-none-any.whl.metadata (4.4 kB)
+2026-11-28T08:41:03.5236765Z Collecting anyio (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.5317880Z   Downloading anyio-4.16.0-py3-none-any.whl.metadata (4.7 kB)
+2026-11-28T08:41:03.5772809Z Collecting certifi (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.5852270Z   Downloading certifi-2026.11.20-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:41:03.6282953Z Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.6358052Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-11-28T08:41:03.6885460Z Collecting idna (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.6972428Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-11-28T08:41:03.7484218Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.7560975Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-11-28T08:41:03.8254146Z Collecting et-xmlfile (from openpyxl<4,>=3.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.8328616Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-11-28T08:41:03.8692766Z Collecting pycparser (from cffi>=2.0.0->cryptography==50.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:03.8802251Z   Downloading pycparser-3.12-py3-none-any.whl.metadata (9.7 kB)
+2026-11-28T08:41:04.0761080Z Collecting pydantic>=2.5.3 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:04.0843801Z   Downloading pydantic-2.14.4-py3-none-any.whl.metadata (143 kB)
+2026-11-28T08:41:04.1482431Z Collecting shellingham>=1.3.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:04.1565862Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T08:41:04.2172230Z Collecting rich>=13.8.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:04.2248584Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-11-28T08:41:04.2734175Z Collecting annotated-doc>=0.0.2 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:04.2814985Z   Downloading annotated_doc-0.0.7-py3-none-any.whl.metadata (6.4 kB)
+2026-11-28T08:41:04.3263660Z Collecting annotated-types>=0.6.0 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:04.3343749Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-11-28T08:41:04.9619954Z Collecting pydantic-core==2.50.5 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:04.9708783Z   Downloading pydantic_core-2.50.5-cp311-cp311-win_amd64.whl.metadata (6.7 kB)
+2026-11-28T08:41:05.0266888Z Collecting typing-inspection>=0.4.4 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:05.0379793Z   Downloading typing_inspection-0.4.5-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T08:41:05.0943840Z Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:05.1021558Z   Downloading markdown_it_py-4.3.0-py3-none-any.whl.metadata (7.9 kB)
+2026-11-28T08:41:05.1528404Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:05.1614538Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-11-28T08:41:05.2311490Z Collecting cloudpickle>=3.0 (from joblib->nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:05.2390650Z   Downloading cloudpickle-3.1.3-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T08:41:05.2852046Z Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl (7.3 MB)
+2026-11-28T08:41:05.5209284Z    ---------------------------------------- 7.3/7.3 MB 30.0 MB/s  0:00:00
+2026-11-28T08:41:05.5294792Z Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T08:41:05.5649554Z Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T08:41:05.5923872Z Downloading comtypes-1.5.0-py3-none-any.whl (325 kB)
+2026-11-28T08:41:05.6238365Z Downloading cryptography-50.0.2-cp311-abi3-win_amd64.whl (3.8 MB)
+2026-11-28T08:41:05.6834995Z    ---------------------------------------- 3.8/3.8 MB 75.8 MB/s  0:00:00
+2026-11-28T08:41:05.6917350Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T08:41:05.7116969Z Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T08:41:05.7391754Z Downloading huggingface_hub-1.16.1-py3-none-any.whl (668 kB)
+2026-11-28T08:41:05.7628903Z    ---------------------------------------- 668.2/668.2 kB 25.4 MB/s  0:00:00
+2026-11-28T08:41:05.7712443Z Downloading nltk-3.9.2-py3-none-any.whl (1.5 MB)
+2026-11-28T08:41:05.8047130Z    ---------------------------------------- 1.5/1.5 MB 39.1 MB/s  0:00:00
+2026-11-28T08:41:05.8168514Z Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T08:41:05.8454271Z Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T08:41:05.9076182Z    ---------------------------------------- 4.6/4.6 MB 70.0 MB/s  0:00:00
+2026-11-28T08:41:05.9197450Z Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T08:41:05.9496488Z Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl (3.9 MB)
+2026-11-28T08:41:05.9895167Z    ---------------------------------------- 3.9/3.9 MB 116.9 MB/s  0:00:00
+2026-11-28T08:41:06.0017888Z Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+2026-11-28T08:41:06.0224499Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T08:41:06.0523447Z Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T08:41:06.0797559Z Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl (401 kB)
+2026-11-28T08:41:06.1055087Z Downloading rapidfuzz-3.14.6-cp311-cp311-win_amd64.whl (1.7 MB)
+2026-11-28T08:41:06.1424627Z    ---------------------------------------- 1.7/1.7 MB 31.4 MB/s  0:00:00
+2026-11-28T08:41:06.1518385Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T08:41:06.1906890Z    ---------------------------------------- 2.0/2.0 MB 36.0 MB/s  0:00:00
+2026-11-28T08:41:06.2006470Z Downloading zstandard-0.25.0-cp311-cp311-win_amd64.whl (506 kB)
+2026-11-28T08:41:06.2290050Z Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
+2026-11-28T08:41:06.2610604Z Downloading hf_xet-1.8.0-cp38-abi3-win_amd64.whl (3.9 MB)
+2026-11-28T08:41:06.2971383Z    ---------------------------------------- 3.9/3.9 MB 117.7 MB/s  0:00:00
+2026-11-28T08:41:06.3056674Z Downloading httpx-0.29.0-py3-none-any.whl (73 kB)
+2026-11-28T08:41:06.3339918Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-11-28T08:41:06.3573866Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-11-28T08:41:06.3745166Z Using cached packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T08:41:06.3829351Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T08:41:06.4085322Z Downloading cffi-2.1.1-cp311-cp311-win_amd64.whl (185 kB)
+2026-11-28T08:41:06.4313588Z Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+2026-11-28T08:41:06.4552942Z Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+2026-11-28T08:41:06.4776775Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-11-28T08:41:06.5076874Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T08:41:06.5325692Z Downloading lxml-6.2.0-cp311-cp311-win_amd64.whl (4.1 MB)
+2026-11-28T08:41:06.5641473Z    ---------------------------------------- 4.1/4.1 MB 123.8 MB/s  0:00:00
+2026-11-28T08:41:06.5755191Z Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl (12.6 MB)
+2026-11-28T08:41:06.7683752Z    ---------------------------------------- 12.6/12.6 MB 66.0 MB/s  0:00:00
+2026-11-28T08:41:06.7777909Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T08:41:06.8004451Z    ---------------------------------------- 1.3/1.3 MB 30.9 MB/s  0:00:00
+2026-11-28T08:41:06.8133635Z Downloading pyyaml-6.0.4-cp311-cp311-win_amd64.whl (161 kB)
+2026-11-28T08:41:06.8387156Z Downloading regex-2026.11.25-cp311-cp311-win_amd64.whl (282 kB)
+2026-11-28T08:41:06.8654353Z Downloading soupsieve-4.1.3-py3-none-any.whl (59 kB)
+2026-11-28T08:41:06.8864845Z Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-28T08:41:06.9211535Z Downloading typer-0.29.3-py3-none-any.whl (121 kB)
+2026-11-28T08:41:06.9511963Z Downloading annotated_doc-0.0.7-py3-none-any.whl (5.3 kB)
+2026-11-28T08:41:06.9740180Z Downloading pydantic-2.14.4-py3-none-any.whl (494 kB)
+2026-11-28T08:41:07.0062920Z Downloading pydantic_core-2.50.5-cp311-cp311-win_amd64.whl (2.3 MB)
+2026-11-28T08:41:07.0299075Z    ---------------------------------------- 2.3/2.3 MB 134.0 MB/s  0:00:00
+2026-11-28T08:41:07.0377130Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-11-28T08:41:07.0573613Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-11-28T08:41:07.0827634Z Downloading markdown_it_py-4.3.0-py3-none-any.whl (96 kB)
+2026-11-28T08:41:07.1074873Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-11-28T08:41:07.1377574Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-11-28T08:41:07.1612519Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T08:41:07.1814433Z Downloading typing_inspection-0.4.5-py3-none-any.whl (14 kB)
+2026-11-28T08:41:07.2145016Z Downloading anyio-4.16.0-py3-none-any.whl (134 kB)
+2026-11-28T08:41:07.2538941Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-11-28T08:41:07.2929237Z Downloading certifi-2026.11.20-py3-none-any.whl (127 kB)
+2026-11-28T08:41:07.3292307Z Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl (212 kB)
+2026-11-28T08:41:07.3625460Z Downloading click-8.5.1-py3-none-any.whl (126 kB)
+2026-11-28T08:41:07.4028472Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-11-28T08:41:07.4366909Z Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+2026-11-28T08:41:07.4604159Z Downloading cloudpickle-3.1.3-py3-none-any.whl (22 kB)
+2026-11-28T08:41:07.4813262Z Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+2026-11-28T08:41:07.7053384Z Building wheels for collected packages: universal-research-library
+2026-11-28T08:41:07.7119077Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T08:41:09.2302292Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T08:41:09.2314120Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'bootstrap.vendor.cairn_extractors' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2315564Z   !!
+2026-11-28T08:41:09.2315779Z   
+2026-11-28T08:41:09.2316084Z           ********************************************************************************
+2026-11-28T08:41:09.2316508Z           ############################
+2026-11-28T08:41:09.2316841Z           # Package would be ignored #
+2026-11-28T08:41:09.2317149Z           ############################
+2026-11-28T08:41:09.2317649Z           Python recognizes 'bootstrap.vendor.cairn_extractors' as an importable package[^1],
+2026-11-28T08:41:09.2318290Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2318671Z   
+2026-11-28T08:41:09.2319051Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2319785Z           package, please make sure that 'bootstrap.vendor.cairn_extractors' is explicitly added
+2026-11-28T08:41:09.2320380Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2320711Z   
+2026-11-28T08:41:09.2321054Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2321864Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2322379Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2322714Z   
+2026-11-28T08:41:09.2323069Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2323547Z   
+2026-11-28T08:41:09.2323949Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2324656Z   
+2026-11-28T08:41:09.2325054Z           If you don't want 'bootstrap.vendor.cairn_extractors' to be distributed and are
+2026-11-28T08:41:09.2325849Z           already explicitly excluding 'bootstrap.vendor.cairn_extractors' via
+2026-11-28T08:41:09.2326650Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2327338Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2327965Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2328397Z   
+2026-11-28T08:41:09.2328765Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2329254Z   
+2026-11-28T08:41:09.2329595Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2330044Z   
+2026-11-28T08:41:09.2330238Z   
+2026-11-28T08:41:09.2330940Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2331466Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2331961Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2332513Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2333115Z           ********************************************************************************
+2026-11-28T08:41:09.2333485Z   
+2026-11-28T08:41:09.2333677Z   !!
+2026-11-28T08:41:09.2333883Z     check.warn(importable)
+2026-11-28T08:41:09.2335161Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2336438Z   !!
+2026-11-28T08:41:09.2336631Z   
+2026-11-28T08:41:09.2336912Z           ********************************************************************************
+2026-11-28T08:41:09.2337291Z           ############################
+2026-11-28T08:41:09.2337588Z           # Package would be ignored #
+2026-11-28T08:41:09.2337893Z           ############################
+2026-11-28T08:41:09.2338427Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T08:41:09.2339119Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2339524Z   
+2026-11-28T08:41:09.2339919Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2340700Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T08:41:09.2341328Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2341659Z   
+2026-11-28T08:41:09.2341996Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2342576Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2343081Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2343421Z   
+2026-11-28T08:41:09.2343802Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2344289Z   
+2026-11-28T08:41:09.2344672Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2345162Z   
+2026-11-28T08:41:09.2345597Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T08:41:09.2346359Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T08:41:09.2347053Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2347679Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2348302Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2348732Z   
+2026-11-28T08:41:09.2349121Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2349619Z   
+2026-11-28T08:41:09.2349950Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2350382Z   
+2026-11-28T08:41:09.2350568Z   
+2026-11-28T08:41:09.2350901Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2351419Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2351917Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2352440Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2352905Z           ********************************************************************************
+2026-11-28T08:41:09.2353287Z   
+2026-11-28T08:41:09.2353478Z   !!
+2026-11-28T08:41:09.2353880Z     check.warn(importable)
+2026-11-28T08:41:09.2355165Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2356462Z   !!
+2026-11-28T08:41:09.2356752Z   
+2026-11-28T08:41:09.2357021Z           ********************************************************************************
+2026-11-28T08:41:09.2357437Z           ############################
+2026-11-28T08:41:09.2357736Z           # Package would be ignored #
+2026-11-28T08:41:09.2358025Z           ############################
+2026-11-28T08:41:09.2358559Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T08:41:09.2359221Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2359613Z   
+2026-11-28T08:41:09.2360013Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2360786Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T08:41:09.2361411Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2361750Z   
+2026-11-28T08:41:09.2362097Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2362693Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2363181Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2363518Z   
+2026-11-28T08:41:09.2363893Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2364502Z   
+2026-11-28T08:41:09.2364882Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2365366Z   
+2026-11-28T08:41:09.2365809Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T08:41:09.2366593Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T08:41:09.2367290Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2367965Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2368626Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2369086Z   
+2026-11-28T08:41:09.2369465Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2369943Z   
+2026-11-28T08:41:09.2370267Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2370713Z   
+2026-11-28T08:41:09.2396044Z   
+2026-11-28T08:41:09.2396589Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2397123Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2397531Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2397877Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2398165Z           ********************************************************************************
+2026-11-28T08:41:09.2398399Z   
+2026-11-28T08:41:09.2398527Z   !!
+2026-11-28T08:41:09.2398666Z     check.warn(importable)
+2026-11-28T08:41:09.2399389Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2400101Z   !!
+2026-11-28T08:41:09.2400223Z   
+2026-11-28T08:41:09.2400389Z           ********************************************************************************
+2026-11-28T08:41:09.2400631Z           ############################
+2026-11-28T08:41:09.2400979Z           # Package would be ignored #
+2026-11-28T08:41:09.2401164Z           ############################
+2026-11-28T08:41:09.2401485Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T08:41:09.2401867Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2402174Z   
+2026-11-28T08:41:09.2402406Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2402837Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T08:41:09.2403196Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2403389Z   
+2026-11-28T08:41:09.2403593Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2403934Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2404227Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2404424Z   
+2026-11-28T08:41:09.2404643Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2404919Z   
+2026-11-28T08:41:09.2405166Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2405463Z   
+2026-11-28T08:41:09.2405724Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T08:41:09.2406130Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T08:41:09.2406506Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2406872Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2407234Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2407491Z   
+2026-11-28T08:41:09.2407717Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2407993Z   
+2026-11-28T08:41:09.2408204Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2408456Z   
+2026-11-28T08:41:09.2408572Z   
+2026-11-28T08:41:09.2408773Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2409072Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2409354Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2409658Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2409936Z           ********************************************************************************
+2026-11-28T08:41:09.2410155Z   
+2026-11-28T08:41:09.2410289Z   !!
+2026-11-28T08:41:09.2410429Z     check.warn(importable)
+2026-11-28T08:41:09.2411130Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2411833Z   !!
+2026-11-28T08:41:09.2411958Z   
+2026-11-28T08:41:09.2412126Z           ********************************************************************************
+2026-11-28T08:41:09.2412361Z           ############################
+2026-11-28T08:41:09.2412551Z           # Package would be ignored #
+2026-11-28T08:41:09.2412730Z           ############################
+2026-11-28T08:41:09.2413044Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T08:41:09.2413422Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2413652Z   
+2026-11-28T08:41:09.2413889Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2414996Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T08:41:09.2415390Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2415598Z   
+2026-11-28T08:41:09.2415799Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2416140Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2416505Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2416701Z   
+2026-11-28T08:41:09.2416928Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2417208Z   
+2026-11-28T08:41:09.2417438Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2417703Z   
+2026-11-28T08:41:09.2417952Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T08:41:09.2418370Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T08:41:09.2418746Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2419117Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2419475Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2419728Z   
+2026-11-28T08:41:09.2419950Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2420232Z   
+2026-11-28T08:41:09.2420451Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2420712Z   
+2026-11-28T08:41:09.2420831Z   
+2026-11-28T08:41:09.2421036Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2421337Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2421632Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2421938Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2422213Z           ********************************************************************************
+2026-11-28T08:41:09.2422430Z   
+2026-11-28T08:41:09.2422544Z   !!
+2026-11-28T08:41:09.2422690Z     check.warn(importable)
+2026-11-28T08:41:09.2423366Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2424037Z   !!
+2026-11-28T08:41:09.2424159Z   
+2026-11-28T08:41:09.2424319Z           ********************************************************************************
+2026-11-28T08:41:09.2424635Z           ############################
+2026-11-28T08:41:09.2424894Z           # Package would be ignored #
+2026-11-28T08:41:09.2425141Z           ############################
+2026-11-28T08:41:09.2425478Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T08:41:09.2425837Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2426071Z   
+2026-11-28T08:41:09.2426291Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2426690Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T08:41:09.2427009Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2427209Z   
+2026-11-28T08:41:09.2427410Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2427959Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2428440Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2428640Z   
+2026-11-28T08:41:09.2428949Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2429446Z   
+2026-11-28T08:41:09.2429693Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2429976Z   
+2026-11-28T08:41:09.2430180Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T08:41:09.2430528Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T08:41:09.2430992Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2431457Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2431817Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2432082Z   
+2026-11-28T08:41:09.2432305Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2432582Z   
+2026-11-28T08:41:09.2432784Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2433033Z   
+2026-11-28T08:41:09.2433151Z   
+2026-11-28T08:41:09.2433347Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2433643Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2433931Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2434242Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2434524Z           ********************************************************************************
+2026-11-28T08:41:09.2434741Z   
+2026-11-28T08:41:09.2434858Z   !!
+2026-11-28T08:41:09.2434998Z     check.warn(importable)
+2026-11-28T08:41:09.2435713Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-05qprcg9\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T08:41:09.2436423Z   !!
+2026-11-28T08:41:09.2436540Z   
+2026-11-28T08:41:09.2436701Z           ********************************************************************************
+2026-11-28T08:41:09.2436940Z           ############################
+2026-11-28T08:41:09.2437126Z           # Package would be ignored #
+2026-11-28T08:41:09.2437310Z           ############################
+2026-11-28T08:41:09.2437619Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T08:41:09.2437995Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:09.2438228Z   
+2026-11-28T08:41:09.2438456Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:09.2438893Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T08:41:09.2439246Z           to the `packages` configuration field.
+2026-11-28T08:41:09.2439439Z   
+2026-11-28T08:41:09.2439638Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:09.2439973Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:09.2440253Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:09.2440448Z   
+2026-11-28T08:41:09.2440672Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:09.2440944Z   
+2026-11-28T08:41:09.2441167Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:09.2441434Z   
+2026-11-28T08:41:09.2441680Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T08:41:09.2442077Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T08:41:09.2442448Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:09.2442905Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:09.2443267Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:09.2443520Z   
+2026-11-28T08:41:09.2443739Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:09.2444076Z   
+2026-11-28T08:41:09.2444279Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:09.2444524Z   
+2026-11-28T08:41:09.2444638Z   
+2026-11-28T08:41:09.2444838Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:09.2445129Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:09.2445413Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:09.2445714Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:09.2445986Z           ********************************************************************************
+2026-11-28T08:41:09.2446198Z   
+2026-11-28T08:41:09.2446318Z   !!
+2026-11-28T08:41:09.2446456Z     check.warn(importable)
+2026-11-28T08:41:09.2447052Z   Created wheel for universal-research-library: filename=universal_research_library-0.3.0.dev1-py3-none-any.whl size=2677245 sha256=af78aee571f2837bb96bc1db07ea9d5894685afd4f5d348b035b8a0ed5aefc9c
+2026-11-28T08:41:09.2447958Z   Stored in directory: C:\Users\runneradmin\AppData\Local\Temp\pip-ephem-wheel-cache-cb0dmb6p\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+2026-11-28T08:41:09.2487358Z Successfully built universal-research-library
+2026-11-28T08:41:09.3573737Z Installing collected packages: pylatexenc, zstandard, typing-extensions, soupsieve, shellingham, regex, rapidfuzz, quickjs-ng, pyyaml, pypdfium2, pypdf, pygments, pycparser, pluggy, platformdirs, Pillow, packaging, numpy, mdurl, lxml, iniconfig, idna, hf-xet, h11, fsspec, filelock, et-xmlfile, defusedxml, comtypes, colorama, cloudpickle, click, charset-normalizer, certifi, bibtexparser, annotated-types, annotated-doc, typing-inspection, tqdm, reportlab, python-docx, pytest, pytesseract, pydantic-core, py3langid, openpyxl, markdown-it-py, joblib, httpcore, cffi, beautifulsoup4, anyio, universal-research-library, rich, pydantic, nltk, httpx, cryptography, typer, huggingface-hub
+2026-11-28T08:41:33.9431406Z 
+2026-11-28T08:41:33.9458664Z Successfully installed Pillow-13.0.0 annotated-doc-0.0.7 annotated-types-0.8.0 anyio-4.16.0 beautifulsoup4-4.15.0 bibtexparser-2.1.0 certifi-2026.11.20 cffi-2.1.1 charset-normalizer-3.5.3 click-8.5.1 cloudpickle-3.1.3 colorama-0.4.6 comtypes-1.5.0 cryptography-50.0.2 defusedxml-0.7.1 et-xmlfile-2.0.0 filelock-3.29.0 fsspec-2026.9.0 h11-0.16.0 hf-xet-1.8.0 httpcore-1.0.9 httpx-0.29.0 huggingface-hub-1.16.1 idna-3.20 iniconfig-2.3.1 joblib-1.6.0 lxml-6.2.0 markdown-it-py-4.3.0 mdurl-0.1.2 nltk-3.9.2 numpy-2.4.6 openpyxl-3.1.5 packaging-26.4 platformdirs-4.10.0 pluggy-1.7.0 py3langid-0.4.0 pycparser-3.12 pydantic-2.14.4 pydantic-core-2.50.5 pygments-2.21.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 pytesseract-0.3.13 pytest-9.0.2 python-docx-1.2.0 pyyaml-6.0.4 quickjs-ng-0.18.0.2 rapidfuzz-3.14.6 regex-2026.11.25 reportlab-4.4.9 rich-15.0.0 shellingham-1.5.4 soupsieve-4.1.3 tqdm-4.70.1 typer-0.29.3 typing-extensions-4.16.0 typing-inspection-0.4.5 universal-research-library-0.3.0.dev1 zstandard-0.25.0
+2026-11-28T08:41:35.6003089Z Requirement already satisfied: cffi==2.1.1 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from -r packaging/trusted-client.lock (line 4)) (2.1.1)
+2026-11-28T08:41:35.6006449Z Requirement already satisfied: cryptography==50.0.2 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from -r packaging/trusted-client.lock (line 104)) (50.0.2)
+2026-11-28T08:41:35.6009392Z Requirement already satisfied: pycparser==3.12 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from -r packaging/trusted-client.lock (line 163)) (3.12)
+2026-11-28T08:41:36.2075971Z Collecting securesystemslib==1.6.0 (from -r packaging/trusted-client.lock (line 165))
+2026-11-28T08:41:36.3392238Z   Downloading securesystemslib-1.6.0-py3-none-any.whl (874 kB)
+2026-11-28T08:41:36.4571228Z      ---------------------------------------- 874.8/874.8 kB 9.7 MB/s  0:00:00
+2026-11-28T08:41:36.4969503Z Collecting tuf==7.0.1 (from -r packaging/trusted-client.lock (line 167))
+2026-11-28T08:41:36.5047846Z   Downloading tuf-7.0.1-py3-none-any.whl (56 kB)
+2026-11-28T08:41:36.5682243Z Collecting urllib3==2.8.0 (from -r packaging/trusted-client.lock (line 169))
+2026-11-28T08:41:36.5762053Z   Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+2026-11-28T08:41:36.6735305Z Installing collected packages: urllib3, securesystemslib, tuf
+2026-11-28T08:41:36.9754695Z 
+2026-11-28T08:41:36.9778000Z Successfully installed securesystemslib-1.6.0 tuf-7.0.1 urllib3-2.8.0
+2026-11-28T08:41:37.0456522Z ##[group]Run python -m pip install ".[desktop]"
+2026-11-28T08:41:37.0456887Z [36;1mpython -m pip install ".[desktop]"[0m
+2026-11-28T08:41:37.0457148Z [36;1mpython -m pip install wxPython==4.2.4[0m
+2026-11-28T08:41:37.0457384Z [36;1mpython -m pip check[0m
+2026-11-28T08:41:37.0467859Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:41:37.0468157Z env:
+2026-11-28T08:41:37.0468385Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:41:37.0468642Z   PYTHONUTF8: 1
+2026-11-28T08:41:37.0468807Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:41:37.0468979Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:41:37.0469133Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:41:37.0469303Z   DO_NOT_TRACK: 1
+2026-11-28T08:41:37.0469461Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:41:37.0469716Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:37.0470106Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:41:37.0470443Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:37.0470744Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:37.0471036Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:37.0471277Z ##[endgroup]
+2026-11-28T08:41:38.0460394Z Processing .\.
+2026-11-28T08:41:38.0490819Z   Installing build dependencies: started
+2026-11-28T08:41:40.2375924Z   Installing build dependencies: finished with status 'done'
+2026-11-28T08:41:40.2389638Z   Getting requirements to build wheel: started
+2026-11-28T08:41:40.9034926Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T08:41:40.9059222Z   Preparing metadata (pyproject.toml): started
+2026-11-28T08:41:41.6340681Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T08:41:41.6392928Z Requirement already satisfied: pypdf==7.1.1 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (7.1.1)
+2026-11-28T08:41:41.6395961Z Requirement already satisfied: pypdfium2==5.13.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (5.13.0)
+2026-11-28T08:41:41.6398982Z Requirement already satisfied: python-docx==1.2.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (1.2.0)
+2026-11-28T08:41:41.6401829Z Requirement already satisfied: platformdirs==4.10.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (4.10.0)
+2026-11-28T08:41:41.6404674Z Requirement already satisfied: filelock==3.29.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (3.29.0)
+2026-11-28T08:41:41.6407516Z Requirement already satisfied: Pillow==13.0.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (13.0.0)
+2026-11-28T08:41:41.6410385Z Requirement already satisfied: py3langid==0.4.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (0.4.0)
+2026-11-28T08:41:41.6413213Z Requirement already satisfied: defusedxml==0.7.1 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (0.7.1)
+2026-11-28T08:41:41.6417036Z Requirement already satisfied: comtypes==1.5.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (1.5.0)
+2026-11-28T08:41:41.6420424Z Requirement already satisfied: bibtexparser==2.1.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (2.1.0)
+2026-11-28T08:41:41.6424645Z Requirement already satisfied: pylatexenc==2.11 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (2.11)
+2026-11-28T08:41:41.6425752Z Requirement already satisfied: quickjs-ng==0.18.0.2 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from universal-research-library==0.3.0.dev1) (0.18.0.2)
+2026-11-28T08:41:41.8771307Z Collecting wxPython==4.2.4 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:41:42.0074373Z   Downloading wxpython-4.2.4-cp311-cp311-win_amd64.whl.metadata (3.7 kB)
+2026-11-28T08:41:42.0332779Z Requirement already satisfied: numpy>=2.0.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from py3langid==0.4.0->universal-research-library==0.3.0.dev1) (2.4.6)
+2026-11-28T08:41:42.0366585Z Requirement already satisfied: lxml>=3.1.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from python-docx==1.2.0->universal-research-library==0.3.0.dev1) (6.2.0)
+2026-11-28T08:41:42.0369842Z Requirement already satisfied: typing_extensions>=4.9.0 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from python-docx==1.2.0->universal-research-library==0.3.0.dev1) (4.16.0)
+2026-11-28T08:41:42.0500830Z Downloading wxpython-4.2.4-cp311-cp311-win_amd64.whl (16.5 MB)
+2026-11-28T08:41:42.4641719Z    ---------------------------------------- 16.5/16.5 MB 47.3 MB/s  0:00:00
+2026-11-28T08:41:42.4969534Z Building wheels for collected packages: universal-research-library
+2026-11-28T08:41:42.5029622Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T08:41:43.9307548Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T08:41:43.9318781Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'bootstrap.vendor.cairn_extractors' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9320049Z   !!
+2026-11-28T08:41:43.9320252Z   
+2026-11-28T08:41:43.9320557Z           ********************************************************************************
+2026-11-28T08:41:43.9320950Z           ############################
+2026-11-28T08:41:43.9321453Z           # Package would be ignored #
+2026-11-28T08:41:43.9321743Z           ############################
+2026-11-28T08:41:43.9322239Z           Python recognizes 'bootstrap.vendor.cairn_extractors' as an importable package[^1],
+2026-11-28T08:41:43.9322839Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9323225Z   
+2026-11-28T08:41:43.9323582Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9324158Z           package, please make sure that 'bootstrap.vendor.cairn_extractors' is explicitly added
+2026-11-28T08:41:43.9324495Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9324698Z   
+2026-11-28T08:41:43.9324928Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9325287Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9325584Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9325787Z   
+2026-11-28T08:41:43.9326120Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9326560Z   
+2026-11-28T08:41:43.9326938Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9327394Z   
+2026-11-28T08:41:43.9328025Z           If you don't want 'bootstrap.vendor.cairn_extractors' to be distributed and are
+2026-11-28T08:41:43.9328788Z           already explicitly excluding 'bootstrap.vendor.cairn_extractors' via
+2026-11-28T08:41:43.9329723Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9330410Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9331042Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9332572Z   
+2026-11-28T08:41:43.9332992Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9333484Z   
+2026-11-28T08:41:43.9333849Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9334289Z   
+2026-11-28T08:41:43.9334504Z   
+2026-11-28T08:41:43.9334856Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9335356Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9335863Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9336416Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9336908Z           ********************************************************************************
+2026-11-28T08:41:43.9337293Z   
+2026-11-28T08:41:43.9337486Z   !!
+2026-11-28T08:41:43.9337716Z     check.warn(importable)
+2026-11-28T08:41:43.9339001Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9340244Z   !!
+2026-11-28T08:41:43.9340448Z   
+2026-11-28T08:41:43.9340705Z           ********************************************************************************
+2026-11-28T08:41:43.9341097Z           ############################
+2026-11-28T08:41:43.9341416Z           # Package would be ignored #
+2026-11-28T08:41:43.9341730Z           ############################
+2026-11-28T08:41:43.9342297Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T08:41:43.9342985Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9343391Z   
+2026-11-28T08:41:43.9343785Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9344581Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T08:41:43.9345184Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9345515Z   
+2026-11-28T08:41:43.9345862Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9346455Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9346964Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9347309Z   
+2026-11-28T08:41:43.9347703Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9348194Z   
+2026-11-28T08:41:43.9348590Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9349064Z   
+2026-11-28T08:41:43.9349480Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T08:41:43.9350180Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T08:41:43.9350837Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9351501Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9352136Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9352736Z   
+2026-11-28T08:41:43.9353131Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9353603Z   
+2026-11-28T08:41:43.9353943Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9354375Z   
+2026-11-28T08:41:43.9354549Z   
+2026-11-28T08:41:43.9354879Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9355401Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9356042Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9356595Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9357084Z           ********************************************************************************
+2026-11-28T08:41:43.9357461Z   
+2026-11-28T08:41:43.9357655Z   !!
+2026-11-28T08:41:43.9357874Z     check.warn(importable)
+2026-11-28T08:41:43.9359140Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9360377Z   !!
+2026-11-28T08:41:43.9360584Z   
+2026-11-28T08:41:43.9360855Z           ********************************************************************************
+2026-11-28T08:41:43.9361256Z           ############################
+2026-11-28T08:41:43.9361580Z           # Package would be ignored #
+2026-11-28T08:41:43.9361886Z           ############################
+2026-11-28T08:41:43.9362440Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T08:41:43.9363124Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9363529Z   
+2026-11-28T08:41:43.9363939Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9364713Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T08:41:43.9365348Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9365692Z   
+2026-11-28T08:41:43.9366047Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9366661Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9367189Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9367542Z   
+2026-11-28T08:41:43.9367939Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9368442Z   
+2026-11-28T08:41:43.9368840Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9369332Z   
+2026-11-28T08:41:43.9369755Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T08:41:43.9370509Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T08:41:43.9371179Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9371805Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9372419Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9372877Z   
+2026-11-28T08:41:43.9373262Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9373744Z   
+2026-11-28T08:41:43.9374078Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9374520Z   
+2026-11-28T08:41:43.9374711Z   
+2026-11-28T08:41:43.9375042Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9375553Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9376176Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9376703Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9377188Z           ********************************************************************************
+2026-11-28T08:41:43.9377564Z   
+2026-11-28T08:41:43.9377752Z   !!
+2026-11-28T08:41:43.9377975Z     check.warn(importable)
+2026-11-28T08:41:43.9379397Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9380659Z   !!
+2026-11-28T08:41:43.9380812Z   
+2026-11-28T08:41:43.9381032Z           ********************************************************************************
+2026-11-28T08:41:43.9381367Z           ############################
+2026-11-28T08:41:43.9381641Z           # Package would be ignored #
+2026-11-28T08:41:43.9381909Z           ############################
+2026-11-28T08:41:43.9382398Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T08:41:43.9383006Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9383361Z   
+2026-11-28T08:41:43.9383707Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9384393Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T08:41:43.9384986Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9385298Z   
+2026-11-28T08:41:43.9385623Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9386179Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9386661Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9386965Z   
+2026-11-28T08:41:43.9387292Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9387715Z   
+2026-11-28T08:41:43.9388056Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9388527Z   
+2026-11-28T08:41:43.9388947Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T08:41:43.9389615Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T08:41:43.9390241Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9390857Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9391474Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9391910Z   
+2026-11-28T08:41:43.9392272Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9392752Z   
+2026-11-28T08:41:43.9393080Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9393513Z   
+2026-11-28T08:41:43.9393694Z   
+2026-11-28T08:41:43.9394020Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9394521Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9394999Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9395520Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9395974Z           ********************************************************************************
+2026-11-28T08:41:43.9396339Z   
+2026-11-28T08:41:43.9396527Z   !!
+2026-11-28T08:41:43.9396740Z     check.warn(importable)
+2026-11-28T08:41:43.9397919Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9399272Z   !!
+2026-11-28T08:41:43.9399446Z   
+2026-11-28T08:41:43.9399714Z           ********************************************************************************
+2026-11-28T08:41:43.9400054Z           ############################
+2026-11-28T08:41:43.9400342Z           # Package would be ignored #
+2026-11-28T08:41:43.9400639Z           ############################
+2026-11-28T08:41:43.9401960Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T08:41:43.9402637Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9403030Z   
+2026-11-28T08:41:43.9403412Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9404156Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T08:41:43.9404761Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9405067Z   
+2026-11-28T08:41:43.9405691Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9406286Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9406772Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9407105Z   
+2026-11-28T08:41:43.9407479Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9407917Z   
+2026-11-28T08:41:43.9408288Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9408735Z   
+2026-11-28T08:41:43.9409111Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T08:41:43.9409767Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T08:41:43.9410425Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9411068Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9411679Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9412114Z   
+2026-11-28T08:41:43.9412476Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9412932Z   
+2026-11-28T08:41:43.9413256Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9413666Z   
+2026-11-28T08:41:43.9413834Z   
+2026-11-28T08:41:43.9414192Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9414649Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9415074Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9415550Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9415979Z           ********************************************************************************
+2026-11-28T08:41:43.9416312Z   
+2026-11-28T08:41:43.9416483Z   !!
+2026-11-28T08:41:43.9416682Z     check.warn(importable)
+2026-11-28T08:41:43.9417725Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9418462Z   !!
+2026-11-28T08:41:43.9418587Z   
+2026-11-28T08:41:43.9418758Z           ********************************************************************************
+2026-11-28T08:41:43.9418997Z           ############################
+2026-11-28T08:41:43.9419186Z           # Package would be ignored #
+2026-11-28T08:41:43.9419365Z           ############################
+2026-11-28T08:41:43.9419790Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T08:41:43.9420167Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9420403Z   
+2026-11-28T08:41:43.9420641Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9421051Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T08:41:43.9421373Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9421633Z   
+2026-11-28T08:41:43.9421840Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9422186Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9422483Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9422688Z   
+2026-11-28T08:41:43.9422912Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9423191Z   
+2026-11-28T08:41:43.9423422Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9423696Z   
+2026-11-28T08:41:43.9423910Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T08:41:43.9424257Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T08:41:43.9424612Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9424980Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9425343Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9425598Z   
+2026-11-28T08:41:43.9425815Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9426086Z   
+2026-11-28T08:41:43.9426284Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9426534Z   
+2026-11-28T08:41:43.9426650Z   
+2026-11-28T08:41:43.9426848Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9427142Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9427434Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9427734Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9428117Z           ********************************************************************************
+2026-11-28T08:41:43.9428465Z   
+2026-11-28T08:41:43.9428584Z   !!
+2026-11-28T08:41:43.9428724Z     check.warn(importable)
+2026-11-28T08:41:43.9429424Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-b7lwrn22\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T08:41:43.9430118Z   !!
+2026-11-28T08:41:43.9430248Z   
+2026-11-28T08:41:43.9430415Z           ********************************************************************************
+2026-11-28T08:41:43.9430646Z           ############################
+2026-11-28T08:41:43.9430838Z           # Package would be ignored #
+2026-11-28T08:41:43.9431020Z           ############################
+2026-11-28T08:41:43.9431334Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T08:41:43.9431718Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:41:43.9431951Z   
+2026-11-28T08:41:43.9432331Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:41:43.9433051Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T08:41:43.9433677Z           to the `packages` configuration field.
+2026-11-28T08:41:43.9433982Z   
+2026-11-28T08:41:43.9434341Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:41:43.9434948Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:41:43.9435291Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:41:43.9435543Z   
+2026-11-28T08:41:43.9435819Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:41:43.9436135Z   
+2026-11-28T08:41:43.9436507Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:41:43.9436835Z   
+2026-11-28T08:41:43.9437127Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T08:41:43.9446749Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T08:41:43.9447364Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:41:43.9447764Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:41:43.9448149Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:41:43.9448427Z   
+2026-11-28T08:41:43.9448662Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:41:43.9448941Z   
+2026-11-28T08:41:43.9449162Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:41:43.9449434Z   
+2026-11-28T08:41:43.9449549Z   
+2026-11-28T08:41:43.9449757Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:41:43.9450065Z                 even if it does not contain any `.py` files.
+2026-11-28T08:41:43.9450359Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:41:43.9450674Z                 directory, all directories are treated like packages.
+2026-11-28T08:41:43.9450950Z           ********************************************************************************
+2026-11-28T08:41:43.9451180Z   
+2026-11-28T08:41:43.9451306Z   !!
+2026-11-28T08:41:43.9451447Z     check.warn(importable)
+2026-11-28T08:41:43.9452042Z   Created wheel for universal-research-library: filename=universal_research_library-0.3.0.dev1-py3-none-any.whl size=2677245 sha256=325ec697ba28f9117ae864064ed2e701f6ad973299ac228a9458ce3bd2632a05
+2026-11-28T08:41:43.9452946Z   Stored in directory: C:\Users\runneradmin\AppData\Local\Temp\pip-ephem-wheel-cache-t7ek5qz9\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+2026-11-28T08:41:43.9494145Z Successfully built universal-research-library
+2026-11-28T08:41:44.0272089Z Installing collected packages: wxPython, universal-research-library
+2026-11-28T08:41:47.4938725Z   Attempting uninstall: universal-research-library
+2026-11-28T08:41:47.4967382Z     Found existing installation: universal-research-library 0.3.0.dev1
+2026-11-28T08:41:47.5643599Z     Uninstalling universal-research-library-0.3.0.dev1:
+2026-11-28T08:41:47.5834781Z       Successfully uninstalled universal-research-library-0.3.0.dev1
+2026-11-28T08:41:49.6990304Z 
+2026-11-28T08:41:49.7015069Z Successfully installed universal-research-library-0.3.0.dev1 wxPython-4.2.4
+2026-11-28T08:41:50.7203597Z Requirement already satisfied: wxPython==4.2.4 in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (4.2.4)
+2026-11-28T08:41:50.7214577Z Requirement already satisfied: numpy in C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages (from wxPython==4.2.4) (2.4.6)
+2026-11-28T08:41:51.1151942Z No broken requirements found.
+2026-11-28T08:41:51.1512211Z ##[group]Run mkdir -p ci-word-native
+2026-11-28T08:41:51.1512597Z [36;1mmkdir -p ci-word-native[0m
+2026-11-28T08:41:51.1512842Z [36;1mcat > ci-word-native/native-bindings.py <<'PY'[0m
+2026-11-28T08:41:51.1513091Z [36;1mfrom hashlib import sha256[0m
+2026-11-28T08:41:51.1513288Z [36;1mimport importlib[0m
+2026-11-28T08:41:51.1513470Z [36;1mimport importlib.util[0m
+2026-11-28T08:41:51.1513808Z [36;1mimport json[0m
+2026-11-28T08:41:51.1513959Z [36;1mimport os[0m
+2026-11-28T08:41:51.1514121Z [36;1mfrom pathlib import Path[0m
+2026-11-28T08:41:51.1514304Z [36;1mimport sys[0m
+2026-11-28T08:41:51.1514463Z [36;1mimport sysconfig[0m
+2026-11-28T08:41:51.1514629Z [36;1mimport subprocess[0m
+2026-11-28T08:41:51.1514792Z [36;1m[0m
+2026-11-28T08:41:51.1515007Z [36;1massert sys.flags.isolated and not os.environ.get('PYTHONPATH')[0m
+2026-11-28T08:41:51.1515292Z [36;1massert len(sys.argv) == 3[0m
+2026-11-28T08:41:51.1515527Z [36;1mphase, label = sys.argv[1:][0m
+2026-11-28T08:41:51.1515827Z [36;1massert phase in ('before', 'after') and label in ('word-controls', 'word-office')[0m
+2026-11-28T08:41:51.1516125Z [36;1mroot = Path.cwd().resolve()[0m
+2026-11-28T08:41:51.1516355Z [36;1msource = (root / 'src' / 'carr_library').resolve()[0m
+2026-11-28T08:41:51.1516685Z [36;1minstalled = (Path(sysconfig.get_path('purelib')) / 'carr_library').resolve()[0m
+2026-11-28T08:41:51.1517086Z [36;1massert source != installed and not installed.is_relative_to(root / 'src')[0m
+2026-11-28T08:41:51.1517424Z [36;1mexpected_head = os.environ['CARR_WORD_NATIVE_HEAD'][0m
+2026-11-28T08:41:51.1517773Z [36;1massert len(expected_head) == 40 and all(c in '0123456789abcdef' for c in expected_head)[0m
+2026-11-28T08:41:51.1518208Z [36;1mobserved_head = subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True,[0m
+2026-11-28T08:41:51.1518555Z [36;1m    text=True, timeout=10).stdout.strip()[0m
+2026-11-28T08:41:51.1518860Z [36;1massert observed_head == expected_head, (observed_head, expected_head)[0m
+2026-11-28T08:41:51.1519142Z [36;1mselected = installed[0m
+2026-11-28T08:41:51.1519316Z [36;1mmode = 'installed'[0m
+2026-11-28T08:41:51.1519515Z [36;1martifacts = root / 'ci-word-native'[0m
+2026-11-28T08:41:51.1521472Z [36;1mnames = ["carr_library.application","carr_library.durable_state","carr_library.academic_integration.documents","carr_library.academic_integration.formatting","carr_library.academic_integration.regeneration","carr_library.academic_integration.runtime_adapter","carr_library.academic_integration.doi","carr_library.academic_integration.word_com","carr_library.ui.citation_formatting","carr_library.ui.word_citations_dialog","carr_library.ui.academic_library_dialog","carr_library.citations.bibliography_workbench","carr_library.citations.csl","carr_library.research.export_file","carr_library.ui.desktop_app","carr_library.audio.process","carr_library.audio.models","carr_library.audio.cleanup","carr_library.native_runtime"][0m
+2026-11-28T08:41:51.1523388Z [36;1m[0m
+2026-11-28T08:41:51.1523538Z [36;1mdef package_inventory(directory):[0m
+2026-11-28T08:41:51.1523835Z [36;1m    assert directory.is_dir() and not directory.is_symlink(), str(directory)[0m
+2026-11-28T08:41:51.1524120Z [36;1m    result = {}[0m
+2026-11-28T08:41:51.1524318Z [36;1m    for path in sorted(directory.rglob("*.py")):[0m
+2026-11-28T08:41:51.1524607Z [36;1m        assert path.is_file() and not path.is_symlink(), str(path)[0m
+2026-11-28T08:41:51.1524999Z [36;1m        result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()[0m
+2026-11-28T08:41:51.1525387Z [36;1m    assert result and "__init__.py" in result, str(directory)[0m
+2026-11-28T08:41:51.1529179Z [36;1m    for relative in ["academic_integration/UPSTREAM.json","academic_integration/csl_worker.cjs","academic_integration/locales/locales-en-US.xml","academic_integration/locales/locales-sk-SK.xml","academic_integration/locales/locales-uk-UA.xml","academic_integration/styles/apa.csl","academic_integration/styles/chicago-author-date.csl","academic_integration/styles/chicago-fullnote-bibliography.csl","academic_integration/styles/harvard-cite-them-right.csl","academic_integration/styles/ieee.csl","academic_integration/styles/modern-language-association.csl","academic_integration/styles/nlm-citation-sequence.csl","academic_integration/vendor/LICENSE","academic_integration/vendor/LICENSE-AGPL-3.0.txt","academic_integration/vendor/LICENSE-CC-BY-SA-3.0.txt","academic_integration/vendor/LICENSE-CPAL-1.0.txt","academic_integration/vendor/NOTICE.txt","academic_integration/vendor/SORT-MACRO-CACHE-NOTICE.txt","academic_integration/vendor/citeproc-sort-macro-cache.json","academic_integration/vendor/citeproc.js"]:[0m
+2026-11-28T08:41:51.1532017Z [36;1m        path = directory / relative[0m
+2026-11-28T08:41:51.1532286Z [36;1m        assert path.is_file() and not path.is_symlink(), str(path)[0m
+2026-11-28T08:41:51.1532688Z [36;1m        result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()[0m
+2026-11-28T08:41:51.1533001Z [36;1m    return result[0m
+2026-11-28T08:41:51.1533167Z [36;1m[0m
+2026-11-28T08:41:51.1533291Z [36;1m[0m
+2026-11-28T08:41:51.1533443Z [36;1mexpected = package_inventory(source)[0m
+2026-11-28T08:41:51.1533834Z [36;1massert package_inventory(installed) == expected, 'Installed Python file set/content differs from checkout.'[0m
+2026-11-28T08:41:51.1534390Z [36;1minventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()[0m
+2026-11-28T08:41:51.1534746Z [36;1m[0m
+2026-11-28T08:41:51.1534875Z [36;1mdef origins():[0m
+2026-11-28T08:41:51.1535085Z [36;1m    package = importlib.import_module("carr_library")[0m
+2026-11-28T08:41:51.1535360Z [36;1m    actual_package = Path(package.__file__).resolve()[0m
+2026-11-28T08:41:51.1535721Z [36;1m    assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))[0m
+2026-11-28T08:41:51.1536039Z [36;1m    result = {}[0m
+2026-11-28T08:41:51.1536197Z [36;1m    for name in names:[0m
+2026-11-28T08:41:51.1536396Z [36;1m        spec = importlib.util.find_spec(name)[0m
+2026-11-28T08:41:51.1536649Z [36;1m        assert spec is not None and spec.origin, name[0m
+2026-11-28T08:41:51.1536894Z [36;1m        actual = Path(spec.origin).resolve()[0m
+2026-11-28T08:41:51.1537158Z [36;1m        relative = Path(*name.split(".")[1:]).with_suffix(".py")[0m
+2026-11-28T08:41:51.1537524Z [36;1m        assert actual == selected / relative, (name, str(actual), str(selected / relative))[0m
+2026-11-28T08:41:51.1537871Z [36;1m        digest = sha256(actual.read_bytes()).hexdigest()[0m
+2026-11-28T08:41:51.1538148Z [36;1m        assert digest == expected[relative.as_posix()], name[0m
+2026-11-28T08:41:51.1538438Z [36;1m        result[name] = {"path": str(actual), "sha256": digest}[0m
+2026-11-28T08:41:51.1538682Z [36;1m    return result[0m
+2026-11-28T08:41:51.1538836Z [36;1m[0m
+2026-11-28T08:41:51.1538959Z [36;1m[0m
+2026-11-28T08:41:51.1539122Z [36;1mscripts = [root / 'scripts' / name for name in ([0m
+2026-11-28T08:41:51.1539432Z [36;1m    'windows_word_controls_smoke.py', 'windows_word_citations_smoke.py',[0m
+2026-11-28T08:41:51.1539799Z [36;1m    'windows_speech_preparation_smoke.py', 'windows_publishing_smoke.py')][0m
+2026-11-28T08:41:51.1540110Z [36;1mscripts.append(Path(__file__).resolve())[0m
+2026-11-28T08:41:51.1540325Z [36;1mfor name in names:[0m
+2026-11-28T08:41:51.1540563Z [36;1m    path = source.joinpath(*name.split('.')[1:]).with_suffix('.py')[0m
+2026-11-28T08:41:51.1540860Z [36;1m    compile(path.read_bytes(), str(path), 'exec')[0m
+2026-11-28T08:41:51.1541079Z [36;1mfor path in scripts:[0m
+2026-11-28T08:41:51.1541277Z [36;1m    compile(path.read_bytes(), str(path), 'exec')[0m
+2026-11-28T08:41:51.1541600Z [36;1mproof = dict(schema='carr.native-installed-bindings/1', commit=observed_head,[0m
+2026-11-28T08:41:51.1542357Z [36;1m    source=str(source), installed=str(installed), package_files=expected,[0m
+2026-11-28T08:41:51.1542717Z [36;1m    package_inventory_sha256=inventory_digest, origins=origins(),[0m
+2026-11-28T08:41:51.1543082Z [36;1m    scripts={str(path): sha256(path.read_bytes()).hexdigest() for path in scripts})[0m
+2026-11-28T08:41:51.1543431Z [36;1mbefore = artifacts / (label + '-bindings-before.json')[0m
+2026-11-28T08:41:51.1543670Z [36;1mif phase == 'after':[0m
+2026-11-28T08:41:51.1544045Z [36;1m    assert before.is_file() and not before.is_symlink() and before.stat().st_size <= 8 * 1024**2[0m
+2026-11-28T08:41:51.1544559Z [36;1m    assert json.loads(before.read_bytes()) == proof, 'Installed/source/native binding changed during the actual probe.'[0m
+2026-11-28T08:41:51.1545001Z [36;1mtarget = artifacts / (label + '-bindings-' + phase + '.json')[0m
+2026-11-28T08:41:51.1545400Z [36;1mraw = (json.dumps(proof, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')[0m
+2026-11-28T08:41:51.1545746Z [36;1massert len(raw) <= 8 * 1024**2[0m
+2026-11-28T08:41:51.1545952Z [36;1mwith target.open('xb') as stream:[0m
+2026-11-28T08:41:51.1546142Z [36;1m    stream.write(raw)[0m
+2026-11-28T08:41:51.1546309Z [36;1m    stream.flush()[0m
+2026-11-28T08:41:51.1546484Z [36;1m    os.fsync(stream.fileno())[0m
+2026-11-28T08:41:51.1546776Z [36;1mprint(json.dumps(dict(status='IDENTITY_VERIFIED', phase=phase, probe=label,[0m
+2026-11-28T08:41:51.1547157Z [36;1m    package_python_files=sum(name.endswith('.py') for name in expected),[0m
+2026-11-28T08:41:51.1547531Z [36;1m    package_inventory_files=len(expected), origins=len(proof['origins']),[0m
+2026-11-28T08:41:51.1547891Z [36;1m    package_inventory_sha256=inventory_digest, script_count=len(scripts),[0m
+2026-11-28T08:41:51.1548355Z [36;1m    qualification='INSTALLED_BINDINGS_ONLY; actual native outcome is separate'), sort_keys=True), flush=True)[0m
+2026-11-28T08:41:51.1548709Z [36;1m[0m
+2026-11-28T08:41:51.1548832Z [36;1mPY[0m
+2026-11-28T08:41:51.1561771Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:41:51.1562067Z env:
+2026-11-28T08:41:51.1562271Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:41:51.1562517Z   PYTHONUTF8: 1
+2026-11-28T08:41:51.1562679Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:41:51.1562848Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:41:51.1562994Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:41:51.1563157Z   DO_NOT_TRACK: 1
+2026-11-28T08:41:51.1563314Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:41:51.1563564Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.1563899Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:41:51.1564224Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.1564512Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.1564810Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.1565043Z ##[endgroup]
+2026-11-28T08:41:51.2444307Z ##[group]Run $scriptPath = 'scripts/windows_word_controls_smoke.py'
+2026-11-28T08:41:51.2444796Z [36;1m$scriptPath = 'scripts/windows_word_controls_smoke.py'[0m
+2026-11-28T08:41:51.2445315Z [36;1mpython -I -B -c "from pathlib import Path; p=Path('scripts/windows_word_controls_smoke.py'); compile(p.read_bytes(), str(p), 'exec')"[0m
+2026-11-28T08:41:51.2445823Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:41:51.2446227Z [36;1m$scriptBefore = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()[0m
+2026-11-28T08:41:51.2446622Z [36;1m$python = (Get-Command python.exe).Source[0m
+2026-11-28T08:41:51.2446998Z [36;1mRemove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue[0m
+2026-11-28T08:41:51.2447532Z [36;1m$bindingHelper = 'ci-word-native/native-bindings.py'[0m
+2026-11-28T08:41:51.2447871Z [36;1m$bindingReceipt = 'ci-word-native/word-controls-bindings-before.json'[0m
+2026-11-28T08:41:51.2448329Z [36;1m$bindingHelperHash = (Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash[0m
+2026-11-28T08:41:51.2448714Z [36;1m& $python -I -B -X utf8 $bindingHelper before word-controls[0m
+2026-11-28T08:41:51.2449108Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings failed before execution.' }[0m
+2026-11-28T08:41:51.2449740Z [36;1m$bindingReceiptHash = (Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash[0m
+2026-11-28T08:41:51.2450165Z [36;1m$basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()[0m
+2026-11-28T08:41:51.2450540Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:41:51.2450793Z [36;1m$programs = @($python, $basePython,[0m
+2026-11-28T08:41:51.2451114Z [36;1m  (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),[0m
+2026-11-28T08:41:51.2451520Z [36;1m  (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),[0m
+2026-11-28T08:41:51.2452219Z [36;1m  (Get-Process -Id $PID).Path) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique[0m
+2026-11-28T08:41:51.2452713Z [36;1m$runtimeBefore = @{}[0m
+2026-11-28T08:41:51.2453154Z [36;1mforeach ($program in $programs) { $runtimeBefore[$program] = (Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() }[0m
+2026-11-28T08:41:51.2453732Z [36;1m$rulePrefix = 'CARR-word-controls-offline-' + [guid]::NewGuid().ToString('N')[0m
+2026-11-28T08:41:51.2454035Z [36;1m$ruleNames = @()[0m
+2026-11-28T08:41:51.2454353Z [36;1m$profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)[0m
+2026-11-28T08:41:51.2454682Z [36;1mtry {[0m
+2026-11-28T08:41:51.2454968Z [36;1m  Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop[0m
+2026-11-28T08:41:51.2455386Z [36;1m  foreach ($program in $programs) {[0m
+2026-11-28T08:41:51.2455634Z [36;1m    $ruleName = $rulePrefix + '-' + $ruleNames.Count[0m
+2026-11-28T08:41:51.2455869Z [36;1m    $ruleNames += $ruleName[0m
+2026-11-28T08:41:51.2456473Z [36;1m    New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null[0m
+2026-11-28T08:41:51.2457018Z [36;1m  }[0m
+2026-11-28T08:41:51.2457220Z [36;1m  $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)[0m
+2026-11-28T08:41:51.2457702Z [36;1m  if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }[0m
+2026-11-28T08:41:51.2458267Z [36;1m  $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)[0m
+2026-11-28T08:41:51.2460152Z [36;1m  if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }[0m
+2026-11-28T08:41:51.2461410Z [36;1m  $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })[0m
+2026-11-28T08:41:51.2462237Z [36;1m  if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }[0m
+2026-11-28T08:41:51.2463209Z [36;1m  @{ status='PASS'; blocked_programs=$filters; runtime_before=$runtimeBefore; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 5 | Set-Content 'ci-word-native/word-controls-runtime-firewall.json'[0m
+2026-11-28T08:41:51.2464102Z [36;1m  & $python -I -B -X utf8 -X faulthandler $scriptPath 2>&1 | Tee-Object 'ci-word-native/native-word-controls.txt'[0m
+2026-11-28T08:41:51.2464499Z [36;1m  $probeExit = $LASTEXITCODE[0m
+2026-11-28T08:41:51.2464971Z [36;1m  if ((Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash -ne $bindingHelperHash) { throw 'Native binding helper bytes changed.' }[0m
+2026-11-28T08:41:51.2465719Z [36;1m  if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native pre-execution binding receipt changed.' }[0m
+2026-11-28T08:41:51.2466337Z [36;1m  & $python -I -B -X utf8 $bindingHelper after word-controls[0m
+2026-11-28T08:41:51.2466744Z [36;1m  if ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings changed during execution.' }[0m
+2026-11-28T08:41:51.2467396Z [36;1m  if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native binding receipt changed during final verification.' }[0m
+2026-11-28T08:41:51.2468057Z [36;1m  $scriptAfter = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()[0m
+2026-11-28T08:41:51.2468576Z [36;1m  if ($scriptAfter -ne $scriptBefore) { throw 'Native word-controls probe bytes changed during execution.' }[0m
+2026-11-28T08:41:51.2468954Z [36;1m  foreach ($program in $programs) {[0m
+2026-11-28T08:41:51.2469508Z [36;1m    if ((Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() -ne $runtimeBefore[$program]) { throw 'A selected native executable changed during execution.' }[0m
+2026-11-28T08:41:51.2470040Z [36;1m  }[0m
+2026-11-28T08:41:51.2470525Z [36;1m  @{ script_sha256=$scriptAfter; selected_runtime_bytes_unchanged=$true; exit_code=$probeExit } | ConvertTo-Json | Set-Content 'ci-word-native/word-controls-runtime-final.json'[0m
+2026-11-28T08:41:51.2471181Z [36;1m  if ($probeExit -ne 0) { throw ('Required native Word controls failed with exit ' + $probeExit) }[0m
+2026-11-28T08:41:51.2471826Z [36;1m  $outcome = (Get-Content 'ci-word-native/native-word-controls.txt' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1) | ConvertFrom-Json[0m
+2026-11-28T08:41:51.2472929Z [36;1m  if ($outcome.schema -ne 'carr-native-word-controls/1' -or $outcome.status -ne 'PASS' -or $outcome.actual_native_word_controls -ne 'PASS' -or $outcome.actual_office -ne 'NOT_RUN' -or $outcome.checks -le 0) { throw 'Actual native Word controls did not provide their complete scoped result.' }[0m
+2026-11-28T08:41:51.2473693Z [36;1m} finally {[0m
+2026-11-28T08:41:51.2474033Z [36;1m  foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }[0m
+2026-11-28T08:41:51.2474649Z [36;1m  foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }[0m
+2026-11-28T08:41:51.2475072Z [36;1m}[0m
+2026-11-28T08:41:51.2728916Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:41:51.2729202Z env:
+2026-11-28T08:41:51.2729423Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:41:51.2729671Z   PYTHONUTF8: 1
+2026-11-28T08:41:51.2730519Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:41:51.2730693Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:41:51.2730846Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:41:51.2731008Z   DO_NOT_TRACK: 1
+2026-11-28T08:41:51.2731168Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:41:51.2731421Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.2731751Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:41:51.2732100Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.2732396Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.2732685Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:41:51.2732914Z ##[endgroup]
+2026-11-28T08:41:52.5665210Z {"origins": 19, "package_inventory_files": 428, "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f", "package_python_files": 408, "phase": "before", "probe": "word-controls", "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate", "script_count": 5, "status": "IDENTITY_VERIFIED"}
+2026-11-28T08:42:01.0520330Z PASS: actual nested-modal failure returns child before parent
+2026-11-28T08:42:01.0521663Z 
+2026-11-28T08:42:01.0523511Z PASS: actual failed modal owners receive one native destruction each
+2026-11-28T08:42:01.0524799Z 
+2026-11-28T08:42:01.0526537Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0527718Z 
+2026-11-28T08:42:01.0529169Z PASS: native key down
+2026-11-28T08:42:01.0530311Z 
+2026-11-28T08:42:01.0531773Z PASS: native key released
+2026-11-28T08:42:01.0533180Z 
+2026-11-28T08:42:01.0534707Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0535853Z 
+2026-11-28T08:42:01.0537282Z PASS: native key down
+2026-11-28T08:42:01.0538452Z 
+2026-11-28T08:42:01.0540034Z PASS: native key released
+2026-11-28T08:42:01.0541280Z 
+2026-11-28T08:42:01.0542721Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0543903Z 
+2026-11-28T08:42:01.0545579Z PASS: native key down
+2026-11-28T08:42:01.0546739Z 
+2026-11-28T08:42:01.0548191Z PASS: native key released
+2026-11-28T08:42:01.0549348Z 
+2026-11-28T08:42:01.0550785Z PASS: native key down
+2026-11-28T08:42:01.0552011Z 
+2026-11-28T08:42:01.0553422Z PASS: native key released
+2026-11-28T08:42:01.0554632Z 
+2026-11-28T08:42:01.0556107Z PASS: native modifier down
+2026-11-28T08:42:01.0557273Z 
+2026-11-28T08:42:01.0558775Z PASS: native key down
+2026-11-28T08:42:01.0560330Z 
+2026-11-28T08:42:01.0561685Z PASS: native key released
+2026-11-28T08:42:01.0562875Z 
+2026-11-28T08:42:01.0564268Z PASS: native key released
+2026-11-28T08:42:01.0565596Z 
+2026-11-28T08:42:01.0567093Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0568222Z 
+2026-11-28T08:42:01.0571062Z PASS: native key down
+2026-11-28T08:42:01.0572151Z 
+2026-11-28T08:42:01.0573432Z PASS: native key released
+2026-11-28T08:42:01.0574453Z 
+2026-11-28T08:42:01.0575704Z PASS: native key down
+2026-11-28T08:42:01.0576692Z 
+2026-11-28T08:42:01.0578018Z PASS: native key released
+2026-11-28T08:42:01.0579029Z 
+2026-11-28T08:42:01.0580343Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0581304Z 
+2026-11-28T08:42:01.0582598Z PASS: native key down
+2026-11-28T08:42:01.0584413Z 
+2026-11-28T08:42:01.0585437Z PASS: native key released
+2026-11-28T08:42:01.0587147Z 
+2026-11-28T08:42:01.0588842Z PASS: actual formatter created one source-bound citation
+2026-11-28T08:42:01.0589800Z 
+2026-11-28T08:42:01.0591269Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0592296Z 
+2026-11-28T08:42:01.0593675Z PASS: native key down
+2026-11-28T08:42:01.0594705Z 
+2026-11-28T08:42:01.0596068Z PASS: native key released
+2026-11-28T08:42:01.0597225Z 
+2026-11-28T08:42:01.0598558Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0599567Z 
+2026-11-28T08:42:01.0600929Z PASS: native key down
+2026-11-28T08:42:01.0601981Z 
+2026-11-28T08:42:01.0603678Z PASS: native key released
+2026-11-28T08:42:01.0604371Z 
+2026-11-28T08:42:01.0607556Z CARR_WORD_CONTROLS_STATE {"phase": "word-factory-entry", "waiting": "Actual current CSL format did not finish.", "formatter_destroy_returned": true, "formatter_deaths": 0, "word_dialogs": 0, "formatter_native_alive": true, "formatter_owner_alive": false, "formatter_modal": false, "formatter_shown": false, "formatter_deleting": false, "desktop_status": "Research library opened."}
+2026-11-28T08:42:01.0609134Z 
+2026-11-28T08:42:01.0609353Z PASS: Word dialog opens after formatter modal return and owner withdrawal
+2026-11-28T08:42:01.0609690Z 
+2026-11-28T08:42:01.0611007Z PASS: formatter receives one real native destruction before any Word host use
+2026-11-28T08:42:01.0612225Z 
+2026-11-28T08:42:01.0613748Z PASS: opening Word controls starts no external mutation or new Desktop executor
+2026-11-28T08:42:01.0614452Z 
+2026-11-28T08:42:01.0616046Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0617089Z 
+2026-11-28T08:42:01.0618267Z PASS: native key down
+2026-11-28T08:42:01.0619296Z 
+2026-11-28T08:42:01.0620431Z PASS: native key released
+2026-11-28T08:42:01.0621063Z 
+2026-11-28T08:42:01.0623261Z PASS: controlled picker belongs to the explicit new-copy action
+2026-11-28T08:42:01.0624084Z 
+2026-11-28T08:42:01.0625521Z PASS: real publisher creates exactly the new captured DOCX copy
+2026-11-28T08:42:01.0626535Z 
+2026-11-28T08:42:01.0627798Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0628812Z 
+2026-11-28T08:42:01.0630144Z PASS: native key down
+2026-11-28T08:42:01.0631112Z 
+2026-11-28T08:42:01.0632573Z PASS: native key released
+2026-11-28T08:42:01.0633706Z 
+2026-11-28T08:42:01.0634885Z PASS: native key down
+2026-11-28T08:42:01.0635933Z 
+2026-11-28T08:42:01.0637208Z PASS: native key released
+2026-11-28T08:42:01.0638169Z 
+2026-11-28T08:42:01.0639617Z PASS: native key down
+2026-11-28T08:42:01.0640467Z 
+2026-11-28T08:42:01.0641773Z PASS: native key released
+2026-11-28T08:42:01.0642700Z 
+2026-11-28T08:42:01.0644031Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0644985Z 
+2026-11-28T08:42:01.0646443Z PASS: native modifier down
+2026-11-28T08:42:01.0647442Z 
+2026-11-28T08:42:01.0648883Z PASS: native key down
+2026-11-28T08:42:01.0649860Z 
+2026-11-28T08:42:01.0651256Z PASS: native key released
+2026-11-28T08:42:01.0652277Z 
+2026-11-28T08:42:01.0653591Z PASS: native key released
+2026-11-28T08:42:01.0654621Z 
+2026-11-28T08:42:01.0655954Z PASS: native ASCII text accepted
+2026-11-28T08:42:01.0656978Z 
+2026-11-28T08:42:01.0658277Z PASS: native key down
+2026-11-28T08:42:01.0659240Z 
+2026-11-28T08:42:01.0660588Z PASS: native key released
+2026-11-28T08:42:01.0661613Z 
+2026-11-28T08:42:01.0662959Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0663989Z 
+2026-11-28T08:42:01.0665272Z PASS: native key down
+2026-11-28T08:42:01.0666327Z 
+2026-11-28T08:42:01.0667623Z PASS: native key released
+2026-11-28T08:42:01.0668613Z 
+2026-11-28T08:42:01.0670018Z PASS: unchecked typed locator refuses before external mutation
+2026-11-28T08:42:01.0670994Z 
+2026-11-28T08:42:01.0672261Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0673269Z 
+2026-11-28T08:42:01.0674551Z PASS: native key down
+2026-11-28T08:42:01.0675662Z 
+2026-11-28T08:42:01.0676992Z PASS: native key released
+2026-11-28T08:42:01.0678037Z 
+2026-11-28T08:42:01.0679394Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0680349Z 
+2026-11-28T08:42:01.0681774Z PASS: native key down
+2026-11-28T08:42:01.0682733Z 
+2026-11-28T08:42:01.0684076Z PASS: native key released
+2026-11-28T08:42:01.0685035Z 
+2026-11-28T08:42:01.0686466Z PASS: native insertion preserves old occurrence and explicit source locator
+2026-11-28T08:42:01.0687305Z 
+2026-11-28T08:42:01.0688493Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0689522Z 
+2026-11-28T08:42:01.0690918Z PASS: native key down
+2026-11-28T08:42:01.0692180Z 
+2026-11-28T08:42:01.0693395Z PASS: native key released
+2026-11-28T08:42:01.0694397Z 
+2026-11-28T08:42:01.0695669Z PASS: native key down
+2026-11-28T08:42:01.0696692Z 
+2026-11-28T08:42:01.0698007Z PASS: native key released
+2026-11-28T08:42:01.0699019Z 
+2026-11-28T08:42:01.0700315Z PASS: native key down
+2026-11-28T08:42:01.0701402Z 
+2026-11-28T08:42:01.0702744Z PASS: native key released
+2026-11-28T08:42:01.0703752Z 
+2026-11-28T08:42:01.0705143Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0706201Z 
+2026-11-28T08:42:01.0707419Z PASS: native modifier down
+2026-11-28T08:42:01.0708359Z 
+2026-11-28T08:42:01.0709528Z PASS: native key down
+2026-11-28T08:42:01.0710580Z 
+2026-11-28T08:42:01.0711885Z PASS: native key released
+2026-11-28T08:42:01.0712860Z 
+2026-11-28T08:42:01.0714123Z PASS: native key released
+2026-11-28T08:42:01.0715115Z 
+2026-11-28T08:42:01.0716229Z PASS: native ASCII text accepted
+2026-11-28T08:42:01.0717223Z 
+2026-11-28T08:42:01.0718374Z PASS: native key down
+2026-11-28T08:42:01.0719371Z 
+2026-11-28T08:42:01.0720701Z PASS: native key released
+2026-11-28T08:42:01.0721676Z 
+2026-11-28T08:42:01.0723026Z PASS: real locator text event withdraws its previous review
+2026-11-28T08:42:01.0724092Z 
+2026-11-28T08:42:01.0725479Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0726520Z 
+2026-11-28T08:42:01.0727831Z PASS: native key down
+2026-11-28T08:42:01.0728868Z 
+2026-11-28T08:42:01.0730203Z PASS: native key released
+2026-11-28T08:42:01.0731091Z 
+2026-11-28T08:42:01.0732550Z PASS: changed unchecked locator causes no second host mutation
+2026-11-28T08:42:01.0733458Z 
+2026-11-28T08:42:01.0734712Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0735732Z 
+2026-11-28T08:42:01.0737051Z PASS: native key down
+2026-11-28T08:42:01.0738039Z 
+2026-11-28T08:42:01.0739272Z PASS: native key released
+2026-11-28T08:42:01.0740642Z 
+2026-11-28T08:42:01.0742006Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0743179Z 
+2026-11-28T08:42:01.0744500Z PASS: native key down
+2026-11-28T08:42:01.0745507Z 
+2026-11-28T08:42:01.0746833Z PASS: native key released
+2026-11-28T08:42:01.0747867Z 
+2026-11-28T08:42:01.0749188Z PASS: native edit keeps stable occurrence IDs
+2026-11-28T08:42:01.0750246Z 
+2026-11-28T08:42:01.0751614Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0752669Z 
+2026-11-28T08:42:01.0754005Z PASS: native key down
+2026-11-28T08:42:01.0755030Z 
+2026-11-28T08:42:01.0756323Z PASS: native key released
+2026-11-28T08:42:01.0757250Z 
+2026-11-28T08:42:01.0759318Z PASS: actual refresh retains source bytes and never implicitly saves Word
+2026-11-28T08:42:01.0760220Z 
+2026-11-28T08:42:01.0761473Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0762524Z 
+2026-11-28T08:42:01.0763771Z PASS: native key down
+2026-11-28T08:42:01.0764723Z 
+2026-11-28T08:42:01.0765966Z PASS: native key released
+2026-11-28T08:42:01.0766939Z 
+2026-11-28T08:42:01.0768397Z PASS: uncertain host outcome blocks replay and keeps explicit inspect reachable
+2026-11-28T08:42:01.0769267Z 
+2026-11-28T08:42:01.0770402Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0771443Z 
+2026-11-28T08:42:01.0772699Z PASS: native key down
+2026-11-28T08:42:01.0773755Z 
+2026-11-28T08:42:01.0774796Z PASS: native key released
+2026-11-28T08:42:01.0775695Z 
+2026-11-28T08:42:01.0776972Z PASS: explicit inspect reconciles the issued result without another mutation
+2026-11-28T08:42:01.0777846Z 
+2026-11-28T08:42:01.0779051Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0779997Z 
+2026-11-28T08:42:01.0781320Z PASS: native key down
+2026-11-28T08:42:01.0782349Z 
+2026-11-28T08:42:01.0783631Z PASS: native key released
+2026-11-28T08:42:01.0784647Z 
+2026-11-28T08:42:01.0786018Z PASS: one actual Desktop worker retains the pending host result
+2026-11-28T08:42:01.0787002Z 
+2026-11-28T08:42:01.0788342Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0790267Z 
+2026-11-28T08:42:01.0790682Z PASS: native key down
+2026-11-28T08:42:01.0791767Z 
+2026-11-28T08:42:01.0792887Z PASS: native key released
+2026-11-28T08:42:01.0793926Z 
+2026-11-28T08:42:01.0795330Z PASS: native Close waits for real worker return without destroying its owner
+2026-11-28T08:42:01.0796414Z 
+2026-11-28T08:42:01.0797796Z PASS: actual close receives one destruction and keeps the completed result
+2026-11-28T08:42:01.0798610Z 
+2026-11-28T08:42:01.0800612Z CARR_WORD_CONTROLS_STATE {"phase": "word-factory-entry", "waiting": "Late completed host result did not safely close the actual dialog.", "formatter_destroy_returned": true, "formatter_deaths": 1, "word_dialogs": 1, "formatter_native_alive": false, "formatter_owner_alive": false, "desktop_status": "Word citation action: complete."}
+2026-11-28T08:42:01.0801599Z 
+2026-11-28T08:42:01.0801941Z PASS: Word dialog opens after formatter modal return and owner withdrawal
+2026-11-28T08:42:01.0803049Z 
+2026-11-28T08:42:01.0804453Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0805462Z 
+2026-11-28T08:42:01.0806734Z PASS: native key down
+2026-11-28T08:42:01.0807784Z 
+2026-11-28T08:42:01.0809133Z PASS: native key released
+2026-11-28T08:42:01.0810146Z 
+2026-11-28T08:42:01.0811508Z PASS: controlled picker belongs to the explicit new-copy action
+2026-11-28T08:42:01.0812387Z 
+2026-11-28T08:42:01.0813482Z PASS: named control is alive, visible and enabled
+2026-11-28T08:42:01.0814610Z 
+2026-11-28T08:42:01.0815795Z PASS: native key down
+2026-11-28T08:42:01.0816819Z 
+2026-11-28T08:42:01.0817904Z PASS: native key released
+2026-11-28T08:42:01.0818863Z 
+2026-11-28T08:42:01.0820104Z PASS: dead native peer leaves the actual Desktop worker retained
+2026-11-28T08:42:01.0820930Z 
+2026-11-28T08:42:01.0822303Z PASS: late replay never destroys another native peer or starts a host mutation
+2026-11-28T08:42:01.0823236Z 
+2026-11-28T08:42:01.0824517Z PASS: every Word host mutation ran on the existing worker rather than GUI
+2026-11-28T08:42:01.0825376Z 
+2026-11-28T08:42:01.0826611Z PASS: every original and retained source stays byte-exact
+2026-11-28T08:42:01.0827622Z 
+2026-11-28T08:42:01.0828990Z PASS: all selected installed sources remain exact
+2026-11-28T08:42:01.0829733Z 
+2026-11-28T08:42:01.0831104Z PASS: every native script and modal helper remains exact
+2026-11-28T08:42:01.0832068Z 
+2026-11-28T08:42:01.0855147Z {"schema": "carr-native-word-controls/1", "status": "PASS", "checks": 128, "check_names": ["actual nested-modal failure returns child before parent", "actual failed modal owners receive one native destruction each", "named control is alive, visible and enabled", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "native key down", "native key released", "native modifier down", "native key down", "native key released", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "actual formatter created one source-bound citation", "named control is alive, visible and enabled", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "Word dialog opens after formatter modal return and owner withdrawal", "formatter receives one real native destruction before any Word host use", "opening Word controls starts no external mutation or new Desktop executor", "named control is alive, visible and enabled", "native key down", "native key released", "controlled picker belongs to the explicit new-copy action", "real publisher creates exactly the new captured DOCX copy", "named control is alive, visible and enabled", "native key down", "native key released", "native key down", "native key released", "native key down", "native key released", "named control is alive, visible and enabled", "native modifier down", "native key down", "native key released", "native key released", "native ASCII text accepted", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "unchecked typed locator refuses before external mutation", "named control is alive, visible and enabled", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "native insertion preserves old occurrence and explicit source locator", "named control is alive, visible and enabled", "native key down", "native key released", "native key down", "native key released", "native key down", "native key released", "named control is alive, visible and enabled", "native modifier down", "native key down", "native key released", "native key released", "native ASCII text accepted", "native key down", "native key released", "real locator text event withdraws its previous review", "named control is alive, visible and enabled", "native key down", "native key released", "changed unchecked locator causes no second host mutation", "named control is alive, visible and enabled", "native key down", "native key released", "named control is alive, visible and enabled", "native key down", "native key released", "native edit keeps stable occurrence IDs", "named control is alive, visible and enabled", "native key down", "native key released", "actual refresh retains source bytes and never implicitly saves Word", "named control is alive, visible and enabled", "native key down", "native key released", "uncertain host outcome blocks replay and keeps explicit inspect reachable", "named control is alive, visible and enabled", "native key down", "native key released", "explicit inspect reconciles the issued result without another mutation", "named control is alive, visible and enabled", "native key down", "native key released", "one actual Desktop worker retains the pending host result", "named control is alive, visible and enabled", "native key down", "native key released", "native Close waits for real worker return without destroying its owner", "actual close receives one destruction and keeps the completed result", "Word dialog opens after formatter modal return and owner withdrawal", "named control is alive, visible and enabled", "native key down", "native key released", "controlled picker belongs to the explicit new-copy action", "named control is alive, visible and enabled", "native key down", "native key released", "dead native peer leaves the actual Desktop worker retained", "late replay never destroys another native peer or starts a host mutation", "every Word host mutation ran on the existing worker rather than GUI", "every original and retained source stays byte-exact", "all selected installed sources remain exact", "every native script and modal helper remains exact"], "selected_sources": {"carr_library.application": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py", "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"}, "carr_library.durable_state": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py", "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"}, "carr_library.academic_integration.documents": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\documents.py", "sha256": "523e9c0ac1da3c705d77f87a13fd97b62df76d27544f08790698a76d03bc4213"}, "carr_library.academic_integration.formatting": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\formatting.py", "sha256": "f9f0b69ac0f5f56b92d1f2f09eca9c478d27443aa7518073d9a145415cd911a5"}, "carr_library.academic_integration.regeneration": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\regeneration.py", "sha256": "b5ba93a131e0e91ba5bf04391d2089c8b4610589d7541e3175a35661d1166bb8"}, "carr_library.academic_integration.word_com": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\word_com.py", "sha256": "0c20279c095c1e0e0d541f81a9d26c451e521d599eb4001791402881556ff0f5"}, "carr_library.ui.desktop_app": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py", "sha256": "627b8a082d6792ca96eba92a66b30517e0a8a77695ef697e1214aff75f82db3a"}, "carr_library.ui.academic_library_dialog": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\academic_library_dialog.py", "sha256": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597"}, "carr_library.ui.citation_formatting": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\citation_formatting.py", "sha256": "300410b578093fbab29c5f71264b5e97270390a1d38d1c011a9566ecd0734cde"}, "carr_library.ui.word_citations_dialog": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\word_citations_dialog.py", "sha256": "b4a3b159120dce17dc505bcdd42c9b0bca0f9ddf6c28ff4e2b4decaf97bee0fd"}, "carr_library.citations.bibliography_workbench": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\bibliography_workbench.py", "sha256": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f"}, "carr_library.research.export_file": {"path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\export_file.py", "sha256": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1"}}, "scripts": {"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_word_controls_smoke.py": "f04fdc79eb848a1f31ddbb908ef49db4ee0b2a2494da5e74dd63a97451207e10", "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py": "5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916", "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py": "55c8a34229e40424b9e929f7eaa43a407276186e50e93f98dd5f6112b7c32343"}, "source_sha256": "2a6c0b27dff94453ea81056dc49fa0bec004bf39bed32700c199d56978d05582", "actual_native_word_controls": "PASS", "actual_office": "NOT_RUN", "external_word": "CONTROLLED_PROTOCOL_BOUNDARY", "picker_answers": "CONTROLLED", "native_picker_parent_death": "NOT_RUN", "actual_com_attachment": "NOT_RUN", "NVDA": "NOT_RUN"}
+2026-11-28T08:42:01.0875913Z 
+2026-11-28T08:42:01.4199346Z {"origins": 19, "package_inventory_files": 428, "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f", "package_python_files": 408, "phase": "after", "probe": "word-controls", "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate", "script_count": 5, "status": "IDENTITY_VERIFIED"}
+2026-11-28T08:42:02.0324014Z ##[group]Run $scriptPath = 'scripts/windows_word_citations_smoke.py'
+2026-11-28T08:42:02.0324536Z [36;1m$scriptPath = 'scripts/windows_word_citations_smoke.py'[0m
+2026-11-28T08:42:02.0325068Z [36;1mpython -I -B -c "from pathlib import Path; p=Path('scripts/windows_word_citations_smoke.py'); compile(p.read_bytes(), str(p), 'exec')"[0m
+2026-11-28T08:42:02.0325590Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:42:02.0325993Z [36;1m$scriptBefore = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()[0m
+2026-11-28T08:42:02.0326380Z [36;1m$python = (Get-Command python.exe).Source[0m
+2026-11-28T08:42:02.0326758Z [36;1mRemove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue[0m
+2026-11-28T08:42:02.0327173Z [36;1m$bindingHelper = 'ci-word-native/native-bindings.py'[0m
+2026-11-28T08:42:02.0327506Z [36;1m$bindingReceipt = 'ci-word-native/word-office-bindings-before.json'[0m
+2026-11-28T08:42:02.0327958Z [36;1m$bindingHelperHash = (Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash[0m
+2026-11-28T08:42:02.0328335Z [36;1m& $python -I -B -X utf8 $bindingHelper before word-office[0m
+2026-11-28T08:42:02.0328773Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings failed before execution.' }[0m
+2026-11-28T08:42:02.0329380Z [36;1m$bindingReceiptHash = (Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash[0m
+2026-11-28T08:42:02.0329823Z [36;1m$basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()[0m
+2026-11-28T08:42:02.0330180Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T08:42:02.0330432Z [36;1m$programs = @($python, $basePython,[0m
+2026-11-28T08:42:02.0330753Z [36;1m  (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),[0m
+2026-11-28T08:42:02.0331178Z [36;1m  (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),[0m
+2026-11-28T08:42:02.0331819Z [36;1m  (Get-Process -Id $PID).Path) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique[0m
+2026-11-28T08:42:02.0332308Z [36;1m$runtimeBefore = @{}[0m
+2026-11-28T08:42:02.0332753Z [36;1mforeach ($program in $programs) { $runtimeBefore[$program] = (Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() }[0m
+2026-11-28T08:42:02.0333520Z [36;1m$rulePrefix = 'CARR-word-office-offline-' + [guid]::NewGuid().ToString('N')[0m
+2026-11-28T08:42:02.0333816Z [36;1m$ruleNames = @()[0m
+2026-11-28T08:42:02.0334137Z [36;1m$profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)[0m
+2026-11-28T08:42:02.0334490Z [36;1mtry {[0m
+2026-11-28T08:42:02.0334798Z [36;1m  Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop[0m
+2026-11-28T08:42:02.0335146Z [36;1m  foreach ($program in $programs) {[0m
+2026-11-28T08:42:02.0335389Z [36;1m    $ruleName = $rulePrefix + '-' + $ruleNames.Count[0m
+2026-11-28T08:42:02.0335626Z [36;1m    $ruleNames += $ruleName[0m
+2026-11-28T08:42:02.0336166Z [36;1m    New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null[0m
+2026-11-28T08:42:02.0336686Z [36;1m  }[0m
+2026-11-28T08:42:02.0336885Z [36;1m  $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)[0m
+2026-11-28T08:42:02.0337361Z [36;1m  if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }[0m
+2026-11-28T08:42:02.0337927Z [36;1m  $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)[0m
+2026-11-28T08:42:02.0340387Z [36;1m  if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }[0m
+2026-11-28T08:42:02.0341425Z [36;1m  $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })[0m
+2026-11-28T08:42:02.0342285Z [36;1m  if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }[0m
+2026-11-28T08:42:02.0343277Z [36;1m  @{ status='PASS'; blocked_programs=$filters; runtime_before=$runtimeBefore; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 5 | Set-Content 'ci-word-native/word-office-runtime-firewall.json'[0m
+2026-11-28T08:42:02.0344156Z [36;1m  & $python -I -B -X utf8 -X faulthandler $scriptPath 2>&1 | Tee-Object 'ci-word-native/native-word-office.txt'[0m
+2026-11-28T08:42:02.0344529Z [36;1m  $probeExit = $LASTEXITCODE[0m
+2026-11-28T08:42:02.0345005Z [36;1m  if ((Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash -ne $bindingHelperHash) { throw 'Native binding helper bytes changed.' }[0m
+2026-11-28T08:42:02.0345748Z [36;1m  if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native pre-execution binding receipt changed.' }[0m
+2026-11-28T08:42:02.0346285Z [36;1m  & $python -I -B -X utf8 $bindingHelper after word-office[0m
+2026-11-28T08:42:02.0346684Z [36;1m  if ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings changed during execution.' }[0m
+2026-11-28T08:42:02.0347342Z [36;1m  if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native binding receipt changed during final verification.' }[0m
+2026-11-28T08:42:02.0348004Z [36;1m  $scriptAfter = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()[0m
+2026-11-28T08:42:02.0348525Z [36;1m  if ($scriptAfter -ne $scriptBefore) { throw 'Native word-office probe bytes changed during execution.' }[0m
+2026-11-28T08:42:02.0348894Z [36;1m  foreach ($program in $programs) {[0m
+2026-11-28T08:42:02.0349463Z [36;1m    if ((Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() -ne $runtimeBefore[$program]) { throw 'A selected native executable changed during execution.' }[0m
+2026-11-28T08:42:02.0350101Z [36;1m  }[0m
+2026-11-28T08:42:02.0350584Z [36;1m  @{ script_sha256=$scriptAfter; selected_runtime_bytes_unchanged=$true; exit_code=$probeExit } | ConvertTo-Json | Set-Content 'ci-word-native/word-office-runtime-final.json'[0m
+2026-11-28T08:42:02.0351214Z [36;1m  if ($probeExit -ne 0) { throw ('Actual Office probe failed with exit ' + $probeExit) }[0m
+2026-11-28T08:42:02.0351837Z [36;1m  $outcome = (Get-Content 'ci-word-native/native-word-office.txt' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1) | ConvertFrom-Json[0m
+2026-11-28T08:42:02.0352657Z [36;1m  if ($outcome.schema -ne 'carr-native-word-citations/2' -or $outcome.status -notin @('PASS','NOT_RUN')) { throw 'Optional Word qualification returned an invalid status.' }[0m
+2026-11-28T08:42:02.0353538Z [36;1m  if ($outcome.status -eq 'PASS' -and ($outcome.actual_office -ne 'PASS' -or $outcome.checks -ne 20 -or $outcome.check_names.Count -ne 20)) { throw 'Actual Office result lacks its twenty required oracles.' }[0m
+2026-11-28T08:42:02.0354370Z [36;1m  if ($outcome.status -eq 'NOT_RUN' -and ($outcome.actual_office -ne 'NOT_RUN' -or $outcome.checks -ne 0)) { throw 'Unavailable Office was misreported as executed.' }[0m
+2026-11-28T08:42:02.0355005Z [36;1m  $outcome | ConvertTo-Json -Depth 8 | Set-Content 'ci-word-native/actual-office-status.json'[0m
+2026-11-28T08:42:02.0355336Z [36;1m[0m
+2026-11-28T08:42:02.0355475Z [36;1m} finally {[0m
+2026-11-28T08:42:02.0355820Z [36;1m  foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }[0m
+2026-11-28T08:42:02.0356903Z [36;1m  foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }[0m
+2026-11-28T08:42:02.0357357Z [36;1m}[0m
+2026-11-28T08:42:02.0389417Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T08:42:02.0389689Z env:
+2026-11-28T08:42:02.0389920Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:42:02.0390171Z   PYTHONUTF8: 1
+2026-11-28T08:42:02.0390342Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:42:02.0390517Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:42:02.0390668Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:42:02.0390832Z   DO_NOT_TRACK: 1
+2026-11-28T08:42:02.0390998Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:42:02.0391250Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:02.0391585Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:42:02.0391918Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:02.0392224Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:02.0392523Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:02.0392757Z ##[endgroup]
+2026-11-28T08:42:02.7033845Z {"origins": 19, "package_inventory_files": 428, "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f", "package_python_files": 408, "phase": "before", "probe": "word-office", "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate", "script_count": 5, "status": "IDENTITY_VERIFIED"}
+2026-11-28T08:42:03.8706104Z {"actual_nvda": "NOT_RUN", "actual_office": "NOT_RUN", "check_names": [], "checks": 0, "native_keyboard": "NOT_RUN", "reason": "Desktop Microsoft Word is not installed or registered.", "schema": "carr-native-word-citations/2", "status": "NOT_RUN"}
+2026-11-28T08:42:04.2426968Z {"origins": 19, "package_inventory_files": 428, "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f", "package_python_files": 408, "phase": "after", "probe": "word-office", "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate", "script_count": 5, "status": "IDENTITY_VERIFIED"}
+2026-11-28T08:42:04.8315621Z ##[group]Run mkdir -p ci-word-native
+2026-11-28T08:42:04.8316098Z [36;1mmkdir -p ci-word-native[0m
+2026-11-28T08:42:04.8316348Z [36;1mgit rev-parse HEAD > ci-word-native/commit.txt[0m
+2026-11-28T08:42:04.8316641Z [36;1mgit rev-parse HEAD^{tree} > ci-word-native/tree.txt[0m
+2026-11-28T08:42:04.8316936Z [36;1mpython -m pip freeze > ci-word-native/packages.txt[0m
+2026-11-28T08:42:04.8327362Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:42:04.8327656Z env:
+2026-11-28T08:42:04.8327865Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:42:04.8328116Z   PYTHONUTF8: 1
+2026-11-28T08:42:04.8328274Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:42:04.8328454Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:42:04.8328597Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:42:04.8328756Z   DO_NOT_TRACK: 1
+2026-11-28T08:42:04.8328912Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:42:04.8329198Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:04.8329530Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:42:04.8329872Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:04.8330163Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:04.8330451Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:04.8330688Z ##[endgroup]
+2026-11-28T08:42:05.2300050Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T08:42:05.2300421Z with:
+2026-11-28T08:42:05.2300666Z   name: word-native-windows-2022-429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:42:05.2300976Z   path: carr-library/ci-word-native
+2026-11-28T08:42:05.2301175Z   if-no-files-found: error
+2026-11-28T08:42:05.2301346Z   compression-level: 6
+2026-11-28T08:42:05.2301499Z   overwrite: false
+2026-11-28T08:42:05.2301654Z   include-hidden-files: false
+2026-11-28T08:42:05.2301822Z   archive: true
+2026-11-28T08:42:05.2301962Z env:
+2026-11-28T08:42:05.2302174Z   CARR_WORD_NATIVE_HEAD: 429a5e60685b4c4ac38efd204d8fb4d57a6604c5
+2026-11-28T08:42:05.2302419Z   PYTHONUTF8: 1
+2026-11-28T08:42:05.2302571Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:42:05.2302740Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:42:05.2302886Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:42:05.2303040Z   DO_NOT_TRACK: 1
+2026-11-28T08:42:05.2303226Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T08:42:05.2303469Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:05.2303794Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T08:42:05.2304118Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:05.2304403Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:05.2304688Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T08:42:05.2304924Z ##[endgroup]
+2026-11-28T08:42:05.3744292Z With the provided path, there will be 15 files uploaded
+2026-11-28T08:42:05.3748176Z Artifact name is valid!
+2026-11-28T08:42:05.3749475Z Root directory input is valid!
+2026-11-28T08:42:05.5795406Z Uploading artifact: word-native-windows-2022-429a5e60685b4c4ac38efd204d8fb4d57a6604c5.zip
+2026-11-28T08:42:05.5827382Z Beginning upload of artifact content to blob storage
+2026-11-28T08:42:05.6599287Z Uploaded bytes 91032
+2026-11-28T08:42:05.6703057Z Finished uploading artifact content to blob storage!
+2026-11-28T08:42:05.6703725Z SHA256 digest of uploaded artifact is 4a71a1ca44a49958b1bf1707f4ebbd4c01fd9a70934a31f496dc4b37c7ed305e
+2026-11-28T08:42:05.6704205Z Finalizing artifact upload
+2026-11-28T08:42:06.0154816Z Artifact word-native-windows-2022-429a5e60685b4c4ac38efd204d8fb4d57a6604c5 successfully finalized. Artifact ID 15255664069
+2026-11-28T08:42:06.0155671Z Artifact word-native-windows-2022-429a5e60685b4c4ac38efd204d8fb4d57a6604c5 has been successfully uploaded! Final size is 91032 bytes. Artifact ID is 15255664069
+2026-11-28T08:42:06.0163429Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46126241176/artifacts/15255664069
+2026-11-28T08:42:06.0420590Z Post job cleanup.
+2026-11-28T08:42:06.1815975Z Post job cleanup.
+2026-11-28T08:42:06.3232209Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T08:42:06.3469810Z git version 2.56.1.windows.1
+2026-11-28T08:42:06.3519093Z Temporarily overriding HOME='D:\a\_temp\13c57692-e7b3-4ebc-a5b9-b5c15c872738' before making global git config changes
+2026-11-28T08:42:06.3519655Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:42:06.3528734Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T08:42:06.3801476Z Removing SSH command configuration
+2026-11-28T08:42:06.3812109Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:42:06.4094611Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T08:42:06.8537859Z Removing HTTP extra header
+2026-11-28T08:42:06.8546618Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:42:06.8805796Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T08:42:07.3230388Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:42:07.3240223Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:42:07.3495226Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T08:42:07.7926639Z Cleaning up orphan processes

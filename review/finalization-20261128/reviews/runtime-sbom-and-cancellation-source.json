@@ -1,0 +1,112 @@
+{
+  "schema": "carr-finite-source-review/1",
+  "reviewer": "release_audit",
+  "scope": "Vendored-runtime SBOM identity and TXT cancellation regression source only",
+  "target_context": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "runtime": "NOT_RUN",
+  "sbom": {
+    "verdict": "SOURCE_APPROVED",
+    "files": {
+      "builder": {
+        "before": "5a9924c2ad0387dd180af8f3ba3c8668f226d379",
+        "after": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971"
+      },
+      "refresh": {
+        "before": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+        "after": "a0ada7add5d2b10c820579463bb1bef99a9e5c54"
+      },
+      "workflow": {
+        "before": "2297c5440ecc9b54e8b3a2d03e64a5ef8e62ca9e",
+        "after": "2d088e5e7fa622024a1706002674fe0a519da97a"
+      }
+    },
+    "descriptor_compared_against": "f9d12fbbecc28a7793e59062088b70951466bc2d",
+    "exact_vendor_file_identities": [
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/COPYING",
+        "sha": "a7b7406f02f769167539316e5093cd58f609dce5"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/UPSTREAM.json",
+        "sha": "579a9b92808377a671e88d1c1c2f467468283f03"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/__init__.py",
+        "sha": "4b98330587fd681df4bfa61767ba22e12816d2e2"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/base.py",
+        "sha": "243045ffc701ce2986f12f02101f2cbca92960a5"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/compat.py",
+        "sha": "321cd2e84e11335163afc5902b1b136196fee889"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/currency.py",
+        "sha": "4982251ec4f8a15c286dab82388154daf26b706d"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/lang_SK.py",
+        "sha": "35ece024f13cf90999d3ca4954229f1d4994a4ba"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/_vendor_num2words/utils.py",
+        "sha": "b5e4611be5fafe19324a00594b2648d75bd17bd8"
+      }
+    ],
+    "unchanged_quoted_test_selector_occurrences": 920,
+    "findings": "Only the exact pinned eight-file source/notice closure is separated from ordinary distributions. The existing pip lock comparison remains exact; vendor descriptor and root/leaf edges are checked. Wheel digest captured by vendor validation must equal exact-source evidence and unchanged copy-time digest. Installed source checks do not import vendor code. No license, lock or selector is removed.",
+    "regression_tests": {
+      "windows_bundle": {
+        "before": "d97961759a7e0e60458469317202539131686aa0",
+        "after": "35bfe2d17d47c4ed6e2039121fff36450f765fdc",
+        "old_bytes_preserved": true,
+        "new_tests": 6
+      },
+      "private_refresh": {
+        "before": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+        "after": "796bf728f42157721ff7754ff0577f3ab1c584d4",
+        "old_prefix_exact": true,
+        "new_tests": 2
+      },
+      "verdict": "SOURCE_APPROVED",
+      "real_scope": "Actual inert wheel/RECORD and local Git source fixtures; exact eight shipped source/notice files; sealed original BOM; source/descriptor/edge/omission/duplicate/replacement controls; no application payload execution."
+    },
+    "focused_workflow": {
+      "before": "8008f280626d09f4e0de5cbebc8be7168d515a08",
+      "after": "6f307646530774cc2857b8901b0de6966a845a0d",
+      "verdict": "SOURCE_APPROVED",
+      "suites": 2,
+      "origins": 6,
+      "packaging_git_blobs": 112,
+      "source_and_isolated_installed": true,
+      "zero_skip_xfail": true,
+      "exact_committed_main_dependency_step_on_windows": true,
+      "actual_execution": "NOT_RUN"
+    }
+  },
+  "cancellation": {
+    "worker": "63f5d2ef09c584d94f0be761b6c264b31f568802",
+    "pipeline": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e",
+    "test_before": "423143a9a994d35839ac6342e57f525f11ff3984",
+    "test_after": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d",
+    "original_test_prefix_byte_exact": true,
+    "appended_cases": 4,
+    "verdict": "SOURCE_APPROVED",
+    "findings": "Real forwarded parsing descriptors remain held through actual canonical COMMIT. Tests cover a complete result followed by next-input cancellation, prepublication rollback, genuine postcommit same-size staged mutation still refused, and genuine recovery that never acquires this-run publication latch. Original, retained and catalog bytes and descriptor closure are asserted.",
+    "workflow": "87039eafedab8f3b43fc0625fafc01816f695e6f",
+    "workflow_scope": {
+      "suites": 15,
+      "origins": 22,
+      "affected_suite_case_guards": [
+        9,
+        9
+      ],
+      "ordinary_source_and_isolated_installed": true,
+      "zero_skip_xfail": true,
+      "full_before_after_identity": true
+    }
+  },
+  "supersedes_source_record": "33ff14bf170332e48c0eff8bce5942be05953771"
+}

@@ -1,0 +1,180 @@
+{
+  "schema": "carr-final-legacy-office-evidence/2",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+  "workflow_blob": "13168b80c241db1f8b59f2c90b7319b002daec08",
+  "run_id": 46124995570,
+  "run_status": "SUCCESS_BOTH_OS",
+  "linux": {
+    "job_id": 140917519146,
+    "conclusion": "success",
+    "evidence_blob": "ebd47c445f7e225abe34eccc8dfa4374518a296a",
+    "raw_log_blob": "fc8697e4e037dbef92423e6f7df4840673ef00bd",
+    "boundary_passed": 401,
+    "posix_registry_passed": 4,
+    "native_source_passed": 9,
+    "native_source_seconds": 22.38,
+    "installed_passed": 33,
+    "installed_native_passed": 9,
+    "installed_seconds": 21.73
+  },
+  "windows": {
+    "job_id": 140917518896,
+    "conclusion": "success",
+    "raw_log_blob": "90274ac1d357f4ed09bd2c1918400c6ab4ee8221",
+    "raw_readback_exact": true,
+    "boundary_passed": 401,
+    "boundary_suites": [
+      {
+        "path": "tests/conversion/test_office_selection.py",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/conversion/test_office_workspace.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/conversion/test_conversion_publication.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/extract/test_document_formats_xml.py",
+        "passed": 234,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/conversion/test_conversion.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/audio/test_process_scratch.py",
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/conversion/test_archive_reading.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/ui/test_audio_conversion_controls.py",
+        "passed": 48,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "native_source": {
+      "path": "tests/conversion/office_native_acceptance.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    "native_source_seconds": 33.36,
+    "installed": {
+      "expected_failures": false,
+      "failed": 0,
+      "installed_source_identity": {
+        "carr_library.audio.process": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+          "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+        },
+        "carr_library.conversion.office": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\office.py",
+          "sha256": "8e03f8dc6dea46752b590b254eb0abf262b496d5d9070ddc746ffab900257988"
+        },
+        "carr_library.conversion.service": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py",
+          "sha256": "9bcfe75eab79b14196ce356b0dd52750d8f7ca25426d6ee0b3709422ed8e7a04"
+        },
+        "carr_library.conversion.worker": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\worker.py",
+          "sha256": "297392959e4cd9c72b36f28493e7d48677a5474e7408e5bfa21629e62093c50b"
+        },
+        "carr_library.extract.document_formats": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats.py",
+          "sha256": "560563bc55cce8f989c4b77591b3b8506a8e4256c4ebcc5f4c47a8c6f3b2ab01"
+        },
+        "carr_library.extract.document_formats_xml": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats_xml.py",
+          "sha256": "edac0874c28a22d1ea20e3d45c35a7c825a444a2e6dcbbee356c80fbbe4891d3"
+        }
+      },
+      "passed": 33,
+      "skipped": 0,
+      "source_unchanged": true,
+      "status": "PASS",
+      "seconds": 32.1,
+      "suite_counts": {
+        "office_workspace": 11,
+        "process_scratch": 13,
+        "native_office": 9
+      }
+    },
+    "actual_native_case_lines": [
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[doc] PASSED [ 11%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[ppt] PASSED [ 22%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[xls] PASSED [ 33%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[wpd] PASSED [ 44%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[pdb] PASSED [ 55%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[wri] PASSED [ 66%]",
+      "tests/conversion/office_native_acceptance.py::test_selected_office_cancellation_settles_family_before_private_profile_cleanup PASSED [ 77%]",
+      "tests/conversion/office_native_acceptance.py::test_selected_office_text_budget_keeps_destination_empty PASSED [ 88%]",
+      "tests/conversion/office_native_acceptance.py::test_actual_office_handles_deep_unicode_destination_with_short_private_windows_root PASSED [100%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[doc] PASSED [ 75%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[ppt] PASSED [ 78%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[xls] PASSED [ 81%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[wpd] PASSED [ 84%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[pdb] PASSED [ 87%]",
+      "tests/conversion/office_native_acceptance.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[wri] PASSED [ 90%]",
+      "tests/conversion/office_native_acceptance.py::test_selected_office_cancellation_settles_family_before_private_profile_cleanup PASSED [ 93%]",
+      "tests/conversion/office_native_acceptance.py::test_selected_office_text_budget_keeps_destination_empty PASSED [ 96%]",
+      "tests/conversion/office_native_acceptance.py::test_actual_office_handles_deep_unicode_destination_with_short_private_windows_root PASSED [100%]"
+    ],
+    "selected_runtime_firewall": "Actual native source and installed acceptance step passed after ActiveStore rule and selected-executable identity checks; owned rules removed and original profile state restored.",
+    "office_provision": "Explicit LibreOffice26.8.3 selection succeeded; version and launcher hash recorded in the retained artifact.",
+    "artifact": {
+      "id": 15255613243,
+      "bytes": 16457,
+      "sha256": "fecf0d5ed3001e73fba53188c6b890b1784cfea9725d562e4684d54cc512fd84"
+    }
+  },
+  "all_native_routes": [
+    "doc",
+    "ppt",
+    "xls",
+    "wpd",
+    "pdb",
+    "wri",
+    "cancellation settles actual owned family",
+    "output text-budget refusal",
+    "deep Unicode destination/short private Windows root"
+  ],
+  "installed_named_origins": 6,
+  "installed_origin_hashes_equal_across_OS": true,
+  "failures": 0,
+  "skips": 0,
+  "expected_failures": false,
+  "historical_0070_doc_refusal": "Separate historical observed failure with bounded diagnostic nonreproduction; no historical causal fix is inferred from this exact-head acceptance.",
+  "scope": "Exact71ca component gate. Later heads require their own declared acceptance; no full-package inventory or whole-machine network claim is added."
+}

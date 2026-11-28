@@ -1,0 +1,653 @@
+﻿2026-11-28T09:01:12.3399414Z Current runner version: '2.338.2'
+2026-11-28T09:01:12.3433648Z ##[group]Runner Image Provisioner
+2026-11-28T09:01:12.3434991Z Hosted Compute Agent
+2026-11-28T09:01:12.3435949Z Version: 20261111.635
+2026-11-28T09:01:12.3436964Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T09:01:12.3438166Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T09:01:12.3439270Z Worker ID: {b0f5384e-e179-4e0e-8811-0dd8dd9fc998}
+2026-11-28T09:01:12.3440469Z Region: eastus
+2026-11-28T09:01:12.3441330Z Cloud: Azure
+2026-11-28T09:01:12.3442191Z ##[endgroup]
+2026-11-28T09:01:12.3444261Z ##[group]Operating System
+2026-11-28T09:01:12.3445276Z Microsoft Windows Server 2022
+2026-11-28T09:01:12.3446291Z 10.0.20348
+2026-11-28T09:01:12.3447047Z Datacenter
+2026-11-28T09:01:12.3447866Z ##[endgroup]
+2026-11-28T09:01:12.3448772Z ##[group]Runner Image
+2026-11-28T09:01:12.3449706Z Image: windows-2022
+2026-11-28T09:01:12.3450643Z Version: 20261123.376.1
+2026-11-28T09:01:12.3453029Z Included Software: https://github.com/actions/runner-images/blob/win22/20261123.376/images/windows/Windows2022-Readme.md
+2026-11-28T09:01:12.3455845Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20261123.376
+2026-11-28T09:01:12.3457518Z ##[endgroup]
+2026-11-28T09:01:12.3459327Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T09:01:12.3461733Z Contents: read
+2026-11-28T09:01:12.3462644Z Metadata: read
+2026-11-28T09:01:12.3463477Z ##[endgroup]
+2026-11-28T09:01:12.3466117Z Secret source: Actions
+2026-11-28T09:01:12.3467560Z Cache mode: write
+2026-11-28T09:01:12.3468627Z Prepare workflow directory
+2026-11-28T09:01:12.4031038Z Prepare all required actions
+2026-11-28T09:01:12.4101294Z Getting action download info
+2026-11-28T09:01:12.6039162Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T09:01:12.7185808Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T09:01:12.8412409Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T09:01:13.0611446Z Complete job name: All eight final installed native scope contracts
+2026-11-28T09:01:13.2347630Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T09:01:13.2349083Z with:
+2026-11-28T09:01:13.2349609Z   persist-credentials: false
+2026-11-28T09:01:13.2350281Z   ref: 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T09:01:13.2351043Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:01:13.2355577Z   token: ***
+2026-11-28T09:01:13.2355990Z   ssh-strict: true
+2026-11-28T09:01:13.2356402Z   ssh-user: git
+2026-11-28T09:01:13.2356798Z   clean: true
+2026-11-28T09:01:13.2357219Z   sparse-checkout-cone-mode: true
+2026-11-28T09:01:13.2357708Z   fetch-depth: 1
+2026-11-28T09:01:13.2358111Z   fetch-tags: false
+2026-11-28T09:01:13.2358522Z   show-progress: true
+2026-11-28T09:01:13.2358965Z   lfs: false
+2026-11-28T09:01:13.2359370Z   submodules: false
+2026-11-28T09:01:13.2359786Z   set-safe-directory: true
+2026-11-28T09:01:13.2360259Z   allow-unsafe-pr-checkout: false
+2026-11-28T09:01:13.2360936Z env:
+2026-11-28T09:01:13.2361345Z   PYTHONUTF8: 1
+2026-11-28T09:01:13.2361779Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:13.2362246Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:13.2362670Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:13.2363111Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:13.2363509Z ##[endgroup]
+2026-11-28T09:01:13.3926569Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:01:13.3928429Z ##[group]Getting Git version info
+2026-11-28T09:01:13.3929158Z Working directory is 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T09:01:13.4909337Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T09:01:13.7685060Z git version 2.56.1.windows.1
+2026-11-28T09:01:13.7728696Z ##[endgroup]
+2026-11-28T09:01:13.7745501Z Temporarily overriding HOME='D:\a\_temp\73dd660a-386f-4b0a-91c1-645b529531bc' before making global git config changes
+2026-11-28T09:01:13.7750339Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T09:01:13.7758428Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T09:01:13.8487391Z Deleting the contents of 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T09:01:13.8491313Z ##[group]Determining repository object format
+2026-11-28T09:01:13.8493297Z ##[endgroup]
+2026-11-28T09:01:13.8495353Z ##[group]Initializing the repository
+2026-11-28T09:01:13.8504143Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T09:01:13.9157494Z Initialized empty Git repository in D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T09:01:13.9189104Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:01:13.9710278Z ##[endgroup]
+2026-11-28T09:01:13.9711487Z ##[group]Disabling automatic garbage collection
+2026-11-28T09:01:13.9718329Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-28T09:01:14.0006860Z ##[endgroup]
+2026-11-28T09:01:14.0009248Z ##[group]Setting up auth
+2026-11-28T09:01:14.0011064Z Removing SSH command configuration
+2026-11-28T09:01:14.0019725Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T09:01:14.0293336Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T09:01:15.2212253Z Removing HTTP extra header
+2026-11-28T09:01:15.2221470Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T09:01:15.2505214Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T09:01:15.7010632Z Removing includeIf entries pointing to credentials config files
+2026-11-28T09:01:15.7013378Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T09:01:15.7294783Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T09:01:16.2015238Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-28T09:01:16.2368468Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D:\a\_temp\git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:16.2665868Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D:\a\_temp\git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:16.2994851Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:16.3279488Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:16.3569198Z ##[endgroup]
+2026-11-28T09:01:16.3569827Z ##[group]Fetching the repository
+2026-11-28T09:01:16.3581018Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T09:01:18.0738741Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:01:18.0739776Z  * branch            84816b20f32ca8142b9e07591a7ec3fd1b4dce17 -> FETCH_HEAD
+2026-11-28T09:01:18.0783727Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 84816b20f32ca8142b9e07591a7ec3fd1b4dce17^{object}
+2026-11-28T09:01:18.1098427Z 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T09:01:18.1123375Z ##[endgroup]
+2026-11-28T09:01:18.1123893Z ##[group]Determining the checkout info
+2026-11-28T09:01:18.1124413Z ##[endgroup]
+2026-11-28T09:01:18.1130874Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-28T09:01:18.1463909Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-28T09:01:18.1739105Z ##[group]Checking out the ref
+2026-11-28T09:01:18.1746431Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T09:01:18.5937908Z Note: switching to '84816b20f32ca8142b9e07591a7ec3fd1b4dce17'.
+2026-11-28T09:01:18.5938701Z 
+2026-11-28T09:01:18.5939050Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T09:01:18.5940436Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T09:01:18.5941264Z state without impacting any branches by switching back to a branch.
+2026-11-28T09:01:18.5941591Z 
+2026-11-28T09:01:18.5941791Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T09:01:18.5942274Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T09:01:18.5942585Z 
+2026-11-28T09:01:18.5942748Z   git switch -c <new-branch-name>
+2026-11-28T09:01:18.5942936Z 
+2026-11-28T09:01:18.5943037Z Or undo this operation with:
+2026-11-28T09:01:18.5943219Z 
+2026-11-28T09:01:18.5943306Z   git switch -
+2026-11-28T09:01:18.5943451Z 
+2026-11-28T09:01:18.5943695Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T09:01:18.5944066Z 
+2026-11-28T09:01:18.5944415Z HEAD is now at 84816b2 Correct PowerShell selector delimiters and validate complete native composition
+2026-11-28T09:01:18.6042081Z ##[endgroup]
+2026-11-28T09:01:18.6454037Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T09:01:18.6723681Z 84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T09:01:18.6753005Z ##[group]Removing auth
+2026-11-28T09:01:18.6753314Z Removing SSH command configuration
+2026-11-28T09:01:18.6760715Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T09:01:18.7043414Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T09:01:19.1905519Z Removing HTTP extra header
+2026-11-28T09:01:19.1915567Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T09:01:19.2207939Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T09:01:19.6906736Z Removing includeIf entries pointing to credentials config files
+2026-11-28T09:01:19.6914592Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T09:01:19.7168532Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T09:01:19.7170251Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T09:01:19.7170741Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T09:01:19.7171095Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T09:01:19.7206630Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T09:01:19.7459059Z D:\a\_temp\git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:19.7491106Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D\:\\a\\_temp\\git\-credentials\-d785178c\-da90\-43f6\-82bc\-7b90e74cc5a6\.config
+2026-11-28T09:01:19.7796013Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T09:01:19.8051021Z D:\a\_temp\git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:19.8083693Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-d785178c\-da90\-43f6\-82bc\-7b90e74cc5a6\.config
+2026-11-28T09:01:19.8366894Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T09:01:19.8617153Z /github/runner_temp/git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:19.8647910Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-d785178c\-da90\-43f6\-82bc\-7b90e74cc5a6\.config
+2026-11-28T09:01:19.8931406Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T09:01:19.9178638Z /github/runner_temp/git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config
+2026-11-28T09:01:19.9207095Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-d785178c\-da90\-43f6\-82bc\-7b90e74cc5a6\.config
+2026-11-28T09:01:19.9484653Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T09:01:20.3784633Z Removing credentials config 'D:\a\_temp\git-credentials-d785178c-da90-43f6-82bc-7b90e74cc5a6.config'
+2026-11-28T09:01:20.3795868Z ##[endgroup]
+2026-11-28T09:01:20.4225441Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T09:01:20.4225887Z with:
+2026-11-28T09:01:20.4226074Z   python-version: 3.11
+2026-11-28T09:01:20.4226288Z   check-latest: false
+2026-11-28T09:01:20.4228676Z   token: ***
+2026-11-28T09:01:20.4229002Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T09:01:20.4229404Z   update-environment: true
+2026-11-28T09:01:20.4229624Z   allow-prereleases: false
+2026-11-28T09:01:20.4229838Z   freethreaded: false
+2026-11-28T09:01:20.4230026Z env:
+2026-11-28T09:01:20.4230181Z   PYTHONUTF8: 1
+2026-11-28T09:01:20.4230371Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:20.4230583Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:20.4230775Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:20.4230967Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:20.4231134Z ##[endgroup]
+2026-11-28T09:01:20.5627431Z ##[group]Installed versions
+2026-11-28T09:01:20.5759940Z Successfully set up CPython (3.11.9)
+2026-11-28T09:01:20.5760713Z ##[endgroup]
+2026-11-28T09:01:20.5998175Z ##[group]Run New-Item -ItemType Directory -Force 'ci-final-scope' | Out-Null
+2026-11-28T09:01:20.5998873Z [36;1mNew-Item -ItemType Directory -Force 'ci-final-scope' | Out-Null[0m
+2026-11-28T09:01:20.5999433Z [36;1mpython -m pip install --require-hashes -r packaging/windows-cp311.lock[0m
+2026-11-28T09:01:20.5999922Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T09:01:20.6000283Z [36;1mpython -m pip install --no-deps .[0m
+2026-11-28T09:01:20.6000604Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T09:01:20.6215342Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T09:01:20.6215824Z env:
+2026-11-28T09:01:20.6216259Z   PYTHONUTF8: 1
+2026-11-28T09:01:20.6216545Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:20.6216856Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:20.6217118Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:20.6217402Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:20.6217810Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:20.6218545Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T09:01:20.6219215Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:20.6219787Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:20.6220363Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:20.6220812Z ##[endgroup]
+2026-11-28T09:01:25.1860819Z Collecting comtypes==1.5.0 (from -r packaging/windows-cp311.lock (line 1))
+2026-11-28T09:01:25.3530012Z   Downloading comtypes-1.5.0-py3-none-any.whl (325 kB)
+2026-11-28T09:01:25.5363976Z Collecting defusedxml==0.7.1 (from -r packaging/windows-cp311.lock (line 3))
+2026-11-28T09:01:25.5412618Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T09:01:25.6356439Z Collecting filelock==3.29.0 (from -r packaging/windows-cp311.lock (line 5))
+2026-11-28T09:01:25.6403607Z   Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T09:01:25.9484036Z Collecting lxml==6.1.3 (from -r packaging/windows-cp311.lock (line 8))
+2026-11-28T09:01:25.9543202Z   Downloading lxml-6.1.3-cp311-cp311-win_amd64.whl (4.0 MB)
+2026-11-28T09:01:26.0121555Z      ---------------------------------------- 4.0/4.0 MB 80.2 MB/s  0:00:00
+2026-11-28T09:01:26.2529642Z Collecting numpy==2.4.6 (from -r packaging/windows-cp311.lock (line 185))
+2026-11-28T09:01:26.2754984Z   Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl (12.6 MB)
+2026-11-28T09:01:26.3940168Z      ---------------------------------------- 12.6/12.6 MB 112.2 MB/s  0:00:00
+2026-11-28T09:01:26.5946485Z Collecting pillow==13.0.0 (from -r packaging/windows-cp311.lock (line 258))
+2026-11-28T09:01:26.6002478Z   Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl (7.3 MB)
+2026-11-28T09:01:26.6580799Z      ---------------------------------------- 7.3/7.3 MB 152.5 MB/s  0:00:00
+2026-11-28T09:01:26.7053985Z Collecting platformdirs==4.10.0 (from -r packaging/windows-cp311.lock (line 342))
+2026-11-28T09:01:26.7104735Z   Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T09:01:26.7654117Z Collecting pypdf==7.1.1 (from -r packaging/windows-cp311.lock (line 345))
+2026-11-28T09:01:26.7703260Z   Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T09:01:26.8987824Z Collecting pypdfium2==5.13.0 (from -r packaging/windows-cp311.lock (line 348))
+2026-11-28T09:01:26.9068560Z   Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl (3.9 MB)
+2026-11-28T09:01:26.9508895Z      ---------------------------------------- 3.9/3.9 MB 77.1 MB/s  0:00:00
+2026-11-28T09:01:26.9869655Z Collecting python-docx==1.2.0 (from -r packaging/windows-cp311.lock (line 371))
+2026-11-28T09:01:26.9917518Z   Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T09:01:27.0466676Z Collecting typing-extensions==4.16.0 (from -r packaging/windows-cp311.lock (line 374))
+2026-11-28T09:01:27.0512261Z   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T09:01:27.1209540Z Collecting wxpython==4.2.4 (from -r packaging/windows-cp311.lock (line 377))
+2026-11-28T09:01:27.1261968Z   Downloading wxpython-4.2.4-cp311-cp311-win_amd64.whl (16.5 MB)
+2026-11-28T09:01:27.2920100Z      ---------------------------------------- 16.5/16.5 MB 94.6 MB/s  0:00:00
+2026-11-28T09:01:27.3376609Z Collecting bibtexparser==2.1.0 (from -r packaging/windows-cp311.lock (line 407))
+2026-11-28T09:01:27.3431352Z   Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T09:01:27.3940744Z Collecting pylatexenc==2.11 (from -r packaging/windows-cp311.lock (line 409))
+2026-11-28T09:01:27.3992510Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T09:01:27.4578453Z Collecting quickjs-ng==0.18.0.2 (from -r packaging/windows-cp311.lock (line 411))
+2026-11-28T09:01:27.4736862Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl (401 kB)
+2026-11-28T09:01:27.5203761Z Collecting py3langid==0.4.0 (from -r packaging/windows-cp311.lock (line 415))
+2026-11-28T09:01:27.5258587Z   Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T09:01:27.5755544Z      ---------------------------------------- 4.6/4.6 MB 92.3 MB/s  0:00:00
+2026-11-28T09:01:27.8106134Z Installing collected packages: pylatexenc, typing-extensions, quickjs-ng, pypdfium2, pypdf, platformdirs, pillow, numpy, lxml, filelock, defusedxml, comtypes, bibtexparser, wxpython, python-docx, py3langid
+2026-11-28T09:01:38.9258834Z 
+2026-11-28T09:01:38.9277127Z Successfully installed bibtexparser-2.1.0 comtypes-1.5.0 defusedxml-0.7.1 filelock-3.29.0 lxml-6.1.3 numpy-2.4.6 pillow-13.0.0 platformdirs-4.10.0 py3langid-0.4.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 python-docx-1.2.0 quickjs-ng-0.18.0.2 typing-extensions-4.16.0 wxpython-4.2.4
+2026-11-28T09:01:40.0147848Z Processing .\.
+2026-11-28T09:01:40.0183644Z   Installing build dependencies: started
+2026-11-28T09:01:42.6179682Z   Installing build dependencies: finished with status 'done'
+2026-11-28T09:01:42.6194619Z   Getting requirements to build wheel: started
+2026-11-28T09:01:43.9322327Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T09:01:43.9349146Z   Preparing metadata (pyproject.toml): started
+2026-11-28T09:01:44.7428084Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T09:01:44.7494583Z Building wheels for collected packages: universal-research-library
+2026-11-28T09:01:44.7521128Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T09:01:46.7242628Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T09:01:46.7259258Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'bootstrap.vendor.cairn_extractors' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7261213Z   !!
+2026-11-28T09:01:46.7261513Z   
+2026-11-28T09:01:46.7261872Z           ********************************************************************************
+2026-11-28T09:01:46.7262424Z           ############################
+2026-11-28T09:01:46.7262822Z           # Package would be ignored #
+2026-11-28T09:01:46.7263249Z           ############################
+2026-11-28T09:01:46.7264016Z           Python recognizes 'bootstrap.vendor.cairn_extractors' as an importable package[^1],
+2026-11-28T09:01:46.7264972Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7265528Z   
+2026-11-28T09:01:46.7266131Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7267300Z           package, please make sure that 'bootstrap.vendor.cairn_extractors' is explicitly added
+2026-11-28T09:01:46.7268131Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7268590Z   
+2026-11-28T09:01:46.7269108Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7271115Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7271771Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7272171Z   
+2026-11-28T09:01:46.7272637Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7273226Z   
+2026-11-28T09:01:46.7273707Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7274294Z   
+2026-11-28T09:01:46.7275066Z           If you don't want 'bootstrap.vendor.cairn_extractors' to be distributed and are
+2026-11-28T09:01:46.7276074Z           already explicitly excluding 'bootstrap.vendor.cairn_extractors' via
+2026-11-28T09:01:46.7277267Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7278285Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7279180Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7279801Z   
+2026-11-28T09:01:46.7280328Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7281026Z   
+2026-11-28T09:01:46.7281495Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7282086Z   
+2026-11-28T09:01:46.7282329Z   
+2026-11-28T09:01:46.7282795Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7283520Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7284239Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7285001Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7285660Z           ********************************************************************************
+2026-11-28T09:01:46.7286186Z   
+2026-11-28T09:01:46.7286433Z   !!
+2026-11-28T09:01:46.7286723Z     check.warn(importable)
+2026-11-28T09:01:46.7288499Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7290273Z   !!
+2026-11-28T09:01:46.7290504Z   
+2026-11-28T09:01:46.7290811Z           ********************************************************************************
+2026-11-28T09:01:46.7291281Z           ############################
+2026-11-28T09:01:46.7291645Z           # Package would be ignored #
+2026-11-28T09:01:46.7292016Z           ############################
+2026-11-28T09:01:46.7292472Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T09:01:46.7292993Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7293305Z   
+2026-11-28T09:01:46.7293616Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7294203Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T09:01:46.7294668Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7295079Z   
+2026-11-28T09:01:46.7295483Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7296166Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7296718Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7297087Z   
+2026-11-28T09:01:46.7297508Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7298060Z   
+2026-11-28T09:01:46.7298563Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7299233Z   
+2026-11-28T09:01:46.7299915Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T09:01:46.7300727Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T09:01:46.7301247Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7301738Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7302211Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7302547Z   
+2026-11-28T09:01:46.7302836Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7303201Z   
+2026-11-28T09:01:46.7303455Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7303878Z   
+2026-11-28T09:01:46.7304016Z   
+2026-11-28T09:01:46.7304674Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7305417Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7306112Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7306812Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7307359Z           ********************************************************************************
+2026-11-28T09:01:46.7307788Z   
+2026-11-28T09:01:46.7308004Z   !!
+2026-11-28T09:01:46.7308246Z     check.warn(importable)
+2026-11-28T09:01:46.7309743Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7311380Z   !!
+2026-11-28T09:01:46.7311616Z   
+2026-11-28T09:01:46.7311908Z           ********************************************************************************
+2026-11-28T09:01:46.7312361Z           ############################
+2026-11-28T09:01:46.7312622Z           # Package would be ignored #
+2026-11-28T09:01:46.7312853Z           ############################
+2026-11-28T09:01:46.7313268Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T09:01:46.7313778Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7314077Z   
+2026-11-28T09:01:46.7314375Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7314948Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T09:01:46.7315410Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7315707Z   
+2026-11-28T09:01:46.7315996Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7316432Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7316809Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7317058Z   
+2026-11-28T09:01:46.7317337Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7317915Z   
+2026-11-28T09:01:46.7318365Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7318945Z   
+2026-11-28T09:01:46.7319430Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T09:01:46.7320280Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T09:01:46.7321063Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7321823Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7322557Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7323082Z   
+2026-11-28T09:01:46.7323711Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7324288Z   
+2026-11-28T09:01:46.7324679Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7325202Z   
+2026-11-28T09:01:46.7325417Z   
+2026-11-28T09:01:46.7325680Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7326085Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7326480Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7326883Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7327335Z           ********************************************************************************
+2026-11-28T09:01:46.7327611Z   
+2026-11-28T09:01:46.7327751Z   !!
+2026-11-28T09:01:46.7327916Z     check.warn(importable)
+2026-11-28T09:01:46.7328875Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7329927Z   !!
+2026-11-28T09:01:46.7330186Z   
+2026-11-28T09:01:46.7330534Z           ********************************************************************************
+2026-11-28T09:01:46.7331000Z           ############################
+2026-11-28T09:01:46.7331371Z           # Package would be ignored #
+2026-11-28T09:01:46.7331717Z           ############################
+2026-11-28T09:01:46.7332364Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T09:01:46.7333174Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7333631Z   
+2026-11-28T09:01:46.7334078Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7334994Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T09:01:46.7335723Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7336102Z   
+2026-11-28T09:01:46.7336504Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7337205Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7337790Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7338167Z   
+2026-11-28T09:01:46.7338595Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7339172Z   
+2026-11-28T09:01:46.7339467Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7339851Z   
+2026-11-28T09:01:46.7340176Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T09:01:46.7340731Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T09:01:46.7341234Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7341719Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7342191Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7342519Z   
+2026-11-28T09:01:46.7342811Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7343171Z   
+2026-11-28T09:01:46.7343427Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7343759Z   
+2026-11-28T09:01:46.7343897Z   
+2026-11-28T09:01:46.7344149Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7344537Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7345529Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7345979Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7346341Z           ********************************************************************************
+2026-11-28T09:01:46.7346628Z   
+2026-11-28T09:01:46.7346772Z   !!
+2026-11-28T09:01:46.7346939Z     check.warn(importable)
+2026-11-28T09:01:46.7347892Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7348842Z   !!
+2026-11-28T09:01:46.7348985Z   
+2026-11-28T09:01:46.7349759Z           ********************************************************************************
+2026-11-28T09:01:46.7350067Z           ############################
+2026-11-28T09:01:46.7350303Z           # Package would be ignored #
+2026-11-28T09:01:46.7350537Z           ############################
+2026-11-28T09:01:46.7350952Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T09:01:46.7351487Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7351802Z   
+2026-11-28T09:01:46.7352101Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7352679Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T09:01:46.7353143Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7353394Z   
+2026-11-28T09:01:46.7353655Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7354113Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7354488Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7354743Z   
+2026-11-28T09:01:46.7355030Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7355393Z   
+2026-11-28T09:01:46.7355681Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7356041Z   
+2026-11-28T09:01:46.7356351Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T09:01:46.7356884Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T09:01:46.7357383Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7357875Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7358350Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7358679Z   
+2026-11-28T09:01:46.7358972Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7359339Z   
+2026-11-28T09:01:46.7359596Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7359922Z   
+2026-11-28T09:01:46.7360055Z   
+2026-11-28T09:01:46.7360303Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7360688Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7361059Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7361452Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7361795Z           ********************************************************************************
+2026-11-28T09:01:46.7362073Z   
+2026-11-28T09:01:46.7362217Z   !!
+2026-11-28T09:01:46.7362378Z     check.warn(importable)
+2026-11-28T09:01:46.7363374Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7365298Z   !!
+2026-11-28T09:01:46.7365562Z   
+2026-11-28T09:01:46.7365911Z           ********************************************************************************
+2026-11-28T09:01:46.7366476Z           ############################
+2026-11-28T09:01:46.7366906Z           # Package would be ignored #
+2026-11-28T09:01:46.7367328Z           ############################
+2026-11-28T09:01:46.7368449Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T09:01:46.7369362Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7369913Z   
+2026-11-28T09:01:46.7370668Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7371690Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T09:01:46.7372435Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7372712Z   
+2026-11-28T09:01:46.7372978Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7373445Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7373830Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7374089Z   
+2026-11-28T09:01:46.7374381Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7374751Z   
+2026-11-28T09:01:46.7375051Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7375433Z   
+2026-11-28T09:01:46.7375726Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T09:01:46.7376205Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T09:01:46.7376678Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7377180Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7377664Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7377999Z   
+2026-11-28T09:01:46.7378280Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7378642Z   
+2026-11-28T09:01:46.7378898Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7379247Z   
+2026-11-28T09:01:46.7379392Z   
+2026-11-28T09:01:46.7379656Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7380047Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7380425Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7380828Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7381179Z           ********************************************************************************
+2026-11-28T09:01:46.7381459Z   
+2026-11-28T09:01:46.7381595Z   !!
+2026-11-28T09:01:46.7381766Z     check.warn(importable)
+2026-11-28T09:01:46.7382715Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-zj70x789\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T09:01:46.7383674Z   !!
+2026-11-28T09:01:46.7383816Z   
+2026-11-28T09:01:46.7384012Z           ********************************************************************************
+2026-11-28T09:01:46.7384314Z           ############################
+2026-11-28T09:01:46.7384553Z           # Package would be ignored #
+2026-11-28T09:01:46.7384780Z           ############################
+2026-11-28T09:01:46.7385204Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T09:01:46.7385850Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:01:46.7386159Z   
+2026-11-28T09:01:46.7386448Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:01:46.7387025Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T09:01:46.7387496Z           to the `packages` configuration field.
+2026-11-28T09:01:46.7387743Z   
+2026-11-28T09:01:46.7387993Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:01:46.7388441Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:01:46.7388899Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:01:46.7389149Z   
+2026-11-28T09:01:46.7389426Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:01:46.7389791Z   
+2026-11-28T09:01:46.7390080Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:01:46.7390437Z   
+2026-11-28T09:01:46.7390749Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T09:01:46.7391289Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T09:01:46.7391790Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:01:46.7392281Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:01:46.7392754Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:01:46.7393084Z   
+2026-11-28T09:01:46.7393365Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:01:46.7393724Z   
+2026-11-28T09:01:46.7393977Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:01:46.7394307Z   
+2026-11-28T09:01:46.7394440Z   
+2026-11-28T09:01:46.7394693Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:01:46.7395081Z                 even if it does not contain any `.py` files.
+2026-11-28T09:01:46.7395451Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:01:46.7395851Z                 directory, all directories are treated like packages.
+2026-11-28T09:01:46.7396195Z           ********************************************************************************
+2026-11-28T09:01:46.7396470Z   
+2026-11-28T09:01:46.7396606Z   !!
+2026-11-28T09:01:46.7396767Z     check.warn(importable)
+2026-11-28T09:01:46.7405254Z   Created wheel for universal-research-library: filename=universal_research_library-0.3.0.dev1-py3-none-any.whl size=2766532 sha256=56f0d01b7d474743ec4a6e72de193122a570f41b9fdcd0a423b80ffebf27050f
+2026-11-28T09:01:46.7407831Z   Stored in directory: C:\Users\runneradmin\AppData\Local\Temp\pip-ephem-wheel-cache-cviiwxmc\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+2026-11-28T09:01:46.7493691Z Successfully built universal-research-library
+2026-11-28T09:01:46.7780719Z Installing collected packages: universal-research-library
+2026-11-28T09:01:49.3950315Z Successfully installed universal-research-library-0.3.0.dev1
+2026-11-28T09:01:49.5522535Z ##[group]Run $audio = Join-Path $env:RUNNER_TEMP 'carr-final-scope-audio'
+2026-11-28T09:01:49.5523180Z [36;1m$audio = Join-Path $env:RUNNER_TEMP 'carr-final-scope-audio'[0m
+2026-11-28T09:01:49.5524263Z [36;1mpython packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-final-scope-audio-cache') --output $audio --download | Tee-Object 'ci-final-scope/audio-provisioning.json'[0m
+2026-11-28T09:01:49.5525294Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T09:01:49.5525688Z [36;1m$ffmpeg = Join-Path $audio 'bin/ffmpeg.exe'[0m
+2026-11-28T09:01:49.5526060Z [36;1m$ffprobe = Join-Path $audio 'bin/ffprobe.exe'[0m
+2026-11-28T09:01:49.5526366Z [36;1m@{[0m
+2026-11-28T09:01:49.5526659Z [36;1m  schema=1; status='PASS'; bundled=$false; runtime_root=$audio;[0m
+2026-11-28T09:01:49.5527353Z [36;1m  ffmpeg=@{path=$ffmpeg;sha256=(Get-FileHash -LiteralPath $ffmpeg -Algorithm SHA256).Hash.ToLowerInvariant()};[0m
+2026-11-28T09:01:49.5528732Z [36;1m  ffprobe=@{path=$ffprobe;sha256=(Get-FileHash -LiteralPath $ffprobe -Algorithm SHA256).Hash.ToLowerInvariant()}[0m
+2026-11-28T09:01:49.5529708Z [36;1m} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath 'ci-final-scope/external-test-audio-binding.json' -Encoding utf8[0m
+2026-11-28T09:01:49.5530528Z [36;1m(Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append[0m
+2026-11-28T09:01:49.5573639Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T09:01:49.5573974Z env:
+2026-11-28T09:01:49.5574141Z   PYTHONUTF8: 1
+2026-11-28T09:01:49.5574341Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:49.5574566Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:49.5574751Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:49.5574946Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:49.5575204Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:49.5575650Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T09:01:49.5576114Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:49.5576515Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:49.5576913Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:49.5577227Z ##[endgroup]
+2026-11-28T09:01:52.2783817Z {"application_runtime_network": false, "bin_dir": "D:\\a\\_temp\\carr-final-scope-audio\\bin", "download_default": false, "execution_test": "NOT_RUN", "files": 4, "lock_sha256": "15e6e0232e6903e6791776adf5f4ea7e2ba8bd757c35f1f2854ecee3435b4d95", "output": "D:\\a\\_temp\\carr-final-scope-audio", "public_binary_distribution": false, "status": "VERIFIED_AND_PREPARED"}
+2026-11-28T09:01:52.6329628Z ##[group]Run python -I -B -X utf8 -c "import runpy; suite=runpy.run_path('tests/packaging/test_preparation_notice_closure.py'); suite['test_installed_slovak_notice_is_discoverable_and_exact_in_about_inventory'](); print('CARR_INSTALLED_PREPARATION_NOTICE_CLOSURE PASS')" 2>&1 | Tee-Object 'ci-final-scope/preparation-notice-closure.txt'
+2026-11-28T09:01:52.6332079Z [36;1mpython -I -B -X utf8 -c "import runpy; suite=runpy.run_path('tests/packaging/test_preparation_notice_closure.py'); suite['test_installed_slovak_notice_is_discoverable_and_exact_in_about_inventory'](); print('CARR_INSTALLED_PREPARATION_NOTICE_CLOSURE PASS')" 2>&1 | Tee-Object 'ci-final-scope/preparation-notice-closure.txt'[0m
+2026-11-28T09:01:52.6333436Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T09:01:52.6376719Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T09:01:52.6377068Z env:
+2026-11-28T09:01:52.6377241Z   PYTHONUTF8: 1
+2026-11-28T09:01:52.6377483Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:52.6377713Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:52.6377900Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:52.6378096Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:52.6378356Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:52.6378814Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T09:01:52.6379269Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:52.6379667Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:52.6380074Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:52.6380378Z ##[endgroup]
+2026-11-28T09:01:53.2377357Z [31;1mTraceback (most recent call last):[0m
+2026-11-28T09:01:53.2386451Z [31;1m  File "<string>", line 1, in <module>[0m
+2026-11-28T09:01:53.2395009Z [31;1m  File "tests/packaging/test_preparation_notice_closure.py", line 14, in test_installed_slovak_notice_is_discoverable_and_exact_in_about_inventory[0m
+2026-11-28T09:01:53.2574231Z [31;1m    assert len(components) == 1[0m
+2026-11-28T09:01:53.2582552Z [31;1m           ^^^^^^^^^^^^^^^^^^^^[0m
+2026-11-28T09:01:53.2603128Z [31;1mAssertionError[0m
+2026-11-28T09:01:53.3047851Z ##[error]Process completed with exit code 1.
+2026-11-28T09:01:53.3190000Z ##[group]Run New-Item -ItemType Directory -Force 'ci-final-scope' | Out-Null
+2026-11-28T09:01:53.3190644Z [36;1mNew-Item -ItemType Directory -Force 'ci-final-scope' | Out-Null[0m
+2026-11-28T09:01:53.3191196Z [36;1mgit rev-parse HEAD | Set-Content 'ci-final-scope/head.txt' -Encoding utf8[0m
+2026-11-28T09:01:53.3191749Z [36;1mgit rev-parse 'HEAD^{tree}' | Set-Content 'ci-final-scope/tree.txt' -Encoding utf8[0m
+2026-11-28T09:01:53.3192527Z [36;1mpython -m pip freeze | Set-Content 'ci-final-scope/packages.txt' -Encoding utf8[0m
+2026-11-28T09:01:53.3232814Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T09:01:53.3233163Z env:
+2026-11-28T09:01:53.3233330Z   PYTHONUTF8: 1
+2026-11-28T09:01:53.3233527Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:53.3233751Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:53.3233945Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:53.3234144Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:53.3234445Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:53.3234915Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T09:01:53.3235379Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:53.3235788Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:53.3236195Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:53.3236525Z ##[endgroup]
+2026-11-28T09:01:54.0287632Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T09:01:54.0288116Z with:
+2026-11-28T09:01:54.0288410Z   name: final-scope-native-84816b20f32ca8142b9e07591a7ec3fd1b4dce17
+2026-11-28T09:01:54.0288790Z   path: carr-library/ci-final-scope
+2026-11-28T09:01:54.0289042Z   if-no-files-found: error
+2026-11-28T09:01:54.0289266Z   compression-level: 6
+2026-11-28T09:01:54.0289457Z   overwrite: false
+2026-11-28T09:01:54.0289646Z   include-hidden-files: false
+2026-11-28T09:01:54.0289856Z   archive: true
+2026-11-28T09:01:54.0290020Z env:
+2026-11-28T09:01:54.0290179Z   PYTHONUTF8: 1
+2026-11-28T09:01:54.0290375Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:01:54.0290586Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:01:54.0290767Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:01:54.0290957Z   DO_NOT_TRACK: 1
+2026-11-28T09:01:54.0291217Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:54.0291723Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T09:01:54.0292186Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:54.0292594Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:54.0292987Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T09:01:54.0293319Z ##[endgroup]
+2026-11-28T09:01:54.2078227Z With the provided path, there will be 6 files uploaded
+2026-11-28T09:01:54.2083559Z Artifact name is valid!
+2026-11-28T09:01:54.2085204Z Root directory input is valid!
+2026-11-28T09:01:54.3892562Z Uploading artifact: final-scope-native-84816b20f32ca8142b9e07591a7ec3fd1b4dce17.zip
+2026-11-28T09:01:54.3932302Z Beginning upload of artifact content to blob storage
+2026-11-28T09:01:54.4873048Z Uploaded bytes 1857
+2026-11-28T09:01:54.5027981Z Finished uploading artifact content to blob storage!
+2026-11-28T09:01:54.5029772Z SHA256 digest of uploaded artifact is 91e6a2805287b8e53d4b8dab35bd78fd234ebb53e5b5d7015e4a846c134f83df
+2026-11-28T09:01:54.5031283Z Finalizing artifact upload
+2026-11-28T09:01:54.8206760Z Artifact final-scope-native-84816b20f32ca8142b9e07591a7ec3fd1b4dce17 successfully finalized. Artifact ID 15256447588
+2026-11-28T09:01:54.8208302Z Artifact final-scope-native-84816b20f32ca8142b9e07591a7ec3fd1b4dce17 has been successfully uploaded! Final size is 1857 bytes. Artifact ID is 15256447588
+2026-11-28T09:01:54.8214959Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46126153255/artifacts/15256447588
+2026-11-28T09:01:54.8538459Z Post job cleanup.
+2026-11-28T09:01:55.0423060Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T09:01:55.0691128Z git version 2.56.1.windows.1
+2026-11-28T09:01:55.0751004Z Temporarily overriding HOME='D:\a\_temp\dfd514f7-487b-4a35-b398-095b4706aed2' before making global git config changes
+2026-11-28T09:01:55.0752341Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T09:01:55.0766473Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T09:01:55.1073409Z Removing SSH command configuration
+2026-11-28T09:01:55.1083559Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T09:01:55.1389335Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T09:01:55.6001989Z Removing HTTP extra header
+2026-11-28T09:01:55.6011660Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T09:01:55.6293332Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T09:01:56.1011752Z Removing includeIf entries pointing to credentials config files
+2026-11-28T09:01:56.1022946Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T09:01:56.1303626Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T09:01:56.6043739Z Cleaning up orphan processes

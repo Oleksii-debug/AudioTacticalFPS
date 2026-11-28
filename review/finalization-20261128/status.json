@@ -1,84 +1,119 @@
 {
-  "schema": "carr-finalization-status/1",
-  "observed_at": "2026-11-28 08:34:00 UTC",
+  "schema": "carr-finalization-continuation/17",
+  "observed_utc": "2026-11-28 09:27:48 UTC",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "pr": 143,
+  "branch": "carr/canonical-integrity-finish-20261127",
   "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
   "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
   "files": 1567,
-  "source": "Reviewed public finalization scope; complete recursive tree verification before leased fast-forward",
-  "canonical_input": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
-  "status": "CURRENT_HEAD_HAS_KNOWN_MAIN_SYNTAX_FAILURE",
-  "gate_runs": {
-    "windows": 46124998890,
-    "v3": 46124998937,
-    "scale": 46124999025,
-    "native_launcher": 46124998938,
-    "bibliography": 46124998884,
-    "calibre": 46124995558,
-    "legacy": 46124995570
+  "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "specs": {
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "root_agents": "080bb9104d3224749e9317c2273d803c0ac37835"
   },
-  "temporary_preflight": {
-    "head": "84816b20f32ca8142b9e07591a7ec3fd1b4dce17",
-    "tree": "b7990002f96fbed9477d192b2920bd1d2011eae7",
-    "run": 46126153255,
-    "status": "PENDING_SEPARATE_HEAD_WITH_REPAIRED_MAIN"
-  },
-  "pending_component_native": {
-    "word": {
-      "head": "429a5e60685b4c4ac38efd204d8fb4d57a6604c5",
-      "run": 46126241176,
-      "previous_actual_probe": "PASS 128; optional Office NOT_RUN 0; wrapper job failed on trailing blank result line",
-      "previous_evidence": "d4cf4d713d8cf4154877076eba1a6fd0633ed049"
-    }
-  },
-  "main_definition_correction": {
-    "rejected_run": 46124239342,
-    "rejected_head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
-    "before": "faf177b4e701dd10746ea78bdd54a5b2c0d36082",
-    "after": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
-    "independent_review": "eb983c6864b2561f6b478c578a9ce2f002123f6d",
-    "actual_admission": {
+  "current_head_may_merge": false,
+  "gates": {
+    "main": {
       "run": 46124998890,
-      "job": 140917531388,
-      "status": "QUEUED_ACTUAL_NAMED_JOB",
-      "runtime_pass": false
-    }
-  },
-  "notes": [
-    "All seven maintained workflows were admitted for the exact final head.",
-    "Three duplicate push runs were automatically superseded by their pull_request counterparts under the existing workflow concurrency policy; no manual job cancellation was requested.",
-    "Component evidence belongs only to the commit and installed inventory declared in each record.",
-    "All 12 actual capacity tiers and the required backup/fresh-restore results for the largest profiles remain pending.",
-    "Actual Office availability, private engines, physical devices/listening, human NVDA, quality across 135 languages, and publisher/distribution clearance remain separate qualifications.",
-    "Do not replace active final-head jobs. The corrected final candidate still needs exact-head gates after publication; this checkpoint does not transfer any result."
-  ],
-  "merge_allowed": false,
-  "current_gate_observations": {
-    "windows": "Queued; known PowerShell source-selector syntax failure",
-    "v3": "Portable source and native jobs running",
-    "scale": "Linux books-1000 completed; remaining tiers pending/running",
-    "native_launcher": "Pinned Zig job passed; MSVC pending",
-    "bibliography": "Pending",
-    "calibre": "PASS",
-    "legacy": "Linux passed; Windows running"
-  },
-  "required_correction": {
-    "path": ".github/workflows/carr-windows.yml",
-    "before": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
-    "after": "2297c5440ecc9b54e8b3a2d03e64a5ef8e62ca9e",
-    "selection_unchanged": true,
-    "product_unchanged": true,
-    "evidence": "838e2fa4f474f77d77cf4aa0519de94a5db8652b"
-  },
-  "completed_component_native": {
-    "silence": {
-      "head": "feb07924db248c2f028517939daeec02ebeb3ce9",
-      "run": 46123004216,
+      "status": "FAIL",
+      "record": "884ff0dabfe218d7d97c7da8d7e8edb843210b7e"
+    },
+    "v3": {
+      "run": 46124998937,
+      "status": "PORTABLE_FAIL_NATIVE_RUNNING",
+      "portable": "a984e0a5a8d6454a520277d9f4628f224d59ba6c",
+      "native_job": 140917532061
+    },
+    "capacity": {
+      "run": 46124999025,
+      "status": "SIX_SMALL_TIERS_PASS_SIX_LARGER_RUNNING",
+      "harvester_checkpoint": "96e182b28f3993a18ecdb709b851718710334e75"
+    },
+    "launcher": {
+      "run": 46124998938,
       "status": "PASS",
-      "checks": 98,
-      "scenarios": 9,
-      "evidence": "f651a223e990d12de0f200b17656560b1616ddc6"
+      "record": "3245c4e650564ed52e853ba3a9329827d9aefb4e"
+    },
+    "bibliography": {
+      "run": 46124998884,
+      "status": "PASS",
+      "record": "cd590c064f6f74d3b73c83ab30943f0cae634bff"
+    },
+    "calibre": {
+      "run": 46124995558,
+      "status": "PASS",
+      "record": "8f4dc8524191d74228f882ad5fbe3cd08d3d5cf7"
+    },
+    "legacy": {
+      "run": 46124995570,
+      "status": "PASS",
+      "record": "4f5d8286802fbea77e5355146638478d7bc64d8f"
     }
+  },
+  "corrections": {
+    "menu_notice": {
+      "status": "PASS_61_SOURCE_61_INSTALLED_EACH_OS",
+      "record": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e",
+      "blobs": [
+        "72ba5770af6fd355189fff990716c679b178943c",
+        "6ef37550a8463a125de82e1f0628244d5e0e1d17"
+      ]
+    },
+    "import": {
+      "status": "FORWARD_RUNTIME_PENDING",
+      "run": 46130074946,
+      "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+      "manifest": "d55bc2056f0da09296cd460691ebce4725fde717",
+      "prior_failed_fixture_record": "0e0ded4a4475cfde139b59817ac46a0b0250f8b3"
+    },
+    "sbom": {
+      "status": "PENDING_RUNTIME",
+      "run": 46130223315,
+      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
+      "tree": "c49a627deddf32e5f5bfd9ac43dda2cebbfd02ec",
+      "files": 1568,
+      "branch": "carr/sbom-vendor-review-20261128",
+      "ref_readback": true
+    },
+    "preflight": {
+      "status": "PENDING_RUNTIME",
+      "run": 46130308277,
+      "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+      "tree": "9247d7f1378722a0554f4bcaac04ec18874b4a32",
+      "files": 1568,
+      "branch": "carr/final-scope-preflight-20261128",
+      "ref_readback": true,
+      "public_changes": 11
+    },
+    "preflight2": {
+      "status": "SYNTAX_PASS_NATIVE_NOT_RUN_OLD_NOTICE_FIXTURE_FAIL",
+      "record": "5e6e1b1a34a9a125903f05658850628cb31ec1c2"
+    }
+  },
+  "new_completed_native_components": {
+    "word": "8264ac4a6aa227d0e86b7d7041fe16476de1125d",
+    "silence": "f651a223e990d12de0f200b17656560b1616ddc6"
+  },
+  "next": [
+    "Complete focused SBOM and importer runs; repair only actual failures while retaining original strict assertions.",
+    "Complete all eight native composed scopes on bdc3, including actual syntax and exact installed source/asset checks.",
+    "Retain outcomes of current healthy 71ca V3/capacity jobs; do not manually cancel them.",
+    "Harvest the saved quantitative capacity reports without rerunning a corpus or inferring API/RAM metrics from job wall time.",
+    "Compose the final corrected source only after required corrections are supported; include truthful completed Word/silence documentation, fresh-read canonical/spec/PR refs, recursively verify every file, and advance by expected-SHA normal update.",
+    "Complete all seven required workflows and all 12 capacity tiers on the corrected exact head, then merge PR143. Do not transfer component or old-head PASS.",
+    "Actual Office availability, private model quality, physical devices/listening, human NVDA, publisher signing and production authority remain separate evidence."
+  ],
+  "execution_constraints": {
+    "local_executor": "DISCONNECTED; do not retry local exec/shell",
+    "source_operations": "GitHub blobs, trees, commits and Actions",
+    "agents": {
+      "reader_review": "V3 native plus reader-related source reviews",
+      "import_recovery_review": "Import correction focused gate",
+      "release_audit": "12-tier capacity and read-only report harvester"
+    },
+    "update_ref": "branch_name, sha, expected_sha, force:false",
+    "current_final_feature_map": "phasefinish_final_feature_selection contains current 71ca only, not staged corrections"
   }
 }
