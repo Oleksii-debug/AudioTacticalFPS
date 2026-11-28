@@ -272,3 +272,92 @@ def test_native_tabs_refuses_close_when_saved_policy_cursor_does_not_match():
         context['tick_body']()
     assert context['stage'][0] == 'policy_saved'
     assert not keys and not scheduled
+
+
+
+def _reading_appearance_close_transition():
+    """Drive the real polling/key path across its deliberate native focus move."""
+    path = Path(SPEC.origin)
+    module = ast.parse(path.read_text(encoding='utf-8'))
+    names = {'check', 'advance', 'key', 'tick_body'}
+    functions = [node for node in ast.walk(module)
+                 if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in functions} == names and len(functions) == 4
+    focus, appearance, keys, scheduled = [None], [None], [], []
+
+    class Top:
+        def GetHandle(self): return 7
+        def Raise(self): pass
+
+    class Control:
+        def SetFocus(self): focus[0] = self
+
+    reader, editor, close = Top(), Control(), Control()
+    focus[0] = editor
+
+    def window(title):
+        if title == 'Voice reader and reading copy':
+            return reader
+        assert title == 'Reading appearance: font, colors and zoom'
+        return appearance[0]
+
+    def find(identifier, parent):
+        assert identifier == 2 and parent is reader
+        return close
+
+    def owner(handle, pointer):
+        assert handle == 7
+        pointer._obj.value = os.getpid()
+
+    wx = SimpleNamespace(MOD_NONE=0, WXK_SPACE=32, ID_CANCEL=2,
+        GetTopLevelParent=lambda control: reader,
+        Window=SimpleNamespace(FindFocus=lambda: focus[0]),
+        FindWindowById=find,
+        CallLater=lambda delay, action: scheduled.append((delay, action)))
+    context = dict(checks=[], errors=[], held=[None], stage=['appearance_closed', 0],
+        deadline=1000, monotonic=lambda: 0, evidence={'editor': editor},
+        window=window, wx=wx, os=os, ctypes=ctypes, wintypes=wintypes,
+        user32=SimpleNamespace(GetForegroundWindow=lambda: 7,
+            GetWindowThreadProcessId=owner, SetForegroundWindow=lambda handle: True),
+        simulator=SimpleNamespace(
+            KeyDown=lambda code, modifiers: keys.append((code, modifiers)) or True,
+            KeyUp=lambda code, modifiers: True))
+    context['released'] = lambda: driver._release_key(context['simulator'], context['held'])
+    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])),
+                 str(path), 'exec'), context)
+    return context, focus, appearance, editor, close, keys, scheduled
+
+
+def test_appearance_focus_return_survives_focusing_the_native_close_command():
+    context, focus, appearance, editor, close, keys, scheduled = _reading_appearance_close_transition()
+    for _ in range(3):
+        context['tick_body']()
+    assert focus[0] is close and context['stage'][0] == 'reader_closing'
+    assert keys == [(32, 0)] and len(scheduled) == 1 and scheduled[0][0] == 40
+    assert context['checks'] == ['appearance close restores reader keyboard focus']
+    scheduled.pop(0)[1]()  # The actual driver helper releases the dispatched key.
+    context['tick_body']()
+    assert context['held'] == [None] and not scheduled and keys == [(32, 0)]
+
+
+@pytest.mark.parametrize('missing_focus', [False, True], ids=['wrong-control', 'no-focus'])
+def test_appearance_close_still_refuses_an_incorrect_reader_focus(missing_focus):
+    context, focus, appearance, editor, close, keys, scheduled = _reading_appearance_close_transition()
+    focus[0] = None if missing_focus else close
+    with pytest.raises(AssertionError, match='appearance close restores reader keyboard focus'):
+        context['tick_body']()
+    assert context['stage'][0] == 'appearance_closed'
+    assert not keys and not scheduled and context['held'] == [None]
+
+
+def test_appearance_close_waits_for_the_owned_child_before_verifying_reader_focus():
+    context, focus, appearance, editor, close, keys, scheduled = _reading_appearance_close_transition()
+    appearance[0], focus[0] = object(), close
+    context['tick_body']()
+    assert context['stage'][0] == 'appearance_closed'
+    assert not context['checks'] and not keys and not scheduled
+    appearance[0], focus[0] = None, editor
+    for _ in range(3):
+        context['tick_body']()
+    assert context['checks'] == ['appearance close restores reader keyboard focus']
+    assert context['stage'][0] == 'reader_closing' and keys == [(32, 0)]
