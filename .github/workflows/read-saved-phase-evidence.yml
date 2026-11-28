@@ -1,4 +1,4 @@
-name: Read exact completed library growth pilot and call profiles
+name: Read exact df32 native and installed-bundle phase evidence
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   read-saved-public-diagnostics:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Verify and read the fixed public phase artifact
@@ -30,42 +30,82 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15257558742
-          SOURCE_RUN = 46130290641
-          SOURCE_HEAD = "1fb6fea3dce2b0f786417452ba60440fab103d8e"
-          ZIP_BYTES = 4877434
-          ZIP_SHA256 = "49a84c24374dfe3d5dc39313fe366a499cd91aae241c163df6b19021659c2bfd"
-          MAX_MEMBERS = 128
+          ARTIFACT_ID = 15257709215
+          SOURCE_RUN = 46128645092
+          SOURCE_HEAD = "df32f46eac519251421079ed83db208eb75fd6a9"
+          ZIP_BYTES = 179447
+          ZIP_SHA256 = "c147f7937027126045dc32068ca8640da585efecc3f1d1d2582e274dc04b8e00"
+          MAX_MEMBERS = 192
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
-          REQUIRED_FILES = {
-              "ci-native-audio-diagnostic/pilot-hardware.json",
-              "ci-native-audio-diagnostic/installed-source.json",
-              "ci-native-audio-diagnostic/pilot-controls.txt",
-              "ci-native-audio-diagnostic/pilot-control-evidence.json",
-              "ci-native-audio-diagnostic/source-control-00.xml",
-              "ci-native-audio-diagnostic/source-control-01.xml",
-              "ci-native-audio-diagnostic/source-control-02.xml",
-              "ci-native-audio-diagnostic/source-control-03.xml",
-              "ci-native-audio-diagnostic/source-control-04.xml",
-              "ci-native-audio-diagnostic/source-control-05.xml",
-              "ci-native-audio-diagnostic/source-control-06.xml",
-              "ci-native-audio-diagnostic/source-control-07.xml",
-              "ci-native-audio-diagnostic/library-growth-exit.json",
-              "ci-native-audio-diagnostic/library-growth-pilot.txt",
-              "ci-library-growth/pilot-source.json",
-              "ci-library-growth/pilot-report.json",
-              "ci-library-growth/child-100-outcome.json",
-              "ci-library-growth/child-1000-outcome.json",
-              "ci-library-growth/child-100.log",
-              "ci-library-growth/child-1000.log",
-              "ci-library-growth/books-100/case-report.json",
-              "ci-library-growth/books-1000/case-report.json",
-              "ci-library-growth/books-1000/profile-import-000001.json",
-              "ci-library-growth/books-1000/profile-import-000500.json",
-              "ci-library-growth/books-1000/profile-import-001000.json",
-              "ci-library-growth/books-1000/profile-search-000001.json",
+          REQUIRED_FILES = {"endpoint-evaluation.json", "endpoint-receipt-readback.txt", "endpoint-installed-source.json", "tested-commit.txt"}
+          SELECTED_FILES = {
+              "endpoint-evaluation.json",
+              "endpoint-receipt-readback.txt",
+              "endpoint-installed-source.json",
+              "tested-commit.txt",
+              "endpoint-evaluation.txt",
+              "endpoint-installed-source.txt",
+              "endpoint-source-controls.txt",
+              "audio-services-evaluation.json",
+              "signature-json-ps51.json",
+              "signature-json-ps7.json",
+              "native-windows_clip_editor_smoke.py.txt",
+              "native-windows_recording_smoke.py.txt",
+              "native-windows_publishing_smoke.py.txt",
+              "native-windows_local_planning_smoke.py.txt",
+              "native-windows_translation_v3_smoke.py.txt",
+              "native-windows_translation_local_smoke.py.txt",
+              "native-windows_epub_reading_smoke.py.txt",
+              "native-windows_pronunciation_smoke.py.txt",
+              "native-windows_studio_pronunciation_smoke.py.txt",
+              "native-windows_operations_smoke.py.txt",
+              "native-windows_reader_player_smoke.py.txt",
+              "native-windows_audio_player_smoke.py.txt",
+              "native-windows_effect_chain_smoke.py.txt",
+              "native-windows_reading_presentation_smoke.py.txt",
+              "native-windows_reading_tabs_smoke.py.txt",
+              "native-windows_incremental_backup_smoke.py.txt",
+              "native-windows_import_scan_smoke.py.txt",
+              "full-bundle-windows_clip_editor_smoke.py.txt",
+              "full-bundle-windows_recording_smoke.py.txt",
+              "full-bundle-windows_publishing_smoke.py.txt",
+              "full-bundle-windows_local_planning_smoke.py.txt",
+              "full-bundle-windows_translation_v3_smoke.py.txt",
+              "full-bundle-windows_translation_local_smoke.py.txt",
+              "full-bundle-windows_epub_reading_smoke.py.txt",
+              "full-bundle-windows_pronunciation_smoke.py.txt",
+              "full-bundle-windows_studio_pronunciation_smoke.py.txt",
+              "full-bundle-windows_operations_smoke.py.txt",
+              "full-bundle-windows_reader_player_smoke.py.txt",
+              "full-bundle-windows_audio_player_smoke.py.txt",
+              "full-bundle-windows_effect_chain_smoke.py.txt",
+              "full-bundle-windows_reading_presentation_smoke.py.txt",
+              "full-bundle-windows_reading_tabs_smoke.py.txt",
+              "full-bundle-windows_incremental_backup_smoke.py.txt",
+              "installed-native-v3.txt",
+              "full-bundle-audio-native.txt",
+              "full-bundle-assistant.log",
+              "full-bundle-assistant.json",
+              "full-bundle-automatic-ocr.txt",
+              "full-bundle-audio-metadata.txt",
+              "full-bundle-workflow-templates.txt",
+              "full-bundle-verified.json",
+              "full-bundle-required-exits.json",
+              "full-bundle-required-verdict.json",
+              "core-bundle-install.txt",
+              "core-bundle-self-test.json",
+              "installed-launchers.json",
+              "source-wheel-proof.json",
+              "full-bundle-core-exits.json",
+              "full-bundle-core-verdict.json",
+              "full-bundle-build-verified.json",
+              "standard-installer-inventory.json",
+              "standard-installer-build.txt",
+              "standard-installer-native.txt",
+              "union-source-controls.txt",
+              "union-production-controls.txt",
           }
 
           def fixed_get(endpoint, limit):
@@ -95,8 +135,7 @@ jobs:
               raise ValueError("Saved phase archive bytes do not match the fixed review.")
 
           decoded = []
-          available, unread = [], []
-          selected_total = 0
+          available, selected_names = [], set()
           with zipfile.ZipFile(io.BytesIO(raw), "r") as archive:
               entries = archive.infolist()
               if not entries or len(entries) > MAX_MEMBERS:
@@ -123,32 +162,34 @@ jobs:
                   if not 0 <= entry.file_size <= MAX_MEMBER_BYTES:
                       raise ValueError("Saved phase member exceeds its byte limit.")
                   total += entry.file_size
-                  # The sealed archive contains cumulative checkpoint copies.
-                  # Validate their metadata without decompressing unselected payloads.
-                  available.append({"path": name, "declared_bytes": entry.file_size})
-                  if name not in REQUIRED_FILES:
-                      unread.append(name)
-                      continue
-                  required[name] = required.get(name, 0) + 1
-                  selected_total += entry.file_size
-                  if selected_total > MAX_TOTAL_BYTES:
-                      raise ValueError("Selected pilot text exceeds its aggregate byte limit.")
+                  if total > MAX_TOTAL_BYTES:
+                      raise ValueError("Saved phase text exceeds its aggregate byte limit.")
+                  if path.name in REQUIRED_FILES:
+                      required[path.name] = required.get(path.name, 0) + 1
                   with archive.open(entry, "r") as stream:
                       content = stream.read(entry.file_size + 1)
                   if len(content) != entry.file_size:
                       raise ValueError("Saved phase member length changed during its bounded read.")
                   text = content.decode("utf-8")
-                  decoded.append((name, content, text))
+                  available.append(name)
+                  if path.name in SELECTED_FILES:
+                      if path.name in selected_names:
+                          raise ValueError("An explicitly selected phase member is ambiguous.")
+                      selected_names.add(path.name)
+                      decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
-                  raise ValueError("The required exact pilot evidence is absent or ambiguous.")
+                  raise ValueError("The required endpoint evaluation receipts are absent or ambiguous.")
 
           print(json.dumps({
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
               "source_run": SOURCE_RUN, "source_head": SOURCE_HEAD,
               "archive_bytes": ZIP_BYTES, "archive_sha256": ZIP_SHA256,
-              "text_members": len(decoded), "text_bytes": selected_total,
-              "archive_text_members": len(available), "archive_declared_text_bytes": total,
-              "available_files": available, "unread_members": sorted(unread),
+              "text_members": len(decoded),
+              "text_bytes": sum(len(content) for _, content, _ in decoded),
+              "archive_text_members": len(available), "archive_text_bytes": total,
+              "available_files": sorted(available),
+              "missing_selected_files": sorted(SELECTED_FILES - selected_names),
+              "missing_optional_status": {name: "NO_SAVED_EVIDENCE" for name in sorted(SELECTED_FILES - selected_names)},
               "scope": "readback of saved public diagnostics; no application execution"
           }, ensure_ascii=True), flush=True)
           for name, content, text in sorted(decoded, key=lambda item: item[0]):
