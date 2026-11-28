@@ -502,6 +502,19 @@ def test_incremental_pending_pages_preserve_checkpoint_bytes_but_revoke_executio
     receipt = create_incremental_backup(app, tmp_path / 'delta-pending',
         base=base, backup_budget=selected_policy())
     retained = {path.name: path.read_bytes() for path in app.assets_dir.iterdir()}
+    # The common4 pending inventory also copies reviewed, still-queued inputs.
+    # Derive its exact expected union from the original bytes while they exist,
+    # not from the restored tree or from an assumed already-retained-only set.
+    expected_retained = dict(retained)
+    for page in saved:
+        for planned in page['rows']:
+            manifest = planned['manifest']
+            raw = Path(planned['source']).read_bytes()
+            assert len(raw) == manifest['size']
+            assert sha256(raw).hexdigest() == manifest['sha256']
+            expected_retained[manifest['sha256'] + '.txt'] = raw
+    assert len(retained) == 1 and len(expected_retained) == 2
+    assert set(retained) < set(expected_retained)
     before = bytes_in(base.path), bytes_in(receipt.path)
     shutil.rmtree(selected)
     shutil.rmtree(app.root)
@@ -525,5 +538,5 @@ def test_incremental_pending_pages_preserve_checkpoint_bytes_but_revoke_executio
         assert not {'attempt', 'publication_candidate', 'publication_watermark'} & set(current_request)
         with pytest.raises(ValueError, match='Restored scan roots require a fresh explicit selection'):
             reopened.continue_import_scan(workspace, second['batch_id'], max_files=1)
-        assert {path.name: path.read_bytes() for path in reopened.assets_dir.iterdir()} == retained
+        assert {path.name: path.read_bytes() for path in reopened.assets_dir.iterdir()} == expected_retained
     assert (bytes_in(base.path), bytes_in(receipt.path)) == before

@@ -550,7 +550,7 @@ def _native_lifetime_peer(center):
 
 
 @pytest.mark.parametrize('destruction', ['direct', 'native-parent'])
-def test_actual_saved_page_survives_owner_death_before_real_worker_return(center, tmp_path, destruction):
+def test_actual_saved_page_survives_owner_death_before_real_worker_return(center, tmp_path, destruction, monkeypatch):
     from threading import Thread
     from carr_library.application import LibraryApp
     app = LibraryApp(tmp_path / 'real-library')
@@ -575,6 +575,10 @@ def test_actual_saved_page_survives_owner_death_before_real_worker_return(center
         assert release.wait(10), 'Test did not release the real saved-page result.'
         return value
     app.plan_import_page = held
+    import subprocess
+    def forbidden_child(*args, **kwargs):
+        pytest.fail('Saving or passively reading a source page launched a child.')
+    monkeypatch.setattr(subprocess, 'Popen', forbidden_child)
     view.plan((source,))
     job = view.jobs[-1]
     def work():
@@ -625,7 +629,11 @@ def test_actual_saved_page_survives_owner_death_before_real_worker_return(center
         assert captures['path'].read_bytes() == before
         assert app.import_batch(workspace, result[0]['batch_id']) == captures['record']
         assert app.browse(workspace) == ()
-        assert not (app.root / 'import-requests').exists()
+        # The passive load_request lookup creates its empty private directory
+        # before discovering there is no request leaf. No request or child is
+        # created by source planning, the late result, or the passive read.
+        requests = app.root / 'import-requests'
+        assert requests.is_dir() and tuple(requests.iterdir()) == ()
         assert not (app.root / 'imports.sqlite').exists()
         assert source.read_bytes() == b'An exact independently retained planning source.'
     finally:
