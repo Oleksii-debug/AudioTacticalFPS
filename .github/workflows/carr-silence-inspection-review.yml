@@ -1,17 +1,17 @@
-name: Measured chapter CUE interchange
+name: Read-only completed audio silence inspection
 on:
   push:
-    branches: [carr/cue-interchange-review-20261128]
-    paths: ['carr-library/**', '.github/workflows/carr-cue-interchange-review.yml']
+    branches: [carr/silence-inspection-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-silence-inspection-review.yml']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: cue-interchange-review-${{ github.ref_name }}
+  group: silence-inspection-review-${{ github.ref_name }}
   cancel-in-progress: true
 jobs:
   review:
-    name: Actual CUE publication and retained production contracts / ${{ matrix.os }}
+    name: Actual completed PCM, Studio ownership and backup contracts / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -23,7 +23,7 @@ jobs:
         working-directory: carr-library
         shell: bash
     env:
-      CARR_CUE_HEAD: ${{ github.sha }}
+      CARR_SILENCE_HEAD: ${{ github.sha }}
       PYTHONUTF8: '1'
       PYTHONDONTWRITEBYTECODE: '1'
       HF_HUB_OFFLINE: '1'
@@ -39,24 +39,24 @@ jobs:
           python-version: '3.11'
       - name: Install exact source and declared tests
         run: python -m pip install ".[test,sync]"
-      - name: Prepare the Linux test audio and independent C parser toolchain
+      - name: Prepare actual Linux test audio
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ffmpeg flex bison cmake build-essential
+          sudo apt-get install --no-install-recommends -y ffmpeg
       - name: Prepare the already pinned Windows test audio runtime
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force 'ci-cue-interchange' | Out-Null
+          New-Item -ItemType Directory -Force 'ci-silence-inspection' | Out-Null
           $audio = Join-Path $env:RUNNER_TEMP 'carr-cue-audio'
-          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-cue-audio-cache') --output $audio --download | Tee-Object 'ci-cue-interchange/audio-runtime.json'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-cue-audio-cache') --output $audio --download | Tee-Object 'ci-silence-inspection/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Prepare exact source and installed acceptance harness
         run: |
-          mkdir -p ci-cue-interchange
-          cat > ci-cue-interchange/check.py <<'PY'
+          mkdir -p ci-silence-inspection
+          cat > ci-silence-inspection/check.py <<'PY'
           from hashlib import sha256
           import importlib
           import importlib.util
@@ -79,15 +79,15 @@ jobs:
           installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
           assert source != installed and not installed.is_relative_to(root / "src")
           selected = source if mode == "source" else installed
-          artifacts = root / "ci-cue-interchange"
-          suites = ["tests/studio/test_interchange.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_production_total_budget_ownership.py","tests/studio/test_publishing.py","tests/studio/test_publishing_cli.py","tests/studio/test_audiobook_publication.py","tests/studio/test_clip_timeline.py","tests/studio/test_runtime_identity.py","tests/storage/test_cue_interchange_backup.py"]
+          artifacts = root / "ci-silence-inspection"
+          suites = ["tests/studio/test_interchange.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_production_total_budget_ownership.py","tests/studio/test_publishing.py","tests/studio/test_publishing_cli.py","tests/studio/test_audiobook_publication.py","tests/studio/test_clip_timeline.py","tests/studio/test_runtime_identity.py","tests/storage/test_cue_interchange_backup.py","tests/studio/test_silence.py","tests/ui/test_studio_silence_actions.py","tests/storage/test_backup_generated_audio.py","tests/storage/test_backup_studio_media.py","tests/storage/test_backup_v4_sidecars.py","tests/ui/test_progress_voice_actions.py"]
 
-          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.dsp","carr_library.audio.audiobook","carr_library.audio.process","carr_library.audio.models","carr_library.durable_state","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.backup_current"]
+          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.dsp","carr_library.audio.audiobook","carr_library.audio.process","carr_library.audio.models","carr_library.durable_state","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.backup_current","carr_library.studio.silence","carr_library.backup_compat.pcm","carr_library.ui.studio_dialog"]
           
           def checkout_head():
               value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()
-              assert value == os.environ["CARR_CUE_HEAD"], (value, os.environ["CARR_CUE_HEAD"])
+              assert value == os.environ["CARR_SILENCE_HEAD"], (value, os.environ["CARR_SILENCE_HEAD"])
               return value
 
           commit_before = checkout_head()
@@ -159,7 +159,7 @@ jobs:
           if mode == "installed":
               options += ["-o", "pythonpath="]
           report = artifacts / (mode + ".xml")
-          with tempfile.TemporaryDirectory(prefix="carr-cue-interchange-") as temporary:
+          with tempfile.TemporaryDirectory(prefix="carr-silence-inspection-") as temporary:
               status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
                                     str(Path(temporary) / "pytest"), *suites], plugins=[proof])
               cases = list(ET.parse(report).iter("testcase"))
@@ -187,44 +187,26 @@ jobs:
                   json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
               print(json.dumps(result, sort_keys=True))
           PY
-      - name: Require actual source production and CUE publication cases
+      - name: Require actual source silence and retained production cases
         if: "!cancelled()"
         run: |
           unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
-          python -B -X utf8 ci-cue-interchange/check.py source 2>&1 | tee ci-cue-interchange/source.txt
-      - name: Require isolated installed production and CUE cases
+          python -B -X utf8 ci-silence-inspection/check.py source 2>&1 | tee ci-silence-inspection/source.txt
+      - name: Require isolated installed silence and retained production cases
         if: "!cancelled()"
         run: |
           unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
-          python -I -B -X utf8 ci-cue-interchange/check.py installed 2>&1 | tee ci-cue-interchange/installed.txt
-      - name: Read the exact independent upstream CUE parser source
-        if: runner.os == 'Linux'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          repository: lipnitsk/libcue
-          ref: cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea
-          path: .ci-libcue
-          persist-credentials: false
-      - name: Build and require the actual upstream reader
-        if: runner.os == 'Linux'
-        timeout-minutes: 12
-        run: |
-          test "$(git -C ../.ci-libcue rev-parse HEAD)" = cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea
-          cmake -S ../.ci-libcue -B ../.ci-libcue/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-          cmake --build ../.ci-libcue/build --parallel 2
-          ctest --test-dir ../.ci-libcue/build --output-on-failure
-          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
-          python -I -B -X utf8 scripts/probe_cue_interchange.py --libcue ../.ci-libcue/build/libcue.so.2.3.0 --report ci-cue-interchange/libcue-reader.json 2>&1 | tee ci-cue-interchange/libcue-reader.txt
+          python -I -B -X utf8 ci-silence-inspection/check.py installed 2>&1 | tee ci-silence-inspection/installed.txt
       - name: Preserve exact identity
         if: always()
         run: |
-          mkdir -p ci-cue-interchange
-          git rev-parse HEAD > ci-cue-interchange/commit.txt
-          git rev-parse HEAD^{tree} > ci-cue-interchange/tree.txt
-          python -m pip freeze > ci-cue-interchange/packages.txt
+          mkdir -p ci-silence-inspection
+          git rev-parse HEAD > ci-silence-inspection/commit.txt
+          git rev-parse HEAD^{tree} > ci-silence-inspection/tree.txt
+          python -m pip freeze > ci-silence-inspection/packages.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: cue-interchange-${{ matrix.os }}-${{ github.sha }}
-          path: carr-library/ci-cue-interchange
+          name: silence-inspection-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-silence-inspection
           if-no-files-found: error

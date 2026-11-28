@@ -31,8 +31,11 @@ Role voices, gain and position can be edited before rendering. Source prose is n
 rewritten automatically. Generated scripts are separate from saved quotations.
 Ctrl+S saves the project and draft. Ctrl+Shift+S exports project JSON.
 F6 renders or resumes. F8 pauses after cancelling the current audio process.
-WAV master, chapter files, speaker stems, subtitles and the source script are exported
-to a new project folder. Unavailable models/codecs report a clear error.'''
+WAV master, chapter files, speaker stems, subtitles, CUE markers and the source script are exported
+to a new project folder. Unavailable models/codecs report a clear error.
+Select a completed saved job, enter explicit silence criteria and choose Inspect silence.
+Inspection scans the retained master and reports quiet ranges without altering audio.
+Use playback navigation to listen and review; intentional pauses are not automatic errors.'''
 
 
 class StudioController:
@@ -199,6 +202,16 @@ def show_studio(frame):
     stems = wx.CheckBox(dialog, label='Export separate &speaker and music stems')
     stems.SetValue(True)
     layout.Add(stems, 0, wx.ALL, 6)
+    silence_row = wx.BoxSizer(wx.HORIZONTAL)
+    silence_row.Add(wx.StaticText(dialog, label='Silence threshold (dBFS)'), 0, wx.ALL, 4)
+    silence_threshold = wx.TextCtrl(dialog, value='-60', size=(85, -1))
+    silence_threshold.SetName('Silence threshold in dBFS; dot decimal')
+    silence_row.Add(silence_threshold, 0, wx.ALL, 4)
+    silence_row.Add(wx.StaticText(dialog, label='Minimum quiet duration (seconds)'), 0, wx.ALL, 4)
+    silence_minimum = wx.TextCtrl(dialog, value='2', size=(85, -1))
+    silence_minimum.SetName('Minimum quiet duration in seconds; dot decimal')
+    silence_row.Add(silence_minimum, 0, wx.ALL, 4)
+    layout.Add(silence_row, 0, wx.EXPAND)
     status = field('Production and save status', style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='Loading installed local voices. No audio starts automatically.', size=(-1, 100))
     buttons = {}
@@ -209,7 +222,7 @@ def show_studio(frame):
                 (('progress_voice', 'Use voice for progress...'),
                  ('navigation', 'Playback navigation...'), ('pause_preview', 'Pause/resume playback'),
                  ('stop_preview', 'Stop playback'), ('output_device', 'Playback output...')),
-                (('queue', 'Playback queue...'),)):
+                (('queue', 'Playback queue...'), ('silence', 'Inspect silence...'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -267,6 +280,9 @@ def show_studio(frame):
         buttons['pause_preview'].Enable(not busy and getattr(dialog, '_audio_player', None) is not None)
         buttons['stop_preview'].Enable(getattr(dialog, '_audio_player', None) is not None)
         buttons['output_device'].Enable(not busy)
+        buttons['silence'].Enable(not busy and current_job is not None)
+        silence_threshold.Enable(not busy)
+        silence_minimum.Enable(not busy)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
@@ -790,6 +806,32 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
 
+    def inspect_silence(event=None):
+        if not alive or busy or current_job is None:
+            return
+        from ..studio.silence import inspect_completed_silence, silence_options, silence_report_text
+        identity = current_job
+        def current():
+            return (alive and frame.library is library_at_open
+                    and frame.library.root == library_root and current_job == identity)
+        try:
+            if not current():
+                raise ValueError('The selected library or Studio job changed. Reopen the current Studio.')
+            threshold, minimum, maximum = silence_options(
+                float(silence_threshold.GetValue()), float(silence_minimum.GetValue()))
+        except (TypeError, ValueError, OverflowError) as exc:
+            report(str(exc), True)
+            return
+        def work(measured):
+            return inspect_completed_silence(service, identity, threshold_dbfs=threshold,
+                minimum_seconds=minimum, max_intervals=maximum,
+                cancelled=lambda: cancel.is_set() or not current(), progress=measured)
+        def completed(result):
+            if not current():
+                raise ValueError('The library or selected job changed before its inspection could be shown.')
+            report(silence_report_text(result), True)
+        run(work, completed, phase='Inspecting completed audio for long silence', with_progress=True)
+
     def stop_preview(event=None):
         if not alive:
             return
@@ -1102,6 +1144,7 @@ def show_studio(frame):
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close,
                            'navigation': playback_navigation, 'queue': playback_queue,
+                           'silence': inspect_silence,
                            'pause_preview': pause_preview,
                            'stop_preview': stop_preview, 'output_device': choose_playback_output,
                            'progress_voice': select_progress_voice}.items():
