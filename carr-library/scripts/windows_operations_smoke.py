@@ -313,11 +313,14 @@ def main():
                 advance('open')
             elif name in ('open', 'open_blocked'):
                 open_palette('palette' if name == 'open' else 'palette_blocked')
-            elif name in ('palette', 'palette_blocked') and palette is not None:
+            elif name == 'open_results':
+                open_palette('palette_results')
+            elif name in ('palette', 'palette_blocked', 'palette_results') and palette is not None:
                 named(palette, 'Search commands by name').SetValue('Tasks and resources')
                 observe_palette(palette)
-                advance('select' if name == 'palette' else 'select_blocked')
-            elif name in ('select', 'select_blocked') and palette is not None:
+                advance({'palette': 'select', 'palette_blocked': 'select_blocked',
+                         'palette_results': 'select_results'}[name])
+            elif name in ('select', 'select_blocked', 'select_results') and palette is not None:
                 search = named(palette, 'Search commands by name')
                 results = named(palette, 'Matching commands and shortcuts')
                 commands = [command for command in frame.keyboard_commands.registry.commands('main')
@@ -326,7 +329,33 @@ def main():
                       [command.command_id for command in commands] == ['operations.open']
                       and results.GetCount() == 1 and results.GetSelection() == 0
                       and results.GetString(0).split(' — ', 1)[0] == commands[0].label)
-                key(search, wx.WXK_RETURN, 'loaded' if name == 'select' else 'blocked')
+                if name == 'select_results':
+                    key(search, wx.WXK_TAB, 'results_focus')
+                else:
+                    key(search, wx.WXK_RETURN, 'loaded' if name == 'select' else 'blocked')
+            elif name == 'results_focus' and palette is not None:
+                results = named(palette, 'Matching commands and shortcuts')
+                focus = wx.Window.FindFocus()
+                if (not focus or focus.GetId() != results.GetId()
+                        or int(focus.GetHandle()) != int(results.GetHandle())):
+                    return
+                check('native Tab moves command-search focus to the actual results list',
+                      focus.GetId() == results.GetId()
+                      and int(focus.GetHandle()) == int(results.GetHandle()))
+                get_default = getattr(palette, 'GetDefaultItem', None)
+                default = get_default() if callable(get_default) else None
+                note('results-enter-ready', focus_id=focus.GetId(),
+                     focus_handle=int(focus.GetHandle()), selected=results.GetSelection(),
+                     default_item_supported=callable(get_default),
+                     default_item_id=default.GetId() if default else None)
+                key(results, wx.WXK_RETURN, 'results_loaded')
+            elif name == 'results_loaded' and dialog is not None and not dialog.controller.busy:
+                selected = dialog.selection()
+                check('native results Enter opens the same loaded Tasks view',
+                      dialog.controller.policy is not None
+                      and dialog.controller.policy.cpu_slots == 2
+                      and selected is not None and selected.key == 'assistant:' + identity)
+                key(dialog.status, wx.WXK_ESCAPE, 'results_closed')
             elif name == 'loaded' and dialog is not None:
                 if dialog.controller.busy:
                     return
@@ -376,6 +405,8 @@ def main():
                     return
                 check('native Refresh shows the actual current policy', dialog.cpu.GetValue() == 3)
                 dialog.cpu.SetValue(2)
+                advance('save_policy')
+            elif name == 'save_policy' and dialog is not None and not dialog.controller.busy:
                 key(dialog.buttons['save'], wx.WXK_SPACE, 'saved_policy')
             elif name == 'saved_policy' and dialog is not None and not dialog.controller.busy:
                 if not dialog.controller.status.startswith('Resource allowances saved.'):
@@ -384,6 +415,10 @@ def main():
                       broker.limits.cpu_slots == 2 and dialog.controller.policy.cpu_slots == 2)
                 key(dialog.status, wx.WXK_ESCAPE, 'closed')
             elif name == 'closed' and dialog is None and not frame.working:
+                advance('open_results')
+            elif name == 'results_closed' and dialog is None and not frame.working:
+                check('results-launched Tasks closes normally before reservation testing',
+                      palette is None and gate is None)
                 gate = NativeLock(broker.root / '.admission.lock')
                 check('a real native admission lock is held for the responsiveness case', gate.acquire())
                 advance('open_blocked')
