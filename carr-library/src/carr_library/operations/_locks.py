@@ -36,6 +36,15 @@ if hasattr(os, 'register_at_fork'):
     os.register_at_fork(before=_GUARD.acquire, after_in_parent=_GUARD.release, after_in_child=_after_fork)
 
 
+def _leaf_present(path):
+    """Only an absent leaf is benign; denied metadata must stop admission."""
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
 def _unheld_path(value):
     """A released Windows lock may disappear before our native acquisition.
 
@@ -53,13 +62,13 @@ def _unheld_path(value):
             # prefix, so resolve only its existing, fully checked parent.
             parent = checked_directory(local_path(path.parent, exists=True))
             checked = parent / path.name
-            if os.path.lexists(checked):
+            if _leaf_present(checked):
                 regular(checked)
             return checked
         except FileNotFoundError:
             parent = checked_directory(local_path(path.parent, exists=True))
             checked = parent / path.name
-            if not os.path.lexists(checked):
+            if not _leaf_present(checked):
                 return checked
             # Another contender recreated the unowned leaf. Revalidate its
             # current type, aliases and parent instead of rethrowing an old

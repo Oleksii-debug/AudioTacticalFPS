@@ -569,6 +569,45 @@ def test_repeated_unowned_leaf_churn_fails_without_native_acquisition(tmp_path, 
     assert not lock.held and path.read_bytes() == b''
 
 
+@pytest.mark.parametrize('boundary', ('construction', 'acquisition'))
+@pytest.mark.parametrize('phase', ('initial', 'recreated'))
+@pytest.mark.parametrize('error_type', (PermissionError, OSError))
+def test_unowned_leaf_metadata_errors_are_not_absence(tmp_path, monkeypatch, boundary, phase, error_type):
+    from carr_library.operations import _locks
+    path = tmp_path / '.denied.lock'
+    sentinel = b'Unowned bytes must survive refused native acquisition.'
+    path.write_bytes(sentinel)
+    lock = _locks.NativeLock(path) if boundary == 'acquisition' else None
+    original_lstat = Path.lstat
+    denied = error_type('fixture leaf metadata failure')
+    observed = []
+    try:
+        with monkeypatch.context() as fault:
+            changed = (_release_during_local_path_validation(
+                fault, path, lambda: path.write_bytes(sentinel))
+                if phase == 'recreated' else [])
+
+            def metadata(selected, *args, **kwargs):
+                info = original_lstat(selected, *args, **kwargs)
+                if Path(selected) == path and (phase == 'initial' or changed):
+                    observed.append(True)
+                    raise denied
+                return info
+
+            fault.setattr(Path, 'lstat', metadata)
+            with pytest.raises(error_type) as caught:
+                lock = lock or _locks.NativeLock(path)
+                lock.acquire()
+            assert caught.value is denied
+            assert observed == [True]
+            assert changed == ([True] if phase == 'recreated' else [])
+            assert lock is None or not lock.held
+        assert path.read_bytes() == sentinel
+    finally:
+        if lock is not None and lock.held:
+            lock.release()
+
+
 def test_unowned_lock_replacement_still_rejects_a_hardlink_alias(tmp_path, monkeypatch):
     from carr_library.operations import _locks
     path, outside = tmp_path / '.replaced.lock', tmp_path / 'other-state'

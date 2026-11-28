@@ -47,9 +47,13 @@ named identities. On Windows they intercept the real native lookup return,
 covering the first/second lookup boundary without sleeps. The POSIX branch
 also requires parent-only resolution and performs the same real deletion.
 Three additional absent-leaf cases retain device-name, alternate-stream and
-trailing-dot refusals. Expected resource cases are now 40; unchanged Fast
-selectors therefore expect 498 source cases and 458 installed cases, plus
-the existing 45 loopback cases.
+trailing-dot refusals. Eight construction/acquisition controls inject actual
+leaf metadata PermissionError and other OSError values before the initial
+presence decision or after real deletion/recreation; those exact exceptions
+must propagate before native acquisition and preserve the existing file bytes.
+Both presence probes catch only FileNotFoundError. Expected resource cases are
+now 48; unchanged Fast selectors therefore expect 506 source cases and 466
+installed cases, plus the existing 45 loopback cases.
 
 This checkpoint is **NOT_RUN**. The existing cross-process contention case,
 all strict no-skip gates and the final native/package qualification still
