@@ -206,11 +206,16 @@ class PublicationTransaction:
         if not count:
             raise ValueError('empty revision')
         self.storage._check_locators(revision)
-        expected = 'SELECT id,raw FROM page WHERE revision=?'
-        actual = ('SELECT i.id,i.raw FROM indexed i JOIN page p ON p.id=i.id '
-                  'WHERE p.revision=?')
-        if (db.execute(expected + ' EXCEPT ' + actual, (revision, revision)).fetchone()
-                or db.execute(actual + ' EXCEPT ' + expected, (revision, revision)).fetchone()):
+        # The joined actual IDs are a subset of this revision's unique page IDs.
+        # Check each exact value without materializing its whole raw-text set.
+        if db.execute("""
+            SELECT 1 FROM page p WHERE p.revision=?
+              AND NOT EXISTS (
+                  SELECT 1 FROM indexed i WHERE i.id=p.id
+                    AND (+i.raw COLLATE BINARY) IS (+p.raw COLLATE BINARY)
+              )
+            LIMIT 1
+        """, (revision,)).fetchone():
             raise ValueError('active index content mismatch')
         if db.execute(
                 'SELECT 1 FROM indexed i JOIN page p ON p.id=i.id '
