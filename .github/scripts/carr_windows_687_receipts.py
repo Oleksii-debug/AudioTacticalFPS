@@ -12,13 +12,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+import xml.etree.ElementTree as ET
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
 RUN = 46119978375
 HEAD = "943f585659c55481046266338f428e4a1043a9bd"
 BRANCH = "carr/ci-endpoint-evaluation-20261127"
 SOURCES = (
-    ("main", 15256851282, 475789,
+    ("junit-summary", 15256851282, 475789,
      "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
      "carr-windows-pre-source-" + HEAD + "-1"),
     ("endpoint", 15253625504, 3942,
@@ -78,6 +79,132 @@ ERROR_LINE = re.compile(r"Traceback|AssertionError|TimeoutError|RuntimeError|Val
                         r"PermissionError|OSError|FileNotFoundError|FAIL(?:ED)?\b|"
                         r"\bERROR\b|Exception|access violation", re.I)
 
+
+# This single published JUnit member is parsed only for the post-pytest guards.
+# Its digest is derived from the SHA-256-verified immutable archive, not supplied
+# as a pre-observed member hash. No XML text or arbitrary testcase text is emitted.
+JUNIT_MEMBER = "full-bundle-workflows.xml"
+JUNIT_BYTES = 1495285
+JUNIT_OBSERVED_TESTS = 9319
+JUNIT_CASE_LIMIT = JUNIT_OBSERVED_TESTS + 256
+JUNIT_ELEMENT_LIMIT = 4 * JUNIT_CASE_LIMIT + 64
+JUNIT_DEPTH_LIMIT = 32
+JUNIT_MODULES = {
+    "test_import_metadata_shape": 58,
+    "test_ocr_runtime": 3,
+    "test_state_backup_portability": 6,
+}
+JUNIT_REQUIRED = frozenset((
+    "test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources",
+    "test_cancelled_extended_import_can_resume_same_identity",
+    "test_windows_native_dialog_async_lookup_focus_and_close",
+    "test_real_application_lookup_save_apply_from_dialog_preserves_source",
+    "test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit",
+    "test_actual_multilingual_ranker_and_complete_token_coverage",
+    "test_actual_application_semantic_scope_and_original_quotes",
+    "test_actual_semantic_snapshot_survives_concurrent_membership_revocation",
+    "test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication",
+    "test_reviewed_import_rejects_changed_approval_without_publishing",
+    "test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion",
+    "test_notebook_search_fresh_navigation_and_backup_restore",
+    "test_academic_reference_roundtrip_preserves_source_evidence",
+    "test_academic_import_is_atomic_and_exports_preserve_metadata",
+)) | frozenset(
+    "test_long_ascii_source_search_copy_and_context_use_exact_tail[" + mode + "-" + retrieval + "]"
+    for mode in ("short", "thematic") for retrieval in ("thematic", "semantic")
+) | frozenset(
+    "test_application_exports_the_selected_topic_with_readable_title[" + format + "]"
+    for format in ("docx", "html")
+)
+JUNIT_OCR = frozenset((
+    "test_empty_directory_inventory_has_a_bound",
+    "test_directory_inventory_checks_budget_between_entries",
+    "test_unreadable_directory_rejects_entire_inventory",
+))
+JUNIT_STATE = frozenset((
+    "test_state_inventory_rejects_unreadable_subtree[snapshot]",
+    "test_state_inventory_rejects_unreadable_subtree[restore]",
+    "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+    "test_state_root_lookup_error_is_not_absence[PermissionError]",
+    "test_state_root_lookup_error_is_not_absence[NotADirectoryError]",
+    "test_state_root_missing_is_optional_only_when_requested",
+))
+
+
+def junit_summary(raw):
+    if len(raw) != JUNIT_BYTES:
+        raise ValueError("Pinned JUnit member size differs")
+    text = raw.decode("utf-8-sig", errors="strict")
+    if re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", text, re.I):
+        raise ValueError("DTD and entity declarations are forbidden in JUnit evidence")
+    declaration = re.match(r"\s*<\?xml\b[^?]*\?>", text, re.I)
+    if declaration:
+        encoding = re.search(r"\bencoding\s*=\s*(['\"])(.*?)\1",
+                             declaration.group(), re.I)
+        if encoding and encoding.group(2).lower() not in ("utf-8", "utf8"):
+            raise ValueError("JUnit evidence declares a non-UTF8 encoding")
+    modules = {name: [] for name in JUNIT_MODULES}
+    observed = set()
+    count = failed = errors = failed_or_error = skipped = depth = elements = 0
+    for event, element in ET.iterparse(io.StringIO(text), events=("start", "end")):
+        if event == "start":
+            depth += 1
+            elements += 1
+            if depth > JUNIT_DEPTH_LIMIT or elements > JUNIT_ELEMENT_LIMIT:
+                raise ValueError("JUnit evidence exceeds its fixed structural bound")
+            if element.tag == "testcase":
+                count += 1
+                if count > JUNIT_CASE_LIMIT:
+                    raise ValueError("JUnit evidence exceeds its fixed testcase bound")
+            continue
+        if element.tag == "testcase":
+            name, classname = element.get("name", ""), element.get("classname", "")
+            if not name or len(classname) > 512:
+                raise ValueError("JUnit testcase identity is missing or excessive")
+            if name in JUNIT_REQUIRED:
+                observed.add(name)
+            module = classname.rsplit(".", 1)[-1]
+            if module in modules:
+                if len(name) > 1024:
+                    raise ValueError("Guarded JUnit testcase name is excessive")
+                names = modules[module]
+                if len(names) >= JUNIT_MODULES[module] + 16:
+                    raise ValueError("Guarded JUnit module exceeds its diagnostic headroom")
+                names.append(name)
+            has_failure = element.find("failure") is not None
+            has_error = element.find("error") is not None
+            failed += has_failure
+            errors += has_error
+            failed_or_error += has_failure or has_error
+            skipped += element.find("skipped") is not None
+        element.clear()
+        depth -= 1
+    if depth != 0 or count < 1:
+        raise ValueError("JUnit evidence is empty or structurally incomplete")
+    metadata = modules["test_import_metadata_shape"]
+    ocr = modules["test_ocr_runtime"]
+    state = modules["test_state_backup_portability"]
+    missing = sorted(JUNIT_REQUIRED - observed)
+    predicates = {
+        "metadata_exact_58_unique": len(metadata) == 58 and len(set(metadata)) == 58,
+        "ocr_exact_names": len(ocr) == len(JUNIT_OCR) and set(ocr) == JUNIT_OCR,
+        "state_inventory_exact_names": len(state) == len(JUNIT_STATE) and set(state) == JUNIT_STATE,
+        "required_names_present": not missing,
+        "zero_failed_error_skipped": failed_or_error == skipped == 0,
+    }
+    return {
+        "scope": "read-only reproduction of existing post-pytest JUnit predicates",
+        "totals": {"testcases": count, "passed": count - failed_or_error - skipped,
+                   "failed": failed, "errors": errors, "failed_or_error": failed_or_error,
+                   "skipped": skipped},
+        "guarded_modules": {
+            name: {"count": len(names), "unique": len(set(names)), "names": sorted(names)}
+            for name, names in modules.items()},
+        "missing_required_names": missing, "predicates": predicates,
+        "all_guarded_predicates": all(predicates.values()),
+        "application_acceptance": "NOT_ASSESSED", "raw_xml_emitted": False,
+    }
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -131,6 +258,8 @@ def line(kind, value):
 
 
 def wanted(name, mode):
+    if mode == "junit-summary":
+        return name == JUNIT_MEMBER
     # Admit only this already inventoried public JUnit text; never parse or execute it.
     if mode == "junit":
         return name == "full-bundle-workflows.xml"
@@ -239,11 +368,20 @@ def main():
             selected_total += len(selected)
             for name in selected:
                 entry = files[name]
+                if mode == "junit-summary" and entry.file_size != JUNIT_BYTES:
+                    raise ValueError("Pinned JUnit member size differs")
                 with archive.open(entry) as stream:
                     member = stream.read(entry.file_size + 1)
                 if len(member) != entry.file_size:
                     raise ValueError("Evidence member length changed")
                 member_digest = hashlib.sha256(member).hexdigest()
+                if mode == "junit-summary":
+                    summary = junit_summary(member)
+                    emit(line("CARR_WINDOWS_JUNIT_SUMMARY", {
+                        "artifact": identity, "archive_sha256": digest, "path": name,
+                        "bytes": len(member), "sha256": member_digest, "encoding": "utf-8-sig",
+                        "run": RUN, "head": HEAD, "attempt": 1, **summary}))
+                    continue
                 text, encoding = text_content(member)
                 info = {"artifact": identity, "mode": mode, "path": name,
                         "bytes": len(member), "sha256": member_digest, "encoding": encoding}
