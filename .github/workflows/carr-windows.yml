@@ -1183,6 +1183,19 @@ jobs:
           $report = Join-Path (Resolve-Path 'ci-results').Path 'standard-installer'
           $manifest = (Get-FileHash -LiteralPath (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
           & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory $compilerRoot
+          # Observational evidence only; every failure still reaches the original build below.
+          $inventoryObservation = try {
+            $observedInventory = & $python -I -B -X utf8 packaging/windows_installer/bundle_difference.py --bundle $bundle --bundle-manifest-sha256 $manifest
+            if ($LASTEXITCODE -ne 0) { throw 'Inventory observer process failed.' }
+            $observedInventory
+          } catch {
+            '{"schema":1,"status":"UNAVAILABLE","error_type":"ObserverProcess","error":"Inventory observer did not complete."}'
+          }
+          try {
+            $inventoryObservation | Tee-Object 'ci-results/standard-installer-inventory.json'
+          } catch {
+            Write-Host '{"schema":1,"status":"UNAVAILABLE","error_type":"ObserverOutput","error":"Inventory observation receipt could not be written."}'
+          }
           & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --installed-bundle --output $buildRoot --iscc (Join-Path $compilerRoot 'tools/ISCC.exe') --toolchain-receipt (Join-Path $compilerRoot 'toolchain-receipt.json') 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $buildRoot 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $buildRoot 'setup-build.json') --work $workRoot --report $report 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
