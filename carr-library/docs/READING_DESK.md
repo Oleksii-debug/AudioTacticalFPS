@@ -170,8 +170,12 @@ the Voice Reader stops its owned playback. These controls do not modify or
 overwrite the rendered WAV or the retained text source.
 
 **Synthesis rate** changes a newly rendered voice request only when the selected
-voice supports it. These playback controls do not promise independent playback
-speed, pitch shifting, or pitch-preserving time stretch. Windows playback reports
+voice supports it. For independent listening speed and pitch, use the explicit **Apply** action
+in these controls to prepare a verified private listening copy. It supports
+0.25–4 times speed and −12 to +12 semitones through the existing typed converter;
+it preserves the original audio and does not start playback. See
+[Independent listening speed and pitch](LISTENING_SPEED.md) for the measured
+frame mapping, resource limits and ownership contract. Windows playback reports
 native MCI positions; the existing ffplay fallback reports an elapsed-time
 estimate. Actual MCI tests use silent synthetic PCM. Listening quality, real voice
 pronunciation and Windows 11/NVDA use require their separate acceptance.

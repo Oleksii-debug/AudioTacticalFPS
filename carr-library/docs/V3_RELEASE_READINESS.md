@@ -101,8 +101,9 @@ required even when a focused source or installed suite passes:
   Supplied source and managed reference/profile workflows are present; a
   synthetic protocol or generated PCM fixture cannot qualify the model.
 - The selected dordiai/SAPI4 combinations, optional MusicGen/ACE-Step model
-  inference and the remaining finite Balabolka-equivalent acceptance checklist.
-  Each advertised control and language must match the actual chosen engine.
+  inference and actual acceptance of the [finite requested reader workflow
+  checklist](REQUESTED_READER_WORKFLOWS.md). Each advertised control and language
+  must match the actual chosen engine.
 - Physical microphone/driver use, actual output advancement, dry-monitoring
   latency and listening, plus any remaining professional live studio workflows.
   Pause/Resume, dry monitoring, typed envelopes and saved clip/history editing

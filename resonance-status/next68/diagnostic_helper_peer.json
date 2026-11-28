@@ -1,0 +1,44 @@
+{
+  "schema": "carr-independent-static-review/1",
+  "reviewer": "locate_project",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+  "git_blob": "fa8948e3c83108679a57bb3e6d3cbd4dd618f41e",
+  "base_commit": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+  "base_tree": "9d88b8a0475f88fc75cf20ffffe6c7b37bce2e57",
+  "scope": [
+    "source and installed wrapper identity",
+    "fixed whole/function inventory",
+    "actual current Git pins and fixture staging",
+    "strict result interpretation and existing child cleanup",
+    "bounded original timeout API"
+  ],
+  "findings": {
+    "pins": "All60 source pins independently match the recursive exact C tree; no mismatch or truncation.",
+    "inventory": {
+      "suites": {
+        "tests/studio/test_book_batch.py": 30,
+        "tests/assistant/test_translation_documents.py": 20,
+        "tests/transcription/test_admission_boundaries.py": 40,
+        "tests/speech/test_voice_preferences.py": 23
+      },
+      "cases": 113,
+      "functions": 66,
+      "modules": 42,
+      "companions": 5,
+      "exact_function_lists": true
+    },
+    "reused_sources": {
+      "configured": "59d3642396f88529e17d82f68bb4675382145c9f",
+      "source_child": "8e7c117ae4c8a2fabba46ef8c99eae09f25f40de",
+      "audio": "60945740d48b1c39eb803ddf479fc2c2d9c391a2",
+      "ci_check": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+    },
+    "inverse_checks": "Six shared orchestration functions and INSTALLED_CHILD are byte-identical to59d. SOURCE_CHILD differs only in its compile filename diagnostic from8e7. Audio admission differs only in its Windows diagnostic sentence from609.",
+    "source": "Real isolated -I/-B source wrapper loads the unchanged actual ci_check policy; source modules match exact loaded paths and SHA values before/after. Book30 alone precedes the other three child processes.",
+    "installed": "The current wheel is built and verified against event HEAD, then installed without network/dependency replacement. Fixed tests plus all5 required fixtures are copied and hashed; each whole runs separately under the unchanged installed wrapper/full-wheel and origin proofs, with final fixture/source/audio checks.",
+    "failure_policy": "Ordinary nonzero whole results retain real JUnit/function/count/failure names and origins, then continue to expose the other wholes. A child timeout is recorded only after the existing owned-tree termination returns, with after-origin explicitly NOT_OBSERVED and status FAIL. Origin/proof/cleanup failures still abort. Final success requires all4 source and all4 installed whole results strictly successful with no skips or expected failure.",
+    "limits": "The actual ci6ad default is600 seconds; only the exact existing transcription admission suite allowance is900, checked through its original _reviewed_suite_timeout API. Build300/install180/pip-check60 remain finite.",
+    "scope_limit": "This diagnostic cannot qualify full installed cross-suite behavior, native desktop, physical audio or manual NVDA. No parser or execution result is claimed."
+  }
+}

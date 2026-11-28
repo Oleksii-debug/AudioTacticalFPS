@@ -1,0 +1,137 @@
+{
+  "schema": "carr-retained-capacity-closed-result/1",
+  "recorded_utc": "2026-11-28 08:00:42 UTC",
+  "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+  "run_id": 46121242674,
+  "job_id": 140909164614,
+  "status": "PASS",
+  "geometry": {
+    "books": 10000,
+    "segments_per_book": 20,
+    "segments": 200000
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121242674/job/140909164614",
+  "phase_receipt": {
+    "books": 10000,
+    "phases": [
+      {
+        "phase": "build",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "measure",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "restart",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "operations",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "backup",
+        "reason": null,
+        "status": "PASS"
+      }
+    ],
+    "qualification": "Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.",
+    "retained": {
+      "10000/backup.json": {
+        "bytes": 6962,
+        "sha256": "466ceb4569fabe4648cfea1941c0b1bed1c1e2bd077e4981df3f3eac395093f0"
+      },
+      "10000/backup.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/backup.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/build.json": {
+        "bytes": 5981,
+        "sha256": "c81352d7ee92bd1f71368ab057b2e0961b21586f54696d5128cec41803538a7c"
+      },
+      "10000/build.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/build.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/measure.json": {
+        "bytes": 7012,
+        "sha256": "9e2f6aa97dbaa929ba16c47e6534e89b42426d142b9c65e6b47008aa1ead465b"
+      },
+      "10000/measure.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/measure.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/operations.json": {
+        "bytes": 10143,
+        "sha256": "4f21f831e043900de086209f4480c64e3d5b0b1f49365d0c1ef55e040b59f57d"
+      },
+      "10000/operations.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/operations.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/restart.json": {
+        "bytes": 6748,
+        "sha256": "5fd87515527a73e4afa1f48f1d344eb198a7d3f4d652ac6b74d5183703f2473a"
+      },
+      "10000/restart.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "10000/restart.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "configuration.json": {
+        "bytes": 5462,
+        "sha256": "a506a46e912c0efa24a51349bad58104dac8d100d048ad3e2d53f6060633134a"
+      },
+      "library-corpus-scale.json": {
+        "bytes": 44743,
+        "sha256": "0039d791f829c03ec730a28bcbac24a4425ab83993d7be8ba69e1f48cc6c17d5"
+      }
+    },
+    "segments": 200000,
+    "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "status": "PASS"
+  },
+  "decoded_log_utf8": {
+    "sha256": "8c968af136825f021e0cd04904d13bab62cac523d7f8c9bc49e2955b7fa6e966",
+    "bytes": 49709
+  },
+  "artifact": {
+    "id": 15254900810,
+    "name": "retained-capacity-large-source-v1-10000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+    "bytes": 27300,
+    "digest": "sha256:dfd8033551fb7652f565070425bd5a1835790feb186f8d62a9f6d557419e7f88",
+    "created_at": "2026-11-28T07:52:26Z",
+    "expired": false
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "limits": [
+    "All five declared 10000-book by 20-segment retained-fixture phases passed on exact A3 source head 7bfd.",
+    "The exact 17 retained report-member identities are known; detailed latency and phase measurements require the separate bounded immutable-artifact inspector.",
+    "No larger geometry, other platform, sustained whole-corpus ordinary-import rate, unprofiled speed ratio or other source head is qualified here."
+  ]
+}

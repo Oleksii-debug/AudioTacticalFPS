@@ -1,0 +1,108 @@
+{
+  "schema": "resonance-d-focused-installed-composition/1",
+  "status": "ACCEPTED_STATIC_RUNTIME_PENDING",
+  "base_commit": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+  "base_tree": "9d88b8a0475f88fc75cf20ffffe6c7b37bce2e57",
+  "changes": [
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": null,
+      "git_blob": "fa8948e3c83108679a57bb3e6d3cbd4dd618f41e"
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": null,
+      "git_blob": "01238de36b1f54ea5c693f42dcd46e496f2666af"
+    },
+    {
+      "path": "carr-library/docs/REQUESTED_READER_WORKFLOWS.md",
+      "preimage": null,
+      "git_blob": "ef5851da5aef09d17197b1a2c86f1f4ff8786223"
+    },
+    {
+      "path": "carr-library/docs/READING_DESK.md",
+      "preimage": "ef8f6f4c47c98108b8aa9b839126c1d6752302e8",
+      "git_blob": "3960b092f20cfaee4e3d07a52c752d7075e625be"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "preimage": "34967033f85e82491335d27a9abda5139da66c44",
+      "git_blob": "a8b28e278352d23d8f156bd3153d01551d7ed2a7"
+    },
+    {
+      "path": "resonance-status/next68/actual_a3_source_138.json",
+      "preimage": null,
+      "git_blob": "8fa0b31a3a921d23106f1db04baee911dd586887"
+    },
+    {
+      "path": "resonance-status/next68/actual_5b2_installed_timeout.json",
+      "preimage": null,
+      "git_blob": "e96a34b97f94ce0c195222bf78c0365c2ba8eae6"
+    },
+    {
+      "path": "resonance-status/next68/actual_5b2_native_outcomes.json",
+      "preimage": null,
+      "git_blob": "10bb0dc4ffeb94f1316bcee6e84377f6e9da0191"
+    },
+    {
+      "path": "resonance-status/next68/actual_a3_corpus_10000.json",
+      "preimage": null,
+      "git_blob": "1afc4e4c8e362e5811989dc005c6e217adbcc47d"
+    },
+    {
+      "path": "resonance-status/next68/language_gap_audit.json",
+      "preimage": null,
+      "git_blob": "2e44f961556603c11e62a01166e33b02022c334c"
+    },
+    {
+      "path": "resonance-status/next68/diagnostic_accepted.json",
+      "preimage": null,
+      "git_blob": "07d9255a257684a3ec561009324b920abeb3fa8e"
+    },
+    {
+      "path": "resonance-status/next68/diagnostic_helper_peer.json",
+      "preimage": null,
+      "git_blob": "4595a55d6725926bfd7bdc43102ebbddee712ee9"
+    },
+    {
+      "path": "resonance-status/next68/diagnostic_workflow_peer.json",
+      "preimage": null,
+      "git_blob": "642cb38b89d12749635021d537ad08e5a8f4641f"
+    },
+    {
+      "path": "resonance-status/next68/reader_inventory.json",
+      "preimage": null,
+      "git_blob": "7baa438d4ca4e7ad6780e98a15d578975d015339"
+    }
+  ],
+  "components": {
+    "diagnostic": "07d9255a257684a3ec561009324b920abeb3fa8e",
+    "helper_peer": "4595a55d6725926bfd7bdc43102ebbddee712ee9",
+    "workflow_peer": "642cb38b89d12749635021d537ad08e5a8f4641f",
+    "reader_inventory": "7baa438d4ca4e7ad6780e98a15d578975d015339"
+  },
+  "gate_pin_audit": {
+    "gates": 56,
+    "pins": 891,
+    "mismatches": 0,
+    "missing": 0
+  },
+  "unchanged": {
+    "production_source": true,
+    "test_cases": true,
+    "full_source_wholes": 490,
+    "full_installed_gate": true,
+    "individual_whole_limits_seconds": [
+      600,
+      900
+    ],
+    "native_and_audio_qualification": true
+  },
+  "execution": "Four113 source/113 isolated installed diagnostics pending. Existing B full/native runs and C library run remain separate. Earlier receipts retain their original source identities.",
+  "not_proven": [
+    "Full installed cross-suite compatibility",
+    "Book performance cause or successful whole result",
+    "Actual physical output/microphone and manual NVDA",
+    "Final integrated candidate or release qualification"
+  ]
+}

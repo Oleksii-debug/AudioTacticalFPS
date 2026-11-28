@@ -1,0 +1,30 @@
+{
+  "schema": "resonance-focused-installed-workflow-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "root",
+  "base": {
+    "commit": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+    "tree": "9d88b8a0475f88fc75cf20ffffe6c7b37bce2e57"
+  },
+  "file": {
+    "path": ".github/workflows/carr-installed-failure-contracts.yml",
+    "git_blob": "01238de36b1f54ea5c693f42dcd46e496f2666af"
+  },
+  "helper": {
+    "git_blob": "fa8948e3c83108679a57bb3e6d3cbd4dd618f41e",
+    "peer": "4595a55d6725926bfd7bdc43102ebbddee712ee9"
+  },
+  "findings": [
+    "All eight workflow pins match exact C source plus the new helper; all60 helper pins independently matched C.",
+    "Exact event checkout and own-source/embedded-child compilation precede dependency installation. Existing hashed locks and locked codec preparation are reused.",
+    "Every live Python/pythonw/base executable and both actual codec executables receive verified outbound firewall rules after acquisition; all original profile states and owned rules are restored with cleanup failure remaining fatal.",
+    "Book30 runs alone under600 seconds; remaining83 source run in three independent children and four installed wholes retain original600/900 limits. Outer100-minute step includes4200 seconds of worst-case whole work plus540 build/install and bounded overhead; explicit steps total133 minutes within145-minute job.",
+    "Only44 allowlisted ordinary text/JSON/XML receipts are retained, per-file8MiB and total64MiB. No runtime, binary, corpus, output audio or original is uploaded.",
+    "Original full installed gate and490-module obligations are untouched. Failed/timed-out whole results retain FAIL; missing origin or payload authority stops execution; all four wholes in both modes are required for diagnostic PASS."
+  ],
+  "limitations": [
+    "Static source/CLI/pin/budget/evidence review only. Actual YAML/PowerShell/Python parsing and Windows execution remain pending.",
+    "An isolated diagnostic PASS cannot resolve cross-suite interaction by itself or qualify a different source.",
+    "No physical output, model quality, manual NVDA or release acceptance is established."
+  ]
+}
