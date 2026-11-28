@@ -6,7 +6,7 @@
   "product": "Resonance",
   "version": "0.2.0.dev2",
   "full_platform_status": "NOT_QUALIFIED",
-  "integrated_automatic_acceptance": "The exact e9 focused Windows gate completed FAILURE: 272 passed and 2 failed in each mode; its separate native inspection passed 29 checks. A narrow Windows deny-delete fixture correction now requires its own exact successor execution. All 425 application blobs, every gate and all declared populations are unchanged from e9. The ongoing e9 main result is not inferred from the focused failure; c31 remains a recorded failed predecessor.",
+  "integrated_automatic_acceptance": "The exact424 integrated job completed FAILURE after all451 source suites/11,589 events, protected252 modules/5,947 cases and native citation108 checks passed. Its Basic translation fixture supplied an unresolved root and was refused before a dialog existed. A two-line fixture correction and additive early Basic native invocation now require their own exact successor qualification; all425 application blobs, main workflow,21 reader pins and protected populations remain unchanged. Previous focused/auxiliary PASS stays bound to424.",
   "authority": [
     {
       "path": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
@@ -1021,5 +1021,88 @@
       "full_platform": "NOT_QUALIFIED",
       "external": "Real model/language/acoustic, manual NVDA/hardware, real-corpus and distribution-rights acceptance remain separate."
     }
+  },
+  "post_424_translation_fixture_correction": {
+    "schema": "carr-post-424-translation-fixture-correction/1",
+    "status": "SOURCE_REVIEWED_REQUIRES_EXACT_SUCCESSOR_RUNTIME",
+    "baseline": {
+      "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+      "tree": "be936242ecf2aa62ab3344de8874a92605aea39e"
+    },
+    "observed_main": {
+      "run_id": 46109011419,
+      "job_id": 140868122250,
+      "attempt": 1,
+      "status": "FAILURE",
+      "completed_at": "2026-11-28T06:14:08Z",
+      "source": {
+        "selectors": 451,
+        "passing_suites": 451,
+        "failed_suites": 0,
+        "passed": 11589,
+        "failed": 0,
+        "skipped": 0,
+        "case_starts": 11589,
+        "function_identities": 5270,
+        "protected_modules": 252,
+        "protected_cases": 5947,
+        "protected_weighted_starts": 6603
+      },
+      "citation_native": {
+        "status": "PASS",
+        "checks": 108,
+        "installed_module_hashes": 5
+      },
+      "failed_step": 24,
+      "later_steps": "25-53 SKIPPED",
+      "artifact": {
+        "id": 15250469810,
+        "bytes": 310290,
+        "sha256": "db2f24dd2a0e41de043f937ee8760763e144167cdf693da29823fece65312d75"
+      },
+      "archive_read": false,
+      "evidence": "docs/evidence/424cc-main-observed-failure-20261128.json",
+      "proof_component": "bb7b0c743a6094a6f16e50115a3fbea68ff03eee"
+    },
+    "observed_failure": "The installed Basic translation dialog rejected the synthetic Frame's selected library root before a dialog existed; the native probe then reached its unchanged45-second bound. The log does not print both root spellings, so an8.3 alias is not claimed as an observed fact.",
+    "fixture_correction": "Canonicalize the newly created temporary Basic library directory exactly as real LibraryApp and the existing Advanced/local native fixtures do. The product's selected-root guard and all flow assertions remain unchanged.",
+    "focused_gate": "Add the actual Basic native invocation to the existing local-translation workflow before its unchanged324 source/324 installed/eight native-flow gate; the former selection did not execute the Basic probe.",
+    "all_application_blobs_unchanged": 425,
+    "preserved_populations": {
+      "protected_source": 5947,
+      "protected_installed": 5619,
+      "source_modules": 252,
+      "installed_modules": 239,
+      "source_selectors": 451,
+      "inspection_source": 274,
+      "inspection_installed": 274,
+      "inspection_native": 29,
+      "translation_source": 324,
+      "translation_installed": 324,
+      "translation_existing_native_flows": 8,
+      "translation_additional_basic_flow": 1
+    },
+    "qualification": {
+      "successor": "NOT_RUN: requires its own Basic-focused/full/auxiliary/inspection/installed/native/standard and independent artifact receipts.",
+      "prior_424_focused": "PASS274/274+29native; exact424only.",
+      "prior_424_auxiliaries": "All fivePASS; exact424only. Audio attempt1 TLS failure retained and attempt2PASS.",
+      "full_platform": "NOT_QUALIFIED",
+      "external": "Actual owner models/samples, languages/acoustics, manual NVDA/hardware, real corpora and distribution rights remain separate."
+    },
+    "reader": {
+      "source_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
+      "source_pins_unchanged": 21,
+      "parser_controls": "37negative/6positive actualPASS; parser-only scope",
+      "artifact": "NULL until exact successful successor main exists"
+    },
+    "fixture_evidence": "docs/evidence/basic-translation-native-root-fixture-repair-20261128.json",
+    "focused_gate_evidence": "docs/evidence/basic-translation-focused-gate-addition-20261128.json",
+    "fixture_component": "a13457e9d4d44f23ab86e828b706184f5246aa34",
+    "fixture_path": "carr-library/scripts/windows_translation_smoke.py",
+    "fixture_before": "2eda19099d81beb9839a540effa3898a5da0e7e9",
+    "fixture_after": "1b249ab87dee4c1a441dfac46232592e1a88a691",
+    "focused_gate_component": "e0bc9d2167ee0d2f4a4a8be73dab72b244ab4569",
+    "focused_gate_before": "21fc80fd78ebcf9aa62f26c5553f2924691da4f9",
+    "focused_gate_after": "e4dafee258246fc14f039d72908136434a20465c"
   }
 }

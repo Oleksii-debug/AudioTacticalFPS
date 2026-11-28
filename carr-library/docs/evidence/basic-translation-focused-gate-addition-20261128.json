@@ -1,0 +1,182 @@
+{
+  "schema": "carr-basic-translation-focused-gate-addition/1",
+  "status": "SOURCE_ONLY_NOT_RUN",
+  "date": "2026-11-28",
+  "baseline": {
+    "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "tree": "be936242ecf2aa62ab3344de8874a92605aea39e"
+  },
+  "observed_failure": {
+    "reference": {
+      "commit": "a13457e9d4d44f23ab86e828b706184f5246aa34",
+      "path": "carr-library/docs/evidence/basic-translation-native-root-fixture-repair-20261128.json",
+      "git_blob": "05cc387841d86949a9828ec96ba11e06ddaf2062"
+    },
+    "run_id": 46109011419,
+    "job_id": 140868122250,
+    "attempt": 1,
+    "step": 24,
+    "status": "FAILURE",
+    "error": "ValueError: Translation belongs to the selected library root.",
+    "consequence": "The expected dialog was not created; the existing native probe then reached its unchanged 45-second wait bound.",
+    "raw_log": {
+      "characters": 4953693,
+      "utf8_bytes": 4953699,
+      "sha256": "ab872a89a838e4217461585c0cdf592e8d956100bc8309d5c4cb7d3ce0a87c33"
+    },
+    "artifact": {
+      "id": 15250469810,
+      "bytes": 310290,
+      "sha256": "db2f24dd2a0e41de043f937ee8760763e144167cdf693da29823fece65312d75",
+      "metadata": "Independently read GitHub run-artifact API.",
+      "zip_read": false
+    },
+    "qualification": "The source/protected and earlier native results do not convert this aggregate main failure into PASS. Root spellings were not printed; an actual 8.3 alias is not asserted.",
+    "evidence_scope": "This workflow component relies on the fetched durable diagnostic above; it does not claim a separate ZIP read or a new execution."
+  },
+  "existing_coverage_gap": {
+    "acceptance": {
+      "path": "carr-library/scripts/local_translation_acceptance.py",
+      "git_blob": "8ab561e746748d5f36fdb30d3f053b7daf8621f9"
+    },
+    "existing_cases_per_population": 286,
+    "local_cases_per_population": 38,
+    "total_cases_per_population": 324,
+    "native_flows": 8,
+    "native_labels": [
+      "existing-selected-advanced",
+      "existing-document",
+      "existing-chapter",
+      "existing-batch",
+      "local-selected",
+      "local-document",
+      "local-chapter",
+      "local-batch"
+    ],
+    "actual_probe_files": [
+      "scripts/windows_translation_v3_smoke.py",
+      "scripts/windows_translation_local_smoke.py",
+      "scripts/windows_translation_scope_smoke.py"
+    ],
+    "missing_probe": "scripts/windows_translation_smoke.py",
+    "reason": "The existing focused lane executes Advanced/local and scoped translation, but does not invoke the Basic selected-text native probe that failed in main. The previous eight-flow count remains exact and unchanged."
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-local-translation.yml",
+    "before_git_blob": "21fc80fd78ebcf9aa62f26c5553f2924691da4f9",
+    "before_sha256": "b58964707a26abc07f12d7bb65d26c948be675827be5a050edba7d3415e973b0",
+    "after_sha256": "83c1f2ff166671f3ee4e0f81af8b88cd0950344b4eb46cb9437ad0cdc14c6d2c",
+    "changed_existing_field": {
+      "before": "name: Windows / local HTTP, Google regressions and eight native flows",
+      "after": "name: Windows / Basic native plus eight translation flows / source and installed"
+    },
+    "new_step": "Require installed Basic translation before the complete translation population",
+    "placement": "After the existing installed-interpreter firewall rule and before the unchanged complete 324-source/324-installed/eight-native step.",
+    "command": "& $env:CARR_TRANSLATION_PYTHON -I -B -X utf8 scripts/windows_translation_smoke.py --output local-translation-results/translation-basic-native.json",
+    "raw_log": "local-translation-results/translation-basic-native.txt",
+    "receipt": "local-translation-results/translation-basic-native.json",
+    "timeout_minutes": 4,
+    "original_job_timeout_minutes": 50,
+    "original_full_translation_step_timeout_minutes": 40,
+    "original_build_timeout_minutes": 10,
+    "exit_policy": "Nonzero probe exit stops the step before receipt acceptance; nonzero verifier exit fails the step. The existing adapter then remains skipped on early failure. Existing always-cleanup and upload steps still run.",
+    "original_steps_byte_identical_after_inverse": true,
+    "exact_inverse": "Remove the single inserted Basic step and restore the original job name; the entire original 7,699-character workflow is recovered byte-for-byte.",
+    "pinned_runtime": {
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "required_count": 18,
+      "exact_name_version_equality": "UNCHANGED",
+      "historical_receipt_filename": "runtime-17-pins.json"
+    }
+  },
+  "receipt_validation": {
+    "schema": "carr-native-translation-smoke/1",
+    "exact_top_level_field_count": 13,
+    "required": {
+      "schema": "carr-native-translation-smoke/1",
+      "status": "PASS",
+      "native_controls": true,
+      "synthetic_provider_requests": 2,
+      "exact_reviewed_pair": "en->uk",
+      "source_immutable": true,
+      "quotation_authority": false,
+      "approval_and_folder_picker": "injected explicit synthetic decisions",
+      "actual_google_api": "NOT_RUN",
+      "actual_credential_vault": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "additional_fields": [
+      "installed_module",
+      "derivative_hashes"
+    ],
+    "exact_python_types": true,
+    "input_byte_limit": 65536,
+    "oversize_read_bound": 65537,
+    "duplicate_json_keys": "REJECTED",
+    "nonfinite_json_constants": "REJECTED",
+    "installed_origin": "The recorded providers module must equal the current isolated interpreter's actual providers.__file__, reside under its site-packages, and have the same SHA256 as the exact checkout providers.py.",
+    "derivative_files": [
+      "original.txt",
+      "translated.txt",
+      "bilingual.txt",
+      "translation.narration.json"
+    ],
+    "derivative_digest_format": "Exact lowercase 64-hex SHA256 strings, with no extra or missing filenames.",
+    "derivative_evidence_limit": "The probe verifies actual temporary derivative bytes before cleanup. The later workflow verifier checks the retained receipt and digest inventory; it does not reread already-removed derivative files.",
+    "final_gate": "PASS is accepted only after the probe process exits successfully and the strict verifier finishes successfully."
+  },
+  "composition_dependency": {
+    "fix_commit": "a13457e9d4d44f23ab86e828b706184f5246aa34",
+    "probe_path": "carr-library/scripts/windows_translation_smoke.py",
+    "baseline_git_blob": "2eda19099d81beb9839a540effa3898a5da0e7e9",
+    "reviewed_fixed_git_blob": "1b249ab87dee4c1a441dfac46232592e1a88a691",
+    "reviewed_fixed_sha256": "2fd5485bb862fa3af8cae7d1ea9ec0e7c8145bef10a481159315e3da858cd159",
+    "note": "The native fixture repair is separately reviewed and not copied into this two-path workflow component. Root must compose the repair before executing the new early gate."
+  },
+  "preserved": {
+    "original_source_cases": 324,
+    "original_installed_cases": 324,
+    "original_native_flows": 8,
+    "main_workflow": "UNCHANGED",
+    "acceptance_adapter": "UNCHANGED",
+    "all_oracles": "UNCHANGED",
+    "application_source_files": "UNCHANGED: 425",
+    "tests_and_native_assertions": "UNCHANGED",
+    "basic_assertions": 14,
+    "basic_probe_wait_seconds": 45,
+    "original_checkout_source_binding": "UNCHANGED",
+    "all_existing_steps": "UNCHANGED",
+    "firewall_creation_cleanup_and_upload": "UNCHANGED",
+    "job_timeout_and_original_step_timeouts": "UNCHANGED",
+    "full_protected_source_cases": 5947,
+    "full_protected_installed_cases": 5619,
+    "main_reader_source_pin_count": 21,
+    "basic_probe_in_reader_source_pin_map": false,
+    "main_reader_source_pins": "UNCHANGED: this component modifies neither the main workflow nor any of the existing 21 pinned source files.",
+    "main_reader_config": {
+      "tooling_commit": "a1cc9cd3d4a10bbf3cecbd519d19ff4f13683cec",
+      "git_blob": "9345b372ab50bfff769977ba09fa6e49127a8a64"
+    },
+    "current_candidate_qualification": "A later composed candidate requires its own actual focused and full required cohort, followed by exact source/run/job/artifact binding. No cross-head PASS transfer."
+  },
+  "verification": {
+    "source_review": "Exact workflow inverse, current Basic receipt producer and four-file export inventory, existing adapter coverage, and current 21-file reader pin map inspected.",
+    "python_powershell_windows_execution": "NOT_RUN",
+    "future_native_result": "NOT_RUN",
+    "actual_google_api": "NOT_RUN",
+    "real_credential_vault": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "translation_quality": "NOT_QUALIFIED"
+  },
+  "mutations": {
+    "paths": [
+      ".github/workflows/carr-local-translation.yml",
+      "carr-library/docs/evidence/basic-translation-focused-gate-addition-20261128.json"
+    ],
+    "application_changes": 0,
+    "oracle_changes": 0,
+    "ref_changes": 0,
+    "workflow_launches": 0
+  }
+}

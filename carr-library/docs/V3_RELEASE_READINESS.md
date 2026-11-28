@@ -16,6 +16,54 @@ remain authoritative. The
 [machine-readable matrix](validation/RESONANCE_REQUIREMENT_STATUS_20261127.json)
 keeps their exact source blobs and separate evidence dimensions.
 
+## 28 November: source acceptance passed; Basic translation fixture correction
+
+The exact `424cc456` [integrated run 46109011419](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46109011419)
+completed **FAILURE** at 06:14:08 UTC. All **451 source suites passed**, with
+**11,589 passing case events, zero failures and zero skips**. The complete
+5,270-function Counter matches the reviewed population without log-token repair.
+The protected-source gate passed **5,947 cases across 252 modules**; its weighted
+6,603 start events also match the exact oracle. Native citations then passed
+108 checks with five installed-module hashes matched to this source.
+
+The next Basic native translation step rejected the synthetic frame's selected
+library root before creating its dialog, then reached the unchanged 45-second
+wait. All subsequent stages 25–53, including full installed, bundle and standard
+qualification, were skipped. The [complete observed record](evidence/424CC_MAIN_OBSERVED_FAILURE_20261128.md)
+retains every selector, Counter, step, actual traceback and failure artifact.
+Source success does not pass the failed integrated candidate.
+
+The [two-line fixture correction](evidence/basic-translation-native-root-fixture-repair-20261128.json)
+canonicalizes the already-created temporary Basic library root before constructing
+its services and synthetic frame. This matches the real LibraryApp contract and
+the existing Advanced/local native fixtures. The log establishes a root mismatch
+but does not expose both spellings; a specific Windows short-path alias is not
+claimed as directly observed. All 14 assertions, five native phases, two explicit
+approvals, two synthetic requests, original/derivative checks, cleanup and the
+45-second bound remain unchanged. The actual wrong-library refusal remains tested.
+
+The focused translation workflow previously executed 324 source / 324 installed
+cases and eight Advanced/local native flows, excluding this Basic probe. The
+[additive focused-gate record](evidence/basic-translation-focused-gate-addition-20261128.json)
+adds its actual installed invocation before that unchanged cohort. This gives
+the observed repair its own early Windows check without changing the full main
+workflow, any existing test population, or the independent reader's 21 source pins.
+
+**All 425 application blobs are unchanged from 424 and e9.** This successor's
+runtime status is **NOT_RUN** at preparation. It requires fresh exact-source
+Basic-focused, completed-audio/helper-focused, full-main and auxiliary receipts,
+followed by independent reading of the successful main artifact. The complete
+424 [focused 274/274 + 29 proof](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/2ce6e9e6784c2ba42cb45ca59dc5b98d1f6ec5a3/carr-library/docs/evidence/completed-audio-inspection-focused-pass-424-20261128.md)
+and [five successful auxiliary lanes](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/2ce6e9e6784c2ba42cb45ca59dc5b98d1f6ec5a3/carr-library/docs/evidence/pr210-424cc-auxiliary-observed-results-20261128.md)
+remain tied to 424; the audio attempt 1 transport failure is preserved alongside
+its successful same-source retry. Overlapping test populations are not a sum
+of unique tests.
+
+The sections below retain their preparation-time observations. This latest
+completed 424 result supersedes their earlier pending wording. Full-platform
+model/language/acoustic, manual NVDA/hardware, corpus and distribution acceptance
+remain **NOT_QUALIFIED**.
+
 ## 28 November: observed Windows fixture correction after e9
 
 The exact `e9bba260` [focused Windows run46107488747](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107488747)

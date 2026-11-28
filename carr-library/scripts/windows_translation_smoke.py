@@ -63,6 +63,8 @@ def main():
     with TemporaryDirectory(prefix='carr-native-translation-') as folder:
         root, exports = Path(folder) / 'library', Path(folder) / 'exports'
         root.mkdir()
+        # Match LibraryApp's canonical root, including Windows short/long aliases.
+        root = root.resolve(strict=True)
         exports.mkdir()
         vault = Vault()
         profiles = ProfileStore(root / 'api-connections.json', vault)
