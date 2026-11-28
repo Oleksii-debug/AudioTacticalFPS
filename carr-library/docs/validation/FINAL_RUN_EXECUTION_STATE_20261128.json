@@ -1,0 +1,131 @@
+{
+  "schema": "carr-final-run-execution-state/1",
+  "updated_utc": "2026-11-28 06:36:14 UTC",
+  "product": "Resonance",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "canonical_branch": "carr-library",
+  "canonical_observed": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "pr": {
+    "number": 210,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/210",
+    "branch": "carr/v3-final-fixture-424cc-20261128-d3a",
+    "head": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8"
+  },
+  "predecessor": {
+    "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "tree": "be936242ecf2aa62ab3344de8874a92605aea39e",
+    "main": {
+      "run": 46109011419,
+      "job": 140868122250,
+      "attempt": 1,
+      "status": "FAILURE",
+      "source": "451 PASS / 11589 passing events / 0 failures / 0 skips",
+      "protected": "PASS 252 modules / 5947 direct cases / 6603 weighted starts",
+      "native_citations": "PASS 108 checks / 5 source hashes",
+      "failure": "Basic native translation selected-root mismatch before dialog; 45-second probe timeout",
+      "later": "Steps25-53 SKIPPED",
+      "proof_commit": "bb7b0c743a6094a6f16e50115a3fbea68ff03eee"
+    },
+    "focused": {
+      "run": 46108956116,
+      "job": 140867963278,
+      "attempt": 1,
+      "status": "PASS",
+      "source": 274,
+      "installed": 274,
+      "native": 29,
+      "proof": "01b8cf235abfb8a116c56735ec7491d7f4edf3d1"
+    },
+    "auxiliary": {
+      "proof": "eddbaa41b98148d0445c3e0dd3bcc6def6286ce2",
+      "keyboard": {
+        "run": 46109011419,
+        "job": 140868122004,
+        "status": "PASS"
+      },
+      "audio": {
+        "run": 46109011406,
+        "job": 140871488840,
+        "attempt": 2,
+        "status": "PASS",
+        "retained_attempt1_tls_failure": true
+      },
+      "bibliography": {
+        "run": 46109011354,
+        "job": 140868121653,
+        "status": "PASS"
+      },
+      "snapshots": {
+        "run": 46109011367,
+        "job": 140868121476,
+        "status": "PASS"
+      },
+      "launcher": {
+        "run": 46109011463,
+        "job": 140868122239,
+        "status": "PASS"
+      }
+    },
+    "no_pass_transfer": true
+  },
+  "successor": {
+    "status": "INDEPENDENT_SOURCE_GO_FOCUSED_RUNS_LAUNCHED",
+    "fixture_component": "a13457e9d4d44f23ab86e828b706184f5246aa34",
+    "application_files_changed": 0,
+    "focused_workflow_component": "e0bc9d2167ee0d2f4a4a8be73dab72b244ab4569",
+    "qualification": "IN_PROGRESS_FOCUSED; no successor PASS yet",
+    "commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+    "tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
+    "files": 1806,
+    "basic_focus": {
+      "run": 46117284580,
+      "job": 140893828731,
+      "attempt": 1,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    "inspection_focus": {
+      "run": 46117287262,
+      "job": 140893836275,
+      "attempt": 1,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    "branches": {
+      "basic": "carr/local-translation-final-d4ea-20261128-d3a",
+      "inspection": "carr/silence-inspection-final-d4ea-20261128-d3a"
+    },
+    "peer_review": "durable_native_composition FINAL_COMPOSITION_SOURCE_GO_NOT_EXECUTED"
+  },
+  "reader": {
+    "status": "NOT_READY",
+    "materialization": "a1cc9cd3d4a10bbf3cecbd519d19ff4f13683cec",
+    "source_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
+    "pins": 21,
+    "artifact": null,
+    "parser_controls": {
+      "run": 46107509544,
+      "job": 140863455133,
+      "negative": 37,
+      "positive": 6,
+      "status": "PASS_PARSER_ONLY"
+    }
+  },
+  "evidence": {
+    "branch": "carr/final-evidence-d3a-20261127",
+    "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
+    "observed_head_before_this_checkpoint": "41f75f9e74a20bab3a1ef5114be3c3bd8e5298a6",
+    "observed_tree_before_this_checkpoint": "ae8885155c74dc393cab553a6481b125fee62156"
+  },
+  "finish_requirements": [
+    "Review final composed source and additive focused gate independently.",
+    "Run actual Basic-focused plus unchanged324/324+8 and inspection274/274+29 on the exact successor.",
+    "After all previous PR-head jobs completed, advance PR210 non-forced with expected old head and run complete main plus five auxiliaries.",
+    "After actual main success, bind exact artifact metadata to the reviewed inert reader and require its actual success.",
+    "Fresh canonical/protection/ancestry checks, expected-head fast-forward to exact qualified source and readback.",
+    "Preserve all actual evidence and complete Ukrainian delivery report. Do not treat missing real-engine/manual/rights inputs as qualified."
+  ],
+  "full_platform_status": "NOT_QUALIFIED",
+  "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
+  "checkpoint_binding": "This is an observation of the explicit application commit and runs above. The evidence branch retains historical application code and must not be used as the application promotion target."
+}

@@ -1,0 +1,168 @@
+{
+  "schema": "carr-basic-translation-native-root-fixture-repair/1",
+  "status": "SOURCE_REVIEWED_REQUIRES_EXACT_SUCCESSOR_EXECUTION",
+  "date": "2026-11-28",
+  "baseline": {
+    "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "tree": "be936242ecf2aa62ab3344de8874a92605aea39e"
+  },
+  "observed_failure": {
+    "run_id": 46109011419,
+    "job_id": 140868122250,
+    "attempt": 1,
+    "source_commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "source_tree": "be936242ecf2aa62ab3344de8874a92605aea39e",
+    "job_conclusion": "failure",
+    "job_completed_at": "2026-11-28T06:14:08Z",
+    "failed_step": {
+      "number": 24,
+      "name": "Exercise installed native translation approval and immutable derivatives",
+      "started_at": "2026-11-28T06:13:13Z",
+      "completed_at": "2026-11-28T06:13:59Z"
+    },
+    "immediate_error": {
+      "type": "ValueError",
+      "message": "Translation belongs to the selected library root.",
+      "installed_path": "carr_library/ui/translation_dialog.py",
+      "function": "TranslationController.__init__",
+      "line": 20,
+      "observed_at": "2026-11-28T06:13:14.5368427Z"
+    },
+    "later_error": "The native probe timed out after its unchanged 45-second wait because show_translation failed before creating the expected dialog.",
+    "root_spellings": "NOT_RETAINED: the log establishes unequal root values but does not print either spelling; an actual 8.3 alias was not directly observed.",
+    "decoded_raw_log": {
+      "characters": 4953693,
+      "utf8_bytes": 4953699,
+      "sha256": "ab872a89a838e4217461585c0cdf592e8d956100bc8309d5c4cb7d3ce0a87c33"
+    },
+    "artifact": {
+      "id": 15250469810,
+      "bytes": 310290,
+      "sha256": "db2f24dd2a0e41de043f937ee8760763e144167cdf693da29823fece65312d75",
+      "metadata": "Independently read GitHub run-artifact API.",
+      "zip_read": false
+    },
+    "scope": "This record diagnoses the native fixture. The complete source/protected inventory and skipped downstream stages are recorded separately; the aggregate main run remains FAILURE."
+  },
+  "source_contract": {
+    "application": {
+      "path": "carr-library/src/carr_library/application.py",
+      "blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+      "behavior": "LibraryApp creates and validates its directory, then assigns self.root = self.root.resolve() before constructing services."
+    },
+    "path_validator": {
+      "path": "carr-library/src/carr_library/assistant/models.py",
+      "blob": "595630d271011aace3c2642fb9d7a487aaee2bc4",
+      "behavior": "local_path checks local spelling, links and Windows reparse points, then resolves the path."
+    },
+    "store": {
+      "path": "carr-library/src/carr_library/assistant/translation_state.py",
+      "blob": "00e0584cc1d1dac7ea4ea5de4db23cca542ff3df",
+      "behavior": "TranslationStore.root is local_path(root)."
+    },
+    "service": {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "blob": "28f77b58dc2b9983d4d6d38bcf3031ef38eafe78",
+      "behavior": "TranslationService.root is the store's canonical root; selected profiles and ledger are separately bound to it."
+    },
+    "controller": {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "blob": "b7a78f02312da95427f2e32181df88b28fb3fc68",
+      "behavior": "Injected service.root must equal Path(selected root).absolute(); current-library/profile callbacks retain the same owner checks. No guard is relaxed."
+    },
+    "matching_existing_fixtures": [
+      {
+        "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+        "blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_local_smoke.py",
+        "blob": "dcb1fb940f078ecd7ff779eb9768056af63d8946"
+      }
+    ],
+    "cause": "The Basic synthetic Frame supplied unresolved temporary-directory spelling instead of the canonical LibraryApp.root contract. The real service canonicalized its own root, so the preserved controller ownership guard refused the mismatched synthetic frame."
+  },
+  "correction": {
+    "path": "carr-library/scripts/windows_translation_smoke.py",
+    "before_blob": "2eda19099d81beb9839a540effa3898a5da0e7e9",
+    "after_blob": "1b249ab87dee4c1a441dfac46232592e1a88a691",
+    "before_sha256": "7ae4faa36239aa1900aec99659143d9e715e4961cf4c7064d2fc1b6fdeafa62f",
+    "after_sha256": "2fd5485bb862fa3af8cae7d1ea9ec0e7c8145bef10a481159315e3da858cd159",
+    "before_fragment": "        root.mkdir()\n        exports.mkdir()\n",
+    "after_fragment": "        root.mkdir()\n        # Match LibraryApp's canonical root, including Windows short/long aliases.\n        root = root.resolve(strict=True)\n        exports.mkdir()\n",
+    "inverse_reconstructs_entire_original_file": true,
+    "executable_change": "Resolve only the already-created synthetic library root before creating the profile/store/service/frame, matching the existing Advanced/local probes.",
+    "application_blobs_unchanged": 425,
+    "product_guards": "UNCHANGED",
+    "assertion_count_before": 14,
+    "assertion_count_after": 14,
+    "native_deadline_seconds": 45,
+    "phase_completion": 5,
+    "new_test_cases": 0
+  },
+  "preserved_regression_coverage": {
+    "existing_negative": {
+      "path": "carr-library/tests/ui/test_translation_dialog.py",
+      "blob": "b500a8891738435b08beb5e0cb1b1d71f4f92ed0",
+      "function": "test_controller_rejects_service_for_another_library",
+      "assertion": "A service belonging to another selected library still raises ValueError."
+    },
+    "actual_native_flow": [
+      "Opening performs no request.",
+      "Explicit language fetch and exact en->uk selection.",
+      "Local preview performs no translation request.",
+      "Reviewed text/pair/budget and explicit approval precede translation.",
+      "Only the completed immutable derivative is displayed.",
+      "Explicit destination and existing publication emit exact original and derivative/provenance files.",
+      "Original bytes and all derivative hashes remain exact; narration has no source-quotation authority.",
+      "Exactly two synthetic provider requests and two approvals.",
+      "Owned executor/frame/timer cleanup and final phase remain required before the PASS receipt."
+    ],
+    "why_no_mirrored_test": "The already-failing actual native flow is the direct regression. This repair retains all its assertions rather than replacing it with a source-shape test."
+  },
+  "gate_impact": {
+    "workflow": {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+      "modified": false,
+      "invocations": [
+        "installed early Basic translation",
+        "full-bundle Basic translation"
+      ]
+    },
+    "required_receipts": [
+      "translation-native.json",
+      "translation-native.txt",
+      "full-bundle-translation-native.json",
+      "full-bundle-translation-native.txt"
+    ],
+    "protected_oracles": "UNCHANGED: every source/installed function population and native contract remains the same.",
+    "main_reader": {
+      "materialization": "a1cc9cd3d4a10bbf3cecbd519d19ff4f13683cec",
+      "config_blob": "9345b372ab50bfff769977ba09fa6e49127a8a64",
+      "source_pin_count": 21,
+      "basic_probe_in_source_pin_map": false,
+      "all_21_pins_unchanged": true,
+      "next_target": "A new candidate/run/job/artifact must be bound explicitly; no result transfer."
+    },
+    "focused_local_translation": "Existing local_translation_acceptance.py 8ab561e746748d5f36fdb30d3f053b7daf8621f9 covers 324/324 plus eight Advanced/local native flows, but does not invoke this Basic probe. Those checks alone cannot qualify this correction; execute the unchanged Basic probe explicitly on the new candidate."
+  },
+  "execution": {
+    "source": "NOT_RUN",
+    "installed_native_basic": "NOT_RUN",
+    "full_main_successor": "NOT_RUN",
+    "actual_google_api": "NOT_RUN",
+    "real_credentials": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "no_result_transfer": true
+  },
+  "mutations": {
+    "application": false,
+    "workflow": false,
+    "oracle": false,
+    "dependency": false,
+    "ref": false,
+    "run": false,
+    "pr": false
+  }
+}
