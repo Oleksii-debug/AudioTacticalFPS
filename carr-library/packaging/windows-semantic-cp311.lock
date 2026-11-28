@@ -1176,3 +1176,7 @@ pylatexenc==2.11 \
     --hash=sha256:e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0
 quickjs-ng==0.18.0.2 \
     --hash=sha256:b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d
+
+# Pinned offline OCR language detector; upstream/model identity is packaged.
+py3langid==0.4.0 \
+    --hash=sha256:c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616

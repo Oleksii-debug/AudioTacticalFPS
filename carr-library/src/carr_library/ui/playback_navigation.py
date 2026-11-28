@@ -55,6 +55,7 @@ class PlaybackNavigation:
         self.a = self.b = self.sleep_deadline = None
         self.repeat, self._last_state = False, 'stopped'
         self.listeners = set()
+        self.continue_queue = lambda: False
 
     @staticmethod
     def _immediate(action, *, alive, on_error):
@@ -253,7 +254,10 @@ class PlaybackNavigation:
             if self.repeat and not self._pending and (state == 'playing' or natural_end) and position >= self.b:
                 self._seek(self.a, looping=True)
             elif state == 'stopped' and not (self.repeat and natural_end):
-                self.invalidate(); return
+                # Keep this same source-bound sleep deadline while the host
+                # separately admits a queued natural-EOF transition.
+                if not (natural_end and self.continue_queue()):
+                    self.invalidate(); return
             if state in ('playing', 'paused'):
                 self._last_state = state
             self._changed()
@@ -296,10 +300,14 @@ class PlaybackNavigationHost:
         self._preparation_cancel = None
         self._retained_listening = set()
         self._listening_error = None
+        self._queue_session = None
+        self._queue_ticket = None
         def dispatch(action, *, alive, on_error):
             play_when_quiet(progress, action, schedule=self.wx.CallLater, alive=alive, on_error=on_error)
         self.controller = PlaybackNavigation(player, generation=generation, alive=alive,
             dispatch=dispatch, stop_current=stop_current, report=report)
+        self.controller.continue_queue = lambda: (self._queue_session is not None
+            and player.queue_pending)
         self.timer = self.wx.Timer(owner)
         owner.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
         owner.Bind(self.wx.EVT_WINDOW_DESTROY, self._destroyed)
@@ -308,18 +316,104 @@ class PlaybackNavigationHost:
     def _tick(self, event=None):
         if not self.closed:
             self.controller.tick()
+            if self._queue_session is not None:
+                self._queue_tick()
+
+    def enable_queue(self, library, *, submit, retain, guard, busy=lambda: False):
+        if self.closed or not self.controller.alive():
+            raise ValueError('This playback owner is closed.')
+        if self._queue_session is None:
+            from .playback_queue import PlaylistSession
+            self._queue_session = PlaylistSession(self, library, submit=submit,
+                retain=retain, guard=guard, busy=busy)
+        elif self._queue_session.library is not library:
+            raise ValueError('This queue belongs to a different library.')
+        return self._queue_session
+
+    def show_queue(self):
+        if self._queue_session is None:
+            raise ValueError('Open the queue from its existing Studio owner.')
+        from .playback_queue import show_playlist
+        show_playlist(self._queue_session)
+
+    def _queue_tick(self):
+        session, player = self._queue_session, self.controller.player
+        if session is None or session.closed or self.closed:
+            return
+        try:
+            armed = player.queue_active
+            if player.poll() is None:
+                if armed and not player.queue_active:
+                    session.announce('The reviewed playback queue reached its end.')
+                return
+            if self.controller.repeat or self.controller._pending:
+                return
+            if self._queue_ticket is not None or session.pending is not None or session.busy():
+                return
+            session.check()
+            token, generation = player.queue_token, self.controller.generation()
+            ticket = self._queue_ticket = object()
+
+            def current():
+                valid = (not self.closed and not session.closed
+                    and self._queue_ticket is ticket and self.controller.alive()
+                    and self.controller.generation() == generation
+                    and player.queue_token == token and player.queue_pending
+                    and not self.controller.repeat and not self.controller._pending
+                    and session.pending is None and not session.busy())
+                if valid:
+                    try:
+                        session.check()
+                    except (Exception, KeyboardInterrupt):
+                        valid = False
+                if not valid and self._queue_ticket is ticket:
+                    self._queue_ticket = None
+                return valid
+
+            def failed(error):
+                if self._queue_ticket is ticket:
+                    self._queue_ticket = None
+                try:
+                    player.stop()
+                finally:
+                    session.announce('Queue playback did not continue: ' + str(error))
+
+            def advance():
+                try:
+                    if not current():
+                        return
+                    if self.controller._sleep_due():
+                        self.controller._sleep_stop()
+                        return
+                    deadline = self.controller.sleep_deadline
+                    if player.advance_if_ready(expected_token=token):
+                        self.bind()
+                        self.controller.sleep_deadline = deadline
+                        session.announce('Playing the next reviewed queue item.')
+                finally:
+                    if self._queue_ticket is ticket:
+                        self._queue_ticket = None
+            self.controller.dispatch(advance, alive=current, on_error=failed)
+        except (Exception, KeyboardInterrupt) as error:
+            self._queue_ticket = None
+            session.announce('Queue playback needs attention: ' + str(error))
+
 
     def _destroyed(self, event):
         if event.GetId() == self._native_id:
             # wx may supply a different wrapper for the same deleted peer.
             # Listener callbacks must detach before controller invalidation.
             self.closed = True
+            self._queue_ticket = None
+            if self._queue_session is not None:
+                self._queue_session.close()
             if self._preparation_cancel is not None:
                 self._preparation_cancel.set()
             self.controller.listeners.clear()
             self.controller.close()
             try:
                 self.timer.Stop()
+                self.timer.SetOwner(None)
             except (OSError, RuntimeError) as exc:
                 self._close_error = exc
         event.Skip()
@@ -435,6 +529,9 @@ class PlaybackNavigationHost:
             play=self._play_current, stop=self.controller.stop_current, wx_module=self.wx)
 
     def close(self):
+        self._queue_ticket = None
+        if self._queue_session is not None:
+            self._queue_session.close()
         if self._preparation_cancel is not None:
             self._preparation_cancel.set()
         for prepared in tuple(self._retained_listening):
@@ -448,6 +545,7 @@ class PlaybackNavigationHost:
         self.controller.listeners.clear()
         try:
             self.timer.Stop()
+            self.timer.SetOwner(None)
         except (OSError, RuntimeError) as exc:
             self._close_error = exc
             raise

@@ -21,11 +21,14 @@ from uuid import uuid4
 from filelock import FileLock, Timeout
 
 from ..catalog.intake import MAX_BYTES
+from .resource_budget import ImportBudget, source_limit
 from ..catalog.membership import Catalog
-from ..extract.page_ocr import Config
+from ..extract.page_ocr import Config, config_from_dict
 from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
+from .batch_scan import planned_snapshot
+from .batch_pages import batch_shape, validate_scan_metadata, referenced_row
 
 
 MAX_BATCH = 16 * 1024 * 1024
@@ -89,11 +92,22 @@ class ImportBatchStore:
     def _lock(self, batch_id):
         path = self._path(batch_id).with_suffix('.lock')
         _regular(path, missing=True)
+        from ..audio.models import AudioCleanupPending
+        lock = FileLock(path, mode=0o600, thread_local=False)
         try:
-            with FileLock(path, mode=0o600).acquire(timeout=0):
-                yield
+            lock.acquire(timeout=0)
         except Timeout as exc:
             raise ValueError('This import batch is already running.') from exc
+        retained = False
+        try:
+            yield
+        except AudioCleanupPending as exc:
+            retained = True
+            exc.cleanup_owner.add_quiescent_callback(lock.release)
+            raise
+        finally:
+            if not retained:
+                lock.release()
 
     def _authorize(self, workspace, collections=()):
         with self.app.read(workspace) as db:
@@ -102,8 +116,7 @@ class ImportBatchStore:
                 catalog._active_collection(collection)
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not batch_shape(record, _BATCH_KEYS)
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -116,7 +129,8 @@ class ImportBatchStore:
                 or not isinstance(record['config'], dict)
                 or not isinstance(record['rows'], list) or len(record['rows']) > MAX_ROWS):
             raise ValueError('Invalid import batch schema or data-directory binding.')
-        Config(**record['config'])
+        config_from_dict(record['config'])
+        budget = ImportBudget.from_dict(record['import_budget']) if record['version'] == 3 else None
         seen = {name: set() for name in ('row_id', 'work_id', 'edition_id', 'request_id')}
         for row in record['rows']:
             if (not isinstance(row, dict) or set(row) != _ROW_KEYS
@@ -143,7 +157,7 @@ class ImportBatchStore:
                     or not isinstance(manifest['sha256'], str)
                     or not re.fullmatch('[0-9a-f]{64}', manifest['sha256'])
                     or manifest['mime'] not in _MIMES
-                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= MAX_BYTES):
+                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= source_limit(manifest['mime'], budget)):
                 raise ValueError('Invalid import batch source manifest.')
         counts = dict.fromkeys(STATES, 0)
         counts.update(Counter(row['state'] for row in record['rows']))
@@ -152,6 +166,7 @@ class ImportBatchStore:
                 or any(type(value) is not int for value in record['counts'].values())
                 or record['counts'] != counts):
             raise ValueError('Import batch summary differs from its rows.')
+        validate_scan_metadata(record)
         return record
 
     def _load(self, batch_id):
@@ -159,15 +174,9 @@ class ImportBatchStore:
         info = _regular(path)
         if info.st_size > MAX_BATCH:
             raise ValueError('Import batch journal exceeds its size limit.')
-        with path.open('rb') as stream:
-            opened = os.fstat(stream.fileno())
-            if (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
-                raise ValueError('Import batch journal changed during read.')
-            raw = stream.read(MAX_BATCH + 1)
-        if len(raw) > MAX_BATCH:
-            raise ValueError('Import batch journal exceeds its size limit.')
+        from ..durable_state import read_json
         try:
-            record = json.loads(raw)
+            record = read_json(path, maximum=MAX_BATCH)
             return self._validate(record, batch_id)
         except (KeyError, TypeError, UnicodeError, RecursionError) as exc:
             raise ValueError('Invalid import batch journal.') from exc
@@ -185,6 +194,9 @@ class ImportBatchStore:
             state = 'attention'
         else:
             state = 'complete'
+        if (record['version'] in (2, 3) and not record['rows']
+                and not record['scan']['cursor']['complete']):
+            state = 'paused'
         record['state'] = state
 
     def _store(self, record, *, create=False, paused=False):
@@ -245,6 +257,16 @@ class ImportBatchStore:
             self._store(record, create=True, paused=bool(cancelled()))
         return _copy(record)
 
+    def plan_page(self, workspace, paths, **options):
+        """Save one reviewed page; traversal continues only on explicit request."""
+        from .batch_pages import plan_page
+        return plan_page(self, workspace, paths, **options)
+
+    def continue_plan(self, workspace, batch_id, **options):
+        """Append/recover the deterministic next ordinary batch without imports."""
+        from .batch_pages import continue_plan
+        return continue_plan(self, workspace, batch_id, **options)
+
     def get(self, workspace, batch_id):
         self._authorize(workspace)
         record = self._load(batch_id)
@@ -274,6 +296,7 @@ class ImportBatchStore:
                             config=record['config'], expected_manifest=row['manifest'])
             result = request.get('result')
             if (any(request.get(key) != value for key, value in expected.items())
+                    or request.get('import_budget') != record.get('import_budget')
                     or not isinstance(result, dict) or result.get('state') != 'complete'
                     or result.get('edition') != row['edition_id']):
                 raise ValueError('Completed import request differs from its batch identity.')
@@ -301,8 +324,15 @@ class ImportBatchStore:
             record = self._load(path.stem)
             if record['workspace'] == workspace:
                 record = self._reconcile(record)
-                rows.append({key: record[key] for key in
-                             ('batch_id', 'created', 'updated', 'state', 'counts', 'total')})
+                summary = {key: record[key] for key in
+                           ('batch_id', 'created', 'updated', 'state', 'counts', 'total')}
+                if record['version'] in (2, 3):
+                    scan = record['scan']
+                    summary['scan'] = {key: scan[key] for key in
+                                      ('session_id', 'page', 'next', 'review_required', 'classification_complete')}
+                    summary['scan']['complete'] = scan['cursor']['complete']
+                    summary['scan']['planned'] = scan['cursor']['planned']
+                rows.append(summary)
         return tuple(sorted(rows, key=lambda row: (row['created'], row['batch_id']), reverse=True))
 
     def set_row(self, workspace, batch_id, row_id, *, included):
@@ -317,8 +347,9 @@ class ImportBatchStore:
                 raise ValueError('Unknown import batch row.')
             alternate = (included and row['state'] == 'duplicate'
                 and row['duplicate_of'] is not None and not row['duplicate_of'].startswith('existing:')
-                and any(other['source'] == row['duplicate_of'] and other['manifest'] == row['manifest']
-                        for other in record['rows']))
+                and (any(other['source'] == row['duplicate_of'] and other['manifest'] == row['manifest']
+                         for other in record['rows'])
+                     or referenced_row(self, record, row['duplicate_of'], row['manifest'])))
             if ((row['state'] not in ('queued', 'excluded') and not alternate)
                     or row['result'] is not None):
                 raise ValueError('Only imports that have never started can be selected or excluded.')
@@ -345,10 +376,84 @@ class ImportBatchStore:
         row['result'] = result
         state = result.get('state')
         row['state'] = (state if state in ('complete', 'quarantined') else
-                        'queued' if state == 'cancelled' else 'failed')
+                        'queued' if state in ('cancelled', 'pending', 'timed_out') else 'failed')
         row['message'] = str(result.get('message') or result.get('error') or '')[:4000]
 
-    def run(self, workspace, batch_id, *, cancelled=lambda: False, timeout=120.0,
+    def run(self, workspace, batch_id, *, cancelled=lambda: False, timeout=None,
+            retry_failed=False, progress=None, max_items=1000):
+        if (not callable(cancelled) or type(retry_failed) is not bool
+                or (progress is not None and not callable(progress))
+                or type(max_items) is not int or not 1 <= max_items <= 1000
+                or timeout is not None and (type(timeout) not in (int, float)
+                    or not math.isfinite(timeout) or not .1 <= timeout <= 86400)):
+            raise ValueError('Invalid import batch execution options.')
+        self._authorize(workspace)
+        if self._load(batch_id)['version'] == 1:
+            # Old journals keep their existing worker path and default budget.
+            return self._run_legacy(workspace, batch_id, cancelled=cancelled,
+                timeout=120.0 if timeout is None else timeout,
+                retry_failed=retry_failed, progress=progress)
+        from .slices import run_slice
+        stopped = False
+        def stop():
+            nonlocal stopped
+            stopped = stopped or bool(cancelled())
+            return stopped
+        with self._lock(batch_id):
+            record = self.get(workspace, batch_id)
+            self._authorize(workspace, record['collections'])
+            budget = ImportBudget.from_dict(record['import_budget']) if record['version'] == 3 else None
+            config = config_from_dict(record['config'])
+            ready = []
+            for row in record['rows']:
+                if stop() or len(ready) >= max_items:
+                    break
+                if (row['state'] in ('complete', 'duplicate', 'rejected', 'excluded')
+                        or row['state'] in ('failed', 'quarantined') and not retry_failed):
+                    continue
+                self._authorize(workspace, record['collections'])
+                with self.app.read(workspace) as db:
+                    existing = db.execute('SELECT id FROM catalog_edition WHERE workspace=? AND asset=? '
+                        'ORDER BY (id=?) DESC LIMIT 1',
+                        (workspace, row['manifest']['sha256'], row['edition_id'])).fetchone()
+                if existing is not None and existing[0] != row['edition_id']:
+                    row.update(state='duplicate', duplicate_of='existing:' + row['manifest']['sha256'],
+                               message='These source bytes are already in this library.')
+                    continue
+                try:
+                    request = prepare_request(self.root, workspace, row['source'],
+                        self._metadata(row, record), config, request_id=row['request_id'],
+                        expected_manifest=row['manifest'], import_budget=budget)
+                    if request.get('state') == 'complete' and isinstance(request.get('result'), dict):
+                        self._result(row, request['result'])
+                        continue
+                    if request.get('asset_sha256') is None:
+                        selected = planned_snapshot(row['source'], cancelled=stop, import_budget=budget)
+                        if selected.manifest() != row['manifest']:
+                            raise ValueError('Source changed after import planning; plan this file again.')
+                    ready.append(row)
+                except InterruptedError:
+                    stopped = True
+                    break
+                except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
+                    self._result(row, {'state': 'failed', 'message': str(exc)[:4000]})
+            self._store(record, paused=stopped)
+            if progress is not None:
+                progress(_copy(record))
+            if ready and not stop():
+                results = run_slice(self.root, workspace,
+                    tuple(row['request_id'] for row in ready), cancelled=stop,
+                    timeout=timeout, import_budget=budget, _app=self.app)
+                for row, result in zip(ready, results, strict=True):
+                    self._result(row, result)
+                    if result.get('state') == 'cancelled':
+                        stopped = True
+            self._store(record, paused=stopped)
+            if progress is not None:
+                progress(_copy(record))
+            return _copy(record)
+
+    def _run_legacy(self, workspace, batch_id, *, cancelled=lambda: False, timeout=120.0,
             retry_failed=False, progress=None):
         if (not callable(cancelled) or type(timeout) not in (int, float)
                 or not math.isfinite(timeout) or not 0.1 <= timeout <= 600
@@ -367,7 +472,7 @@ class ImportBatchStore:
         with self._lock(batch_id):
             record = self.get(workspace, batch_id)
             self._authorize(workspace, record['collections'])
-            config = Config(**record['config'])
+            config = config_from_dict(record['config'])
             for row in record['rows']:
                 if stop():
                     break
@@ -400,6 +505,30 @@ class ImportBatchStore:
                     continue
                 if row['state'] in ('failed', 'quarantined') and not retry_failed:
                     continue
+                if stop():
+                    break
+                # Reject a changed initial selection before starting a native
+                # parser. This is only preflight: the child still snapshots and
+                # compares the exact manifest again immediately before retain.
+                # An unfinished request with retained bytes resumes from that
+                # canonical original even if the former external path vanished.
+                if request.get('asset_sha256') is None:
+                    try:
+                        snapshot = planned_snapshot(row['source'], cancelled=stop)
+                        observed = snapshot.manifest()
+                        del snapshot
+                        if observed != row['manifest']:
+                            raise ValueError('Source changed after import planning; plan this file again.')
+                    except InterruptedError:
+                        stopped = True
+                        self._result(row, {'state': 'cancelled',
+                            'message': 'Import source review cancelled before starting a native worker.'})
+                        save(record)
+                        break
+                    except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
+                        self._result(row, {'state': 'failed', 'message': str(exc)[:4000]})
+                        save(record)
+                        continue
                 if stop():
                     break
                 row['state'], row['message'] = 'running', ''

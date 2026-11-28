@@ -4,7 +4,7 @@ No OCR/parser agreement or locally minted record is an approval. The caller
 must supply authenticated review records and an authorized immutable asset
 resolver; rendering must run in the existing isolated PDF worker.
 """
-from contextlib import closing
+from contextlib import closing, nullcontext
 from dataclasses import dataclass
 from hashlib import sha256
 import math
@@ -12,6 +12,7 @@ import re
 import struct
 
 from .anchors import Identity, Locator
+from ..catalog.intake import FileSnapshot, source_limit
 
 MAX_BYTES = 64 * 1024 * 1024
 MAX_PIXELS = 20_000_000
@@ -28,13 +29,26 @@ class ReviewedPage:
     reviewer: str
 
 
-def render_fingerprint(data, physical):
-    """Reuse PDFium; include dimensions and renderer version in review binding."""
+def render_fingerprint(data, physical, *, cancelled=lambda: False):
+    """Bind exact physical-page pixels through the current PDF or image decoder."""
+    from ..extract.document_formats import raster_format
+    if type(data) is bytes and raster_format(data) is not None:
+        from ..extract.raster_pages import render_fingerprint as raster_fingerprint
+        return raster_fingerprint(data, physical, cancelled=cancelled)
     import pypdfium2 as pdfium
-    if type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
-        raise ValueError('invalid PDF bytes')
-    with pdfium.PdfDocument(data) as doc:
-        if type(physical) is not int or not 1 <= physical <= len(doc) <= 1000:
+    if isinstance(data, FileSnapshot):
+        if data.mime != 'application/pdf' or not 0 < data.size <= source_limit(data.mime, data.size):
+            raise ValueError('invalid file-backed PDF')
+        data.verify(cancelled=cancelled)
+        source, maximum_pages = data.open(cancelled=cancelled), 2 ** 31 - 1
+    else:
+        if type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
+            raise ValueError('invalid PDF bytes')
+        source, maximum_pages = nullcontext(data), 1000
+    if cancelled():
+        raise InterruptedError('PDF source verification cancelled.')
+    with source as stream, pdfium.PdfDocument(stream) as doc:
+        if type(physical) is not int or not 1 <= physical <= len(doc) <= maximum_pages:
             raise ValueError('invalid PDF page')
         with closing(doc[physical - 1]) as page:
             w, h = page.get_size()
@@ -47,10 +61,15 @@ def render_fingerprint(data, physical):
                 if image.width * image.height > MAX_PIXELS:
                     raise ValueError('PDF render limit')
                 fingerprint = sha256(struct.pack('>II', *image.size) + image.tobytes()).hexdigest()
+    if isinstance(data, FileSnapshot):
+        data.verify(cancelled=cancelled)
+    if cancelled():
+        raise InterruptedError('PDF source verification cancelled.')
     return str(pdfium.PYPDFIUM_INFO) + '/' + str(pdfium.PDFIUM_INFO) + '/rgb-scale2-v1', fingerprint
 
 
-def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=render_fingerprint):
+def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=render_fingerprint,
+                       cancelled=lambda: False):
     """Callback for historical_loader. No printed-label approval is implied.
 
     lookup_review(identity, physical) returns a trusted ReviewedPage or None.
@@ -74,11 +93,20 @@ def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=ren
                     or not review.reviewer.strip()):
                 return False
             data = resolve_asset(identity)
-            if (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
+            if isinstance(data, FileSnapshot):
+                if (data.mime != 'application/pdf' or data.digest != identity.asset_sha256
+                        or not 0 < data.size <= source_limit(data.mime, data.size)):
+                    return False
+                data.verify(cancelled=cancelled)
+            elif (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
                     or sha256(data).hexdigest() != identity.asset_sha256):
                 return False
             renderer_identity, fingerprint = renderer(data, locator.index)
+            if isinstance(data, FileSnapshot):
+                data.verify(cancelled=cancelled)
             return review.renderer == renderer_identity and review.rendered_sha256 == fingerprint
+        except InterruptedError:
+            raise
         except (OSError, LookupError, ValueError, RuntimeError, ImportError):
             return False
 

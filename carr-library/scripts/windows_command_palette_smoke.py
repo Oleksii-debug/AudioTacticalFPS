@@ -5,12 +5,16 @@ Keyboard events are sent by wx.UIActionSimulator only to this process's visible
 foreground window. The note, shortcut and deliberate late menu-state change are
 synthetic. This is automated native acceptance, not physical keyboard or NVDA QA.
 """
+import argparse
+import faulthandler
 import json
 import os
 from pathlib import Path
+import sys
 import sysconfig
 from tempfile import TemporaryDirectory
 from time import monotonic
+from types import SimpleNamespace
 import traceback
 
 
@@ -24,19 +28,166 @@ def _acceptance_bindings():
     return module
 
 
+class _OwnedModalAbort:
+    """Unwind one owned modal loop per GUI turn, never its suspended parent."""
+
+    def __init__(self, wx, app, owners, report):
+        self.wx, self.app, self.owners, self.report = wx, app, owners, report
+        self.active = False
+        self.timer = None
+        self.reported = set()
+
+    def request(self):
+        if not self.active:
+            self.active = True
+            self.wx.CallAfter(self._advance)
+
+    def stop(self):
+        self.active = False
+        if self.timer is not None:
+            self.timer.Stop()
+            self.timer = None
+
+    def _advance(self):
+        self.timer = None
+        if not self.active:
+            return
+        try:
+            # Owners are innermost first. EndModal() requests a return; its
+            # IsModal() remains true until that ShowModal() actually unwinds.
+            for owner in self.owners():
+                if owner is None:
+                    continue
+                dialog = owner.dialog
+                if dialog and dialog.IsModal():
+                    if dialog.IsShown():
+                        owner.close()
+                    self.timer = self.wx.CallLater(10, self._advance)
+                    return
+            self.active = False
+            self.app.ExitMainLoop()
+        except (Exception, KeyboardInterrupt):
+            detail = traceback.format_exc()
+            if detail not in self.reported:
+                self.reported.add(detail)
+                self.report(detail)
+            # Cleanup refusal remains a failure. Do not force-delete a native
+            # owner or report silence; the outer owned process bound applies.
+            self.timer = self.wx.CallLater(25, self._advance)
+
+
+def _nested_modal_failure_acceptance(wx, app, check, select_failure_handler):
+    """Real Windows negative control for the probe's former nested-loop hang."""
+    events, returned, failures = [], [], []
+    owners = []
+    abort = _OwnedModalAbort(wx, app, lambda: tuple(reversed(owners)), failures.append)
+
+    def fail(detail):
+        failures.append(detail)
+        abort.request()
+
+    def owner(label, parent):
+        dialog = wx.Dialog(parent, title='Owned command palette failure control — ' + label)
+        native_id = dialog.GetId()
+        record = SimpleNamespace(dialog=dialog, loop=None, native_id=native_id)
+
+        def destroyed(event):
+            if event.GetId() == native_id:
+                events.append(label)
+            event.Skip()
+
+        def close():
+            if wx.EventLoopBase.GetActive() != record.loop:
+                raise AssertionError('Attempted to close a suspended ' + label + ' loop.')
+            dialog.EndModal(wx.ID_CANCEL)
+
+        record.close = close
+        dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+        owners.append(record)
+        return record
+
+    def provoke(inner):
+        inner.loop = wx.EventLoopBase.GetActive()
+        try:
+            raise AssertionError('deliberate owned nested-modal failure')
+        except AssertionError:
+            fail(traceback.format_exc())
+
+    def open_inner(outer):
+        outer.loop = wx.EventLoopBase.GetActive()
+        inner = owner('inner', outer.dialog)
+        wx.CallAfter(provoke, inner)
+        try:
+            inner.dialog.ShowModal()
+            returned.append('inner')
+        finally:
+            if inner.dialog:
+                inner.dialog.Destroy()
+
+    # wxPython MainLoop returns immediately with no top-level windows. Own the
+    # actual outer dialog before starting the loop, then show it on that loop.
+    outer = owner('outer', None)
+
+    def open_outer():
+        wx.CallAfter(open_inner, outer)
+        try:
+            outer.dialog.ShowModal()
+            returned.append('outer')
+        finally:
+            if outer.dialog:
+                outer.dialog.Destroy()
+        app.ExitMainLoop()
+
+    select_failure_handler(fail)
+    try:
+        wx.CallAfter(open_outer)
+        app.MainLoop()
+    finally:
+        abort.stop()
+        select_failure_handler(None)
+    check('actual nested-modal failure returns child before parent',
+          returned == ['inner', 'outer']
+          and len(failures) == 1
+          and 'deliberate owned nested-modal failure' in failures[0])
+    check('actual failed modal owners receive one native destruction each',
+          events.count('inner') == 1 and events.count('outer') == 1
+          and all(not item.dialog for item in owners))
+
+
+def _run_owned_native():
+    from carr_library.audio.models import AudioBudget
+    from carr_library.audio.process import run_process
+    result = run_process(
+        [sys.executable, '-I', '-B', '-X', 'utf8', str(Path(__file__).resolve()), '--native-child'],
+        budget=AudioBudget(timeout=180, max_log_bytes=2 * 1024 * 1024),
+        owned_tree=True, allow_failure=True)
+    sys.stdout.write(result.stdout.decode('utf-8', errors='replace')); sys.stdout.flush()
+    sys.stderr.write(result.stderr.decode('utf-8', errors='replace')); sys.stderr.flush()
+    return result.returncode
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--native-child', action='store_true', help=argparse.SUPPRESS)
+    args = parser.parse_args()
     if os.name != 'nt':
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows is required.',
                           'native_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN',
                           'manual_keyboard': 'NOT_RUN'}), flush=True)
         return 77
+    if not args.native_child:
+        return _run_owned_native()
+    faulthandler.dump_traceback_later(150, exit=True)
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
     try:
         return _run_native()
     finally:
-        if native_handle is not None:
-            native_handle.close()
+        try:
+            if native_handle is not None:
+                native_handle.close()
+        finally:
+            faulthandler.cancel_dump_traceback_later()
 
 
 def _run_native():
@@ -64,10 +215,15 @@ def _run_native():
         checks.append(label)
         print('PASS:', label, flush=True)
 
+    failure_handler = None
+
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            abort(traceback.format_exc())
-            return False
+            if failure_handler is not None:
+                failure_handler(traceback.format_exc())
+            else:
+                abort(traceback.format_exc())
+            return True
 
     application = ProbeApp(False)
     simulator = wx.UIActionSimulator()
@@ -129,20 +285,46 @@ def _run_native():
         return key(frame.evidence.note, ord('P'), next_stage,
                    wx.MOD_CONTROL | wx.MOD_SHIFT)
 
-    def abort(detail):
+    def record_failure(detail):
         errors.append(detail)
         print('FAIL:', detail, flush=True)
+
+    def owned_modals():
+        owned = []
+        windows = wx.GetTopLevelWindows()
+        if len(windows) > 256:
+            raise RuntimeError('The command palette probe has too many native owners.')
+        for window in windows:
+            if not window or not isinstance(window, wx.Dialog) or not window.IsModal():
+                continue
+            parent, depth = window, 0
+            while parent is not None and parent is not frame and depth < 64:
+                parent = parent.GetParent()
+                depth += 1
+            if frame is not None and parent is frame:
+                owned.append((depth, SimpleNamespace(
+                    dialog=window, close=lambda target=window: target.EndModal(wx.ID_CANCEL))))
+        return tuple(owner for _depth, owner in sorted(owned, key=lambda row: -row[0]))
+
+    modal_abort = _OwnedModalAbort(wx, application, owned_modals, record_failure)
+
+    def abort(detail):
+        record_failure(detail)
         if timer is not None:
             timer.Stop()
+        if frame is not None:
+            frame.cancel_event.set()
         try:
             release()
-        except Exception:
-            errors.append(traceback.format_exc())
-        for window in wx.GetTopLevelWindows():
-            if (window and isinstance(window, wx.Dialog)
-                    and window.GetParent() is frame and window.IsModal()):
-                window.EndModal(wx.ID_CANCEL)
-        wx.CallAfter(application.ExitMainLoop)
+        except (Exception, KeyboardInterrupt):
+            record_failure(traceback.format_exc())
+        modal_abort.request()
+
+    def select_failure_handler(value):
+        nonlocal failure_handler
+        failure_handler = value
+
+    _nested_modal_failure_acceptance(wx, application, check, select_failure_handler)
 
     def tick(event=None):
         nonlocal save_binding
@@ -184,7 +366,7 @@ def _run_native():
                 if not foreground(dialog.filter):
                     return
                 advance('navigation_filtered')
-                check('native typing reaches the filter', simulator.Text('file'))
+                check('native typing reaches the filter', simulator.Text(b'file'))
             elif name == 'navigation_filtered' and dialog is not None:
                 if dialog.filter.GetValue() != 'file' or len(dialog.rows) < 2:
                     return
@@ -329,8 +511,10 @@ def _run_native():
                 application.MainLoop()
                 check('native command probe completed every stage', stage[0] == 'complete' and not errors)
             finally:
+                modal_abort.stop()
                 if timer is not None:
                     timer.Stop()
+                    timer.SetOwner(None)
                 release()
                 if frame and not frame.IsBeingDeleted():
                     if save_binding is not None:
@@ -344,6 +528,10 @@ def _run_native():
                     application.Yield()
     except Exception:
         errors.append(traceback.format_exc())
+    if not errors:
+        check('selected installed command palette bytes remain unchanged',
+              _acceptance_bindings().verify_installed_sources(
+                  ui, keyboard_settings, desktop_app, command_registry, keyboard_preferences) == source_identity)
     if errors:
         print(json.dumps({'status': 'FAIL', 'errors': errors, 'checks': checks,
                           'native_keyboard': 'INCOMPLETE', 'nvda': 'NOT_RUN',

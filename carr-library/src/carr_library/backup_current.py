@@ -58,6 +58,9 @@ def limit(name):
         return 256 * 1024
     if name == 'state/ui/reader-appearance.json':
         return 4096
+    if name == 'state/speech/playback-queue.json':
+        from .speech.playlist import MAX_STATE_BYTES
+        return MAX_STATE_BYTES
     if name == 'state/speech/voice-preferences.json':
         from .speech.voice_preferences import MAX_PREFERENCES_BYTES
         return MAX_PREFERENCES_BYTES
@@ -173,6 +176,9 @@ def validate(db, name, raw):
     elif name == 'state/ui/reader-appearance.json':
         from .reader.appearance import _preferences
         _preferences(raw)
+    elif name == 'state/speech/playback-queue.json':
+        from .speech.playlist import SavedPlaylist
+        SavedPlaylist.from_dict(value)
     elif name == 'state/speech/voice-preferences.json':
         from .speech.voice_preferences import validate_voice_preferences
         validate_voice_preferences(value)
@@ -260,6 +266,9 @@ def validate_collection(db, stage, entries, *, independent=True, cancelled=lambd
         independent=independent, cancelled=cancelled)
     from . import backup_recordings
     backup_recordings.validate_collection(stage, entries, cancelled=cancelled)
+    if any(entry['filename'] == 'state/speech/playback-queue.json' for entry in entries):
+        from .speech.playlist import validate_collection as validate_playback_queue
+        validate_playback_queue(Path(stage), entries)
     canonical = tuple(entry for entry in entries
                       if backup_transcription.limit(entry['filename']) is not None)
     if canonical and not independent:

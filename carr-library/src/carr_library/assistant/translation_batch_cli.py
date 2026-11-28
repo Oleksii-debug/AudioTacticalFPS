@@ -95,6 +95,7 @@ def main(argv=None):
                             help='carr-translation-batch-input/1 JSON with explicit files or retained editions')
         if name == 'submit':
             action.add_argument('--approve-remote', action='store_true')
+            action.add_argument('--approve-local', action='store_true')
             action.add_argument('--review-sha256', required=True)
     sub.add_parser('jobs', help='List saved child-derived statuses without sending text')
     for name in ('review', 'prepare', 'resume', 'pause', 'export'):
@@ -131,7 +132,8 @@ def main(argv=None):
             result = batches.preview(items, title=title, cancelled=stop.is_set, guard=guard)
             if args.command == 'submit':
                 identity = batches.submit(items, title=title, review_sha256=args.review_sha256,
-                    approve_remote=args.approve_remote, cancelled=stop.is_set, guard=lambda: accounts(items))
+                    approve_remote=args.approve_remote, approve_local=args.approve_local,
+                    cancelled=stop.is_set, guard=lambda: accounts(items))
                 result = {**batches.get(identity), 'network_access': False,
                           'next': 'Explicit resume uses only these retained child approvals.'}
         elif args.command == 'jobs':
@@ -146,7 +148,10 @@ def main(argv=None):
         elif args.command == 'resume':
             review = batches.get_review(args.batch)
             accounts(review['items'])
-            service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            local_transfer = any(row['profile']['local'] for row in review['items'])
+            remote_transfer = any(not row['profile']['local'] for row in review['items'])
+            mode = ('HYBRID' if local_transfer else 'APPROVED_REMOTE') if remote_transfer else 'LOCAL_ONLY'
+            service.gateway = Gateway(service.directory / 'provider', mode=mode)
             accounts(review['items'])
             result = batches.resume(args.batch, cancelled=stop.is_set,
                 guard=lambda: accounts(review['items']),

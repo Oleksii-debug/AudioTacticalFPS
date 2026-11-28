@@ -1,0 +1,660 @@
+"""Pure local protocol/admission gates; all HTTP is a bounded synthetic transport."""
+from dataclasses import asdict, replace
+from decimal import Decimal
+from hashlib import sha256
+import http.client
+from pathlib import Path
+import shutil
+import subprocess
+import json
+from time import time
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+
+from carr_library.application import LibraryApp
+from carr_library.assistant import providers
+from carr_library.assistant.models import canonical
+from carr_library.assistant.profiles import ProviderProfile, ProfileStore
+from carr_library.assistant.providers import (
+    Authorization, LocalTranslationAuthorization, Gateway, ProviderError, translation_language_approval)
+from carr_library.assistant.translation import TranslationService, translation_approval
+from carr_library.assistant.translation_batch import TranslationBatchService
+from carr_library.assistant.translation_source import capture_source
+from carr_library.library_backup import create_backup, restore_backup
+from carr_library.speech.reading import ReadingDocument
+from carr_library.assistant.translation_local import request, response, validate_languages
+
+
+def profile(**changes):
+    values = dict(id='local_translator', name='Synthetic local translator',
+        adapter='libretranslate-local', endpoint='http://127.0.0.1:55123',
+        model='declared-synthetic-models', capabilities=('translation.text', 'translation.languages'),
+        local=True, enabled=True)
+    values.update(changes)
+    return ProviderProfile(**values)
+
+
+def discovery(p):
+    return translation_language_approval(p, expires_at=time() + 60)
+
+
+@pytest.fixture
+def ready(tmp_path, monkeypatch):
+    state = {'calls': [], 'status': 200, 'raw': None, 'on_read': None}
+    class NoVault:
+        def get(self, *args):
+            raise AssertionError('A local translator cannot read credentials.')
+    class Connection:
+        def __init__(self, target, *, local, deadline, cancelled):
+            assert target.hostname == '127.0.0.1' and target.port == 55123 and local is True
+            self.position = 0
+            self.deadline, self.cancelled = deadline, cancelled
+        def check(self):
+            providers._check_request(self.deadline, self.cancelled)
+        def request(self, method, route, body=None, headers=None):
+            state['calls'].append((method, route, body, dict(headers)))
+            if state['raw'] is not None:
+                self.raw = state['raw']
+            elif method == 'GET':
+                self.raw = json.dumps([
+                    {'code': 'en', 'name': 'English', 'targets': ['uk']},
+                    {'code': 'uk', 'name': 'Ukrainian', 'targets': []},
+                ]).encode()
+            else:
+                payload = json.loads(body)
+                result = {'translatedText': 'DERIVED: ' + payload['q'] + ' &amp;'}
+                if payload['source'] == 'auto':
+                    result['detectedLanguage'] = {'language': 'en', 'confidence': 91.5}
+                self.raw = json.dumps(result, ensure_ascii=False).encode()
+        def getresponse(self):
+            self.status = state['status']
+            return self
+        def getheader(self, name, default=None):
+            return {'Content-Type': 'application/json', 'Content-Length': str(len(self.raw))}.get(name, default)
+        def read(self, size):
+            value = self.raw[self.position:self.position + size]
+            self.position += len(value)
+            callback, state['on_read'] = state['on_read'], None
+            if callback is not None:
+                callback()
+            return value
+        def close(self):
+            pass
+    monkeypatch.setattr(providers, '_Connection', Connection)
+    service = TranslationService(tmp_path / 'translation',
+        gateway=Gateway(tmp_path / 'translation/provider', vault=NoVault()))
+    p = profile()
+    service.refresh_languages(p, authorization=discovery(p))
+    return SimpleNamespace(service=service, profile=p, state=state)
+
+
+@pytest.mark.parametrize('changes', [
+    {'endpoint': 'http://localhost:55123'}, {'endpoint': 'https://example.org'},
+    {'endpoint': 'http://10.0.0.1:5000'}, {'endpoint': 'http://127.0.0.1:5000/api'},
+    {'endpoint': 'http://user:secret@127.0.0.1:5000'}, {'endpoint': 'http://127.0.0.1:5000?key=x'},
+    {'local': False}, {'credential_ref': 'carr/provider/local_translator/' + 'a' * 32},
+    {'capabilities': ('llm.chat',)}, {'voice': 'somevoice'},
+])
+def test_local_profile_cannot_change_authority_or_forward_credentials(changes):
+    with pytest.raises(ValueError):
+        profile(**changes)
+
+
+def test_local_approval_does_not_change_remote_authorization_digest():
+    p = profile()
+    local = discovery(p)
+    with pytest.raises(ValueError):
+        Authorization(**asdict(local))
+    remote = Authorization('remote_approval', 'remote_task',
+        (('google', 'https://translation.googleapis.com/language/translate/v2'),),
+        ('translation.text',), ('selected-excerpt',), '1', 1, time() + 60)
+    original = asdict(remote)
+    assert set(original) == {'id', 'task_id', 'profiles', 'operations', 'data_classes',
+                            'budget', 'max_calls', 'expires_at', 'request_hashes', 'currency'}
+    assert canonical(asdict(Authorization(**original))) == canonical(original)
+    with pytest.raises(ValueError):
+        LocalTranslationAuthorization(**original)
+
+
+@pytest.mark.parametrize('changes', [
+    {'budget': '1'}, {'operations': ('llm.chat',)}, {'request_hashes': ()},
+    {'profiles': (('local_translator', 'https://example.org'),)},
+])
+def test_local_approval_is_zero_cost_translation_only(changes):
+    value = asdict(discovery(profile()))
+    value.update(changes)
+    with pytest.raises(ValueError):
+        LocalTranslationAuthorization(**value)
+
+
+def test_request_mapping_is_exact_and_has_no_model_download_or_key():
+    assert request('translation.languages', {'target': 'en'}) == ('/languages', {}, 'application/json')
+    route, body, kind = request('translation.text', {'q': 'Text <literal>', 'target': 'uk'})
+    assert route == '/translate' and kind == 'application/json'
+    assert body == {'q': 'Text <literal>', 'source': 'auto', 'target': 'uk', 'format': 'text'}
+    with pytest.raises(ValueError):
+        request('translation.text', {'q': 'Text', 'target': 'uk', 'glossary': 'unavailable'})
+
+
+@pytest.mark.parametrize('raw', [
+    b'{"translatedText":"one","translatedText":"two"}',
+    b'{"translatedText":"ok","detectedLanguage":{"language":"en","confidence":NaN}}',
+    b'{"translatedText":"ok","detectedLanguage":{"language":"en","confidence":true}}',
+    b'{"translatedText":"ok"}',
+    b'{"translatedText":"ok","detectedLanguage":{"language":"en","confidence":101}}',
+    b'{"translatedText":"ok","detectedLanguage":{"language":"../en","confidence":90}}',
+])
+def test_auto_response_rejects_ambiguous_or_unqualified_detection(raw):
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'auto'}, maximum=1000)
+
+
+@pytest.mark.parametrize('rows', [
+    [{'language': 'en', 'name': 'English', 'targets': ['uk']}],
+    [{'language': 'en', 'name': 'English', 'targets': [{}]}],
+    [{'language': 'en', 'name': 'English', 'targets': ['en', 'en']}],
+    [{'language': 'en', 'name': 'English', 'targets': [], 'quality': 'qualified'}],
+])
+def test_language_inventory_requires_exact_declared_pairs(rows):
+    with pytest.raises(ValueError):
+        validate_languages(rows)
+
+
+def test_no_call_without_explicit_local_approval(ready):
+    service, p, state = ready.service, ready.profile, ready.state
+    calls = len(state['calls'])
+    with pytest.raises(PermissionError, match='explicit local'):
+        service.gateway.request(p, 'translation.text', {'q': 'Text', 'target': 'uk'},
+            task_id='unapproved', data_class='selected-excerpt')
+    assert len(state['calls']) == calls
+
+
+def test_pair_direction_and_zero_cost_are_checked_before_submission(ready):
+    service, p, state = ready.service, ready.profile, ready.state
+    with pytest.raises(ValueError, match='direction'):
+        service.preview(p, 'Text', 'uk', 'en')
+    with pytest.raises(ValueError, match='external per-character charge'):
+        service.preview(p, 'Text', 'en', 'uk', rate_per_million='20')
+    with pytest.raises(ValueError):
+        translation_approval(p, 'Text', 'en', 'uk', '1')
+    assert len(state['calls']) == 1
+
+
+def test_local_job_uses_existing_ledger_preserves_entities_and_exports_offline(ready, tmp_path, monkeypatch):
+    service, p, state = ready.service, ready.profile, ready.state
+    value = 'Synthetic <source> &amp; 🙂'
+    approval, cost = translation_approval(p, value, 'auto', 'uk', '0')
+    identity = service.submit(p, value, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.gateway.mode == 'LOCAL_ONLY'
+    assert service.resume(identity)['status'] == 'complete'
+    job = service._load(identity)
+    assert job['receipts'][0]['text'].endswith('&amp;')
+    usage = service.gateway.ledger.get(approval.id)
+    operation = usage['operations'][identity + '_0']
+    assert Decimal(operation['reserved_cost']) == Decimal('0')
+    assert operation['status'] == 'complete'
+    assert operation['usage']['decoded_translation_sha256'] == job['receipts'][0]['decoded_translation_sha256']
+    assert len(state['calls']) == 2
+    _, _, body, headers = state['calls'][-1]
+    assert json.loads(body)['format'] == 'text'
+    assert not any(key.lower() in ('authorization', 'x-goog-api-key') for key in headers)
+    assert b'api_key' not in body
+    monkeypatch.setattr(providers, '_Connection', lambda *args, **kwargs: pytest.fail('Offline completed work cannot connect.'))
+    result = service.export(identity, tmp_path / 'export')
+    report = json.loads((tmp_path / 'export/translation-provenance.json').read_text())
+    assert result['status'] == 'complete'
+    assert report['local_runtime_identity'] == 'not attested by the local API'
+    assert report['quotation_authority'] is False
+    assert service.resume(identity)['status'] == 'complete'
+
+
+def test_decoded_text_plus_local_receipt_forgery_still_fails_independent_ledger(ready):
+    service, p = ready.service, ready.profile
+    approval, cost = translation_approval(p, 'Original', 'en', 'uk', '0')
+    identity = service.submit(p, 'Original', 'en', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    job['receipts'][0]['text'] = 'Forged'
+    job['receipts'][0]['translation_sha256'] = sha256(b'Forged').hexdigest()
+    service.jobs.save(job)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service._load(identity)
+
+
+@pytest.mark.parametrize('status', [302, 401, 500])
+def test_local_error_never_falls_back_or_replays_an_attempt(ready, status):
+    service, p, state = ready.service, ready.profile, ready.state
+    approval, cost = translation_approval(p, 'Original', 'en', 'uk', '0')
+    identity = service.submit(p, 'Original', 'en', 'uk', authorization=approval, per_call_cost=cost)
+    state['status'] = status
+    with pytest.raises(ProviderError):
+        service.resume(identity)
+    count = len(state['calls'])
+    with pytest.raises(ProviderError, match='already been attempted'):
+        service.resume(identity)
+    assert len(state['calls']) == count
+
+
+@pytest.mark.parametrize('source', ['en', 'auto'])
+@pytest.mark.parametrize('damage', ['missing', 'hash', 'direction'])
+def test_paused_local_job_revalidates_declared_pair_before_next_request(ready, source, damage):
+    service, p, state = ready.service, ready.profile, ready.state
+    value = 'First retained paragraph. ' * 200 + '\n\nSecond retained paragraph.'
+    approval, cost = translation_approval(p, value, source, 'uk', '0')
+    identity = service.submit(p, value, source, 'uk', authorization=approval,
+                              per_call_cost=cost)
+    stop = [False]
+    def progress(done, total, phase):
+        if done == 1:
+            stop[0] = True
+    assert service.resume(identity, cancelled=lambda: stop[0], progress=progress)['status'] == 'paused'
+    accepted = service._load(identity)['receipts']
+    assert len(accepted) == 1
+    before_calls = len(state['calls'])
+    before_usage = service.gateway.ledger.get(approval.id)
+    cache = service._languages_path(p)
+    original_cache = cache.read_bytes()
+    if damage == 'missing':
+        cache.unlink()
+    else:
+        changed = json.loads(original_cache)
+        if damage == 'hash':
+            changed['languages_sha256'] = '0' * 64
+        else:
+            changed['languages'][0]['targets'] = []
+            changed['languages_sha256'] = sha256(canonical(changed['languages']).encode('utf-8')).hexdigest()
+        cache.write_text(json.dumps(changed), encoding='utf-8')
+    with pytest.raises(ValueError):
+        service.resume(identity)
+    assert len(state['calls']) == before_calls
+    assert service.gateway.ledger.get(approval.id) == before_usage
+    assert service._load(identity)['receipts'] == accepted
+    cache.write_bytes(original_cache)
+    assert service.resume(identity)['status'] == 'complete'
+    assert len(state['calls']) == before_calls + 1
+    assert service._load(identity)['receipts'][:1] == accepted
+
+
+def test_accepted_local_response_uses_pre_request_pair_snapshot(ready, monkeypatch, tmp_path):
+    service, p, state = ready.service, ready.profile, ready.state
+    approval, cost = translation_approval(p, 'Exact accepted source.', 'auto', 'uk', '0')
+    identity = service.submit(p, 'Exact accepted source.', 'auto', 'uk',
+                              authorization=approval, per_call_cost=cost)
+    request = service.gateway.request
+    def changed_after_acceptance(*args, **kwargs):
+        result = request(*args, **kwargs)
+        service._languages_path(p).unlink()
+        return result
+    monkeypatch.setattr(service.gateway, 'request', changed_after_acceptance)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service._load(identity)
+    assert len(job['receipts']) == 1 and job['receipts'][0]['detected_source'] == 'en'
+    usage = service.gateway.ledger.get(approval.id)['operations'][identity + '_0']
+    assert usage['status'] == 'complete'
+    assert usage['usage']['decoded_translation_sha256'] == job['receipts'][0]['decoded_translation_sha256']
+    assert service.export(identity, tmp_path / 'accepted-offline')['status'] == 'complete'
+    assert len(state['calls']) == 2
+
+
+@pytest.mark.parametrize('sentinel', ['auto', 'AUTO', 'Auto'])
+def test_auto_sentinel_is_not_a_local_language(sentinel):
+    with pytest.raises(ValueError):
+        request('translation.languages', {'target': sentinel})
+    with pytest.raises(ValueError):
+        request('translation.text', {'q': 'Synthetic text', 'source': 'en', 'target': sentinel})
+    with pytest.raises(ValueError):
+        validate_languages([{'language': sentinel, 'name': 'Automatic', 'targets': []}])
+    with pytest.raises(ValueError):
+        validate_languages([{'language': 'en', 'name': 'English', 'targets': [sentinel]},
+                            {'language': sentinel, 'name': 'Automatic', 'targets': []}])
+    raw = json.dumps({'translatedText': 'Synthetic derivative',
+                      'detectedLanguage': {'language': sentinel, 'confidence': 90}}).encode()
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'auto'}, maximum=1000)
+    if sentinel != 'auto':
+        with pytest.raises(ValueError):
+            request('translation.text', {'q': 'Synthetic text', 'source': sentinel, 'target': 'uk'})
+    else:
+        _, body, _ = request('translation.text', {'q': 'Synthetic text', 'source': sentinel, 'target': 'uk'})
+        assert body['source'] == 'auto'
+
+
+@pytest.mark.parametrize('sentinel', ['auto', 'AUTO', 'Auto'])
+def test_local_approval_rejects_auto_target_before_provider_call(ready, sentinel):
+    service, p, state = ready.service, ready.profile, ready.state
+    before = len(state['calls'])
+    with pytest.raises(ValueError):
+        service.preview(p, 'Synthetic text', 'en', sentinel)
+    with pytest.raises(ValueError):
+        translation_approval(p, 'Synthetic text', 'en', sentinel, '0')
+    assert len(state['calls']) == before
+
+
+@pytest.mark.parametrize('confidence', [
+    '-1', '-0.01', '100.0000001', '1e309', '-1e309', '"90"', 'null',
+    '[]', '{}', 'false', '1' + '0' * 400, '-1' + '0' * 400,
+    'Infinity', '-Infinity',
+])
+def test_local_confidence_rejects_out_of_range_or_non_numeric_json(confidence):
+    raw = ('{"translatedText":"ok","detectedLanguage":{"language":"en","confidence":'
+           + confidence + '}}').encode('ascii')
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'auto'}, maximum=1000)
+
+
+@pytest.mark.parametrize('confidence', [0, 0.0000001, 49.5, 99.999999, 100, 1e-300])
+def test_local_confidence_accepts_finite_inclusive_range(confidence):
+    raw = json.dumps({'translatedText': 'Дослід &amp; 🙂',
+                      'detectedLanguage': {'language': 'uk', 'confidence': confidence}}).encode()
+    assert response(raw, 'translation.text', {'source': 'auto'}, maximum=1000) == {
+        'text': 'Дослід &amp; 🙂', 'detected_source': 'uk'}
+
+
+@pytest.mark.parametrize('operation,payload', [
+    ('translation.other', {'q': 'text', 'target': 'uk'}),
+    ('translation.text', {'q': 'text'}),
+    ('translation.text', {'target': 'uk'}),
+    ('translation.text', {'q': 'text', 'target': 'uk', 'model': 'other'}),
+    ('translation.text', {'q': 'text', 'target': 'uk', 'api_key': 'synthetic'}),
+    ('translation.text', {'q': 'text', 'target': 'uk', 'format': 'html'}),
+    ('translation.text', {'q': 'text', 'target': '../uk'}),
+    ('translation.text', {'q': 'a' * 5001, 'target': 'uk'}),
+    ('translation.text', {'q': ' \t\n', 'target': 'uk'}),
+    ('translation.languages', {'target': 'uk', 'q': 'private synthetic text'}),
+])
+def test_local_request_rejects_unapproved_fields_or_invalid_input(operation, payload):
+    with pytest.raises(ValueError):
+        request(operation, payload)
+
+
+@pytest.mark.parametrize('output', ['Привіт, світ!', 'A &amp; B <literal>', 'first\nsecond', '🙂' * 1000])
+def test_local_explicit_source_response_preserves_exact_output(output):
+    raw = json.dumps({'translatedText': output}).encode()
+    assert response(raw, 'translation.text', {'source': 'en'}, maximum=1000) == {
+        'text': output, 'detected_source': None}
+
+
+@pytest.mark.parametrize('payload', [
+    {'translatedText': 'ok', 'detectedLanguage': {'language': 'en', 'confidence': 100}},
+    {'translatedText': None},
+    {'translatedText': 'a' * 1001},
+    {'translatedText': '\ud800'},
+    {'translatedText': 'bad\x00text'},
+    {'translatedText': 'ok', 'model': 'unrequested'},
+])
+def test_local_explicit_source_response_rejects_unapproved_or_invalid_output(payload):
+    raw = json.dumps(payload).encode()
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'en'}, maximum=1000)
+
+
+@pytest.fixture
+def local_library(tmp_path, ready):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Local translation source')
+    original = 'Retained source paragraph. ' * 220 + '\fLast retained source position.'
+    imported = app.add_text(workspace, 'Reviewed source', original)
+    p = ready.profile
+    ProfileStore(app.root / 'state/providers').save(p)
+    root = app.root / 'state/translation'
+    service = TranslationService(root, library=app,
+        gateway=Gateway(root / 'provider', vault=ready.service.gateway.vault))
+    service.refresh_languages(p, authorization=discovery(p))
+    return SimpleNamespace(app=app, workspace=workspace, imported=imported, original=original,
+                           service=service, profile=p, state=ready.state)
+
+
+def selected_job(e, *, value=None):
+    selected = capture_source(e.app, e.workspace, e.imported['edition'])
+    approval, cost = translation_approval(e.profile, selected['text'], 'en', 'uk', '0', source_bound=True)
+    identity = e.service.submit(e.profile, selected['text'], 'en', 'uk',
+        authorization=approval, per_call_cost=cost,
+        source_document=ReadingDocument(selected['text'], title=selected['title'],
+                                        source_anchor=selected['source_anchor']),
+        topic=selected['source_topic'])
+    return identity, approval, selected
+
+
+@pytest.mark.parametrize('change', ('disabled', 'model', 'endpoint', 'removed'))
+def test_local_profile_rechecked_before_any_fresh_request(local_library, change):
+    e = local_library
+    identity, approval, selected = selected_job(e)
+    store = ProfileStore(e.app.root / 'state/providers')
+    if change == 'removed':
+        store.remove(e.profile.id)
+    else:
+        store.save(replace(e.profile, **({'enabled': False} if change == 'disabled' else
+            {'model': 'different-declared-models'} if change == 'model' else
+            {'endpoint': 'http://127.0.0.1:55124'})))
+    before = len(e.state['calls'])
+    with pytest.raises((PermissionError, FileNotFoundError)):
+        e.service.resume(identity)
+    assert len(e.state['calls']) == before
+    assert e.service.jobs.load(identity)['receipts'] == []
+    assert not e.service.gateway.ledger._path(approval.id).exists()
+    assert e.app.assets.resolve(e.imported['asset']).read_bytes() == e.original.encode()
+
+
+@pytest.mark.parametrize('change', ('profile', 'source'))
+def test_revocation_during_actual_gateway_response_has_no_accepted_receipt_or_retry(local_library, change):
+    e = local_library
+    identity, approval, selected = selected_job(e)
+    store = ProfileStore(e.app.root / 'state/providers')
+    e.state['on_read'] = (lambda: store.save(replace(e.profile, enabled=False))) if change == 'profile' else (
+        lambda: e.app.archive_workspace(e.workspace))
+    before = len(e.state['calls'])
+    expected = PermissionError if change == 'profile' else ValueError
+    message = 'profile changed' if change == 'profile' else 'missing or archived'
+    with pytest.raises(expected, match=message):
+        e.service.resume(identity)
+    assert len(e.state['calls']) == before + 1
+    assert e.service.jobs.load(identity)['receipts'] == []
+    ledger = e.service.gateway.ledger.get(approval.id)
+    assert ledger['operations'][identity + '_0']['status'] == 'uncertain'
+    if change == 'profile':
+        store.save(e.profile)
+    else:
+        e.app.restore_workspace(e.workspace)
+    with pytest.raises(ProviderError, match='already been attempted'):
+        e.service.resume(identity)
+    assert len(e.state['calls']) == before + 1
+    assert e.app.assets.resolve(e.imported['asset']).read_bytes() == e.original.encode()
+
+
+def test_local_bound_source_restore_keeps_receipts_without_transferring_old_approval(
+        local_library, tmp_path, monkeypatch):
+    e = local_library
+    identity, approval, selected = selected_job(e)
+    stopped = []
+    result = e.service.resume(identity, cancelled=lambda: bool(stopped),
+        progress=lambda *args: stopped.append(True))
+    assert result['status'] == 'paused' and result['completed'] == 1 and result['total'] == 2
+    accepted = e.service._load(identity)['receipts']
+    original_ledger = e.service.gateway.ledger.get(approval.id)
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive translation backup activated a provider or process.')
+    folder, target = tmp_path / 'backup', tmp_path / 'restored'
+    with monkeypatch.context() as guard:
+        guard.setattr(Gateway, '__init__', forbidden)
+        guard.setattr(Gateway, 'request', forbidden)
+        guard.setattr(subprocess, 'Popen', forbidden)
+        checksum = create_backup(e.app, folder)
+        restore_backup(folder, target, checksum)
+    restored_app = LibraryApp(target)
+    service = TranslationService(target / 'state/translation', library=restored_app,
+        gateway=Gateway(target / 'state/translation/provider', vault=e.service.gateway.vault))
+    assert service._load(identity)['receipts'] == accepted
+    assert service.gateway.ledger.get(approval.id) == original_ledger
+    before = len(e.state['calls'])
+    with pytest.raises(PermissionError, match='moved or restored'):
+        service.resume(identity)
+    assert len(e.state['calls']) == before
+    assert e.service.resume(identity)['status'] == 'complete'
+    assert len(e.state['calls']) == before + 1
+    assert e.service._load(identity)['receipts'][:1] == accepted
+    complete_backup, complete_target = tmp_path / 'completed-backup', tmp_path / 'completed-restored'
+    with monkeypatch.context() as guard:
+        guard.setattr(Gateway, '__init__', forbidden)
+        guard.setattr(Gateway, 'request', forbidden)
+        guard.setattr(subprocess, 'Popen', forbidden)
+        checksum = create_backup(e.app, complete_backup)
+        restore_backup(complete_backup, complete_target, checksum)
+    completed = TranslationService(complete_target / 'state/translation', library=LibraryApp(complete_target),
+        gateway=Gateway(complete_target / 'state/translation/provider', vault=e.service.gateway.vault))
+    ProfileStore(complete_target / 'state/providers').remove(e.profile.id)
+    completed._languages_path(e.profile).unlink()
+    with monkeypatch.context() as guard:
+        guard.setattr(providers, '_Connection', forbidden)
+        destination = tmp_path / 'restored-export'
+        assert completed.export(identity, destination)['status'] == 'complete'
+        assert completed.resume(identity)['status'] == 'complete'
+    assert len(e.state['calls']) == before + 1
+    reading = ReadingDocument.load(destination / 'translation.reading.json')
+    assert reading.source_anchor == selected['source_anchor']
+    assert reading.source_text == selected['text']
+    assert not reading.source_span(0, len(reading.text)).exact
+    report = json.loads((destination / 'translation-provenance.json').read_bytes())
+    assert report['source_anchor'] == selected['source_anchor']
+    assert report['quotation_authority'] is False
+    assert report['local_runtime_identity'] == 'not attested by the local API'
+
+
+@pytest.mark.parametrize('damage', ('text', 'detected'))
+def test_coherent_local_job_and_manifest_tamper_cannot_remint_ledger_receipt(
+        ready, tmp_path, damage):
+    from carr_library.assistant.providers import translation_receipt_sha256
+    service, p = ready.service, ready.profile
+    approval, cost = translation_approval(p, 'Original', 'auto', 'uk', '0')
+    identity = service.submit(p, 'Original', 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    row = job['receipts'][0]
+    row['text' if damage == 'text' else 'detected_source'] = 'Forged' if damage == 'text' else 'fr'
+    row['translation_sha256'] = sha256(row['text'].encode()).hexdigest()
+    row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
+    service.jobs.save(job)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service._load(identity)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, tmp_path / 'refused')
+    assert not (tmp_path / 'refused').exists()
+
+
+def test_local_batch_requires_its_own_approval_and_reuses_only_existing_children(ready, tmp_path):
+    service, p, state = ready.service, ready.profile, ready.state
+    batches = TranslationBatchService(service)
+    items = [{'profile': p.to_dict(), 'text': 'Document ' + str(i),
+              'title': 'Document ' + str(i), 'source': 'en', 'target': 'uk', 'budget': '0'}
+             for i in range(2)]
+    review = batches.preview(items)
+    before = len(state['calls'])
+    with pytest.raises(PermissionError, match='local'):
+        batches.submit(items, review_sha256=review['review_sha256'], approve_remote=True)
+    assert service.jobs.identities() == ()
+    identity = batches.submit(items, review_sha256=review['review_sha256'], approve_local=True)
+    assert len(state['calls']) == before
+    manifest = batches._load(identity)
+    children = [member['job']['id'] for member in manifest['members']]
+    assert len(children) == 2 and len(set(children)) == 2
+    stopped = []
+    paused = batches.resume(identity, cancelled=lambda: bool(stopped),
+        progress=lambda *args: stopped.append(True))
+    assert paused['status'] == 'paused'
+    first = service._load(children[0])
+    assert first['status'] == 'complete' and len(first['receipts']) == 1
+    assert len(state['calls']) == before + 1
+    assert batches.resume(identity)['status'] == 'complete'
+    assert len(state['calls']) == before + 2
+    assert service._load(children[0]) == first
+    assert batches.export(identity, tmp_path / 'batch-export.zip')['status'] == 'complete'
+    assert batches.resume(identity)['status'] == 'complete'
+    assert len(state['calls']) == before + 2
+
+
+def test_local_response_over_checkpoint_bound_is_never_accepted(ready):
+    service, p, state = ready.service, ready.profile, ready.state
+    approval, cost = translation_approval(p, 'Original', 'en', 'uk', '0')
+    identity = service.submit(p, 'Original', 'en', 'uk', authorization=approval, per_call_cost=cost)
+    state['raw'] = json.dumps({'translatedText': 'x' * 200001}).encode()
+    with pytest.raises(ProviderError):
+        service.resume(identity)
+    assert service.jobs.load(identity)['receipts'] == []
+    assert service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['status'] == 'uncertain'
+
+
+def test_restored_local_text_cannot_override_preserved_independent_ledger(
+        local_library, tmp_path):
+    from carr_library.assistant.providers import translation_receipt_sha256
+    e = local_library
+    identity, approval, selected = selected_job(e)
+    assert e.service.resume(identity)['status'] == 'complete'
+    folder = tmp_path / 'tampered-backup'
+    create_backup(e.app, folder)
+    relative = 'state/translation/jobs/' + identity + '.json'
+    path = folder / relative
+    job = json.loads(path.read_bytes())
+    row = job['receipts'][0]
+    row['text'] = 'Changed accepted translation.'
+    row['translation_sha256'] = sha256(row['text'].encode()).hexdigest()
+    row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
+    raw = json.dumps(job, ensure_ascii=False).encode()
+    path.write_bytes(raw)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    entry = next(value for value in manifest['sidecars'] if value['filename'] == relative)
+    entry.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))
+    raw_manifest = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode()
+    (folder / 'manifest.json').write_bytes(raw_manifest)
+    destination = tmp_path / 'restored-inert'
+    restore_backup(folder, destination, sha256(raw_manifest).hexdigest())
+    restored = TranslationService(destination / 'state/translation', library=LibraryApp(destination),
+        gateway=Gateway(destination / 'state/translation/provider', vault=e.service.gateway.vault))
+    before = len(e.state['calls'])
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        restored.get(identity)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        restored.export(identity, tmp_path / 'must-not-export')
+    assert not (tmp_path / 'must-not-export').exists()
+    assert len(e.state['calls']) == before
+
+
+@pytest.mark.parametrize('remote,local', ((False, False), (True, False), (False, True)))
+def test_mixed_batch_requires_both_exact_transfer_approvals(ready, remote, local):
+    from carr_library.assistant.state import atomic_json, now
+    service, p, state = ready.service, ready.profile, ready.state
+    cloud = ProviderProfile('cloud_for_review', 'Cloud review only', 'google-translation-v2',
+        'https://translation.googleapis.com/language/translate/v2', 'nmt',
+        ('translation.text', 'translation.languages'), enabled=True)
+    rows = [{'language': 'en', 'name': 'English'}, {'language': 'uk', 'name': 'Ukrainian'}]
+    atomic_json(service._languages_path(cloud), {'schema': 'carr-translation-languages/1',
+        'profile': cloud.id, 'endpoint': cloud.endpoint, 'model': cloud.model,
+        'fetched_at': now(), 'languages': rows, 'languages_sha256': sha256(canonical(rows).encode()).hexdigest(),
+        'qualification': 'provider-declared; not acoustic or translation-quality verification'})
+    items = [{'profile': profile.to_dict(), 'text': 'Explicit mixed item ' + str(index),
+              'source': 'en', 'target': 'uk', 'budget': '0' if profile.local else '1'}
+             for index, profile in enumerate((p, cloud))]
+    batches = TranslationBatchService(service)
+    review = batches.preview(items)
+    before = len(state['calls'])
+    with pytest.raises(PermissionError):
+        batches.submit(items, review_sha256=review['review_sha256'],
+                       approve_remote=remote, approve_local=local)
+    assert not service.jobs.identities() and len(state['calls']) == before
+    identity = batches.submit(items, review_sha256=review['review_sha256'],
+                              approve_remote=True, approve_local=True)
+    assert batches.get(identity)['status'] == 'queued'
+    assert len(state['calls']) == before
+    children = batches._load(identity)['members']
+    assert Decimal(children[0]['job']['authorization']['budget']) == 0
+    assert Decimal(children[1]['job']['authorization']['budget']) == 1
+
+
+def test_wrong_local_request_hash_refuses_before_ledger_or_transport(ready):
+    p, service, state = ready.profile, ready.service, ready.state
+    approval = replace(discovery(p), request_hashes=('0' * 64,))
+    before = len(state['calls'])
+    with pytest.raises(PermissionError, match='approved envelope'):
+        service.refresh_languages(p, authorization=approval)
+    assert len(state['calls']) == before
+    assert not service.gateway.ledger._path(approval.id).exists()

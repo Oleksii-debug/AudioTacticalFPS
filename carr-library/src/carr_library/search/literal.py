@@ -5,6 +5,8 @@ NFD/full casefold and whitespace folding are search-only; returned offsets are
 half-open Python code-point offsets into the original immutable page. No raw
 FTS syntax, stemming, cross-page stitching, or generated quotation.
 """
+from .paging import MAX_TIMEOUT_SECONDS
+
 from array import array
 from bisect import bisect_right
 from hashlib import sha256
@@ -156,7 +158,7 @@ def _spans(folded, starts, ends, needle, check=lambda: None):
 
 
 def search(db, workspace, query, *, mode='phrase', edition_ids=None,
-           limit=50, offset=0, timeout=5.0, cancelled=lambda: False):
+           limit=50, offset=0, timeout=5.0, cancelled=lambda: False, page_ids=None, resources=None):
     """One active workspace only; edition_ids is the catalog-resolved filter.
 
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
@@ -179,8 +181,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid query')
     if not (type(limit) is int and type(offset) is int and type(timeout) in (int, float)
             and 1 <= limit <= 100
-            and offset >= 0 and 0 < timeout <= 60):
+            and offset >= 0 and 0 < timeout <= MAX_TIMEOUT_SECONDS):
         raise ValueError('invalid search budget')
+    if resources is not None:
+        from .paging import SearchResources
+        if type(resources) is not SearchResources or page_ids is None:
+            raise ValueError('A paged search needs a validated resource budget.')
+    character_limit = resources.source_characters if resources is not None else MAX_CHARS
     q = _fold(query).strip()
     if not q:
         return []
@@ -225,6 +232,10 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             return []
         where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
         params.extend(ids)
+    from .paging import checked_page_ids
+    page_clause, page_parameters = checked_page_ids(page_ids)
+    where += page_clause
+    params.extend(page_parameters)
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
            'verified,raw,digest FROM active_page WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
@@ -240,7 +251,7 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                 raise ValueError('foreign workspace row')
             raw = row[9]
             size += len(raw)
-            if len(rows) >= MAX_PAGES or size > MAX_CHARS:
+            if len(rows) >= MAX_PAGES or size > character_limit:
                 raise ValueError('scope exceeds literal search budget')
             # Validate every scoped source before candidate pruning or pagination.
             if sha256(raw.encode('utf-8')).hexdigest() != row[10]:
@@ -334,7 +345,7 @@ def _search_file(path, workspace, query, timeout, cancelled, options, *,
     """
     from pathlib import Path
 
-    if type(timeout) not in (int, float) or not 0 < timeout <= 60:
+    if type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS:
         raise ValueError('invalid search budget')
     deadline = monotonic() + timeout
     latched = False

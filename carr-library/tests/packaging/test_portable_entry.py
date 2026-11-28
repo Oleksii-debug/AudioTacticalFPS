@@ -249,7 +249,8 @@ def test_changed_cleanup_receipt_is_retained_instead_of_certifying_idle(tmp_path
 
 @pytest.mark.parametrize('module_name', ['carr_library.conversion.cli', 'carr_library.sync.cli',
                                        'carr_library.assistant.templates_cli',
-                                       'carr_library.assistant.translation_batch_cli'])
+                                       'carr_library.assistant.translation_batch_cli',
+                                       'carr_library.ingest.batch_cli'])
 def test_direct_public_module_cannot_bypass_a_held_installation_lease(tmp_path, monkeypatch, capsys, module_name):
     selected = importlib.import_module(module_name)
     managed = tmp_path / 'managed'

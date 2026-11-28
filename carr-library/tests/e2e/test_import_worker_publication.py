@@ -435,6 +435,35 @@ def test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
 
 
+def test_cancelled_resume_preserves_attempt_while_same_operation_still_owns_resources(tmp_path, monkeypatch):
+    from carr_library.operations import ResourceBroker, ResourceRequest
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Pending attempt identity')
+    source = _source(tmp_path, 'pdf')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    record = worker.load_request(app.root, first['request_id'])
+    assert record['publication_candidate'] is not None
+    record['state'] = 'running'
+    record.pop('result')
+    worker._store(app.root, first['request_id'], record)
+    before = worker._path(app.root, first['request_id']).read_bytes()
+    broker = ResourceBroker.for_app(app.root)
+    monkeypatch.setattr(worker, '_invoke',
+        lambda *args, **kwargs: pytest.fail('Cancelled resume must not launch a new parser.'))
+    with broker.reserve(ResourceRequest(cpu_slots=1),
+                        operation_id='import:' + first['request_id']):
+        result = worker.run_request(app.root, workspace, source, {}, Config(),
+            request_id=first['request_id'], cancelled=lambda: True)
+        assert result['state'] == 'cancelled'
+        assert worker._path(app.root, first['request_id']).read_bytes() == before
+        live, = broker.snapshot()['leases']
+        assert live['operation_id'] == 'import:' + first['request_id']
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+
 def test_docx_publication_keeps_existing_logical_record_capacity(tmp_path, monkeypatch):
     from docx import Document
 

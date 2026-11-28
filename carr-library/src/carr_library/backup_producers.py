@@ -403,7 +403,7 @@ def _usage(value):
                 raise ValueError('Invalid provider usage.')
             for key, count in row['usage'].items():
                 text(key, 128)
-                if key == 'decoded_translation_sha256':
+                if key in ('translation_sha256', 'decoded_translation_sha256'):
                     digest(count)
                 else:
                     number(count, integer=True)
@@ -414,10 +414,23 @@ def _translation_languages(value, identity):
     from .assistant.profiles import google_v3_parent
     from .assistant.translation import ENDPOINT
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
-                   'languages_sha256', 'qualification'})
+                   'languages_sha256', 'qualification'}, {'adapter'})
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
             or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
         raise ValueError('Invalid translation language inventory identity.')
+    if 'adapter' in value:
+        from .assistant.profiles import ProviderProfile
+        from .assistant.translation_local import validate_languages
+        if value['adapter'] != 'libretranslate-local':
+            raise ValueError('Unsupported local translation language adapter.')
+        ProviderProfile(identity, 'Retained local translation declaration', value['adapter'],
+                        value['endpoint'], value['model'],
+                        ('translation.text', 'translation.languages'), local=True, enabled=True)
+        text(value['fetched_at'], 128)
+        rows = validate_languages(value['languages'])
+        if sha256(canonical(rows).encode()).hexdigest() != value['languages_sha256']:
+            raise ValueError('Local translation language inventory checksum changed.')
+        return
     advanced = value['endpoint'] != ENDPOINT
     if advanced:
         google_v3_parent(value['endpoint'])
@@ -452,7 +465,7 @@ def _translation_language(value, *, auto=False):
 def _translation_job(value, identity, db):
     from uuid import UUID
     from .assistant.profiles import ProviderProfile, google_v3_parent
-    from .assistant.providers import Authorization, translation_receipt_sha256
+    from .assistant.providers import translation_authorization_type, translation_receipt_sha256
     from .assistant.translation import split_text, _approved_requests, _source_job_id
     fields(value, {'schema', 'kind', 'id', 'created', 'updated', 'status', 'profile', 'title',
         'source_text', 'source_sha256', 'source_language', 'target_language', 'chunks', 'receipts',
@@ -501,14 +514,14 @@ def _translation_job(value, identity, db):
     if type(value['chunks']) is not list or value['chunks'] != list(chunks):
         raise ValueError('Translation chunks no longer bind the original.')
     profile = ProviderProfile(**value['profile'])
-    if profile.adapter not in ('google-translation-v2', 'google-translation-v3'):
+    if profile.adapter not in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local'):
         raise ValueError('Unsupported translation provider declaration.')
     advanced = profile.adapter == 'google-translation-v3'
     _translation_language(value['source_language'], auto=True)
     _translation_language(value['target_language'])
     if value['source_language'] == value['target_language']:
         raise ValueError('Translation needs different source and target languages.')
-    approval = Authorization(**value['authorization'])
+    approval = translation_authorization_type(profile)(**value['authorization'])
     try:
         by_chunk, _cost = _approved_requests(profile, chunks, value['source_language'],
             value['target_language'], approval, value['per_call_cost'], glossary=value.get('glossary'),
@@ -539,6 +552,12 @@ def _translation_job(value, identity, db):
                 raise ValueError('Whitespace-only translation receipt changed.')
             continue
         digest(row['response_sha256'])
+        if profile.adapter == 'libretranslate-local':
+            from .assistant.translation_local import language
+            if value['source_language'] == 'auto':
+                language(row['detected_source'])
+            elif row['detected_source'] is not None:
+                raise ValueError('Local explicit-source translation has unrequested detection.')
         if advanced:
             glossary = {'glossary': value['glossary'], 'ignoreCase': False} if value.get('glossary') else None
             observed_glossary = row.get('glossary_config')
@@ -547,7 +566,7 @@ def _translation_job(value, identity, db):
                     or (glossary is not None and (type(observed_glossary) is not dict
                                                  or observed_glossary.get('ignoreCase') is not False))):
                 raise ValueError('Advanced translation provenance differs from its approved model or glossary.')
-        if bound or 'decoded_translation_sha256' in row:
+        if bound or profile.adapter == 'libretranslate-local' or 'decoded_translation_sha256' in row:
             if row.get('decoded_translation_sha256') != translation_receipt_sha256(row['text'], row['detected_source']):
                 raise ValueError('Decoded translation receipt changed.')
         # This local consistency check grants no independent receipt authority.

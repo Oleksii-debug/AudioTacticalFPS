@@ -92,6 +92,9 @@ def main(argv=None):
     if arguments[:1] == ['translate-batch']:
         from .assistant.translation_batch_cli import main as batch_translation_main
         return batch_translation_main(arguments[1:])
+    if arguments[:1] == ['import-batch']:
+        from .ingest.batch_cli import run as import_batch_run
+        return import_batch_run(arguments[1:])
     if arguments[:1] == ['documents']:
         from .conversion.cli import main as documents_main
         return documents_main(arguments[1:])

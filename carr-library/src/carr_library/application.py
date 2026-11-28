@@ -5,7 +5,7 @@ historical quotations and mutable research notes remain separate. Optional DOI
 acquisition uses separate, explicit per-operation consent; all other core
 services remain local. Model installation is an explicit build-time operation.
 """
-from contextlib import closing, contextmanager
+from contextlib import ExitStack, closing, contextmanager, nullcontext
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -36,7 +36,7 @@ from .research.topic_tree import TopicTree
 from .search import literal, thematic
 from .storage.revisions import CURRENT_SCHEMA, Storage, Page, _schema_signature, _expected_signature
 from .data_paths import guard_data_directory
-from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
+from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES, PHYSICAL_MIMES
 
 
 @dataclass(frozen=True)
@@ -83,7 +83,8 @@ def _name(value):
 class _SearchBudget:
     """One cooperative deadline, including source loading and verification."""
     def __init__(self, timeout, cancelled):
-        if (type(timeout) not in (int, float) or not 0 < timeout <= 60
+        from .search.paging import MAX_TIMEOUT_SECONDS
+        if (type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS
                 or not callable(cancelled)):
             raise ValueError('Invalid search operation budget.')
         self.timeout = timeout
@@ -118,15 +119,36 @@ class _CatalogPublisher:
         self.review_records = lambda: ()
         self.published_here = False
         self.before_commit = lambda workspace, revision: None
+        self._default_before_commit = self.before_commit
+        self._receipt_binding = None
+        self._resources = None
+
+    def bind_receipt(self, root, request_id, *, publication_attempt, config):
+        if self._receipt_binding is not None:
+            raise ValueError('An import publication receipt is already bound.')
+        self._receipt_binding = (root, request_id, publication_attempt, config)
+
+    def bind_resources(self, session):
+        from .ingest.session import ImportSession
+        if type(session) is not ImportSession or session.storage is not self.storage:
+            raise ValueError('Import resource accounting requires this exact storage owner.')
+        session.validate(session.app, session.workspace, session.budget)
+        if self._resources is not None:
+            raise ValueError('Import resources are already bound.')
+        self._resources = session
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
             raise ValueError('Import identity changed.')
-        with self.storage.transaction():
-            LibraryApp._authorize(self.db, workspace)
-            register_batch(Catalog(self.db, workspace), (self.record,))
+        if self._resources is not None:
+            self._resources.validate(self._resources.app, workspace, self._resources.budget)
+        with self.storage.publication_transaction(
+                workspace, edition, revision, asset, config) as publication:
+            db = publication.db
+            LibraryApp._authorize(db, workspace)
+            register_batch(Catalog(db, workspace), (self.record,))
             self.storage.stage_revision(workspace, edition, revision, asset, config, pages)
-            self.db.execute('INSERT INTO source_metadata '
+            db.execute('INSERT INTO source_metadata '
                 '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
                 (workspace, edition, revision, '; '.join(self.record.authors) or None,
                  self.record.title or 'Unknown title', self.record.volume, self.record.edition))
@@ -134,21 +156,32 @@ class _CatalogPublisher:
                 if (review.get('workspace') != workspace or review.get('edition') != edition
                         or review.get('job') != revision or review.get('asset_sha256') != asset):
                     raise ValueError('Reviewed import publication identity changed.')
-                row = self.db.execute('SELECT digest FROM page WHERE revision=? AND physical=?',
+                row = db.execute('SELECT digest FROM page WHERE revision=? AND physical=?',
                                       (revision, review['physical'])).fetchone()
                 if row is None or row[0] != review['raw_sha256']:
                     raise ValueError('Reviewed source text changed before publication.')
-                self.db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
+                db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
                     (workspace, edition, revision, review['physical'], review['raw_sha256'],
                      review['render_sha256'], review['renderer'], review['reviewer']))
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
-            self.storage._check()
+            publication.validate_candidate()
+            if self._receipt_binding is not None:
+                from .ingest.worker import record_publication_candidate
+                root, request_id, attempt, selected_config = self._receipt_binding
+                with publication.receipt() as receipt_db:
+                    record_publication_candidate(
+                        root, request_id, receipt_db, workspace, revision,
+                        publication_attempt=attempt, config=selected_config)
+            if self.before_commit is not self._default_before_commit:
+                publication.require_full_check()
             self.before_commit(workspace, revision)
+            if self._resources is not None:
+                self._resources.check()
         self.published_here = True
 
     def check(self):
-        return self.storage.check()
+        return self.storage.check_publication_snapshot()
 
 
 class LibraryApp:
@@ -168,6 +201,8 @@ class LibraryApp:
         self.semantic_ranker = semantic_ranker
         self.semantic_cache = None
         self._selections = {}
+        from .search.paging import CursorOwner
+        self._search_cursor_owner = CursorOwner(self)
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
@@ -541,8 +576,11 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=None,
+                    import_budget=None):
+        """Use the current isolated worker for native or explicitly budgeted imports."""
+        from .ingest.resource_budget import checked_budget
+        checked_budget(import_budget)
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
             raise ValueError('invalid authors')
@@ -552,15 +590,17 @@ class LibraryApp:
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+        if path.suffix.casefold() in ISOLATED_SUFFIXES or import_budget is not None:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout,
+                               **({'import_budget': import_budget} if import_budget is not None else {}))
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
-    def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
+    def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=None,
+                      import_budget=None):
         """Resume a durable native import from retained bytes and its existing job."""
         from .ingest.worker import load_request, run_request
         with self.read(workspace):
@@ -568,7 +608,8 @@ class LibraryApp:
             if request.get('workspace') != workspace:
                 raise ValueError('Import request belongs to another library.')
         return run_request(self.root, workspace, request['source'], {}, None,
-                           request_id=request_id, cancelled=cancelled, timeout=timeout)
+                           request_id=request_id, cancelled=cancelled, timeout=timeout,
+                           **({'import_budget': import_budget} if import_budget is not None else {}))
 
     def import_requests(self, workspace):
         """List resumable native requests without exposing paths as source authority."""
@@ -602,11 +643,21 @@ class LibraryApp:
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).get(workspace, batch_id)
 
+    def plan_import_page(self, workspace, paths, **options):
+        """Persist one reviewed source window and an inert explicit continuation."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).plan_page(workspace, paths, **options)
+
+    def continue_import_scan(self, workspace, batch_id, **options):
+        """Continue the same saved source traversal only on an explicit request."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).continue_plan(workspace, batch_id, **options)
+
     def run_import_batch(self, workspace, batch_id, *, cancelled=lambda: False,
-                         timeout=120.0, retry_failed=False, progress=None):
+                         timeout=None, retry_failed=False, progress=None, max_items=1000):
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).run(workspace, batch_id, cancelled=cancelled,
-            timeout=timeout, retry_failed=retry_failed, progress=progress)
+            timeout=timeout, retry_failed=retry_failed, progress=progress, max_items=max_items)
 
     def set_import_batch_row(self, workspace, batch_id, row_id, *, included):
         from .ingest.batches import ImportBatchStore
@@ -630,7 +681,7 @@ class LibraryApp:
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
                      _request_id=None, _resume_job=None, _expected_manifest=None,
-                     _publication_attempt=None):
+                     _publication_attempt=None, import_budget=None, _ingest_session=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -638,13 +689,23 @@ class LibraryApp:
         OCR is reported explicitly and never silently exposed as verified text.
         """
         from .extract.page_ocr import Config
+        from .ingest.resource_budget import checked_budget, effective_budget
+        from .ingest.session import ImportSession, import_session
+        checked_budget(import_budget)
+        policy = effective_budget(import_budget)
         path = Path(path).absolute()
         collections = tuple(collections)
         with self.read(workspace) as db:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
-        if _expected_manifest is None:
+        if import_budget is not None:
+            from .catalog.intake import source_snapshot
+            # The selected profile grants only TXT/PDF a larger stream; all
+            # other decoders retain their current whole-value security bound.
+            asset = source_snapshot(path.parent, path.name, max_bytes=policy.source_bytes,
+                                    file_backed=True, cancelled=cancelled)
+        elif _expected_manifest is None:
             asset = snapshot(path.parent, path.name)
         else:
             from .ingest.batch_scan import planned_snapshot
@@ -654,118 +715,152 @@ class LibraryApp:
         record = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,
             asset.manifest(), _metadata(title) or path.stem, tuple(authors), language,
             edition, volume, tuple(collections))
-        with exclusive_writer(self.root):
-            self._check_database_paths()
-            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
-                self._authorize(storage.db, workspace)
-                for collection in collections:
-                    Catalog(storage.db, workspace)._active_collection(collection)
+        with ExitStack() as owners:
+            session = _ingest_session
+            if session is not None:
+                if type(session) is not ImportSession:
+                    raise TypeError('A current library import session is required.')
+                storage = session.validate(self, workspace, import_budget)
+            elif import_budget is not None:
+                session = owners.enter_context(import_session(
+                    self, workspace, import_budget, cancelled=cancelled))
+                storage = session.storage
+            else:
+                owners.enter_context(exclusive_writer(self.root))
+                self._check_database_paths()
+                storage = owners.enter_context(closing(Storage(self.database, schema_version=CURRENT_SCHEMA)))
+            self._authorize(storage.db, workspace)
+            for collection in collections:
+                Catalog(storage.db, workspace)._active_collection(collection)
+            target = self.assets_dir / (asset.digest + SUFFIXES[asset.mime])
+            if session is not None:
+                session.begin_original(asset, target)
+            if import_budget is not None:
+                retained = self.assets.retain_snapshot(asset, max_bytes=policy.source_bytes,
+                                                       cancelled=cancelled)
+            else:
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
-                from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
-                                            record_publication_candidate)
-                record_progress(self.root, _request_id, asset_sha256=asset.digest)
-                publisher = _CatalogPublisher(storage, record)
-                publisher.before_commit = lambda scope, revision: record_publication_candidate(
-                    self.root, _request_id, storage.db, scope, revision,
-                    publication_attempt=_publication_attempt, config=config or Config())
-                if asset.mime in EXTENDED_MIMES or asset.mime in (
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/epub+zip'):
-                    if asset.mime == 'application/epub+zip':
-                        from .extract.epub_ordered import extract_epub
-                        from .reader.ebook_contents import extraction_settings
-                        extracted = extract_epub(asset.data)
-                        source_format = 'EPUB'
-                        settings = extraction_settings(extracted)
-                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                        from .extract.docx_ordered import extract_docx
-                        extracted = extract_docx(asset.data)
-                        source_format = 'DOCX'
-                        # Preserve the original configuration and revision identities.
-                        settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
-                                              'provenance': extracted['provenance']})
-                    else:
-                        from .extract.document_formats import extract_document, extraction_settings
-                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
-                        source_format = FORMAT_BY_MIME[asset.mime].name
-                        settings = canonical(extraction_settings(extracted, asset.mime))
+            if session is not None:
+                session.finish_original(asset, retained)
+            from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
+                                        record_publication_candidate)
+            record_progress(self.root, _request_id, asset_sha256=asset.digest)
+            publisher = _CatalogPublisher(storage, record)
+            publisher.bind_receipt(
+                self.root, _request_id,
+                publication_attempt=_publication_attempt, config=config or Config())
+            if session is not None:
+                publisher.bind_resources(session)
+            if asset.mime in EXTENDED_MIMES or asset.mime in (
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/epub+zip'):
+                if asset.mime == 'application/epub+zip':
+                    from .extract.epub_ordered import extract_epub
+                    from .reader.ebook_contents import extraction_settings
+                    extracted = extract_epub(asset.data)
+                    source_format = 'EPUB'
+                    settings = extraction_settings(extracted)
+                elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    from .extract.docx_ordered import extract_docx
+                    extracted = extract_docx(asset.data)
+                    source_format = 'DOCX'
+                    # Preserve the original configuration and revision identities.
+                    settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
+                                          'provenance': extracted['provenance']})
+                else:
+                    from .extract.document_formats import extract_document, extraction_settings
+                    extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
+                    source_format = FORMAT_BY_MIME[asset.mime].name
+                    settings = canonical(extraction_settings(extracted, asset.mime))
+                if cancelled():
+                    raise InterruptedError('Import cancelled.')
+                revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
+                                  .encode('utf-8')).hexdigest()
+                prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
+                                           (revision,)).fetchone()
+                if prior is None:
+                    publisher.publish_revision(workspace, record.edition_id, revision, asset.digest, settings,
+                        tuple(Page(r['raw_text']) for r in extracted['records']))
+                else:
+                    if tuple(prior) != (workspace, record.edition_id, asset.digest, settings):
+                        raise ValueError(f'Published {source_format} import identity changed.')
+                    pages = storage.db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
+                        'FROM page WHERE revision=? ORDER BY ordinal', (revision,)).fetchall()
+                    expected = tuple((i, None, None, 0, r['raw_text'], r['text_sha256'])
+                                     for i, r in enumerate(extracted['records'], 1))
+                    if (tuple(tuple(p) for p in pages) != expected or not storage.db.execute(
+                            'SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()):
+                        raise ValueError(f'Published {source_format} import differs from retained source bytes.')
+                    with storage.transaction():
+                        register_batch(Catalog(storage.db, workspace), (record,))
+                        # Replays may add memberships; validate before exposing them.
+                        storage._check()
+                publisher.check()
+                return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
+                        'completed': len(extracted['records']), 'verified': False,
+                        'format': source_format, 'warnings': extracted['warnings'],
+                        'message': f'{source_format} imported as unverified logical segments; '
+                                   'printed pages are unknown. ' + (
+                                       FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
+            engine = RuntimeBoundIngest if asset.mime in PHYSICAL_MIMES else Ingest
+            from .catalog.intake import FileSnapshot
+            extra = (dict(reviews=load_reviews(self.root, _request_id),
+                          review_asset=asset if isinstance(asset, FileSnapshot) else asset.data)
+                     if asset.mime in PHYSICAL_MIMES else {})
+            with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest, \
+                    (session.journal(ingest.db) if session is not None else nullcontext()):
+                if isinstance(ingest, RuntimeBoundIngest):
+                    publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
+                settings = config or Config()
+                profile_options = ({'import_budget': import_budget, 'cancelled': cancelled}
+                                   if import_budget is not None else {})
+                if _resume_job is not None:
+                    previous = ingest.inspect(workspace, _resume_job)
+                    if previous['edition'] != record.edition_id or previous['asset'] != asset.digest:
+                        raise ValueError('Import resume identity differs from the retained source.')
+                    job = _resume_job
+                    if previous['state'] in ('failed', 'cancelled', 'quarantined'):
+                        ingest.retry(workspace, job, **profile_options)
+                else:
+                    job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name,
+                                       settings, **profile_options)
+                record_progress(self.root, _request_id, job=job)
+                run_options = {}
+                if import_budget is not None:
+                    run_options['import_budget'] = import_budget
+                if session is not None:
+                    run_options['check_resources'] = session.check
+                result = ingest.run(workspace, job, self.assets_dir, retained.name, settings,
+                                    cancelled=cancelled, **run_options)
+                if result['state'] in ('complete', 'superseded') and not publisher.published_here:
                     if cancelled():
-                        raise InterruptedError('Import cancelled.')
-                    revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
-                                      .encode('utf-8')).hexdigest()
-                    prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
-                                               (revision,)).fetchone()
-                    if prior is None:
-                        publisher.publish_revision(workspace, record.edition_id, revision, asset.digest, settings,
-                            tuple(Page(r['raw_text']) for r in extracted['records']))
-                    else:
-                        if tuple(prior) != (workspace, record.edition_id, asset.digest, settings):
-                            raise ValueError(f'Published {source_format} import identity changed.')
-                        pages = storage.db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
-                            'FROM page WHERE revision=? ORDER BY ordinal', (revision,)).fetchall()
-                        expected = tuple((i, None, None, 0, r['raw_text'], r['text_sha256'])
-                                         for i, r in enumerate(extracted['records'], 1))
-                        if (tuple(tuple(p) for p in pages) != expected or not storage.db.execute(
-                                'SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()):
-                            raise ValueError(f'Published {source_format} import differs from retained source bytes.')
-                        with storage.transaction():
-                            register_batch(Catalog(storage.db, workspace), (record,))
-                            # Replays may add memberships; validate before exposing them.
-                            storage._check()
-                    publisher.check()
-                    return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
-                            'completed': len(extracted['records']), 'verified': False,
-                            'format': source_format, 'warnings': extracted['warnings'],
-                            'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown. ' + (
-                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
-                engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
-                extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
-                         if asset.mime == 'application/pdf' else {})
-                with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
-                    if isinstance(ingest, RuntimeBoundIngest):
-                        publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
-                    settings = config or Config()
-                    if _resume_job is not None:
-                        previous = ingest.inspect(workspace, _resume_job)
-                        if previous['edition'] != record.edition_id or previous['asset'] != asset.digest:
-                            raise ValueError('Import resume identity differs from the retained source.')
-                        job = _resume_job
-                        if previous['state'] in ('failed', 'cancelled', 'quarantined'):
-                            ingest.retry(workspace, job)
-                    else:
-                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
-                    record_progress(self.root, _request_id, job=job)
-                    result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] in ('complete', 'superseded') and not publisher.published_here:
+                        raise InterruptedError('Import cancelled before catalog registration.')
+                    # A terminal journal state is not proof of publication.
+                    # Validate the sealed source and active/result identity
+                    # even when the journal has no previously stored revision.
+                    with storage.transaction():
+                        self._authorize(storage.db, workspace)
+                        current = storage.db.execute(
+                            'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
+                            'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
+                            'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
+                            (job,)).fetchone()
+                        if (current is None or tuple(current[:3]) !=
+                                (workspace, record.edition_id, asset.digest)
+                                or current[3] is None):
+                            raise ValueError('Completed import is missing its sealed source revision.')
+                        if (current[3] == job) != (result['state'] == 'complete'):
+                            raise ValueError('Completed import active revision changed.')
+                        # A replay may add membership with exact current
+                        # metadata, including after a metadata revision.
+                        # Registration rejects stale metadata atomically;
+                        # it never reactivates the old source revision.
+                        register_batch(Catalog(storage.db, workspace), (record,))
+                        storage._check()
                         if cancelled():
-                            raise InterruptedError('Import cancelled before catalog registration.')
-                        # A terminal journal state is not proof of publication.
-                        # Validate the sealed source and active/result identity
-                        # even when the journal has no previously stored revision.
-                        with storage.transaction():
-                            self._authorize(storage.db, workspace)
-                            current = storage.db.execute(
-                                'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
-                                'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
-                                'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
-                                (job,)).fetchone()
-                            if (current is None or tuple(current[:3]) !=
-                                    (workspace, record.edition_id, asset.digest)
-                                    or current[3] is None):
-                                raise ValueError('Completed import is missing its sealed source revision.')
-                            if (current[3] == job) != (result['state'] == 'complete'):
-                                raise ValueError('Completed import active revision changed.')
-                            # A replay may add membership with exact current
-                            # metadata, including after a metadata revision.
-                            # Registration rejects stale metadata atomically;
-                            # it never reactivates the old source revision.
-                            register_batch(Catalog(storage.db, workspace), (record,))
-                            storage._check()
-                            if cancelled():
-                                raise InterruptedError('Import registration cancelled before commit.')
-                    result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
-                    return result
+                            raise InterruptedError('Import registration cancelled before commit.')
+                result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
+                return result
 
     def import_files(self, workspace, paths, *, progress=None, **metadata):
         """Import sequentially and report actual per-file outcomes.
@@ -836,16 +931,18 @@ class LibraryApp:
         if row is None:
             raise ValueError('Source is outside the selected library.')
         mime, size = row
-        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+        from .catalog.intake import source_limit
+        if (mime not in SUFFIXES or type(size) is not int or size <= 0
+                or size > source_limit(mime, size)):
             raise ValueError('Invalid original source catalog manifest.')
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
         key = identity.asset_sha256, mime, size
         if checked_assets is not None and key in checked_assets:
             return checked_assets[key], mime, size
-        # Existing retention resolution checks regular-file/link rules, the
-        # 64 MiB size bound, and the complete original-byte SHA256.
-        path = self.assets.resolve(identity.asset_sha256)
+        # The scoped catalog grants only its exact captured size. Retention
+        # still checks the complete original hash and all regular-file rules.
+        path = self.assets.resolve(identity.asset_sha256, max_bytes=size, cancelled=cancelled)
         if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -856,6 +953,25 @@ class LibraryApp:
 
     def _asset_bytes(self, db, workspace, identity, *, cancelled=lambda: False):
         path, mime, size = self._retained_source(db, workspace, identity, cancelled=cancelled)
+        if size > MAX_SOURCE_BYTES:
+            raise ValueError('This source requires the streamed source-action adapter.')
+        original = snapshot(self.assets_dir, path.name, max_bytes=size)
+        if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
+            raise ValueError('The original source differs from its catalog manifest.')
+        if cancelled():
+            raise InterruptedError('Source verification cancelled.')
+        return original.data
+
+    def _asset_source(self, db, workspace, identity, *, cancelled=lambda: False):
+        """Use a checked stream only for a supported large/current source."""
+        path, mime, size = self._retained_source(db, workspace, identity, cancelled=cancelled)
+        count = db.execute('SELECT count(*) FROM page WHERE revision=?', (identity.revision,)).fetchone()[0]
+        if mime in ('text/plain', 'application/pdf') and (size > MAX_SOURCE_BYTES or count > 1000):
+            from .catalog.intake import file_snapshot
+            original = file_snapshot(self.assets_dir, path.name, max_bytes=size, cancelled=cancelled)
+            if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
+                raise ValueError('The original source differs from its catalog manifest.')
+            return original
         original = snapshot(self.assets_dir, path.name, max_bytes=size)
         if (original.digest, original.mime, original.size) != (identity.asset_sha256, mime, size):
             raise ValueError('The original source differs from its catalog manifest.')
@@ -864,8 +980,8 @@ class LibraryApp:
         return original.data
 
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
-        resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
-        text = strict_text_attestor(db, workspace, resolve_asset)
+        resolve_asset = lambda identity: self._asset_source(db, workspace, identity, cancelled=cancelled)
+        text = strict_text_attestor(db, workspace, resolve_asset, cancelled=cancelled)
 
         def review(identity, physical):
             row = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
@@ -874,8 +990,13 @@ class LibraryApp:
             return ReviewedPage(identity, physical, *row) if row else None
 
         from .ingest.worker import isolated_render_fingerprint
+        def render_source(data, physical):
+            from .catalog.intake import FileSnapshot
+            options = {'resource_root': self.root} if isinstance(data, FileSnapshot) else {}
+            return isolated_render_fingerprint(data, physical, cancelled=cancelled, **options)
+
         pdf = pdf_review_attestor(workspace, resolve_asset, review,
-            renderer=lambda data, physical: isolated_render_fingerprint(data, physical, cancelled=cancelled))
+            renderer=render_source, cancelled=cancelled)
 
         def attest(identity, locator, raw_hash):
             if cancelled():
@@ -937,10 +1058,76 @@ class LibraryApp:
             raise ValueError('Historical source metadata is missing.')
         return selected, identity, locator, row['raw'], Metadata(*meta)
 
+    def _ranked_model_identity(self):
+        ranker = self.semantic_ranker
+        return None if ranker is None else (
+            id(ranker), id(getattr(ranker, 'engine', None)), id(getattr(ranker, 'tokenizer', None)),
+            getattr(ranker, 'minimum_similarity', None), str(getattr(ranker, 'directory', '')))
+
+    def _search_ranked_page(self, workspace, query, continuation, owner, scope, epoch,
+                            resources, budget, limit, offset, options, model_identity):
+        """Complete selected-scope order; all quotation authority stays below."""
+        from .search.paging import SearchPage
+        from .search.ranked_scope import RankedScope
+        allowed_options = {'mode', 'result_mode', 'collection', 'title', 'author',
+                           'language', 'edition', 'authorized_topic', 'on_status'}
+        if set(options) - allowed_options:
+            raise TypeError('Unexpected complete-scope search option.')
+        mode, result_mode = options.get('mode', 'phrase'), options.get('result_mode')
+        if mode not in ('thematic', 'semantic'):
+            raise ValueError('Complete relevance ranking requires thematic or semantic mode.')
+        if result_mode not in (None, 'short', 'thematic'):
+            raise ValueError('Choose Short quotations or Thematic excerpts.')
+        report = options.get('on_status')
+        if report is not None and not callable(report):
+            raise ValueError('Search status callback must be callable.')
+        thematic._groups(query)
+        if self._ranked_model_identity() != model_identity:
+            raise ValueError('The local ranking model changed. Restart search.')
+        filters = {key: options.get(key) for key in ('collection', 'title', 'author', 'language', 'edition')}
+        ranked, created = None, False
+        try:
+            with self._search_read(workspace, budget.remaining(), budget.stopped) as (db, active_budget):
+                if options.get('authorized_topic') is not None:
+                    TopicTree(db, workspace)._visible(options['authorized_topic'])
+                catalog = Catalog(db, workspace)
+                if continuation is None:
+                    ranked = RankedScope(self, resources, available_bytes=owner.available_disk(resources))
+                    created = True
+                    ranked.build(self, db, catalog, workspace, query, mode, filters, scope,
+                                 active_budget, report)
+                else:
+                    ranked = owner.ranked(continuation)
+                hits, more = ranked.read(db, catalog, workspace, query, mode, filters,
+                                         offset=offset, limit=limit, budget=active_budget)
+                results, selections = self._search_results(
+                    db, workspace, query, hits, mode, filters['collection'], result_mode, active_budget)
+            budget.check()
+            owner.check(self, epoch)
+            if self._ranked_model_identity() != model_identity:
+                raise ValueError('The local ranking model changed during retrieval. Restart search.')
+            current_value = owner.retain_ranked(ranked) if created else continuation
+            current = owner.issue(scope, epoch, current_value, resources)
+            self._selections.update(selections)
+            while len(self._selections) > 2000:
+                del self._selections[next(iter(self._selections))]
+            return SearchPage(tuple(results), current, None, more, offset,
+                ranked.source_pages, ranked.source_editions, ranked.source_characters,
+                ranked.identity, 'all', ranked.total, ranked.index_bytes, ranked.changed_rows)
+        except BaseException:
+            if created and ranked is not None:
+                try:
+                    ranked.close()
+                except BaseException:
+                    # Keep failed or interrupted private cleanup with this same guarded owner;
+                    # no completed cursor or source handle is published.
+                    owner.retain_ranked(ranked)
+            raise
+
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None, offset=0):
+               result_mode=None, offset=0, _source_page=None, _page_info=None, _resources=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -949,91 +1136,198 @@ class LibraryApp:
             raise ValueError('Invalid search operation budget.')
         if type(offset) is not int or offset < 0:
             raise ValueError('Invalid search page offset.')
-        if offset and mode not in ('terms', 'advanced'):
-            raise ValueError('Result pages are available for All words and Advanced searches.')
+        if offset and mode not in ('terms', 'advanced') and _page_info is None:
+            raise ValueError('Use search_page for bounded result/source navigation in this mode.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
             catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
-            budget.check()
-            if len(views) == 500:
-                more = browse_editions(catalog, collection=collection, title=title, author=author,
-                    language=language, edition=edition, after=views[-1].edition_id, limit=1)
+            window = None
+            if _page_info is not None:
+                if type(_page_info) is not dict:
+                    raise ValueError('Invalid source navigation receiver.')
+                from .search.paging import scope_identity, select_window
+                filters = dict(collection=collection, title=title, author=author,
+                               language=language, edition=edition)
+                scope = scope_identity(self.root, workspace, query, mode, result_mode,
+                                       {**filters, 'authorized_topic': authorized_topic,
+                                        'resources': _resources.identity if _resources is not None else None})
+                window = select_window(db, catalog, scope=scope, cursor=_source_page,
+                                       check=budget.check, resources=_resources, **filters)
+                allowed = window.editions
+            else:
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
                 budget.check()
-                if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
-            allowed = {v.edition_id: v.work_id for v in views}
+                if len(views) == 500:
+                    more = browse_editions(catalog, collection=collection, title=title, author=author,
+                        language=language, edition=edition, after=views[-1].edition_id, limit=1)
+                    budget.check()
+                    if more:
+                        raise ValueError('Use source-page navigation to search beyond this bounded legacy selection.')
+                allowed = {v.edition_id: v.work_id for v in views}
+            source_options = ({'page_ids': window.page_ids, 'resources': _resources}
+                              if window is not None else {})
+            ranking_limit = 100 if window is not None and mode in ('thematic', 'semantic') else limit
             if mode in ('thematic', 'semantic'):
                 if mode == 'semantic' and self.semantic_ranker is not None:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
+                                           limit=ranking_limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                                           on_status=on_status, cache=self.semantic_cache, **source_options)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
+                    hits = thematic.search_active(db, workspace, allowed, query, limit=ranking_limit,
+                                                  timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
+                if window is not None:
+                    hits = hits[offset:offset + limit]
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
                                       mode=mode, limit=limit, offset=offset,
-                                      timeout=budget.remaining(), cancelled=budget.stopped)
-            # Catalog selection, active source selection, and metadata materialization
-            # all share this read transaction. No cached edition filters cross snapshots.
-            loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
-            results = []
-            selections = {}
-            shown = set()
-            checked_assets = {}
-            for hit in hits:
-                budget.check()
-                row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
-                    (hit['page_id'], hit['revision_id'])).fetchone()
-                if row is None:
-                    raise ValueError('The search returned an invalid source page.')
-                ref = uuid4().hex
-                selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
-                    row[0], hit['start'], hit['end'], collection)
-                selected, identity, locator, raw, meta = self._resolve_selection(
-                    db, workspace, selections[ref], hit['revision_id'],
-                    checked_assets=checked_assets, cancelled=budget.stopped)
-                if raw[selected.start:selected.end] != hit['raw_quote']:
-                    raise ValueError('Search quotation differs from the original source.')
-                if result_mode is not None:
-                    from .search.presentation import presentation_span
-                    start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
-                    selected = _Selection(workspace, selected.edition, selected.revision,
-                                          selected.ordinal, start, end, collection)
-                    selections[ref] = selected
-                    identity_span = (identity, locator, start, end)
-                    if identity_span in shown:
-                        del selections[ref]
-                        continue
-                    shown.add(identity_span)
-                verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
-                budget.check()
-                if verified:
-                    anchor = make_anchor(identity, locator, raw, selected.start, selected.end, meta, text_verified=True)
-                    citation = format_citation(anchor)
-                else:
-                    citation = ', '.join(filter(None, [meta.author or 'Unknown author', meta.title,
-                        meta.edition, locator.display()])) + ' [extracted text requires independent review]'
-                reason = hit.get('reason', 'literal source match')
-                if mode == 'semantic' and self.semantic_ranker is None:
-                    reason = 'Semantic model unavailable; using lexical thematic search.'
-                results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
-                    meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
-                    raw[selected.start:selected.end], citation, verified, reason))
+                                      timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
+            results, selections = self._search_results(
+                db, workspace, query, hits, mode, collection, result_mode, budget)
+        if _page_info is not None:
+            _page_info.update(window=window, raw_hits=len(hits))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
         return tuple(results)
+
+
+    def _search_results(self, db, workspace, query, hits, mode, collection, result_mode, budget):
+        # Catalog selection, active source selection, and metadata materialization
+        # all share this read transaction. No cached edition filters cross snapshots.
+        loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
+        results = []
+        selections = {}
+        shown = set()
+        checked_assets = {}
+        for hit in hits:
+            budget.check()
+            row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
+                (hit['page_id'], hit['revision_id'])).fetchone()
+            if row is None:
+                raise ValueError('The search returned an invalid source page.')
+            ref = uuid4().hex
+            selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
+                row[0], hit['start'], hit['end'], collection)
+            selected, identity, locator, raw, meta = self._resolve_selection(
+                db, workspace, selections[ref], hit['revision_id'],
+                checked_assets=checked_assets, cancelled=budget.stopped)
+            if raw[selected.start:selected.end] != hit['raw_quote']:
+                raise ValueError('Search quotation differs from the original source.')
+            if result_mode is not None:
+                from .search.presentation import presentation_span
+                start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
+                selected = _Selection(workspace, selected.edition, selected.revision,
+                                      selected.ordinal, start, end, collection)
+                selections[ref] = selected
+                identity_span = (identity, locator, start, end)
+                if identity_span in shown:
+                    del selections[ref]
+                    continue
+                shown.add(identity_span)
+            verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
+            budget.check()
+            if verified:
+                anchor = make_anchor(identity, locator, raw, selected.start, selected.end, meta, text_verified=True)
+                citation = format_citation(anchor)
+            else:
+                citation = ', '.join(filter(None, [meta.author or 'Unknown author', meta.title,
+                    meta.edition, locator.display()])) + ' [extracted text requires independent review]'
+            reason = hit.get('reason', 'literal source match')
+            if mode == 'semantic' and self.semantic_ranker is None:
+                reason = 'Semantic model unavailable; using lexical thematic search.'
+            results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
+                meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
+                raw[selected.start:selected.end], citation, verified, reason))
+        return tuple(results), selections
+
+    def search_page(self, workspace, query, *, cursor=None, limit=100, offset=0,
+                    timeout=None, resources=None, ranking_scope='window', cancelled=lambda: False, **options):
+        """Read a bounded result page from source windows or complete ranking.
+
+        Cursors are issued by this search owner and are valid only while the
+        database, exact options and selected source scope remain unchanged.
+        ranking_scope="all" completes scoped relevance ordering on disk before
+        publication; the compatible "window" mode identifies its source window.
+        """
+        from copy import copy
+        from dataclasses import replace
+        from .search.paging import CursorOwner, SearchPage, SearchResources, scope_identity
+        if any(key in options for key in ('_source_page', '_page_info', '_resources')):
+            raise ValueError('Internal source-page receivers cannot be supplied.')
+        if resources is None:
+            resources = SearchResources(timeout=300.0 if timeout is None else timeout)
+        elif type(resources) is not SearchResources:
+            raise ValueError('A validated search resource budget is required.')
+        elif timeout is not None:
+            resources = replace(resources, timeout=timeout)
+        if not callable(cancelled):
+            raise ValueError('A search cancellation callback is required.')
+        if ranking_scope not in ('window', 'all'):
+            raise ValueError('Choose source-window or complete-scope ranking.')
+        if type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or offset < 0:
+            raise ValueError('Invalid bounded result page.')
+        owner = self._search_cursor_owner
+        if owner.closed:
+            if cursor is not None:
+                raise ValueError('This search cursor has no current owner. Restart search.')
+            if not owner.reopen():
+                raise RuntimeError('The previous search is still releasing its observer. Wait for it to finish.')
+        model_identity = self._ranked_model_identity()
+        filters = {key: options.get(key) for key in
+                   ('collection', 'title', 'author', 'language', 'edition', 'authorized_topic')}
+        scope = scope_identity(self.root, workspace, query, options.get('mode', 'phrase'),
+                               options.get('result_mode'), {**filters, 'resources': resources.identity,
+                               'ranking_scope': ranking_scope,
+                               'model': model_identity if ranking_scope == 'all' else None})
+        budget = _SearchBudget(resources.timeout, lambda: owner.closed or cancelled())
+        budget.check()
+        with owner.operation(self, scope, cursor, resources) as (continuation, epoch):
+            if ranking_scope == 'all':
+                return self._search_ranked_page(workspace, query, continuation, owner, scope, epoch,
+                                                resources, budget, limit, offset, options, model_identity)
+            working = copy(self)
+            working._selections = {}
+            info = {}
+            results = working.search(workspace, query, limit=limit, offset=offset,
+                timeout=budget.remaining(), cancelled=budget.stopped,
+                _source_page=continuation, _page_info=info, _resources=resources, **options)
+            window = info['window']
+            more = False
+            if info['raw_hits'] == limit:
+                probe = copy(working)
+                probe._selections = {}
+                probe_info = {}
+                found = probe.search(workspace, query, limit=1, offset=offset + limit,
+                    timeout=budget.remaining(), cancelled=budget.stopped,
+                    _source_page=continuation, _page_info=probe_info, _resources=resources, **options)
+                if probe_info['window'].identity != window.identity:
+                    raise ValueError('The source window changed during result lookahead. Restart search.')
+                more = bool(found)
+            budget.check()
+            owner.check(self, epoch)
+            current = owner.issue(scope, epoch, window.cursor, resources)
+            following = owner.issue(scope, epoch, window.next_cursor, resources)
+            # Publication follows every cursor/snapshot check. A failed attempt
+            # neither publishes partial handles nor evicts the previous page.
+            self._selections.update(working._selections)
+            while len(self._selections) > 2000:
+                del self._selections[next(iter(self._selections))]
+            return SearchPage(tuple(results), current, following, more,
+                              offset, len(window.page_ids), window.source_editions,
+                              window.characters, window.identity)
+
+    def close_search(self):
+        """Withdraw this owner's cursors; current source action checks remain."""
+        return self._search_cursor_owner.close()
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(
@@ -1176,9 +1470,12 @@ class LibraryApp:
                 TopicTree(db, workspace)._visible(authorized_topic)
             _, identity, locator, raw, _ = self._selected(db, workspace, ref, revision)
             if locator.kind != 'physical_page':
-                raise ValueError('This review workflow is for physical PDF pages only.')
-            data = self._asset_bytes(db, workspace, identity)
-            renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
+                raise ValueError('This review workflow is for physical PDF pages or retained image frames only.')
+            data = self._asset_source(db, workspace, identity, cancelled=cancelled)
+            from .catalog.intake import FileSnapshot
+            options = {'resource_root': self.root} if isinstance(data, FileSnapshot) else {}
+            renderer, fingerprint = isolated_render_fingerprint(
+                data, locator.index, cancelled=cancelled, **options)
             raw_hash = sha256(raw.encode('utf-8')).hexdigest()
         check()
         with self.write(workspace) as db:
@@ -1249,8 +1546,10 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
+    def backup(self, destination, *, max_bytes=None, include_generated=False,
+               cancelled=lambda: False, backup_budget=None):
         from .library_backup import create_backup
         return create_backup(self, destination, max_bytes=max_bytes,
-                             include_generated=include_generated, cancelled=cancelled)
+                             include_generated=include_generated, cancelled=cancelled,
+                             **({'backup_budget': backup_budget} if backup_budget is not None else {}))
 

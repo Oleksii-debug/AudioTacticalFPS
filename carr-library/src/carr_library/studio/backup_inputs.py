@@ -33,7 +33,8 @@ def _checked_digest(source, before, cancelled):
     digest, count = sha256(), 0
     if cancelled():
         raise InterruptedError('Studio input verification cancelled.')
-    with source.open('rb') as stream:
+    from ..speech.listening import _opened
+    with _opened(source, _stamp(before)) as stream:
         if _stamp(os.fstat(stream.fileno())) != _stamp(before):
             raise ValueError('A required Studio input changed before verification.')
         while block := stream.read(1024 * 1024):

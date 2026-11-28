@@ -106,6 +106,12 @@ class RefreshWorker:
             self._checking = True
         try:
             self._check_provider(self.transport)
+            # A saved retry schedule only suppresses automatic work. Avoid
+            # reopening the protected vault on every idle poll before it is due;
+            # any admitted or manual attempt still rechecks the current grant.
+            if (not manual and self._schedule['next_attempt']
+                    and int(self.clock()) < self._schedule['next_attempt']):
+                return False
             grant = self.store.current()
             if grant is None or not grant.needs_refresh:
                 return False

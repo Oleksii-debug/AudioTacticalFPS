@@ -271,6 +271,7 @@ class Timer:
     def __init__(self, owner): self.owner, self.running = owner, False
     def Start(self, interval): self.interval, self.running = interval, True
     def Stop(self): self.running = False
+    def SetOwner(self, owner): self.owner = owner
 
 
 @pytest.fixture

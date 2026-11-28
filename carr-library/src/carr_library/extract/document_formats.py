@@ -44,6 +44,33 @@ EXTENDED_FORMATS = (
         'Stored cell text in workbook order. No formula evaluation or macros; ambiguous hidden/formula content requires review.'),
 )
 
+RASTER_FORMATS = (
+    DocumentFormat('JPEG', ('.jpg', '.jpeg'), 'image/jpeg', 'raster',
+        'One retained image. Local OCR remains unverified until independently reviewed.'),
+    DocumentFormat('PNG', ('.png',), 'image/png', 'raster',
+        'One retained image. Animated PNG is refused; no animation frames are silently omitted.'),
+    DocumentFormat('TIFF', ('.tif', '.tiff'), 'image/tiff', 'raster',
+        'Retained frames in file order. Frame numbers are physical positions, never inferred printed pages.'),
+)
+RASTER_BY_SUFFIX = {suffix: item for item in RASTER_FORMATS for suffix in item.suffixes}
+RASTER_BY_MIME = {item.mime: item for item in RASTER_FORMATS}
+RASTER_MIMES = frozenset(RASTER_BY_MIME)
+PHYSICAL_MIMES = RASTER_MIMES | {'application/pdf'}
+
+
+def raster_format(data):
+    """Header screening only; structural decoding stays in the isolated worker."""
+    if type(data) is not bytes:
+        return None
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return RASTER_BY_MIME['image/png']
+    if data.startswith(b'\xff\xd8\xff'):
+        return RASTER_BY_MIME['image/jpeg']
+    if data.startswith((b'II*\x00', b'MM\x00*', b'II+\x00', b'MM\x00+')):
+        return RASTER_BY_MIME['image/tiff']
+    return None
+
+
 FORMAT_BY_SUFFIX = {suffix: format for format in EXTENDED_FORMATS for suffix in format.suffixes}
 FORMAT_BY_MIME = {format.mime: format for format in EXTENDED_FORMATS}
 EXTENDED_MIMES = frozenset(FORMAT_BY_MIME)
@@ -52,9 +79,9 @@ MIME_SUFFIXES = {
     'application/pdf': '.pdf',
     'application/epub+zip': '.epub',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    **{format.mime: format.suffixes[0] for format in EXTENDED_FORMATS},
+    **{format.mime: format.suffixes[0] for format in (*EXTENDED_FORMATS, *RASTER_FORMATS)},
 }
-SUPPORTED_SUFFIXES = frozenset(('.txt', '.pdf', '.docx', '.epub', *FORMAT_BY_SUFFIX))
+SUPPORTED_SUFFIXES = frozenset(('.txt', '.pdf', '.docx', '.epub', *FORMAT_BY_SUFFIX, *RASTER_BY_SUFFIX))
 ISOLATED_SUFFIXES = SUPPORTED_SUFFIXES - {'.txt'}
 # Match ReadingDesk's supported text-control payload. Preserve every character
 # when a format supplies one very large logical paragraph/message/chapter.
@@ -71,6 +98,8 @@ def supported_formats_text():
         'Document formats', '',
         'TXT: strict UTF-8 original text, with exact-source verification.',
         'PDF: native text or installed local OCR. OCR text requires independent review.',
+        'JPEG/PNG: one image; TIFF: physical frames in file order. The exact original is retained. '
+        'Local OCR needs independent review. Animated PNG/MPO are refused; no frames are silently omitted.',
         'DOCX: supported ordered body paragraphs and simple tables; unverified logical segments.',
         'EPUB: supported static XHTML book content in spine order; unverified logical segments.', '',
         'Additional local reading formats:',
@@ -84,12 +113,14 @@ def supported_formats_text():
         'in external viewers that could execute active content or load remote resources.', '',
         'Encrypted or password-protected inputs are not decrypted. DRM is not bypassed.',
         'AZW/AZW3, CHM, DjVu, legacy DOC/PPT/XLS, LIT, MOBI, PDB/PRC, RTF, TCR, WPD '
-        'and standalone image/TIFF import are not handled by this adapter. Convert a copy with a trusted '
+        'are not handled by this adapter. Convert a copy with a trusted '
         'separately installed tool to a supported format, then import it as a new source. Original pagination '
         'and extraction fidelity must be checked separately. No converter or model is silently downloaded.', '',
         'Resource checks reject oversized, malformed or unsupported documents before publication; '
         'the import report describes the result. Current source limit is 64 MiB, with additional bounded '
         'archive, XML, MIME and extracted-text budgets. Large-library streaming is a separate capability.',
+        'Raster originals remain at most 64 MiB, 1000 frames and 20 million pixels per frame, '
+        'or the smaller selected OCR pixel allowance. Orientation and normalized frame coordinates are recorded.',
     ))
     return '\n'.join(lines)
 

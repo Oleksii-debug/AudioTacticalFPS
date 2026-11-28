@@ -6,7 +6,8 @@ Native wx controls are imported only when the desktop command is opened.
 """
 from dataclasses import dataclass, replace
 
-from ..search.federated import FederatedSearch
+from ..search.federated import FederatedSearch, _workspaces
+from ..search.paging import LIBRARIES_PER_PAGE, MAX_TIMEOUT_SECONDS, SearchResources
 from .research_actions import NativeDialogs
 from .scope_bindings import scope_labels
 
@@ -14,7 +15,7 @@ from .scope_bindings import scope_labels
 MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced')
 PRESENTATIONS = ('short', 'thematic')
 LIMITS = (10, 25, 50, 100)
-PAGED_MODES = ('terms', 'advanced')
+PAGED_MODES = MODES
 
 
 @dataclass(frozen=True)
@@ -29,13 +30,36 @@ class SearchOptions:
     edition: str | None = None
     limit_per_library: int = 50
     offset_per_library: int = 0
+    library_offset: int = 0
+    source_cursors: tuple = ()
+    timeout: float = 300.0
+    memory_bytes: int = 64 * 1024**2
+    disk_bytes: int = 2 * 1024**3
+    ranking_scope: str | None = None
+
+    @property
+    def effective_ranking_scope(self):
+        return self.ranking_scope or ('all' if self.mode in ('thematic', 'semantic') else 'window')
 
     def validate(self):
         if (not isinstance(self.workspaces, tuple) or not self.workspaces
-                or len(self.workspaces) > 20 or len(set(self.workspaces)) != len(self.workspaces)):
-            raise ValueError('Explicitly check between 1 and 20 libraries to search.')
+                or len(set(self.workspaces)) != len(self.workspaces)):
+            raise ValueError('Explicitly check one or more distinct libraries to search.')
+        resources = SearchResources(self.timeout, self.memory_bytes, self.disk_bytes)
+        _workspaces(self.workspaces, lambda: None, maximum_bytes=resources.memory_bytes // 8)
+        if type(self.library_offset) is not int or not 0 <= self.library_offset < len(self.workspaces):
+            raise ValueError('Choose an existing selected-library page.')
+        if type(self.timeout) not in (int, float) or not 0 < self.timeout <= MAX_TIMEOUT_SECONDS:
+            raise ValueError('Choose a search time budget from more than zero to 86400 seconds.')
+        if (type(self.source_cursors) is not tuple
+                or any(type(row) not in (tuple, list) or len(row) != 2
+                       or row[0] not in self.workspaces for row in self.source_cursors)
+                or len({row[0] for row in self.source_cursors}) != len(self.source_cursors)):
+            raise ValueError('Source navigation must stay in the checked libraries.')
         if not isinstance(self.query, str) or not self.query.strip():
             raise ValueError('Enter a search query.')
+        if self.ranking_scope not in (None, 'window', 'all') or (self.effective_ranking_scope == 'all' and self.mode not in ('thematic', 'semantic')):
+            raise ValueError('Complete relevance ranking requires a ranked retrieval method.')
         if self.mode not in MODES or self.result_mode not in PRESENTATIONS:
             raise ValueError('Choose a retrieval method and result presentation.')
         if self.mode == 'advanced':
@@ -49,7 +73,7 @@ class SearchOptions:
         if type(self.offset_per_library) is not int or self.offset_per_library < 0:
             raise ValueError('The result-page offset must be a nonnegative whole number.')
         if self.offset_per_library and self.mode not in PAGED_MODES:
-            raise ValueError('Result pages are available for All words and Advanced search.')
+            raise ValueError('Choose a supported retrieval mode before navigating results.')
         return self
 
 
@@ -108,6 +132,8 @@ class SearchCenter:
         self.rows = ()
         self.options = None
         self.has_more = False
+        self.next_source_cursors = ()
+        self.source_history = []
         self.epoch = 0
         self.running = False
         self.alive = True
@@ -139,6 +165,7 @@ class SearchCenter:
         self.rows = ()
         self.options = None
         self.has_more = False
+        self.next_source_cursors = ()
         if self.alive:
             self.view.clear_results()
             self._refresh_navigation()
@@ -151,8 +178,15 @@ class SearchCenter:
             self.view.set_navigation(
                 bool(enabled and options.offset_per_library > 0),
                 bool(enabled and self.has_more))
+            if hasattr(self.view, 'set_scope_navigation'):
+                self.view.set_scope_navigation(
+                    bool(enabled and self.source_history),
+                    bool(enabled and any(cursor is not None for _, cursor in self.next_source_cursors)),
+                    bool(enabled and options.library_offset > 0),
+                    bool(enabled and options.library_offset + LIBRARIES_PER_PAGE < len(options.workspaces)))
 
     def options_changed(self):
+        self.source_history.clear()
         self._clear_rows()
         if self.running:
             # clear() also takes the service action lock. Do not block the UI
@@ -209,11 +243,40 @@ class SearchCenter:
             if type(direction) is not int or direction not in (-1, 1):
                 raise ValueError('Choose the previous or next result page.')
             if options is None or options.mode not in PAGED_MODES:
-                raise ValueError('Search with All words or Advanced mode before changing result pages.')
+                raise ValueError('Search before changing result pages.')
             if (direction == 1 and not self.has_more) or (direction == -1 and not options.offset_per_library):
                 raise ValueError('There is no further result page in that direction.')
             offset = max(0, options.offset_per_library + direction * options.limit_per_library)
-            self.search(replace(options, offset_per_library=offset))
+            self.search(replace(options, offset_per_library=offset), continuing=True)
+        except Exception as exc:
+            self._report_error(exc)
+
+
+    def navigate_scope(self, kind, direction):
+        """Continue selected libraries or source windows on the same worker."""
+        try:
+            self._ready()
+            options = self.options
+            if options is None or kind not in ('sources', 'libraries') or direction not in (-1, 1):
+                raise ValueError('Choose a completed search and an available navigation direction.')
+            if kind == 'libraries':
+                offset = options.library_offset + direction * LIBRARIES_PER_PAGE
+                if not 0 <= offset < len(options.workspaces):
+                    raise ValueError('There is no further selected-library page.')
+                self.source_history.clear()
+                following = replace(options, library_offset=offset, source_cursors=(), offset_per_library=0)
+            elif direction == -1:
+                if not self.source_history:
+                    raise ValueError('No previous source window is retained. Search restarts at the first window.')
+                following = self.source_history.pop()
+            else:
+                if not any(cursor is not None for _, cursor in self.next_source_cursors):
+                    raise ValueError('All sources in this selected-library page have been visited.')
+                self.source_history.append(options)
+                # Navigation history is bounded; total forward traversal is not.
+                del self.source_history[:-128]
+                following = replace(options, source_cursors=self.next_source_cursors, offset_per_library=0)
+            self.search(following, continuing=True)
         except Exception as exc:
             self._report_error(exc)
 
@@ -293,24 +356,40 @@ class SearchCenter:
 
         try:
             self.frame.run_job(title, guarded_operation, complete, failed)
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
             failed(exc)
 
-    def search(self, options):
+    def search(self, options, *, continuing=False):
         try:
             self._ready()
+            if not continuing:
+                self.source_history.clear()
             self._clear_rows()
             options.validate()
             epoch = self.epoch
             notices = []
 
+            def report(message):
+                notices.append(message)
+                del notices[:-16]
+                from ..progress import current_progress
+                task = current_progress()
+                if task is not None:
+                    task.update(phase='Searching selected sources', message=message)
+
             def done(session):
-                if session.workspaces != options.workspaces:
+                expected = options.workspaces[options.library_offset:options.library_offset + LIBRARIES_PER_PAGE]
+                if session.workspaces != expected:
                     raise ValueError('The completed search differs from the selected libraries')
                 if session.offset_per_library != options.offset_per_library:
                     raise ValueError('The completed result page differs from the requested page')
                 self.rows = session.hits
-                self.options, self.has_more = options, session.has_more
+                current_cursors = tuple(getattr(session, 'source_cursors', options.source_cursors))
+                self.options = replace(options, source_cursors=current_cursors)
+                self.has_more = session.has_more
+                if getattr(session, 'library_offset', options.library_offset) != options.library_offset:
+                    raise ValueError('The completed selected-library page changed.')
+                self.next_source_cursors = tuple(getattr(session, 'next_source_cursors', ()))
                 labels = scope_labels((group.workspace, None, group.library_name)
                                       for group in session.groups)
                 names = dict(zip(session.workspaces, labels))
@@ -321,13 +400,23 @@ class SearchCenter:
                                    for group in session.groups)
                 text = (f'{len(self.rows)} results. {counts}. '
                         f'Up to {options.limit_per_library} results per library. '
-                        'Results are grouped by selected library, not ranked across libraries.')
+                        'Results are grouped by selected library. '
+                        f'Libraries {options.library_offset + 1}–{options.library_offset + len(expected)} '
+                        f'of {len(options.workspaces)} selected. Time budget: {options.timeout:g} seconds.')
+                text += (' Relevance uses the complete selected scope within each library.'
+                         if options.effective_ranking_scope == 'all' else
+                         ' Exact matches follow source order within the current bounded window.')
                 if options.mode in PAGED_MODES:
                     text += (f' Page {options.offset_per_library // options.limit_per_library + 1}. '
-                             'Previous and Next read fresh results using the same options; '
-                             'changes to source libraries can change their order.')
+                             'Previous and Next resolve fresh results with the same search options; a changed library requires restarting search.')
                     if not session.has_more:
-                        text += ' No further matching page was found.'
+                        text += ' No further matching result page in this search scope.'
+                if self.next_source_cursors:
+                    windows = getattr(session, 'source_windows', ())
+                    text += f' Inspected {sum(row[1] for row in windows)} selected source pages.'
+                    text += (' Next source window continues the remaining material.'
+                             if any(cursor is not None for _, cursor in self.next_source_cursors)
+                             else ' All source windows in this selected-library page are complete.')
                 if any(hit.result.verified is not True for hit in self.rows):
                     text += ' Unverified extraction is labelled and cannot be saved as a quotation.'
                 if notices:
@@ -344,8 +433,12 @@ class SearchCenter:
                 result_mode=options.result_mode, title=options.title, author=options.author,
                 language=options.language, edition=options.edition,
                 limit_per_library=options.limit_per_library,
-                offset_per_library=options.offset_per_library,
-                cancelled=self._cancelled, on_status=notices.append), done, epoch=epoch)
+                offset_per_library=options.offset_per_library, timeout=options.timeout,
+                paged=True, library_offset=options.library_offset,
+                source_cursors=dict(options.source_cursors),
+                resources=SearchResources(options.timeout, options.memory_bytes, options.disk_bytes),
+                ranking_scope=options.effective_ranking_scope,
+                cancelled=self._cancelled, on_status=report), done, epoch=epoch)
         except Exception as exc:
             self._report_error(exc)
 
@@ -484,93 +577,123 @@ class NativeSearchCenter:
         import wx
         self.wx = wx
         self.window = self.parent = wx.Dialog(frame, title='Research Search Center', size=(980, 850))
+        self._window_id = self.window.GetId()
         self._window_alive = True
         self._deferred_destroy = False
         self.window.SetMinSize((800, 700))
         self.libraries = tuple(libraries)
+        self.viewport = wx.ScrolledWindow(self.window, style=wx.VSCROLL)
+        self.viewport.SetScrollRate(0, 20)
+        self.viewport.SetMinSize((600, 400))
+        parent = self.viewport
         layout = wx.BoxSizer(wx.VERTICAL)
-        explanation = wx.StaticText(self.window, label=
+        explanation = wx.StaticText(parent, label=
             'Check the libraries to search. Space checks or unchecks a focused library. '
             'Results retain their source library; quotations can be saved only to its topics.')
-        explanation.Wrap(920)
+        explanation.Wrap(700)
         layout.Add(explanation, 0, wx.EXPAND | wx.ALL, 8)
         form = wx.FlexGridSizer(cols=2, hgap=8, vgap=5)
         form.AddGrowableCol(1)
 
         def field(label, control):
             control.SetName(label)
-            form.Add(wx.StaticText(self.window, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+            form.Add(wx.StaticText(parent, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
             form.Add(control, 0, wx.EXPAND)
             return control
 
         choices = scope_labels((row.id, None, row.name) for row in self.libraries)
         self.libraries_control = field('Libraries to search (Space selects)',
-            wx.CheckListBox(self.window, choices=choices, size=(-1, 95)))
+            wx.CheckListBox(parent, choices=choices, size=(-1, 95)))
         selected = default_libraries(self.libraries, frame.active)
         for index, row in enumerate(self.libraries):
             self.libraries_control.Check(index, row.id in selected)
         self.query = field('Search query (Enter starts search)',
-                           wx.TextCtrl(self.window, style=wx.TE_PROCESS_ENTER))
-        self.retrieval = field('Retrieval method', wx.Choice(self.window, choices=[
+                           wx.TextCtrl(parent, style=wx.TE_PROCESS_ENTER))
+        self.retrieval = field('Retrieval method', wx.Choice(parent, choices=[
             'Exact phrase', 'Whole word', 'All words on one page',
             'Thematic (local keywords)', 'Semantic (local model)',
             'Advanced (AND, OR, NOT, NEAR)']))
-        self.presentation = field('Result presentation', wx.Choice(self.window,
+        self.presentation = field('Result presentation', wx.Choice(parent,
             choices=['Short quotations', 'Thematic excerpts']))
-        self.limit = field('Maximum results per library', wx.Choice(self.window,
+        self.limit = field('Results per library on this result page', wx.Choice(parent,
             choices=[str(value) for value in LIMITS]))
         self.retrieval.SetSelection(0)
         self.presentation.SetSelection(0)
         self.limit.SetSelection(2)
-        self.filters = {key: field(label, wx.TextCtrl(self.window)) for key, label in (
+        self.timeout = field('Cooperative search time budget in seconds', wx.TextCtrl(parent, value='300'))
+        self.memory = field('Search working-memory allowance in MiB', wx.TextCtrl(parent, value='64'))
+        self.disk = field('Search temporary-disk allowance in MiB', wx.TextCtrl(parent, value='2048'))
+        self.filters = {key: field(label, wx.TextCtrl(parent)) for key, label in (
             ('author', 'Author contains'), ('title', 'Title contains'),
             ('language', 'Language code (exact)'), ('edition', 'Edition (exact)'))}
         layout.Add(form, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         commands = wx.BoxSizer(wx.HORIZONTAL)
-        self.search_button = wx.Button(self.window, label='&Search')
-        self.builder_button = wx.Button(self.window, label='Build &advanced query')
+        self.search_button = wx.Button(parent, label='&Search')
+        self.builder_button = wx.Button(parent, label='Build &advanced query')
         self.builder_button.SetName('Build advanced query; Ctrl+Alt+Q')
-        self.cancel_button = wx.Button(self.window, label='Cancel &operation')
+        self.cancel_button = wx.Button(parent, label='Cancel &operation')
         commands.Add(self.search_button, 0, wx.ALL, 5)
         commands.Add(self.builder_button, 0, wx.ALL, 5)
         commands.Add(self.cancel_button, 0, wx.ALL, 5)
         layout.Add(commands, 0, wx.EXPAND)
-        layout.Add(wx.StaticText(self.window, label='Results — grouped by source library'),
+        layout.Add(wx.StaticText(parent, label='Results — grouped by source library'),
                    0, wx.LEFT | wx.RIGHT, 8)
         pages = wx.BoxSizer(wx.HORIZONTAL)
-        self.previous_button = wx.Button(self.window, label='&Previous result page')
-        self.next_button = wx.Button(self.window, label='&Next result page')
-        self.previous_button.SetName('Previous result page; All words or Advanced mode')
-        self.next_button.SetName('Next result page; All words or Advanced mode')
+        self.previous_button = wx.Button(parent, label='&Previous result page')
+        self.next_button = wx.Button(parent, label='&Next result page')
+        self.previous_button.SetName('Previous result page within current sources')
+        self.next_button.SetName('Next result page within current sources')
         for button in (self.previous_button, self.next_button):
             pages.Add(button, 0, wx.ALL, 5)
         layout.Add(pages, 0, wx.EXPAND)
-        self.results = wx.ListBox(self.window, style=wx.LB_SINGLE, size=(-1, 130))
+        source_pages = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        source_pages.AddGrowableCol(0)
+        source_pages.AddGrowableCol(1)
+        self.scope_buttons = {}
+        for key, label, kind, direction in (
+            ('source_previous', 'Previous source window', 'sources', -1),
+            ('source_next', 'Next source window', 'sources', 1),
+            ('library_previous', 'Previous selected libraries', 'libraries', -1),
+            ('library_next', 'Next selected libraries', 'libraries', 1)):
+            button = wx.Button(parent, label=label)
+            button.SetName(label)
+            self.scope_buttons[key] = button
+            source_pages.Add(button, 0, wx.EXPAND | wx.ALL, 5)
+            button.Bind(wx.EVT_BUTTON, lambda event, kind=kind, direction=direction:
+                        self.controller.navigate_scope(kind, direction))
+        layout.Add(source_pages, 0, wx.EXPAND)
+        self.results = wx.ListBox(parent, style=wx.LB_SINGLE, size=(-1, 130))
         self.results.SetName('Search results with library and verification status')
         layout.Add(self.results, 1, wx.EXPAND | wx.ALL, 8)
-        layout.Add(wx.StaticText(self.window, label='Selected source details'), 0, wx.LEFT | wx.RIGHT, 8)
-        self.details = wx.TextCtrl(self.window, style=wx.TE_READONLY | wx.TE_MULTILINE,
+        layout.Add(wx.StaticText(parent, label='Selected source details'), 0, wx.LEFT | wx.RIGHT, 8)
+        self.details = wx.TextCtrl(parent, style=wx.TE_READONLY | wx.TE_MULTILINE,
                                    size=(-1, 115))
         self.details.SetName('Selected source details, excerpt and verification status')
         layout.Add(self.details, 1, wx.EXPAND | wx.ALL, 8)
-        actions = wx.BoxSizer(wx.HORIZONTAL)
-        self.context_button = wx.Button(self.window, label='View source conte&xt')
-        self.quote_button = wx.Button(self.window, label='Copy &quotation')
-        self.citation_button = wx.Button(self.window, label='Copy ci&tation')
-        self.save_button = wx.Button(self.window, label='Save quotation to a to&pic')
+        actions = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        actions.AddGrowableCol(0)
+        actions.AddGrowableCol(1)
+        self.context_button = wx.Button(parent, label='View source conte&xt')
+        self.quote_button = wx.Button(parent, label='Copy &quotation')
+        self.citation_button = wx.Button(parent, label='Copy ci&tation')
+        self.save_button = wx.Button(parent, label='Save quotation to a to&pic')
         for button in (self.context_button, self.quote_button, self.citation_button, self.save_button):
-            actions.Add(button, 0, wx.ALL, 5)
+            actions.Add(button, 0, wx.EXPAND | wx.ALL, 5)
         layout.Add(actions, 0, wx.EXPAND)
-        self.status = wx.TextCtrl(self.window, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 65))
+        self.status = wx.TextCtrl(parent, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 65))
         self.status.SetName('Search Center status')
         layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
-        self.close_button = wx.Button(self.window, label='&Close')
+        self.close_button = wx.Button(parent, label='&Close')
         layout.Add(self.close_button, 0, wx.ALIGN_RIGHT | wx.ALL, 8)
-        self.window.SetSizer(layout)
+        self.viewport.SetSizer(layout)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(self.viewport, 1, wx.EXPAND)
+        self.window.SetSizer(outer)
         self.window.SetEscapeId(self.close_button.GetId())
         self.controller = SearchCenter(frame, self)
         self._bind()
         self.set_navigation(False, False)
+        self.set_scope_navigation(False, False, False, False)
         self.clear_results()
         self.set_busy(False)
         self.report('Only the current library is checked initially. Choose libraries and enter a query.'
@@ -592,7 +715,7 @@ class NativeSearchCenter:
         self.results.Bind(wx.EVT_LISTBOX, lambda event: controller.selection_changed())
         self.results.Bind(wx.EVT_LISTBOX_DCLICK, lambda event: controller.context())
         self.libraries_control.Bind(wx.EVT_CHECKLISTBOX, lambda event: controller.options_changed())
-        for control in (self.query, *self.filters.values()):
+        for control in (self.query, self.timeout, self.memory, self.disk, *self.filters.values()):
             control.Bind(wx.EVT_TEXT, lambda event: controller.options_changed())
         for control in (self.retrieval, self.presentation, self.limit):
             control.Bind(wx.EVT_CHOICE, lambda event: controller.options_changed())
@@ -602,7 +725,8 @@ class NativeSearchCenter:
         self.window.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.window:
+        if (event.GetEventObject() is self.window
+                or event.GetId() == self._window_id):
             self._window_alive = False
             self._deferred_destroy = False
             self.controller.dispose()
@@ -620,7 +744,9 @@ class NativeSearchCenter:
                 tuple(row.id for index, row in enumerate(self.libraries)
                       if self.libraries_control.IsChecked(index)), self.query.GetValue(),
                 mode=MODES[indices[0]], result_mode=PRESENTATIONS[indices[1]],
-                limit_per_library=LIMITS[indices[2]],
+                limit_per_library=LIMITS[indices[2]], timeout=float(self.timeout.GetValue()),
+                memory_bytes=int(self.memory.GetValue()) * 1024**2,
+                disk_bytes=int(self.disk.GetValue()) * 1024**2,
                 **{key: control.GetValue().strip() or None for key, control in self.filters.items()})
             self.controller.search(options)
         except Exception as exc:
@@ -644,7 +770,7 @@ class NativeSearchCenter:
 
     def set_busy(self, busy):
         for control in (self.libraries_control, self.query, self.retrieval, self.presentation,
-                        self.limit, *self.filters.values(), self.search_button, self.results,
+                        self.limit, self.timeout, self.memory, self.disk, *self.filters.values(), self.search_button, self.results,
                         self.builder_button, self.close_button):
             control.Enable(not busy)
         self.cancel_button.Enable(busy)
@@ -673,6 +799,11 @@ class NativeSearchCenter:
     def set_navigation(self, previous, next_page):
         self.previous_button.Enable(previous)
         self.next_button.Enable(next_page)
+
+    def set_scope_navigation(self, source_previous, source_next, library_previous, library_next):
+        for key, enabled in zip(('source_previous', 'source_next', 'library_previous', 'library_next'),
+                                (source_previous, source_next, library_previous, library_next)):
+            self.scope_buttons[key].Enable(enabled)
 
     def clear_results(self):
         self.results.Clear()
