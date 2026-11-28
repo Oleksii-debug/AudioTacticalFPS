@@ -823,3 +823,95 @@ def test_watched_reader_save_refuses_wrong_retained_bytes_after_real_success(tmp
     assert value.status.GetValue().startswith('Reading draft, voice settings and current position saved')
     assert value.store.load().document.source_text != value.expected
     assert not value.prompts
+
+
+
+def tray_deletion_wait_driver(*, python_truth=True, deleted=False, delete_after=None,
+                              observation_error=None):
+    """Execute the native probe's actual bounded wait with a non-Window peer."""
+    import ast
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_desktop_integration_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    pump_node, = [node for node in ast.walk(tree)
+                  if isinstance(node, ast.FunctionDef) and node.name == 'pump']
+    message = 'The direct owner tray object did not finish native destruction.'
+    wait, = [node for node in ast.walk(tree)
+             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+             and node.func.id == 'pump' and len(node.args) > 1
+             and isinstance(node.args[1], ast.Constant) and node.args[1].value == message]
+    clock, yielded, observations = [0.0], [], []
+    state = {'deleted': deleted}
+
+    class TrayPeer:
+        def __bool__(self):
+            return python_truth
+
+        def Destroy(self):
+            pytest.fail('A lifetime observation cannot destroy the peer.')
+
+    icon = TrayPeer()
+
+    def isdeleted(candidate):
+        assert candidate is icon
+        observations.append(state['deleted'])
+        if observation_error is not None:
+            raise observation_error
+        return state['deleted']
+
+    def yield_events():
+        yielded.append(True)
+        if delete_after is not None and len(yielded) >= delete_after:
+            state['deleted'] = True
+
+    def sleep(seconds):
+        assert seconds == .01
+        clock[0] += seconds
+
+    environment = dict(icon=icon, errors=[],
+        wx=SimpleNamespace(siplib=SimpleNamespace(isdeleted=isdeleted)),
+        app=SimpleNamespace(Yield=yield_events),
+        time=SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    module = ast.fix_missing_locations(ast.Module(body=[pump_node], type_ignores=[]))
+    exec(compile(module, str(script), 'exec'), environment)
+    predicate = eval(compile(ast.Expression(body=wait.args[0]), str(script), 'eval'), environment)
+    return SimpleNamespace(icon=icon, state=state, clock=clock, yielded=yielded,
+        observations=observations, run=lambda: environment['pump'](predicate, message))
+
+
+def test_native_tray_wait_accepts_deleted_cpp_peer_even_when_python_object_stays_truthy():
+    value = tray_deletion_wait_driver(deleted=True)
+    assert bool(value.icon)
+    value.run()
+    assert value.observations == [True]
+    assert not value.yielded and value.clock[0] == 0
+
+
+def test_native_tray_wait_processes_pending_deletion_before_accepting_completion():
+    value = tray_deletion_wait_driver(delete_after=2)
+    assert bool(value.icon) and not value.state['deleted']
+    value.run()
+    assert value.state['deleted'] and bool(value.icon)
+    assert value.observations == [False, False, True]
+    assert len(value.yielded) == 2 and value.clock[0] == .02
+
+
+@pytest.mark.parametrize('python_truth', [False, True], ids=['false-python-object', 'true-python-object'])
+def test_native_tray_wait_refuses_a_live_cpp_peer_with_the_original_deadline(python_truth):
+    value = tray_deletion_wait_driver(python_truth=python_truth)
+    with pytest.raises(TimeoutError, match='tray object did not finish native destruction'):
+        value.run()
+    assert not value.state['deleted']
+    assert value.observations and not any(value.observations)
+    assert value.yielded and 12 <= value.clock[0] < 12.02
+
+
+def test_native_tray_wait_preserves_native_lifetime_observation_failure():
+    failure = RuntimeError('native peer observation failed')
+    value = tray_deletion_wait_driver(observation_error=failure)
+    with pytest.raises(RuntimeError) as caught:
+        value.run()
+    assert caught.value is failure
+    assert value.observations == [False]
+    assert not value.yielded and value.clock[0] == 0
