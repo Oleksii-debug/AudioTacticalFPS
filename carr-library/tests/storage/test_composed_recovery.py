@@ -6,6 +6,7 @@ input retention is exercised here without synthesizing or rendering audio; the
 separate Studio recovery suite performs the actual FFmpeg render roundtrip.
 """
 from hashlib import sha256
+import os
 from pathlib import Path
 import runpy
 import shutil
@@ -18,7 +19,8 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.catalog.intake import snapshot
-from carr_library.durable_state import read_json
+from carr_library.durable_state import atomic_json, read_json
+from carr_library import backup_sidecars
 from carr_library.extract.page_ocr import Config
 from carr_library.ingest.worker import load_request, prepare_request
 from carr_library.library_backup import create_backup, restore_backup
@@ -87,8 +89,16 @@ def test_reading_studio_transcription_and_pending_html_survive_two_restores(
     output_parent = tmp_path / 'Previously selected outputs'
     output_parent.mkdir()
     studio_job = studio.submit(project, output_parent, operation_id='combined-pending-job')
-    cache_name = 'studio/cache/optional-generated.wav'
+    # Use the exact completed PCM format produced by Studio's cache node.
+    # Generated inclusion never admits an arbitrary file without its receipt.
+    cache_key = sha256(b'combined recovery synthetic PCM node').hexdigest()
+    cache_name = f'studio/cache/{cache_key}-{audio_hash[:10]}.wav'
+    cache_receipt = f'studio/cache/{cache_key}.json'
     (app.root / 'state' / cache_name).write_bytes(audio_raw)
+    atomic_json(app.root / 'state' / cache_receipt, {
+        'schema': 1, 'key': cache_key, 'file': Path(cache_name).name,
+        'sha256': audio_hash, 'duration': .25, 'sample_rate': 24000, 'channels': 1})
+    cache_receipt_raw = (app.root / 'state' / cache_receipt).read_bytes()
 
     # The same selected audio is independently retained by ASR. Moving the
     # library must not grant either service authority over an old output path.
@@ -136,17 +146,29 @@ def test_reading_studio_transcription_and_pending_html_survive_two_restores(
     backup = tmp_path / 'combined-backup'
     digest = create_backup(app, backup, include_generated=include_generated)
     manifest = read_json(backup / 'manifest.json')
-    assert manifest['version'] == 5
-    assert manifest['reading_state']['sha256'] == sha256(reading_raw).hexdigest()
+    # Canonical full-backup v4 unifies all typed producers in sidecars;
+    # legacy v5's separate state/reading_state fields are read-only adapters.
+    assert manifest['version'] == 4
+    assert set(manifest) == {'version', 'kind', 'schema_version', 'schema_fingerprint',
+                            'database', 'assets', 'sidecars', 'generated_audio_included', 'pending'}
+    reading_entry, = [entry for entry in manifest['sidecars']
+                      if entry['filename'] == 'reading-state.json']
+    assert reading_entry == {'filename': 'reading-state.json', 'size_bytes': len(reading_raw),
+                             'sha256': sha256(reading_raw).hexdigest()}
+    assert (backup / reading_entry['filename']).read_bytes() == reading_raw
     assert manifest['generated_audio_included'] is include_generated
     pending, = [item for item in manifest['pending']['assets'] if item['sha256'] == html_hash]
     assert pending['filename'] == html_hash + '.html'
     assert (backup / 'pending/originals' / pending['filename']).read_bytes() == html_raw
-    names = {item['filename'] for item in manifest['state']}
-    assert RECEIPT in names
-    assert f'studio/inputs/{audio_hash}.audio' in names
-    assert relative_input.as_posix() in names
-    assert (cache_name in names) is include_generated
+    names = {item['filename'] for item in manifest['sidecars']}
+    assert 'state/' + RECEIPT in names
+    assert f'state/studio/inputs/{audio_hash}.audio' in names
+    assert 'state/' + relative_input.as_posix() in names
+    assert ('state/' + cache_name in names) is include_generated
+    assert ('state/' + cache_receipt in names) is include_generated
+    if include_generated:
+        assert (backup / 'state' / cache_name).read_bytes() == audio_raw
+        assert (backup / 'state' / cache_receipt).read_bytes() == cache_receipt_raw
     assert not any('.pending-' in name or name.endswith('.py') for name in names)
 
     original_root = app.root
@@ -178,6 +200,10 @@ def test_reading_studio_transcription_and_pending_html_survive_two_restores(
             recovered_studio.run(studio_job)
         assert not (root / 'state' / RECEIPT).exists()
         assert (root / 'state' / cache_name).exists() is include_generated
+        assert (root / 'state' / cache_receipt).exists() is include_generated
+        if include_generated:
+            assert (root / 'state' / cache_name).read_bytes() == audio_raw
+            assert (root / 'state' / cache_receipt).read_bytes() == cache_receipt_raw
 
         recovered_asr = restored.transcription(workspace)
         with pytest.raises((ValueError, OSError)):
@@ -212,7 +238,11 @@ def test_reading_studio_transcription_and_pending_html_survive_two_restores(
     # generated-only entries in the live source inventory or reopening old cues.
     second_backup = tmp_path / 'backup-after-recovery'
     second_digest = create_backup(restored, second_backup, include_generated=include_generated)
-    assert read_json(second_backup / 'manifest.json')['version'] == 5
+    second_manifest = read_json(second_backup / 'manifest.json')
+    assert second_manifest['version'] == 4
+    assert second_manifest['generated_audio_included'] is include_generated
+    assert reading_entry in second_manifest['sidecars']
+    assert any(entry['filename'] == 'state/' + RECEIPT for entry in second_manifest['sidecars'])
     remove_library_fixture(destination)
     second_destination = restore_backup(second_backup, tmp_path / 'Друга відновлена бібліотека', second_digest)
     second = check_recovered(second_destination, 2)
@@ -241,26 +271,63 @@ def test_cancel_source_revalidation_after_studio_input_snapshot_never_publishes(
     original_project = source.read_bytes()
     source_reads = 0
     receipt_seen = False
-    original_open = Path.open
+    original_open = os.open
 
-    def observe_source_read(path, mode='r', *args, **kwargs):
+    def observe_source_read(path, flags, *args, **kwargs):
         nonlocal source_reads
-        if path == source and mode == 'rb':
+        descriptor = original_open(path, flags, *args, **kwargs)
+        if path == source and (flags & (os.O_WRONLY | os.O_RDWR)) == os.O_RDONLY:
             source_reads += 1
-        return original_open(path, mode, *args, **kwargs)
+        return descriptor
 
     def cancel_revalidation():
         nonlocal receipt_seen
         if source_reads >= 2:
-            receipt_seen = any((stage / 'state' / RECEIPT).is_file()
-                               for stage in tmp_path.glob('.carr-library-backup-*'))
+            stages = list(tmp_path.glob('.carr-library-backup-*'))
+            receipts = [stage / 'state' / RECEIPT for stage in stages
+                        if (stage / 'state' / RECEIPT).is_file()]
+            receipt_seen = len(receipts) == 1
+            assert receipt_seen
+            receipt = read_json(receipts[0])
+            project_record, = receipt['projects']
+            assert project_record['source_sha256'] == sha256(original_project).hexdigest()
+            retained, = receipt['inputs'].values()
+            assert (receipts[0].parents[1] / retained['filename']).read_bytes() == original_audio
             return True
         return False
 
-    monkeypatch.setattr(Path, 'open', observe_source_read)
+    # The real sidecar reader opens a bounded descriptor with os.open/fdopen.
+    # The second source open is its post-augmentation byte revalidation.
+    monkeypatch.setattr(backup_sidecars.os, 'open', observe_source_read)
     destination = tmp_path / 'backup'
     with pytest.raises(InterruptedError, match='cancelled'):
         create_backup(app, destination, cancelled=cancel_revalidation)
     assert source_reads == 2 and receipt_seen
     assert not destination.exists()
+    assert not list(tmp_path.glob('.carr-library-backup-*'))
     assert source.read_bytes() == original_project and audio.read_bytes() == original_audio
+
+
+@pytest.mark.parametrize('damage', ['untyped-name', 'missing-receipt', 'wrong-receipt-hash'])
+def test_generated_cache_requires_exact_completed_receipt(tmp_path, damage):
+    app = LibraryApp(tmp_path / 'library')
+    cache = app.root / 'state/studio/cache'
+    cache.mkdir(parents=True)
+    key = sha256(b'synthetic optional cache control').hexdigest()
+    audio = cache / (key + '-0123456789.wav')
+    with wave.open(str(audio), 'wb') as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(24000)
+        output.writeframes(b'\x00\x00' * 240)
+    original = audio.read_bytes()
+    if damage == 'untyped-name':
+        audio = audio.rename(cache / 'optional-generated.wav')
+    elif damage == 'wrong-receipt-hash':
+        atomic_json(cache / (key + '.json'), {'schema': 1, 'key': key, 'file': audio.name,
+            'sha256': '0' * 64, 'duration': .01, 'sample_rate': 24000, 'channels': 1})
+    target = tmp_path / 'rejected-generated'
+    with pytest.raises(ValueError, match='validated backup adapter|completed producer receipt|retained bytes disagree'):
+        create_backup(app, target, include_generated=True)
+    assert not target.exists()
+    assert audio.read_bytes() == original
