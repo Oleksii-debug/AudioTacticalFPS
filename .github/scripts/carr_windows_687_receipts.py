@@ -18,12 +18,9 @@ RUN = 46098474617
 HEAD = "5d19dde77aca6a257ee601c1bc49b8504c342cee"
 BRANCH = "carr/ci-endpoint-evaluation-20261127"
 SOURCES = (
-    ("recording", 15245390243, 16782,
-     "bfb7b897560f39729bf580fbd5549ba65cf567f8cc3b11eb93727298619dba42",
-     "carr-windows-recording-" + HEAD + "-1"),
-    ("endpoint", 15245205408, 3943,
-     "e6efc1afcb3536b59c0171412f44d8653dbc855b6efaa4ce2cfc3e397683206a",
-     "carr-windows-audio-endpoint-" + HEAD + "-1"),
+    ("bundle", 15246270861, 323873,
+     "439f806508f05a9a49a233add106b8749cc4b4fe79b94ab1d5498d7b73ade388",
+     "carr-windows-pre-source-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
 MAX_MEMBER_BYTES = 4 * 1024 * 1024
@@ -52,6 +49,7 @@ STANDARD_RECEIPTS = frozenset((
     "native-standard-verdict.json",
 ))
 MAIN_RECEIPTS = frozenset((
+    "installed-scene-clip-editor.txt",
     "native-delivery-lifecycle.txt",
     "native-reader-controls.json",
     "native-reader-controls.txt",
