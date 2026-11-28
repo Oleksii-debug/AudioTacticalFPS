@@ -284,3 +284,71 @@ def test_refresh_never_overwrites_existing_or_linked_output(bundle, kind, tmp_pa
         assert bundle.output.read_text() == 'Private existing file'
     else:
         assert bundle.output.is_symlink() and list(other.iterdir()) == []
+
+
+def _add_reviewed_vendor(bundle):
+    """Add actual reviewed vendor bytes to the inert exact-Git application fixture."""
+    project = bundle.repo / "carr-library"
+    package = project / "src/carr_library/reader/_vendor_num2words"
+    package.mkdir(parents=True)
+    source = ROOT / "src/carr_library/reader/_vendor_num2words"
+    payload = dict(bundle.payload)
+    for path in source.iterdir():
+        if path.is_file():
+            raw = path.read_bytes()
+            (package / path.name).write_bytes(raw)
+            payload["carr_library/reader/_vendor_num2words/" + path.name] = raw
+    license_path = "src/carr_library/reader/_vendor_num2words/COPYING"
+    payload[bundle.prefix + "licenses/" + license_path] = (package / "COPYING").read_bytes()
+    payload[bundle.prefix + "METADATA"] += ("License-File: " + license_path + "\n").encode()
+    (project / "pyproject.toml").write_text("""[project]
+name = "universal-research-library"
+version = "1.0"
+license-files = ["LICENSE", "src/carr_library/reader/_vendor_num2words/COPYING"]
+[tool.setuptools]
+packages = ["carr_library", "carr_library.reader._vendor_num2words"]
+package-dir = {"" = "src"}
+[tool.setuptools.package-data]
+"carr_library.reader._vendor_num2words" = ["COPYING", "UPSTREAM.json"]
+""", encoding="utf-8")
+    _git(bundle.repo, "add", ".")
+    _git(bundle.repo, "commit", "-qm", "Retain reviewed vendor source and its complete notice")
+    bundle.commit = _git(bundle.repo, "rev-parse", "HEAD")
+    _wheel(bundle.wheel, payload, "universal-research-library", "1.0")
+    bom = json.loads((ROOT / "packaging/windows-sbom.cdx.json").read_bytes())
+    vendor = next(item for item in bom["components"]
+                  if item.get("bom-ref") == "carr-vendored-num2words-sk@0.5.14")
+    bundle.sbom["components"].append(vendor)
+    bundle.sbom["metadata"] = {"component": {"bom-ref": "fixture-application"}}
+    bundle.sbom["dependencies"] = [
+        {"ref": "fixture-application", "dependsOn": [vendor["bom-ref"]]},
+        {"ref": vendor["bom-ref"]},
+    ]
+    (bundle.packaging / "windows-sbom.cdx.json").write_text(json.dumps(bundle.sbom), encoding="utf-8")
+
+
+def test_refresh_retains_exact_vendor_beside_locked_wheels_and_parent(bundle):
+    _add_reviewed_vendor(bundle)
+    before = (bundle.source / "bundle-manifest.json").read_bytes()
+    expected = (bundle.packaging / "windows-sbom.cdx.json").read_bytes()
+    report = _refresh(bundle)
+    assert report["manifest_sha256"]
+    assert (bundle.output / "runtime-sbom.cdx.json").read_bytes() == expected
+    assert (bundle.output / "wheelhouse" / bundle.wheel.name).read_bytes() == bundle.wheel.read_bytes()
+    identity = json.loads((bundle.output / "application-source.json").read_bytes())
+    assert identity["source_commit"] == bundle.commit
+    assert identity["wheel_sha256"] == sha256(bundle.wheel.read_bytes()).hexdigest()
+    assert (bundle.source / "bundle-manifest.json").read_bytes() == before
+    for name, raw in bundle.protected.items():
+        assert (bundle.output / name).read_bytes() == raw
+    bundle.module.verify(bundle.output)
+
+
+def test_refresh_refuses_missing_vendor_inventory_without_publishing(bundle):
+    _add_reviewed_vendor(bundle)
+    bundle.sbom["components"] = bundle.sbom["components"][:1]
+    (bundle.packaging / "windows-sbom.cdx.json").write_text(json.dumps(bundle.sbom), encoding="utf-8")
+    with pytest.raises(ValueError, match="omits or invents"):
+        _refresh(bundle)
+    assert not bundle.output.exists()
+    assert not list(bundle.output.parent.glob(".private-bundle-*"))

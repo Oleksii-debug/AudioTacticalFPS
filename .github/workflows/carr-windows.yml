@@ -145,7 +145,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert pins and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          $sourceDependencyInventory = @'
+          import importlib.metadata as metadata, importlib.util, json, pathlib
+          import carr_library
+          spec = importlib.util.spec_from_file_location(
+              'carr_ci_runtime_inventory', pathlib.Path('packaging/build_windows_bundle.py'))
+          builder = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(builder)
+          pins = builder.read_lock(pathlib.Path('packaging/windows-semantic-cp311.lock'))
+          bom = json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes())
+          vendor_files = builder.vendored_sources_from_package(pathlib.Path(carr_library.__file__).parent)
+          builder.verify_runtime_sbom(bom, pins, vendor_files=vendor_files)
+          actual = {name: metadata.version(name) for name in pins}
+          expected = {name: version for name, (version, _hashes) in pins.items()}
+          assert pins and actual == expected, 'Installed distributions differ from the exact dependency lock'
+          print(json.dumps(actual, sort_keys=True))
+          '@
+          & $env:CARR_PYTHON -I -B -c $sourceDependencyInventory | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -447,8 +463,9 @@ jobs:
           review_path = pathlib.Path('packaging/trusted-client-dependencies.json')
           bom = json.loads(base_path.read_text(encoding='utf-8'))
           items = json.loads(review_path.read_text(encoding='utf-8'))['dependencies']
-          components = {canonicalize_name(c['name']): c for c in bom['components']}
-          assert len(components) == len(bom['components'])
+          import carr_library
+          vendor_files = builder.vendored_sources_from_package(pathlib.Path(carr_library.__file__).parent)
+          components = builder.runtime_sbom_components(bom, vendor_files=vendor_files)
           selected = {}
           for path in wheelhouse.iterdir():
               builder.regular(path)
@@ -515,8 +532,10 @@ jobs:
               dict(name='carr:trusted-client-review-sha256', value=sha256(review_path.read_bytes()).hexdigest()),
               dict(name='carr:combined-lock-sha256', value=sha256(lock.read_bytes()).hexdigest()),
               dict(name='carr:spellcheck-sbom-sha256', value=sha256(spell_sbom.read_bytes()).hexdigest())])
+          builder.verify_runtime_sbom(bom, pins, vendor_files=vendor_files)
           destination.write_text(json.dumps(bom, indent=2) + '\n', encoding='utf-8')
-          print(json.dumps(dict(status='PASS', components=len(components), added=sorted(new_names),
+          print(json.dumps(dict(status='PASS', components=len(components),
+              vendored_components=len(bom['components']) - len(components), added=sorted(new_names),
               sbom_sha256=sha256(destination.read_bytes()).hexdigest(), lock_sha256=sha256(lock.read_bytes()).hexdigest())))
           '@
           $composeFullSbom | & $env:CARR_PYTHON -I -B - $fullLock $wheelhouse $fullSbom | Tee-Object 'ci-results/full-client-sbom.json'
@@ -2050,7 +2069,7 @@ jobs:
             'tests/ui/test_backup_menu_binding.py',
             'tests/ui/test_backup_resource_actions.py',
             'tests/ui/test_playback_queue.py',
-            'tests/ui/test_search_owner_lifetime.py'
+            'tests/ui/test_search_owner_lifetime.py',
               'tests/academic_integration/test_word_com.py',
               'tests/diagnostics/test_support_diagnostics.py',
               'tests/packaging/test_component_notices.py',
@@ -2069,7 +2088,7 @@ jobs:
               'tests/ui/test_speech_preparation.py',
               'tests/ui/test_speech_preparation_hooks.py',
               'tests/ui/test_studio_silence_actions.py',
-              'tests/ui/test_word_citations_dialog.py',
+              'tests/ui/test_word_citations_dialog.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
