@@ -211,11 +211,11 @@ def run(directory, output, *, seconds=3600, query_seconds=1800, query_samples=50
     state, generation = benchmark._state(directory)
     spec = generation["spec"]
     large = (spec["kind"] == "large_text" and
-             generation["generated_bytes"] in (65*1024**2, 129*1024**2))
+             generation["generated_bytes"] in (3*1024**2, 9*1024**2))
     corpus = (spec["kind"] == "corpus" and spec["books"] == 1000
               and spec["segments_per_book"] == 40)
     if not (large or corpus):
-        raise ValueError("Choose the actual 65/129 MiB or 1000 x 40 diagnostic fixture.")
+        raise ValueError("Choose the actual 3/9 MiB or 1000 x 40 diagnostic fixture.")
     if not state["import_complete"]:
         raise ValueError("The genuine saved source import must finish before retrieval diagnosis.")
     output = output.absolute()
