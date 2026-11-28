@@ -14,12 +14,12 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46088685885
-HEAD = "17c581015fc1ca6f3294f4cce1fe894f33a843cd"
+RUN = 46092676035
+HEAD = "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
 BRANCH = "carr/standard-installation-evaluation-20261128"
 SOURCES = (
-    ("standard", 15240398613, 137752,
-     "9016128c2b8fa951c665e01a7343b2d89dacd29ebbd57f8c9c121e1d4ec4c777",
+    ("standard", 15242545000, 140200,
+     "784c9a861f000426658d67b5f70d329e1611e6450c1eaff1362a7140d4180b2d",
      "carr-standard-installation-windows-2022-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
@@ -32,6 +32,7 @@ ENDPOINT_RECEIPTS = frozenset(("audio-endpoint.json", "endpoint-evaluation.json"
 STANDARD_RECEIPTS = frozenset((
     "native/uninstall.log",
     "native/uninstall-process.log",
+    "native/uninstall-poststate.json",
     "native/repair.log",
     "native/repair-process.log",
     "native/repaired-native-check.log",
