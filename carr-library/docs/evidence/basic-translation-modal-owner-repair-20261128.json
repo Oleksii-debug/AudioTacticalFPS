@@ -1,0 +1,128 @@
+{
+  "schema": "carr-basic-translation-modal-owner-repair/1",
+  "status": "SOURCE_ONLY_NOT_RUN",
+  "base": {
+    "source_commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+    "source_tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
+    "probe_path": "carr-library/scripts/windows_translation_smoke.py",
+    "probe_blob": "1b249ab87dee4c1a441dfac46232592e1a88a691",
+    "probe_sha256": "2fd5485bb862fa3af8cae7d1ea9ec0e7c8145bef10a481159315e3da858cd159"
+  },
+  "observed_failure": {
+    "run_id": 46117284580,
+    "job_id": 140893828731,
+    "run_attempt": 1,
+    "status": "FAIL",
+    "step_number": 8,
+    "step_started_at": "2026-11-28T06:36:11Z",
+    "step_completed_at": "2026-11-28T06:40:11Z",
+    "workflow_step_timeout_minutes": 4,
+    "raw_log_characters": 52890,
+    "raw_log_utf8_bytes": 52892,
+    "raw_log_sha256": "3a20a280b78a89b29bbc4dc0821273b192cab29ae7e525176e8ea18d450ac5a7",
+    "artifact": {
+      "id": 15252328398,
+      "bytes": 991,
+      "sha256": "0b06f4fe798eab4e104fca496b874f90680f5b77dbd40b1ec8891b3f00596ba6"
+    },
+    "durable_proof": {
+      "commit": "a0fd6348833f2661e7f6dee39a39d26dc24b49a2",
+      "path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.json",
+      "blob": "8bff12c6148191586976e9a4720bcf2f3b0c0ef7",
+      "sha256": "25769a59550a859103b97ace8b36652722f8c2fc8d07c53d7ea8b09c8dd520dd"
+    },
+    "observation": "No runtime stdout, traceback or PASS receipt appeared between the echoed Basic command/environment and the four-minute workflow timeout. The unchanged45-second wx timer did not end this process.",
+    "limits": "The silent log does not establish the active phase, show that root canonicalization executed successfully, or prove that the nested-loop seam caused this run. Later324/324+8 qualification was skipped."
+  },
+  "source_inference": {
+    "basic": "The success and failure timer callbacks post app.ExitMainLoop while show_translation still owns its nested ShowModal loop. They stop the timer first; a nested-loop exit can leave the outer application loop waiting without another timer event.",
+    "existing_reference_owners": [
+      {
+        "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+        "blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_local_smoke.py",
+        "blob": "dcb1fb940f078ecd7ff779eb9768056af63d8946"
+      }
+    ],
+    "product_close": "The unchanged product dialog sets cancellation/alive=False, calls EndModal, and destroys the dialog while show_translation unwinds.",
+    "product_dialog_blob": "b7a78f02312da95427f2e32181df88b28fb3fc68"
+  },
+  "changes": {
+    "owned_modal": "Reuse the existing Advanced/local show_owned_modal control-flow core: catch modal exceptions as failures and post app.ExitMainLoop only in finally after show_translation/ShowModal returns. Remove the two inner exit posts.",
+    "diagnostics": {
+      "acceptance": false,
+      "stdout_prefix": "DIAGNOSTIC ",
+      "schema": "carr-native-translation-diagnostic/1",
+      "max_records": 64,
+      "unchanged_timer_ticks_suppressed": true,
+      "exception_message_max_characters": 512,
+      "fields": "Fixed phase, operation label, elapsed time, worker/closing state, synthetic-request count and bounded exception type/message only. No text/credential/request body is logged.",
+      "phases": "Start/import/setup, modal entry/return/failure, state transitions, worker submission/result/failure, outer-loop return, worker/frame/private-directory cleanup and receipt publication.",
+      "faulthandler": {
+        "seconds": 35,
+        "repeat": false,
+        "exit": false,
+        "all_threads": true,
+        "destination": "Existing stderr, retained by the unchanged2>&1/Tee-Object pipeline",
+        "cancellation": "Cancel in the process entrypoint finally after main returns or raises, including its existing cleanup.",
+        "documented_bounds": {
+          "frames": 100,
+          "threads": 100,
+          "string_characters": 500
+        },
+        "primary_source": "https://docs.python.org/3.11/library/faulthandler.html#dumping-the-tracebacks-after-a-timeout"
+      }
+    },
+    "after_probe_sha256": "ec8afc47fc1d293871d1255491aafdedc80635d33d036349dc1b5921202af2fb"
+  },
+  "preserved": {
+    "assertion_count": 14,
+    "assertion_lines": [
+      "assert not requests",
+      "assert child(dialog, 'Selected text; originals remain unchanged').GetValue() == original",
+      "assert [row[0] for row in requests] == ['languages']",
+      "assert [row[0] for row in requests] == ['languages']",
+      "assert len(rows) == 1 and rows[0]['status'] == 'complete'",
+      "assert child(dialog, 'Accepted translation derivative; not a source quotation').GetValue().startswith('Синтетичний')",
+      "assert not child(dialog, 'Selected text; originals remain unchanged').IsEnabled()",
+      "assert len(outputs) == 1",
+      "assert report['quotation_authority'] is False",
+      "assert (output / 'original.txt').read_bytes() == original.encode()",
+      "assert draft.source_range(0, len(draft.text))[2] is False",
+      "assert sha256((output / name).read_bytes()).hexdigest() == digest",
+      "assert len(approvals) == 2",
+      "assert [row[0] for row in requests] == ['languages', 'text']"
+    ],
+    "final_pass_receipt_block_byte_identical": true,
+    "final_pass_receipt_schema": "carr-native-translation-smoke/1",
+    "final_pass_receipt_fields": 13,
+    "final_phase": 5,
+    "wx_deadline_seconds": 45,
+    "wx_timer_milliseconds": 50,
+    "focused_workflow_step_minutes": 4,
+    "source_and_installed_existing_cases": 324,
+    "existing_native_flows": 8,
+    "application_source_files": 425,
+    "application_changes": 0,
+    "dependency_oracle_workflow_changes": 0,
+    "reader_source_pin_changes": 0,
+    "reader_extension_required": false
+  },
+  "source_verification": {
+    "inverse_patch_count": 19,
+    "reverse_all_declared_hunks_restores_exact_base": true,
+    "assertion_lines_byte_identical": true,
+    "pass_receipt_block_byte_identical": true,
+    "compiled": false,
+    "executed": false
+  },
+  "required_followup": "A fresh actual focused Basic run must complete all original assertions, phase5, thirteen-field PASS receipt and cleanup. Existing324/324+8 and subsequent full main remain mandatory; source inference and diagnostic output are not acceptance.",
+  "limits": [
+    "No product root guard, service, worker, cancellation or publication behavior is changed.",
+    "No timeout/count/selection is increased or relaxed.",
+    "Diagnostic records cannot satisfy a PASS schema and no partial PASS receipt is published.",
+    "No old outcome is transferred to this source; no branch/ref/PR mutation or workflow launch occurs in this component."
+  ]
+}
