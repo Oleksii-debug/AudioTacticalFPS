@@ -2,7 +2,8 @@
 
 The workflow keeps the original ordered list once. Only scheduling changes:
 the academic suite remains serial, two measured long suites run next, and
-the remaining suites use the existing bulk worker count and deadlines.
+six independent Windows VMs execute the remaining suites serially. The original
+ordered manifest, strict runner, suite limits and 35-minute phases stay unchanged.
 """
 import argparse
 from collections import Counter
@@ -104,35 +105,141 @@ def metadata_verdict(lines):
     }
 
 
+BULK_SHARDS = 6
+_COMMIT = re.compile(r"[0-9a-f]{40}")
+
+
+def bulk_plan(suites, shard, shard_count, source_commit):
+    """Bind one serial VM to exact occurrence positions in the original inventory."""
+    if type(shard_count) is not int or shard_count != BULK_SHARDS:
+        raise ValueError("All six required source partitions must be scheduled.")
+    if type(shard) is not int or not 1 <= shard <= BULK_SHARDS:
+        raise ValueError("The source partition number must be between one and six.")
+    if type(source_commit) is not str or _COMMIT.fullmatch(source_commit) is None:
+        raise ValueError("Source execution requires an exact lowercase Git commit.")
+    full = partition(suites)
+    first = (ACADEMIC_SUITE, *ISOLATED_SUITES)
+    occurrences = [{"occurrence": index + 1, "suite": name}
+                   for index, name in enumerate(suites) if name not in first]
+    selected = occurrences[shard - 1::BULK_SHARDS]
+    if len(selected) != (67 if shard < BULK_SHARDS else 66):
+        raise ValueError("Every required source partition must retain its exact size.")
+    return {
+        "schema": 1, "source_commit": source_commit,
+        "manifest_sha256": full["manifest_sha256"],
+        "original_occurrences": EXPECTED_OCCURRENCES,
+        "original_distinct": EXPECTED_DISTINCT,
+        "bulk_occurrences": len(occurrences),
+        "shard": shard, "shards": BULK_SHARDS,
+        "selected_occurrences": len(selected),
+        "occurrences": selected,
+        "suites": [row["suite"] for row in selected],
+        "scope": "source suites; no installed native or audio-device qualification",
+    }
+
+
+_SUITE_REPORT_START = re.compile(r"(PASS|FAIL): (" + _MEMBER.pattern + r"): ")
+_SUITE_COUNTS = re.compile(
+    r"junit_passed=([0-9]{1,9}), failed=([0-9]{1,9}), "
+    r"skipped=([0-9]{1,9}), pytest_exit=(-?[0-9]{1,9})"
+)
+
+
+def bulk_verdict(suites, shard, shard_count, source_commit, lines, runner_exit):
+    """Require every assigned post-cleanup ci_check verdict, in occurrence order."""
+    plan = bulk_plan(suites, shard, shard_count, source_commit)
+    if type(runner_exit) is not int or runner_exit != 0:
+        raise ValueError("The unchanged required-suite runner did not complete successfully.")
+    records = []
+    characters = 0
+    metadata = None
+    for line in lines:
+        characters += len(line)
+        if characters > MAX_REPORT_BYTES:
+            raise ValueError("Source report exceeds its input bound.")
+        match = _SUITE_REPORT_START.search(line)
+        if match is None:
+            continue
+        prefix = line[:match.start()]
+        if len(prefix) > 1024 or _PROGRESS_PREFIX.fullmatch(prefix) is None:
+            continue
+        counts = _SUITE_COUNTS.fullmatch(line[match.end():].rstrip("\r\n"))
+        if not line.endswith("\n") or counts is None or match.group(1) != "PASS":
+            raise ValueError("An assigned source suite did not report a complete successful verdict.")
+        passed, failed, skipped, pytest_exit = map(int, counts.groups())
+        position = len(records)
+        if (position >= len(plan["occurrences"])
+                or match.group(2) != plan["occurrences"][position]["suite"]):
+            raise ValueError("Source verdicts omit, repeat, reorder or replace an assigned occurrence.")
+        if passed < 1 or failed != 0 or skipped != 0 or pytest_exit != 0:
+            raise ValueError("Every assigned source suite must pass without failures or skips.")
+        if match.group(2) == METADATA_SUITE:
+            metadata = metadata_verdict([line])
+        records.append({**plan["occurrences"][position], "junit_passed": passed,
+                        "failed": failed, "skipped": skipped, "pytest_exit": pytest_exit})
+    if len(records) != plan["selected_occurrences"]:
+        raise ValueError("Every assigned source occurrence must have a completed verdict.")
+    return {
+        **plan, "status": "PASS", "runner_exit": runner_exit,
+        "completed_occurrences": len(records),
+        "junit_passed": sum(row["junit_passed"] for row in records),
+        "failed": 0, "skipped": 0, "records": records,
+        "metadata_shape": metadata,
+    }
+
+
+def _read_report(path):
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_REPORT_BYTES + 1)
+    if len(raw) > MAX_REPORT_BYTES:
+        raise ValueError("Source report exceeds its input byte bound.")
+    return raw.decode("utf-8-sig").splitlines(keepends=True)
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("isolated", "partition", "metadata"))
+    parser.add_argument("mode", choices=("isolated", "partition", "metadata", "bulk", "bulk-verdict"))
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--shard", type=int)
+    parser.add_argument("--shards", type=int)
+    parser.add_argument("--source-commit")
+    parser.add_argument("--runner-exit", type=int)
     args = parser.parse_args(argv)
+    bulk = args.mode in ("bulk", "bulk-verdict")
+    if not bulk and any(value is not None for value in
+                        (args.shard, args.shards, args.source_commit, args.runner_exit)):
+        parser.error("Partition identity options are only valid for bulk execution.")
+    if bulk and (args.shard is None or args.shards is None or args.source_commit is None):
+        parser.error("Bulk execution requires its partition, six-part count and exact source commit.")
     if args.mode == "metadata":
         if args.report is None:
             parser.error("Metadata validation requires the completed source report.")
         try:
-            with args.report.open("rb") as stream:
-                raw = stream.read(MAX_REPORT_BYTES + 1)
-            if len(raw) > MAX_REPORT_BYTES:
-                raise ValueError("Source report exceeds its input byte bound.")
-            result = metadata_verdict(raw.decode("utf-8-sig").splitlines(keepends=True))
+            result = metadata_verdict(_read_report(args.report))
         except (OSError, ValueError, UnicodeError):
             parser.error("Exactly one successful completed metadata report is required.")
-    elif args.report is not None:
-        parser.error("--report is only valid for metadata validation.")
     elif args.mode == "isolated":
+        if args.report is not None:
+            parser.error("--report is only valid for completed report validation.")
         result = isolated_plan()
     else:
+        if args.mode != "bulk-verdict" and (args.report is not None or args.runner_exit is not None):
+            parser.error("Completed report options require bulk-verdict mode.")
+        if args.mode == "bulk-verdict" and (args.report is None or args.runner_exit is None):
+            parser.error("Bulk verdicts require the complete report and actual runner exit.")
         raw = sys.stdin.buffer.read(MAX_MANIFEST_BYTES + 1)
         if len(raw) > MAX_MANIFEST_BYTES:
             parser.error("Source inventory exceeds its input byte bound.")
         try:
             suites = json.loads(raw.decode("utf-8"))
-            result = partition(suites)
-        except (ValueError, TypeError, UnicodeError, RecursionError):
-            parser.error("Source inventory is not the exact required ordered manifest.")
+            if args.mode == "partition":
+                result = partition(suites)
+            elif args.mode == "bulk":
+                result = bulk_plan(suites, args.shard, args.shards, args.source_commit)
+            else:
+                result = bulk_verdict(suites, args.shard, args.shards, args.source_commit,
+                                      _read_report(args.report), args.runner_exit)
+        except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
+            parser.error("Source execution is not the complete required partition of the original manifest.")
     print(json.dumps(result, sort_keys=True))
     return 0
 

@@ -1221,8 +1221,156 @@ jobs:
             $env:TESSDATA_PREFIX = $previousTessdata
           }
 
+      - name: Preserve exact-commit runtime and test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-windows-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  integrated-source:
+    name: Windows x64 / required source ${{ matrix.shard }} of 6
+    runs-on: windows-2022
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_SOURCE_PARTITION: '${{ matrix.shard }}'
+      CARR_SOURCE_EXPECTED_COMMIT: '${{ github.event.pull_request.head.sha || github.sha }}'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the actual desktop package in a fresh environment
+        id: desktop_runtime
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the canonical pinned local audio runtime
+        timeout-minutes: 10
+        run: |
+          $audioWork = Join-Path $env:RUNNER_TEMP 'carr-canonical-audio'
+          New-Item -ItemType Directory -Force $audioWork | Out-Null
+          $audioInputs = Join-Path $audioWork 'inputs'
+          $audioRuntime = Join-Path $audioWork 'runtime'
+          & $env:CARR_PYTHON -I -B packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          & $env:CARR_PYTHON -I -B packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_V3_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audioRuntime 'bin') | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Match production dependencies before required source suites
+        id: desktop_dependencies
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,pathlib,re,runpy; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; verify=runpy.run_path('packaging/sbom_inventory.py')['verify_installed']; actual=verify(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(),pins); print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re,runpy; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); raw=pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); verify=runpy.run_path('packaging/sbom_inventory.py')['verify_installed']; actual=verify(raw,pins); bom=json.loads(raw); assert bom['metadata']['component']['version']==m.version('universal-research-library'); print(json.dumps(dict(status='PASS',runtime_dependencies=actual,sbom='MATCHES_FULL_LOCK',declared_model='EXACT_REVIEWED_BYTES')))" | Tee-Object 'ci-results/source-runtime-parity.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the verified OCR engine before its required source regression
+        id: ocr_runtime
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Bind the source partition to the exact checkout and installed package
+        id: source_identity
+        timeout-minutes: 2
+        run: |
+          $proof = @'
+          import hashlib, json, os, pathlib, subprocess, sys
+          import carr_library
+          checkout = pathlib.Path.cwd().parent.resolve()
+          source = (checkout / 'carr-library/src/carr_library').resolve()
+          installed = pathlib.Path(carr_library.__file__).resolve().parent
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          assert not installed.is_relative_to(checkout)
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          assert commit == os.environ['CARR_SOURCE_EXPECTED_COMMIT']
+          paths = sorted(source.rglob('*.py'))
+          assert 0 < len(paths) <= 1024
+          hashes = {}
+          for selected in paths:
+              relative = selected.relative_to(source)
+              raw = selected.read_bytes()
+              assert (installed / relative).read_bytes() == raw, str(relative)
+              hashes[relative.as_posix()] = hashlib.sha256(raw).hexdigest()
+          report = dict(status='PASS', source_commit=commit, source_tree=tree,
+                        source_partition=int(os.environ['CARR_SOURCE_PARTITION']),
+                        installed_python_files=len(hashes), source_hashes=hashes,
+                        scope='source test prerequisites; no installed native or audio-device qualification')
+          pathlib.Path('ci-results/integrated-source-identity.json').write_text(
+              json.dumps(report, sort_keys=True, allow_nan=False) + '\n', encoding='utf-8')
+          print(json.dumps({name: value for name, value in report.items() if name != 'source_hashes'}, sort_keys=True))
+          '@
+          $proof | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/integrated-source-identity.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
-        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.source_identity.conclusion == 'success' }}
         timeout-minutes: 35
         run: |
           $suites = @(
@@ -1644,34 +1792,33 @@ jobs:
             $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
             $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
             $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
-            $planRaw = ConvertTo-Json -InputObject $suites -Compress | & $env:CARR_PYTHON scripts/windows_source_suites.py partition
+            $planRaw = ConvertTo-Json -InputObject $suites -Compress | & $env:CARR_PYTHON scripts/windows_source_suites.py bulk --shard $env:CARR_SOURCE_PARTITION --shards 6 --source-commit $env:CARR_SOURCE_EXPECTED_COMMIT
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $planRaw | Set-Content 'ci-results/integrated-source-bulk-plan.json'
             $plan = $planRaw | ConvertFrom-Json
-            $parallelSuites = @($plan.bulk)
-            if ($parallelSuites.Count -ne 401 -or $parallelSuites.Count + @($plan.isolated).Count + 1 -ne $suites.Count) { throw 'Required source partitions must preserve all 404 original occurrences.' }
-            & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
-            $parallelExit = $LASTEXITCODE
-            @{ schema = 1; manifest_sha256 = $plan.manifest_sha256; bulk_occurrences = $parallelSuites.Count; bulk_exit = $parallelExit } | ConvertTo-Json | Set-Content 'ci-results/integrated-source-bulk-verdict.json'
-            if ($parallelExit -ne 0) { exit 1 }
-          & $env:CARR_PYTHON scripts/windows_source_suites.py metadata --report 'ci-results/integrated-tests.txt' | Tee-Object 'ci-results/integrated-source-metadata-verdict.json'
-          if ($LASTEXITCODE -ne 0) {
-            throw 'Exactly one completed report must confirm all 58 import metadata shape cases without failures or skips.'
-          }
-
+            $selectedSuites = @($plan.suites)
+            if ($selectedSuites.Count -ne $plan.selected_occurrences -or $plan.bulk_occurrences -ne 401 -or $plan.original_occurrences -ne $suites.Count) { throw 'Required source partitions must preserve all 404 original occurrences.' }
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 @selectedSuites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+            $suiteExit = $LASTEXITCODE
+            $receiptRaw = ConvertTo-Json -InputObject $suites -Compress | & $env:CARR_PYTHON scripts/windows_source_suites.py bulk-verdict --shard $env:CARR_SOURCE_PARTITION --shards 6 --source-commit $env:CARR_SOURCE_EXPECTED_COMMIT --runner-exit $suiteExit --report 'ci-results/integrated-tests.txt'
+            $receiptExit = $LASTEXITCODE
+            @{ schema = 1; source_commit = $env:CARR_SOURCE_EXPECTED_COMMIT; manifest_sha256 = $plan.manifest_sha256; shard = $plan.shard; shards = $plan.shards; selected_occurrences = $selectedSuites.Count; runner_exit = $suiteExit; receipt_exit = $receiptExit } | ConvertTo-Json | Set-Content 'ci-results/integrated-source-bulk-verdict.json'
+            if ($suiteExit -ne 0 -or $receiptExit -ne 0) { exit 1 }
+            $receiptRaw | Set-Content 'ci-results/integrated-source-bulk-receipt.json'
+            $receiptRaw
           } finally {
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr
             $env:TESSDATA_PREFIX = $previousTessdata
           }
 
-      - name: Preserve exact-commit runtime and test evidence
+      - name: Preserve the exact source partition plan and completed verdicts
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: carr-windows-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          name: carr-windows-source-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}-${{ matrix.shard }}
           path: carr-library/ci-results/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
 
   keyboard-native:
