@@ -283,3 +283,95 @@ def test_accepted_local_response_uses_pre_request_pair_snapshot(ready, monkeypat
     assert usage['usage']['decoded_translation_sha256'] == job['receipts'][0]['decoded_translation_sha256']
     assert service.export(identity, tmp_path / 'accepted-offline')['status'] == 'complete'
     assert len(state['calls']) == 2
+
+
+@pytest.mark.parametrize('sentinel', ['auto', 'AUTO', 'Auto'])
+def test_auto_sentinel_is_not_a_local_language(sentinel):
+    with pytest.raises(ValueError):
+        request('translation.languages', {'target': sentinel})
+    with pytest.raises(ValueError):
+        request('translation.text', {'q': 'Synthetic text', 'source': 'en', 'target': sentinel})
+    with pytest.raises(ValueError):
+        validate_languages([{'language': sentinel, 'name': 'Automatic', 'targets': []}])
+    with pytest.raises(ValueError):
+        validate_languages([{'language': 'en', 'name': 'English', 'targets': [sentinel]},
+                            {'language': sentinel, 'name': 'Automatic', 'targets': []}])
+    raw = json.dumps({'translatedText': 'Synthetic derivative',
+                      'detectedLanguage': {'language': sentinel, 'confidence': 90}}).encode()
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'auto'}, maximum=1000)
+    if sentinel != 'auto':
+        with pytest.raises(ValueError):
+            request('translation.text', {'q': 'Synthetic text', 'source': sentinel, 'target': 'uk'})
+    else:
+        _, body, _ = request('translation.text', {'q': 'Synthetic text', 'source': sentinel, 'target': 'uk'})
+        assert body['source'] == 'auto'
+
+
+@pytest.mark.parametrize('sentinel', ['auto', 'AUTO', 'Auto'])
+def test_local_approval_rejects_auto_target_before_provider_call(ready, sentinel):
+    service, p, state = ready.service, ready.profile, ready.state
+    before = len(state['calls'])
+    with pytest.raises(ValueError):
+        service.preview(p, 'Synthetic text', 'en', sentinel)
+    with pytest.raises(ValueError):
+        translation_approval(p, 'Synthetic text', 'en', sentinel, '0')
+    assert len(state['calls']) == before
+
+
+@pytest.mark.parametrize('confidence', [
+    '-1', '-0.01', '100.0000001', '1e309', '-1e309', '"90"', 'null',
+    '[]', '{}', 'false', '1' + '0' * 400, '-1' + '0' * 400,
+    'Infinity', '-Infinity',
+])
+def test_local_confidence_rejects_out_of_range_or_non_numeric_json(confidence):
+    raw = ('{"translatedText":"ok","detectedLanguage":{"language":"en","confidence":'
+           + confidence + '}}').encode('ascii')
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'auto'}, maximum=1000)
+
+
+@pytest.mark.parametrize('confidence', [0, 0.0000001, 49.5, 99.999999, 100, 1e-300])
+def test_local_confidence_accepts_finite_inclusive_range(confidence):
+    raw = json.dumps({'translatedText': 'Дослід &amp; 🙂',
+                      'detectedLanguage': {'language': 'uk', 'confidence': confidence}}).encode()
+    assert response(raw, 'translation.text', {'source': 'auto'}, maximum=1000) == {
+        'text': 'Дослід &amp; 🙂', 'detected_source': 'uk'}
+
+
+@pytest.mark.parametrize('operation,payload', [
+    ('translation.other', {'q': 'text', 'target': 'uk'}),
+    ('translation.text', {'q': 'text'}),
+    ('translation.text', {'target': 'uk'}),
+    ('translation.text', {'q': 'text', 'target': 'uk', 'model': 'other'}),
+    ('translation.text', {'q': 'text', 'target': 'uk', 'api_key': 'synthetic'}),
+    ('translation.text', {'q': 'text', 'target': 'uk', 'format': 'html'}),
+    ('translation.text', {'q': 'text', 'target': '../uk'}),
+    ('translation.text', {'q': 'a' * 5001, 'target': 'uk'}),
+    ('translation.text', {'q': ' \t\n', 'target': 'uk'}),
+    ('translation.languages', {'target': 'uk', 'q': 'private synthetic text'}),
+])
+def test_local_request_rejects_unapproved_fields_or_invalid_input(operation, payload):
+    with pytest.raises(ValueError):
+        request(operation, payload)
+
+
+@pytest.mark.parametrize('output', ['Привіт, світ!', 'A &amp; B <literal>', 'first\nsecond', '🙂' * 1000])
+def test_local_explicit_source_response_preserves_exact_output(output):
+    raw = json.dumps({'translatedText': output}).encode()
+    assert response(raw, 'translation.text', {'source': 'en'}, maximum=1000) == {
+        'text': output, 'detected_source': None}
+
+
+@pytest.mark.parametrize('payload', [
+    {'translatedText': 'ok', 'detectedLanguage': {'language': 'en', 'confidence': 100}},
+    {'translatedText': None},
+    {'translatedText': 'a' * 1001},
+    {'translatedText': '\ud800'},
+    {'translatedText': 'bad\x00text'},
+    {'translatedText': 'ok', 'model': 'unrequested'},
+])
+def test_local_explicit_source_response_rejects_unapproved_or_invalid_output(payload):
+    raw = json.dumps(payload).encode()
+    with pytest.raises(ValueError):
+        response(raw, 'translation.text', {'source': 'en'}, maximum=1000)
