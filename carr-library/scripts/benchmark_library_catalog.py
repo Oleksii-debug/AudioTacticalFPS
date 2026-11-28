@@ -697,14 +697,31 @@ def search_catalog(directory, *, seconds=86400, query_seconds=600,
                          if generation["spec"]["kind"] == "corpus" else generation["spec"]["segments"])
                 query = (fixture.anchor(book, count) + " commonrailway archive.\r\n"
                          "Київ — Žilina; cafe\u0301; літо")
-                page = app.search_page(state["workspace"], query, mode="phrase",
-                    title=f"book-{book:05d}", collection=state["collection"],
-                    resources=resources, cancelled=deadline.stopped)
-                _require(len(page.results) == 1 and page.results[0].quote == query,
-                         "The exact Unicode/combining/CRLF quotation changed.")
-                _checked_hit(app, state, generation, editions, page.results[0],
-                             copy=True, cancelled=deadline.stopped)
-                unicode_quotes.append(dict(book=book, last_segment=count,
+                cursor, offset, matches, windows = None, 0, 0, 0
+                while True:
+                    deadline.check()
+                    page = app.search_page(state["workspace"], query, mode="phrase",
+                        title=f"book-{book:05d}", collection=state["collection"],
+                        resources=resources, cancelled=deadline.stopped,
+                        cursor=cursor, offset=offset)
+                    if offset == 0:
+                        windows += 1
+                    for hit in page.results:
+                        matches += 1
+                        _require(matches == 1 and hit.quote == query,
+                                 "The exact Unicode/combining/CRLF quotation changed.")
+                        # Copy before advancing the owner to another source window.
+                        _checked_hit(app, state, generation, editions, hit,
+                                     copy=True, cancelled=deadline.stopped)
+                    if page.has_more_results:
+                        _require(bool(page.results), "A result cursor made no progress.")
+                        cursor, offset = page.cursor, page.offset + len(page.results)
+                    elif page.next_source_cursor is not None:
+                        cursor, offset = page.next_source_cursor, 0
+                    else:
+                        break
+                _require(matches == 1, "The exact Unicode/combining/CRLF quotation is missing.")
+                unicode_quotes.append(dict(book=book, last_segment=count, source_windows=windows,
                     quote_sha256=sha256(query.encode("utf-8")).hexdigest()))
                 _require(app.close_search(), "The actual Unicode quote owner did not close.")
             from carr_library.search.federated import FederatedSearch

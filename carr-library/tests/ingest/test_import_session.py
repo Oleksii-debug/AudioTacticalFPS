@@ -282,3 +282,193 @@ def test_resource_capability_cannot_cross_workspace_or_outlive_its_owner(library
         assert owner.storage.db.execute('SELECT 1 FROM revision WHERE id=?', (revision,)).fetchone() is None
     with pytest.raises(ValueError, match='owner or reviewed budget'):
         owner.validate(app, workspace, _budget())
+
+
+def test_accounting_reuses_only_shared_path_work_and_observes_every_real_leaf(
+        library, tmp_path, monkeypatch):
+    from collections import Counter
+    from carr_library import durable_state
+    app, workspace = library
+    actual_regular = module.regular
+    actual_space = module.shutil.disk_usage
+    observed, volumes = Counter(), []
+
+    def regular(path, **options):
+        observed[Path(path)] += 1
+        return actual_regular(path, **options)
+
+    def space(path):
+        result = actual_space(path)
+        volumes.append((Path(path), result.free))
+        return result
+
+    with module.import_session(app, workspace, _budget()) as owner:
+        source, asset, target = _retain(app, owner, tmp_path, 1)
+        expected = source.read_bytes()
+        chain = {*owner.root.parents, owner.root}
+        leaves = tuple(owner._paths)
+        assert len(leaves) == 8 and any(not path.exists() for path in leaves)
+        # Observe the genuine shared guard too, so the former per-sidecar
+        # local_path calls cannot hide their repeated ancestor work.
+        monkeypatch.setattr(module, 'regular', regular)
+        monkeypatch.setattr(durable_state, 'regular', regular)
+        monkeypatch.setattr(module.shutil, 'disk_usage', space)
+        for _ in range(4):
+            observed.clear()
+            volumes.clear()
+            assert owner.check() == asset.size
+            assert all(observed[path] >= 1 for path in leaves)
+            assert observed[target] >= 1
+            assert observed[app.assets_dir] >= 1
+            assert all(observed[parent] >= 2 for parent in chain)
+            assert sum(observed[parent] for parent in chain) <= 2 * len(chain)
+            assert len(volumes) == 1 and volumes[0][0] == app.root
+            assert target.read_bytes() == source.read_bytes() == expected
+
+
+def test_new_actual_sidecar_growth_is_recounted_without_prior_poll_credit(library, tmp_path):
+    app, workspace = library
+    with module.import_session(app, workspace, _budget(library_bytes=2*MIB)) as owner:
+        source, asset, target = _retain(app, owner, tmp_path, 1)
+        assert owner.check() == asset.size
+        sidecar = app.root / 'imports.sqlite-journal'
+        assert not sidecar.exists()
+        try:
+            sidecar.write_bytes(b'\0' * (2*MIB + 1))
+            with pytest.raises(module.ImportBudgetExceeded, match='library-growth'):
+                owner.check()
+        finally:
+            sidecar.unlink(missing_ok=True)
+        assert owner.check() == asset.size
+        assert target.read_bytes() == source.read_bytes()
+
+
+@pytest.mark.parametrize('kind', ['hardlink', 'directory'])
+def test_actual_optional_sqlite_leaf_never_admits_an_alias_or_directory(
+        library, tmp_path, kind):
+    import os
+    app, workspace = library
+    with module.import_session(app, workspace, _budget()) as owner:
+        sidecar = app.root / 'imports.sqlite-journal'
+        assert not sidecar.exists()
+        outside = tmp_path / 'unowned-original'
+        outside.write_bytes(b'Unowned allocation is not a valid SQLite sidecar.')
+        if kind == 'hardlink':
+            os.link(outside, sidecar)
+            assert outside.stat().st_nlink == sidecar.stat().st_nlink == 2
+        else:
+            sidecar.mkdir()
+        try:
+            with pytest.raises(ValueError, match='regular local files'):
+                owner.check()
+        finally:
+            sidecar.rmdir() if kind == 'directory' else sidecar.unlink()
+        assert outside.read_bytes() == b'Unowned allocation is not a valid SQLite sidecar.'
+        assert owner.check() == 0
+
+
+def test_same_byte_original_replacement_still_fails_the_actual_leaf_identity(
+        library, tmp_path):
+    import os
+    app, workspace = library
+    with pytest.raises(ValueError, match='retained original changed'):
+        with module.import_session(app, workspace, _budget()) as owner:
+            source, asset, target = _retain(app, owner, tmp_path, 1)
+            before = target.stat()
+            replacement = app.assets_dir / 'ordinary-replacement'
+            replacement.write_bytes(source.read_bytes())
+            os.chmod(replacement, before.st_mode & 0o777)
+            os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+            os.replace(replacement, target)
+            after = target.stat()
+            assert (after.st_dev, after.st_ino) != (before.st_dev, before.st_ino)
+            assert after.st_size == before.st_size and after.st_mtime_ns == before.st_mtime_ns
+            assert target.read_bytes() == source.read_bytes()
+            owner.check()
+
+
+def test_original_directory_replacement_after_real_leaf_stat_is_not_accepted(
+        library, tmp_path, monkeypatch):
+    app, workspace = library
+    actual = module.regular
+    replaced = False
+    with pytest.raises(ValueError, match='original directory changed'):
+        with module.import_session(app, workspace, _budget()) as owner:
+            source, asset, target = _retain(app, owner, tmp_path, 1)
+            before = target.stat()
+            prior = app.root / 'prior-original-directory'
+
+            def observed(path, **options):
+                nonlocal replaced
+                value = actual(path, **options)
+                if Path(path) == target and not options.get('directory') and not replaced:
+                    replaced = True
+                    app.assets_dir.rename(prior)
+                    app.assets_dir.mkdir()
+                    (prior / target.name).rename(target)
+                    # The actual original inode and bytes are unchanged; it is
+                    # the directory observed around that leaf which changed.
+                    assert target.stat().st_ino == before.st_ino
+                return value
+
+            monkeypatch.setattr(module, 'regular', observed)
+            owner.check()
+    assert replaced and target.read_bytes() == source.read_bytes()
+
+
+@pytest.mark.parametrize('boundary', ['root-ancestor', 'optional-leaf', 'original-directory'])
+def test_permission_failure_is_never_treated_as_absent_accounting(
+        library, tmp_path, monkeypatch, boundary):
+    app, workspace = library
+    actual = module.regular
+    denial = PermissionError('Authored accounting access denial.')
+    with module.import_session(app, workspace, _budget()) as owner:
+        source, asset, target = _retain(app, owner, tmp_path, 1)
+        selected = {'root-ancestor': app.root.parent,
+                    'optional-leaf': app.root / 'imports.sqlite-journal',
+                    'original-directory': app.assets_dir}[boundary]
+        called = []
+
+        def guarded(path, **options):
+            if Path(path) == selected:
+                called.append(Path(path))
+                raise denial
+            return actual(path, **options)
+
+        with monkeypatch.context() as faults:
+            faults.setattr(module, 'regular', guarded)
+            with pytest.raises(PermissionError) as caught:
+                owner.check()
+        assert caught.value is denial and called
+        assert owner.check() == asset.size
+        assert target.read_bytes() == source.read_bytes()
+
+
+def test_cancel_during_the_actual_last_sidecar_probe_is_seen_before_return(
+        library, tmp_path, monkeypatch):
+    app, workspace = library
+    actual = module.regular
+    stopped = False
+    observed = []
+    with module.import_session(app, workspace, _budget(), cancelled=lambda: stopped) as owner:
+        source, asset, target = _retain(app, owner, tmp_path, 1)
+        selected = app.root / 'imports.sqlite-journal'
+        assert not selected.exists()
+
+        def probing(path, **options):
+            nonlocal stopped
+            try:
+                return actual(path, **options)
+            finally:
+                if Path(path) == selected:
+                    observed.append(Path(path))
+                    stopped = True
+
+        with monkeypatch.context() as observe:
+            observe.setattr(module, 'regular', probing)
+            with pytest.raises(InterruptedError, match='accounting'):
+                owner.check()
+        assert observed and stopped
+        stopped = False
+        assert owner.check() == asset.size
+        assert target.read_bytes() == source.read_bytes()

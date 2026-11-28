@@ -235,3 +235,41 @@ def test_authored_bom_is_counted_in_the_original_record_allowance(adapter, tmp_p
     segments = TextSegments(captured, max_segments=1, max_segment_bytes=budget.segment_bytes)
     assert len(segments) == 1 and segments[0].encode("utf-8") == original[3:]
     assert source.read_bytes() == original
+
+
+def test_actual_last_unicode_quote_is_beyond_the_first_large_source_window(adapter, tmp_path):
+    from carr_library.search.paging import SearchResources
+
+    directory, generation = generated(adapter, tmp_path, books=1, segments=3,
+                                      segment_bytes=3*adapter.MIB)
+    state = adapter.initialize(directory, page_files=2, slice_items=2, steps=4,
+        slice_seconds=60, memory_bytes=512*adapter.MIB,
+        search_disk_bytes=128*adapter.MIB, reserve_bytes=0, foreign_libraries=1)
+    assert adapter.run_import(directory, seconds=180)["status"] == "IMPORT_COMPLETE"
+    assert adapter.verify_catalog(directory, seconds=180)["raw_utf8_bytes"] == 9*adapter.MIB
+    original = directory / "sources" / "book-00000.txt"
+    original_digest = adapter.fixture.digest_file(original)
+    query = (adapter.fixture.anchor(0, 3) + " commonrailway archive.\r\n"
+             "Київ — Žilina; cafe\u0301; літо")
+    app = LibraryApp(directory / "library")
+    try:
+        first = app.search_page(state["workspace"], query, mode="phrase", title="book-00000",
+            collection=state["collection"],
+            resources=SearchResources(timeout=120, memory_bytes=state["search_memory_bytes"],
+                                      disk_bytes=state["search_disk_bytes"]))
+        assert first.results == ()
+        assert first.next_source_cursor is not None and not first.has_more_results
+        assert first.source_pages == 1
+    finally:
+        assert app.close_search()
+    measured = adapter.search_catalog(directory, seconds=180, query_seconds=120, query_samples=2)
+    assert measured["status"] == "MEASURED_SYNTHETIC_CORPUS"
+    assert measured["source_books"] == 1 and measured["source_segments"] == 3
+    assert measured["unicode_quotations"] == [{
+        "book": 0, "last_segment": 3, "source_windows": 3,
+        "quote_sha256": sha256(query.encode("utf-8")).hexdigest()}]
+    assert measured["complete_scope_ranking"][0]["total_results"] == 3
+    assert measured["complete_scope_ranking"][1]["updated_index_rows"] == 0
+    assert measured["federated_cleanup_confirmed"] is True
+    assert adapter.fixture.digest_file(original) == original_digest
+    assert adapter.fixture.verify_originals(directory, generation)["verified_sources"] == 1

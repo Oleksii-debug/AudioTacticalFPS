@@ -87,6 +87,15 @@ class ImportSession:
             raise ValueError('SQLite allocation accounting exceeded its integer range.')
         return value
 
+    def _check_root(self):
+        # The constructor resolved this exact path once. Recheck every actual
+        # ancestor on every invocation; only the canonical path spelling is
+        # reused, never a stat result or a previous successful validation.
+        for parent in reversed(self.root.parents):
+            regular(parent, directory=True)
+        if _identity(regular(self.root, directory=True)) != self._root_identity:
+            raise ValueError('The current import root was replaced.')
+
     def validate(self, app, workspace, budget):
         checked_budget(budget)
         if (not self._active or threading.get_ident() != self._thread
@@ -94,8 +103,7 @@ class ImportSession:
                 or budget != self.budget or Path(app.root) != self.root
                 or Path(app.database) != self.root / 'library.sqlite'):
             raise ValueError('The current import session owner or reviewed budget changed.')
-        if _identity(regular(local_path(self.root), directory=True)) != self._root_identity:
-            raise ValueError('The current import root was replaced.')
+        self._check_root()
         app._authorize(self.storage.db, workspace)
         return self.storage
 
@@ -104,8 +112,7 @@ class ImportSession:
             raise ValueError('The import session is closed or belongs to another thread.')
         if self.cancelled():
             raise InterruptedError('Import cancelled at a storage accounting boundary.')
-        if _identity(regular(local_path(self.root), directory=True)) != self._root_identity:
-            raise ValueError('The current import root was replaced.')
+        self._check_root()
 
     def begin_original(self, asset, target):
         """Account a new retained original before its create-only bounded copy."""
@@ -165,7 +172,13 @@ class ImportSession:
         physical = {}
         growth = 0
         for path in self._paths:
-            info = _present(path)
+            # These eight leaves are fixed direct children of the root checked
+            # above and again before return. Missing sidecars do not repeat the
+            # identical ancestor traversal; all actual leaf lstats stay live.
+            try:
+                info = regular(path)
+            except FileNotFoundError:
+                info = None
             size = 0 if info is None else info.st_size
             if path.name in ('library.sqlite', 'imports.sqlite'):
                 previous = self._main_identity.get(path.name)
@@ -189,10 +202,19 @@ class ImportSession:
         # read their text; the finite whole set is rechecked when the slice exits.
         current = () if self._current_original is None else (self._current_original,)
         retained = chain(self._originals.values(), current) if final else current
+        original_parent = self.root / 'originals'
+        original_directory = None
         for path, size, identity in retained:
-            info = regular(local_path(path))
+            if path.parent != original_parent:
+                raise ValueError('Original accounting is outside this session.')
+            if original_directory is None:
+                original_directory = _identity(regular(original_parent, directory=True))
+            info = regular(path)
             if info.st_size != size or _identity(info) != identity:
                 raise ValueError('A newly retained original changed during this slice.')
+        if (original_directory is not None
+                and _identity(regular(original_parent, directory=True)) != original_directory):
+            raise ValueError('The retained original directory changed during this accounting check.')
         growth += self._original_bytes
         growth += sum(size for _, size in self._pending_originals.values())
         if growth > self.policy.library_bytes:
@@ -200,6 +222,10 @@ class ImportSession:
         # Keep the separate one-write headroom available after actual allocations.
         if shutil.disk_usage(self.root).free < self._minimum_free + WRITE_HEADROOM:
             raise ImportBudgetExceeded('The library volume lacks the reserved import-write headroom.')
+        # Bracket the complete fixed-path/accounting observation. A missing or
+        # replaced ancestor is never accepted as zero-size SQLite state, and a
+        # cancellation arriving during the real checks is observed before grant.
+        self._live()
         return growth
 
     def _close(self):
