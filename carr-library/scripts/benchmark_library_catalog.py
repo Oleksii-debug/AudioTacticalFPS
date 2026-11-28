@@ -225,6 +225,7 @@ def _profile(generation, *, seconds, steps, memory_bytes):
 
 def initialize(directory, *, page_files=1000, slice_items=1000, steps=1001,
                slice_seconds=600.0, memory_bytes=GIB, search_disk_bytes=2*GIB,
+               search_memory_bytes=None,
                reserve_bytes=GIB, foreign_libraries=21, cancelled=lambda: False):
     """Create a new private LibraryApp profile and its first real review page."""
     directory = _root(directory)
@@ -233,13 +234,21 @@ def initialize(directory, *, page_files=1000, slice_items=1000, steps=1001,
             or type(steps) is not int or not 1 <= steps <= 1001
             or type(foreign_libraries) is not int or not 1 <= foreign_libraries <= 24
             or type(search_disk_bytes) is not int or not 4*MIB <= search_disk_bytes <= 64*GIB
-            or type(reserve_bytes) is not int or reserve_bytes < 0):
+            or type(reserve_bytes) is not int or reserve_bytes < 0
+            or (search_memory_bytes is not None and (
+                type(search_memory_bytes) is not int
+                or not 16*MIB <= search_memory_bytes <= 16*GIB))):
         raise ValueError("Invalid explicit benchmark profile.")
     generation = _generation(directory, cancelled)
     budget = _profile(generation, seconds=slice_seconds, steps=steps, memory_bytes=memory_bytes)
-    # Source windows use a bounded character allowance derived from this
-    # explicit memory policy. Admit one genuine maximum-size authored segment.
-    search_memory_bytes = max(64*MIB, budget.segment_bytes * 32 + MIB)
+    # Source windows use the existing SearchResources memory/32 allowance.
+    # Preserve the default; an explicit selection must still admit one full
+    # authored segment and pass the same measured RAM/disk admission below.
+    minimum_search_memory = max(64*MIB, budget.segment_bytes * 32 + MIB)
+    if search_memory_bytes is None:
+        search_memory_bytes = minimum_search_memory
+    elif search_memory_bytes < minimum_search_memory:
+        raise ValueError("Search memory must admit the maximum authored source segment.")
     capacity = fixture.capacity_plan(generation["generated_bytes"],
         generation["completed_books"], generation["segments"],
         search_spool_budget_bytes=search_disk_bytes, free_reserve_bytes=reserve_bytes,
@@ -832,6 +841,8 @@ def main(argv=None):
     parser.add_argument("--steps", type=int, default=1001)
     parser.add_argument("--memory-mib", type=int, default=1024)
     parser.add_argument("--search-disk-mib", type=int, default=2048)
+    parser.add_argument("--search-memory-mib", type=int, default=None,
+                        help="Explicit existing search working-memory allowance; default admits one authored segment.")
     parser.add_argument("--reserve-mib", type=int, default=1024)
     parser.add_argument("--foreign-libraries", type=int, default=21)
     parser.add_argument("--crash-after-first-commit", action="store_true")
@@ -843,6 +854,7 @@ def main(argv=None):
         result = initialize(args.fixture, page_files=args.page_files, slice_items=args.slice_items,
             steps=args.steps, slice_seconds=args.slice_seconds, memory_bytes=args.memory_mib*MIB,
             search_disk_bytes=args.search_disk_mib*MIB, reserve_bytes=args.reserve_mib*MIB,
+            search_memory_bytes=(None if args.search_memory_mib is None else args.search_memory_mib*MIB),
             foreign_libraries=args.foreign_libraries)
     elif args.command == "import":
         result = run_import(args.fixture, seconds=args.seconds,

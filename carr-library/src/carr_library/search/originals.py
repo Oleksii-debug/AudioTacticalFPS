@@ -218,6 +218,13 @@ class PageOriginals:
                         or _identity(found.path) != found.stamp):
                     raise ValueError("An original changed during final source verification.")
                 active.check()
+        # A later original's full hash must not hide a change to an earlier
+        # captured source. Recheck the complete bounded identity set after all
+        # byte proofs, before the final catalog epoch and page publication.
+        for found in self._originals.values():
+            self._check(app, self.workspace, budget.stopped)
+            if _identity(found.path) != found.stamp:
+                raise ValueError("An original changed before publishing this search page.")
         self._check(app, self.workspace, budget.stopped)
         owner.check(app, epoch)
 
