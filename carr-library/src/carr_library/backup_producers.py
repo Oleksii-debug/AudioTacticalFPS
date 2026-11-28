@@ -20,6 +20,13 @@ LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
 STUDIO = re.compile(r'state/studio/jobs/(' + ID + r')/(job|control|project|timeline)\.json\Z')
 SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
+_CHAPTER_CUE = re.compile(r'state/studio/jobs/' + ID + r'/chapters-([0-9]{4})\.cue\Z')
+
+
+def generated_chapter_cue(name):
+    """Only rebuildable private CUE sheets, never arbitrary editor documents."""
+    matched = _CHAPTER_CUE.fullmatch(name)
+    return matched is not None and 1 <= int(matched[1]) <= 102
 
 
 def limit(name):
@@ -171,13 +178,17 @@ def _studio_job(value, identity):
         if (value['result']['project'] != project.id or value['result']['revision'] != project.revision
                 or value['result']['source_sha256'] != sha256(project.original_script.encode()).hexdigest()):
             raise ValueError('Production result belongs to another project.')
+        if 'editor_interchange' in value['result']:
+            _validate_editor_interchange(project, value['result'])
 
 
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
                    'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice',
-                                                      'effects', 'markers', 'marker_notice'})
+                                                      'effects', 'markers', 'marker_notice', 'editor_interchange'})
+    if 'editor_interchange' in value:
+        _editor_interchange_shape(value['editor_interchange'])
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -300,6 +311,94 @@ def _timeline(value):
                     row['position'] * value['sample_rate'])) > .001
                     or abs(row['start'] - chapters[row['scene']]['start'] - row['position']) > 1e-6):
                 raise ValueError('Marker position differs from its authored sample-grid annotation.')
+
+
+def _editor_interchange_shape(report):
+    """Recognize only the current inert, bounded CUE declaration."""
+    from .studio.interchange import _NOTICE
+    common = {'schema', 'format', 'status', 'notice', 'files', 'editor_import'}
+    if type(report) is not dict:
+        raise ValueError('Invalid chapter interchange declaration.')
+    if report.get('status') == 'unavailable':
+        fields(report, common | {'reason'})
+        if report['reason'] not in (
+                'CUE export supports up to 10000 chapters per production.',
+                'Distinct chapter starts cannot be represented by ordered 75 Hz CUE indices.'):
+            raise ValueError('Unknown chapter interchange refusal.')
+        if type(report['files']) is not list or report['files']:
+            raise ValueError('Unavailable chapter interchange cannot declare files.')
+    elif report.get('status') == 'ready':
+        fields(report, common | {'encoding', 'audio_file', 'timebase', 'rounding',
+            'maximum_marker_shift_seconds_exclusive', 'project_title_preserved'})
+        if (report['encoding'] != 'UTF-8' or report['audio_file'] != 'master.wav'
+                or type(report['timebase']) is not int or report['timebase'] != 75
+                or report['rounding'] != 'floor'
+                or type(report['maximum_marker_shift_seconds_exclusive']) is not float
+                or report['maximum_marker_shift_seconds_exclusive'] != 1 / 75
+                or type(report['project_title_preserved']) is not bool
+                or type(report['files']) is not list or not 1 <= len(report['files']) <= 102):
+            raise ValueError('Invalid chapter interchange bounds.')
+        ordinal = 0
+        for number_, sheet in enumerate(report['files'], 1):
+            fields(sheet, {'file', 'tracks'})
+            if (sheet['file'] != f'chapters-{number_:04d}.cue'
+                    or type(sheet['tracks']) is not list or not 1 <= len(sheet['tracks']) <= 99):
+                raise ValueError('Invalid chapter interchange sheet.')
+            for track_number, track in enumerate(sheet['tracks'], 1):
+                fields(track, {'track', 'chapter', 'scene', 'index_75hz', 'original_title_preserved'})
+                ordinal += 1
+                if (type(track['track']) is not int or track['track'] != track_number
+                        or type(track['chapter']) is not int or track['chapter'] != ordinal
+                        or ordinal > 10000 or type(track['scene']) is not str
+                        or not re.fullmatch(ID, track['scene'])
+                        or type(track['original_title_preserved']) is not bool):
+                    raise ValueError('Invalid chapter interchange source binding.')
+                number(track['index_75hz'], 0, 2 ** 31 - 1, integer=True)
+    else:
+        raise ValueError('Unknown chapter interchange status.')
+    if (type(report['schema']) is not int or report['schema'] != 1
+            or report['format'] != 'CUE/PCM WAVE' or report['notice'] != _NOTICE
+            or report['editor_import'] != 'NOT_RUN'):
+        raise ValueError('Unknown chapter interchange schema or qualification.')
+
+
+def _validate_editor_interchange(project, timeline, *, cancelled=lambda: False):
+    from .durable_state import encode
+    from .studio.interchange import chapter_cues
+    _editor_interchange_shape(timeline['editor_interchange'])
+    _files, expected = chapter_cues(project, timeline, cancelled=cancelled)
+    if encode(timeline['editor_interchange']) != encode(expected):
+        raise ValueError('Chapter interchange differs from its exact project and measured timeline.')
+
+
+def validate_studio_interchange(stage, entries, *, cancelled=lambda: False):
+    """Recompute new timeline metadata inside the already verified backup stage.
+
+    Private generated CUE bytes are excluded, like other rebuildable outputs.
+    Their retained metadata cannot invent editor acceptance or source bindings.
+    Legacy timelines without this optional declaration keep their prior codec.
+    """
+    from pathlib import Path
+    from .backup_sidecars import _check_cancelled, _json, read_regular
+    from .studio.project import Project
+    names = {entry['filename'] for entry in entries}
+    for name in sorted(names):
+        _check_cancelled(cancelled)
+        match = STUDIO.fullmatch(name)
+        if match is None or match[2] != 'timeline':
+            continue
+        timeline = _json(read_regular(Path(stage) / name, limit(name)))
+        if 'editor_interchange' not in timeline:
+            continue
+        project_name = name.rsplit('/', 1)[0] + '/project.json'
+        if project_name not in names:
+            raise ValueError('Chapter interchange needs its exact retained project checkpoint.')
+        project = Project.from_dict(_json(read_regular(
+            Path(stage) / project_name, limit(project_name))))
+        _timeline(timeline)
+        _validate_editor_interchange(project, timeline, cancelled=cancelled)
+    _check_cancelled(cancelled)
+
 
 def _assistant_job(db, value, identity):
     from .assistant.models import Step, canonical

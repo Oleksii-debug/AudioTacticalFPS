@@ -559,7 +559,10 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False, include_
                     pending.append(relative)
                 else:
                     _regular(path)
-                    if not _ignored(relative) and selected(relative):
+                    # Only ordinary generated private CUE sheets are rebuildable;
+                    # directories, aliases and all unknown paths retain their guards.
+                    if (not _ignored(relative) and not backup_producers.generated_chapter_cue(relative)
+                            and selected(relative)):
                         sidecar_limit(relative)
                         files[relative] = _identity(info)
                 if len(files) + len(directories) + len(pending) > MAX_FILES:

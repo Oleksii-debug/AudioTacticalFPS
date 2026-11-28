@@ -80,9 +80,9 @@ jobs:
           assert source != installed and not installed.is_relative_to(root / "src")
           selected = source if mode == "source" else installed
           artifacts = root / "ci-cue-interchange"
-          suites = ["tests/studio/test_interchange.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_production_total_budget_ownership.py","tests/studio/test_publishing.py","tests/studio/test_publishing_cli.py","tests/studio/test_audiobook_publication.py","tests/studio/test_clip_timeline.py","tests/studio/test_runtime_identity.py"]
+          suites = ["tests/studio/test_interchange.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_production_total_budget_ownership.py","tests/studio/test_publishing.py","tests/studio/test_publishing_cli.py","tests/studio/test_audiobook_publication.py","tests/studio/test_clip_timeline.py","tests/studio/test_runtime_identity.py","tests/storage/test_cue_interchange_backup.py"]
 
-          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.dsp","carr_library.audio.audiobook","carr_library.audio.process","carr_library.audio.models","carr_library.durable_state"]
+          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.dsp","carr_library.audio.audiobook","carr_library.audio.process","carr_library.audio.models","carr_library.durable_state","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.backup_current"]
           
           def checkout_head():
               value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
