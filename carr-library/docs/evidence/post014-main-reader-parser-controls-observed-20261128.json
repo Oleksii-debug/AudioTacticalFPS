@@ -1,0 +1,224 @@
+{
+  "schema": "carr.post014-main-reader-controls-observed.v1",
+  "status": "PARSER_CONTROLS_PASS",
+  "observed_utc": "2026-11-28T02:42:25Z",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "961ca5d2bff8dd62b18b060ce7e0b7a588d84184",
+    "tree": "2ce77d261584f2850222a98b55e9fdb18a89b7da",
+    "parent_application_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "parent_application_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+    "preserved_parent_files": 1781,
+    "tooling_added_files": 3,
+    "materialization_review": "Recursive GitData tree comparison preserved every parent blob/mode; exact compare showed only the three approved additions.",
+    "bindings": [
+      {
+        "path": "carr-library/scripts/main_artifact_reader.py",
+        "blob": "f276d0e4a2ad686be21933f92d3c1b6a1443bb08",
+        "sha256": "1dca0f5febd534b69f89c7db6fd1f11893baf342b0e2e46549b3ec32663747d2",
+        "utf8_bytes": 126803
+      },
+      {
+        "path": "carr-library/docs/validation/POST014_MAIN_READER_SOURCE_EXTENSION_20261128.json",
+        "blob": "71356254373b5f3346a608cd1c33968139f3ec51",
+        "sha256": "a936fb14363990527564fb5cf38a3c766c01a5418bf975a2f4fa04e1fe82360c",
+        "utf8_bytes": 15046
+      },
+      {
+        "path": ".github/workflows/carr-main-reader-self-check.yml",
+        "blob": "cc21d54e5fe9ce8f7aef9c3c3a41d63f45f53ab6",
+        "sha256": "58d0ba8f47e3bdb6f4e9fd654dabbb0cdab4fde4e6c64086fa9f7339bc8e0356",
+        "utf8_bytes": 1590
+      }
+    ],
+    "runtime_checkout": "The completed job log records checkout ref and git log -1 as the exact source commit above."
+  },
+  "run": {
+    "id": 46098851005,
+    "job_id": 140836431086,
+    "run_attempt": 1,
+    "event": "push",
+    "workflow": ".github/workflows/carr-main-reader-self-check.yml",
+    "workflow_name": "CARR inert reader parser controls only",
+    "branch": "carr/main-reader-self-check-r37-c31-d3a-20261128",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-28T02:35:44Z",
+    "updated_at": "2026-11-28T02:41:53Z",
+    "job_name": "parser-controls-only",
+    "job_started_at": "2026-11-28T02:41:39Z",
+    "job_completed_at": "2026-11-28T02:41:52Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098851005",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098851005/job/140836431086",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:40Z",
+        "completed_at": "2026-11-28T02:41:41Z"
+      },
+      {
+        "number": 2,
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:41Z",
+        "completed_at": "2026-11-28T02:41:45Z"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:45Z",
+        "completed_at": "2026-11-28T02:41:46Z"
+      },
+      {
+        "number": 4,
+        "name": "Parser controls only; no application or artifact qualification",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:46Z",
+        "completed_at": "2026-11-28T02:41:48Z"
+      },
+      {
+        "number": 5,
+        "name": "Preserve the parser-only receipt",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:48Z",
+        "completed_at": "2026-11-28T02:41:49Z"
+      },
+      {
+        "number": 9,
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:49Z",
+        "completed_at": "2026-11-28T02:41:49Z"
+      },
+      {
+        "number": 10,
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:49Z",
+        "completed_at": "2026-11-28T02:41:50Z"
+      },
+      {
+        "number": 11,
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:41:50Z",
+        "completed_at": "2026-11-28T02:41:50Z"
+      }
+    ]
+  },
+  "command": {
+    "exact": "python -I -B -X utf8 carr-library/scripts/main_artifact_reader.py --self-check",
+    "environment": "GitHub-hosted Ubuntu24.04.5, runner image20261122.23.1",
+    "python_version": "3.11.18",
+    "behavior": "The exact source main() checks isolated/no-bytecode flags, executes self_check(), then returns before reading CONFIG_PATH or entering inspect(). The controls use synthetic in-memory ZIP/JSON/Counters only."
+  },
+  "decoded_job_log": {
+    "characters": 21954,
+    "utf8_bytes": 21956,
+    "sha256": "30656c48c4ba407277b64d2f0fbc7586e42f88a7d970eb13b8b79266590934d3",
+    "retrieval": "Complete completed-job decoded log from GitHub Actions; no live-log or truncated-tail substitution.",
+    "hash_scope": "UTF-8 encoding of the exact returned decoded string, including its leading U+FEFF; this is not a hash of GitHub's compressed transport."
+  },
+  "log_receipt": {
+    "timestamp": "2026-11-28T02:41:48.1507846Z",
+    "utf8_bytes": 965,
+    "sha256": "62ecd2906c9d92d0643af1dfd815cbfd11241a32fa4d9d74b1008eb2365cae61",
+    "hash_scope": "Exact printed JSON text after the timestamp, without a line terminator. This is a log-record hash, not a claimed artifact-member hash.",
+    "exact_field_set_compared": true,
+    "exact_ordered_labels_compared": true,
+    "required_negative": 19,
+    "observed_negative": 19,
+    "required_positive": 4,
+    "observed_positive": 4,
+    "receipt": {
+      "actual_application_execution": "NOT_RUN",
+      "negative_controls": [
+        "missing-required-member",
+        "duplicate-normalized-member",
+        "wrong-function-multiplicity",
+        "wrong-source-identity",
+        "source-map-wrong-target",
+        "source-map-unreviewed-path",
+        "source-map-changed-prior",
+        "source-map-changed-after",
+        "source-map-dropped-unchanged-binding",
+        "post014-source-map-wrong-target",
+        "post014-source-map-unreviewed-pin",
+        "post014-source-map-dropped-pin",
+        "post014-source-map-rebound-history",
+        "post014-source-map-wrong-population",
+        "post014-oracle-dropped-old-case",
+        "post014-oracle-wrong-added-multiplicity",
+        "post014-oracle-changed-old-multiplicity",
+        "post014-oracle-unrelated-module-change",
+        "post014-oracle-nonpopulation-change"
+      ],
+      "positive_controls": [
+        "appended-verdict-and-universal-newlines",
+        "exact-reviewed-successor-source-map",
+        "exact-reviewed-post014-source-map",
+        "exact-additive-resource-populations"
+      ],
+      "schema": "carr-full-main-reader-self-check/1",
+      "status": "PASS"
+    }
+  },
+  "control_preservation": {
+    "previous_negative_count": 9,
+    "previous_positive_count": 2,
+    "new_negative_count": 10,
+    "new_positive_count": 2,
+    "new_refusals_cover": [
+      "Wrong current run target, changed or dropped source pins, rebound historical config and wrong protected totals.",
+      "A dropped old case, wrong new-case multiplicity, compensated change to an old multiplicity, an unrelated module change and a changed nonpopulation field."
+    ],
+    "positive_scope": [
+      "Original appended-verdict/universal-newline parsing and exact f77-to014 source map.",
+      "Exact post014 two-source-pin repair map and additive resource Counter preservation in both modes."
+    ]
+  },
+  "artifact_metadata": {
+    "id": 15244582281,
+    "name": "carr-main-reader-controls-961ca5d2bff8dd62b18b060ce7e0b7a588d84184-1",
+    "bytes": 557,
+    "sha256": "7a26662161cbc4b9d99f8609bcbb09e7d9117e596acd72208f9673ce7dfb0087",
+    "expired": false,
+    "created_at": "2026-11-28T02:41:49Z",
+    "expires_at": "2027-02-26T02:35:44Z",
+    "run_id": 46098851005,
+    "head_sha": "961ca5d2bff8dd62b18b060ce7e0b7a588d84184",
+    "metadata_api_matches_upload_log": true,
+    "independent_zip_download": "NOT_PERFORMED",
+    "independent_zip_member_read": "NOT_PERFORMED"
+  },
+  "acceptance_boundary": {
+    "parser_control_execution": "PASS",
+    "actual_application_execution": "NOT_RUN",
+    "actual_main_artifact_read": "NOT_RUN",
+    "installed_native_standard_or_model_qualification": "NOT_RUN_BY_THIS_JOB",
+    "no_transfer_to_future_candidate": true,
+    "future_reader": "Bind the eventual frozen application's own source/tree/run/job/attempt and completed artifact metadata separately. Keep historical014/f77 records and all failed outcomes intact.",
+    "config_file_read": "NOT_RUN_BY_SELF_CHECK",
+    "github_api_or_artifact_access_by_self_check": "NOT_RUN",
+    "fixture_archive_execution": "NONE"
+  },
+  "evidence_changes": {
+    "intended_parent_commit": "961ca5d2bff8dd62b18b060ce7e0b7a588d84184",
+    "paths_added": 1,
+    "application_source_changed": false,
+    "refs_changed": false,
+    "workflow_mutation": false,
+    "note": "This additive observed proof leaves the prior source-only design document and immutable control branch unchanged."
+  }
+}
