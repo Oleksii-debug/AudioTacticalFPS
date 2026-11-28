@@ -1,0 +1,116 @@
+{
+  "schema": "carr-local-voice-deny-delete-fixture-repair/1",
+  "status": "SOURCE_FIX_NOT_EXECUTED",
+  "parent": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+  "observed_failure": {
+    "run_id": 46107488747,
+    "job_id": 140863383870,
+    "run_attempt": 1,
+    "source_commit": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+    "source_tree": "c6a3df5fe5e6ed328ee6d1552d7360f1b94e0d9e",
+    "status": "completed",
+    "conclusion": "failure",
+    "source_phase": {
+      "passed": 272,
+      "failed": 2,
+      "skipped": 0,
+      "seconds": 42.26
+    },
+    "installed_phase": {
+      "passed": 272,
+      "failed": 2,
+      "skipped": 0,
+      "seconds": 42.25
+    },
+    "failed_cases": [
+      "tests/audio/test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[deadline]",
+      "tests/audio/test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[cancel]"
+    ],
+    "failed_assertion": "first_refusal.is_set() and released.is_set() and len(attempts) >= 2",
+    "actual_first_refusal": false,
+    "preceding_expected_timeout_or_interruption_assertions_completed": true,
+    "raw_decoded_log": {
+      "utf8_bytes": 242203,
+      "sha256": "d4bf2bf747055d49e55a41af521f0d7fdbe3b96c9a0defda2e9e3e5332fc7cad",
+      "complete_log_read": true
+    },
+    "artifact": {
+      "id": 15248467350,
+      "name": "carr-silence-inspection-e9bba260fd66cfe5217f8081778fcdfc9dfd202c-1",
+      "size_in_bytes": 473546,
+      "sha256": "a76bfdf3c0c272a31b9abf53d2e782953b7c4984bac90335c82e07142d5974bb",
+      "workflow_run": {
+        "id": 46107488747,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/silence-inspection-e9bba-d3a-20261128",
+        "head_sha": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c"
+      },
+      "archive_downloaded": false,
+      "archive_decoded": false
+    }
+  },
+  "source_diagnosis": {
+    "fixture_path": "carr-library/tests/audio/test_local_voice_helper.py",
+    "fixture_function": "_hold_private_directory_without_delete_sharing",
+    "previous_access_mask": "FILE_READ_ATTRIBUTES (0x80)",
+    "unchanged_share_mask": "FILE_SHARE_READ | FILE_SHARE_WRITE (0x3), without FILE_SHARE_DELETE",
+    "explanation": "The fixture opened a metadata-only directory handle. Microsoft's native sharing algorithm does not require such an existing handle to prevent a subsequent delete open: its granted access must contain a read-data, execute, write-data, append-data or delete bit. The directory FILE_LIST_DIRECTORY bit is the corresponding FILE_READ_DATA bit. The absence of an observed refusal in both source and installed phases is consistent with this exact fixture error.",
+    "inference_boundary": "The failed log establishes the missing test refusal and successful propagation of the expected TimeoutError/InterruptedError. It does not identify the holder of the older c31 transient directory lock and does not justify changing process ownership or production cleanup.",
+    "primary_sources": [
+      {
+        "url": "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fsa/82b364ce-6d7b-422f-8d88-4db32eea809a",
+        "section": "2.1.5.1.2.1 Algorithm to Check Access to an Existing File",
+        "supports": "Existing no-delete-share opens participate in delete conflict only with the listed data/execute/write/append/delete access bits."
+      },
+      {
+        "url": "https://learn.microsoft.com/en-us/windows/win32/fileio/file-access-rights-constants",
+        "section": "FILE_LIST_DIRECTORY, FILE_READ_DATA, FILE_READ_ATTRIBUTES",
+        "supports": "Directory listing/read-data is bit 0x1; reading attributes is bit 0x80."
+      },
+      {
+        "url": "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew",
+        "section": "dwShareMode and FILE_FLAG_BACKUP_SEMANTICS",
+        "supports": "Attribute-access requests are distinct from sharing checks; the fixed directory-handle flags remain appropriate."
+      }
+    ]
+  },
+  "repair": {
+    "new_access_mask": "FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY (0x80 | 0x1)",
+    "before_hunk": "    # FILE_READ_ATTRIBUTES; share read/write, deliberately not delete;\n    # OPEN_EXISTING; directory backup semantics and no reparse following.\n    handle = create(str(path), 0x80, 0x3, None, 3, 0x02000000 | 0x00200000, None)\n",
+    "after_hunk": "    # FILE_LIST_DIRECTORY participates in the native read-data sharing check;\n    # FILE_READ_ATTRIBUTES alone does not. Share read/write, deliberately not delete.\n    # OPEN_EXISTING; directory backup semantics and no reparse following.\n    handle = create(str(path), 0x80 | 0x1, 0x3, None, 3, 0x02000000 | 0x00200000, None)\n",
+    "previous_git_blob": "72426b335435ab79cc07240cfa683683c8e0b8ae",
+    "previous_sha256": "a60405f1ca2468b5a899de61adefa98bde09003ca98c1d71d3b7e0619e3967b3",
+    "corrected_sha256": "04cc704966a6a66151071ae8a97df7ee0828fb9a6773de51f4b645ab38d27893",
+    "inverse_hunk_reconstructs_complete_previous_test_file": true,
+    "production_files_changed": 0,
+    "retained_module_cases": 77,
+    "retained_target_function_multiplicity": 2,
+    "focused_population_unchanged": {
+      "source": 274,
+      "installed": 274,
+      "native": 29
+    },
+    "full_protected_population_unchanged": {
+      "source": 5947,
+      "installed": 5619
+    },
+    "checks_preserved": [
+      "The fixture uses an actual CreateFileW directory handle on Windows and actual shutil.rmtree; no Windows sharing error is fabricated.",
+      "Every removal attempt requires all observed processes exited and their existing native job handles closed.",
+      "Every removal attempt requires the real temporary streams and selected helper launch readers closed.",
+      "The real first sharing refusal must be observed before the handle is released.",
+      "The same owned directory must be retried at least twice, then removed.",
+      "Both original deadline and explicit cancellation exceptions must survive successful cleanup.",
+      "The deadline, bounded join, total duration, no-output, no-stage and cleanup-error assertions remain byte-identical.",
+      "All existing case identities, gate Counters and production process/manifest/cache behavior remain unchanged."
+    ]
+  },
+  "verification": {
+    "source_readback": "Required before handoff; no executor was available for this component.",
+    "runtime": "NOT_RUN",
+    "historical_focused_failure_preserved": true,
+    "application_success_claim": false,
+    "limitations": "The corrected native access mask still requires a fresh real Windows run. No evidence from an older head is transferred."
+  }
+}

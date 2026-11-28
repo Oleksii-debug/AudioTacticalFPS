@@ -6,7 +6,7 @@
   "product": "Resonance",
   "version": "0.2.0.dev2",
   "full_platform_status": "NOT_QUALIFIED",
-  "integrated_automatic_acceptance": "The exact c31 predecessor completed source FAILURE:450/451 suites passed,11462 passed and1 failed case event,0 skipped. Later protected/native/installed/bundle/standard stages were skipped. A helper-owned post-process directory-sharing cleanup correction and the post_c31_completed_audio_inspection implementation require their own complete exact successor qualification.",
+  "integrated_automatic_acceptance": "The exact e9 focused Windows gate completed FAILURE: 272 passed and 2 failed in each mode; its separate native inspection passed 29 checks. A narrow Windows deny-delete fixture correction now requires its own exact successor execution. All 425 application blobs, every gate and all declared populations are unchanged from e9. The ongoing e9 main result is not inferred from the focused failure; c31 remains a recorded failed predecessor.",
   "authority": [
     {
       "path": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
@@ -931,5 +931,95 @@
       "docs/evidence/pr209-c31-auxiliary-observed-results-20261128.json",
       "docs/evidence/c31-main-observed-failure-20261128.json"
     ]
+  },
+  "post_e9_native_directory_fixture_correction": {
+    "schema": "carr-post-e9-native-directory-fixture-correction/1",
+    "status": "SOURCE_REVIEWED_REQUIRES_EXACT_SUCCESSOR_RUNTIME",
+    "baseline": {
+      "commit": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+      "tree": "c6a3df5fe5e6ed328ee6d1552d7360f1b94e0d9e"
+    },
+    "observed_focused": {
+      "run_id": 46107488747,
+      "job_id": 140863383870,
+      "attempt": 1,
+      "status": "FAILURE",
+      "completed_at": "2026-11-28T04:34:47Z",
+      "source": {
+        "passed": 272,
+        "failed": 2,
+        "skipped": 0,
+        "seconds": 42.26
+      },
+      "installed": {
+        "passed": 272,
+        "failed": 2,
+        "skipped": 0,
+        "seconds": 42.25
+      },
+      "native": {
+        "status": "PASS_WITHIN_ITS_SEPARATE_SCOPE",
+        "checks": 29,
+        "metrics": 12,
+        "source_bound_installed_modules": 13
+      },
+      "artifact": {
+        "id": 15248467350,
+        "bytes": 473546,
+        "sha256": "a76bfdf3c0c272a31b9abf53d2e782953b7c4984bac90335c82e07142d5974bb"
+      },
+      "validated_source_counter": "ABSENT_AFTER_FAILED_PHASE",
+      "validated_installed_counter": "ABSENT_AFTER_FAILED_PHASE",
+      "archive_read": false,
+      "evidence": "docs/evidence/completed-audio-inspection-focused-failure-e9-20261128.json"
+    },
+    "failed_cases": [
+      "tests/audio/test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[deadline]",
+      "tests/audio/test_local_voice_helper.py::test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement[cancel]"
+    ],
+    "fixture_correction": {
+      "component": "fe1d4744fb5b758fb006771d1e78280c278f9f7d",
+      "path": "carr-library/tests/audio/test_local_voice_helper.py",
+      "before": "72426b335435ab79cc07240cfa683683c8e0b8ae",
+      "after": "85edae85f0de7f1fdce09d34f32be2e163edd9e7",
+      "sha256": "04cc704966a6a66151071ae8a97df7ee0828fb9a6773de51f4b645ab38d27893",
+      "change": "Request directory list/read-data access as well as metadata access (0x81 instead of 0x80), retaining the real no-delete-share handle and observed Windows sharing refusal.",
+      "evidence": "docs/evidence/local-voice-helper-deny-delete-fixture-repair-20261128.json",
+      "all_assertions_and_prior_test_bytes_preserved_except_one_access_mask_and_comment": true,
+      "all_application_blobs_unchanged": 425
+    },
+    "preserved_populations": {
+      "protected_source": 5947,
+      "protected_installed": 5619,
+      "source_modules": 252,
+      "installed_modules": 239,
+      "source_selectors": 451,
+      "focused_source": 274,
+      "focused_installed": 274,
+      "focused_functions": 117,
+      "native_checks": 29,
+      "helper_cases": 77
+    },
+    "review": {
+      "root": "SOURCE_GO_NOT_EXECUTED",
+      "independent": "SOURCE_GO_NOT_EXECUTED",
+      "product_code_change": "NONE"
+    },
+    "reader_controls": {
+      "source_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
+      "run_id": 46107509544,
+      "job_id": 140863455133,
+      "status": "PASS_PARSER_ONLY",
+      "negative": 37,
+      "positive": 6,
+      "evidence": "docs/evidence/post-c31-main-reader-parser-controls-observed-20261128.json",
+      "application_and_archive_qualification": "NOT_RUN"
+    },
+    "qualification": {
+      "successor": "NOT_RUN: requires its own focused/full/auxiliary/native/installed/standard and independent artifact read.",
+      "e9_main": "RUNNING when this correction was prepared; preserve its eventual actual result, without inferring it from the focused failure.",
+      "full_platform": "NOT_QUALIFIED",
+      "external": "Real model/language/acoustic, manual NVDA/hardware, real-corpus and distribution-rights acceptance remain separate."
+    }
   }
 }

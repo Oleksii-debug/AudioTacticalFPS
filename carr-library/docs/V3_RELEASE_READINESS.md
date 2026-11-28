@@ -16,6 +16,44 @@ remain authoritative. The
 [machine-readable matrix](validation/RESONANCE_REQUIREMENT_STATUS_20261127.json)
 keeps their exact source blobs and separate evidence dimensions.
 
+## 28 November: observed Windows fixture correction after e9
+
+The exact `e9bba260` [focused Windows run46107488747](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107488747)
+completed **FAILURE**. Source reported **272 passed / 2 failed** in42.26 seconds;
+installed reported **272 passed / 2 failed** in42.25 seconds. The two failures
+were the new deadline/cancellation helper-settlement fixtures: the expected
+original exceptions propagated, but the fixture never observed the deletion
+refusal that its held directory handle was intended to create. The failed
+adapters did not produce their validated complete function Counters.
+Their declared274-case populations do not become a passing result.
+
+The separate installed native inspection did pass its exact **29 checks**,
+12 metrics and13 current installed-source hash bindings. The final aggregate
+correctly failed. [Complete focused observation](evidence/completed-audio-inspection-focused-failure-e9-20261128.md)
+retains the actual phases, identities and limitations.
+
+The [narrow fixture repair](evidence/local-voice-helper-deny-delete-fixture-repair-20261128.json)
+adds the documented directory list/read-data access bit to its actual Windows
+handle. Metadata-only access had not made the no-delete-share request effective
+for this test. The test still requires a real sharing refusal before releasing
+the handle, all child/job/stream/reader settlement, at least two removals of the
+same owned directory, preserved timeout/cancellation and no output or leftover
+stage. Reversing this one access-mask/comment hunk restores the entire e9 test
+file exactly. The older c31 transient lock holder remains unidentified.
+
+**All425 application blobs are unchanged from e9.** The strict runners,
+workflows, native probe, oracles and their populations also remain unchanged:
+5,947 protected source /5,619 installed,274 focused cases per mode and29 native
+inspection checks. The corrected candidate needs its own complete execution.
+The e9 main was still running when this correction was prepared; its actual
+result will remain a separate record.
+
+The updated inert reader has separately passed all **37 refusal /6 positive
+parser controls** on its exact tooling source.
+[Actual parser-control record](evidence/post-c31-main-reader-parser-controls-observed-20261128.json)
+does not qualify an application or inspect a main artifact. The full platform
+remains **NOT_QUALIFIED** for the external acceptance dimensions below.
+
 ## 28 November: completed-audio long-silence inspection
 
 The exact c31 baseline completed **FAILURE** on28 November at03:59:17 UTC.
