@@ -1,4 +1,4 @@
-name: Read exact saved CARR broad service evidence
+name: Read exact genuine library growth pilot reports
 
 on:
   push:
@@ -30,16 +30,29 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15252047132
-          SOURCE_RUN = 46110898337
-          SOURCE_HEAD = "95d305d527f8fa4f36202d40fc069d71f2551069"
-          ZIP_BYTES = 49394
-          ZIP_SHA256 = "d7f55b6c1e80f4dd4642d5845045f3bbcaae128a06873e8b0855f739d2844473"
+          ARTIFACT_ID = 15252706496
+          SOURCE_RUN = 46114336553
+          SOURCE_HEAD = "0e34a92908dbd5e8271fee71837e5b57859a653c"
+          ZIP_BYTES = 3427639
+          ZIP_SHA256 = "281e954c9c89e589eb219c012e2c17062cc8df9de5cccf1afcdeb042c59fca26"
           MAX_MEMBERS = 128
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
-          REQUIRED_FILES = {"v3-tests.xml"}
+          REQUIRED_FILES = {
+              "ci-native-audio-diagnostic/pilot-hardware.json",
+              "ci-native-audio-diagnostic/installed-source.json",
+              "ci-native-audio-diagnostic/pilot-controls.txt",
+              "ci-native-audio-diagnostic/library-growth-pilot.txt",
+              "ci-library-growth/pilot-source.json",
+              "ci-library-growth/pilot-report.json",
+              "ci-library-growth/child-100-outcome.json",
+              "ci-library-growth/child-1000-outcome.json",
+              "ci-library-growth/child-100.log",
+              "ci-library-growth/child-1000.log",
+              "ci-library-growth/books-100/case-report.json",
+              "ci-library-growth/books-1000/checkpoint-0041.json",
+          }
 
           def fixed_get(endpoint, limit):
               result = subprocess.run(
@@ -68,6 +81,8 @@ jobs:
               raise ValueError("Saved phase archive bytes do not match the fixed review.")
 
           decoded = []
+          available, unread = [], []
+          selected_total = 0
           with zipfile.ZipFile(io.BytesIO(raw), "r") as archive:
               entries = archive.infolist()
               if not entries or len(entries) > MAX_MEMBERS:
@@ -94,10 +109,16 @@ jobs:
                   if not 0 <= entry.file_size <= MAX_MEMBER_BYTES:
                       raise ValueError("Saved phase member exceeds its byte limit.")
                   total += entry.file_size
-                  if total > MAX_TOTAL_BYTES:
-                      raise ValueError("Saved phase text exceeds its aggregate byte limit.")
-                  if path.name in REQUIRED_FILES:
-                      required[path.name] = required.get(path.name, 0) + 1
+                  # The sealed archive contains cumulative checkpoint copies.
+                  # Validate their metadata without decompressing unselected payloads.
+                  available.append({"path": name, "declared_bytes": entry.file_size})
+                  if name not in REQUIRED_FILES:
+                      unread.append(name)
+                      continue
+                  required[name] = required.get(name, 0) + 1
+                  selected_total += entry.file_size
+                  if selected_total > MAX_TOTAL_BYTES:
+                      raise ValueError("Selected pilot text exceeds its aggregate byte limit.")
                   with archive.open(entry, "r") as stream:
                       content = stream.read(entry.file_size + 1)
                   if len(content) != entry.file_size:
@@ -105,62 +126,17 @@ jobs:
                   text = content.decode("utf-8")
                   decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
-                  raise ValueError("The required completed broad-service JUnit report is absent or ambiguous.")
+                  raise ValueError("The required exact pilot evidence is absent or ambiguous.")
 
           print(json.dumps({
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
               "source_run": SOURCE_RUN, "source_head": SOURCE_HEAD,
               "archive_bytes": ZIP_BYTES, "archive_sha256": ZIP_SHA256,
-              "text_members": len(decoded), "text_bytes": total,
+              "text_members": len(decoded), "text_bytes": selected_total,
+              "archive_text_members": len(available), "archive_declared_text_bytes": total,
+              "available_files": available, "unread_members": sorted(unread),
               "scope": "readback of saved public diagnostics; no application execution"
           }, ensure_ascii=True), flush=True)
-          # The original XML member remains hash-bound; report only bounded JUnit facts.
-          import xml.etree.ElementTree as ElementTree
-          junit_members = [(name, content) for name, content, text in decoded
-                           if PurePosixPath(name).name == "v3-tests.xml"]
-          if len(junit_members) != 1:
-              raise ValueError("A single exact broad-service JUnit member is required.")
-          junit_name, junit_bytes = junit_members[0]
-          if b"<!DOCTYPE" in junit_bytes.upper() or b"<!ENTITY" in junit_bytes.upper():
-              raise ValueError("JUnit declarations are not accepted.")
-          junit_root = ElementTree.fromstring(junit_bytes)
-          cases = list(junit_root.iter("testcase"))
-          if not 0 < len(cases) <= 100000:
-              raise ValueError("JUnit testcase count is outside its read bound.")
-          skipped, failures, passed = [], [], 0
-          for case in cases:
-              skip = case.find("skipped")
-              failed = any(case.find(tag) is not None for tag in ("failure", "error"))
-              if skip is not None and failed:
-                  raise ValueError("JUnit testcase has contradictory terminal outcomes.")
-              if skip is None and not failed:
-                  passed += 1
-                  continue
-              identity = {"classname": case.get("classname", ""), "name": case.get("name", "")}
-              if any(len(value) > 2048 for value in identity.values()):
-                  raise ValueError("JUnit testcase identity is outside its read bound.")
-              if skip is not None:
-                  reason = skip.get("message", "")
-                  kind = skip.get("type", "")
-                  if len(reason) > 4096 or len(kind) > 512:
-                      raise ValueError("JUnit skip reason is outside its read bound.")
-                  skipped.append({**identity, "type": kind, "reason": reason})
-              else:
-                  failures.append(identity)
-          report = {"artifact_id": ARTIFACT_ID, "source_run": SOURCE_RUN,
-                    "source_head": SOURCE_HEAD, "member": junit_name,
-                    "member_bytes": len(junit_bytes),
-                    "member_sha256": hashlib.sha256(junit_bytes).hexdigest(),
-                    "testcases": len(cases), "passed": passed,
-                    "failed": len(failures), "skipped": len(skipped),
-                    "skip_cases": skipped, "failed_cases": failures,
-                    "scope": "derived from the exact saved JUnit member; no new application execution"}
-          payload = json.dumps(report, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
-          if len(payload.encode("utf-8")) > 65536:
-              raise ValueError("Structured JUnit facts exceed their output bound.")
-          print(json.dumps({"broad_junit_report_json": payload,
-                            "report_sha256": hashlib.sha256(payload.encode("utf-8")).hexdigest()},
-                           ensure_ascii=True), flush=True)
           for name, content, text in sorted(decoded, key=lambda item: item[0]):
               count = (len(text) + CHUNK_CHARACTERS - 1) // CHUNK_CHARACTERS
               print(json.dumps({
