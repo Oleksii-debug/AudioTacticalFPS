@@ -257,7 +257,7 @@ def main():
                 text = review.GetValue()
                 print(json.dumps({'event': 'native-audio-batch-review',
                     'temporary_root': temporary, 'selected_sources': [str(source), str(second_source)],
-                    'review': text}, ensure_ascii=False), flush=True)
+                    'review': text}, ensure_ascii=True), flush=True)
                 check('native batch review is read-only', isinstance(review, wx.TextCtrl) and not review.IsEditable())
                 check('review names both originals and exact output settings',
                       json.dumps(str(source), ensure_ascii=False) in text
@@ -362,7 +362,7 @@ def main():
     print(json.dumps({'result': 'PASS', 'checks': checks, 'audio_runtime': proof,
                       'native_keyboard': 'PASS', 'actual_ffmpeg': 'PASS',
                       'native_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN',
-                      'audible_listening': 'NOT_RUN'}, ensure_ascii=False), flush=True)
+                      'audible_listening': 'NOT_RUN'}, ensure_ascii=True), flush=True)
     return 0
 
 

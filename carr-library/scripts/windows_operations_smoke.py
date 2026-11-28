@@ -59,6 +59,8 @@ def main():
     deadline = monotonic() + 120
     detached_state = {}
     frame_identity, owner_loop, aborting = {}, [None], [False]
+    native_events, watched_palettes = [], set()
+    restore_invoke = None
 
     def advance(name):
         phase[:] = [name, monotonic()]
@@ -117,7 +119,66 @@ def main():
         control, = [child for child in window.GetChildren() if child.GetName() == name]
         return control
 
+    def note(kind, **values):
+        if len(native_events) < 32:
+            native_events.append({'kind': kind, 'stage': phase[0], **values})
+
+    def observe_manager(manager):
+        original = manager.invoke
+
+        def invoke(identity):
+            try:
+                note('invoke-before', command=identity, available=manager.available(identity),
+                     frame_enabled=frame.IsEnabled(), frame_working=frame.working)
+            except Exception as exc:
+                note('invoke-observation-error', error=type(exc).__name__ + ': ' + str(exc)[:128])
+            try:
+                result = original(identity)
+            except Exception as exc:
+                note('invoke-error', command=identity,
+                     error=type(exc).__name__ + ': ' + str(exc)[:128])
+                raise
+            note('invoke-return', command=identity, result=result)
+            return result
+
+        manager.invoke = invoke
+
+        def restore():
+            if manager.invoke is invoke:
+                manager.invoke = original
+        return restore
+
+    def observe_palette(palette):
+        identity = (palette.GetId(), int(palette.GetHandle()))
+        if identity in watched_palettes:
+            return
+        watched_palettes.add(identity)
+        search = named(palette, 'Search commands by name')
+        results = named(palette, 'Matching commands and shortcuts')
+        status = named(palette, 'Command availability')
+        run, = [child for child in palette.GetChildren()
+                if isinstance(child, wx.Button) and child.GetId() == wx.ID_OK]
+        note('palette-ready', run_enabled=run.IsEnabled(), status=status.GetValue()[:256],
+             selected=results.GetSelection(), count=results.GetCount(),
+             first_row=results.GetString(0)[:256] if results.GetCount() else '',
+             frame_working=frame.working, frame_enabled=frame.IsEnabled())
+
+        def observed(kind):
+            def received(event):
+                try:
+                    note(kind, control_id=search.GetId(),
+                         key=event.GetKeyCode() if kind == 'native-key-down' else None)
+                except Exception as exc:
+                    note('key-observation-error', error=type(exc).__name__ + ': ' + str(exc)[:128])
+                finally:
+                    event.Skip()  # The existing product handler owns activation.
+            return received
+
+        search.Bind(wx.EVT_KEY_DOWN, observed('native-key-down'))
+        search.Bind(wx.EVT_TEXT_ENTER, observed('native-text-enter'))
+
     def failure_state():
+        from itertools import islice
         def observed(callback):
             try:
                 value = callback()
@@ -155,12 +216,13 @@ def main():
                  'owner_loop': observed(lambda: repr(owner_loop[0])),
                  'owner_loop_running': observed(lambda: owner_loop[0].IsRunning()
                                                 if owner_loop[0] else False),
-                 'windows': [describe(item) for item in wx.GetTopLevelWindows()[:16]]}
-        print('TASKS_FAILURE_STATE: ' + json.dumps(value, ensure_ascii=False), flush=True)
+                 'native_events': list(native_events),
+                 'windows': [describe(item) for item in islice(wx.GetTopLevelWindows(), 16)]}
+        print('TASKS_FAILURE_STATE: ' + json.dumps(value, ensure_ascii=True), flush=True)
 
     def abort(detail):
         errors.append(detail)
-        print('FAIL:', detail, flush=True)
+        print('FAIL:', str(detail).encode('ascii', 'backslashreplace').decode('ascii'), flush=True)
         if aborting[0]:
             return
         aborting[0] = True
@@ -168,7 +230,7 @@ def main():
         def failed_cleanup():
             value = traceback.format_exc()
             errors.append(value)
-            print('TASKS_CLEANUP_FAILURE:', value, flush=True)
+            print('TASKS_CLEANUP_FAILURE:', value.encode('ascii', 'backslashreplace').decode('ascii'), flush=True)
 
         try:
             failure_state()
@@ -253,6 +315,7 @@ def main():
                 open_palette('palette' if name == 'open' else 'palette_blocked')
             elif name in ('palette', 'palette_blocked') and palette is not None:
                 named(palette, 'Search commands by name').SetValue('Tasks and resources')
+                observe_palette(palette)
                 advance('select' if name == 'palette' else 'select_blocked')
             elif name in ('select', 'select_blocked') and palette is not None:
                 search = named(palette, 'Search commands by name')
@@ -384,6 +447,7 @@ def main():
                 memory_bytes=1024**3, disk_bytes=2*1024**3, min_free_disk_bytes=0))
             frame = DesktopFrame(library)
             frame_identity.update(id=frame.GetId(), handle=int(frame.GetHandle()))
+            restore_invoke = observe_manager(frame.keyboard_commands)
             try:
                 application.SetTopWindow(frame)
                 frame.Show()
@@ -393,6 +457,8 @@ def main():
                 application.MainLoop()
                 check('all native Tasks/resources stages completed', phase[0] == 'complete' and not errors)
             finally:
+                if restore_invoke is not None:
+                    restore_invoke()
                 if timer is not None:
                     timer.Stop()
                 try:
@@ -418,7 +484,7 @@ def main():
               'native_keyboard': 'INCOMPLETE' if errors else 'PASS', 'nvda': 'NOT_RUN',
               'manual_keyboard': 'NOT_RUN', 'measured_hardware_capacity': 'NOT_RUN',
               'model_inference': 'NOT_RUN'}
-    print(json.dumps(result, ensure_ascii=False), flush=True)
+    print(json.dumps(result, ensure_ascii=True), flush=True)
     return 1 if errors else 0
 
 

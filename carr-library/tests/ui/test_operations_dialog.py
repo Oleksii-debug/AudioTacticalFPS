@@ -482,7 +482,8 @@ def test_native_tasks_probe_uses_current_semantic_registry_and_real_launcher_reb
         frame=frame, owner_loop=[None], application=SimpleNamespace(GetMainLoop=lambda: object()),
         wx=SimpleNamespace(WXK_RETURN=13, MOD_CONTROL=2, MOD_SHIFT=4),
         window=lambda title: palette if title == 'Find a command' else None,
-        check=check, advance=advance, key=key, abort=errors.append, traceback=traceback)
+        check=check, advance=advance, key=key, observe_palette=lambda value: None,
+        abort=errors.append, traceback=traceback)
     exec(compile(native_module, str(script), 'exec'), native)
     callback = native['make_tick'](None, None)
     callback()
@@ -553,6 +554,7 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
     class Control:
         def __init__(self, parent=None, identifier=None, label='', **options):
             self.parent, self.name, self.value = parent, '', ''
+            self.style = options.get('style', 0)
             self.bindings, self.values, self.selection = {}, [], -1
             controls.append(self)
         def SetName(self, name): self.name = name
@@ -584,9 +586,17 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
             results, = [value for value in controls if value.name == 'Matching commands and shortcuts']
             search.SetValue('Tasks and resources')
             assert results.values and len(results.values) == 1
-            selected = search if target == 'search' else results
             event = SimpleNamespace(GetKeyCode=lambda: code, Skip=lambda: skipped.append(code))
-            selected.bindings['key-down'](event)
+            assert search.style == wx.TE_PROCESS_ENTER and 'key-down' not in search.bindings
+            assert 'text-enter' not in results.bindings
+            if target == 'search':
+                # MSW's single-line native edit emits TEXT_ENTER only with this style.
+                if code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+                    search.bindings['text-enter'](event)
+                else:
+                    event.Skip()
+            else:
+                results.bindings['key-down'](event)
             return getattr(self, 'result', 5101)
 
     class CommandEvent:
@@ -600,9 +610,11 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
         ListBox=Control, Button=Control, BoxSizer=lambda *args: SimpleNamespace(Add=lambda *args: None),
         Window=SimpleNamespace(FindFocus=lambda: origin), CommandEvent=CommandEvent,
         EVT_MENU=SimpleNamespace(typeId=1001), EVT_TEXT='text', EVT_KEY_DOWN='key-down',
+        EVT_TEXT_ENTER='text-enter',
         EVT_LISTBOX='listbox', EVT_LISTBOX_DCLICK='double-click', EVT_BUTTON='button',
         ID_OK=5100, ID_CANCEL=5101, WXK_RETURN=13, WXK_NUMPAD_ENTER=370,
-        VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8, ALIGN_RIGHT=16, TE_READONLY=32)
+        VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8, ALIGN_RIGHT=16,
+        TE_READONLY=32, TE_PROCESS_ENTER=64)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     accepted = keyboard.show_command_launcher(frame, manager)
     expected = code in (13, 370) and permission == 'allowed'
@@ -789,7 +801,7 @@ def test_native_tasks_precleanup_snapshot_reports_actual_windows_and_active_loop
     active = SimpleNamespace(IsRunning=lambda: True)
     owner = SimpleNamespace(IsRunning=lambda: False)
     environment = native_tasks_methods({'failure_state'}, dict(
-        json=json, monotonic=lambda: 16.0, phase=['loaded', 1.0],
+        json=json, monotonic=lambda: 16.0, phase=['loaded', 1.0], native_events=[],
         frame=SimpleNamespace(working=True, _closing=False), owner_loop=[owner],
         frame_identity=dict(id=71, handle=901),
         wx=SimpleNamespace(Dialog=Dialog, EventLoopBase=SimpleNamespace(GetActive=lambda: active),
@@ -810,3 +822,155 @@ def test_native_tasks_precleanup_snapshot_reports_actual_windows_and_active_loop
     assert selected['busy'] and not selected['closed'] and not selected['policy_loaded']
     assert selected['status'] == 'Loading exact owner'
     assert controller.busy and not controller.closed and dialog.IsModal()
+
+
+
+def test_native_tasks_snapshot_bounds_integer_only_window_list_and_ascii_output(capsys):
+    import json
+    from types import SimpleNamespace
+
+    title = 'Tasks and resources — Українська 🧭'
+    parent = SimpleNamespace(GetId=lambda: 71, GetHandle=lambda: 901)
+    controller = SimpleNamespace(busy=True, closed=False, policy=None, status=title)
+    class Dialog:
+        def GetParent(self): return parent
+        def GetId(self): return 90
+        def GetHandle(self): return 903
+        def GetTitle(self): return title
+        def IsShown(self): return True
+        def IsModal(self): return True
+
+    dialog = Dialog()
+    dialog.controller = controller
+    visited = []
+    class WindowList:
+        def __getitem__(self, index):
+            if not isinstance(index, int):
+                raise TypeError("WindowList.__getitem__(): argument 1 has unexpected type 'slice'")
+            visited.append(index)
+            assert 0 <= index < 16, 'Snapshot must not consume an extra native window.'
+            return dialog
+
+    active = SimpleNamespace(IsRunning=lambda: True)
+    observation = {'kind': 'palette-ready', 'stage': 'select', 'status': title}
+    environment = native_tasks_methods({'failure_state'}, dict(
+        json=json, monotonic=lambda: 16.0, phase=['loaded', 1.0],
+        native_events=[observation], owner_loop=[active],
+        frame=SimpleNamespace(working=True, _closing=False),
+        frame_identity=dict(id=71, handle=901),
+        wx=SimpleNamespace(Dialog=Dialog, EventLoopBase=SimpleNamespace(GetActive=lambda: active),
+            Window=SimpleNamespace(FindFocus=lambda: SimpleNamespace(
+                GetId=lambda: 91, GetName=lambda: title)),
+            GetTopLevelWindows=WindowList)))
+    environment['failure_state']()
+    raw = capsys.readouterr().out
+    assert raw.isascii()
+    value = json.loads(raw.split(': ', 1)[1])
+    assert visited == list(range(16)) and len(value['windows']) == 16
+    assert value['focus_name'] == title and value['native_events'] == [observation]
+    assert all(item['title'] == item['status'] == title for item in value['windows'])
+    assert all(item['parent_id'] == 71 and item['parent_handle'] == 901
+               for item in value['windows'])
+    assert controller.busy and not controller.closed and dialog.IsModal()
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_native_tasks_palette_observer_never_activates_or_consumes_native_input(enabled):
+    from types import SimpleNamespace
+
+    callbacks, skipped, native_events = {}, [], []
+    class Control:
+        def __init__(self, name, identifier, value=''):
+            self.name, self.identifier, self.value = name, identifier, value
+        def GetName(self): return self.name
+        def GetId(self): return self.identifier
+        def GetValue(self): return self.value
+        def Bind(self, kind, callback): callbacks.setdefault(kind, []).append(callback)
+
+    search = Control('Search commands by name', 91)
+    results = Control('Matching commands and shortcuts', 92)
+    row = 'Tasks and resources — Not assigned' + ('' if enabled else ' — unavailable')
+    results.GetSelection = lambda: 0
+    results.GetCount = lambda: 1
+    results.GetString = lambda index: row
+    status = Control('Command availability', 93,
+        'Ready to run.' if enabled else 'This command is unavailable in the current view.')
+    class Button(Control):
+        def IsEnabled(self): return enabled
+    run = Button('Run command', 5100)
+    palette = SimpleNamespace(GetId=lambda: 90, GetHandle=lambda: 903,
+        GetChildren=lambda: (search, results, status, run))
+    environment = native_tasks_methods({'named', 'note', 'observe_palette'}, dict(
+        native_events=native_events, watched_palettes=set(), phase=['select', 0.0],
+        frame=SimpleNamespace(working=False, IsEnabled=lambda: False),
+        wx=SimpleNamespace(Button=Button, ID_OK=5100,
+            EVT_KEY_DOWN='key-down', EVT_TEXT_ENTER='text-enter')))
+    environment['observe_palette'](palette)
+    environment['observe_palette'](palette)
+    assert {kind: len(values) for kind, values in callbacks.items()} == {
+        'key-down': 1, 'text-enter': 1}
+    assert native_events == [dict(kind='palette-ready', stage='select',
+        run_enabled=enabled, status=status.value, selected=0, count=1,
+        first_row=row, frame_working=False, frame_enabled=False)]
+
+    event = SimpleNamespace(GetKeyCode=lambda: 13, Skip=lambda: skipped.append(True))
+    callbacks['key-down'][0](event)
+    callbacks['text-enter'][0](event)
+    assert native_events[1:3] == [
+        dict(kind='native-key-down', stage='select', control_id=91, key=13),
+        dict(kind='native-text-enter', stage='select', control_id=91, key=None)]
+    def failed_key():
+        raise RuntimeError('Діагностичний getter failure')
+    callbacks['key-down'][0](SimpleNamespace(GetKeyCode=failed_key,
+                                             Skip=lambda: skipped.append(True)))
+    assert native_events[-1]['kind'] == 'key-observation-error'
+    assert 'RuntimeError' in native_events[-1]['error'] and len(skipped) == 3
+    for unused in range(40):
+        callbacks['text-enter'][0](event)
+    assert len(native_events) == 32 and len(skipped) == 43
+    assert search.value == '' and results.GetString(0) == row
+    assert run.IsEnabled() is enabled and status.value == native_events[0]['status']
+
+
+@pytest.mark.parametrize('failure', [None, 'availability', 'invoke'])
+def test_native_tasks_manager_observer_preserves_actual_callback_result_and_failure(failure):
+    from types import SimpleNamespace
+
+    native_events, invoked = [], []
+    original_error = RuntimeError('Точна помилка existing invocation')
+    def original(identity):
+        invoked.append(identity)
+        if failure == 'invoke':
+            raise original_error
+        return True
+    def available(identity):
+        assert identity == 'operations.open'
+        if failure == 'availability':
+            raise RuntimeError('Unreliable observation')
+        return True
+
+    manager = SimpleNamespace(invoke=original, available=available)
+    environment = native_tasks_methods({'note', 'observe_manager'}, dict(
+        native_events=native_events, phase=['loaded', 0.0],
+        frame=SimpleNamespace(working=False, IsEnabled=lambda: True)))
+    restore = environment['observe_manager'](manager)
+    try:
+        if failure == 'invoke':
+            with pytest.raises(RuntimeError) as caught:
+                manager.invoke('operations.open')
+            assert caught.value is original_error
+        else:
+            assert manager.invoke('operations.open') is True
+    finally:
+        restore()
+    assert manager.invoke is original and invoked == ['operations.open']
+    assert native_events[0]['kind'] == (
+        'invoke-observation-error' if failure == 'availability' else 'invoke-before')
+    assert native_events[-1]['kind'] == ('invoke-error' if failure == 'invoke' else 'invoke-return')
+    if failure != 'invoke':
+        assert native_events[-1]['result'] is True
+    restore = environment['observe_manager'](manager)
+    replacement = lambda identity: False
+    manager.invoke = replacement
+    restore()
+    assert manager.invoke is replacement and invoked == ['operations.open']
