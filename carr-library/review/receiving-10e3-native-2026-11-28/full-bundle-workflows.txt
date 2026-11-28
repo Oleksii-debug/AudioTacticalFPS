@@ -1,0 +1,167 @@
+{"installed_package": true, "source_commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b"}
+============================= test session starts =============================
+platform win32 -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0
+rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+configfile: pyproject.toml
+collected 9080 items
+
+tests\e2e\test_semantic_runtime.py ........                              [  0%]
+tests\e2e\test_import_worker.py ...........                              [  0%]
+tests\e2e\test_import_batches_ocr.py .                                   [  0%]
+tests\e2e\test_notebook_research_workflow.py ...........                 [  0%]
+tests\e2e\test_epub_import.py .............                              [  0%]
+tests\reader\test_ebook_reader.py .............                          [  0%]
+tests\e2e\test_catalog_insights_workflow.py .................            [  0%]
+tests\e2e\test_academic_workflows.py ....                                [  0%]
+tests\e2e\test_academic_workflow.py ......                               [  0%]
+tests\e2e\test_academic_document_export.py ..........                    [  1%]
+tests\e2e\test_result_presentation.py .................................. [  1%]
+                                                                         [  1%]
+tests\sync\test_archive.py ..............................                [  1%]
+tests\sync\test_crypto.py .............................................. [  2%]
+...........                                                              [  2%]
+tests\sync\test_crypto_publication.py ..........                         [  2%]
+tests\sync\test_vault.py ............................................... [  2%]
+..                                                                       [  3%]
+tests\sync\test_service.py ..................                            [  3%]
+tests\sync\test_service_commit_boundaries.py ...............             [  3%]
+tests\sync\test_cli.py .....                                             [  3%]
+tests\sync\test_complete_state.py ..                                     [  3%]
+tests\sync\test_current_backup_composition.py .....                      [  3%]
+tests\sync\test_admission.py ..........                                  [  3%]
+tests\sync\test_state.py ............                                    [  3%]
+tests\ui\test_portable_sync.py ......................................... [  4%]
+............................................................             [  4%]
+tests\audio\test_recording_controls.py ................................. [  5%]
+                                                                         [  5%]
+tests\ui\test_federated_search.py ...................................... [  5%]
+.......................................................                  [  6%]
+tests\search\test_source_pagination.py ........................          [  6%]
+tests\search\test_source_page_benchmark.py ...................           [  6%]
+tests\search\test_federated_pagination.py ............                   [  6%]
+tests\audio\test_protected_voice_packages.py ........................... [  7%]
+.......                                                                  [  7%]
+tests\ui\test_protected_voice_packages.py ..........................     [  7%]
+tests\e2e\test_source_file.py .........................                  [  7%]
+tests\ui\test_source_open_handler.py ................................... [  8%]
+....                                                                     [  8%]
+tests\citations\test_streamed_text_attestation.py ....                   [  8%]
+tests\e2e\test_streamed_import_cli.py ........                           [  8%]
+tests\e2e\test_streamed_source_import.py .....                           [  8%]
+tests\ingest\test_streamed_admission.py ......................           [  8%]
+tests\ingest\test_streamed_ingest.py ..........                          [  8%]
+tests\ingest\test_streamed_text.py .................................     [  9%]
+tests\reader\test_streamed_source_view.py ........                       [  9%]
+tests\storage\test_streamed_source_backup.py ........                    [  9%]
+tests\ui\test_source_launch.py ..................                        [  9%]
+tests\ui\test_streamed_import.py .......                                 [  9%]
+tests\audio\test_package_publication.py .........                        [  9%]
+tests\audio\test_voice_reference.py .................................... [ 10%]
+.....                                                                    [ 10%]
+tests\ui\test_voice_reference.py ...........................             [ 10%]
+tests\academic_integration\test_word_fields.py ......................... [ 10%]
+.......                                                                  [ 10%]
+tests\academic_integration\test_word_com.py ............................ [ 11%]
+.....                                                                    [ 11%]
+tests\ui\test_word_citations.py ...................                      [ 11%]
+tests\assistant\test_local_tools.py .................................... [ 11%]
+..........                                                               [ 11%]
+tests\assistant\test_state_io.py ........................                [ 12%]
+tests\assistant\test_player_tools.py ..................                  [ 12%]
+tests\assistant\test_book_tools.py ..........................            [ 12%]
+tests\ui\test_assistant_domain_routes.py ..                              [ 12%]
+tests\audio\test_assistant_domain_cli.py .......                         [ 12%]
+tests\audio\test_director_resources.py ..........                        [ 12%]
+tests\audio\test_legacy_owned_process.py ..................              [ 13%]
+tests\speech\test_preparation.py ....................................... [ 13%]
+.......................                                                  [ 13%]
+tests\ui\test_reader_preparation.py ...................................  [ 14%]
+tests\conversion\test_conversion.py ..................................   [ 14%]
+tests\conversion\test_conversion_ownership.py .............              [ 14%]
+tests\ui\test_document_conversion_admission.py ............              [ 14%]
+tests\speech\test_voice_preferences.py .F
+INTERNALERROR> Traceback (most recent call last):
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\main.py", line 318, in wrap_session
+INTERNALERROR>     session.exitstatus = doit(config, session) or 0
+INTERNALERROR>                          ^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\main.py", line 372, in _main
+INTERNALERROR>     config.hook.pytest_runtestloop(session=session)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_caller.py", line 197, in __call__
+INTERNALERROR>     return self._hookexec(
+INTERNALERROR>            ^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_manager.py", line 183, in _hookexec
+INTERNALERROR>     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 195, in _multicall
+INTERNALERROR>     raise exception
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 167, in _multicall
+INTERNALERROR>     teardown.throw(exception)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\logging.py", line 801, in pytest_runtestloop
+INTERNALERROR>     return (yield)  # Run all the tests.
+INTERNALERROR>             ^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 167, in _multicall
+INTERNALERROR>     teardown.throw(exception)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\terminal.py", line 707, in pytest_runtestloop
+INTERNALERROR>     result = yield
+INTERNALERROR>              ^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 147, in _multicall
+INTERNALERROR>     res = hook_impl.function(*args)
+INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\main.py", line 396, in pytest_runtestloop
+INTERNALERROR>     item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_caller.py", line 197, in __call__
+INTERNALERROR>     return self._hookexec(
+INTERNALERROR>            ^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_manager.py", line 183, in _hookexec
+INTERNALERROR>     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 195, in _multicall
+INTERNALERROR>     raise exception
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 167, in _multicall
+INTERNALERROR>     teardown.throw(exception)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\warnings.py", line 89, in pytest_runtest_protocol
+INTERNALERROR>     return (yield)
+INTERNALERROR>             ^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 167, in _multicall
+INTERNALERROR>     teardown.throw(exception)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\assertion\__init__.py", line 192, in pytest_runtest_protocol
+INTERNALERROR>     return (yield)
+INTERNALERROR>             ^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 167, in _multicall
+INTERNALERROR>     teardown.throw(exception)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\unittest.py", line 587, in pytest_runtest_protocol
+INTERNALERROR>     return (yield)
+INTERNALERROR>             ^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 167, in _multicall
+INTERNALERROR>     teardown.throw(exception)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\faulthandler.py", line 102, in pytest_runtest_protocol
+INTERNALERROR>     return (yield)
+INTERNALERROR>             ^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 147, in _multicall
+INTERNALERROR>     res = hook_impl.function(*args)
+INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\runner.py", line 118, in pytest_runtest_protocol
+INTERNALERROR>     runtestprotocol(item, nextitem=nextitem)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\runner.py", line 137, in runtestprotocol
+INTERNALERROR>     reports.append(call_and_report(item, "call", log))
+INTERNALERROR>                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\_pytest\runner.py", line 251, in call_and_report
+INTERNALERROR>     ihook.pytest_runtest_logreport(report=report)
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_caller.py", line 197, in __call__
+INTERNALERROR>     return self._hookexec(
+INTERNALERROR>            ^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_manager.py", line 183, in _hookexec
+INTERNALERROR>     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 195, in _multicall
+INTERNALERROR>     raise exception
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\.venv\Lib\site-packages\pluggy\_execution.py", line 147, in _multicall
+INTERNALERROR>     res = hook_impl.function(*args)
+INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "<stdin>", line 411, in pytest_runtest_logreport
+INTERNALERROR>   File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\encodings\cp1252.py", line 19, in encode
+INTERNALERROR>     return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR> UnicodeEncodeError: 'charmap' codec can't encode characters in position 815-818: character maps to <undefined>
+
+================= 1 failed, 1339 passed in 1096.79s (0:18:16) =================

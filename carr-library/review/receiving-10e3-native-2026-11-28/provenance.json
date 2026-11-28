@@ -1,0 +1,177 @@
+{
+  "schema": "carr-read-only-receipts/1",
+  "source": {
+    "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+    "run": 46103182988,
+    "attempt": 1,
+    "application_run_status_at_read": "in_progress"
+  },
+  "reader": {
+    "head": "54d189abee0ac9b4712df4839960c3bcb54da0bc",
+    "run": 46106678777,
+    "job": 140860888732,
+    "conclusion": "success",
+    "script_blob": "27e8d37e407b9b1d14e43ce4cdab86f1a3c9908c",
+    "workflow_blob": "000d4e554a14bd6cd47e51e6d2e4a2e83c0363a1"
+  },
+  "artifacts": [
+    {
+      "id": 15247277543,
+      "name": "carr-windows-pre-source-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "bytes": 324087,
+      "sha256": "3b67d07e32140ac060ff4e6b3b9414f9b3c8f79f8ee364cea644945b49d8c097",
+      "created_at": "2026-11-28T04:10:44Z",
+      "updated_at": "2026-11-28T04:10:44Z",
+      "run": 46103182988,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "mode": "main"
+    },
+    {
+      "id": 15246148009,
+      "name": "carr-windows-recording-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "bytes": 16765,
+      "sha256": "0fddda1b2cfa683277364246e796cf8b4671bc6a31c2d0ed4ff93b83b1a66f63",
+      "created_at": "2026-11-28T03:36:11Z",
+      "updated_at": "2026-11-28T03:36:11Z",
+      "run": 46103182988,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "mode": "recording"
+    },
+    {
+      "id": 15246751161,
+      "name": "carr-windows-audio-endpoint-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "bytes": 3945,
+      "sha256": "85e25f2103a6b6c55999933f8861da2c02fa1628cf9b6f3978cd677d020e78d8",
+      "created_at": "2026-11-28T03:33:58Z",
+      "updated_at": "2026-11-28T03:33:58Z",
+      "run": 46103182988,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "mode": "endpoint"
+    }
+  ],
+  "raw_members": [
+    {
+      "path": "source-reader-navigation.json",
+      "bytes": 6288,
+      "sha256": "05728d9f1a859dd1c023a913610bb763472826b01cf3399331083b914d5562e5",
+      "artifact": 15247277543
+    },
+    {
+      "path": "installed-reader-navigation.json",
+      "bytes": 6218,
+      "sha256": "67de12b3648ba71b7c32913999801fc8ef9e3c2b52ba47c70bab69f6a5635397",
+      "artifact": 15247277543
+    },
+    {
+      "path": "installed-scene-clip-editor.txt",
+      "bytes": 16016,
+      "sha256": "c35fe3d22d5c1392fd47860120902a4f37fd6f704d126f29fa935086cf2e4c12",
+      "artifact": 15247277543
+    },
+    {
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "61a1ee4e0e3afb3873f3a638a63365ade28010bcab6bfec2f27138e5b88022d2",
+      "artifact": 15247277543
+    },
+    {
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "ad316542f1631c33728182c32d4af8f7729d8e5ebb8bfd66baac8bfd75e25050",
+      "artifact": 15246148009
+    },
+    {
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "artifact": 15247277543
+    },
+    {
+      "path": "full-bundle-workflows.txt",
+      "bytes": 13652,
+      "sha256": "951fd48e2b506e463ceb7340de07767711341131fb1745e607d0142bda237567",
+      "artifact": 15247277543
+    }
+  ],
+  "summary": {
+    "source_navigation": {
+      "status": "PASS",
+      "checks": 50,
+      "percentage_values": [
+        "50%",
+        "100%"
+      ],
+      "seconds_value": "0.25",
+      "same_paused_measured_recording": true
+    },
+    "installed_navigation": {
+      "status": "PASS",
+      "checks": 50,
+      "percentage_values": [
+        "50%",
+        "100%"
+      ],
+      "seconds_value": "0.25",
+      "same_paused_measured_recording": true
+    },
+    "bundle_navigation": {
+      "reported_status": "PASS",
+      "reported_checks": 50,
+      "sha256": "f7de9851f2d21af5b45864c0c463dd2fd82f01df5283ab6249596a60d4e020b3",
+      "raw_content_preserved": false,
+      "scope": "Exact helper JSON summary only; no full-member bytes emitted for this successful prefixed report."
+    },
+    "clip_editor": {
+      "status": "PASS",
+      "checks": 158,
+      "loop_status": "PASS",
+      "completed_repeats": 2,
+      "output_index": 1,
+      "output_identity": "9f9e150905cba91dbea3bb2043b70667e7a42fe66380fab16bd8cee6da62de48"
+    },
+    "capture": {
+      "status": "FAILED",
+      "wasapi_initialize": "0x80070005",
+      "current_user_microphone": "Deny",
+      "current_user_desktop": "Allow",
+      "machine_microphone": "Allow",
+      "configured_policy_keys": false,
+      "endpoint_active_and_unchanged": true,
+      "mme_query_result_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mme_open_without_buffers_result_codes": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "full_bundle_tests": {
+      "collected": 9080,
+      "passed": 1339,
+      "failed": 1,
+      "status": "INTERNALERROR",
+      "failure_module": "tests/speech/test_voice_preferences.py",
+      "secondary_failure": "CP1252 UnicodeEncodeError while printing the failed report",
+      "scope": "Failure detail is obscured by the observer; fixes are already present on f831 but not qualified by this10e3 run."
+    }
+  },
+  "limitations": {
+    "full_main_or_v3_acceptance": "NOT_ASSESSED",
+    "manual_nvda": "NOT_RUN",
+    "human_listening": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "new_silence_feature": "NOT_RUN",
+    "policy_changes": false,
+    "device_fallback": false,
+    "application_execution_by_reader": false
+  }
+}

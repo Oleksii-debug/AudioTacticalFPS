@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105049484,
+  "run_attempt": 1,
+  "event": "push",
+  "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+  "job_id": 140855810561,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105049484/job/140855810561",
+  "mode": "windows-installed",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T04:21:45Z",
+  "completed_at": "2026-11-28T04:25:19Z",
+  "workflow_blob": "b683358bf3325749f852040cef8a9e704c4c414a",
+  "actual_tests": {
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "selected_modules": 21,
+    "strict_no_skips": true,
+    "summary": [
+      "746 passed in 124.81s (0:02:04)"
+    ],
+    "per_module_verdicts": "Not separately reported by the aggregate installed pytest command"
+  },
+  "actual_native": {
+    "status": "PASS",
+    "checks": 80,
+    "script": "scripts/windows_voice_preferences_smoke.py",
+    "scope": "Native reader voice preference and synthesis-option controls with the existing synthetic protocol fixtures; no natural-voice, model or NVDA acceptance."
+  },
+  "inventory": {
+    "python_modules": 380,
+    "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "mode": "installed",
+    "installed_package": "D:\\a\\_temp\\carr-reader-voice-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "executable": "D:\\a\\_temp\\carr-reader-voice-python\\Scripts\\python.exe",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "full_row_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "full_identity_file": "application-source.json"
+  },
+  "artifact": {
+    "id": 15247633534,
+    "name": "carr-reader-voice-controls-windows-2022-installed-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+    "size_in_bytes": 39872,
+    "sha256": "2bf69077862203da61dabf331dc1b14b660bca44b2d75d9bb16b346062d6e460"
+  },
+  "log": {
+    "kind": "Complete decoded terminal Actions job log, unchanged",
+    "sha256": "23c2b1c15aecb34e5fbcc9884599fb4200fdd082b2b6103369a3d34b39353505",
+    "bytes": 274566
+  },
+  "limitations": [
+    "This result belongs only to the exact f831 head and listed job.",
+    "This focused workflow uses UTF-8 mode; isolated broad Windows component and sealed-bundle locale behavior require their own results.",
+    "The next canonical CSL selector and silence inspection work are absent from f831 and are not qualified here.",
+    "No audible quality, NVDA, private model/engine, rights or whole-platform release acceptance is inferred."
+  ]
+}

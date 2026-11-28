@@ -1,0 +1,80 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "source_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "run_id": 46105047711,
+  "job_id": 140855804691,
+  "decoded_log_utf8_sha256": "8863762d84d9c2a343f3854da0e5fc3d985540ce587cab30595fb1e67e72a8f8",
+  "provenance": "Complete connector-returned decoded job log retained unchanged. Hashes describe UTF-8 encoded decoded text, not original GitHub transport bytes or artifact members. Extracted JSON strips timestamp prefixes and adds a final LF. Reader keymap records are explicitly phase-derived from the successful current log and pinned source probe. Source verdict rows retain one-based log line numbers.",
+  "extracted_json_lines": {
+    "installed-summary.log-extracted.json": 863,
+    "source-save-all.log-extracted.json": 930,
+    "installed-save-all.log-extracted.json": 1054,
+    "source-catalog-exports.log-extracted.json": 1185,
+    "installed-catalog-exports.log-extracted.json": 1259,
+    "installed-workflow-voice-preview.log-extracted.json": 1324
+  },
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 10569,
+      "sha256": "2e34f1cf6bcfffc2493d1206778042930c57d9238f1af26c2f251a35d1f13888"
+    },
+    {
+      "path": "workflow-contract.json",
+      "utf8_bytes": 7514,
+      "sha256": "d94e99383bb3f61b95e726e3000cec1fb679ca5568d9dc73cc8ab63e8cf0114a"
+    },
+    {
+      "path": "source-module-verdicts.json",
+      "utf8_bytes": 5702,
+      "sha256": "5e93313b206cd9ba8b403a731138d204349e345afae07e69d7a30ca0e0275c19"
+    },
+    {
+      "path": "installed-summary.log-extracted.json",
+      "utf8_bytes": 163,
+      "sha256": "2e53b4860a8d0bd0428bf137897b546f90edec12a85bba7b25213572be551559"
+    },
+    {
+      "path": "source-save-all.log-extracted.json",
+      "utf8_bytes": 3404,
+      "sha256": "f1c0cbc0000e129650d3b54b78be22c7d21f11b88a4efb8941b14b95fe010c4e"
+    },
+    {
+      "path": "installed-save-all.log-extracted.json",
+      "utf8_bytes": 3450,
+      "sha256": "8c69307cdfe7ed4b7ddcd4dd64717a388043788394cfc8d4841e8d6b76276e16"
+    },
+    {
+      "path": "source-catalog-exports.log-extracted.json",
+      "utf8_bytes": 2480,
+      "sha256": "325119d1ee44483ec526def87ce797802fb40e8d3033614eed562c459e54e10b"
+    },
+    {
+      "path": "installed-catalog-exports.log-extracted.json",
+      "utf8_bytes": 2481,
+      "sha256": "56bf5ddaedd0c5af9c43935b7e007a7930cd198403922b834d6f705e5f4eef94"
+    },
+    {
+      "path": "installed-workflow-voice-preview.log-extracted.json",
+      "utf8_bytes": 2396,
+      "sha256": "07a630d719ce31b94f127778dfc206fe2ebba127290e11bdd28cdb803187d5e8"
+    },
+    {
+      "path": "reader-keymap.phase-derived.json",
+      "utf8_bytes": 9271,
+      "sha256": "51ed003d2defa116847b6e51c2457561e4593dc873605d6cc67c5562cc475262"
+    },
+    {
+      "path": "completed-job.decoded.log",
+      "utf8_bytes": 146267,
+      "sha256": "8863762d84d9c2a343f3854da0e5fc3d985540ce587cab30595fb1e67e72a8f8"
+    }
+  ],
+  "artifact_metadata": {
+    "id": 15247123808,
+    "size_in_bytes": 39601,
+    "digest": "sha256:7f2ac52a331ef87047dff757d758eb8596d7426ee6ab1cb680329820495e4ad8",
+    "original_zip_or_members_downloaded": false
+  }
+}

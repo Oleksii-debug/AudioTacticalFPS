@@ -1,0 +1,251 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105049484,
+  "run_attempt": 1,
+  "event": "push",
+  "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+  "job_id": 140855810800,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105049484/job/140855810800",
+  "mode": "windows-source",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T04:27:32Z",
+  "completed_at": "2026-11-28T04:30:06Z",
+  "workflow_blob": "b683358bf3325749f852040cef8a9e704c4c414a",
+  "actual_tests": {
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "selected_modules": 21,
+    "strict_no_skips": true,
+    "summary": [
+      "============================= 38 passed in 1.25s ==============================",
+      "============================= 45 passed in 0.67s ==============================",
+      "============================= 53 passed in 5.27s ==============================",
+      "============================= 108 passed in 1.79s =============================",
+      "============================= 29 passed in 6.43s ==============================",
+      "============================= 55 passed in 0.48s ==============================",
+      "============================= 28 passed in 1.69s ==============================",
+      "============================= 19 passed in 0.38s ==============================",
+      "============================= 53 passed in 8.18s ==============================",
+      "============================= 39 passed in 1.40s ==============================",
+      "============================= 16 passed in 11.25s =============================",
+      "============================= 21 passed in 1.47s ==============================",
+      "============================= 16 passed in 23.13s =============================",
+      "============================= 29 passed in 4.47s ==============================",
+      "============================= 36 passed in 4.63s ==============================",
+      "============================= 21 passed in 1.80s ==============================",
+      "============================= 31 passed in 38.94s =============================",
+      "============================= 37 passed in 34.41s =============================",
+      "============================= 40 passed in 2.19s ==============================",
+      "============================= 21 passed in 0.80s ==============================",
+      "============================= 11 passed in 5.85s =============================="
+    ],
+    "per_module_verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_voice_actions.py",
+        "passed": 38,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_job_review.py",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_synthesis.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_playback.py",
+        "passed": 108,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_synthesis_admission.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_operation_progress.py",
+        "passed": 55,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_media_quiet.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_studio_progress_isolation.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_progress_speech.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_model_voices.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_reader_synthesis_backup.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_session.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_registered_studio_voices.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_reading_tabs.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_tabs.py",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_save_all_access.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_reading_tabs_backup.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_source.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_voice_preferences.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_voice_preferences_dialog.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_voice_preferences_backup.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "actual_native": {
+    "status": "PASS",
+    "checks": 80,
+    "script": "scripts/windows_voice_preferences_smoke.py",
+    "scope": "Native reader voice preference and synthesis-option controls with the existing synthetic protocol fixtures; no natural-voice, model or NVDA acceptance."
+  },
+  "inventory": {
+    "python_modules": 380,
+    "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "mode": "source",
+    "installed_package": "D:\\a\\_temp\\carr-reader-voice-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "executable": "D:\\a\\_temp\\carr-reader-voice-python\\Scripts\\python.exe",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "full_row_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "full_identity_file": "application-source.json"
+  },
+  "artifact": {
+    "id": 15248531421,
+    "name": "carr-reader-voice-controls-windows-2022-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+    "size_in_bytes": 26380,
+    "sha256": "170b9f91875626f76d61f10795ca37074cf0ee71fb84e69ce9fec1f7abddd010"
+  },
+  "log": {
+    "kind": "Complete decoded terminal Actions job log, unchanged",
+    "sha256": "0abd72ccbcec467a5395ee8e32fe251a0aa2d9f0e5adcb02855c4651453caba5",
+    "bytes": 292048
+  },
+  "limitations": [
+    "This result belongs only to the exact f831 head and listed job.",
+    "This focused workflow uses UTF-8 mode; isolated broad Windows component and sealed-bundle locale behavior require their own results.",
+    "The next canonical CSL selector and silence inspection work are absent from f831 and are not qualified here.",
+    "No audible quality, NVDA, private model/engine, rights or whole-platform release acceptance is inferred."
+  ]
+}

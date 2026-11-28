@@ -53,6 +53,52 @@
       "sparse_tree": "9020162f22f9ea63206c224095c771d039a33a87",
       "kind": "terminal Linux installed component contracts",
       "qualification": "carr-library/review/component-f8311d17-2026-11-28/linux-installed/receipt.json"
+    },
+    {
+      "tested_source": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+      "run": 46101840654,
+      "job": 140845814264,
+      "sparse_tree": "13b45b76a58c981c4f8e3527ea77933191eb4fae",
+      "kind": "terminal failed MAIN; all445 source modules completed",
+      "qualification": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105047711,
+      "job": 140855804691,
+      "sparse_tree": "13982d186753e2633160f60757dfbea8921c455e",
+      "kind": "terminal canonical compatibility",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/canonical-compatibility/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105047649,
+      "job": 140855804530,
+      "sparse_tree": "13982d186753e2633160f60757dfbea8921c455e",
+      "kind": "terminal Windows supplied bridge",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/supplied-bridge-windows/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105049484,
+      "jobs": [
+        140855810800,
+        140855810561,
+        140855810768
+      ],
+      "sparse_tree": "e22356d973b83065c041de285b3858fd3aa1bccd",
+      "kind": "terminal Reader Windows source/installed and Linux installed",
+      "qualification": "carr-library/review/reader-voice-f8311d17-2026-11-28/manifest-three-completed-modes.json"
+    },
+    {
+      "tested_source": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988,
+      "job": 140850017588,
+      "helper_run": 46106678777,
+      "helper_job": 140860888732,
+      "sparse_tree": "f09ddbc2f0d8d7826d35fadd26f51a796df9648d",
+      "kind": "immutable already-uploaded native navigation, loop, capture and bundle diagnostics; not MAIN completion",
+      "qualification": "carr-library/review/receiving-10e3-native-2026-11-28/provenance.json"
     }
   ],
   "application_changes": [],

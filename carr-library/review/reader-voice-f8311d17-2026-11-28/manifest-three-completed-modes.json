@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "kind": "Terminal Reader receiving evidence",
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105049484,
+  "scope": "Three completed jobs; Linux source remains separate/pending",
+  "results": [
+    {
+      "mode": "windows-installed",
+      "job_id": 140855810561,
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "native": {
+        "status": "PASS",
+        "checks": 80,
+        "script": "scripts/windows_voice_preferences_smoke.py",
+        "scope": "Native reader voice preference and synthesis-option controls with the existing synthetic protocol fixtures; no natural-voice, model or NVDA acceptance."
+      },
+      "modules": 380
+    },
+    {
+      "mode": "windows-source",
+      "job_id": 140855810800,
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "native": {
+        "status": "PASS",
+        "checks": 80,
+        "script": "scripts/windows_voice_preferences_smoke.py",
+        "scope": "Native reader voice preference and synthesis-option controls with the existing synthetic protocol fixtures; no natural-voice, model or NVDA acceptance."
+      },
+      "modules": 380
+    },
+    {
+      "mode": "linux-installed",
+      "job_id": 140855810768,
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "native": {
+        "status": "NOT_APPLICABLE",
+        "checks": 0,
+        "script": "scripts/windows_voice_preferences_smoke.py",
+        "scope": "Native reader voice preference and synthesis-option controls with the existing synthetic protocol fixtures; no natural-voice, model or NVDA acceptance."
+      },
+      "modules": 380
+    }
+  ],
+  "full_inventories_equal": true,
+  "full_inventory_row_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+  "files": [
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-installed/job.log",
+      "git_blob": "0786f7300669ebf562e2af64461feca170ea8f99",
+      "sha256": "23c2b1c15aecb34e5fbcc9884599fb4200fdd082b2b6103369a3d34b39353505",
+      "bytes": 274566
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-installed/application-source.json",
+      "git_blob": "e98a1918327a5243c63fe6f543796108d8f9700d",
+      "sha256": "40adfcb765209b417d61797e085a4e3dd75bc141f74c793e11428383433843cb",
+      "bytes": 67226
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-installed/receipt.json",
+      "git_blob": "70bbd47f11f40704a9fc3dd8b69e5f92b16d7e42",
+      "sha256": "b11fa8bbc2c82d49eb7fcee623ec296c8e3f7b4aedec3b023fa2c59dd1ee798f",
+      "bytes": 2745
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-installed/native-checks.json",
+      "git_blob": "745ef6e00bb2afdf1de6d2cf03169bf4aacafe8e",
+      "sha256": "34a45ba9f963cc803cb95f7c692f6437db1172cb7f43961b6d25f6392215a00a",
+      "bytes": 3891
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-source/job.log",
+      "git_blob": "eecec571ff31164852a2e8bdc98f8d1b4200895f",
+      "sha256": "0abd72ccbcec467a5395ee8e32fe251a0aa2d9f0e5adcb02855c4651453caba5",
+      "bytes": 292048
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-source/application-source.json",
+      "git_blob": "240e96db816291c0248b6544ff07a60e09926dfa",
+      "sha256": "eeb2e7513bbfc9260678e1e2651984d404e71ff8096a7a49b36eb52734d84388",
+      "bytes": 67223
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-source/receipt.json",
+      "git_blob": "d41023ec4c44f76a2edaaaa9a8971b696fbd85e6",
+      "sha256": "2bbba43ab9501fd246165851806b03b9f97b38407d45af1a68576e3b60b7b002",
+      "bytes": 8483
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/windows-source/native-checks.json",
+      "git_blob": "29fb051c9509b64d7329f076a2b67118a24477fa",
+      "sha256": "b61c1434728e60f384fb8db76a45c2350992ee913971ac5670f3e936571379eb",
+      "bytes": 3891
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/linux-installed/job.log",
+      "git_blob": "25c5acbdfa799862698d46287b43491ab6699545",
+      "sha256": "5a271a91951679637a1a5876d814da36d96bd5efc483bcfb8f6bf657a21b984e",
+      "bytes": 319131
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/linux-installed/application-source.json",
+      "git_blob": "16ec164236e6253d2af59f37a148da17a5853499",
+      "sha256": "7cd3d83670f0f615d695967f48b3c4d937935edd6fa515b6d538b6649792b4b7",
+      "bytes": 67218
+    },
+    {
+      "path": "carr-library/review/reader-voice-f8311d17-2026-11-28/linux-installed/receipt.json",
+      "git_blob": "2e3df160e1bec7ed832e4bbc148433951380d90d",
+      "sha256": "f532c1fdafe4724c6d75a05e1cb810b50c9c04e378576b30d4a7275912e8dc5c",
+      "bytes": 2736
+    }
+  ],
+  "limits": [
+    "All counts and 380-row inventories are read from these exact terminal f831 logs; none were transferred from predecessor runs.",
+    "No result is claimed for the remaining Linux source Reader or other component lanes.",
+    "No native silence inspection, natural voice quality, NVDA, private models/assets, rights or release acceptance is inferred.",
+    "Artifact IDs/digests are Actions metadata receipts; no artifact execution or new CI dispatch took place."
+  ]
+}

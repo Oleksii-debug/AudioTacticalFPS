@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "run": 46101840654,
+  "job": 140845814264,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/completed-job.decoded.log",
+      "sha256": "f1115c0b940f947373445500f5ed570b8192684578c2c59a392610e395c36c4a",
+      "bytes": 1425439
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/qualification.json",
+      "sha256": "a027b123f5b1dac188d3dd922e46755db3704191906df75d1bd5ac777e7eb050",
+      "bytes": 5106
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/source-module-verdicts.json",
+      "sha256": "937f4af9ab00d6cae63f44f530410c86de9aa60f1fb28aa3117c1db41f92b7c6",
+      "bytes": 76111
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/completed-job-metadata.json",
+      "sha256": "687add6be181b86931b00fea096a62851995935a7ff2b73d6de4b09a643ff32b",
+      "bytes": 20456
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/uploaded-artifacts.json",
+      "sha256": "5c714c3cbcc7a051aedc00b3b5289a83b863ac1dd9686b76d5c0095a00e2830c",
+      "bytes": 3607
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/progress-path-fixture.trace.log",
+      "sha256": "e12a9b02c15f6b3701aee04821f04fbdf9dad224e7eca5daee99bb5520476472",
+      "bytes": 3832
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/unavailable-endpoint.log-extracted.json",
+      "sha256": "f85da5d285b54b01ba59576d7af6b5b0d707cbfcdd0a27ce74c393f12714e9b5",
+      "bytes": 601
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/installed-reader-failure.log-extracted.json",
+      "sha256": "9b753aa387d20ffa1322a23dd82a292adc8e26b292a4da535d137e3243a028e5",
+      "bytes": 4469
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/main-terminal/bundle-reader-failure.log-extracted.json",
+      "sha256": "34848d0b46713912739f5e15916dacf334fedd1b98d77160e14aecfbe2e8e831",
+      "bytes": 4602
+    }
+  ],
+  "qualification_transfer": false
+}
