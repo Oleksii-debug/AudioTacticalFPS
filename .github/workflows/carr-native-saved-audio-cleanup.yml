@@ -3,7 +3,6 @@ name: Saved-audio owned failure cleanup
 on:
   push:
     branches: ['carr/ci-native-audio-cleanup-*']
-    paths: ['carr-library/**', '.github/workflows/carr-native-saved-audio-cleanup.yml']
   workflow_dispatch:
 
 permissions:
