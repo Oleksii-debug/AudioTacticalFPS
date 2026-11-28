@@ -129,6 +129,62 @@ exports depend on codecs in the explicitly installed FFmpeg build. DSP uses
 typed numeric presets for EQ, filters, gate, dynamics, denoise, delay and music
 ducking. A numerical level measurement does not establish listening quality.
 
+## Inspecting long silences in completed audio
+
+On the **Production** page, choose **Inspect completed audio** after the selected
+project has a completed render. Reopening its saved project can select the same
+retained run from the journal in its current output folder. The saved source and
+production plan must still match that completion. Pending native text/settings
+edits must be saved or reverted first. Inspection does not launch a speech model,
+render again, trim silence, repair a cache or change the completed audio.
+
+The owned criteria dialog has named **Inspection threshold in dBFS** and
+**Inspection minimum duration in seconds** controls. The initial values, -50 dBFS
+and 3 seconds, are editable examples of review criteria, not recommended quality
+targets. The threshold accepts -120 through 0 dBFS; duration must be above zero
+and at most 86,400 seconds. A span qualifies only when every PCM channel stays at
+or below the selected absolute amplitude for the selected duration. Frame bounds
+are start-inclusive and end-exclusive.
+
+Choose **Inspect using these criteria** to run the retained-file verification and
+scan on the existing Studio worker. **Cancel inspection setup** starts no work.
+**Cancel studio operation** stops an active scan through the existing owner.
+Changing the current library/project or closing its owner prevents a late report
+from replacing current work. The previous completed-render result stays intact.
+
+The read-only report shows criteria, exact run/source/plan/file hashes, interval
+counts and bounded frame/time findings. It retains at most 1,000 interval rows;
+additional matching intervals remain included in the aggregate count and are
+explicitly reported as omitted rows. Recorded authored-pause, spoken-line and
+music-clip overlaps provide context only. Background scene music is marked
+unknown because the retained timeline does not record that context. A matching
+span is a review warning: it is not evidence of a defect, intended silence,
+speech accuracy or acceptable listening quality.
+
+**Copy inspection report** copies the complete displayed report. **Export
+inspection report** uses the existing destination review and replacement
+approval. It then closes the report window and rechecks the completion manifest,
+PCM master and timeline on the Studio worker while holding their verified
+readers through publication. A changed retained file requires a new inspection.
+The destination must be outside the production output, project and original
+source files. A previously absent filename stays create-only if another writer
+creates it after approval. A completed export with a late cleanup problem is
+reported as saved with a visible warning.
+
+The command line uses the same inspection service:
+
+```powershell
+research-library --audio-inspect-silence "C:\Audio\Project\renders\RUN_KEY\complete.json" --audio-silence-threshold-dbfs -50 --audio-silence-minimum-seconds 3
+```
+
+Replace `RUN_KEY` with the actual selected completed-run directory. Both criteria
+are required. Optional `--audio-silence-run-key` binds an expected lowercase SHA256
+run key, and `--audio-silence-max-intervals` selects a row limit from 1 through
+1,000. The CLI prints the typed report on stdout and progress on stderr; Ctrl+C
+reports cancellation and exits with code 130. It does not select a runtime or
+export a file. Native control automation and synthetic PCM verification remain
+separate from manual NVDA, physical playback and acoustic-quality acceptance.
+
 ## Local engines and large jobs
 
 SAPI 5 uses installed Windows voices. The backend also supports reviewed local
