@@ -24,7 +24,7 @@ These are exact-run observations. No row below is a completed 12-tier acceptance
 
 The exact predecessor evidence is retained in Git blob `48150e415b63c03e61ba66d58245b85df1d62c63`, including job IDs, phase states, raw log blobs and artifact identities.
 
-The first 1,000-book run spent approximately 381.826 seconds between starting resume of the remaining 999 books and starting the catalog-verification step. This includes the step transition; it is not a final API profile. A simple linear extrapolation would exceed the current 95-minute resume phase at 50,000 books. That observation triggered an actual parent/worker profile rather than an unsupported throughput claim.
+The first 1,000-book run spent approximately 381.826 seconds between starting resume of the remaining 999 books and starting the catalog-verification step. This includes the step transition; it is not a final API profile. A simple linear extrapolation would exceed that predecessor's 95-minute resume phase at 50,000 books. That observation triggered an actual parent/worker profile rather than an unsupported throughput claim.
 
 The [separate import-cost diagnostic](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46088811012), head `d68c6b6a8709e7b7cae9632490fcfdfead455585`, completed successfully on Linux with one fresh 1,000 × 40 corpus in four bounded 250-row slices. All original/catalog checks and the 393-file installed-package, 36-module-origin and executed-script proofs passed. Product bytes, source checks, publication checks, resource accounting and process ownership were unchanged. `cProfile` overhead is included. This is DIAGNOSTIC_ONLY; it does not replace any of the twelve required tiers.
 
@@ -105,6 +105,55 @@ The [Windows import profile](https://github.com/Oleksii-debug/AudioTacticalFPS/a
 The [small backup-scale adapter gate](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095579146), exact head `1d85bae4c35bd7fedf385b3eeafc9519d770b0c5`, passed all **17 cases in source and isolated installed modes on both operating systems**. It checked 45 selected origins, all 405 package files and all three benchmark scripts before and after execution. These are actual small-corpus backup/verification/restore and refusal contracts; they do not establish a 50,000-book or 2 GiB roundtrip.
 
 These completed component results supersede the corresponding unresolved component observations above only for their exact source compositions. They do not establish the final twelve-tier verdict, larger-corpus throughput, simultaneous process-family RAM peak, semantic quality or physical accessibility. The current final-head workflow reports remain the acceptance authority.
+
+### Executed source and search growth components
+
+The [explicit search-memory contract gate](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46099085535), exact head `734962a62f4efa329f04d8c2f69ae20057ca6114`, passed **62 source and 62 isolated installed cases on each operating system**, with no failures, errors, skips or expected failures. It bound all 405 package files, 45 module origins and three measurement scripts before and after execution. This qualifies the explicit allowance and small backup/import/search contracts, including their refusal controls; it does not by itself qualify a large-source performance result. Evidence is retained in Git blob `256ce11b9b4d6605649c60ae351544c9a3d1d24b`.
+
+The [uninstrumented search component](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101042884), exact head `25518b4c49c8fa55c3ad4f45a178403e733609dd`, completed all six jobs below. Every job generated actual originals, interrupted after one genuine committed publication, resumed the same saved queue, verified the full catalog and sources, and passed complete literal traversal, all 50 exact-title samples, current-source quotation copy, Unicode, foreign-scope, federation and complete-scope ranking checks. The reopened index reported zero updated rows in every job.
+
+| Actual component input | OS | Measured public import calls | Complete retrieval scenario | Coordinator's own peak |
+| --- | --- | ---: | ---: | ---: |
+| 1,000 books / 40,000 segments | Linux | 162.520 s | 49.243 s | 52,084,736 bytes |
+| 1,000 books / 40,000 segments | Windows | 436.043 s | 97.320 s | 53,100,544 bytes |
+| 65 MiB / 17 segments | Linux | 8.094 s | 273.075 s | 672,157,696 bytes |
+| 65 MiB / 17 segments | Windows | 17.031 s | 478.268 s | 618,704,896 bytes |
+| 129 MiB / 33 segments | Linux | 22.896 s | 624.945 s | 1,232,633,856 bytes |
+| 129 MiB / 33 segments | Windows | 31.906 s | 760.929 s | 1,166,299,136 bytes |
+
+The two single-source component inputs were exactly **68,157,440** and **135,266,304** bytes. The final twelve-tier fixtures specified below add 173 bytes to those boundary inputs, so these component jobs are not substituted for the exact final tiers. The large-source component used the explicit 1 GiB search working allowance; the book component retained its derived allowance. The measured interpreter peaks are separate observations and may exceed the search working allowance. No simultaneous family peak or operating-system memory ceiling is claimed.
+
+These jobs had no `cProfile` observer. They ran on independently hosted machines and on a different composition from the earlier instrumented diagnostics, so their table does not claim a causal speedup ratio. Full measurements, source identities, six raw-log blobs and before/after proofs are retained in Git blob `9e0725e77172d97d4cda28c18c3b58fa0ff805d0`.
+
+The Linux job of the [separate 10,000-book growth component](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095787780), exact head `27b5380eee386059affa89f5c38cb354ba20a034`, completed 400,000 actual source segments and all end-to-end oracles. Measured import calls took 1,031.729 seconds, full catalog verification 36.562 seconds and retrieval 1,849.135 seconds. The two complete-scope ranking calls took 419.176 and 427.914 seconds, with zero updated rows on reopen. This exposed growing query cost; it is not a 50,000-book projection or a result for the later SQL composition. Exact evidence is retained in Git blob `40eac2193fd9f9394291ca26ba27f9996c6d6937`.
+
+The same-head Windows job completed generation, admission, the genuine first-commit interruption, resume and full catalog verification, then **failed** its existing 3,600-second retrieval allowance. The trace stopped in the old `ranked_scope._sync` current-page query: SQLite reported `interrupted`, followed by `TimeoutError: Search cancelled or timed out.` The final proof refused the failed search phase. The trace does not identify which first/reopened ranking iteration was active. Resume occupied 3,294 seconds and catalog verification 82 seconds of completed step wall time; those values are not the API timing distributions, which remain in the captured artifact. This is a pre-SQL-correction failure, not a result for the later composition. Exact phase states, the bounded traceback, raw-log identity and artifact digest are retained in Git blob `5cc22e1ee7db36e43711d4f0540f27df2613db8b`.
+
+The [canonical query diagnostic](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101997783), exact head `3bd0453809dbade69dbc6131079bdb5e79dc733a`, used fresh public-import corpora of 100 and 1,000 books. Read-only old/new queries preserved exact rows, ordering where required, source scope and database bytes. For a 100-ID refetch, the scoped page-first query used 5,254 native VM steps at both sizes; the previous form grew from 53,354 to 495,254. This is actual query-plan and equivalence evidence, not a full-library performance acceptance for the product patch. Git blob `269e6b8fe71173723004635dbd40b23fb914ab37` retains the actual plans, measurements and parity checks.
+
+### Completed current SQL growth measurements
+
+The [current 10,000-book component](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103586773), exact head `60f01a5630bdc4127cfc60bdf26474d527ba1744`, completed on both operating systems after the first three scoped SQL corrections. Every actual catalog/source row, all 4,000 literal windows, 50 title-scoped queries, exact quotations, 21-library navigation and both complete-scope ranking calls passed after genuine interruption and resume. The complete source/package inventory remained unchanged.
+
+| Actual 10,000-book measurement | Linux | Windows |
+| --- | --- | --- |
+| Public import calls, including owned worker cleanup | 1,868.085 s | 2,015.626 s |
+| First to last resume call for 1,000-book saved batches | 173.843 to 198.523 s | 188.691 to 212.715 s |
+| Owned child within those first/last calls | 156.506 to 174.359 s | 171.469 to 189.312 s |
+| Complete catalog verification | 59.648 s | 49.889 s |
+| Complete retrieval scenario | 668.823 s | 558.904 s |
+| Complete 400,000-result ranking, first / reopen | 66.330 / 59.902 s | 59.224 / 57.748 s |
+| Updated ranking rows on reopen | 0 | 0 |
+
+The child times are included in their public API calls and must not be added to them. These hosted runs are not controlled causal comparisons with earlier machines. The ten chronological saved-event identities, counts, timing reconciliation, complete metrics and raw logs are retained in Git blob `650fec0a6d68cacb301dfe526b6e7c98cff0f988`.
+
+The [512 MiB growth component](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104136822), exact head `6d30844bc79f951fc3387a29b2d753370c8950bb`, generated a genuine **536,871,085-byte** source with 250 original segments. Linux completed the full protocol: public import 59.231 seconds, catalog 9.789 seconds and retrieval 1,321.129 seconds. Its 17 literal windows had P50/P95 10.248/10.333 seconds; 50 scoped anchors had P50/P95 6.836/6.889 seconds. Complete ranking took 24.313/22.255 seconds, with zero updated rows on reopen. The coordinator's individual-process peak was 1,840,365,568 bytes, not a simultaneous family peak.
+
+The same-head Windows 512 MiB job **failed** during its first import because the selected worker temporary-output budget was exceeded. The saved batch had zero complete and one failed item; no authored interruption, resume, catalog or search phase completed. The selected quota was 671,088,813 bytes. Neither the cause nor a later correction is inferred from this message alone. The failed raw log and successful Linux measurements are preserved together in the same evidence blob. These component results do not replace the final exact 2 GiB tier.
+
+The [follow-up bounded-fetch diagnostic](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105648861), exact head `fb90e7797b90339561d45982e256a6f601b4489f`, completed all 24 read-only SQL pairs on actual 100-book and 1,000-book corpora, retaining identical rows, required order, database bytes and complete implementation identity. The derived current-original lookup used 57 native VM steps at both sizes. Nonempty result refetches use at most 100 page-key lookups and up to 500 selected edition alternatives per key. This finite bound has a measured tradeoff: the wide 500-edition / 100-page case used 406,763 steps versus the old 257,763 at 1,000 books. The change does not promise every small query becomes faster. Empty-ID execution returned zero rows in 28 steps at both sizes. Complete plans, source identities and raw logs are retained in Git blob `18735c1c5e74d961bae36bb57051c39c33557e1f`; the patched product receives its own functional and final-capacity verdicts.
+
+The final workflow must use measured current-composition growth to set finite aggregate allowances. Each public matching result page and each of the 55 main-source copy operations retains its current-original proof. Empty Unicode windows do not attest an unreturned original; complete-scope index construction validates bounded database rows, with fresh original proofs when its result pages are returned. These distinctions matter when planning the 2 GiB run. No per-query limit, complete traversal, copy sample, source digest or required backup roundtrip may be removed to fit an aggregate deadline.
 
 ## Actual corpus tiers
 

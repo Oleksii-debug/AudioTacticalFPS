@@ -1,6 +1,5 @@
 {
-  "schema": 1,
-  "scope": "Coherent reviewed final source composition; remaining measured runtime closures and exact final seven gates.",
+  "schema": "carr-final-capacity-checkpoint/11",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical": {
     "head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
@@ -8,184 +7,208 @@
   },
   "pr": {
     "number": 143,
-    "head": "96cf8a1435187844393b5389001d07a587c417a8",
     "branch": "carr/canonical-integrity-finish-20261127",
+    "current_head": "96cf8a1435187844393b5389001d07a587c417a8",
     "status": "NOT_FINAL_QUALIFIED"
   },
   "draft": {
-    "base_head": "9410e4cbf5a3eef79e7f058acdbc6a8c4f136849",
-    "base_tree": "3c25894739e8f91ddbde1a0f7e47663db0a1902a",
-    "final_files": 1503,
+    "base_head": "6d30844bc79f951fc3387a29b2d753370c8950bb",
+    "base_tree": "cdbaba49ca8c8564da7233b6e79507d5a408d947",
+    "final_files": 1504,
     "exclude_from_final": [
-      ".github/diagnostics/final_completion_checkpoint.json",
-      ".github/workflows/carr-final-composition-syntax.yml"
+      ".github/workflows/carr-library-sql-large-review.yml"
     ],
     "deltas": [
       {
-        "path": ".github/workflows/carr-library-scale.yml",
-        "before": "99f7c9df0f12edc7229c10e4ece0cc40d818a597",
-        "after": "86ba30fbd5de858c469589e41bf1aba568506295"
-      },
-      {
-        "path": ".github/workflows/carr-v3.yml",
-        "before": "a28961607a566775049454ff2ad527f2d1544278",
-        "after": "b4ec047dfd7a96ec748527f78513f127dfd23c1a"
-      },
-      {
-        "path": ".github/workflows/carr-windows.yml",
-        "before": "ebdc748705dad0b9949a76583b9696629287a7b7",
-        "after": "99c3f64ff33f0dc595fe4c2daa4130a11b9f4fe6"
-      },
-      {
         "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
-        "before": "8497aa216e7b75f8afeacac7bf1d821b6c658bf6",
-        "after": "9512c1ff209a6d4faa94fa308c3c244067396c9b"
+        "before": "9512c1ff209a6d4faa94fa308c3c244067396c9b",
+        "after": "a5ef2893c80abb3ea684e5527158ede663afead1"
       },
       {
-        "path": "carr-library/scripts/benchmark_library_catalog.py",
-        "before": "de70eac386a21d88a7a42f4ad5f0271ce88fa133",
-        "after": "5c674cac4b02237c8cf65122fbc58dca397ed3d9"
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "before": "d7f903a9f85a00485a9507ae63f40bf788b7ada2",
+        "after": "54a05584b8af09d58c894e11ed85453c036bdf91"
       },
       {
         "path": "carr-library/scripts/windows_backup_import_access_smoke.py",
-        "before": "e84cfaf73c1c014daa43be9c576eb884b6ba6933",
-        "after": "d1f32cf068233645aac165c898dc911e13a1fd9e"
-      },
-      {
-        "path": "carr-library/src/carr_library/application.py",
-        "before": "0be1b1fc48f27b814a5c6bf5b2a17eb70461f33b",
-        "after": "b7f91cbd064d751741d798fe3a80d4c50ba7cfa5"
-      },
-      {
-        "path": "carr-library/src/carr_library/catalog/intake.py",
-        "before": "5af6de360b8b0392c2ed26bf11d97fe113dc663c",
-        "after": "02ae42e3fcc3b6d716c20760f6884604530138d2"
-      },
-      {
-        "path": "carr-library/src/carr_library/citations/text_attestation.py",
-        "before": "0e67354655c327ad3dd31883b9992218ff22305c",
-        "after": "5c433963578ef53a1dd53967e209e41926284d44"
-      },
-      {
-        "path": "carr-library/src/carr_library/search/literal.py",
-        "before": "5776d37a06c5937a4b18c6ec485548acbc0837e0",
-        "after": "27eeac22e47cd31965b71c0665a5656a4e2afbe1"
-      },
-      {
-        "path": "carr-library/src/carr_library/ui/import_center.py",
-        "before": "8512fa6c00a7e2eb9b0ff5a3762528b12d4b9538",
-        "after": "d43e5d3412234352ff848b52c4e9de1fd62cec55"
-      },
-      {
-        "path": "carr-library/tests/e2e/test_retained_source_search_integrity.py",
-        "before": "42f31c2ae40dd0818d7f3d1bd512fd680e7db5b8",
-        "after": "c846dc85763f9aac8869a95503d76572e21561f8"
-      },
-      {
-        "path": "carr-library/tests/e2e/test_streaming_import_pages.py",
-        "before": "bb5f2b33f5bf2832dab632c1537d45beafd3af60",
-        "after": "10d4f74f245dec1d27dd96e017da24d291923ef7"
-      },
-      {
-        "path": "carr-library/tests/ingest/test_worker_isolated_launch.py",
-        "before": "ccca34153d9acafcc12725be7ed9c7e57237cea0",
-        "after": "6de241c0f7b73f752aa70512758431e787969eb1"
-      },
-      {
-        "path": "carr-library/tests/scale/test_library_catalog_benchmark.py",
-        "before": "469cf3cc9743f877a8172530e83b267b9c2a2e9e",
-        "after": "0df0224cfb10112488a7381914335438f2ae485f"
-      },
-      {
-        "path": "carr-library/tests/search/test_literal_scoped.py",
-        "before": "063290714c8a3efb0e685c81a89cccfbe6008316",
-        "after": "0267d16f9c5f4f78b06d6a1eeb31552810f35e7a"
-      },
-      {
-        "path": "carr-library/src/carr_library/search/originals.py",
-        "before": null,
-        "after": "eaee6a1aee7b36e554f62430221de533e5c61f7e"
-      },
-      {
-        "path": "carr-library/tests/search/test_page_originals.py",
-        "before": null,
-        "after": "b8696c1a6a82bfe4d8f798b6d49eb0eff83b7114"
-      },
-      {
-        "path": "carr-library/tests/search/test_literal_ascii_runs.py",
-        "before": null,
-        "after": "99b6a63f475aaa947217cae58ee9129366264d28"
-      },
-      {
-        "path": "carr-library/tests/search/test_page_originals_adversarial.py",
-        "before": null,
-        "after": "84ca73dcb356169b70696979822d9628fd665ec5"
+        "before": "e893396dd2547a683129d2ae2bcbb5a57cac7e41",
+        "after": "90da07e98edfbffdfc1b6f4e77e066ab49b06b6b"
       }
-    ]
+    ],
+    "recovery_base": {
+      "head": "6d30844bc79f951fc3387a29b2d753370c8950bb",
+      "tree": "cdbaba49ca8c8564da7233b6e79507d5a408d947",
+      "remove": [
+        ".github/workflows/carr-library-sql-large-review.yml"
+      ],
+      "apply": [
+        {
+          "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+          "sha": "13433fd2a401fd4ce13d34ea38c0eaf263394d64"
+        },
+        {
+          "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "sha": "ca6d5c04c2ac3e3d944c7c7293957d22b4be13ef"
+        },
+        {
+          "path": "carr-library/scripts/windows_backup_import_access_smoke.py",
+          "sha": "90da07e98edfbffdfc1b6f4e77e066ab49b06b6b"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/paging.py",
+          "sha": "9ba9732ad5597bfed4b37bd98cb1aebeafe5dfc3"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/literal.py",
+          "sha": "5f9078e29fe232c3454f6cf088c1c809bf6bfc53"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/thematic.py",
+          "sha": "d6e528185064d8278c84cd7e0a10558f17cd1a9f"
+        },
+        {
+          "path": "carr-library/src/carr_library/semantic.py",
+          "sha": "ef659a108579b90e6de125109c64e0eda30e49f3"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/originals.py",
+          "sha": "2c5e83c862c7104fb9977f33d405ebd24b696b1a"
+        }
+      ],
+      "files": 1504
+    }
   },
-  "pending": {
-    "search_correctness": {
-      "prepared_head": "5aac244c6cd0d734ac4e65402162f7c98f1794e8",
-      "manifest": "9d10dfe19b32ee73e72941c80c6745385df8e22c",
-      "scope": "Finaleaee/84ca+0267/c846/qualified10d4. Root also restores qualified6de isolatedlaunch fixture.",
-      "current_head": "55948b19e15c6ddc31f683824d84df5fd72255c7",
-      "current_run": 46100141056,
-      "linux_failures": "5stale fixtures, exact corrections source-approved; awaiting all runtime proofs"
+  "prepared": {
+    "paged_source_manifest": "ad0fed7fa1e2d7d09ab13be12b3005197f543344",
+    "five_source_semantics_review": [
+      "root",
+      "root/reader_review",
+      "root/import_recovery_review"
+    ],
+    "five_source_status": "HOLD_UNTIL_ACTUAL_DERIVED_QUERY_PLANS",
+    "next_correctness_head": "3a16e0b5c3385c1d8bc6f5305accbe727c7d47ab",
+    "next_correctness_tree": "587b5df2911231d99ebbae37fa4751e1dc1a450b",
+    "next_correctness_manifest": "1a68f42eeec8c825fbe270ebd7f626981587a684",
+    "next_correctness_workflow": "2760bdd81ba4d635249cb2fc129e2280edcfa244",
+    "next_correctness_scope": "53source+installed suites,22origins,allprior52plus7menu cases,source5 plusqualifiedUI2;unpublished",
+    "pr_body": "98c2a68ae900b0e48be2244d91d8c4af061cc80e",
+    "storage_validation": {
+      "state": "HELD_FROM_FINAL; isolated focused qualification authorized",
+      "paths": [
+        {
+          "path": "carr-library/src/carr_library/storage/revisions.py",
+          "base": "1341dbc7f29a8116867b00de48f1681b19e9ade5",
+          "sha": "87b4f61bc202e817a551dadbf55e1c9ddef3f0c7"
+        },
+        {
+          "path": "carr-library/src/carr_library/storage/publication.py",
+          "base": "1aad3b36cecfd14da9a3f45f7ffb09360bf9a879",
+          "sha": "cefbfb3b22c13c9390a75872b94cb375bdca2277"
+        },
+        {
+          "path": "carr-library/tests/storage/test_index_validation_streaming.py",
+          "base": null,
+          "sha": "979f88992e983c53f826d2039d19be45a8d3da72"
+        }
+      ]
     },
-    "search_performance": {
-      "head": "25518b4c49c8fa55c3ad4f45a178403e733609dd",
-      "run": 46101042884,
-      "manifest": "7c1546eb9b0244e8fe67e1106a2d07d4ce956a25",
-      "scope": "Actual uninstrumented1k/65MiB/129MiB bothOS; source and all50oracles unchanged; explicit1GiB onlargefiles."
+    "provisional_final": {
+      "tree": "4a938991b974395b76eceb83e16e4b8cd4f8e282",
+      "files": 1505,
+      "status": "Provisional source/timing union for syntax validation; pending Windows corrected capacity and full final gates",
+      "storage_sources": [
+        "87b4f61bc202e817a551dadbf55e1c9ddef3f0c7",
+        "cefbfb3b22c13c9390a75872b94cb375bdca2277"
+      ],
+      "new_test": "979f88992e983c53f826d2039d19be45a8d3da72",
+      "main_workflow": "d436b3623c661ff1486ec03b96ad0df1452e36c8",
+      "v3_workflow": "31efac45c008636fe37bdb703dcec847267e91e1",
+      "scale_workflow": "75994a6df89d8b1d38ce96a82e36f159eae32283"
+    }
+  },
+  "active": {
+    "sql_query_diagnostic": {
+      "head": "fb90e7797b90339561d45982e256a6f601b4489f",
+      "run": 46105648861,
+      "status": "BOTH_SUCCESS; five exact proposals staged"
     },
-    "sql_diagnosis": {
-      "head": "3bd0453809dbade69dbc6131079bdb5e79dc733a",
-      "tree": "764f2e03b2c2165095c7dc6a3ada27a37bdc97ab",
-      "source": "bd1ce4501172b86bd079a8ce6d36c2f197cf9fae",
-      "workflow": "843bbe8feb913cf5069e9d370730da6f89c0fda5",
-      "baseline_run": 46101516754,
-      "scope": "Actual100/1000 public corpora; row/order parity, EXPLAIN/VM and real _sync/_lexical. No product SQL changed yet."
+    "growth_10k": {
+      "head": "60f01a5630bdc4127cfc60bdf26474d527ba1744",
+      "run": 46103586773,
+      "linux": "success",
+      "windows": "success"
     },
-    "growth": {
-      "head": "27b5380eee386059affa89f5c38cb354ba20a034",
-      "run": 46095787780,
-      "linux_evidence": "40eac2193fd9f9394291ca26ba27f9996c6d6937",
-      "windows": "Actual10k import complete3294s stepwall;fullsearch ongoing; exactAPI metrics pending"
+    "large_512": {
+      "head": "6d30844bc79f951fc3387a29b2d753370c8950bb",
+      "run": 46104136822,
+      "linux": "success",
+      "windows": "failure first import quota"
     },
-    "native_access": {
-      "head": "afc7dcdcdd2a58a72785e953a59e2618a4a1ed36",
-      "run": 46101548199,
-      "manifest": "e0f0bd3bf8830b6b94932d8988fea86f9c6e774a",
-      "scope": "Actuald43 geometrypasses;access continues until stale incremental menu literal. Importer preparing exact probe correction; palette30PASS."
+    "windows_512_overflow_diagnostic": {
+      "head": "8cbc6caebb13e746fd270f4e2ff5611b25843ebc",
+      "tree": "08d0516cccde8d09385a701f46c55e7bb0d8fe81",
+      "run": 46107906892,
+      "job": 140864677226,
+      "manifest": "c0cde8d0b01aa107aceb824ef6eff063294b687d",
+      "state": "queued"
     },
-    "scale_workflow": {
-      "source": "86ba30fbd5de858c469589e41bf1aba568506295",
-      "guide": "9512c1ff209a6d4faa94fa308c3c244067396c9b",
-      "status": "12tiers/4largestactualbackup exactsource-ready;finite50k+2GiB aggregate allowances await measured timing and SQLfix."
+    "search_53": {
+      "head": "3a16e0b5c3385c1d8bc6f5305accbe727c7d47ab",
+      "run": 46107766371,
+      "jobs": {
+        "linux": 140864262569,
+        "windows": 140864262863
+      },
+      "manifest": "37fe16be87ffa8dc7ddf2594c7c40499b0629e41",
+      "linux": "1056source+1056installed;success",
+      "windows": "in progress",
+      "partial_evidence": "ae96b979c49c8d99e04349bd05c5911cb6c984d3"
     },
-    "final": "Publish coherent PR143head;all7maintainedworkflow gates on exacthead;repair actual failures;merge with expectedhead after canonical recheck."
+    "corrected_windows_512": {
+      "head": "ba5cd017f18abf99ef007368f73e1f2d503ccfa7",
+      "tree": "60126448133ca117d9974a5b2549b8427fabde39",
+      "manifest": "6951457fa4db59cd400415272f357d735ba50132",
+      "branch": "carr/library-sql-large-review-20261128",
+      "status": "published; importer owns read-only run discovery and harvest"
+    },
+    "index_validation": {
+      "head": "e4262c5740452a38f10c0a0328b61c4770251c21",
+      "run": 46108822754,
+      "linux_job": 140867542145,
+      "windows_job": 140867542370,
+      "linux": "294source+294installed+3subtests each; success",
+      "windows": "pending",
+      "partial_evidence": "d9f867c65848b095b6d77ac3cf631e475c272c06",
+      "manifest": "832ca2b84abf41ca7fc4400307e85a6ea53734ac"
+    }
   },
   "evidence": {
-    "ocr": "8028ce820007089153832271f2f2ed5721ece25b",
-    "search_common": "01e8b7648c243ec3d1c17b488469cd8f97113d22",
-    "search_model_native": "b4efe83a9f432ddae1f089d06e4453c5df173d0f",
-    "translation": "b60686ae8bc094972f55be9a982ef23bcb9aa8af",
-    "queue": "3a74bd9f959ccc8393a1a21dda94df4717fa7a87",
-    "runtime": "c3154b91c9b45f17e852604d29cde1b5235d2401",
-    "syntax": "c000d9fdbb8480bd208ce3d5f682ba5aa6636fc4",
-    "backup_common_and_palette": "76f4765c713a128836499970d06d56f4177c2eb2",
-    "backup_scale_small": "901e7d9b913fab27696fe76e0cf8cfd421d6a715",
-    "receipt_session_scratch_micro": "54b5e9ed5dc1fef7c3cf7d460bb32058561f4488",
-    "actual_1k": "5415b8b5160553cb1d3842a4839a4a546d55b6e5",
-    "windows_import_profile": "3849feb90028bc70a732ef3bebaab0a3f7fdceec",
-    "auditor_checkpoint": "bed8e6bbe393a86830d554b0d75e0d8db7c6fb37",
-    "search_profile_baseline": "48db572d9ca6afb580ed39bfba505d2cc6b01fae",
-    "search_small_profile": "cbfa6ca35c57ef78b1d19d063714b62ac32a26b9",
-    "search_memory_contract": "256ce11b9b4d6605649c60ae351544c9a3d1d24b",
-    "search_linux_initial": "79911cddf37e5026056b26ba47cbf83a93eda172",
-    "fixture_map_audit": "d066840c4ed86d19ce67b787d2778fc89a0e5805",
-    "native6e1": "dbc4863ea75a05a2f7be62567b78d7e564af4496"
+    "sql52": "fb291d80977780b5ee65ac90bcca5e1f51c1b6fc",
+    "sql52_head": "6832acef500a7a2c6a869778a6c958cba0a64d34",
+    "native": "5b55f2118d4cec2ce4f313466d00bfbe8b5204e7",
+    "native_head": "13a61cd6a0236de20d891552937369770179f414",
+    "native_run": 46104158148,
+    "actual_six_search_scenarios": "9e0725e77172d97d4cda28c18c3b58fa0ff805d0",
+    "search_memory": "256ce11b9b4d6605649c60ae351544c9a3d1d24b",
+    "keyed_sql": "269e6b8fe71173723004635dbd40b23fb914ab37",
+    "linux_pre_sql_10k": "40eac2193fd9f9394291ca26ba27f9996c6d6937",
+    "windows_pre_sql_10k_failed": "5cc22e1ee7db36e43711d4f0540f27df2613db8b",
+    "small_profile": "cbfa6ca35c57ef78b1d19d063714b62ac32a26b9",
+    "previous_full_checkpoint": "e5124cd034c0eecf45dc2ff1f151c24dd1e7290c",
+    "auditor_checkpoint": "515465dc03c0dc7020a60be7f16229d90c2c1a6e",
+    "current_sql_growth": "650fec0a6d68cacb301dfe526b6e7c98cff0f988",
+    "nonmaterializing_query_source_analysis": "2464e1ffb321890fd9d513ba2648267b0abda46b",
+    "paged_sql_round3": "18735c1c5e74d961bae36bb57051c39c33557e1f",
+    "final_phase_budget_source_analysis": "1bd2280d01110ba0cca158382f11e8eadf8c63a2",
+    "original_scratch_overflow": "f2bba32c5e2547a6b8b127c6a6b3d7a26ae0d2d2"
   },
+  "remaining": [
+    "Harvest full53 and23suite exactbothOS source+installed outcomes.",
+    "Harvest correctedba5 fullWindows512 under originalquota; exactetilqs statement not instrumented, no prematurecause/capacityclaims.",
+    "Oncequalified, promote provisional1505-sourceunion and frozen3workflows; updateonly truthfulcurrentdocs/evidence.",
+    "Publish PR143 coherent final head after freshcanonical/expected96/fulltree verification; all7maintainedexactheadgates including12actualcapacitytiers/4largestbackuprestore.",
+    "Fixactualfinalfailures, preservefailed evidence, mergeexpectedheadaftercompletegreenandfreshcanonical. No user reapproval needed."
+  ],
   "boundaries": [
     "Component PASS never transfers to later heads.",
     "No private-engine,135-language human-quality,production signing,physical device or NVDA claim.",

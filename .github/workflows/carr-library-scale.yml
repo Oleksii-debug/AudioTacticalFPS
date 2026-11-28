@@ -518,20 +518,25 @@ jobs:
           fi
       - name: Resume the same durable queue in a new actual process
         id: resume
-        timeout-minutes: 95
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds 5400 > ci-library-corpus/resume.jsonl
+        # Actual ten-slice growth informs this finite 50k allowance.
+        timeout-minutes: ${{ matrix.tier.name == 'books-50000' && 245 || 95 }}
+        run: |
+          seconds=5400
+          if [ "$CARR_SCALE_TIER" = "books-50000" ]; then seconds=14400; fi
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds "$seconds" > ci-library-corpus/resume.jsonl
       - name: Reopen and verify every original catalog segment and retained source
         id: catalog
         timeout-minutes: 35
         run: python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl
       - name: Measure actual complete traversal, exact quotations and scoped ranking
         id: search
-        # The actual 1k tier traverses 400 literal pages. The 50k tier must
-        # traverse 20,000; the larger aggregate preserves all per-query bounds.
-        timeout-minutes: ${{ matrix.tier.name == 'books-50000' && 95 || 65 }}
+        # Full traversal, all copy samples and per-query bounds stay required.
+        # The job's overall 360-minute limit also applies to these phase caps.
+        timeout-minutes: ${{ matrix.tier.name == 'text-2g' && 245 || (matrix.tier.name == 'books-50000' && 95 || 65) }}
         run: |
           seconds=3600
           if [ "$CARR_SCALE_TIER" = "books-50000" ]; then seconds=5400; fi
+          if [ "$CARR_SCALE_TIER" = "text-2g" ]; then seconds=14400; fi
           python -I -B -X utf8 scripts/benchmark_library_catalog.py search "$CARR_SCALE_DIR" --seconds "$seconds" --query-seconds 1800 --query-samples 50 > ci-library-corpus/search.jsonl
       - name: Require actual complete backup verification and fresh restore on the largest tiers
         id: backup
