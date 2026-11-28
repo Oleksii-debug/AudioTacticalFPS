@@ -111,7 +111,7 @@ def main():
             panel.grid.focus_row(row)
             selected = panel.selected()
             assert selected.workspace == workspace and selected.title == 'Selected source'
-            buttons = [child for child in panel.GetChildren() if isinstance(child, wx.Button)
+            buttons = [child for child in panel.search_viewport.GetChildren() if isinstance(child, wx.Button)
                        and child.GetLabel().replace('&', '') == 'Open original source file']
             assert len(buttons) == 1, 'Exactly one original-source action should be available.'
             click(buttons[0])
