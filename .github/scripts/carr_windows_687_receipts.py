@@ -14,18 +14,18 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46111569593
-HEAD = "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+RUN = 46119978375
+HEAD = "943f585659c55481046266338f428e4a1043a9bd"
 BRANCH = "carr/ci-endpoint-evaluation-20261127"
 SOURCES = (
-    ("main", 15254290696, 478106,
-     "329d888bebc41c9905a2143640719604bd47c4e623498f93881f40c0fb736b94",
+    ("main", 15256851282, 475789,
+     "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
      "carr-windows-pre-source-" + HEAD + "-1"),
-    ("endpoint", 15250432687, 3944,
-     "c42ae7ec97b57a74f8c6898c667be9cd81f36b8bbb4c850fe1a836def90d8514",
+    ("endpoint", 15253625504, 3942,
+     "d7eff7a55f29ba4d5e95b3a266267acdaadd4ba680634f2c7bcf1437f557ef98",
      "carr-windows-audio-endpoint-" + HEAD + "-1"),
-    ("recording", 15251032508, 16791,
-     "2f97ac31640b02841237a8c1959fa7672208aa1b9e213232da2d194fe5d11a14",
+    ("recording", 15253256509, 16780,
+     "2db6ce9c98482128246425b098a39c2f417c3a8fd270277516b75523cdf5a293",
      "carr-windows-recording-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
