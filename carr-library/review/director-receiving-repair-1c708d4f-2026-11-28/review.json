@@ -1,0 +1,128 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "title": "Director publication JSON identity and foreign-flat metadata recovery after actual 1c feature failure",
+  "base_head": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+  "observed_head": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "observed_run": 46129784287,
+  "observed_job": 140932191681,
+  "observed_evidence": {
+    "tree": "ca93b53066643eb65ff218fbb872cffbc2775a44",
+    "raw_blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf",
+    "raw_sha256": "6f6600cbc1308b68029ec4bcbeb21c533527906592aa6d9e84c98335100e060d",
+    "scoped_trace_blob": "bcf989d0e11e385205d302d9017059d4f9365368"
+  },
+  "source_test_tree": "ac091e40c70a12304dd14157d78c6717062201ad",
+  "supersedes": [
+    "61f01bf5c10c51e71dd8573914c41828e53a38ed",
+    "f588a8b6e7b0377e0f9ae7cccef4f773c7c10b17"
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "preimage": "0c35a19e893618fad75c1167c8147b590ae71121",
+      "successor": "2f7e74ba379febfa0753bc27380dc421381f76ad",
+      "utf8_bytes": 40897,
+      "sha256": "742417f84e4b0d0ceefb6ebf181e92f957ff95b26891603f9e67a81c78cc79e6"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "ed811fea47c7defa842703ef063ffc84a06b4c9b",
+      "successor": "49744786bed06387efd623b923219a9d27c5763c",
+      "utf8_bytes": 33673,
+      "sha256": "7ae9e2f6f0374f0071b5bb92ba7fd97396039d0576d86deb383c6eb770ad4f7b"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "preimage": "a60a9065d3052e2ad93b62989aca147eb9488d98",
+      "successor": "8fb0af04a6be4eec9807c77f9b532222943b12cf",
+      "utf8_bytes": 26492,
+      "sha256": "822e2d9571816019eb69456fe0460d7798c03d166890ca6a05156f75cfdff88b"
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "preimage": "6191e8ffdf26230475f3eb86a7521167e1fad6a5",
+      "successor": "c5aba1493c1a6169b4ac7d21236577ba9170233d",
+      "utf8_bytes": 32681,
+      "sha256": "67b1e52fa7612d63b200800874eafcf1930b4e9c341b8760b18eba6c9e71df73"
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "preimage": "09fba8273f0c32458e5eaf41432ec16271d9c155",
+      "successor": "dad139b85a2ce84dcb3ffea7f9f8193fc2f23233",
+      "utf8_bytes": 11436,
+      "sha256": "678c2b2159715e5dc0c8d796268cf02887e5c3a3fc7608ce30f645c4d85886e4"
+    }
+  ],
+  "changes": [
+    {
+      "scope": "studio/publishing_source.py",
+      "reason": "Real effect-bearing Role.to_dict uses tuple chains while production.json decodes arrays; direct Python equality rejected the valid declaration.",
+      "behavior": "Compare both voice declarations using the existing canonical JSON encoder. Bind the exact master/role/scene effects block to the typed saved Project. When all chains are empty require the historical block to be omitted; explicit null or empty object is refused.",
+      "preserved": "Original completed output receipts, source/job/project fingerprints, exact frame/timing/chapter checks and all output/read budgets."
+    },
+    {
+      "scope": "backup_compat.py",
+      "reason": "The native producer already captures primary Director root-relative JSON; the foreign-flat adapter lacked those exact typed paths.",
+      "behavior": "Admit only project/draft/revision/job JSON with the existing32MiB native typed validator and original source checks. Require each referenced current project. After verified private copying, revoke restored job output authority through the existing pure native transformation, then validate and refresh its exact receipt.",
+      "preserved": "No cache/audio/binary namespace, current capacity pre-copy propagation,32MiB per JSON and final512MiB/count/namespace checks, cancellation and create-only restore publication."
+    },
+    {
+      "scope": "backup_sidecars.py",
+      "behavior": "Extract the exact existing native job-revocation dictionary into one private helper reused by both envelopes. Native values and all current capacity/None/equal-cap behavior remain unchanged."
+    }
+  ],
+  "tests": {
+    "selectors": [
+      "tests/audio/test_director_effects.py",
+      "tests/storage/test_director_effects_backup.py"
+    ],
+    "director": {
+      "old_cases": 39,
+      "added_cases": 2,
+      "planned_cases": 41,
+      "old_assert_lines_retained": 89,
+      "original_file_exact_prefix": true,
+      "coverage": [
+        "Actual effect-bearing PCM accepts canonical tuple/list declarations.",
+        "Seven rehashed scalar/nested/order/missing metadata mutations fail the saved Project guard while original audio/job/project stay unchanged.",
+        "One actual empty-chain PCM production accepts omitted effects and refuses rehashed null/empty-object additions."
+      ]
+    },
+    "backup": {
+      "old_cases": 14,
+      "added_cases": 10,
+      "planned_cases": 24,
+      "old_assert_lines_retained": 12,
+      "original_file_exact_prefix": true,
+      "coverage": [
+        "Real native5/flat4 completion metadata restore is passive and revokes historical output authority without reading it or discovering voices.",
+        "Foreign-flat orphan primary metadata is refused without its declared current project.",
+        "Unknown JSON,cache JSON and binary asset namespaces remain refused.",
+        "Both envelopes reject rehashed wrong project ID/fingerprint before publication."
+      ]
+    },
+    "added_total": 12,
+    "planned_total": 65,
+    "actual_runtime": "NOT_RUN"
+  },
+  "review_scope": {
+    "author": "Full exact five-blob readback and all original preimage inverses; actual existing API/source review, no execution.",
+    "root": "Compat/sidecars production CLEAR on f588. Canonical voice comparison accepted; requested strict empty-effects omission is applied in8fb0af04 and covered byc5aba149.",
+    "locate_project": "Compat/sidecars production and all10 appended backup cases CLEAR. The original5,586-character09fba827 test file is an exact prefix; actual native5/flat4 API and typed refusal paths independently read. No execution claim."
+  },
+  "inverse": "inverse.json",
+  "inverse_checks": {
+    "publication": true,
+    "sidecars": true,
+    "compat": true,
+    "effects_test_prefix": true,
+    "backup_test_prefix": true
+  },
+  "limitations": [
+    "This source package does not qualify the actual native or foreign-flat runtime until new gates execute.",
+    "Other observed1c translation, CUE and audio-runtime prerequisite repairs belong to separately reviewed components.",
+    "No application, PR or evaluation ref is changed by this source tree."
+  ]
+}

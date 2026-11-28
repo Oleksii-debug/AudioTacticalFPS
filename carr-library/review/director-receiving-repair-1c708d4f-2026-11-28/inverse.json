@@ -1,0 +1,103 @@
+{
+  "schema": "carr-exact-source-inverse/1",
+  "base_head": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+  "source_tree": "ac091e40c70a12304dd14157d78c6717062201ad",
+  "before_after": [
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "preimage": "0c35a19e893618fad75c1167c8147b590ae71121",
+      "successor": "2f7e74ba379febfa0753bc27380dc421381f76ad"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "ed811fea47c7defa842703ef063ffc84a06b4c9b",
+      "successor": "49744786bed06387efd623b923219a9d27c5763c"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "preimage": "a60a9065d3052e2ad93b62989aca147eb9488d98",
+      "successor": "8fb0af04a6be4eec9807c77f9b532222943b12cf"
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "preimage": "6191e8ffdf26230475f3eb86a7521167e1fad6a5",
+      "successor": "c5aba1493c1a6169b4ac7d21236577ba9170233d"
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "preimage": "09fba8273f0c32458e5eaf41432ec16271d9c155",
+      "successor": "dad139b85a2ce84dcb3ffea7f9f8193fc2f23233"
+    }
+  ],
+  "operations": [
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "edits": [
+        {
+          "before": "        if (not isinstance(metadata, dict) or any(metadata.get(k) != v for k, v in expected_header.items())\n                or metadata.get('voices') != [role.to_dict() for role in project.roles]\n",
+          "after": "        # Compare JSON declarations, not Python tuple/list representations.\n        # Empty legacy chains keep the historical omitted effects block.\n        expected_effects = None\n        if (project.effects or any(role.effects for role in project.roles)\n                or any(scene.effects for scene in project.scenes)):\n            expected_effects = {\n                'master': [effect.to_dict() for effect in project.effects],\n                'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},\n                'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes}}\n        if (not isinstance(metadata, dict) or any(metadata.get(k) != v for k, v in expected_header.items())\n                or encode(metadata.get('voices')) != encode([role.to_dict() for role in project.roles])\n                or encode(metadata.get('effects')) != encode(expected_effects)\n"
+        },
+        {
+          "before": "                or encode(metadata.get('effects')) != encode(expected_effects)\n",
+          "after": "                or (expected_effects is None and 'effects' in metadata)\n                or (expected_effects is not None and encode(metadata.get('effects')) != encode(expected_effects))\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "edits": [
+        {
+          "before": "from . import backup_producers, backup_generated, recording_backup, backup_transcription\n",
+          "after": "from . import backup_producers, backup_generated, recording_backup, backup_transcription, backup_sidecars\n"
+        },
+        {
+          "before": "_STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\\.json|revisions/(\\d{8})-([0-9a-f]{64})\\.json)\\Z')\n",
+          "after": "_STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\\.json|revisions/(\\d{8})-([0-9a-f]{64})\\.json)\\Z')\n_PRIMARY_STUDIO = re.compile(r'studio/projects/(' + backup_sidecars._ID +\n    r')/(?:project\\.json|draft\\.json|revisions/[0-9]{8,}\\.json|jobs/(' + backup_sidecars._ID + r')\\.json)\\Z')\n"
+        },
+        {
+          "before": "    if _STUDIO.fullmatch(name):\n        _model('studio.project')\n        return 32 * 1024 * 1024\n",
+          "after": "    if _PRIMARY_STUDIO.fullmatch(name):\n        return backup_sidecars.MAX_JSON_BYTES\n    if _STUDIO.fullmatch(name):\n        _model('studio.project')\n        return 32 * 1024 * 1024\n"
+        },
+        {
+          "before": "        elif name.startswith('narration-projects/'):\n",
+          "after": "        elif _PRIMARY_STUDIO.fullmatch(name):\n            value = _json(raw)\n            backup_sidecars._validate_json(name, value, '')\n            backup_sidecars._verify_sources(db, name, value)\n        elif name.startswith('narration-projects/'):\n"
+        },
+        {
+          "before": "    backup_generated.validate_collection(inventory.entries, receipts)\n",
+          "after": "    # The primary Director's historical root-relative JSON stays with its\n    # existing typed producer; no cache/audio namespace is admitted here.\n    primary = {entry['filename'] for entry in inventory.entries\n               if _PRIMARY_STUDIO.fullmatch(entry['filename'])}\n    if primary:\n        for name in primary:\n            project_id = PurePosixPath(name).parts[2]\n            if 'studio/projects/' + project_id + '/project.json' not in primary:\n                raise RestoreError('primary studio metadata has no current project revision')\n        rebound = []\n        for entry in inventory.entries:\n            _check_cancelled(cancelled)\n            name = entry['filename']\n            match = _PRIMARY_STUDIO.fullmatch(name)\n            if match is not None and match[2] is not None:\n                value = _json(read_regular(stage / name, sidecar_limit(name)))\n                backup_sidecars._restore_studio_job(value)\n                backup_sidecars._write_json(stage / name, value)\n                raw = read_regular(stage / name, sidecar_limit(name))\n                validate_sidecar(db, name, raw)\n                entry = {'filename': name, 'size_bytes': len(raw),\n                         'sha256': sha256(raw).hexdigest()}\n            rebound.append(entry)\n        inventory = Inventory(tuple(rebound), inventory.empty_roots,\n                              inventory.generated_audio_included, inventory.pending)\n    backup_generated.validate_collection(inventory.entries, receipts)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "edits": [
+        {
+          "before": "def restore(source, stage, manifest, destination, *, db, cancelled=lambda: False):\n",
+          "after": "def _restore_studio_job(value):\n    \"\"\"Revoke the existing primary job authority only in a verified private copy.\"\"\"\n    value.update(restore_requires_new_output=True,\n        restored_from_output_dir=value.get('output_dir', ''), output_dir='',\n        state='paused', result=None, outputs=[],\n        message='Restored production: choose a new output folder and create a new job. Accepted cached chunks remain available.')\n\n\ndef restore(source, stage, manifest, destination, *, db, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "                value.update(restore_requires_new_output=True,\n                    restored_from_output_dir=value.get('output_dir', ''), output_dir='',\n                    state='paused', result=None, outputs=[],\n                    message='Restored production: choose a new output folder and create a new job. Accepted cached chunks remain available.')\n",
+          "after": "                _restore_studio_job(value)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "exact_prefix_blob": "6191e8ffdf26230475f3eb86a7521167e1fad6a5",
+      "appended": "\n\ndef test_rehashed_publication_metadata_cannot_change_saved_voice_or_effect_declarations(tmp_path):\n    \"\"\"Actual PCM remains untouched while forged, rehashed declarations refuse.\"\"\"\n    from carr_library.durable_state import encode\n    from carr_library.studio.publishing_source import DirectorPublicationSource\n    store, base, voices, broker, director = prepared(tmp_path)\n    project = effects(base, 'master', (\n        Effect('gain', gain_db=0), Effect('compressor', enabled=False)))\n    store.save(project)\n    saved_project = (store.path(project.id) / 'project.json').read_bytes()\n    result = director.render(project.id, tmp_path / 'output')\n    source = DirectorPublicationSource(store.root, project.id)\n    original_state = source.get(result['job_id'])\n    metadata_path = Path(result['output_dir']) / 'production.json'\n    original_metadata = metadata_path.read_bytes()\n    original_audio = {row['file']: (Path(result['output_dir']) / row['file']).read_bytes()\n                      for row in result['outputs'] if row['file'].endswith('.wav')}\n    decoded = json.loads(original_metadata)\n    assert isinstance(decoded['voices'][0]['effects'], list)\n    assert isinstance(project.roles[0].to_dict()['effects'], tuple)\n    with source.publication_lock(result['job_id']):\n        assert source.publication_snapshot(original_state,\n            AudioBudget(max_output_bytes=64 * 1024**2), lambda: None, lambda _: None)\n\n    damages = ('voice-scalar', 'voice-nested', 'role-effect', 'scene-effect',\n               'master-effect', 'master-order', 'missing-effects')\n    try:\n        for damage in damages:\n            value = json.loads(original_metadata)\n            if damage == 'voice-scalar':\n                value['voices'][0]['volume'] = .5\n            elif damage == 'voice-nested':\n                value['voices'][0]['effects'][0]['parameters']['gain_db'] = -3\n            elif damage == 'role-effect':\n                value['effects']['roles'][project.roles[0].id][0]['parameters']['gain_db'] = -3\n            elif damage == 'scene-effect':\n                value['effects']['scenes'][project.scenes[0].id][0]['parameters']['gain_db'] = -3\n            elif damage == 'master-effect':\n                value['effects']['master'][0]['parameters']['gain_db'] = -3\n            elif damage == 'master-order':\n                value['effects']['master'].reverse()\n            else:\n                value.pop('effects')\n            raw = encode(value)\n            metadata_path.write_bytes(raw)\n            forged = json.loads(json.dumps(original_state))\n            for receipts in (forged['outputs'], forged['result']['outputs']):\n                row, = [row for row in receipts if row['file'] == 'production.json']\n                row.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))\n            # Rehashing passes the artifact-byte guard and must still fail the\n            # saved Project declaration guard, without changing audio or jobs.\n            with source.publication_lock(result['job_id']):\n                with pytest.raises(ValueError, match='timeline'):\n                    source.publication_snapshot(forged,\n                        AudioBudget(max_output_bytes=64 * 1024**2),\n                        lambda: None, lambda _: None)\n            assert source.get(result['job_id']) == original_state, damage\n            assert (store.path(project.id) / 'project.json').read_bytes() == saved_project\n            assert all((Path(result['output_dir']) / name).read_bytes() == raw_audio\n                       for name, raw_audio in original_audio.items())\n    finally:\n        metadata_path.write_bytes(original_metadata)\n    assert metadata_path.read_bytes() == original_metadata\n    assert len(voices.calls) == 2 and broker.snapshot()['leases'] == []\n\ndef test_empty_legacy_production_rejects_rehashed_null_or_empty_effects_block(tmp_path):\n    \"\"\"The real legacy writer omits effects; explicit null does not mean absent.\"\"\"\n    from carr_library.durable_state import encode\n    from carr_library.studio.publishing_source import DirectorPublicationSource\n    store, project, voices, broker, director = prepared(tmp_path, with_effects=False)\n    saved_project = (store.path(project.id) / 'project.json').read_bytes()\n    result = director.render(project.id, tmp_path / 'output')\n    source = DirectorPublicationSource(store.root, project.id)\n    original_state = source.get(result['job_id'])\n    metadata_path = Path(result['output_dir']) / 'production.json'\n    original_metadata = metadata_path.read_bytes()\n    original_audio = {row['file']: (Path(result['output_dir']) / row['file']).read_bytes()\n                      for row in result['outputs'] if row['file'].endswith('.wav')}\n    assert 'effects' not in json.loads(original_metadata)\n    assert not project.effects and not any(role.effects for role in project.roles)\n    assert not any(scene.effects for scene in project.scenes)\n    with source.publication_lock(result['job_id']):\n        assert source.publication_snapshot(original_state,\n            AudioBudget(max_output_bytes=64 * 1024**2), lambda: None, lambda _: None)\n    try:\n        for declaration in (None, {}):\n            value = json.loads(original_metadata)\n            value['effects'] = declaration\n            raw = encode(value)\n            metadata_path.write_bytes(raw)\n            forged = json.loads(json.dumps(original_state))\n            for receipts in (forged['outputs'], forged['result']['outputs']):\n                row, = [row for row in receipts if row['file'] == 'production.json']\n                row.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))\n            with source.publication_lock(result['job_id']):\n                with pytest.raises(ValueError, match='timeline'):\n                    source.publication_snapshot(forged,\n                        AudioBudget(max_output_bytes=64 * 1024**2),\n                        lambda: None, lambda _: None)\n            assert source.get(result['job_id']) == original_state\n            assert (store.path(project.id) / 'project.json').read_bytes() == saved_project\n            assert all((Path(result['output_dir']) / name).read_bytes() == raw_audio\n                       for name, raw_audio in original_audio.items())\n    finally:\n        metadata_path.write_bytes(original_metadata)\n    assert metadata_path.read_bytes() == original_metadata\n    assert len(voices.calls) == 2 and broker.snapshot()['leases'] == []\n"
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "exact_prefix_blob": "09fba8273f0c32458e5eaf41432ec16271d9c155",
+      "appended": "\n\n@pytest.mark.parametrize('flat', [False, True], ids=['native5', 'foreign-flat4'])\ndef test_completed_primary_job_is_restored_as_inert_metadata_in_both_envelopes(\n        tmp_path, monkeypatch, flat):\n    from carr_library.audio.projects import atomic_json\n    app, workspace, store, project, job_id, original = prepared(tmp_path)\n    job_path = store.path(project.id) / 'jobs' / (job_id + '.json')\n    value = read_json(job_path)\n    old_output = value['output_dir']\n    value.update(state='complete',\n        outputs=[{'file': 'must-not-open.wav', 'sha256': 'a' * 64, 'size_bytes': 123}],\n        result={'historical_claim': 'No renewed execution or output authority'})\n    atomic_json(job_path, value)\n    original_job = job_path.read_bytes()\n    original_project = (store.path(project.id) / 'project.json').read_bytes()\n    folder = tmp_path / 'backup'\n    manifest, checksum = snapshot(app, folder, flat)\n    assert manifest['version'] == (4 if flat else 5)\n    actual_open, actual_stat = Path.open, Path.stat\n    external = Path(old_output)\n    def forbidden_open(path, *args, **kwargs):\n        if path == external or path.is_relative_to(external):\n            pytest.fail('Passive primary restoration opened a historical output.')\n        return actual_open(path, *args, **kwargs)\n    def forbidden_stat(path, *args, **kwargs):\n        if path == external or path.is_relative_to(external):\n            pytest.fail('Passive primary restoration inspected a historical output.')\n        return actual_stat(path, *args, **kwargs)\n    monkeypatch.setattr(Path, 'open', forbidden_open)\n    monkeypatch.setattr(Path, 'stat', forbidden_stat)\n    monkeypatch.setattr(VoiceRegistry, 'for_library',\n                        classmethod(lambda *a, **k: pytest.fail('Passive restore discovered a voice.')))\n    destination = tmp_path / 'restored'\n    restore_backup(folder, destination, checksum)\n    recovered = ProductionDirector(destination)\n    state = recovered.status(project.id, job_id)\n    assert state['restore_requires_new_output'] is True\n    assert state['state'] == 'paused' and state['result'] is None and state['outputs'] == []\n    assert state['output_dir'] == '' and state['restored_from_output_dir'] == old_output\n    assert state['project'] == json.loads(original_project)\n    assert ProjectStore(destination).load(project.id).fingerprint == project.fingerprint\n    assert job_path.read_bytes() == original_job and KeybindingStore(destination).load() == KEYS\n    with pytest.raises(ValueError, match='restored from backup'):\n        recovered.render(project.id, job_id=job_id)\n\n\ndef test_flat_primary_metadata_requires_its_declared_current_project(tmp_path):\n    app, _, store, project, _, _ = prepared(tmp_path)\n    folder = tmp_path / 'backup'\n    manifest, _ = snapshot(app, folder, True)\n    name = (store.path(project.id) / 'project.json').relative_to(app.root).as_posix()\n    original = (folder / name).read_bytes()\n    (folder / name).unlink()\n    manifest['sidecars'] = [row for row in manifest['sidecars'] if row['filename'] != name]\n    checksum = FLAT['_seal'](folder, manifest)\n    destination = tmp_path / 'must-not-exist'\n    with pytest.raises(RestoreError, match='current project'):\n        restore_backup(folder, destination, checksum)\n    assert not destination.exists()\n    assert (store.path(project.id) / 'project.json').read_bytes() == original\n\n\n@pytest.mark.parametrize('relative', [\n    'unrecognized.json', 'cache/' + 'a' * 64 + '.json', 'assets/' + 'a' * 64 + '.wav'])\ndef test_flat_primary_metadata_bridge_cannot_admit_unknown_or_binary_names(tmp_path, relative):\n    app, _, _, project, _, _ = prepared(tmp_path)\n    folder = tmp_path / 'backup'\n    manifest, _ = snapshot(app, folder, True)\n    name = 'studio/projects/' + project.id + '/' + relative\n    path = folder / name\n    path.parent.mkdir(parents=True, exist_ok=True)\n    raw = b'{\"untrusted\":\"not an admitted primary metadata path\"}\\n'\n    path.write_bytes(raw)\n    manifest['sidecars'].append({'filename': name, 'size_bytes': len(raw),\n                                'sha256': sha256(raw).hexdigest()})\n    manifest['sidecars'].sort(key=lambda row: row['filename'])\n    checksum = FLAT['_seal'](folder, manifest)\n    destination = tmp_path / 'must-not-exist'\n    with pytest.raises(RestoreError, match='No validated backup adapter'):\n        restore_backup(folder, destination, checksum)\n    assert not destination.exists() and path.read_bytes() == raw\n\n\n@pytest.mark.parametrize('flat', [False, True], ids=['native5', 'foreign-flat4'])\n@pytest.mark.parametrize('damage', ['project-id', 'project-fingerprint'])\ndef test_rehashed_primary_job_cannot_change_its_typed_project_binding(tmp_path, flat, damage):\n    app, _, store, project, job_id, _ = prepared(tmp_path)\n    folder = tmp_path / 'backup'\n    manifest, _ = snapshot(app, folder, flat)\n    name = 'studio/projects/' + project.id + '/jobs/' + job_id + '.json'\n    path = folder / name if flat else folder / 'sidecars' / name\n    value = read_json(path)\n    value['project_id' if damage == 'project-id' else 'project_fingerprint'] = (\n        'other-project' if damage == 'project-id' else '0' * 64)\n    raw = (json.dumps(value, ensure_ascii=False, sort_keys=True,\n                      separators=(',', ':')) + '\\n').encode('utf-8')\n    path.write_bytes(raw)\n    rows, key = (manifest['sidecars'], 'filename') if flat else (manifest['sidecars']['files'], 'path')\n    row, = [row for row in rows if row[key] == name]\n    row.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())\n    checksum = FLAT['_seal'](folder, manifest)\n    destination = tmp_path / 'must-not-exist'\n    with pytest.raises((ValueError, RestoreError), match='studio job'):\n        restore_backup(folder, destination, checksum)\n    assert not destination.exists() and path.read_bytes() == raw\n"
+    }
+  ],
+  "inverse_method": "Reverse each source edit in reverse order exactly once; remove the exact appended suffix from each test file. Full readback and original preimages then agree.",
+  "checks": {
+    "publication": true,
+    "sidecars": true,
+    "compat": true,
+    "effects_test_prefix": true,
+    "backup_test_prefix": true
+  }
+}

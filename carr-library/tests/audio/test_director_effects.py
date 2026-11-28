@@ -490,3 +490,111 @@ def test_changed_accepted_input_cannot_publish_an_effect_cache_receipt(tmp_path,
     refused_kind = 'scene-effects' if boundary == 'scene-input' else 'master-effect-chapter'
     assert not any(row['kind'] == refused_kind for row in cache_rows(store, project).values())
     assert broker.snapshot()['leases'] == [] and store.load(project.id).script == SCRIPT
+
+
+def test_rehashed_publication_metadata_cannot_change_saved_voice_or_effect_declarations(tmp_path):
+    """Actual PCM remains untouched while forged, rehashed declarations refuse."""
+    from carr_library.durable_state import encode
+    from carr_library.studio.publishing_source import DirectorPublicationSource
+    store, base, voices, broker, director = prepared(tmp_path)
+    project = effects(base, 'master', (
+        Effect('gain', gain_db=0), Effect('compressor', enabled=False)))
+    store.save(project)
+    saved_project = (store.path(project.id) / 'project.json').read_bytes()
+    result = director.render(project.id, tmp_path / 'output')
+    source = DirectorPublicationSource(store.root, project.id)
+    original_state = source.get(result['job_id'])
+    metadata_path = Path(result['output_dir']) / 'production.json'
+    original_metadata = metadata_path.read_bytes()
+    original_audio = {row['file']: (Path(result['output_dir']) / row['file']).read_bytes()
+                      for row in result['outputs'] if row['file'].endswith('.wav')}
+    decoded = json.loads(original_metadata)
+    assert isinstance(decoded['voices'][0]['effects'], list)
+    assert isinstance(project.roles[0].to_dict()['effects'], tuple)
+    with source.publication_lock(result['job_id']):
+        assert source.publication_snapshot(original_state,
+            AudioBudget(max_output_bytes=64 * 1024**2), lambda: None, lambda _: None)
+
+    damages = ('voice-scalar', 'voice-nested', 'role-effect', 'scene-effect',
+               'master-effect', 'master-order', 'missing-effects')
+    try:
+        for damage in damages:
+            value = json.loads(original_metadata)
+            if damage == 'voice-scalar':
+                value['voices'][0]['volume'] = .5
+            elif damage == 'voice-nested':
+                value['voices'][0]['effects'][0]['parameters']['gain_db'] = -3
+            elif damage == 'role-effect':
+                value['effects']['roles'][project.roles[0].id][0]['parameters']['gain_db'] = -3
+            elif damage == 'scene-effect':
+                value['effects']['scenes'][project.scenes[0].id][0]['parameters']['gain_db'] = -3
+            elif damage == 'master-effect':
+                value['effects']['master'][0]['parameters']['gain_db'] = -3
+            elif damage == 'master-order':
+                value['effects']['master'].reverse()
+            else:
+                value.pop('effects')
+            raw = encode(value)
+            metadata_path.write_bytes(raw)
+            forged = json.loads(json.dumps(original_state))
+            for receipts in (forged['outputs'], forged['result']['outputs']):
+                row, = [row for row in receipts if row['file'] == 'production.json']
+                row.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))
+            # Rehashing passes the artifact-byte guard and must still fail the
+            # saved Project declaration guard, without changing audio or jobs.
+            with source.publication_lock(result['job_id']):
+                with pytest.raises(ValueError, match='timeline'):
+                    source.publication_snapshot(forged,
+                        AudioBudget(max_output_bytes=64 * 1024**2),
+                        lambda: None, lambda _: None)
+            assert source.get(result['job_id']) == original_state, damage
+            assert (store.path(project.id) / 'project.json').read_bytes() == saved_project
+            assert all((Path(result['output_dir']) / name).read_bytes() == raw_audio
+                       for name, raw_audio in original_audio.items())
+    finally:
+        metadata_path.write_bytes(original_metadata)
+    assert metadata_path.read_bytes() == original_metadata
+    assert len(voices.calls) == 2 and broker.snapshot()['leases'] == []
+
+def test_empty_legacy_production_rejects_rehashed_null_or_empty_effects_block(tmp_path):
+    """The real legacy writer omits effects; explicit null does not mean absent."""
+    from carr_library.durable_state import encode
+    from carr_library.studio.publishing_source import DirectorPublicationSource
+    store, project, voices, broker, director = prepared(tmp_path, with_effects=False)
+    saved_project = (store.path(project.id) / 'project.json').read_bytes()
+    result = director.render(project.id, tmp_path / 'output')
+    source = DirectorPublicationSource(store.root, project.id)
+    original_state = source.get(result['job_id'])
+    metadata_path = Path(result['output_dir']) / 'production.json'
+    original_metadata = metadata_path.read_bytes()
+    original_audio = {row['file']: (Path(result['output_dir']) / row['file']).read_bytes()
+                      for row in result['outputs'] if row['file'].endswith('.wav')}
+    assert 'effects' not in json.loads(original_metadata)
+    assert not project.effects and not any(role.effects for role in project.roles)
+    assert not any(scene.effects for scene in project.scenes)
+    with source.publication_lock(result['job_id']):
+        assert source.publication_snapshot(original_state,
+            AudioBudget(max_output_bytes=64 * 1024**2), lambda: None, lambda _: None)
+    try:
+        for declaration in (None, {}):
+            value = json.loads(original_metadata)
+            value['effects'] = declaration
+            raw = encode(value)
+            metadata_path.write_bytes(raw)
+            forged = json.loads(json.dumps(original_state))
+            for receipts in (forged['outputs'], forged['result']['outputs']):
+                row, = [row for row in receipts if row['file'] == 'production.json']
+                row.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))
+            with source.publication_lock(result['job_id']):
+                with pytest.raises(ValueError, match='timeline'):
+                    source.publication_snapshot(forged,
+                        AudioBudget(max_output_bytes=64 * 1024**2),
+                        lambda: None, lambda _: None)
+            assert source.get(result['job_id']) == original_state
+            assert (store.path(project.id) / 'project.json').read_bytes() == saved_project
+            assert all((Path(result['output_dir']) / name).read_bytes() == raw_audio
+                       for name, raw_audio in original_audio.items())
+    finally:
+        metadata_path.write_bytes(original_metadata)
+    assert metadata_path.read_bytes() == original_metadata
+    assert len(voices.calls) == 2 and broker.snapshot()['leases'] == []

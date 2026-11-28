@@ -202,3 +202,51 @@ def test_plain_job_cannot_acquire_formatted_export_authority_by_adding_a_field(s
     with pytest.raises(ValueError, match='legacy unbound'):
         case.service.resume(identity)
     assert case.calls == calls
+
+
+def test_partition_approval_fits_existing_envelope_and_binds_both_exact_digests(setup):
+    from dataclasses import replace
+    case, captured = setup, source(setup)
+    partition = make_partition(captured.text, 'carr-docx-body-layout/1',
+                               'a' * 64, [len(captured.text)])
+    approval, cost = translation_approval(case.profile, captured.text, 'en', 'uk', '1',
+        source_binding=captured.binding, source_partition=partition)
+    payload = {'source_sha256': captured.binding['sha256'],
+               'partition_sha256': sha256(canonical(partition).encode('utf-8')).hexdigest()}
+    expected = approval.id + ':layout:' + sha256(canonical(payload).encode('utf-8')).hexdigest()
+    assert approval.task_id == expected and len(approval.task_id) == 104
+    with pytest.raises(ValueError, match='authorized task'):
+        replace(approval, task_id='x' * 129)
+    identity = case.service.submit(case.profile, captured.text, 'en', 'uk',
+        source_binding=captured.binding, source_partition=partition,
+        authorization=approval, per_call_cost=cost)
+    assert case.service.get(identity)['authorization']['task_id'] == expected
+    assert case.service.resume(identity)['status'] == 'complete'
+
+
+@pytest.mark.parametrize('replacement', ['mapping', 'source'])
+def test_partition_approval_cannot_retarget_identical_text_to_a_new_mapping_or_original(setup, replacement):
+    case, captured = setup, source(setup)
+    partition = make_partition(captured.text, 'carr-docx-body-layout/1',
+                               'a' * 64, [len(captured.text)])
+    approval, cost = translation_approval(case.profile, captured.text, 'en', 'uk', '1',
+        source_binding=captured.binding, source_partition=partition)
+    changed_partition, changed_binding = deepcopy(partition), captured.binding
+    if replacement == 'mapping':
+        changed_partition['mapping_sha256'] = 'b' * 64
+    else:
+        other = case.app.add_text(case.workspace, 'Another retained source identity', case.original)
+        selected = capture_library_sources(case.app, case.workspace, (LibrarySelection(other['edition']),))
+        assert selected.text == captured.text and selected.binding['sha256'] != captured.binding['sha256']
+        changed_binding = selected.binding
+    calls, credentials = list(case.calls), list(case.vault_calls)
+    with pytest.raises(PermissionError, match='translation-specific approval'):
+        case.service.submit(case.profile, captured.text, 'en', 'uk',
+            source_binding=changed_binding, source_partition=changed_partition,
+            authorization=approval, per_call_cost=cost)
+    assert case.calls == calls and case.vault_calls == credentials
+    assert case.service.jobs.identities() == ()
+    identity = case.service.submit(case.profile, captured.text, 'en', 'uk',
+        source_binding=captured.binding, source_partition=partition,
+        authorization=approval, per_call_cost=cost)
+    assert case.service.get(identity)['source_binding'] == captured.binding

@@ -569,6 +569,14 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
     return manifest
 
 
+def _restore_studio_job(value):
+    """Revoke the existing primary job authority only in a verified private copy."""
+    value.update(restore_requires_new_output=True,
+        restored_from_output_dir=value.get('output_dir', ''), output_dir='',
+        state='paused', result=None, outputs=[],
+        message='Restored production: choose a new output folder and create a new job. Accepted cached chunks remain available.')
+
+
 def restore(source, stage, manifest, destination, *, db, cancelled=lambda: False):
     """Verify source bytes, then apply only explicit restore-safe state changes."""
     validate_manifest(manifest)
@@ -604,10 +612,7 @@ def restore(source, stage, manifest, destination, *, db, cancelled=lambda: False
                 value['restored'] = True
                 changed = True
             elif relative.startswith('studio/') and '/jobs/' in relative:
-                value.update(restore_requires_new_output=True,
-                    restored_from_output_dir=value.get('output_dir', ''), output_dir='',
-                    state='paused', result=None, outputs=[],
-                    message='Restored production: choose a new output folder and create a new job. Accepted cached chunks remain available.')
+                _restore_studio_job(value)
                 changed = True
             elif relative.startswith(('assistant/plans/', 'assistant/jobs/')):
                 value['restore_requires_review'] = True

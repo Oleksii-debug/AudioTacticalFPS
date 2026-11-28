@@ -195,8 +195,19 @@ class DirectorPublicationSource:
             'revision': project.revision, 'project_fingerprint': project.fingerprint,
             'script_sha256': project.script_sha256, 'job_id': state['id'], 'mode': 'LOCAL_ONLY',
             'sample_rate': project.settings.sample_rate, 'channels': project.settings.channels}
+        # Compare JSON declarations, not Python tuple/list representations.
+        # Empty legacy chains keep the historical omitted effects block.
+        expected_effects = None
+        if (project.effects or any(role.effects for role in project.roles)
+                or any(scene.effects for scene in project.scenes)):
+            expected_effects = {
+                'master': [effect.to_dict() for effect in project.effects],
+                'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},
+                'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes}}
         if (not isinstance(metadata, dict) or any(metadata.get(k) != v for k, v in expected_header.items())
-                or metadata.get('voices') != [role.to_dict() for role in project.roles]
+                or encode(metadata.get('voices')) != encode([role.to_dict() for role in project.roles])
+                or (expected_effects is None and 'effects' in metadata)
+                or (expected_effects is not None and encode(metadata.get('effects')) != encode(expected_effects))
                 or metadata.get('outputs') != [row for row in artifacts if row['file'] not in ('production.json', 'narration.srt')]):
             raise ValueError('Primary Studio timeline does not belong to the original project and completed artifacts.')
         frames, rate = metadata.get('frames'), project.settings.sample_rate

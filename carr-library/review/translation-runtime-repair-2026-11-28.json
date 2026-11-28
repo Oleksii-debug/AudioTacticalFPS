@@ -1,0 +1,250 @@
+{
+  "schema": "carr-translation-runtime-repair-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "expected_application_preimages": "Only the six listed exact preimages may be replaced; capacity commit936dc6cd keeps these paths unchanged per composition owner.",
+  "candidate_source_tree": "1d30816c669376c101e26c412a115ab2552bbfb7",
+  "evidence": {
+    "run_id": 46129784287,
+    "job_id": 140932191681,
+    "completed_job_result": "FAILURE",
+    "exact_trace_blob": "90803b4dd5489580b3f53f58a1bf934917d5b96d",
+    "native_tail_blob": "d4c7f1fe93135a6ca2f524ae296f24c570e2edff",
+    "original_complete_log_blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf",
+    "scope": "New source/installed formatted translation cases and the subsequent source/installed native DOCX scenario; unrelated feature failures are not attributed here.",
+    "trace_content": {
+      "sha256": "32d398752f03c4a2b83dd1f794dd180216395c9b03fad8d7e62408404c529630",
+      "bytes": 12226
+    },
+    "native_tail_content": {
+      "sha256": "b285272261c929f051ebf5683f0ad5d642a870311c0aad74a20aad432ae12b20",
+      "bytes": 16053
+    },
+    "complete_log_content": {
+      "sha256": "6f6600cbc1308b68029ec4bcbeb21c533527906592aa6d9e84c98335100e060d",
+      "bytes": 1449327
+    }
+  },
+  "corrections": [
+    {
+      "kind": "production",
+      "path": "src/carr_library/assistant/translation.py",
+      "observation": "Layout approval concatenated UUID, source SHA256 and partition SHA256 into176 characters, exceeding the unchanged canonical Authorization task_id maximum128 before submission.",
+      "change": "One104-character ':layout:' task token hashes a canonical object containing both exact source-binding and partition digests. Approval and validation use the same pure encoder. Non-partition pasted/source task strings remain byte-identical.",
+      "retained": [
+        "canonical128 limit",
+        "source validation",
+        "partition ranges",
+        "request hashes",
+        "languages/profile/permission/budget",
+        "job source UUID and immutable receipt validation"
+      ]
+    },
+    {
+      "kind": "production",
+      "path": "src/carr_library/assistant/translation_layout.py",
+      "observation": "The existing boolean audio cancellation callback directly propagated ResourceCancelled from the real lease checkpoint in an actual owned-worker stop.",
+      "change": "Only noncausal ResourceCancelled returns True. ResourceCancelled with pending cleanup owners rethrows the exact causal chain; every other checkpoint/guard error propagates unchanged.",
+      "retained": [
+        "fresh checkpoint and original source guard",
+        "120-second operation/worker allowance",
+        "same broker reservation",
+        "same run_process owned_tree",
+        "same stage retained_context",
+        "native-family and notification cleanup"
+      ]
+    },
+    {
+      "kind": "fixture",
+      "paths": [
+        "tests/assistant/test_translation_layout.py",
+        "tests/assistant/test_translation_epub_layout.py",
+        "tests/storage/test_translation_layout_backup.py"
+      ],
+      "observation": "New fixtures called LibraryApp.close_search, which does not exist; DB/search operations are already call-scoped.",
+      "change": "Remove only nonexistent calls. Dedent the restored app's try/finally body without changing any assertion or backup/source/receipt operation."
+    },
+    {
+      "kind": "fixture",
+      "path": "tests/assistant/test_translation_layout.py",
+      "observation": "The authored portable child called translation_cli.main(['profiles']) although the current parser unconditionally requires --data-dir; the intended pending-family body was unreachable.",
+      "change": "Pass the child's actual existing root with --data-dir. Keep all eight actual child-family combinations, original10-second readiness/cleanup waits, error identities and stage/notification assertions."
+    }
+  ],
+  "new_planned_cases": {
+    "total": 8,
+    "partition": {
+      "count": 3,
+      "scope": "bounded canonical task envelope; both digests independently reconstructed; same-text mapping/source retarget refused; correct original accepted"
+    },
+    "checkpoint": {
+      "count": 4,
+      "scope": "only ResourceCancelled becomes bool; ResourceTimeout, ResourceStateError and OSError retain exact identity; real broker reservation/stage released after scope"
+    },
+    "causal_checkpoint": {
+      "count": 1,
+      "scope": "modeled CleanupOwner at checkpoint retains actual stage and broker until notification completion; no native execution claimed"
+    }
+  },
+  "existing_assertion_preservation": {
+    "method": "Original assertion and pytest.raises text is retained in order after leading-indent normalization; backup body is dedented only because the absent teardown is removed.",
+    "counts": {
+      "test_translation_partition.py": 34,
+      "test_translation_layout.py": 127,
+      "test_translation_epub_layout.py": 70,
+      "test_translation_layout_backup.py": 20
+    },
+    "deadlines": "UNCHANGED"
+  },
+  "native": {
+    "probe_changed": false,
+    "existing_pump_seconds": 20,
+    "watchdog_seconds": 180,
+    "planned_check_counts": {
+      "source": 122,
+      "installed": 130
+    },
+    "observed_failure": "DOCX source-bound translation timed out after capture/preview. The deterministic authorization failure is on that path, but the native timeout's sole cause has not been independently proved.",
+    "successor_result": "NOT_RUN"
+  },
+  "inverse_blob": "29f16ac0cac3a2bbe49f702e6542225e435dfad6",
+  "source_files": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "before_git_blob": "1b88d48f1b30142ca75c9176d4d61ee7448d5c69",
+      "after_git_blob": "83e22a3d375c75fc2047da67044c2ec64b934a48",
+      "before": {
+        "sha256": "4648891f0a6b2516fbfff9748a175b8cb1127c6224609024faaac67aa52226ff",
+        "bytes": 40970
+      },
+      "after": {
+        "sha256": "2f618041ae57152979c576a6d14c1332f9b252f31a84f361ce191100fff06569",
+        "bytes": 41195
+      },
+      "whole_before_and_after_blob_readback": "EXACT",
+      "inverse_reconstruction": "EXACT",
+      "old_assertion_and_raises_lines": 0,
+      "old_assertion_text_order_preserved": true
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "before_git_blob": "9b77997cda20aef9acbd21d4283f1a1df8b32496",
+      "after_git_blob": "bb5763d25f6d0520d78131814430f55414f4f018",
+      "before": {
+        "sha256": "062adccb62d4be7cf8d88dca0decbc8bd9d870ddc2498b8975dd61692e44227b",
+        "bytes": 32698
+      },
+      "after": {
+        "sha256": "b53cfd468bd6617a5df2df73efd006b9d219f1e37029fcbe5f0533165cff0f57",
+        "bytes": 33054
+      },
+      "whole_before_and_after_blob_readback": "EXACT",
+      "inverse_reconstruction": "EXACT",
+      "old_assertion_and_raises_lines": 0,
+      "old_assertion_text_order_preserved": true
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "before_git_blob": "428e5ebdfcd99a998d095d0055aa7afba79536b4",
+      "after_git_blob": "599c04fc0810d1a4a1e5b7bdbff37fce4a62c814",
+      "before": {
+        "sha256": "dc3e9e18404747cd17b82956f2451b0f93647aba6c77047a5a93610eb24fd2df",
+        "bytes": 10111
+      },
+      "after": {
+        "sha256": "7feed03728bd8405df10c919e5f923a6485c149a31290d2bc6d1bb872454f29e",
+        "bytes": 13125
+      },
+      "whole_before_and_after_blob_readback": "EXACT",
+      "inverse_reconstruction": "EXACT",
+      "old_assertion_and_raises_lines": 34,
+      "old_assertion_text_order_preserved": true
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "before_git_blob": "0e866846b99dc486c0131390201d836cc5a0ae86",
+      "after_git_blob": "0d1541f485b35aec4edaeaae5db5cd29b219df22",
+      "before": {
+        "sha256": "ef9158bc1f69037bc46ceec479f2a37ff7ded8e2cea0d4093186b1edafe54ca5",
+        "bytes": 33374
+      },
+      "after": {
+        "sha256": "6e8844a4c74d96d709aa9aed3a3f62a04bcd9055259d977ec524c9b9d71b67cc",
+        "bytes": 37075
+      },
+      "whole_before_and_after_blob_readback": "EXACT",
+      "inverse_reconstruction": "EXACT",
+      "old_assertion_and_raises_lines": 127,
+      "old_assertion_text_order_preserved": true
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_layout.py",
+      "before_git_blob": "5b69e404d6bccbfded6ac450973e7d497deb8883",
+      "after_git_blob": "a8971da11af34803c26df9597bf5dc9d50c68034",
+      "before": {
+        "sha256": "c4d1b9194404df58ee9dfa5fd3beecb152c131acefa1cfc243a15b7302f2e229",
+        "bytes": 21381
+      },
+      "after": {
+        "sha256": "3b5fa469498669680dd8db4e8a8593e220b0864cbe09b1dfac0cc09a48c10d9c",
+        "bytes": 21352
+      },
+      "whole_before_and_after_blob_readback": "EXACT",
+      "inverse_reconstruction": "EXACT",
+      "old_assertion_and_raises_lines": 70,
+      "old_assertion_text_order_preserved": true
+    },
+    {
+      "path": "carr-library/tests/storage/test_translation_layout_backup.py",
+      "before_git_blob": "8f2d5380368fd741dc910347222016371fbd5922",
+      "after_git_blob": "d67a5cb883e5cc7c49a964aabeffd434740099f0",
+      "before": {
+        "sha256": "850ffa9c2710e419aebbb74050c825046926a4c562dc71e690c300736f8234ae",
+        "bytes": 7269
+      },
+      "after": {
+        "sha256": "20976561a88b0d13bd859a252cdf6adf97ab39b5ccbfd12beeb881aa334b3e35",
+        "bytes": 7100
+      },
+      "whole_before_and_after_blob_readback": "EXACT",
+      "inverse_reconstruction": "EXACT",
+      "old_assertion_and_raises_lines": 20,
+      "old_assertion_text_order_preserved": true
+    }
+  ],
+  "no_global_changes": [
+    "no provider or credential substitution",
+    "no global encoding or process changes",
+    "no deadline/cap/assertion relaxation",
+    "no workflow or refs",
+    "no native/model/NVDA/translation-quality claim"
+  ],
+  "peer_reviews": [
+    {
+      "reviewer": "/root",
+      "scope": "Both production modules, all eight added cases and portable CLI argument correction",
+      "verdict": "CLEAR",
+      "execution": "NOT_RUN"
+    },
+    {
+      "reviewer": "/root/audio_render",
+      "scope": "Authority/source-binding, ordinary compatibility, all four fixture APIs and retained checkpoint interfaces",
+      "verdict": "CLEAR",
+      "execution": "NOT_RUN"
+    }
+  ],
+  "execution": "NOT_RUN",
+  "compatibility_audit": {
+    "backup_producers._translation_job": "Reuses current _approved_requests; no duplicate task reconstruction or shared backup overlay is changed.",
+    "state_recovery": "No separate task_id/layout token reconstruction.",
+    "UI/CLI/native": "No literal old long task token expectation in current selected modules; all call current approval/service boundary.",
+    "planned_existing_selector_counts": {
+      "test_translation_partition": 31,
+      "test_translation_layout": 46,
+      "test_translation_epub_layout": 29,
+      "test_translation_layout_backup": 12,
+      "test_ui_translation_layout": 58
+    }
+  },
+  "expectation": "Current ordinary/source/installed/native gates must execute this exact successor; no passing result is transferred from the failed1c head."
+}

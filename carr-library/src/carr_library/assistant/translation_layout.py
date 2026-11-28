@@ -27,14 +27,14 @@ from .translation_layout_worker import (
     MAX_ARCHIVE, MAX_CHARACTERS, MAX_REPLY, MAX_REQUEST, MAX_UNITS,
     PROFILE as DOCX_PROFILE, NOTICE as DOCX_NOTICE)
 from .translation_epub_layout_worker import PROFILE as EPUB_PROFILE, NOTICE as EPUB_NOTICE
-from ..audio.cleanup import retained_context
+from ..audio.cleanup import _pending_owners, retained_context
 from ..audio.models import AudioBudget
 from ..audio.process import run_process
 from ..catalog.intake import AssetSnapshot, snapshot
 from ..durable_state import atomic_json, encode, local_path, read_json_snapshot, regular
 from ..ingest.writer_guard import exclusive_writer
 from ..operations.broker import ResourceBroker
-from ..operations.models import ResourceRequest
+from ..operations.models import ResourceCancelled, ResourceRequest
 from ..reader.reading_desk import ReadingDesk
 from ..research.export_file import write_binary_export
 from ..speech._io import check_cancelled
@@ -294,7 +294,14 @@ def _operation(library, *, cancelled, guard, broker=None):
             cancelled=base, run_timeout=120))
         deadline = monotonic() + 120
         def stopped():
-            lease.checkpoint()
+            try:
+                lease.checkpoint()
+            except ResourceCancelled as error:
+                # A normal stop is a boolean for the existing audio worker.
+                # Causal pending cleanup must retain its exact owners instead.
+                if _pending_owners(error):
+                    raise
+                return True
             return base()
         check_cancelled(stopped)
         directory = stack.enter_context(_stage(runtime))

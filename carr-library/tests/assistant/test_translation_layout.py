@@ -97,7 +97,6 @@ def bound(tmp_path, setup):
         authors=('Synthetic original author',), work_id='docx-layout-work', edition_id='docx-layout-edition')
     assert result['state'] == 'complete' and result['verified'] is False
     yield SimpleNamespace(**vars(setup), edition='docx-layout-edition', source=source, raw=raw)
-    setup.app.close_search()
 
 
 def captured(case):
@@ -602,7 +601,7 @@ class Handle:
 native_runtime.activate_bundled_runtime = lambda: Handle()
 translation_cli.execute = lambda args: pending_families() if phase == 'operation' else {'status': 'complete'}
 try:
-    result = translation_cli.main(['profiles'])
+    result = translation_cli.main(['--data-dir', str(root), 'profiles'])
 except (AudioCleanupPending, InterruptedError) as error:
     assert phase == 'runtime-close' and error is failures[-1]
     owners = _pending_owners(error)
@@ -669,3 +668,77 @@ def test_cli_defers_shutdown_interrupt_until_same_owner_is_quiet_and_runtime_clo
         translation_cli.main(['--data-dir', str(tmp_path / 'library'), 'profiles'])
     assert observed.value is signal
     assert owner.quiescent and len(attempts) == 3 and closed == [True]
+
+
+@pytest.mark.parametrize('failure', ['cancelled', 'timeout', 'state', 'other'])
+def test_layout_stop_callback_only_converts_resource_cancellation_and_releases_unused_lease(
+        tmp_path, monkeypatch, failure):
+    from carr_library.operations import models
+    from carr_library.operations.broker import ResourceLease
+    library = SimpleNamespace(root=tmp_path / 'library')
+    library.root.mkdir()
+    broker = ResourceBroker.for_app(library.root)
+    classes = {'cancelled': models.ResourceCancelled, 'timeout': models.ResourceTimeout,
+               'state': models.ResourceStateError, 'other': OSError}
+    fault = classes[failure]('Exact observed lease condition.')
+    actual_checkpoint, observed = ResourceLease.checkpoint, []
+    with layout_module._operation(library, cancelled=lambda: False, guard=lambda: None,
+                                  broker=broker) as (stage, stopped, deadline):
+        selected, = broker.snapshot()['leases']
+        def checkpoint(lease):
+            if lease.id != selected['id']:
+                return actual_checkpoint(lease)
+            observed.append(lease)
+            raise fault
+        monkeypatch.setattr(ResourceLease, 'checkpoint', checkpoint)
+        assert stage.is_dir() and deadline > time.monotonic()
+        if failure == 'cancelled':
+            assert stopped() is True
+        else:
+            with pytest.raises(classes[failure]) as error:
+                stopped()
+            assert error.value is fault
+        assert len(observed) == 1 and observed[0].id == selected['id']
+        assert stage.is_dir() and len(broker.snapshot()['leases']) == 1
+    assert not stage.exists() and not broker.snapshot()['leases']
+
+
+def test_layout_stop_callback_preserves_causal_owner_until_stage_and_lease_notifications_finish(
+        tmp_path, monkeypatch):
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.operations.broker import ResourceLease
+    from carr_library.operations.models import ResourceCancelled
+    library = SimpleNamespace(root=tmp_path / 'library')
+    library.root.mkdir()
+    broker = ResourceBroker.for_app(library.root)
+    allowed = threading.Event()
+    owner = CleanupOwner(allowed.is_set)
+    pending = AudioCleanupPending('Modeled pending cleanup at a checkpoint.', cleanup_owner=owner)
+    fault = ResourceCancelled('The stop still carries its original cleanup owner.')
+    fault.__cause__ = pending
+    actual_checkpoint = ResourceLease.checkpoint
+    try:
+        with pytest.raises(ResourceCancelled) as error:
+            with layout_module._operation(library, cancelled=lambda: False, guard=lambda: None,
+                                          broker=broker) as (stage, stopped, _):
+                selected, = broker.snapshot()['leases']
+                def checkpoint(lease):
+                    if lease.id != selected['id']:
+                        return actual_checkpoint(lease)
+                    raise fault
+                monkeypatch.setattr(ResourceLease, 'checkpoint', checkpoint)
+                (stage / 'retained').write_bytes(b'unchanged checkpoint state')
+                assert owner.close() is False
+                stopped()
+        assert error.value is fault and _pending_owners(error.value) == (owner,)
+        assert not owner.quiescent and stage.is_dir()
+        assert (stage / 'retained').read_bytes() == b'unchanged checkpoint state'
+        assert len(broker.snapshot()['leases']) == 1
+        allowed.set()
+        owner.close()
+        assert owner.notifications_complete_event.wait(10)
+        assert owner.quiescent and not stage.exists()
+        assert not broker.snapshot()['leases']
+    finally:
+        allowed.set()
+        owner.close()

@@ -21,7 +21,7 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated, recording_backup, backup_transcription
+from . import backup_producers, backup_generated, recording_backup, backup_transcription, backup_sidecars
 from .studio import backup_inputs, book_backup
 
 MAX_FILES = 100_000
@@ -33,6 +33,8 @@ _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
+_PRIMARY_STUDIO = re.compile(r'studio/projects/(' + backup_sidecars._ID +
+    r')/(?:project\.json|draft\.json|revisions/[0-9]{8,}\.json|jobs/(' + backup_sidecars._ID + r')\.json)\Z')
 
 
 def _check_cancelled(cancelled):
@@ -122,6 +124,8 @@ def sidecar_limit(name):
         return _model('reader.narration').MAX_PROJECT_BYTES
     if re.fullmatch(r'reading-copies/[0-9a-f]{32}\.json', name):
         return _model('reader.reading_copy').MAX_PROJECT_BYTES
+    if _PRIMARY_STUDIO.fullmatch(name):
+        return backup_sidecars.MAX_JSON_BYTES
     if _STUDIO.fullmatch(name):
         _model('studio.project')
         return 32 * 1024 * 1024
@@ -359,6 +363,10 @@ def validate_sidecar(db, name, raw):
                 raise ValueError('Invalid generated subtitle text.')
         elif backup_producers.limit(name) is not None:
             backup_producers.validate(db, name, _json(raw))
+        elif _PRIMARY_STUDIO.fullmatch(name):
+            value = _json(raw)
+            backup_sidecars._validate_json(name, value, '')
+            backup_sidecars._verify_sources(db, name, value)
         elif name.startswith('narration-projects/'):
             project = _model('reader.narration').validate_narration_payload(name, raw)
             _validate_original_text(db, project.source_location, project.original_text)
@@ -686,6 +694,31 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False, destinatio
                     _reading_tab_rows(index, state_inventory, cancelled=cancelled)}
             if name.startswith(backup_generated.PREFIX):
                 receipts[name] = _json(raw)
+    # The primary Director's historical root-relative JSON stays with its
+    # existing typed producer; no cache/audio namespace is admitted here.
+    primary = {entry['filename'] for entry in inventory.entries
+               if _PRIMARY_STUDIO.fullmatch(entry['filename'])}
+    if primary:
+        for name in primary:
+            project_id = PurePosixPath(name).parts[2]
+            if 'studio/projects/' + project_id + '/project.json' not in primary:
+                raise RestoreError('primary studio metadata has no current project revision')
+        rebound = []
+        for entry in inventory.entries:
+            _check_cancelled(cancelled)
+            name = entry['filename']
+            match = _PRIMARY_STUDIO.fullmatch(name)
+            if match is not None and match[2] is not None:
+                value = _json(read_regular(stage / name, sidecar_limit(name)))
+                backup_sidecars._restore_studio_job(value)
+                backup_sidecars._write_json(stage / name, value)
+                raw = read_regular(stage / name, sidecar_limit(name))
+                validate_sidecar(db, name, raw)
+                entry = {'filename': name, 'size_bytes': len(raw),
+                         'sha256': sha256(raw).hexdigest()}
+            rebound.append(entry)
+        inventory = Inventory(tuple(rebound), inventory.empty_roots,
+                              inventory.generated_audio_included, inventory.pending)
     backup_generated.validate_collection(inventory.entries, receipts)
     if any(entry['filename'].casefold() == 'state/speech/playback-queue.json'
            for entry in inventory.entries):

@@ -77,36 +77,32 @@ def test_actual_recovery_preserves_partition_receipts_and_exports_without_origin
     assert manifest['version'] == (4 if flat else 5) and manifest['schema_version'] == 6
     assert verify_backup(directory, checksum)
     source.unlink()
-    case.app.close_search()
     shutil.rmtree(case.app.root)
     restored_root = restore_backup(directory, tmp_path / 'restored', checksum)
     app = LibraryApp(restored_root)
-    try:
-        service = TranslationService(app.root / 'state/translation', library=app, workspace=case.workspace,
-            gateway=Gateway(app.root / 'state/translation/provider'))
-        calls = list(case.calls)
-        def forbidden(*args, **kwargs):
-            pytest.fail('Passive recovered export attempted provider or credential access.')
-        monkeypatch.setattr(service.gateway, 'request', forbidden)
-        monkeypatch.setattr(service.gateway.vault, 'get', forbidden)
-        restored = service.get(identity)
-        assert restored['source_partition'] == before['source_partition'] == captured.source_partition
-        assert restored['source_binding'] == before['source_binding']
-        assert restored['receipts'] == before['receipts'] and restored['chunks'] == before['chunks']
-        assert restored['restore_requires_review'] is True and restored['profile']['enabled'] is False
-        assert KeybindingStore(app.root).load() == {'fixture.translation-layout': 'Ctrl+F9'}
-        assert not ProfileStore(app.root / 'state/providers').get(case.profile.id).enabled
-        with pytest.raises(PermissionError, match='fresh review'):
-            service.resume(identity)
-        target = tmp_path / ('Recovered.' + kind)
-        receipt = export_layout(service, identity, target)
-        assert receipt['status'] == 'complete' and receipt['job_id'] == identity
-        assert target.read_bytes() == expected
-        assert app.assets.resolve(captured.mapping['source_sha256']).read_bytes() == raw
-        assert service.get(identity) == restored and case.calls == calls
-        assert not source.exists() and not case.app.root.exists()
-    finally:
-        app.close_search()
+    service = TranslationService(app.root / 'state/translation', library=app, workspace=case.workspace,
+        gateway=Gateway(app.root / 'state/translation/provider'))
+    calls = list(case.calls)
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive recovered export attempted provider or credential access.')
+    monkeypatch.setattr(service.gateway, 'request', forbidden)
+    monkeypatch.setattr(service.gateway.vault, 'get', forbidden)
+    restored = service.get(identity)
+    assert restored['source_partition'] == before['source_partition'] == captured.source_partition
+    assert restored['source_binding'] == before['source_binding']
+    assert restored['receipts'] == before['receipts'] and restored['chunks'] == before['chunks']
+    assert restored['restore_requires_review'] is True and restored['profile']['enabled'] is False
+    assert KeybindingStore(app.root).load() == {'fixture.translation-layout': 'Ctrl+F9'}
+    assert not ProfileStore(app.root / 'state/providers').get(case.profile.id).enabled
+    with pytest.raises(PermissionError, match='fresh review'):
+        service.resume(identity)
+    target = tmp_path / ('Recovered.' + kind)
+    receipt = export_layout(service, identity, target)
+    assert receipt['status'] == 'complete' and receipt['job_id'] == identity
+    assert target.read_bytes() == expected
+    assert app.assets.resolve(captured.mapping['source_sha256']).read_bytes() == raw
+    assert service.get(identity) == restored and case.calls == calls
+    assert not source.exists() and not case.app.root.exists()
 
 
 @pytest.mark.parametrize('flat', [False, True], ids=['native5', 'flat4'])

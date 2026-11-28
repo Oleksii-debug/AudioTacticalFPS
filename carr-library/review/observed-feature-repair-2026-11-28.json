@@ -1,0 +1,381 @@
+{
+  "schema": "carr-observed-feature-repair/1",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "parent_commit": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+  "evidence_head": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "evidence_job": 140932191681,
+  "evidence_log": {
+    "blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf",
+    "sha256": "6f6600cbc1308b68029ec4bcbeb21c533527906592aa6d9e84c98335100e060d",
+    "bytes": 1449327
+  },
+  "components": {
+    "translation": "af510c0a80024c60306df09adaf6731554b20b97",
+    "director": "4d3c74986261f974dafecc20159f7e2fda28ce29"
+  },
+  "reviewed_fixes": [
+    "Formatted approval binds exact source and partition in 104 characters under unchanged 128-character Authorization limit; ordinary source/plain tokens are unchanged.",
+    "Only plain ResourceCancelled becomes a stop boolean; causal cleanup owners, timeout/state/other failures and all deadlines are retained.",
+    "New translation fixtures supply the canonical required --data-dir and use existing call-scoped library APIs.",
+    "Director publication compares exact canonical JSON declarations rather than tuple/list in-memory shapes; every nonempty effect declaration is bound to the saved Project.",
+    "Legacy all-empty effects require the block to be absent; rehashed null and empty object are refused.",
+    "Foreign-flat primary Director metadata uses the existing typed/source validators and shared native passive job authority revocation, with all capacity pre-copy/aggregate/namespace limits retained."
+  ],
+  "root_peer": "CLEAR",
+  "independent_peers": {
+    "translation": "Audio CLEAR",
+    "director_metadata": "Locate and root CLEAR",
+    "director_backup_fixtures": "Locate CLEAR",
+    "publication_omission": "Root requested correction implemented; exact actual-PCM negative tests reviewed"
+  },
+  "prior_repair_status": "Inherited full audio-runtime setup/CUE lifecycle/chorus excitation corrections remain NOT_RUN until this successor executes.",
+  "new_planned_cases": {
+    "translation": 8,
+    "director_and_backup": 12
+  },
+  "package_reference": {
+    "git_rows_sha256": "764afbb25259ebe0ae801371faacfec4e3c18f951d442872067b6ac86bab26bb",
+    "runtime_rows_sha256": "376922fe9987cfbb458d17ee5de39183870bf895b361a27172dfab5d2d60f7ca",
+    "compact_mapping_sha256": "175b0bd4a0960fef483ca2dbf15a390e0b9c80a6934c854f452fbf6a3a9bbf7b"
+  },
+  "product_files": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "before": {
+        "git_blob": "1b88d48f1b30142ca75c9176d4d61ee7448d5c69",
+        "sha256": "4648891f0a6b2516fbfff9748a175b8cb1127c6224609024faaac67aa52226ff",
+        "bytes": 40970
+      },
+      "after": {
+        "git_blob": "83e22a3d375c75fc2047da67044c2ec64b934a48",
+        "sha256": "2f618041ae57152979c576a6d14c1332f9b252f31a84f361ce191100fff06569",
+        "bytes": 41195
+      },
+      "edits": [
+        {
+          "start": 75,
+          "removed": [],
+          "added": [
+            "def _approval_task(identity, source_binding, source_partition):",
+            "    \"\"\"Bind a reviewed layout inside the existing 128-character task envelope.\"\"\"",
+            "    if source_partition is not None:",
+            "        payload = {'source_sha256': source_binding['sha256'],",
+            "                   'partition_sha256': _hash(canonical(source_partition))}",
+            "        return identity + ':layout:' + _hash(canonical(payload))",
+            "    return identity + ':source:' + source_binding['sha256'] if source_binding is not None else identity",
+            "",
+            ""
+          ]
+        },
+        {
+          "start": 149,
+          "removed": [
+            "    expected_task = (authorization.id + ':source:' + source_binding['sha256']",
+            "                     if isinstance(authorization, Authorization) and source_binding is not None",
+            "                     else getattr(authorization, 'id', None))"
+          ],
+          "added": []
+        },
+        {
+          "start": 156,
+          "removed": [
+            "        expected_task += ':layout:' + _hash(canonical(source_partition))"
+          ],
+          "added": [
+            "    expected_task = (_approval_task(authorization.id, source_binding, source_partition)",
+            "                     if isinstance(authorization, Authorization) else None)"
+          ]
+        },
+        {
+          "start": 206,
+          "removed": [
+            "    task = identity + ':source:' + binding['sha256'] if binding is not None else identity",
+            "    if partition is not None:",
+            "        task += ':layout:' + _hash(canonical(partition))"
+          ],
+          "added": [
+            "    task = _approval_task(identity, binding, partition)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "before": {
+        "git_blob": "9b77997cda20aef9acbd21d4283f1a1df8b32496",
+        "sha256": "062adccb62d4be7cf8d88dca0decbc8bd9d870ddc2498b8975dd61692e44227b",
+        "bytes": 32698
+      },
+      "after": {
+        "git_blob": "bb5763d25f6d0520d78131814430f55414f4f018",
+        "sha256": "b53cfd468bd6617a5df2df73efd006b9d219f1e37029fcbe5f0533165cff0f57",
+        "bytes": 33054
+      },
+      "edits": [
+        {
+          "start": 29,
+          "removed": [
+            "from ..audio.cleanup import retained_context"
+          ],
+          "added": [
+            "from ..audio.cleanup import _pending_owners, retained_context"
+          ]
+        },
+        {
+          "start": 36,
+          "removed": [
+            "from ..operations.models import ResourceRequest"
+          ],
+          "added": [
+            "from ..operations.models import ResourceCancelled, ResourceRequest"
+          ]
+        },
+        {
+          "start": 296,
+          "removed": [
+            "            lease.checkpoint()"
+          ],
+          "added": [
+            "            try:",
+            "                lease.checkpoint()",
+            "            except ResourceCancelled as error:",
+            "                # A normal stop is a boolean for the existing audio worker.",
+            "                # Causal pending cleanup must retain its exact owners instead.",
+            "                if _pending_owners(error):",
+            "                    raise",
+            "                return True"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "before": {
+        "git_blob": "0c35a19e893618fad75c1167c8147b590ae71121",
+        "sha256": "d8acb677e786acf5324b769f9fb70694fc4721b636dae33eba01c8432ca260eb",
+        "bytes": 38977
+      },
+      "after": {
+        "git_blob": "2f7e74ba379febfa0753bc27380dc421381f76ad",
+        "sha256": "742417f84e4b0d0ceefb6ebf181e92f957ff95b26891603f9e67a81c78cc79e6",
+        "bytes": 40897
+      },
+      "edits": [
+        {
+          "start": 23,
+          "removed": [
+            "from . import backup_producers, backup_generated, recording_backup, backup_transcription"
+          ],
+          "added": [
+            "from . import backup_producers, backup_generated, recording_backup, backup_transcription, backup_sidecars"
+          ]
+        },
+        {
+          "start": 35,
+          "removed": [],
+          "added": [
+            "_PRIMARY_STUDIO = re.compile(r'studio/projects/(' + backup_sidecars._ID +",
+            "    r')/(?:project\\.json|draft\\.json|revisions/[0-9]{8,}\\.json|jobs/(' + backup_sidecars._ID + r')\\.json)\\Z')"
+          ]
+        },
+        {
+          "start": 124,
+          "removed": [],
+          "added": [
+            "    if _PRIMARY_STUDIO.fullmatch(name):",
+            "        return backup_sidecars.MAX_JSON_BYTES"
+          ]
+        },
+        {
+          "start": 361,
+          "removed": [],
+          "added": [
+            "        elif _PRIMARY_STUDIO.fullmatch(name):",
+            "            value = _json(raw)",
+            "            backup_sidecars._validate_json(name, value, '')",
+            "            backup_sidecars._verify_sources(db, name, value)"
+          ]
+        },
+        {
+          "start": 688,
+          "removed": [],
+          "added": [
+            "    # The primary Director's historical root-relative JSON stays with its",
+            "    # existing typed producer; no cache/audio namespace is admitted here.",
+            "    primary = {entry['filename'] for entry in inventory.entries",
+            "               if _PRIMARY_STUDIO.fullmatch(entry['filename'])}",
+            "    if primary:",
+            "        for name in primary:",
+            "            project_id = PurePosixPath(name).parts[2]",
+            "            if 'studio/projects/' + project_id + '/project.json' not in primary:",
+            "                raise RestoreError('primary studio metadata has no current project revision')",
+            "        rebound = []",
+            "        for entry in inventory.entries:",
+            "            _check_cancelled(cancelled)",
+            "            name = entry['filename']",
+            "            match = _PRIMARY_STUDIO.fullmatch(name)",
+            "            if match is not None and match[2] is not None:",
+            "                value = _json(read_regular(stage / name, sidecar_limit(name)))",
+            "                backup_sidecars._restore_studio_job(value)",
+            "                backup_sidecars._write_json(stage / name, value)",
+            "                raw = read_regular(stage / name, sidecar_limit(name))",
+            "                validate_sidecar(db, name, raw)",
+            "                entry = {'filename': name, 'size_bytes': len(raw),",
+            "                         'sha256': sha256(raw).hexdigest()}",
+            "            rebound.append(entry)",
+            "        inventory = Inventory(tuple(rebound), inventory.empty_roots,",
+            "                              inventory.generated_audio_included, inventory.pending)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "before": {
+        "git_blob": "ed811fea47c7defa842703ef063ffc84a06b4c9b",
+        "sha256": "bffda122db89bc29c3bccc419bda0be9cb93c559e5432ca6cc8067c0350c95ab",
+        "bytes": 33559
+      },
+      "after": {
+        "git_blob": "49744786bed06387efd623b923219a9d27c5763c",
+        "sha256": "7ae9e2f6f0374f0071b5bb92ba7fd97396039d0576d86deb383c6eb770ad4f7b",
+        "bytes": 33673
+      },
+      "edits": [
+        {
+          "start": 571,
+          "removed": [],
+          "added": [
+            "def _restore_studio_job(value):",
+            "    \"\"\"Revoke the existing primary job authority only in a verified private copy.\"\"\"",
+            "    value.update(restore_requires_new_output=True,",
+            "        restored_from_output_dir=value.get('output_dir', ''), output_dir='',",
+            "        state='paused', result=None, outputs=[],",
+            "        message='Restored production: choose a new output folder and create a new job. Accepted cached chunks remain available.')",
+            "",
+            ""
+          ]
+        },
+        {
+          "start": 606,
+          "removed": [
+            "                value.update(restore_requires_new_output=True,",
+            "                    restored_from_output_dir=value.get('output_dir', ''), output_dir='',",
+            "                    state='paused', result=None, outputs=[],",
+            "                    message='Restored production: choose a new output folder and create a new job. Accepted cached chunks remain available.')"
+          ],
+          "added": [
+            "                _restore_studio_job(value)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "before": {
+        "git_blob": "a60a9065d3052e2ad93b62989aca147eb9488d98",
+        "sha256": "84a68e4b608e0c463ed716e2a8a9ab8650f13a0c3650dfbcb9009730f3f3d4d2",
+        "bytes": 25634
+      },
+      "after": {
+        "git_blob": "8fb0af04a6be4eec9807c77f9b532222943b12cf",
+        "sha256": "822e2d9571816019eb69456fe0460d7798c03d166890ca6a05156f75cfdff88b",
+        "bytes": 26492
+      },
+      "edits": [
+        {
+          "start": 197,
+          "removed": [],
+          "added": [
+            "        # Compare JSON declarations, not Python tuple/list representations.",
+            "        # Empty legacy chains keep the historical omitted effects block.",
+            "        expected_effects = None",
+            "        if (project.effects or any(role.effects for role in project.roles)",
+            "                or any(scene.effects for scene in project.scenes)):",
+            "            expected_effects = {",
+            "                'master': [effect.to_dict() for effect in project.effects],",
+            "                'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},",
+            "                'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes}}"
+          ]
+        },
+        {
+          "start": 198,
+          "removed": [
+            "                or metadata.get('voices') != [role.to_dict() for role in project.roles]"
+          ],
+          "added": [
+            "                or encode(metadata.get('voices')) != encode([role.to_dict() for role in project.roles])",
+            "                or (expected_effects is None and 'effects' in metadata)",
+            "                or (expected_effects is not None and encode(metadata.get('effects')) != encode(expected_effects))"
+          ]
+        }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "path": "carr-library/review/translation-runtime-repair-2026-11-28.json",
+      "git_blob": "79708d1e4d4745a11d52e0be0e25dddce6af3bfc"
+    },
+    {
+      "path": "carr-library/review/translation-runtime-repair-inverse-2026-11-28.json",
+      "git_blob": "29f16ac0cac3a2bbe49f702e6542225e435dfad6"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "git_blob": "83e22a3d375c75fc2047da67044c2ec64b934a48"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "git_blob": "bb5763d25f6d0520d78131814430f55414f4f018"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_layout.py",
+      "git_blob": "a8971da11af34803c26df9597bf5dc9d50c68034"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "git_blob": "0d1541f485b35aec4edaeaae5db5cd29b219df22"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "git_blob": "599c04fc0810d1a4a1e5b7bdbff37fce4a62c814"
+    },
+    {
+      "path": "carr-library/tests/storage/test_translation_layout_backup.py",
+      "git_blob": "d67a5cb883e5cc7c49a964aabeffd434740099f0"
+    },
+    {
+      "path": "carr-library/review/director-receiving-repair-1c708d4f-2026-11-28/inverse.json",
+      "git_blob": "b87c5661b1e7d809dd3dcfb75ad8e22dc362237b"
+    },
+    {
+      "path": "carr-library/review/director-receiving-repair-1c708d4f-2026-11-28/review.json",
+      "git_blob": "8f98667c81d9bacf4d568ec6a9aa1901c59ceb08"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "git_blob": "2f7e74ba379febfa0753bc27380dc421381f76ad"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "git_blob": "49744786bed06387efd623b923219a9d27c5763c"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "git_blob": "8fb0af04a6be4eec9807c77f9b532222943b12cf"
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "git_blob": "c5aba1493c1a6169b4ac7d21236577ba9170233d"
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "git_blob": "dad139b85a2ce84dcb3ffea7f9f8193fc2f23233"
+    }
+  ],
+  "remaining": [
+    "Measured capacity harness and ordinary aggregate additions are still being integrated.",
+    "Final full Windows/ordinary gates, actual manual NVDA and external quality/rights evidence remain separate."
+  ]
+}

@@ -73,6 +73,15 @@ def _hash(value):
     return sha256(value.encode('utf-8')).hexdigest()
 
 
+def _approval_task(identity, source_binding, source_partition):
+    """Bind a reviewed layout inside the existing 128-character task envelope."""
+    if source_partition is not None:
+        payload = {'source_sha256': source_binding['sha256'],
+                   'partition_sha256': _hash(canonical(source_partition))}
+        return identity + ':layout:' + _hash(canonical(payload))
+    return identity + ':source:' + source_binding['sha256'] if source_binding is not None else identity
+
+
 def _source_job_id(job):
     """PR165: keep source identity detectable before its first usage record."""
     profile_hash = (job.get('original_profile_sha256') if job.get('restore_requires_review', False)
@@ -147,14 +156,12 @@ def _approved_requests(profile, chunks, source, target, authorization, per_call_
         _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
         hashes.append(_hash(canonical(body)))
     remote_hashes = tuple(value for value in hashes if value is not None)
-    expected_task = (authorization.id + ':source:' + source_binding['sha256']
-                     if isinstance(authorization, Authorization) and source_binding is not None
-                     else getattr(authorization, 'id', None))
     if source_partition is not None:
         if source_binding is None:
             raise PermissionError('Layout approval requires its original source binding.')
         partition_ranges(''.join(chunks), source_partition)
-        expected_task += ':layout:' + _hash(canonical(source_partition))
+    expected_task = (_approval_task(authorization.id, source_binding, source_partition)
+                     if isinstance(authorization, Authorization) else None)
     if (not isinstance(authorization, Authorization) or authorization.task_id != expected_task
             or tuple(authorization.operations) != ('translation.text',)
             or tuple(authorization.data_classes) != ('selected-excerpt',)
@@ -204,9 +211,7 @@ def translation_approval(profile, value, source, target, budget, *, source_bindi
             continue
         _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
         hashes.append(_hash(canonical(body)))
-    task = identity + ':source:' + binding['sha256'] if binding is not None else identity
-    if partition is not None:
-        task += ':layout:' + _hash(canonical(partition))
+    task = _approval_task(identity, binding, partition)
     approval = Authorization(identity, task, ((profile.id, profile.endpoint),),
         ('translation.text',), ('selected-excerpt',), str(money(budget)), len(hashes),
         time() + 24 * 3600, tuple(hashes))

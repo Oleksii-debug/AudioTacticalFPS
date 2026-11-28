@@ -1,12 +1,12 @@
 {
   "schema": "carr-python-reference/1",
-  "base_commit": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "base_commit": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
   "status": "SOURCE_REFERENCE_NOT_RUNTIME_QUALIFICATION",
-  "derivation": "Inherited all unchanged paths from the independently bound 388-file feature reference, replaced 20 reviewed product files and added ten modules. Source and installed execution remain NOT_RUN.",
+  "derivation": "Same 398-file namespace as the capacity composition; five exact reviewed product repairs replace translation authority/cancellation, Director declaration binding and shared native/flat recovery implementation. No runtime qualification is transferred.",
   "digests": {
-    "git_rows_sha256": "af79ef9977bd24aba1932e46a59fcaae6c06fddbec639fd8e6a024400a90c503",
-    "runtime_rows_sha256": "9443a44824fa7f4349716896b227671748f056a2ca1b466b15d67f0befd2a761",
-    "compact_mapping_sha256": "6416870d6ea939472560580e014c598221e24c51cfe56a010c4d2cdc6163058e"
+    "git_rows_sha256": "764afbb25259ebe0ae801371faacfec4e3c18f951d442872067b6ac86bab26bb",
+    "runtime_rows_sha256": "376922fe9987cfbb458d17ee5de39183870bf895b361a27172dfab5d2d60f7ca",
+    "compact_mapping_sha256": "175b0bd4a0960fef483ca2dbf15a390e0b9c80a6934c854f452fbf6a3a9bbf7b"
   },
   "git_rows": [
     {
@@ -135,7 +135,7 @@
     },
     {
       "path": "carr-library/src/carr_library/assistant/translation.py",
-      "git_blob": "1b88d48f1b30142ca75c9176d4d61ee7448d5c69"
+      "git_blob": "83e22a3d375c75fc2047da67044c2ec64b934a48"
     },
     {
       "path": "carr-library/src/carr_library/assistant/translation_cli.py",
@@ -147,7 +147,7 @@
     },
     {
       "path": "carr-library/src/carr_library/assistant/translation_layout.py",
-      "git_blob": "9b77997cda20aef9acbd21d4283f1a1df8b32496"
+      "git_blob": "bb5763d25f6d0520d78131814430f55414f4f018"
     },
     {
       "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
@@ -323,7 +323,7 @@
     },
     {
       "path": "carr-library/src/carr_library/backup_compat.py",
-      "git_blob": "0c35a19e893618fad75c1167c8147b590ae71121"
+      "git_blob": "2f7e74ba379febfa0753bc27380dc421381f76ad"
     },
     {
       "path": "carr-library/src/carr_library/backup_generated.py",
@@ -355,7 +355,7 @@
     },
     {
       "path": "carr-library/src/carr_library/backup_sidecars.py",
-      "git_blob": "ed811fea47c7defa842703ef063ffc84a06b4c9b"
+      "git_blob": "49744786bed06387efd623b923219a9d27c5763c"
     },
     {
       "path": "carr-library/src/carr_library/backup_transcription.py",
@@ -1099,7 +1099,7 @@
     },
     {
       "path": "carr-library/src/carr_library/studio/publishing_source.py",
-      "git_blob": "a60a9065d3052e2ad93b62989aca147eb9488d98"
+      "git_blob": "8fb0af04a6be4eec9807c77f9b532222943b12cf"
     },
     {
       "path": "carr-library/src/carr_library/studio/render.py",
@@ -1759,9 +1759,9 @@
       "sha256": "0448dabcfdf67f4c2ea1c2379b130cc53010c22c9e03bf8ee845a6a69438e741"
     },
     {
-      "bytes": 40970,
+      "bytes": 41195,
       "path": "carr_library/assistant/translation.py",
-      "sha256": "4648891f0a6b2516fbfff9748a175b8cb1127c6224609024faaac67aa52226ff"
+      "sha256": "2f618041ae57152979c576a6d14c1332f9b252f31a84f361ce191100fff06569"
     },
     {
       "bytes": 355,
@@ -1774,9 +1774,9 @@
       "sha256": "398809119d8474b9d8c3f61a7e5aae6e7466fa75dde5b5901c2e70167a125adb"
     },
     {
-      "bytes": 32698,
+      "bytes": 33054,
       "path": "carr_library/assistant/translation_layout.py",
-      "sha256": "062adccb62d4be7cf8d88dca0decbc8bd9d870ddc2498b8975dd61692e44227b"
+      "sha256": "b53cfd468bd6617a5df2df73efd006b9d219f1e37029fcbe5f0533165cff0f57"
     },
     {
       "bytes": 12748,
@@ -1994,9 +1994,9 @@
       "sha256": "0f240e6e5e9d20afbb59adceb5f861298f1da6eb48cf49cb590607f65f471151"
     },
     {
-      "bytes": 38977,
+      "bytes": 40897,
       "path": "carr_library/backup_compat.py",
-      "sha256": "d8acb677e786acf5324b769f9fb70694fc4721b636dae33eba01c8432ca260eb"
+      "sha256": "742417f84e4b0d0ceefb6ebf181e92f957ff95b26891603f9e67a81c78cc79e6"
     },
     {
       "bytes": 4373,
@@ -2034,9 +2034,9 @@
       "sha256": "cda21e9574aa0bcd23b670be4b7dca6d119becf1c760dc58acd5fad7056b118d"
     },
     {
-      "bytes": 33559,
+      "bytes": 33673,
       "path": "carr_library/backup_sidecars.py",
-      "sha256": "bffda122db89bc29c3bccc419bda0be9cb93c559e5432ca6cc8067c0350c95ab"
+      "sha256": "7ae9e2f6f0374f0071b5bb92ba7fd97396039d0576d86deb383c6eb770ad4f7b"
     },
     {
       "bytes": 34869,
@@ -2964,9 +2964,9 @@
       "sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b"
     },
     {
-      "bytes": 25634,
+      "bytes": 26492,
       "path": "carr_library/studio/publishing_source.py",
-      "sha256": "84a68e4b608e0c463ed716e2a8a9ab8650f13a0c3650dfbcb9009730f3f3d4d2"
+      "sha256": "822e2d9571816019eb69456fe0460d7798c03d166890ca6a05156f75cfdff88b"
     },
     {
       "bytes": 74760,
@@ -3626,10 +3626,10 @@
     "assistant/service.py": "6751142146254fafa1f855b9900bccc164364c9c866d4f9f9ff0aaca0b0b5d30",
     "assistant/state.py": "5fc2fe93d1f4d338a100e803ec538f1e99ece4ae78bdcc1ac4922e500b124b55",
     "assistant/transcription.py": "0448dabcfdf67f4c2ea1c2379b130cc53010c22c9e03bf8ee845a6a69438e741",
-    "assistant/translation.py": "4648891f0a6b2516fbfff9748a175b8cb1127c6224609024faaac67aa52226ff",
+    "assistant/translation.py": "2f618041ae57152979c576a6d14c1332f9b252f31a84f361ce191100fff06569",
     "assistant/translation_cli.py": "9684228ed451e39416e03ccdc77fede24a1821b52fb4ff3325dff585afba2a2d",
     "assistant/translation_epub_layout_worker.py": "398809119d8474b9d8c3f61a7e5aae6e7466fa75dde5b5901c2e70167a125adb",
-    "assistant/translation_layout.py": "062adccb62d4be7cf8d88dca0decbc8bd9d870ddc2498b8975dd61692e44227b",
+    "assistant/translation_layout.py": "b53cfd468bd6617a5df2df73efd006b9d219f1e37029fcbe5f0533165cff0f57",
     "assistant/translation_layout_worker.py": "c5b63786d4830a606e1b1492b4fffbef7f9d2e9fee32f88229be308b3fc8a21c",
     "assistant/translation_partition.py": "f2d839898b51f706fbb642fe3f2220eef10ad516a890b209dcaf7d2e7e2f58bc",
     "assistant/workflow_access.py": "21635fe336ada5177df7a23c4f8d1c23caac8afd1403715dfd8c7416c60e10f0",
@@ -3673,7 +3673,7 @@
     "audio/windows_process.py": "2169a92d98c9786f093b0d6bec3e5ee8152679e599fe99803049500280b4710a",
     "audio/windows_setup.py": "06049a81e9445654a099a18baf8c61d3e4d33d9ee132721b389d8a7149a750f0",
     "backup_budget.py": "0f240e6e5e9d20afbb59adceb5f861298f1da6eb48cf49cb590607f65f471151",
-    "backup_compat.py": "d8acb677e786acf5324b769f9fb70694fc4721b636dae33eba01c8432ca260eb",
+    "backup_compat.py": "742417f84e4b0d0ceefb6ebf181e92f957ff95b26891603f9e67a81c78cc79e6",
     "backup_generated.py": "86312a5b7a0f2e5657912455c9a07eac77f3fd805ead7af7b8f11dde48420b00",
     "backup_incremental.py": "9e3edbd119c9eb98a51ffd3f8d9d9e6c820bc57bad78ab1e0346b34848a2cd58",
     "backup_incremental_cli.py": "604793e072ea5db628f53e0c253ea59795f741ebd917ac093bccef17a1bda3e5",
@@ -3681,7 +3681,7 @@
     "backup_options.py": "da8fab816fc2422d0daff3f10d25ef252df605477ca6c06004860498a8374045",
     "backup_producers.py": "6f43fb2e5d4e6e0ab1a367b62530b4ae20c3bcc6f85a2c2e417831d03f9764bb",
     "backup_report.py": "cda21e9574aa0bcd23b670be4b7dca6d119becf1c760dc58acd5fad7056b118d",
-    "backup_sidecars.py": "bffda122db89bc29c3bccc419bda0be9cb93c559e5432ca6cc8067c0350c95ab",
+    "backup_sidecars.py": "7ae9e2f6f0374f0071b5bb92ba7fd97396039d0576d86deb383c6eb770ad4f7b",
     "backup_transcription.py": "f1cd82f6ffdcce3bbcc686f39c5715b7cc5f682319a63b77665372ebfd4794b0",
     "bibliography_cli.py": "f74a329a990709189afd715078856d6712e6df0ef27157ab09bc7153c46203c6",
     "catalog/_filetype/archive.py": "2be41e49c62fb03c9e615c77f6f4ba32b545f850a65cdc884e347e2e8f65e0b3",
@@ -3867,7 +3867,7 @@
     "studio/measured_audio.py": "5faa008d90e9991fb59260e5597aa2d7cd2b06eb475e5abfaa47a87921194afc",
     "studio/project.py": "84cc2b36ce869f4ca8e6fe868a13edd702bdfefad0cfd0f88ba6a3a707b51280",
     "studio/publishing.py": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
-    "studio/publishing_source.py": "84a68e4b608e0c463ed716e2a8a9ab8650f13a0c3650dfbcb9009730f3f3d4d2",
+    "studio/publishing_source.py": "822e2d9571816019eb69456fe0460d7798c03d166890ca6a05156f75cfdff88b",
     "studio/render.py": "8d17b49d56fb2e36050d73c02586cdd6d68667d03fc415e3d0b8547f20e84e25",
     "studio/silence_inspection.py": "1c56da9de5c2c1349b01cde13cbfabc378a948f4d1738ffb653adf8119e210d8",
     "sync/__init__.py": "c07c744635107ad836290ea07ac9817383cf8c1f70e4548aff678299679ec7c9",

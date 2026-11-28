@@ -120,7 +120,6 @@ def bound(tmp_path, setup):
         authors=('Synthetic source',), work_id='epub-layout-work', edition_id='epub-layout-edition')
     assert result['state'] == 'complete' and result['verified'] is False
     yield SimpleNamespace(**vars(setup), source=source, raw=raw, edition='epub-layout-edition')
-    setup.app.close_search()
 
 
 def captured(case):

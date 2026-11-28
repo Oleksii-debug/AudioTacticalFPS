@@ -1,5 +1,22 @@
 # Resonance V3 implementation and owner-test delivery status
 
+## Current receiving: repairs tied to the observed feature failures
+
+**SOURCE_REVIEWED / runtime NOT_RUN on this successor.** Based on capacity
+candidate `936dc6cd65b15fa0a89ae9d01f66709437b1783b`, this follow-up closes the
+concrete formatted-translation approval/cancellation and Director publication/
+foreign-flat recovery failures observed on `1c708d4f`. The canonical authorization
+bound, original source/partition identity, strict effect declarations, native
+cleanup ownership, restore authority revocation and existing resource limits are
+retained. The five changed production files and every test preimage are pinned in
+`review/observed-feature-repair-2026-11-28.json` and the component inverses.
+
+The complete Python namespace remains 398 files, with an updated committed
+capacity reference. Twenty new regression cases are planned in the existing
+selectors; they are not reported as executed. Focused feature and capacity
+workflows must qualify this actual successor. Historical failing results remain
+preserved; unrelated prior PASS records are not transferred.
+
 ## Current receiving: explicit import and native-backup resource policies
 
 **SOURCE_REVIEWED / execution NOT_RUN on this composition.** This candidate
