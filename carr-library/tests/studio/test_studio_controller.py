@@ -73,3 +73,95 @@ def test_project_edit_detects_stale_revision(tmp_path):
 def test_music_plan_rejects_values_not_supported_by_runtime(kwargs):
     with pytest.raises(ValueError):
         Music(**kwargs)
+
+
+@pytest.mark.parametrize('change', ['script', 'title', 'noop'])
+def test_script_controller_preserves_exact_saved_markers_and_noop_revision(tmp_path, change):
+    ui = controller(tmp_path)
+    try:
+        original = ui.save('[Scene: Arrival]\nNarrator: Original words.', 'Marked project', ('voice-a',))
+        marked = ui.service.projects.add_marker(original, scene_id=original.scenes[0].id,
+            position=.5, label='Keep this position', marker_id='marker-note')
+        ui.project = marked
+        text = marked.original_script.replace('Original words.', 'Revised words.') if change == 'script' else marked.original_script
+        title = 'Revised title' if change == 'title' else marked.title
+        saved = ui.save(text, title, ('voice-a',))
+        assert saved.id == marked.id and saved.schema == 4
+        assert saved.markers == marked.markers
+        assert saved.revision == marked.revision + (change != 'noop')
+        assert ui.service.projects.load(saved.id) == saved
+        assert saved.scenes[0].id == marked.scenes[0].id
+        if change == 'noop':
+            assert saved.to_dict() == marked.to_dict() and saved.fingerprint == marked.fingerprint
+        else:
+            history = ui.service.projects.directory(saved.id) / 'revisions'
+            assert any(Project.from_dict(json.loads(path.read_text(encoding='utf-8'))) == marked
+                       for path in history.glob('*.json'))
+    finally:
+        ui.service.close()
+
+
+@pytest.mark.parametrize('change', ['rename-marked-scene', 'remove-marked-scene', 'reuse-removed-scene-id'])
+def test_script_controller_refuses_marker_retargeting_and_retains_invalid_draft(tmp_path, change):
+    ui = controller(tmp_path)
+    try:
+        text = '[Scene: Arrival]\nNarrator: First words.\n[Scene: Outro]\nNarrator: Last words.'
+        original = ui.save(text, 'Marked project', ('voice-a',))
+        selected = original.scenes[1] if change == 'remove-marked-scene' else original.scenes[0]
+        marked = ui.service.projects.add_marker(original, scene_id=selected.id,
+            position=.5, label='Bound scene position', marker_id='marker-note')
+        ui.project = marked
+        if change == 'rename-marked-scene':
+            edited = text.replace('[Scene: Arrival]', '[Scene: Another scene]')
+        elif change == 'remove-marked-scene':
+            edited = '[Scene: Arrival]\nNarrator: First words.'
+        else:
+            edited = '[Scene: Outro]\nNarrator: Last words.'
+        with pytest.raises(ValueError, match='named markers'):
+            ui.save(edited, marked.title, ('voice-a',))
+        assert ui.project == marked
+        assert ui.service.projects.load(marked.id) == marked
+        assert json.loads(ui.draft.read_text(encoding='utf-8'))['text'] == edited
+        assert marked.markers[0].scene_id == selected.id
+    finally:
+        ui.service.close()
+
+
+@pytest.mark.parametrize('change', ['remove-first', 'reorder'])
+def test_duplicate_scene_titles_never_retarget_existing_markers(tmp_path, change):
+    ui = controller(tmp_path)
+    try:
+        text = '[Scene: Same]\nNarrator: First scene words.\n[Scene: Same]\nNarrator: Second scene words.'
+        original = ui.save(text, 'Repeated scene titles', ('voice-a',))
+        marked = ui.service.projects.add_marker(original, scene_id=original.scenes[0].id,
+            position=.5, label='First scene only', marker_id='marker-note')
+        ui.project = marked
+        edited = ('[Scene: Same]\nNarrator: Second scene words.' if change == 'remove-first' else
+                  '[Scene: Same]\nNarrator: Second scene words.\n[Scene: Same]\nNarrator: First scene words.')
+        with pytest.raises(ValueError, match='[Nn]amed markers'):
+            ui.save(edited, marked.title, ('voice-a',))
+        assert ui.project == marked and ui.service.projects.load(marked.id) == marked
+        assert json.loads(ui.draft.read_text(encoding='utf-8'))['text'] == edited
+        assert marked.scenes[0].lines[0].text == 'First scene words.'
+    finally:
+        ui.service.close()
+
+
+@pytest.mark.parametrize('change', ['title', 'noop'])
+def test_duplicate_scene_titles_allow_unchanged_script_and_project_title_edits(tmp_path, change):
+    ui = controller(tmp_path)
+    try:
+        text = '[Scene: Same]\nNarrator: First scene words.\n[Scene: Same]\nNarrator: Second scene words.'
+        original = ui.save(text, 'Repeated scene titles', ('voice-a',))
+        marked = ui.service.projects.add_marker(original, scene_id=original.scenes[0].id,
+            position=.5, label='First scene only', marker_id='marker-note')
+        ui.project = marked
+        title = 'Reviewed project title' if change == 'title' else marked.title
+        saved = ui.save(text, title, ('voice-a',))
+        assert saved.markers == marked.markers and saved.scenes == marked.scenes
+        assert saved.revision == marked.revision + (change == 'title')
+        assert ui.service.projects.load(saved.id) == saved
+        if change == 'noop':
+            assert saved.fingerprint == marked.fingerprint
+    finally:
+        ui.service.close()

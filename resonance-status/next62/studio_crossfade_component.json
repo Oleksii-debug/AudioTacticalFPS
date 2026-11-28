@@ -1,0 +1,188 @@
+{
+  "schema": "carr-reviewed-source-component/1",
+  "component": "V3-05 atomic paired clip crossfade",
+  "base_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/clip_operations.py",
+      "preimage": "82676db10f6da0cfa2e04294f7337b82295baa13",
+      "git_blob": "a9b2856c445f6d9f67105b754c23deb23fe3e60d",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "preimage": "f77512fc1f0f242a6202ffa247e5ce9049debefc",
+      "git_blob": "598d0c450e3697c699a03c74d806783173fc3ab5",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_operations.py",
+      "preimage": "d62aa2301be32b9993c64493280f631da69c9aca",
+      "git_blob": "a47af2be53416f2a9588a20381063f63422f0940",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_editing.py",
+      "preimage": "caab01827b6a9938cfdda6ade26670012dec6def",
+      "git_blob": "4583dca913a88091608a91e742aced16e5bdfc64",
+      "exact_readback": true
+    }
+  ],
+  "public_api": {
+    "pure": "crossfade_clips(first, second, seconds, *, first_frames, second_frames, sample_rate) -> tuple[Cue, Cue]",
+    "service": "ClipEditor.crossfade(project, scene_id, first_id, second_id, seconds, *, cancelled=lambda: False) -> Project"
+  },
+  "semantics": [
+    "Distinct clips in the same captured scene, old scene intervals exactly contiguous on the sample grid.",
+    "Positive sample-aligned overlap fits both actual retained selections; existing internal or overlapping outer fades and existing incompatible active clip effects are refused.",
+    "Only first.fade_out, second.fade_in and second.start change. Both source paths, trims, durations, IDs, title/routing/gain/pan/effects remain.",
+    "Old pair end is retained via scene.minimum_duration; unrelated cues and later scenes do not move.",
+    "Both actual decoder inspections and opt-in final source stamp/content-hash checks remain inside one existing resource reservation.",
+    "One existing whole-project revision/fingerprint compare-and-swap and history publication; cancellation, source drift, stale state and protected BookPlan review remain refusals."
+  ],
+  "separate_shared_schema_hunk": {
+    "path": "carr-library/src/carr_library/studio/clips.py",
+    "old": "replace(project, schema=3, revision=project.revision + 1, **changes)",
+    "new": "replace(project, schema=max(3, project.schema), revision=project.revision + 1, **changes)",
+    "requested_by": "canonical_regression",
+    "purpose": "Preserve incoming marker schema4 when changing existing effect chains; behavior for schemas1/2/3 stays unchanged."
+  },
+  "whole_test_contracts": [
+    {
+      "path": "tests/studio/test_clip_operations.py",
+      "preimage": "d62aa2301be32b9993c64493280f631da69c9aca",
+      "git_blob": "a47af2be53416f2a9588a20381063f63422f0940",
+      "previous_cases": 59,
+      "added_cases": 31,
+      "required_cases": 90,
+      "previous_functions": 16,
+      "required_functions": 22,
+      "functions": [
+        "test_split_retains_original_identity_bytes_and_exact_scene_grid",
+        "test_split_invalid_boundary_cannot_create_a_piece",
+        "test_split_inside_existing_fade_is_refused_without_reshaping_it",
+        "test_completed_outer_fades_survive_split_and_rejoin",
+        "test_curve_shift_matches_independent_piecewise_function_at_every_sample",
+        "test_pan_curve_split_rejoins_without_resetting_original_motion",
+        "test_eight_point_shift_stays_in_existing_wire_bound_and_bypass_is_unchanged",
+        "test_stateful_clip_processing_requires_explicit_render_before_edit",
+        "test_cut_leaves_original_scene_time_and_source_ranges",
+        "test_invalid_cut_is_refused",
+        "test_join_cannot_discard_different_content_routing_or_internal_fade",
+        "test_join_keeps_external_fades_and_refuses_changed_bypassed_controls",
+        "test_invalid_inspected_geometry_or_new_identity_is_refused",
+        "test_split_and_prefix_cut_use_one_captured_integer_scene_origin",
+        "test_unaligned_source_selection_requires_explicit_conversion",
+        "test_fractional_scene_end_that_changes_rounding_is_explicitly_refused",
+        "test_crossfade_keeps_both_original_selections_and_outer_ramps",
+        "test_crossfade_rejects_invalid_or_unaligned_overlap",
+        "test_crossfade_requires_distinct_contiguous_sample_aligned_scene_pair",
+        "test_crossfade_never_replaces_boundary_or_overlapping_outer_fades",
+        "test_crossfade_retains_existing_editable_effect_boundary",
+        "test_crossfade_requires_exact_inspected_selected_lengths"
+      ],
+      "new_functions": [
+        "test_crossfade_keeps_both_original_selections_and_outer_ramps",
+        "test_crossfade_rejects_invalid_or_unaligned_overlap",
+        "test_crossfade_requires_distinct_contiguous_sample_aligned_scene_pair",
+        "test_crossfade_never_replaces_boundary_or_overlapping_outer_fades",
+        "test_crossfade_retains_existing_editable_effect_boundary",
+        "test_crossfade_requires_exact_inspected_selected_lengths"
+      ],
+      "old_test_prefix_exact": true,
+      "companions": []
+    },
+    {
+      "path": "tests/studio/test_clip_editing.py",
+      "preimage": "caab01827b6a9938cfdda6ade26670012dec6def",
+      "git_blob": "4583dca913a88091608a91e742aced16e5bdfc64",
+      "previous_cases": 20,
+      "added_cases": 14,
+      "required_cases": 34,
+      "previous_functions": 11,
+      "required_functions": 19,
+      "functions": [
+        "test_clip_only_production_does_not_discover_or_require_any_voice",
+        "test_schema_one_roundtrip_preserves_original_fingerprint_and_wire_fields",
+        "test_edit_retains_exact_bytes_and_noop_keeps_revision",
+        "test_invalid_clip_cannot_publish_a_project_revision",
+        "test_receipt_binding_rejects_changed_recording",
+        "test_cancel_after_copy_starts_keeps_project_and_original",
+        "test_source_change_during_retention_is_not_admitted",
+        "test_add_does_not_authorize_neighbouring_inputs",
+        "test_move_is_one_revision_and_keeps_clip_identity_and_original",
+        "test_actual_trim_position_pan_fades_and_complete_clip_stems",
+        "test_actual_recording_receipt_becomes_an_editable_managed_clip",
+        "test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision",
+        "test_crossfade_refuses_nonselectable_pair_before_decoder_or_save",
+        "test_crossfade_fade_conflict_cannot_publish_half_of_the_pair",
+        "test_crossfade_cancellation_preserves_the_entire_saved_pair",
+        "test_crossfade_rechecks_both_retained_sources_after_real_metadata",
+        "test_crossfade_refuses_a_changed_project_before_publication",
+        "test_crossfade_final_project_write_keeps_revision_and_fingerprint_cas",
+        "test_crossfade_cannot_bypass_the_reviewed_book_plan_boundary"
+      ],
+      "new_functions": [
+        "test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision",
+        "test_crossfade_refuses_nonselectable_pair_before_decoder_or_save",
+        "test_crossfade_fade_conflict_cannot_publish_half_of_the_pair",
+        "test_crossfade_cancellation_preserves_the_entire_saved_pair",
+        "test_crossfade_rechecks_both_retained_sources_after_real_metadata",
+        "test_crossfade_refuses_a_changed_project_before_publication",
+        "test_crossfade_final_project_write_keeps_revision_and_fingerprint_cas",
+        "test_crossfade_cannot_bypass_the_reviewed_book_plan_boundary"
+      ],
+      "old_test_prefix_exact": true,
+      "companions": []
+    }
+  ],
+  "total_existing_cases": 79,
+  "total_added_cases": 45,
+  "total_required_cases": 124,
+  "gate_changes_required": "Update only existing whole suite counts and exact added function names; no new module, companion, required origin, child timeout or dependency.",
+  "static_audits": {
+    "pure_original_prefix_exact": true,
+    "service_exact_inverse": true,
+    "old_tests_exact_prefix": true,
+    "existing_children_and_budgets_unchanged": true,
+    "no_project_schema_or_DSP_or_render_source_changed": true
+  },
+  "reviews": [
+    {
+      "reviewer": "canonical_regression",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "source_blob": "a9b2856c445f6d9f67105b754c23deb23fe3e60d",
+      "test_blob": "a47af2be53416f2a9588a20381063f63422f0940",
+      "scope": "Pure geometry/constraints, actual Cue/effect API, all old59 and31 appended cases."
+    },
+    {
+      "reviewer": "locate_project",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "source_blob": "598d0c450e3697c699a03c74d806783173fc3ab5",
+      "test_blob": "4583dca913a88091608a91e742aced16e5bdfc64",
+      "scope": "Existing broker/source identity/CAS/history/old-scene extent, actual FFmpeg fixture APIs and14 appended service cases."
+    }
+  ],
+  "integration_review_record": {
+    "ui_blob": "5b8dee1dab668bdafe455d1085e532bc54988515",
+    "ui_tests_blob": "d5675f91c0b6285ea9188fa90d4ca416cd6967dc",
+    "reviewer": "progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Only crossfade handler/current-review helper/menu binding and six crossfade test functions/14cases; root owns UI files and Canonical separately reviews marker portion."
+  },
+  "documentation": {
+    "owner": "locate_project",
+    "path": "carr-library/docs/STUDIO_CLIP_HISTORY.md",
+    "note": "Documentation is a separate root/Locate composition; unpublished prior draft5afb is deliberately excluded from this component."
+  },
+  "execution": {
+    "local": "NOT_RUN; no usable execution environment",
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "physical_playback": "NOT_QUALIFIED",
+    "acoustic_quality": "NOT_QUALIFIED"
+  },
+  "refs_mutated": false
+}

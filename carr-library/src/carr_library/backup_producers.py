@@ -291,14 +291,14 @@ def _studio_job(value, identity):
         number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
     if 'resource_plan' in value:
         _resource_plan(value['resource_plan'])
-    if project.schema in (2, 3):
+    if project.schema in (2, 3, 4):
         _origin(value.get('origin'))
     elif 'origin' in value:
         raise ValueError('Legacy production must not gain portable origin authority.')
     if 'recovery' in value:
         recovery = value['recovery']
         fields(recovery, {'requires_output_directory'}, {'previous', 'output_approved'})
-        if project.schema not in (2, 3) or type(recovery['requires_output_directory']) is not bool:
+        if project.schema not in (2, 3, 4) or type(recovery['requires_output_directory']) is not bool:
             raise ValueError('Invalid portable production recovery state.')
         if ('previous' in recovery) != ('output_approved' in recovery):
             raise ValueError('Incomplete portable output approval history.')

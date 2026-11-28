@@ -164,3 +164,98 @@ def test_fractional_scene_end_that_changes_rounding_is_explicitly_refused():
     original = replace(clip(), start=.5 / RATE, duration=3 / RATE)
     with pytest.raises(ValueError, match='rounded duration'):
         split_clip(original, 1 / RATE, frames=3, sample_rate=RATE)
+
+
+def _crossfade_pair():
+    first = clip(title='First retained selection', gain_db=-3, pan=-1, role='microphone')
+    second = Cue('following', 'inputs/' + 'b' * 64 + '.audio', start=5,
+        trim_start=2, duration=3, gain_db=-7, pan=1, role='sfx',
+        title='Second retained selection')
+    return first, second
+
+
+@pytest.mark.parametrize('seconds,outer', [(1 / RATE, .25), (.5, .25), (1.75, .25), (2, 0)])
+def test_crossfade_keeps_both_original_selections_and_outer_ramps(seconds, outer):
+    from carr_library.studio.clip_operations import crossfade_clips
+    first, second = _crossfade_pair()
+    curve = envelope_effect('gain_envelope', ((0, -6), (1, 0)))
+    bypass = Effect('reverb', enabled=False)
+    first = replace(first, fade_in=outer, effects=(curve, bypass))
+    second = replace(second, fade_out=outer)
+    left, right = crossfade_clips(first, second, seconds,
+        first_frames=48000, second_frames=72000, sample_rate=RATE)
+    assert replace(left, fade_out=0) == first
+    assert replace(right, start=5, fade_in=0) == second
+    assert (left.fade_out, right.fade_in) == (seconds, seconds)
+    assert round(right.start * RATE) == 5 * RATE - round(seconds * RATE)
+    assert left.effects == first.effects and right.effects == second.effects
+    assert first.fade_out == second.fade_in == 0 and second.start == 5
+
+
+@pytest.mark.parametrize('seconds', [-1, 0, True, float('nan'), float('inf'),
+    1e-12, 1.5 / RATE, 2 + 1 / RATE, 1e100])
+def test_crossfade_rejects_invalid_or_unaligned_overlap(seconds):
+    from carr_library.studio.clip_operations import crossfade_clips
+    first, second = _crossfade_pair()
+    with pytest.raises(ValueError):
+        crossfade_clips(first, second, seconds,
+            first_frames=48000, second_frames=72000, sample_rate=RATE)
+
+
+@pytest.mark.parametrize('change', [
+    'same-id', 'gap', 'overlap', 'reverse', 'unaligned-left', 'unaligned-right'])
+def test_crossfade_requires_distinct_contiguous_sample_aligned_scene_pair(change):
+    from carr_library.studio.clip_operations import crossfade_clips
+    first, second = _crossfade_pair()
+    if change == 'same-id':
+        second = replace(second, id=first.id)
+    elif change == 'gap':
+        second = replace(second, start=5 + 1 / RATE)
+    elif change == 'overlap':
+        second = replace(second, start=5 - 1 / RATE)
+    elif change == 'reverse':
+        first, second = replace(second, duration=2), replace(first, duration=3)
+    elif change == 'unaligned-left':
+        first = replace(first, start=3 + .5 / RATE)
+    else:
+        second = replace(second, start=5 + .5 / RATE)
+    with pytest.raises(ValueError):
+        crossfade_clips(first, second, .5,
+            first_frames=48000, second_frames=72000, sample_rate=RATE)
+
+
+@pytest.mark.parametrize('change', ['left-boundary', 'right-boundary', 'left-outer', 'right-outer'])
+def test_crossfade_never_replaces_boundary_or_overlapping_outer_fades(change):
+    from carr_library.studio.clip_operations import crossfade_clips
+    first, second = _crossfade_pair()
+    if change == 'left-boundary':
+        first = replace(first, fade_out=.1)
+    elif change == 'right-boundary':
+        second = replace(second, fade_in=.1)
+    elif change == 'left-outer':
+        first = replace(first, fade_in=1.75)
+    else:
+        second = replace(second, fade_out=2.75)
+    with pytest.raises(ValueError, match='fade'):
+        crossfade_clips(first, second, .5,
+            first_frames=48000, second_frames=72000, sample_rate=RATE)
+
+
+@pytest.mark.parametrize('kind', ['compressor', 'reverb', 'equalizer', 'loudness'])
+def test_crossfade_retains_existing_editable_effect_boundary(kind):
+    from carr_library.studio.clip_operations import crossfade_clips
+    first, second = _crossfade_pair()
+    second = replace(second, effects=(Effect(kind),))
+    with pytest.raises(ValueError, match='Render stateful'):
+        crossfade_clips(first, second, .5,
+            first_frames=48000, second_frames=72000, sample_rate=RATE)
+
+
+@pytest.mark.parametrize('first_frames,second_frames', [
+    (0, 72000), (True, 72000), (47999, 72000), (48000, 71999)])
+def test_crossfade_requires_exact_inspected_selected_lengths(first_frames, second_frames):
+    from carr_library.studio.clip_operations import crossfade_clips
+    first, second = _crossfade_pair()
+    with pytest.raises(ValueError):
+        crossfade_clips(first, second, .5,
+            first_frames=first_frames, second_frames=second_frames, sample_rate=RATE)

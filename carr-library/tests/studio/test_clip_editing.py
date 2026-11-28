@@ -249,3 +249,249 @@ def test_actual_recording_receipt_becomes_an_editable_managed_clip(editor, tmp_p
     channels, rate = pcm(preview)
     assert len(channels[0]) == round(.5 * rate) and rms(channels[0]) > 100
 
+
+
+def _saved_crossfade_pair(editor, tmp_path):
+    """Create actual already-retained inputs without retesting import twice."""
+    captures, cues = [], []
+    for identity, level, start in [('left', 8000, .25), ('right', 4000, 1.25)]:
+        selected = tmp_path / (identity + '-original.wav')
+        with wave.open(str(selected), 'wb') as stream:
+            stream.setnchannels(1)
+            stream.setsampwidth(2)
+            stream.setframerate(24000)
+            stream.writeframes(struct.pack('<' + 'h' * 24000, *([level] * 24000)))
+        original = selected.read_bytes()
+        retained = editor.service.inputs / (sha256(original).hexdigest() + '.audio')
+        retained.write_bytes(original)
+        captures.append((selected, retained, original))
+        cues.append(Cue(identity, 'inputs/' + retained.name, start=start,
+            duration=1, gain_db=0, pan=-1, title=identity + ' retained selection'))
+    project = editor.create('Non-ripple crossfade')
+    updated = replace(project, revision=project.revision + 1,
+        scenes=(replace(project.scenes[0], cues=tuple(cues), minimum_duration=0),
+                Scene('later-scene', 'Later unchanged scene', (), minimum_duration=.25)))
+    editor.service.projects.save(updated, expected_revision=project.revision,
+                                 expected_fingerprint=project.fingerprint)
+    return updated, captures
+
+
+def _crossfade_state(editor, project):
+    root = editor.service.projects.directory(project.id)
+    return {path.relative_to(root).as_posix(): path.read_bytes()
+            for path in root.rglob('*.json')}
+
+
+def test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision(editor, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from carr_library.operations import ResourceBroker
+    from carr_library.studio.project_history import RevisionRef
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    scene = project.scenes[0]
+    before = _crossfade_state(editor, project)
+    active, inspections, reservations = [], [], []
+    original_reserve, original_inspect = ResourceBroker.reserve, AudioRuntime.inspect
+
+    @contextmanager
+    def reserved(broker, request, **options):
+        with original_reserve(broker, request, **options) as lease:
+            reservations.append(options['operation_id'])
+            active.append(lease)
+            try:
+                yield lease
+            finally:
+                active.remove(lease)
+
+    def inspected(runtime, path, **options):
+        assert len(active) == 1, 'Actual metadata decoding needs the existing broker lease.'
+        inspections.append(Path(path))
+        return original_inspect(runtime, path, **options)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(ResourceBroker, 'reserve', reserved)
+        patch.setattr(AudioRuntime, 'inspect', inspected)
+        updated = editor.crossfade(project, scene.id, 'left', 'right', .5)
+    assert len(reservations) == 1 and reservations[0].startswith('studio-clip-edit:')
+    assert inspections == [item[1] for item in captures] and not active
+    assert updated.revision == project.revision + 1 and updated.schema == project.schema
+    assert updated.original_script == project.original_script
+    assert updated.scenes[1:] == project.scenes[1:]
+    left, right = updated.scenes[0].cues
+    assert replace(left, fade_out=0) == scene.cues[0]
+    assert replace(right, start=1.25, fade_in=0) == scene.cues[1]
+    assert (left.fade_out, right.fade_in, right.start) == (.5, .5, .75)
+    assert updated.scenes[0].minimum_duration == 2.25
+    after = _crossfade_state(editor, updated)
+    added = set(after) - set(before)
+    assert added == {f'revisions/{project.revision:08d}-{project.fingerprint}.json'}
+    assert Project.from_dict(json.loads(after[added.pop()])) == project
+
+    output = tmp_path / 'crossfade-output'
+    output.mkdir()
+    result = editor.service.run(editor.service.submit(updated, output))
+    assert result['status'] == 'complete'
+    (left_pcm, right_pcm), rate = pcm(Path(result['destination']) / 'master.wav')
+    assert rate == 24000 and len(left_pcm) == len(right_pcm) == round(2.5 * rate)
+    assert max(map(abs, right_pcm)) == 0
+    assert max(map(abs, left_pcm[:round(.24 * rate)])) == 0
+    assert all(abs(value - 8000) <= 3 for value in left_pcm[round(.3 * rate):round(.7 * rate)])
+    for frame in range(round(.8 * rate), round(1.2 * rate), 97):
+        fraction = (frame / rate - .75) / .5
+        expected = 8000 * (1 - fraction) + 4000 * fraction
+        assert abs(left_pcm[frame] - expected) <= 4
+    assert all(abs(value - 4000) <= 3 for value in left_pcm[round(1.3 * rate):round(1.7 * rate)])
+    assert max(map(abs, left_pcm[round(1.76 * rate):])) == 0
+    assert result['result']['chapters'][1]['start'] == 2.25
+    assert [(item['start'], item['end']) for item in result['result']['clips']] == [(.25, 1.25), (.75, 1.75)]
+    for selected, retained, original in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original
+    restored = editor.restore(updated, RevisionRef(project.revision, project.fingerprint))
+    assert restored.revision == updated.revision + 1 and restored.scenes == project.scenes
+
+
+@pytest.mark.parametrize('selection', ['same-id', 'missing-id', 'other-scene'])
+def test_crossfade_refuses_nonselectable_pair_before_decoder_or_save(editor, tmp_path, monkeypatch, selection):
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    before = _crossfade_state(editor, project)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A nonselectable pair cannot start a decoder.')
+    monkeypatch.setattr(AudioRuntime, 'inspect', forbidden)
+    scene = 'later-scene' if selection == 'other-scene' else project.scenes[0].id
+    second = 'left' if selection == 'same-id' else 'absent' if selection == 'missing-id' else 'right'
+    with pytest.raises(ValueError):
+        editor.crossfade(project, scene, 'left', second, .5)
+    assert _crossfade_state(editor, project) == before
+    for selected, retained, original in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original
+
+
+def test_crossfade_fade_conflict_cannot_publish_half_of_the_pair(editor, tmp_path):
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    scene = project.scenes[0]
+    changed = replace(project, revision=project.revision + 1,
+        scenes=(replace(scene, cues=(replace(scene.cues[0], fade_out=.1), scene.cues[1])),
+                *project.scenes[1:]))
+    editor.service.projects.save(changed, expected_revision=project.revision)
+    before = _crossfade_state(editor, changed)
+    with pytest.raises(ValueError, match='existing fade'):
+        editor.crossfade(changed, scene.id, 'left', 'right', .5)
+    assert _crossfade_state(editor, changed) == before
+    for selected, retained, original in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original
+
+
+@pytest.mark.parametrize('phase', ['before-admission', 'after-first-inspection'])
+def test_crossfade_cancellation_preserves_the_entire_saved_pair(editor, tmp_path, monkeypatch, phase):
+    from carr_library.operations import ResourceCancelled
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    before = _crossfade_state(editor, project)
+    stopped, calls = phase == 'before-admission', []
+    original = AudioRuntime.inspect
+    def inspected(runtime, path, **options):
+        nonlocal stopped
+        calls.append(Path(path))
+        result = original(runtime, path, **options)
+        stopped = True
+        return result
+    monkeypatch.setattr(AudioRuntime, 'inspect', inspected)
+    with pytest.raises((AudioCancelled, InterruptedError, ResourceCancelled)):
+        editor.crossfade(project, project.scenes[0].id, 'left', 'right', .5,
+                         cancelled=lambda: stopped)
+    assert len(calls) == (0 if phase == 'before-admission' else 1)
+    assert _crossfade_state(editor, project) == before
+    for selected, retained, original_bytes in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original_bytes
+
+
+@pytest.mark.parametrize('changed_input,same_bytes', [(0, False), (1, False), (0, True)])
+def test_crossfade_rechecks_both_retained_sources_after_real_metadata(editor, tmp_path, monkeypatch, changed_input, same_bytes):
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    before = _crossfade_state(editor, project)
+    original, calls = AudioRuntime.inspect, []
+    def inspected(runtime, path, **options):
+        result = original(runtime, path, **options)
+        calls.append(Path(path))
+        if len(calls) == 2:
+            retained = captures[changed_input][1]
+            if same_bytes:
+                retained.rename(retained.with_suffix('.previous'))
+                retained.write_bytes(captures[changed_input][2])
+            else:
+                with retained.open('r+b') as stream:
+                    stream.seek(44)
+                    stream.write(b'\x00\x00')
+        return result
+    monkeypatch.setattr(AudioRuntime, 'inspect', inspected)
+    with pytest.raises(ValueError, match='metadata review|content identity'):
+        editor.crossfade(project, project.scenes[0].id, 'left', 'right', .5)
+    assert calls == [item[1] for item in captures]
+    assert _crossfade_state(editor, project) == before
+    for selected, retained, original_bytes in captures:
+        assert selected.read_bytes() == original_bytes
+    assert (captures[changed_input][1].read_bytes() == captures[changed_input][2]) is same_bytes
+
+
+@pytest.mark.parametrize('phase', ['before-admission', 'during-inspection'])
+def test_crossfade_refuses_a_changed_project_before_publication(editor, tmp_path, monkeypatch, phase):
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    newer = replace(project, revision=project.revision + 1, title='Concurrent saved change')
+    original, calls = AudioRuntime.inspect, []
+    def save_other():
+        editor.service.projects.save(newer, expected_revision=project.revision,
+                                     expected_fingerprint=project.fingerprint)
+    def inspected(runtime, path, **options):
+        result = original(runtime, path, **options)
+        calls.append(Path(path))
+        if len(calls) == 1:
+            save_other()
+        return result
+    if phase == 'before-admission':
+        save_other()
+    monkeypatch.setattr(AudioRuntime, 'inspect', inspected)
+    with pytest.raises(ValueError, match='changed'):
+        editor.crossfade(project, project.scenes[0].id, 'left', 'right', .5)
+    assert bool(calls) is (phase == 'during-inspection')
+    assert editor.service.projects.load(project.id) == newer
+    assert newer.scenes == project.scenes
+    for selected, retained, original_bytes in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original_bytes
+
+
+def test_crossfade_final_project_write_keeps_revision_and_fingerprint_cas(editor, tmp_path, monkeypatch):
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    original_save = editor.service.projects.save
+    newer = replace(project, revision=project.revision + 1, title='Writer won after final review')
+    observed = []
+    def raced(updated, **options):
+        observed.append(options)
+        original_save(newer, expected_revision=project.revision,
+                      expected_fingerprint=project.fingerprint)
+        return original_save(updated, **options)
+    monkeypatch.setattr(editor.service.projects, 'save', raced)
+    with pytest.raises(ValueError, match='changed'):
+        editor.crossfade(project, project.scenes[0].id, 'left', 'right', .5)
+    assert observed == [{'expected_revision': project.revision,
+                         'expected_fingerprint': project.fingerprint}]
+    assert editor.service.projects.load(project.id) == newer
+    assert newer.scenes == project.scenes
+    for selected, retained, original_bytes in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original_bytes
+
+
+def test_crossfade_cannot_bypass_the_reviewed_book_plan_boundary(editor, tmp_path, monkeypatch):
+    from carr_library.studio.project import Line, Role
+    project, captures = _saved_crossfade_pair(editor, tmp_path)
+    protected = replace(project, revision=project.revision + 1, roles=(Role('narrator', 'Narrator'),),
+        scenes=(replace(project.scenes[0], lines=(Line('bound-line', 'narrator',
+            'Exact retained quotation.', source_ref='carr-book-audio:reviewed-source'),)),
+            *project.scenes[1:]))
+    editor.service.projects.save(protected, expected_revision=project.revision)
+    before = _crossfade_state(editor, protected)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A reviewed BookPlan cannot enter generic clip decoding.')
+    monkeypatch.setattr(AudioRuntime, 'inspect', forbidden)
+    with pytest.raises(ValueError, match='BookPlan'):
+        editor.crossfade(protected, protected.scenes[0].id, 'left', 'right', .5)
+    assert _crossfade_state(editor, protected) == before
+    for selected, retained, original_bytes in captures:
+        assert selected.read_bytes() == retained.read_bytes() == original_bytes

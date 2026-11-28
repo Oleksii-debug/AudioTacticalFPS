@@ -218,7 +218,7 @@ class ClipEditor:
                           scenes=tuple(replacements.get(scene.id, scene) for scene in project.scenes))
         return self.service.projects.save(updated, expected_revision=project.revision)
 
-    def _clip_geometry(self, project, cues, *, cancelled):
+    def _clip_geometry(self, project, cues, *, cancelled, recheck_sources=False):
         """Inspect selected retained inputs under the existing shared broker."""
         from ..operations import ResourceRequest
         from .clip_operations import aligned_index
@@ -227,13 +227,15 @@ class ClipEditor:
         broker = self.service._admission_broker(cancelled)
         request = ResourceRequest(cpu_slots=runtime.budget.threads,
             memory_bytes=max(512 * 1024**2, 2 * runtime.budget.max_alloc_bytes))
-        result = []
+        result, source_checks = [], []
         with broker.reserve(request, operation_id='studio-clip-edit:' + uuid4().hex,
                             cancelled=cancelled, timeout=60) as lease:
             self._current(project)
             for cue in cues:
                 self._cancel(lease.cancelled)
                 source = self.service._cue_source(cue, cancelled=lease.cancelled, schema=project.schema)
+                if recheck_sources:
+                    source_checks.append((cue, source, _stamp(regular(source))))
                 info = runtime.inspect(source, cancelled=lease.cancelled)
                 if info.sample_rate != project.sample_rate or type(info.frames) is not int or info.frames < 1:
                     raise ValueError('Sample-preserving edits need an original with a verified sample count '
@@ -248,6 +250,15 @@ class ClipEditor:
                 if max(cue.fade_in, cue.fade_out) > selected:
                     raise ValueError('Clip fades do not fit the retained audio.')
                 result.append(frames)
+            # A later decoder must not hide drift in an earlier retained input.
+            # Keep both identity/hash rechecks inside this existing admission.
+            for cue, source, before in source_checks:
+                self._cancel(lease.cancelled)
+                if (_stamp(regular(source)) != before
+                        or self.service._cue_source(cue, cancelled=lease.cancelled,
+                            schema=project.schema) != source
+                        or _stamp(regular(source)) != before):
+                    raise ValueError('A retained clip changed during metadata review.')
             self._current(project)
             self._cancel(lease.cancelled)
         return tuple(result)
@@ -319,6 +330,28 @@ class ClipEditor:
                                            for cue in scene.cues if cue.id != second_id))
         return self._save_clip_operation(project, changed, cancelled=cancelled)
 
+
+    def crossfade(self, project, scene_id, first_id, second_id, seconds, *, cancelled=lambda: False):
+        """Crossfade one contiguous pair without rippling other scene positions."""
+        from .clip_operations import aligned_index, crossfade_clips
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        scene = self._scene(project, scene_id)
+        first, second = self._selected_clip(scene, first_id), self._selected_clip(scene, second_id)
+        if first.id == second.id:
+            raise ValueError('Choose two different saved clips in one scene.')
+        lengths = self._clip_geometry(project, (first, second), cancelled=cancelled,
+                                      recheck_sources=True)
+        left, right = crossfade_clips(first, second, seconds,
+            first_frames=lengths[0], second_frames=lengths[1], sample_rate=project.sample_rate)
+        old_end = (aligned_index(second.start, project.sample_rate, 'Second scene start')
+                   + lengths[1]) / project.sample_rate
+        changed = replace(scene, minimum_duration=max(scene.minimum_duration, old_end),
+            cues=tuple(left if cue.id == first_id else right if cue.id == second_id else cue
+                       for cue in scene.cues))
+        return self._save_clip_operation(project, changed, cancelled=cancelled)
 
     def copy(self, project, scene_id, clip_id, *, cancelled=lambda: False):
         """Remember one saved selection without reading media or creating a revision."""
@@ -469,7 +502,7 @@ class ClipEditor:
             raise ValueError('Choose clip, role, scene or master effects.')
         if chain == previous:
             return project
-        updated = replace(project, schema=3, revision=project.revision + 1, **changes)
+        updated = replace(project, schema=max(3, project.schema), revision=project.revision + 1, **changes)
         self._cancel(cancelled)
         return self.service.projects.save(updated, expected_revision=project.revision,
                                           expected_fingerprint=project.fingerprint)

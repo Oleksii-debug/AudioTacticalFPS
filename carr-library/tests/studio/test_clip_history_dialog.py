@@ -43,6 +43,7 @@ def dialog(tmp_path):
     value._scene, value._clip = lambda: value.project.scenes[0], lambda: value.project.scenes[0].cues[0]
     value.editor = SimpleNamespace(split=Mock(return_value=value.project),
         cut=Mock(return_value=value.project), join=Mock(return_value=value.project),
+        crossfade=Mock(return_value=value.project),
         restore=Mock(return_value=value.project), history=Mock(return_value=()))
     picker = Mock()
     picker.ShowModal.return_value = wx.ID_OK
@@ -241,3 +242,209 @@ def test_history_modal_scope_change_never_restores_into_new_library(dialog):
     assert not dialog.calls
     dialog.editor.restore.assert_not_called()
     assert 'changed' in dialog.status.ChangeValue.call_args.args[0]
+
+
+def test_crossfade_menu_freezes_pair_and_sample_rounded_overlap_before_queue(dialog):
+    original = dialog.project
+    dialog.picker.GetSelection.side_effect = [9, 0]
+    dialog.picker.GetValue.return_value = str(.5 + .1 / original.sample_rate)
+    dialog.timeline()
+    assert len(dialog.calls) == 1 and dialog.pending
+    dialog.picker.GetValue.return_value = '99'
+    dialog.finish()
+    assert dialog.editor.crossfade.call_args.args == (original, 'scene', 'first', 'second', .5)
+    assert callable(dialog.editor.crossfade.call_args.kwargs['cancelled'])
+    dialog._accept.assert_called_once_with(original)
+    assert 'nearest output sample' in dialog.wx.TextEntryDialog.call_args.args[1]
+    assert dialog.picker.Destroy.call_count == 3
+
+
+@pytest.mark.parametrize('value', ['not-a-number', 'nan', '0', '0.000000001'])
+def test_invalid_crossfade_input_never_starts_owned_work(dialog, value):
+    dialog.picker.GetValue.return_value = value
+    dialog.crossfade()
+    assert not dialog.calls and not dialog.pending
+    dialog.editor.crossfade.assert_not_called()
+    dialog._accept.assert_not_called()
+
+
+@pytest.mark.parametrize('stage', ['pair', 'overlap'])
+def test_cancelled_crossfade_review_never_starts_owned_work(dialog, stage):
+    dialog.picker.ShowModal.side_effect = (
+        [dialog.wx.ID_CANCEL] if stage == 'pair'
+        else [dialog.wx.ID_OK, dialog.wx.ID_CANCEL])
+    dialog.crossfade()
+    assert not dialog.calls and not dialog.pending
+    dialog.editor.crossfade.assert_not_called()
+    dialog._accept.assert_not_called()
+
+
+@pytest.mark.parametrize('stage', ['pair', 'overlap'])
+@pytest.mark.parametrize('changed', ['library', 'project'])
+def test_crossfade_modal_scope_or_project_change_refuses_review(dialog, stage, changed):
+    calls = []
+    def close_picker():
+        calls.append(True)
+        if len(calls) != (1 if stage == 'pair' else 2):
+            return
+        if changed == 'library':
+            dialog.frame.library = SimpleNamespace(root=dialog.library_root)
+        else:
+            dialog.project = replace(dialog.project, revision=106, title='Changed during review')
+    dialog.picker.Destroy.side_effect = close_picker
+    dialog.crossfade()
+    assert not dialog.calls and not dialog.pending
+    dialog.editor.crossfade.assert_not_called()
+    dialog._accept.assert_not_called()
+    assert 'Review this operation again' in dialog.status.ChangeValue.call_args.args[0]
+
+
+@pytest.mark.parametrize('stop', ['cancel', 'root-change'])
+def test_queued_crossfade_never_mutates_after_stop_or_library_replacement(dialog, stop):
+    dialog.crossfade()
+    assert len(dialog.calls) == 1
+    if stop == 'cancel':
+        dialog.cancelled.set()
+    else:
+        dialog.library_root.rename(dialog.library_root.with_name('previous-library'))
+        dialog.library_root.mkdir()
+    dialog.finish()
+    dialog.editor.crossfade.assert_not_called()
+    dialog._accept.assert_not_called()
+
+
+def test_crossfade_service_refusal_preserves_current_saved_review(dialog):
+    current = dialog.project
+    dialog.editor.crossfade.side_effect = ValueError('The adjacent source or fade changed.')
+    dialog.crossfade()
+    dialog.finish()
+    assert dialog.project is current
+    assert not dialog._undo and not dialog._redo
+    dialog._accept.assert_not_called()
+    assert 'source or fade changed' in dialog.status.ChangeValue.call_args.args[0]
+
+
+@pytest.fixture
+def marker_dialog(dialog):
+    from carr_library.studio.project import Marker
+    marker = Marker('arrival', 'scene', .5, 'Arrival')
+    dialog.project = replace(dialog.project, schema=4, markers=(marker,))
+    saved = replace(dialog.project, revision=106)
+    store = SimpleNamespace(add_marker=Mock(return_value=saved),
+        update_marker=Mock(return_value=saved), remove_marker=Mock(return_value=saved))
+    dialog.editor.service = SimpleNamespace(projects=store)
+    dialog.marker_store, dialog.marker_saved = store, saved
+    return dialog
+
+
+def test_marker_add_freezes_current_scene_position_and_name_before_queue(marker_dialog):
+    dialog = marker_dialog
+    current = dialog.project
+    dialog.picker.GetValue.side_effect = [str(.25 + .1 / current.sample_rate), 'New position']
+    dialog.markers()
+    assert len(dialog.calls) == 1 and dialog.pending
+    dialog.picker.GetValue.side_effect = AssertionError('A queued edit reread a native control.')
+    dialog.finish()
+    args, kwargs = dialog.marker_store.add_marker.call_args
+    assert args == (current,)
+    assert kwargs['scene_id'] == 'scene' and kwargs['position'] == .25
+    assert kwargs['label'] == 'New position' and callable(kwargs['cancelled'])
+    dialog._accept.assert_called_once_with(dialog.marker_saved)
+    dialog.marker_store.update_marker.assert_not_called()
+    dialog.marker_store.remove_marker.assert_not_called()
+
+
+def test_marker_edit_preserves_identity_and_prefills_current_values(marker_dialog):
+    dialog = marker_dialog
+    current = dialog.project
+    dialog.picker.GetSelection.side_effect = [1, 0]
+    dialog.picker.GetValue.side_effect = ['.75', 'Reviewed position']
+    dialog.markers()
+    dialog.finish()
+    args, kwargs = dialog.marker_store.update_marker.call_args
+    assert args == (current, 'arrival')
+    assert kwargs['position'] == .75 and kwargs['label'] == 'Reviewed position'
+    assert callable(kwargs['cancelled'])
+    assert [call.kwargs['value'] for call in dialog.wx.TextEntryDialog.call_args_list] == ['0.5', 'Arrival']
+    assert current.markers[0].position == .5 and current.markers[0].label == 'Arrival'
+    dialog._accept.assert_called_once_with(dialog.marker_saved)
+
+
+def test_marker_removal_is_explicit_and_keeps_actual_project_history_route(marker_dialog):
+    dialog = marker_dialog
+    current = dialog.project
+    dialog.picker.GetSelection.side_effect = [1, 1]
+    dialog.markers()
+    dialog.finish()
+    assert dialog.marker_store.remove_marker.call_args.args == (current, 'arrival')
+    assert callable(dialog.marker_store.remove_marker.call_args.kwargs['cancelled'])
+    dialog.wx.TextEntryDialog.assert_not_called()
+    dialog._accept.assert_called_once_with(dialog.marker_saved)
+    assert current.markers[0].id == 'arrival'
+
+
+@pytest.mark.parametrize('stage', ['list', 'action', 'position', 'name'])
+def test_marker_cancel_at_each_native_review_starts_no_write(marker_dialog, stage):
+    dialog = marker_dialog
+    count = {'list': 1, 'action': 2, 'position': 3, 'name': 4}[stage]
+    dialog.picker.ShowModal.side_effect = [dialog.wx.ID_OK] * (count - 1) + [dialog.wx.ID_CANCEL]
+    dialog.picker.GetSelection.side_effect = [1, 0]
+    dialog.picker.GetValue.return_value = '.75'
+    dialog.markers()
+    assert not dialog.calls and not dialog.pending
+    for name in ('add_marker', 'update_marker', 'remove_marker'):
+        getattr(dialog.marker_store, name).assert_not_called()
+    dialog._accept.assert_not_called()
+    assert dialog.picker.Destroy.call_count == count
+
+
+@pytest.mark.parametrize('stage', ['list', 'name'])
+@pytest.mark.parametrize('changed', ['library', 'project'])
+def test_marker_modal_scope_or_project_change_refuses_late_write(marker_dialog, stage, changed):
+    dialog = marker_dialog
+    dialog.picker.GetSelection.side_effect = [1, 0]
+    dialog.picker.GetValue.side_effect = ['.75', 'Changed during review']
+    closed = []
+    def close_picker():
+        closed.append(True)
+        if len(closed) != (1 if stage == 'list' else 4):
+            return
+        if changed == 'library':
+            dialog.frame.library = SimpleNamespace(root=dialog.library_root)
+        else:
+            dialog.project = replace(dialog.project, revision=106, title='Another reviewed revision')
+    dialog.picker.Destroy.side_effect = close_picker
+    dialog.markers()
+    assert not dialog.calls and not dialog.pending
+    for name in ('add_marker', 'update_marker', 'remove_marker'):
+        getattr(dialog.marker_store, name).assert_not_called()
+    dialog._accept.assert_not_called()
+    assert 'Review this operation again' in dialog.status.ChangeValue.call_args.args[0]
+
+
+@pytest.mark.parametrize('stop', ['cancel', 'root-change'])
+def test_queued_marker_work_is_revoked_by_stop_or_root_replacement(marker_dialog, stop):
+    dialog = marker_dialog
+    dialog.picker.GetValue.side_effect = ['.25', 'Queued marker']
+    dialog.markers()
+    assert len(dialog.calls) == 1
+    if stop == 'cancel':
+        dialog.cancelled.set()
+    else:
+        dialog.library_root.rename(dialog.library_root.with_name('previous-library'))
+        dialog.library_root.mkdir()
+    dialog.finish()
+    dialog.marker_store.add_marker.assert_not_called()
+    dialog._accept.assert_not_called()
+
+
+def test_committed_marker_is_shown_after_late_cancellation(marker_dialog):
+    dialog = marker_dialog
+    dialog.picker.GetValue.side_effect = ['.25', 'Committed marker']
+    def committed(*args, **kwargs):
+        dialog.cancelled.set()
+        return dialog.marker_saved
+    dialog.marker_store.add_marker.side_effect = committed
+    dialog.markers()
+    dialog.finish()
+    dialog._accept.assert_called_once_with(dialog.marker_saved)

@@ -41,6 +41,9 @@ class ClipDialog(wx.Dialog):
         self.player = None
         self.playback_generation = 0
         self.previews = []
+        self._preview_binding = None
+        self._preview_repeat_timer = None
+        self._preview_repeat_pending = None
         self.controls = []
         layout = wx.BoxSizer(wx.VERTICAL)
         layout.Add(wx.StaticText(self, label=(
@@ -85,7 +88,8 @@ class ClipDialog(wx.Dialog):
              ('add', '&Add audio file', self.add), ('recording', 'Add saved &recording', self.recording)),
             (('save', '&Save clip settings', self.save), ('remove', 'Re&move clip', self.remove),
              ('move', 'Move to another scene', self.move),
-             ('duration', 'Set scene &duration', self.duration), ('preview', '&Preview saved clip', self.preview)),
+             ('duration', 'Set scene &duration', self.duration), ('preview', '&Preview saved clip', self.preview),
+             ('preview_repeat', 'Preview repeat...', self.preview_repeat)),
             (('clip_effects', 'Clip effects...', self.clip_effects),
              ('role_effects', 'Speaking role effects...', self.role_effects),
              ('scene_effects', 'Scene effects...', self.scene_effects),
@@ -179,6 +183,7 @@ class ClipDialog(wx.Dialog):
         for name, button in self.buttons.items():
             button.Enable(name in ('close', 'stop') or (name == 'cancel' and self.pending)
                           or (name != 'cancel' and available))
+        self.buttons['preview_repeat'].Enable(available and self._preview_binding is not None)
 
     def _run(self, title, operation, done, *, preview=False):
         if self.closed or self.pending or self.frame.working:
@@ -494,6 +499,8 @@ class ClipDialog(wx.Dialog):
             'Copy selected saved clip',
             'Cut selected saved clip for Paste',
             'Paste copied clip at a scene position...',
+            'Crossfade two adjacent saved clips...',
+            'Named scene markers...',
         )
         chooser = wx.SingleChoiceDialog(self,
             'Choose a saved-project operation. Original audio is always retained.',
@@ -507,12 +514,13 @@ class ClipDialog(wx.Dialog):
         if self.pending or self.frame.working or not self._scope_current():
             return
         actions = (self.split, self.cut, self.join, self.undo, self.redo, self.history,
-                   self.copy_clip, self.cut_for_paste, self.paste_clip)
+                   self.copy_clip, self.cut_for_paste, self.paste_clip, self.crossfade, self.markers)
         if 0 <= index < len(actions):
             actions[index]()
 
-    def _time_entry(self, title, message):
-        chooser = wx.TextEntryDialog(self, message, title)
+    def _time_entry(self, title, message, *, value=None):
+        options = {} if value is None else {'value': value}
+        chooser = wx.TextEntryDialog(self, message, title, **options)
         try:
             if chooser.ShowModal() != wx.ID_OK:
                 return None
@@ -576,6 +584,129 @@ class ClipDialog(wx.Dialog):
         except (ValueError, OSError) as exc:
             self.message(exc)
 
+
+    def _timeline_review_current(self, project):
+        if (self.closed or self.closing or self.pending or self.frame.working
+                or not self._scope_current() or project is None
+                or self.project is None or self.project.fingerprint != project.fingerprint):
+            self.message('The selected project or library changed or is busy. Review this operation again.')
+            return False
+        return True
+
+    def crossfade(self, event=None):
+        try:
+            from ..studio.clip_operations import sample_index
+            project, scene, first = self.project, self._scene(), self._clip()
+            if not self._timeline_review_current(project):
+                return
+            candidates = tuple(item for item in scene.cues
+                               if item.id != first.id and item.start > first.start)
+            if not candidates:
+                raise ValueError('Select the first of two adjacent saved clips.')
+            chooser = wx.SingleChoiceDialog(self,
+                'Choose the following adjacent clip. The overlap moves only that clip earlier; '
+                'the previous scene length and other clips stay in place. Existing internal fades are refused.',
+                'Crossfade saved clips',
+                [f'{item.title or item.id}; scene start {item.start:g} seconds' for item in candidates])
+            try:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                index = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if not self._timeline_review_current(project) or not 0 <= index < len(candidates):
+                return
+            second = candidates[index]
+            value = self._time_entry('Crossfade overlap',
+                'Overlap in seconds, rounded to the nearest output sample. '
+                'Both retained selections must fit the overlap without conflicting fades. '
+                'Original audio is retained; the edit is saved as one project revision.')
+            if value is None or not self._timeline_review_current(project):
+                return
+            frames = sample_index(float(value), project.sample_rate, 'Crossfade overlap')
+            if frames < 1:
+                raise ValueError('Crossfade overlap must contain at least one output sample.')
+            seconds = frames / project.sample_rate
+            self._run('Crossfading saved clips', lambda: self.editor.crossfade(
+                project, scene.id, first.id, second.id, seconds, cancelled=self._cancelled), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def _marker_fields(self, project, marker=None):
+        from ..studio.clip_operations import sample_index
+        value = self._time_entry('Scene marker position',
+            'Seconds from this scene start, rounded to the nearest output sample. '
+            'A marker does not move clips, change audio, or extend the scene.',
+            value=str(marker.position) if marker is not None else '0')
+        if value is None or not self._timeline_review_current(project):
+            return None
+        position = sample_index(float(value), project.sample_rate, 'Marker position') / project.sample_rate
+        label = self._time_entry('Scene marker name',
+            'Enter a name for this saved time position. At most 256 characters.',
+            value=marker.label if marker is not None else '')
+        if label is None or not self._timeline_review_current(project):
+            return None
+        return position, label
+
+    def markers(self, event=None):
+        try:
+            project, scene = self.project, self._scene()
+            if not self._timeline_review_current(project):
+                return
+            markers = tuple(item for item in project.markers if item.scene_id == scene.id)
+            chooser = wx.SingleChoiceDialog(self,
+                'Markers belong to this saved scene. Times are scene-relative seconds; '
+                'original audio and scene length stay unchanged. Select a marker to edit or remove it.',
+                'Named scene markers',
+                ['Add a named marker...'] + [
+                    f'{item.label}; {item.position:g} seconds' for item in markers])
+            try:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                index = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if not self._timeline_review_current(project):
+                return
+            if index == 0:
+                values = self._marker_fields(project)
+                if values is None:
+                    return
+                position, label = values
+                self._run('Adding a saved scene marker',
+                    lambda: self.editor.service.projects.add_marker(project, scene_id=scene.id,
+                        position=position, label=label, cancelled=self._cancelled), self._accept)
+                return
+            if not 1 <= index <= len(markers):
+                return
+            marker = markers[index - 1]
+            chooser = wx.SingleChoiceDialog(self,
+                f'{marker.label}; {marker.position:g} seconds from the scene start. '
+                'Saved changes can be restored through project history.',
+                'Edit named scene marker',
+                ['Edit marker name and time...', 'Remove this marker'])
+            try:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                action = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if not self._timeline_review_current(project):
+                return
+            if action == 0:
+                values = self._marker_fields(project, marker)
+                if values is None:
+                    return
+                position, label = values
+                self._run('Editing a saved scene marker',
+                    lambda: self.editor.service.projects.update_marker(project, marker.id,
+                        position=position, label=label, cancelled=self._cancelled), self._accept)
+            elif action == 1:
+                self._run('Removing a saved scene marker',
+                    lambda: self.editor.service.projects.remove_marker(
+                        project, marker.id, cancelled=self._cancelled), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
 
     def copy_clip(self, event=None):
         try:
@@ -778,6 +909,8 @@ class ClipDialog(wx.Dialog):
                 def playing():
                     if current():
                         self.player.play(path)
+                        self._preview_binding = (self.player, self.player.path, project, scene.id, cue.id)
+                        self._enable()
                 play_when_quiet((progress,), playing, schedule=wx.CallLater,
                     alive=current, on_error=lambda error: self.message(error) if current() else None)
                 self.message(('Previewing with clip effects bypassed. ' if dry else 'Previewing saved clip effects. ')
@@ -790,10 +923,170 @@ class ClipDialog(wx.Dialog):
         except (ValueError, OSError) as exc:
             self.message(exc)
 
+    def _preview_current(self, binding, generation):
+        if (binding is None or self.destroyed or self._cancelled() or self.pending
+                or self.frame.working or generation != self.playback_generation
+                or getattr(self, '_preview_binding', None) is not binding
+                or self.player is not binding[0] or self.player.path != binding[1]
+                or self.project is not binding[2]):
+            return False
+        try:
+            return self._scene().id == binding[3] and self._clip().id == binding[4]
+        except (ValueError, RuntimeError):
+            return False
+
+    def _stop_preview_repeat_timer(self):
+        self._preview_repeat_pending = None
+        timer = getattr(self, '_preview_repeat_timer', None)
+        if timer is not None:
+            timer.Stop()
+
+    def _start_preview_repeat_timer(self):
+        if getattr(self, '_preview_repeat_timer', None) is None:
+            self._preview_repeat_timer = wx.Timer(self)
+            self.Bind(wx.EVT_TIMER, self._poll_preview_repeat, self._preview_repeat_timer)
+        if not self._preview_repeat_timer.Start(100):
+            raise RuntimeError('The clip preview timer could not start. Repeat remains off.')
+
+    def _preview_repeat_failed(self, error, generation):
+        if generation != self.playback_generation:
+            return
+        quiet = self.stop()
+        if not self.closed and self._scope_current():
+            self.message('Preview repeat stopped: ' + str(error)
+                         + ('' if quiet else ' Playback cleanup is still pending. Retry Stop playback.'))
+
+    def _admit_preview_repeat(self, binding, generation, action):
+        from ..speech.progress_speech import play_when_quiet
+        self._preview_repeat_pending = generation
+
+        def current():
+            return self._preview_current(binding, generation)
+
+        def perform():
+            try:
+                if current():
+                    action()
+            finally:
+                if self._preview_repeat_pending == generation:
+                    self._preview_repeat_pending = None
+
+        try:
+            play_when_quiet((getattr(self.frame, 'progress_panel', None),), perform,
+                schedule=wx.CallLater, alive=current,
+                on_error=lambda error: self._preview_repeat_failed(error, generation))
+        except Exception as error:
+            self._preview_repeat_failed(error, generation)
+
+    def _poll_preview_repeat(self, event=None):
+        if self.closed or self.destroyed:
+            return
+        binding = getattr(self, '_preview_binding', None)
+        generation = self.playback_generation
+        try:
+            if not self._preview_current(binding, generation):
+                self.stop()
+                return
+            outcome = self.player.poll()
+            if outcome == 'repeat-pending' and self._preview_repeat_pending is None:
+                self._admit_preview_repeat(binding, generation, self.player.repeat_if_ready)
+            elif outcome == 'sleep':
+                self.stop()
+            elif self.player.ab_loop is None and self._preview_repeat_pending is None:
+                self._stop_preview_repeat_timer()
+        except Exception as error:
+            self._preview_repeat_failed(error, generation)
+
+    def _apply_preview_repeat(self, binding, generation, first=None, last=None):
+        if not self._preview_current(binding, generation):
+            return False
+        clear = first is None and last is None
+        if not clear:
+            if (any(type(value) not in (float, int) for value in (first, last))
+                    or not 0 <= first < last <= self.player.duration_seconds
+                    or last - first + 1e-9 < .05):
+                raise ValueError('Choose A and B inside this preview, at least 0.05 seconds apart.')
+            first, last = float(first), float(last)
+        # Supersede a pending repeat before a modal or quiet callback can start it.
+        self.playback_generation += 1
+        generation = self.playback_generation
+
+        def apply():
+            if clear:
+                self.player.clear_ab_loop()
+                self._stop_preview_repeat_timer()
+                self.message('Preview repeat is off. The saved project is unchanged.')
+            else:
+                self.player.set_ab_loop(first, last)
+                # This explicit Play action also handles EOF during the range dialogs.
+                self.player.play_current()
+                self.message(f'Preview repeats from {first:g} to {last:g} seconds. '
+                             'Stop playback ends the repeat. The saved project is unchanged.')
+
+        try:
+            self._start_preview_repeat_timer()
+            self._admit_preview_repeat(binding, generation, apply)
+        except Exception as error:
+            self._preview_repeat_failed(error, generation)
+            return False
+        return True
+
+    def preview_repeat(self, event=None):
+        binding = getattr(self, '_preview_binding', None)
+        generation = self.playback_generation
+        if not self._preview_current(binding, generation):
+            if not self.closed and self._scope_current():
+                self.message('Preview the selected saved clip before choosing A–B repeat.')
+            return False
+        try:
+            chooser = wx.SingleChoiceDialog(self,
+                'Repeat uses only the current rendered preview. It never changes the saved clip.',
+                'Clip preview repeat', ('Play A–B repeat...', 'Turn preview repeat off'))
+            try:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return False
+                choice = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if not self._preview_current(binding, generation):
+                return False
+            if choice == 1:
+                return self._apply_preview_repeat(binding, generation)
+            if choice != 0:
+                return False
+            first, last = self.player.ab_loop or (0, self.player.duration_seconds)
+            values = []
+            for name, initial in (('A', first), ('B', last)):
+                chooser = wx.TextEntryDialog(self,
+                    f'{name} in seconds within this preview (0 to {self.player.duration_seconds:g}). '
+                    'A and B must be at least 0.05 seconds apart.',
+                    'Preview repeat ' + name, value=format(initial, '.12g'))
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return False
+                    value = chooser.GetValue()
+                finally:
+                    chooser.Destroy()
+                if not self._preview_current(binding, generation):
+                    return False
+                values.append(float(value))
+            return self._apply_preview_repeat(binding, generation, *values)
+        except (ValueError, OSError, RuntimeError) as error:
+            if not self.closed and self._scope_current():
+                self.message(error)
+            return False
+
     def stop(self, event=None):
         self.playback_generation += 1
+        self._preview_binding = None
+        repeat_stopped = True
+        try:
+            self._stop_preview_repeat_timer()
+        except Exception as error:
+            repeat_stopped = False
+            self.message('The preview timer could not confirm Stop: ' + str(error))
         if self.player is None:
-            return True
+            return repeat_stopped
         quiet = False
         try:
             if self.player.close() is False:
@@ -807,7 +1100,7 @@ class ClipDialog(wx.Dialog):
                 progress.unregister_player(self.player, silence_confirmed=quiet)
             except Exception as exc:
                 self.message('Playback progress feedback could not be refreshed: ' + str(exc))
-        return quiet
+        return quiet and repeat_stopped
 
     def cancel(self, event=None):
         if self.pending:

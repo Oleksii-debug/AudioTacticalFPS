@@ -1,0 +1,198 @@
+{
+  "schema": "carr-reviewed-composition/1",
+  "component": "V3-05 Studio paired crossfade, named markers and current-preview repeat",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "base_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "preimage": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "git_blob": "63a20c64909db77b9958e9c16627b78f08050d95"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "preimage": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "git_blob": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+      "preimage": "6688213b891b2a3d1bf91a015918280ccc3eaeb6",
+      "git_blob": "fdc163215c53240dd6058e8f4235d2e8aa03db10"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "preimage": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+      "git_blob": "0fb5e91a440ded8b62b806b944bdd4722f288e65"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "preimage": "7027e3f07f967403d6e523aa23c8233176a43222",
+      "git_blob": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219"
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_markers.py",
+      "preimage": null,
+      "git_blob": "088083c06c452fa5fbac9e14df1786aba524d3d7"
+    },
+    {
+      "path": "carr-library/tests/studio/test_marker_consumers.py",
+      "preimage": null,
+      "git_blob": "0877334ad369cc03b3d48edecfdd00b1a8202c9b"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clip_operations.py",
+      "preimage": "82676db10f6da0cfa2e04294f7337b82295baa13",
+      "git_blob": "a9b2856c445f6d9f67105b754c23deb23fe3e60d"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "preimage": "f77512fc1f0f242a6202ffa247e5ce9049debefc",
+      "git_blob": "598d0c450e3697c699a03c74d806783173fc3ab5"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_operations.py",
+      "preimage": "d62aa2301be32b9993c64493280f631da69c9aca",
+      "git_blob": "a47af2be53416f2a9588a20381063f63422f0940"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_editing.py",
+      "preimage": "caab01827b6a9938cfdda6ade26670012dec6def",
+      "git_blob": "4583dca913a88091608a91e742aced16e5bdfc64"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_preview_loop.py",
+      "preimage": null,
+      "git_blob": "fc5e0b65d7bb08164fa9b3e47df6d8851dfe6074"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "preimage": "d926e06b20694c0e586a102bd0ec25747faea444",
+      "git_blob": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_history_dialog.py",
+      "preimage": "fe17d10893814410e4b905b7e7f00c513df472b2",
+      "git_blob": "d5675f91c0b6285ea9188fa90d4ca416cd6967dc"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "preimage": "0dc5f88af5b71a6679c48f50b60dd05da3f6ce8c",
+      "git_blob": "ce11e96477841cebe30702001a1b5f4d6107178b"
+    },
+    {
+      "path": "carr-library/tests/studio/test_studio_controller.py",
+      "preimage": "5182c9804d169e1a64a77dd8dbd2b96b073616d4",
+      "git_blob": "93a093e395388b69d6b7a76f22d7432cc8b60c92"
+    },
+    {
+      "path": ".github/workflows/carr-next8-source-verification.yml",
+      "preimage": "3a0e4b291acb1627464cfe3474c37715cd09b209",
+      "git_blob": "4f3f8a1f6112cc638d9087378900bf5ad5cf2e07"
+    }
+  ],
+  "components": {
+    "crossfade": "661ec49061830598cc26be3144449866716ba8d2",
+    "markers": "21dbcd2ae8b0e36ab7899336ed6a1eb1584b77cf",
+    "marker_consumers_audit": "64e69220678638fb272a8ad514a8481876b971f7",
+    "preview_loop": "696ae9bd9647df476f430aff90393a03665bc9fc"
+  },
+  "root_composition": {
+    "clip_dialog": {
+      "git_blob": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a",
+      "base_loop": "1bfce8b205dabfa31c94173ed2c9c40d80275c5c",
+      "root_ui_only": "b5f471b12f8080567ce561ad0c75d880b876d4c2",
+      "root_hunks": 4,
+      "inverse_recovers_loop": true,
+      "peers": {
+        "crossfade": "Progress ACCEPTED_STATIC_NOT_RUN",
+        "markers": "Canonical ACCEPTED_STATIC_NOT_RUN"
+      },
+      "presentation": "Marker chooser displays label and position; stable identity is captured internally."
+    },
+    "dialog_tests": {
+      "git_blob": "d5675f91c0b6285ea9188fa90d4ca416cd6967dc",
+      "old_cases": 22,
+      "crossfade_added": 14,
+      "marker_added": 14,
+      "whole_cases": 50,
+      "functions": 27
+    },
+    "controller": {
+      "git_blob": "ce11e96477841cebe30702001a1b5f4d6107178b",
+      "test_blob": "93a093e395388b69d6b7a76f22d7432cc8b60c92",
+      "old_cases": 8,
+      "added_cases": 10,
+      "whole_cases": 18,
+      "functions": 10,
+      "peer": "Canonical ACCEPTED_STATIC_NOT_RUN",
+      "semantics": "Keep markers through unique-title text and project-title/no-op saves; refuse changed scene order/identity and changed scripts with repeated marked-scene titles. Retain rejected draft separately from the saved project."
+    }
+  },
+  "early_source_gate": {
+    "path": ".github/workflows/carr-next8-source-verification.yml",
+    "git_blob": "4f3f8a1f6112cc638d9087378900bf5ad5cf2e07",
+    "old_whole_modules": 98,
+    "added_whole_modules": 40,
+    "whole_modules": 138,
+    "old_inventory_and_order_exact": true,
+    "added": [
+      "tests/storage/test_backup_boundary.py",
+      "tests/storage/test_backup_generated_audio.py",
+      "tests/storage/test_backup_primary_producers.py",
+      "tests/storage/test_backup_retained_audio.py",
+      "tests/storage/test_backup_schema_identity.py",
+      "tests/storage/test_backup_studio_draft.py",
+      "tests/storage/test_backup_v4_review.py",
+      "tests/storage/test_state_backup_portability.py",
+      "tests/storage/test_v3_state_backup.py",
+      "tests/studio/test_audiobook_publication.py",
+      "tests/studio/test_book_effects.py",
+      "tests/studio/test_book_measured_cli.py",
+      "tests/studio/test_clip_cli.py",
+      "tests/studio/test_clip_copy.py",
+      "tests/studio/test_clip_copy_dialog.py",
+      "tests/studio/test_clip_dialog.py",
+      "tests/studio/test_clip_editing.py",
+      "tests/studio/test_clip_history_dialog.py",
+      "tests/studio/test_clip_operations.py",
+      "tests/studio/test_clip_preview_loop.py",
+      "tests/studio/test_clip_restoration.py",
+      "tests/studio/test_daisy_boundaries.py",
+      "tests/studio/test_daisy_publishing.py",
+      "tests/studio/test_daisy_schema_resolver.py",
+      "tests/studio/test_envelope_workflow.py",
+      "tests/studio/test_marker_consumers.py",
+      "tests/studio/test_measured_audio.py",
+      "tests/studio/test_measured_pcm.py",
+      "tests/studio/test_music_scheduling.py",
+      "tests/studio/test_production.py",
+      "tests/studio/test_production_cancellation_outcomes.py",
+      "tests/studio/test_production_hardening.py",
+      "tests/studio/test_project_effects.py",
+      "tests/studio/test_project_history.py",
+      "tests/studio/test_project_markers.py",
+      "tests/studio/test_publishing.py",
+      "tests/studio/test_publishing_boundaries.py",
+      "tests/studio/test_publishing_cli.py",
+      "tests/studio/test_publishing_handlers.py",
+      "tests/studio/test_studio_controller.py"
+    ],
+    "policy": "Existing Windows2022/Python3.11 locked setup, actual pinned FFmpeg/OCR, strict whole-module ci_check jobs3, existing600-second per-module and45-minute job limits unchanged."
+  },
+  "publication_scope": "Separate source verification branch. Full required490-source/installed/native gate composition follows; no previous PASS transfers.",
+  "execution": {
+    "new_source": "NOT_RUN",
+    "new_installed": "NOT_RUN",
+    "new_native": "NOT_RUN",
+    "physical_output": "NOT_QUALIFIED",
+    "manual_screen_reader": "NOT_RUN",
+    "acoustic_or_language_qualification": "NOT_RUN"
+  },
+  "preserved": [
+    "All original test modules and original case prefixes.",
+    "Existing WavePlayer, quiet admission, broker, decoder, project CAS/history, and backup namespaces.",
+    "Legacy schema1/2/3 wire format and BookPlan1/2 mapping.",
+    "No new DSP engine, worker pool, model or private input."
+  ]
+}

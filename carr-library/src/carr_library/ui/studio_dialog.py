@@ -60,12 +60,28 @@ class StudioController:
                                    mode=previous_project.mode if previous_project else 'faithful',
                                    project_id=previous_project.id if previous_project else None)
         if previous_project and text != previous_project.original_script:
-            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues or scene.effects}
+            marker_scenes = {marker.scene_id for marker in previous_project.markers}
+            if marker_scenes:
+                old_structure = tuple((scene.id, scene.title) for scene in previous_project.scenes)
+                new_structure = tuple((scene.id, scene.title) for scene in project.scenes)
+                if old_structure != new_structure:
+                    raise ValueError('A script with named markers changed its ordered scene structure. '
+                                     'Remove or review its markers before changing scene structure.')
+                title_counts = {}
+                for scene in previous_project.scenes:
+                    title_counts[scene.title] = title_counts.get(scene.title, 0) + 1
+                if any(scene.id in marker_scenes and title_counts[scene.title] > 1
+                       for scene in previous_project.scenes):
+                    raise ValueError('Named markers in scenes with repeated titles cannot be matched '
+                                     'unambiguously after a script edit. Remove those markers and use '
+                                     'distinct scene titles before adding reviewed markers again.')
+            attached = {scene.id: scene for scene in previous_project.scenes
+                        if scene.cues or scene.effects or scene.id in marker_scenes}
             current = {scene.id: scene for scene in project.scenes}
             if any(identity not in current or current[identity].title != old.title
                    for identity, old in attached.items()):
-                raise ValueError('A scene with attached audio changed its identity. '
-                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
+                raise ValueError('A scene with attached audio, effects or named markers changed its identity. '
+                                 'Move or remove its clips and markers in the scene editor before changing scene structure.')
             scenes = tuple(replace(scene, cues=attached[scene.id].cues, effects=attached[scene.id].effects)
                            if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
@@ -83,7 +99,8 @@ class StudioController:
                           if role.name.casefold() in previous else role for role in project.roles)
             project = replace(project, roles=roles, scenes=scenes, effects=previous_project.effects,
                               sample_rate=previous_project.sample_rate,
-                              schema=previous_project.schema, revision=previous_project.revision)
+                              schema=previous_project.schema, revision=previous_project.revision,
+                              markers=previous_project.markers)
         if previous_project and project.to_dict() != previous_project.to_dict():
             project = replace(project, revision=previous_project.revision + 1)
         self.service.projects.save(project,

@@ -176,3 +176,33 @@ def join_clips(first, second, *, first_frames, second_frames, sample_rate):
             raise ValueError('Clip effect settings differ at the join.')
     return replace(first, start=sample_index(first.start, sample_rate, 'Scene start') / sample_rate,
                    duration=(first_frames + second_frames) / sample_rate, fade_out=second.fade_out)
+
+
+def crossfade_clips(first, second, seconds, *, first_frames, second_frames, sample_rate):
+    """Overlap two contiguous saved clips with complementary existing fades.
+
+    The caller retains the old scene extent. No original selection, stable ID,
+    routing or effect is changed; only the second scene start moves earlier.
+    """
+    _editable(first)
+    _editable(second)
+    first_frames = _selection(first, first_frames, sample_rate)
+    second_frames = _selection(second, second_frames, sample_rate)
+    if first.id == second.id:
+        raise ValueError('Choose two different saved clips in one scene.')
+    first_start = aligned_index(first.start, sample_rate, 'First scene start')
+    second_start = aligned_index(second.start, sample_rate, 'Second scene start')
+    if first_start + first_frames != second_start:
+        raise ValueError('Crossfade requires two contiguous clips in scene order. '
+                         'Review any gap or existing overlap before editing.')
+    overlap = aligned_index(seconds, sample_rate, 'Crossfade duration')
+    if not 0 < overlap <= min(first_frames, second_frames):
+        raise ValueError('Crossfade must contain at least one sample and fit both selected clips.')
+    if first.fade_out or second.fade_in:
+        raise ValueError('Crossfade cannot replace an existing fade at the selected boundary.')
+    if (aligned_index(first.fade_in, sample_rate, 'First fade in') > first_frames - overlap
+            or aligned_index(second.fade_out, sample_rate, 'Second fade out') > second_frames - overlap):
+        raise ValueError('Crossfade would overlap an existing outer fade. Review the saved fades first.')
+    duration = overlap / sample_rate
+    return (replace(first, fade_out=duration),
+            replace(second, start=(second_start - overlap) / sample_rate, fade_in=duration))

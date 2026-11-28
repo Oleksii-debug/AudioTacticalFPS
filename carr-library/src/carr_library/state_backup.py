@@ -335,7 +335,7 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
             continue
         declaration = value.get('project') if job else value
         if (not isinstance(declaration, dict)
-                or type(declaration.get('schema')) is not int or declaration['schema'] not in (2, 3)):
+                or type(declaration.get('schema')) is not int or declaration['schema'] not in (2, 3, 4)):
             continue
         project = Project.from_dict(declaration)
         if current and project.id != current[1]:
@@ -346,7 +346,7 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
         if job and (type(value.get('schema')) is not int or value['schema'] != 1
                 or value.get('id') != job[1] or value.get('fingerprint') != project.fingerprint):
             raise ValueError('Copied Studio job differs from its project identity.')
-        if job and project.schema == 3:
+        if job and project.schema in (3, 4):
             processed_jobs.append((name, job[1]))
         for declared in project_managed_inputs(project):
             expected = managed_input_sha256(declared)
@@ -357,7 +357,7 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
             if declared not in checked:
                 resolve_managed_input(copied_root / 'studio', declared, cancelled=cancelled)
                 checked.add(declared)
-    # Schema3 processing metadata is passive, but must agree with its saved
+    # Schema3/4 processing metadata is passive, but must agree with its saved
     # job. Inspect copied records only; output destinations stay inert.
     from .durable_state import encode
     from .studio.project import validate_project_effects

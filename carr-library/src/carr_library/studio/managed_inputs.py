@@ -25,7 +25,7 @@ def managed_input_sha256(value):
 
 def project_managed_inputs(project):
     """List the exact managed references in a checked portable project."""
-    if project.schema not in (2, 3):
+    if project.schema not in (2, 3, 4):
         return ()
     values = set()
     for scene in project.scenes:

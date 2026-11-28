@@ -189,13 +189,13 @@ class ProductionService:
                 if selected <= 0:
                     raise ValueError('An edited clip must retain at least one output sample.')
                 placed = (round(cue.start * project.sample_rate) / project.sample_rate
-                          if project.schema in (2, 3) else cue.start)
+                          if project.schema in (2, 3, 4) else cue.start)
                 duration = max(duration, placed + selected)
-            floor = 1 if not scene.lines and not (project.schema in (2, 3) and scene.cues) else 1 / project.sample_rate
+            floor = 1 if not scene.lines and not (project.schema in (2, 3, 4) and scene.cues) else 1 / project.sample_rate
             seconds += max(duration, floor)
         pcm = math.ceil(max(1, seconds) * project.sample_rate * 2 * 2)
         roles = len(project.roles) if state['stems'] else 0
-        clip_roles = len({cue.role for scene in project.scenes for cue in scene.cues}) if state['stems'] and project.schema in (2, 3) else 0
+        clip_roles = len({cue.role for scene in project.scenes for cue in scene.cues}) if state['stems'] and project.schema in (2, 3, 4) else 0
         music = int(any(scene.music is not None for scene in project.scenes))
         mastered = int(any(effect.enabled for effect in project.effects))
         # A processed master plus its sample-aligned chapter slices are two
@@ -340,7 +340,7 @@ class ProductionService:
                      'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
                      'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
                      'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
-            if project.schema in (2, 3):
+            if project.schema in (2, 3, 4):
                 state['origin'] = self._local_origin()
             atomic_json(existing_path, state)
         return job_id
@@ -352,7 +352,7 @@ class ProductionService:
         project = Project.from_dict(state['project'])
         if state.get('fingerprint') != project.fingerprint:
             raise ValueError('The saved production plan changed.')
-        if project.schema in (2, 3):
+        if project.schema in (2, 3, 4):
             recovery = dict(state.get('recovery', {}))
             recovery['requires_output_directory'] = state.get('origin') != self._local_origin()
             state['recovery'] = recovery
@@ -374,7 +374,7 @@ class ProductionService:
         return {'studio_root': str(self.root), 'nonce': value['nonce']}
 
     def _require_origin(self, state):
-        if state['project'].get('schema') in (2, 3) and state.get('origin') != self._local_origin():
+        if state['project'].get('schema') in (2, 3, 4) and state.get('origin') != self._local_origin():
             raise ValueError('This restored production needs a newly selected output directory. '
                              'Approve it before running or inspecting old output files.')
 
@@ -385,7 +385,7 @@ class ProductionService:
         with state_lock(job_root, 'render'):
             state = self.get(job_id)
             project = Project.from_dict(state['project'])
-            if project.schema not in (2, 3) or not state.get('recovery', {}).get('requires_output_directory'):
+            if project.schema not in (2, 3, 4) or not state.get('recovery', {}).get('requires_output_directory'):
                 raise ValueError('Only a restored portable production needs output relocation.')
             parent = local_path(destination, exists=True)
             if not parent.is_dir() or parent.is_relative_to(self.root):
@@ -444,7 +444,7 @@ class ProductionService:
                              input_roots=(self.cache, self.inputs, *self.input_roots))
 
     def _cue_source(self, cue, *, cancelled=lambda: False, schema=2):
-        if schema in (2, 3):
+        if schema in (2, 3, 4):
             return resolve_managed_input(self.root, cue.path, cancelled=cancelled)
         if schema != 1:
             raise ValueError('Unsupported cue input schema.')
@@ -552,8 +552,8 @@ class ProductionService:
                 lease.checkpoint()
                 cancelled = lease.cancelled
                 capabilities = (runtime.capabilities(cancelled=admission_cancelled)
-                                if project.schema == 3 else runtime.capabilities())
-                if project.schema == 3:
+                                if project.schema in (3, 4) else runtime.capabilities())
+                if project.schema in (3, 4):
                     required_effects = {effect.kind for chain in (
                         project.effects, *(role.effects for role in project.roles),
                         *(scene.effects for scene in project.scenes),
@@ -734,17 +734,17 @@ class ProductionService:
                             raise ValueError('An edited clip selection is outside its original audio.')
                         if max(cue.fade_in, cue.fade_out) > selected:
                             raise ValueError('An edited clip fade exceeds its selected audio.')
-                        if project.schema in (2, 3):
+                        if project.schema in (2, 3, 4):
                             selected = round(selected * project.sample_rate) / project.sample_rate
                         if selected <= 0:
                             raise ValueError('An edited clip must retain at least one output sample.')
                         placed = (round(cue.start * project.sample_rate) / project.sample_rate
-                                  if project.schema in (2, 3) else cue.start)
+                                  if project.schema in (2, 3, 4) else cue.start)
                         required_duration = max(required_duration, placed + selected)
                         cue_tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
                                                 cue.trim_start, cue.duration, cue.fade_in, cue.fade_out,
                                                 effects=cue.effects))
-                        if project.schema in (2, 3):
+                        if project.schema in (2, 3, 4):
                             clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role,
                                 'title': cue.title, 'source_sha256': digest_file(source),
                                 'source_duration': info.duration, 'trim_start': cue.trim_start,
@@ -753,7 +753,7 @@ class ProductionService:
                                 'pan': cue.pan, 'fade_in': cue.fade_in, 'fade_out': cue.fade_out})
                     if not clips:
                         duration = (max(required_duration, 1 / project.sample_rate)
-                                    if project.schema in (2, 3) and cue_tracks else max(scene.minimum_duration, 1))
+                                    if project.schema in (2, 3, 4) and cue_tracks else max(scene.minimum_duration, 1))
                         clip, info = silence(duration)
                         clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     if required_duration > cursor + .5 / project.sample_rate:
@@ -808,7 +808,7 @@ class ProductionService:
                         if scene.music is not None:
                             # This is the actual pre-duck score; final scene contains measured sidechain ducking.
                             stem_scenes.setdefault('music', []).append((scene.id, music, final_info.duration))
-                        if project.schema in (2, 3):
+                        if project.schema in (2, 3, 4):
                             for role in sorted({track.role for track in cue_tracks}):
                                 selected_tracks = tuple(track for track in cue_tracks if track.role == role)
                                 stem, _ = node('scene clip stem',
@@ -970,11 +970,11 @@ class ProductionService:
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.',
                             'lrc_notice': 'LRC uses measured line starts rounded to centiseconds; no word or internal paragraph timing. '
                                           'Literal leading bracket text has a U+2060 boundary to prevent extra LRC time tags.'}
-                if project.schema in (2, 3):
+                if project.schema in (2, 3, 4):
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
-                if project.schema == 3:
+                if project.schema in (3, 4):
                     metadata['effects'] = project_effects(project)
                 if source_provenance is not None:
                     metadata['book_source_sha256'] = sha256(source_provenance).hexdigest()
