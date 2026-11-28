@@ -1,0 +1,159 @@
+{
+  "schema": "carr-auxiliary-independent-root-review/1",
+  "status": "OBSERVED_FIVE_AUXILIARY_PASS_ROOT_AND_PEER_GO",
+  "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+  "source_tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+  "proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
+  "raw_log_checks": {
+    "keyboard_raw_identity": true,
+    "keyboard_exact_job_success": true,
+    "keyboard_all_step_success": true,
+    "keyboard_checkout_head": true,
+    "keyboard_artifact_api_uploader": true,
+    "keyboard_full_counter": true,
+    "keyboard_suites": true,
+    "keyboard_native_receipts": true,
+    "keyboard_native_label_counters": true,
+    "audio_raw_identity": true,
+    "audio_exact_job_success": true,
+    "audio_all_step_success": true,
+    "audio_checkout_head": true,
+    "audio_artifact_api_uploader": true,
+    "audio_2371_ordered_start_end": true,
+    "audio_full_counter": true,
+    "audio_full_module_counter": true,
+    "audio_result_status_counts": true,
+    "audio_summary": true,
+    "audio_all_seven_skips": true,
+    "audio_outer_native_receipts": true,
+    "audio_native_sourcebinding_labels": true,
+    "audio_inner_native_receipts": true,
+    "audio_smoke": true,
+    "audio_physical_playback": true,
+    "audio_selftest": true,
+    "audio_runtime": true,
+    "bibliography_raw_identity": true,
+    "bibliography_exact_job_success": true,
+    "bibliography_all_step_success": true,
+    "bibliography_checkout_head": true,
+    "bibliography_artifact_api_uploader": true,
+    "bibliography_full_counter": true,
+    "bibliography_suites": true,
+    "bibliography_native_receipt": true,
+    "bibliography_native_counter": true,
+    "bibliography_wheel_receipt": true,
+    "snapshots_raw_identity": true,
+    "snapshots_exact_job_success": true,
+    "snapshots_all_step_success": true,
+    "snapshots_checkout_head": true,
+    "snapshots_artifact_api_uploader": true,
+    "snapshots_native_receipt": true,
+    "snapshots_native_counter": true,
+    "snapshots_installed_counter": true,
+    "snapshots_installed_receipt": true,
+    "snapshots_summaries": true,
+    "launcher_raw_identity": true,
+    "launcher_exact_job_success": true,
+    "launcher_all_step_success": true,
+    "launcher_checkout_head": true,
+    "launcher_artifact_none": true,
+    "launcher_native_receipt": true,
+    "launcher_native_counter": true,
+    "launcher_build_receipts": true,
+    "launcher_native_receipts_repeated": true,
+    "launcher_46cases": true
+  },
+  "additional_checks": {
+    "keyboard_exact_steps": true,
+    "keyboard_first_last_timestamps": true,
+    "audio_exact_steps": true,
+    "audio_first_last_timestamps": true,
+    "bibliography_exact_steps": true,
+    "bibliography_first_last_timestamps": true,
+    "snapshots_exact_steps": true,
+    "snapshots_first_last_timestamps": true,
+    "launcher_exact_steps": true,
+    "launcher_first_last_timestamps": true,
+    "all_source_bindings_exact": true
+  },
+  "source_tree_checks": {
+    "parent_exact": true,
+    "source_tree": true,
+    "proof_tree": true,
+    "non_truncated": true,
+    "base_1810": true,
+    "proof_1812": true,
+    "no_modified": true,
+    "two_docs_only": true,
+    "all205_bindings": true,
+    "full_platform_unqualified": true
+  },
+  "counts": {
+    "runtime_checks": 57,
+    "additional_checks": 11,
+    "current_source_bindings": 205
+  },
+  "log_identities": {
+    "keyboard": {
+      "chars": 161871,
+      "bytes": 161873,
+      "sha256": "6e0cddcf681d782e76e2d606982bfa7beaec80a31fbc5f99afea75080d4d0cb5"
+    },
+    "audio": {
+      "chars": 1487926,
+      "bytes": 1487930,
+      "sha256": "c9fe8c91c507b3e04ae30ae9a685a5b9c8b7a787ecca70df41abecf249378ef9"
+    },
+    "bibliography": {
+      "chars": 506355,
+      "bytes": 506357,
+      "sha256": "d2ade822a96bb230556b89c27f759897a594075458131eff9b0a0497ac671ff9"
+    },
+    "snapshots": {
+      "chars": 73673,
+      "bytes": 73695,
+      "sha256": "12fca145acd029f0751dacbc948c0283f3984d39e5599266c3c74d17525ca6cd"
+    },
+    "launcher": {
+      "chars": 46604,
+      "bytes": 46606,
+      "sha256": "5b6bf44003011e4f73c1c85d0a4cb770ee835d569cd597b973e61bfe6a8f3f56"
+    }
+  },
+  "counter_sha256": {
+    "keyboard": "b2b02aea2a6bb2a492206725b95e46f35c8e316e80e65dfcf8ea9c805b0300ba",
+    "audio": "e4e86ab025866738a09231d8df5e96c4d1b5c5e1c7967a04d5a399711741f3b5",
+    "bibliography": "4cabc34b8059cf0034ea47f6143b06cd9f1efdd62afdde27d1b32573e5a36d0f",
+    "snapshots": "f775b50d5d84a7d6c61831de6097cf16108d6054051013995bbaecc82cbd536a"
+  },
+  "archive_read": "NOT_PERFORMED",
+  "main_qualification": "PENDING_SEPARATE",
+  "peer_source_review": {
+    "agent": "durable_payload_composition",
+    "status": "SOURCE_COUNTER_AND_QUALIFICATION_GO",
+    "all_baseline_preserved": 1810,
+    "source_tree_bindings": 205,
+    "independently_fresh_sha256_files": 52,
+    "installed_native_source_rows": 31,
+    "expected_native_counters": [
+      151,
+      26,
+      11
+    ],
+    "archive_or_main_pass_transfer": false
+  },
+  "proof_tree": "69bdd6eaccf6943ee8478f21699df72e25336d52",
+  "final_wording_readback": {
+    "sole_parent": true,
+    "tree_exact": true,
+    "nontruncated": true,
+    "leaf1812": true,
+    "only_json_delta": true,
+    "json_exact_reword": true,
+    "json_sha": true,
+    "md_preserved": true
+  },
+  "proof_json_sha256": "2714bb4103b7361ea05a3df175ef2437d60a5925da25aa2ba8f86bfc9df57059",
+  "proof_md_sha256": "1f0d6d4cce84e1093cc08f18ec5b90605e98bb87395dec04fc5dd1d82c8c3b99",
+  "observed_at_utc": "2026-11-28T08:08:44Z"
+}

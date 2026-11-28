@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28 07:40:13 UTC",
+  "updated_utc": "2026-11-28T08:08:44Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -138,8 +138,10 @@
     "branch": "carr/final-evidence-d3a-20261127",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
-    "head_observed_before_this_checkpoint": "fad5a0493b82d38ac27bcc72605af381b9f8074d",
-    "tree_observed_before_this_checkpoint": "bb67093fb60d72c16a4553b2ba3ecaa6293bd346"
+    "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
+    "auxiliary_root_review_path": "carr-library/docs/evidence/pr210-7c991-auxiliary-independent-review-20261128.json",
+    "head_observed_before_this_checkpoint": "2e639d6f1e140befe3f58630f335118ddeb85b8c",
+    "tree_observed_before_this_checkpoint": "86cfc525bb958ca7fd9da25ed3217d45f7c1ff9b"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -152,7 +154,7 @@
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
-    "status": "SOURCE_COMPOSED_NOT_EXECUTED",
+    "status": "IMPLEMENTED_AND_FOCUSED_PASS_MAIN_PENDING",
     "scope": "Basic native fixture only; preserve14 assertions,45-second timer,4-minute workflow and13-field PASS receipt.",
     "observed": "Silent Basic process reached workflow timeout; actual blocked phase remains UNKNOWN.",
     "source_inference": "Basic posts app.ExitMainLoop from inside its modal callback. Existing Advanced/local probes wait until show_translation returns before posting outer-loop exit.",
@@ -162,10 +164,10 @@
     "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
     "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
     "files": 1810,
-    "status": "FOCUSED_PASS_MAIN_AND_AUXILIARY_PENDING",
+    "status": "FOCUSED_AND_FIVE_AUXILIARY_PASS_MAIN_PENDING",
     "component": "d12884890335518721e109459819c2352e2ab38f",
-    "root_review": "SOURCE_GO_NOT_EXECUTED",
-    "peer_review": "durable_native_composition SOURCE_GO_NOT_EXECUTED",
+    "root_review": "COMPOSED_SOURCE_GO_AND_ACTUAL_FOCUSED_PASS",
+    "peer_review": "COMPOSED_SOURCE_GO_AND_ACTUAL_FOCUSED_PASS",
     "planned_focused_branches": {
       "basic": "carr/local-translation-final-7c991-20261128-d3a",
       "inspection": "carr/silence-inspection-final-7c991-20261128-d3a"
@@ -232,11 +234,22 @@
       "conclusion": null,
       "started_at": "2026-11-28T07:37:58Z",
       "last_observed_step": {
-        "number": 15,
-        "name": "Prove fixed PowerShell native classification before bundle work",
+        "name": "Run required integrated source workflows",
         "status": "in_progress",
-        "observed_at": "2026-11-28T07:39:30Z"
-      }
+        "conclusion": null,
+        "number": 21,
+        "started_at": "2026-11-28T07:43:29Z",
+        "completed_at": null
+      },
+      "source_step": {
+        "name": "Run required integrated source workflows",
+        "status": "in_progress",
+        "conclusion": null,
+        "number": 21,
+        "started_at": "2026-11-28T07:43:29Z",
+        "completed_at": null
+      },
+      "last_observed_at": "2026-11-28T08:07:08Z"
     },
     "auxiliary": {
       "keyboard": {
@@ -244,36 +257,92 @@
         "job": 140905458033,
         "attempt": 1,
         "status": "completed",
-        "conclusion": "success"
+        "conclusion": "success",
+        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
+        "raw_log": {
+          "chars": 161871,
+          "bytes": 161873,
+          "sha256": "6e0cddcf681d782e76e2d606982bfa7beaec80a31fbc5f99afea75080d4d0cb5"
+        },
+        "artifact": {
+          "id": 15253569001,
+          "bytes": 11393,
+          "sha256": "2ce3d37d336e9ee7106a4d012d3d679963a90f7eff78a5bb0c4a52815a391d3f"
+        }
       },
       "audio": {
         "run": 46121064509,
         "job": 140905457444,
         "attempt": 1,
-        "status": "in_progress",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-28T08:00:17Z",
+        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
+        "raw_log": {
+          "chars": 1487926,
+          "bytes": 1487930,
+          "sha256": "c9fe8c91c507b3e04ae30ae9a685a5b9c8b7a787ecca70df41abecf249378ef9"
+        },
+        "artifact": {
+          "id": 15255415308,
+          "bytes": 56998,
+          "sha256": "3224b996d6951123b966e205bd939719601ea686776fb1ded3b7be366546bc7d"
+        }
       },
       "bibliography": {
         "run": 46121064503,
         "job": 140905457270,
         "attempt": 1,
         "status": "completed",
-        "conclusion": "success"
+        "conclusion": "success",
+        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
+        "raw_log": {
+          "chars": 506355,
+          "bytes": 506357,
+          "sha256": "d2ade822a96bb230556b89c27f759897a594075458131eff9b0a0497ac671ff9"
+        },
+        "artifact": {
+          "id": 15253898202,
+          "bytes": 22949,
+          "sha256": "ea9644b02b7d570ea9d33a669daba9e6aeb1e0a9009dac5d64e6b9b722a1f0d4"
+        }
       },
       "snapshots": {
         "run": 46121064493,
         "job": 140905458089,
         "attempt": 1,
         "status": "completed",
-        "conclusion": "success"
+        "conclusion": "success",
+        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
+        "raw_log": {
+          "chars": 73673,
+          "bytes": 73695,
+          "sha256": "12fca145acd029f0751dacbc948c0283f3984d39e5599266c3c74d17525ca6cd"
+        },
+        "artifact": {
+          "id": 15253784349,
+          "bytes": 10108,
+          "sha256": "1811cf33a3082607cda511867440312582a6b614a6a80b96c0eacda93ca39474"
+        }
       },
       "launcher": {
         "run": 46121064498,
         "job": 140905457311,
         "attempt": 1,
         "status": "completed",
-        "conclusion": "success"
-      }
+        "conclusion": "success",
+        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
+        "raw_log": {
+          "chars": 46604,
+          "bytes": 46606,
+          "sha256": "5b6bf44003011e4f73c1c85d0a4cb770ee835d569cd597b973e61bfe6a8f3f56"
+        },
+        "artifact": {
+          "count": 0
+        }
+      },
+      "proof": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
+      "independent_review": "ROOT_RUNTIME_AND_PAYLOAD_SOURCE_GO"
     }
   },
   "optional_native_source_audit": {
@@ -288,7 +357,7 @@
     "new_release_gate": false,
     "root_review": "22 source hashes,20 workflow mappings/bounds,19 skipped actual steps and all baseline blobs verified"
   },
-  "canonical_observed_at": "2026-11-28T07:40:13Z",
+  "canonical_observed_at": "2026-11-28T08:05:40Z",
   "delivery_template": {
     "path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_TEMPLATE_20261128_UK.md",
     "status": "DRAFT_PLACEHOLDERS_REQUIRE_ACTUAL_FINAL_OUTCOME",
