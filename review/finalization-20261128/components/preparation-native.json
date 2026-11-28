@@ -1,0 +1,163 @@
+{
+  "schema": "carr.speech-preparation-final-component-qualification.v1",
+  "native_head": "f127fecc136ee129e5d8ed7b63cd4b0a892412de",
+  "native_tree": "24fb016d971aff809dbd327ab9220558b69e428b",
+  "manifest": "3c781f7b8067ff12edeb42255edda2c1d56fb893",
+  "run": 46120170430,
+  "job": 140902725697,
+  "conclusion": "success",
+  "raw_log": "0d712bcceda7a81d9204d71835962f8281722591",
+  "native_result": {
+    "result": "PASS",
+    "checks": 321,
+    "native_keyboard_automation": "PASS",
+    "three_explicit_text_locales": [
+      "en-US",
+      "uk-UA",
+      "sk-SK"
+    ],
+    "compound_source_maps": "PASS",
+    "actual_reader_recovery": "PASS",
+    "actual_studio_save_undo": "PASS",
+    "existing_host_workers": "PASS",
+    "held_cancel_direct_deletion_late_callback": "PASS",
+    "source_identity": {
+      "carr_library.application": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+        "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+      },
+      "carr_library.durable_state": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+        "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+      },
+      "carr_library.reader.live_reading": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\live_reading.py",
+        "sha256": "8212a14547b95365fa6bc62944258bdc29d9a6656efe53a7ebb3c1de0d2199c3"
+      },
+      "carr_library.reader.speech_normalization": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\speech_normalization.py",
+        "sha256": "691dacc83244f80a2a2bebb286feece7a0ca2b4f95c8b7d8d440a27b7e69c5d6"
+      },
+      "carr_library.reader._vendor_num2words.lang_SK": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\lang_SK.py",
+        "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+      },
+      "carr_library.reader._vendor_num2words.base": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\base.py",
+        "sha256": "52356f1717f7c3927c15f15ec42f670635bfa2f322ed0ebca6ab48791d5249b4"
+      },
+      "carr_library.reader._vendor_num2words.utils": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\utils.py",
+        "sha256": "5a4cfa390464bb4134f9194d11261bfd9b85021b0c0af0fe2dda0ec6cea5bd81"
+      },
+      "carr_library.reader._vendor_num2words.compat": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\compat.py",
+        "sha256": "5e302a28aa6e3fa35981c1b383a7f736c75a5cc973d8bff9e0ff19afd5387256"
+      },
+      "carr_library.reader._vendor_num2words.currency": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\currency.py",
+        "sha256": "6ab41fe056ea9b696fac3c278b0bab7b51cb06c57a50dbf84977de503be591c9"
+      },
+      "carr_library.speech.reading": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\reading.py",
+        "sha256": "e33cd4c8dbc5854483f6cd8ae47ba62df1819e3b9809f06761538573b589984a"
+      },
+      "carr_library.speech.preparation": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\preparation.py",
+        "sha256": "0d63b9bb07e49720d22d1b8736de080289a101f40b23694f6c78627c4e58958e"
+      },
+      "carr_library.speech.session": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\session.py",
+        "sha256": "70f69fec745f7281e9c8818618ffc9b22658429cdc38a4223f94e111e89d0a54"
+      },
+      "carr_library.speech.source": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\source.py",
+        "sha256": "9fc2d9c476e8ee20380c8a67fc67dad8a064ca42a57ff14c52c377e9bd67d2a8"
+      },
+      "carr_library.runtime_settings": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\runtime_settings.py",
+        "sha256": "0811f94c2c28ac45819fd1107216c2f1432051d5d93f8a9f58058d2bc103f0fe"
+      },
+      "carr_library.studio.project": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\project.py",
+        "sha256": "79af584af00fa781d3f686029ecb76073acbc1ffad5661074d2cd2d60710c30a"
+      },
+      "carr_library.studio.pronunciation": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\pronunciation.py",
+        "sha256": "43aea36c32e5284e511baaa239b5ce113bb84d93ef0981b0bed7b97578c54a93"
+      },
+      "carr_library.ui.desktop_app": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "sha256": "627b8a082d6792ca96eba92a66b30517e0a8a77695ef697e1214aff75f82db3a"
+      },
+      "carr_library.ui.speech_dialog": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+        "sha256": "77edd2a8df6a33d0cafa2609b4507e361e0459ab9f05b866e96d805ab170f467"
+      },
+      "carr_library.ui.speech_preparation": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_preparation.py",
+        "sha256": "fccc488c3b2f117e564edf7341e0a169361cfb757b674f67747ede66520276e7"
+      },
+      "carr_library.ui.studio_pronunciation": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\studio_pronunciation.py",
+        "sha256": "097e3a69012a73d46e48db380b05615dad00c6d16233480fa2f4acd291f5aac4"
+      }
+    },
+    "probe_and_binding": {
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py": "55c8a34229e40424b9e929f7eaa43a407276186e50e93f98dd5f6112b7c32343",
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py": "5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916"
+    },
+    "license_identity": {
+      "COPYING": "1457a03d928aeb06af3ea75ef065c517e915d7e41283d550dd4fa18ab20cda12",
+      "UPSTREAM.json": "4683ae903bc265915c5a54617d7997cca05a43a8838ccb547b4a87826897c8ac"
+    },
+    "speech_quality": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "native_file_picker": "NOT_RUN",
+    "NVDA": "NOT_RUN",
+    "controlled_seams": [
+      "enumeration-only voices",
+      "unsaved-close answer NO",
+      "hold after genuine preparation"
+    ]
+  },
+  "installed_bindings": [
+    {
+      "origins": 21,
+      "package_inventory_sha256": "e32f4db2f6b3a94ce2bbe707aead2c8db3875477d1d437c28cd20a59c5aaad6a",
+      "package_python_files": 417,
+      "phase": "before",
+      "probe": "preparation",
+      "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate",
+      "script_count": 3,
+      "status": "IDENTITY_VERIFIED"
+    },
+    {
+      "origins": 21,
+      "package_inventory_sha256": "e32f4db2f6b3a94ce2bbe707aead2c8db3875477d1d437c28cd20a59c5aaad6a",
+      "package_python_files": 417,
+      "phase": "after",
+      "probe": "preparation",
+      "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate",
+      "script_count": 3,
+      "status": "IDENTITY_VERIFIED"
+    }
+  ],
+  "common": {
+    "head": "20e56f1a8423b3943f610b7579bacedc773410d2",
+    "evidence": "277388ce9e6444d1789fe8281aded18ebdbe705e",
+    "source_installed_per_os": 755,
+    "contexts": 4,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "xfail": 0,
+    "product_bytes_unchanged_on_native_head": true
+  },
+  "prior_native_failure": "2f82f8e1f76c62e2b7d06be07554ab846ff92d5d",
+  "qualification": "Actual deterministic preparation/history/source-map/recovery and reader/Studio native controls; no whole final composition reassignment.",
+  "speech_quality": "NOT_RUN",
+  "physical_audio": "NOT_RUN",
+  "native_file_picker": "NOT_RUN",
+  "NVDA": "NOT_RUN"
+}

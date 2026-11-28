@@ -1,0 +1,510 @@
+{
+  "schema": "carr-word-common-component-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "8a7b8632009f8019c3223465c4129b8d23ccafdf",
+  "tree": "359f54332928bb6fc627c43af059a2a07deb2d6b",
+  "branch": "carr/word-integration-review-20261128",
+  "run": 46120130479,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120130479",
+  "conclusion": "success",
+  "published_manifest": "b743f9208a86b850285818ffeea6ec1cfac12749",
+  "jobs": [
+    {
+      "os": "ubuntu-24.04",
+      "job": 140902607960,
+      "source": {
+        "passed": 539,
+        "seconds": 151.91
+      },
+      "installed": {
+        "passed": 539,
+        "seconds": 150.7
+      },
+      "raw_log": "b9fbd2124bae4589107d1651ae7b3fa39836b240"
+    },
+    {
+      "os": "windows-2022",
+      "job": 140902608109,
+      "source": {
+        "passed": 539,
+        "seconds": 225.93
+      },
+      "installed": {
+        "passed": 539,
+        "seconds": 231.65
+      },
+      "raw_log": "7660fa20565b7ed362ac56f3bb8b7b8c88c6c24c"
+    }
+  ],
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "xfail": 0,
+  "warnings_per_context": 7,
+  "new_tests": {
+    "word_protocol": 57,
+    "word_dialog_ownership": 30
+  },
+  "qualification": "Executed current-schema Word bridge protocols, actual current CSL/DOCX/publication and controlled-host ownership/cancellation/uncertain-state contracts; actual native wx and Office remain separate.",
+  "actual_office": "NOT_RUN",
+  "native_word_controls": "NOT_RUN",
+  "NVDA": "NOT_RUN",
+  "reports": [
+    {
+      "os": "linux",
+      "NVDA": "NOT_RUN",
+      "actual_neural_model_quality": "NOT_RUN",
+      "actual_office": "NOT_RUN",
+      "cases": 539,
+      "commit": "8a7b8632009f8019c3223465c4129b8d23ccafdf",
+      "mode": "source",
+      "native_word_controls": "NOT_RUN",
+      "origins": {
+        "carr_library.academic_integration.documents": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/academic_integration/documents.py",
+          "sha256": "523e9c0ac1da3c705d77f87a13fd97b62df76d27544f08790698a76d03bc4213"
+        },
+        "carr_library.academic_integration.doi": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/academic_integration/doi.py",
+          "sha256": "ee31124c37e2ff3bb9ba2a6c4bd5713ae53b3bbcbae7e2561d64d19b150c1dba"
+        },
+        "carr_library.academic_integration.formatting": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/academic_integration/formatting.py",
+          "sha256": "f9f0b69ac0f5f56b92d1f2f09eca9c478d27443aa7518073d9a145415cd911a5"
+        },
+        "carr_library.academic_integration.regeneration": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/academic_integration/regeneration.py",
+          "sha256": "b5ba93a131e0e91ba5bf04391d2089c8b4610589d7541e3175a35661d1166bb8"
+        },
+        "carr_library.academic_integration.runtime_adapter": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/academic_integration/runtime_adapter.py",
+          "sha256": "5dba76625199eda4c7898dd30e49e4bf5ae6def228456ca393ea2d36bda48507"
+        },
+        "carr_library.academic_integration.word_com": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/academic_integration/word_com.py",
+          "sha256": "0c20279c095c1e0e0d541f81a9d26c451e521d599eb4001791402881556ff0f5"
+        },
+        "carr_library.application": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.citations.bibliography_workbench": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/citations/bibliography_workbench.py",
+          "sha256": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f"
+        },
+        "carr_library.citations.csl": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/citations/csl.py",
+          "sha256": "b3825fd495180ff4e55175811b3a8a9ed6176e898a5e0c64e2d94792d180769b"
+        },
+        "carr_library.durable_state": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.research.export_file": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/research/export_file.py",
+          "sha256": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1"
+        },
+        "carr_library.ui.academic_library_dialog": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/academic_library_dialog.py",
+          "sha256": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597"
+        },
+        "carr_library.ui.citation_formatting": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/citation_formatting.py",
+          "sha256": "300410b578093fbab29c5f71264b5e97270390a1d38d1c011a9566ecd0734cde"
+        },
+        "carr_library.ui.word_citations_dialog": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/word_citations_dialog.py",
+          "sha256": "b4a3b159120dce17dc505bcdd42c9b0bca0f9ddf6c28ff4e2b4decaf97bee0fd"
+        }
+      },
+      "package_inventory_files": 428,
+      "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f",
+      "package_python_files": 408,
+      "physical_microphone": "NOT_RUN",
+      "physical_output": "NOT_RUN",
+      "proof_helper_sha256": "75e3ba017c0377409d031ae4fcbb987d993d1f95d383dc9008c84c9c0db70076",
+      "qualification": "WORD_CURRENT_SCHEMA_PROTOCOL_AND_OWNER_CONTRACTS",
+      "selected_suites": {
+        "tests/academic_integration/test_bibtex_workflow.py": 10,
+        "tests/academic_integration/test_citation_ui.py": 22,
+        "tests/academic_integration/test_documents.py": 10,
+        "tests/academic_integration/test_doi.py": 107,
+        "tests/academic_integration/test_end_to_end.py": 11,
+        "tests/academic_integration/test_formatting.py": 27,
+        "tests/academic_integration/test_regeneration.py": 22,
+        "tests/academic_integration/test_runtime_adapter.py": 15,
+        "tests/academic_integration/test_word_com.py": 57,
+        "tests/citations/test_bibliography_workbench.py": 26,
+        "tests/ui/test_academic_actions.py": 57,
+        "tests/ui/test_academic_export_handler.py": 59,
+        "tests/ui/test_academic_library_dialog.py": 53,
+        "tests/ui/test_citation_styles_jobs.py": 23,
+        "tests/ui/test_export_confirmation.py": 5,
+        "tests/ui/test_export_destination.py": 5,
+        "tests/ui/test_word_citations_dialog.py": 30
+      },
+      "status": "PASS",
+      "test_files": {
+        "tests/academic_integration/test_bibtex_workflow.py": "c660bedd3eb6acac45ca250fe70383b2375401a71aa1d7f1a056f44a2c7c899e",
+        "tests/academic_integration/test_citation_ui.py": "f76bb2e222725f311673e5e97a6e92efb9559cd467b0cd780edca945c1766061",
+        "tests/academic_integration/test_documents.py": "c7f67482e9f211c653264e8b596f5f694e47ec1dfb4289a1eeb88562d4c14cd3",
+        "tests/academic_integration/test_doi.py": "39fe3e6f5f3ec63febcf9faa4093368bd57ade174e17930ee898cfbc473ec1ce",
+        "tests/academic_integration/test_end_to_end.py": "d22486e7a14b207ef933fe8b0b084b0babfb7d382432b4af42c47da126040b5d",
+        "tests/academic_integration/test_formatting.py": "d92b8f2a84a1b8fc30cb925a97669bd2b756bb66f459ed3567d8c5721f3f6676",
+        "tests/academic_integration/test_regeneration.py": "a68d4a7956e92229540da91091a929287686d55c50b26259ee71158ac8bf75bd",
+        "tests/academic_integration/test_runtime_adapter.py": "1fcfef975dea74ebc87b38096e7c022f295a82cf3a4d9c2e76da69f62c684b4d",
+        "tests/academic_integration/test_word_com.py": "43b351ebe1ba245f9f82d87fd3a65681851fb31a8411ff42789bc13dde080cdd",
+        "tests/citations/test_bibliography_workbench.py": "072d5f83ff5716614b3c8ae3eb84ac0b4168193fe82eb9366aab67d212ec1bd6",
+        "tests/ui/test_academic_actions.py": "ba5905c54eacf167e93d5a644cdab4e489aaf54c243dd9a70176b7e6ed03a554",
+        "tests/ui/test_academic_export_handler.py": "641957296cd0033646a7fe77e9aa70a73705e6e96376a697cf8ecf0b6c7752ca",
+        "tests/ui/test_academic_library_dialog.py": "c974c68620d68892d02dd89061d06e9acc9e66b45ca1a575d70e82f12451c67c",
+        "tests/ui/test_citation_styles_jobs.py": "72e5bae0775e794bf2022637d75c3f6a1c13d0189ce821d6163385a449b2ffc5",
+        "tests/ui/test_export_confirmation.py": "3cf173cb9ca7ec1897e88bf669c4742b14b309b8da4c8f6be46c9cff493a6b64",
+        "tests/ui/test_export_destination.py": "e870e3f737f12a2f3eda631ba1fbb03498d6eeae677361868a6d13b2c85d2df9",
+        "tests/ui/test_word_citations_dialog.py": "90fc2603b6d4a5a5ae9f9159e46d8726eb4d89cee3ace75626f0c772c860ed77"
+      }
+    },
+    {
+      "os": "linux",
+      "NVDA": "NOT_RUN",
+      "actual_neural_model_quality": "NOT_RUN",
+      "actual_office": "NOT_RUN",
+      "cases": 539,
+      "commit": "8a7b8632009f8019c3223465c4129b8d23ccafdf",
+      "mode": "installed",
+      "native_word_controls": "NOT_RUN",
+      "origins": {
+        "carr_library.academic_integration.documents": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/academic_integration/documents.py",
+          "sha256": "523e9c0ac1da3c705d77f87a13fd97b62df76d27544f08790698a76d03bc4213"
+        },
+        "carr_library.academic_integration.doi": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/academic_integration/doi.py",
+          "sha256": "ee31124c37e2ff3bb9ba2a6c4bd5713ae53b3bbcbae7e2561d64d19b150c1dba"
+        },
+        "carr_library.academic_integration.formatting": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/academic_integration/formatting.py",
+          "sha256": "f9f0b69ac0f5f56b92d1f2f09eca9c478d27443aa7518073d9a145415cd911a5"
+        },
+        "carr_library.academic_integration.regeneration": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/academic_integration/regeneration.py",
+          "sha256": "b5ba93a131e0e91ba5bf04391d2089c8b4610589d7541e3175a35661d1166bb8"
+        },
+        "carr_library.academic_integration.runtime_adapter": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/academic_integration/runtime_adapter.py",
+          "sha256": "5dba76625199eda4c7898dd30e49e4bf5ae6def228456ca393ea2d36bda48507"
+        },
+        "carr_library.academic_integration.word_com": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/academic_integration/word_com.py",
+          "sha256": "0c20279c095c1e0e0d541f81a9d26c451e521d599eb4001791402881556ff0f5"
+        },
+        "carr_library.application": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.citations.bibliography_workbench": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/bibliography_workbench.py",
+          "sha256": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f"
+        },
+        "carr_library.citations.csl": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/csl.py",
+          "sha256": "b3825fd495180ff4e55175811b3a8a9ed6176e898a5e0c64e2d94792d180769b"
+        },
+        "carr_library.durable_state": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.research.export_file": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/research/export_file.py",
+          "sha256": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1"
+        },
+        "carr_library.ui.academic_library_dialog": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/academic_library_dialog.py",
+          "sha256": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597"
+        },
+        "carr_library.ui.citation_formatting": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/citation_formatting.py",
+          "sha256": "300410b578093fbab29c5f71264b5e97270390a1d38d1c011a9566ecd0734cde"
+        },
+        "carr_library.ui.word_citations_dialog": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/word_citations_dialog.py",
+          "sha256": "b4a3b159120dce17dc505bcdd42c9b0bca0f9ddf6c28ff4e2b4decaf97bee0fd"
+        }
+      },
+      "package_inventory_files": 428,
+      "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f",
+      "package_python_files": 408,
+      "physical_microphone": "NOT_RUN",
+      "physical_output": "NOT_RUN",
+      "proof_helper_sha256": "75e3ba017c0377409d031ae4fcbb987d993d1f95d383dc9008c84c9c0db70076",
+      "qualification": "WORD_CURRENT_SCHEMA_PROTOCOL_AND_OWNER_CONTRACTS",
+      "selected_suites": {
+        "tests/academic_integration/test_bibtex_workflow.py": 10,
+        "tests/academic_integration/test_citation_ui.py": 22,
+        "tests/academic_integration/test_documents.py": 10,
+        "tests/academic_integration/test_doi.py": 107,
+        "tests/academic_integration/test_end_to_end.py": 11,
+        "tests/academic_integration/test_formatting.py": 27,
+        "tests/academic_integration/test_regeneration.py": 22,
+        "tests/academic_integration/test_runtime_adapter.py": 15,
+        "tests/academic_integration/test_word_com.py": 57,
+        "tests/citations/test_bibliography_workbench.py": 26,
+        "tests/ui/test_academic_actions.py": 57,
+        "tests/ui/test_academic_export_handler.py": 59,
+        "tests/ui/test_academic_library_dialog.py": 53,
+        "tests/ui/test_citation_styles_jobs.py": 23,
+        "tests/ui/test_export_confirmation.py": 5,
+        "tests/ui/test_export_destination.py": 5,
+        "tests/ui/test_word_citations_dialog.py": 30
+      },
+      "status": "PASS",
+      "test_files": {
+        "tests/academic_integration/test_bibtex_workflow.py": "c660bedd3eb6acac45ca250fe70383b2375401a71aa1d7f1a056f44a2c7c899e",
+        "tests/academic_integration/test_citation_ui.py": "f76bb2e222725f311673e5e97a6e92efb9559cd467b0cd780edca945c1766061",
+        "tests/academic_integration/test_documents.py": "c7f67482e9f211c653264e8b596f5f694e47ec1dfb4289a1eeb88562d4c14cd3",
+        "tests/academic_integration/test_doi.py": "39fe3e6f5f3ec63febcf9faa4093368bd57ade174e17930ee898cfbc473ec1ce",
+        "tests/academic_integration/test_end_to_end.py": "d22486e7a14b207ef933fe8b0b084b0babfb7d382432b4af42c47da126040b5d",
+        "tests/academic_integration/test_formatting.py": "d92b8f2a84a1b8fc30cb925a97669bd2b756bb66f459ed3567d8c5721f3f6676",
+        "tests/academic_integration/test_regeneration.py": "a68d4a7956e92229540da91091a929287686d55c50b26259ee71158ac8bf75bd",
+        "tests/academic_integration/test_runtime_adapter.py": "1fcfef975dea74ebc87b38096e7c022f295a82cf3a4d9c2e76da69f62c684b4d",
+        "tests/academic_integration/test_word_com.py": "43b351ebe1ba245f9f82d87fd3a65681851fb31a8411ff42789bc13dde080cdd",
+        "tests/citations/test_bibliography_workbench.py": "072d5f83ff5716614b3c8ae3eb84ac0b4168193fe82eb9366aab67d212ec1bd6",
+        "tests/ui/test_academic_actions.py": "ba5905c54eacf167e93d5a644cdab4e489aaf54c243dd9a70176b7e6ed03a554",
+        "tests/ui/test_academic_export_handler.py": "641957296cd0033646a7fe77e9aa70a73705e6e96376a697cf8ecf0b6c7752ca",
+        "tests/ui/test_academic_library_dialog.py": "c974c68620d68892d02dd89061d06e9acc9e66b45ca1a575d70e82f12451c67c",
+        "tests/ui/test_citation_styles_jobs.py": "72e5bae0775e794bf2022637d75c3f6a1c13d0189ce821d6163385a449b2ffc5",
+        "tests/ui/test_export_confirmation.py": "3cf173cb9ca7ec1897e88bf669c4742b14b309b8da4c8f6be46c9cff493a6b64",
+        "tests/ui/test_export_destination.py": "e870e3f737f12a2f3eda631ba1fbb03498d6eeae677361868a6d13b2c85d2df9",
+        "tests/ui/test_word_citations_dialog.py": "90fc2603b6d4a5a5ae9f9159e46d8726eb4d89cee3ace75626f0c772c860ed77"
+      }
+    },
+    {
+      "os": "windows",
+      "NVDA": "NOT_RUN",
+      "actual_neural_model_quality": "NOT_RUN",
+      "actual_office": "NOT_RUN",
+      "cases": 539,
+      "commit": "8a7b8632009f8019c3223465c4129b8d23ccafdf",
+      "mode": "source",
+      "native_word_controls": "NOT_RUN",
+      "origins": {
+        "carr_library.academic_integration.documents": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\academic_integration\\documents.py",
+          "sha256": "523e9c0ac1da3c705d77f87a13fd97b62df76d27544f08790698a76d03bc4213"
+        },
+        "carr_library.academic_integration.doi": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\academic_integration\\doi.py",
+          "sha256": "ee31124c37e2ff3bb9ba2a6c4bd5713ae53b3bbcbae7e2561d64d19b150c1dba"
+        },
+        "carr_library.academic_integration.formatting": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\academic_integration\\formatting.py",
+          "sha256": "f9f0b69ac0f5f56b92d1f2f09eca9c478d27443aa7518073d9a145415cd911a5"
+        },
+        "carr_library.academic_integration.regeneration": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\academic_integration\\regeneration.py",
+          "sha256": "b5ba93a131e0e91ba5bf04391d2089c8b4610589d7541e3175a35661d1166bb8"
+        },
+        "carr_library.academic_integration.runtime_adapter": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\academic_integration\\runtime_adapter.py",
+          "sha256": "5dba76625199eda4c7898dd30e49e4bf5ae6def228456ca393ea2d36bda48507"
+        },
+        "carr_library.academic_integration.word_com": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\academic_integration\\word_com.py",
+          "sha256": "0c20279c095c1e0e0d541f81a9d26c451e521d599eb4001791402881556ff0f5"
+        },
+        "carr_library.application": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.citations.bibliography_workbench": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\citations\\bibliography_workbench.py",
+          "sha256": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f"
+        },
+        "carr_library.citations.csl": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\citations\\csl.py",
+          "sha256": "b3825fd495180ff4e55175811b3a8a9ed6176e898a5e0c64e2d94792d180769b"
+        },
+        "carr_library.durable_state": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.research.export_file": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\research\\export_file.py",
+          "sha256": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1"
+        },
+        "carr_library.ui.academic_library_dialog": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\academic_library_dialog.py",
+          "sha256": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597"
+        },
+        "carr_library.ui.citation_formatting": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\citation_formatting.py",
+          "sha256": "300410b578093fbab29c5f71264b5e97270390a1d38d1c011a9566ecd0734cde"
+        },
+        "carr_library.ui.word_citations_dialog": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\word_citations_dialog.py",
+          "sha256": "b4a3b159120dce17dc505bcdd42c9b0bca0f9ddf6c28ff4e2b4decaf97bee0fd"
+        }
+      },
+      "package_inventory_files": 428,
+      "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f",
+      "package_python_files": 408,
+      "physical_microphone": "NOT_RUN",
+      "physical_output": "NOT_RUN",
+      "proof_helper_sha256": "75e3ba017c0377409d031ae4fcbb987d993d1f95d383dc9008c84c9c0db70076",
+      "qualification": "WORD_CURRENT_SCHEMA_PROTOCOL_AND_OWNER_CONTRACTS",
+      "selected_suites": {
+        "tests/academic_integration/test_bibtex_workflow.py": 10,
+        "tests/academic_integration/test_citation_ui.py": 22,
+        "tests/academic_integration/test_documents.py": 10,
+        "tests/academic_integration/test_doi.py": 107,
+        "tests/academic_integration/test_end_to_end.py": 11,
+        "tests/academic_integration/test_formatting.py": 27,
+        "tests/academic_integration/test_regeneration.py": 22,
+        "tests/academic_integration/test_runtime_adapter.py": 15,
+        "tests/academic_integration/test_word_com.py": 57,
+        "tests/citations/test_bibliography_workbench.py": 26,
+        "tests/ui/test_academic_actions.py": 57,
+        "tests/ui/test_academic_export_handler.py": 59,
+        "tests/ui/test_academic_library_dialog.py": 53,
+        "tests/ui/test_citation_styles_jobs.py": 23,
+        "tests/ui/test_export_confirmation.py": 5,
+        "tests/ui/test_export_destination.py": 5,
+        "tests/ui/test_word_citations_dialog.py": 30
+      },
+      "status": "PASS",
+      "test_files": {
+        "tests/academic_integration/test_bibtex_workflow.py": "c660bedd3eb6acac45ca250fe70383b2375401a71aa1d7f1a056f44a2c7c899e",
+        "tests/academic_integration/test_citation_ui.py": "f76bb2e222725f311673e5e97a6e92efb9559cd467b0cd780edca945c1766061",
+        "tests/academic_integration/test_documents.py": "c7f67482e9f211c653264e8b596f5f694e47ec1dfb4289a1eeb88562d4c14cd3",
+        "tests/academic_integration/test_doi.py": "39fe3e6f5f3ec63febcf9faa4093368bd57ade174e17930ee898cfbc473ec1ce",
+        "tests/academic_integration/test_end_to_end.py": "d22486e7a14b207ef933fe8b0b084b0babfb7d382432b4af42c47da126040b5d",
+        "tests/academic_integration/test_formatting.py": "d92b8f2a84a1b8fc30cb925a97669bd2b756bb66f459ed3567d8c5721f3f6676",
+        "tests/academic_integration/test_regeneration.py": "a68d4a7956e92229540da91091a929287686d55c50b26259ee71158ac8bf75bd",
+        "tests/academic_integration/test_runtime_adapter.py": "1fcfef975dea74ebc87b38096e7c022f295a82cf3a4d9c2e76da69f62c684b4d",
+        "tests/academic_integration/test_word_com.py": "43b351ebe1ba245f9f82d87fd3a65681851fb31a8411ff42789bc13dde080cdd",
+        "tests/citations/test_bibliography_workbench.py": "072d5f83ff5716614b3c8ae3eb84ac0b4168193fe82eb9366aab67d212ec1bd6",
+        "tests/ui/test_academic_actions.py": "ba5905c54eacf167e93d5a644cdab4e489aaf54c243dd9a70176b7e6ed03a554",
+        "tests/ui/test_academic_export_handler.py": "641957296cd0033646a7fe77e9aa70a73705e6e96376a697cf8ecf0b6c7752ca",
+        "tests/ui/test_academic_library_dialog.py": "c974c68620d68892d02dd89061d06e9acc9e66b45ca1a575d70e82f12451c67c",
+        "tests/ui/test_citation_styles_jobs.py": "72e5bae0775e794bf2022637d75c3f6a1c13d0189ce821d6163385a449b2ffc5",
+        "tests/ui/test_export_confirmation.py": "3cf173cb9ca7ec1897e88bf669c4742b14b309b8da4c8f6be46c9cff493a6b64",
+        "tests/ui/test_export_destination.py": "e870e3f737f12a2f3eda631ba1fbb03498d6eeae677361868a6d13b2c85d2df9",
+        "tests/ui/test_word_citations_dialog.py": "90fc2603b6d4a5a5ae9f9159e46d8726eb4d89cee3ace75626f0c772c860ed77"
+      }
+    },
+    {
+      "os": "windows",
+      "NVDA": "NOT_RUN",
+      "actual_neural_model_quality": "NOT_RUN",
+      "actual_office": "NOT_RUN",
+      "cases": 539,
+      "commit": "8a7b8632009f8019c3223465c4129b8d23ccafdf",
+      "mode": "installed",
+      "native_word_controls": "NOT_RUN",
+      "origins": {
+        "carr_library.academic_integration.documents": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\documents.py",
+          "sha256": "523e9c0ac1da3c705d77f87a13fd97b62df76d27544f08790698a76d03bc4213"
+        },
+        "carr_library.academic_integration.doi": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\doi.py",
+          "sha256": "ee31124c37e2ff3bb9ba2a6c4bd5713ae53b3bbcbae7e2561d64d19b150c1dba"
+        },
+        "carr_library.academic_integration.formatting": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\formatting.py",
+          "sha256": "f9f0b69ac0f5f56b92d1f2f09eca9c478d27443aa7518073d9a145415cd911a5"
+        },
+        "carr_library.academic_integration.regeneration": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\regeneration.py",
+          "sha256": "b5ba93a131e0e91ba5bf04391d2089c8b4610589d7541e3175a35661d1166bb8"
+        },
+        "carr_library.academic_integration.runtime_adapter": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\runtime_adapter.py",
+          "sha256": "5dba76625199eda4c7898dd30e49e4bf5ae6def228456ca393ea2d36bda48507"
+        },
+        "carr_library.academic_integration.word_com": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\word_com.py",
+          "sha256": "0c20279c095c1e0e0d541f81a9d26c451e521d599eb4001791402881556ff0f5"
+        },
+        "carr_library.application": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.citations.bibliography_workbench": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\bibliography_workbench.py",
+          "sha256": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f"
+        },
+        "carr_library.citations.csl": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\csl.py",
+          "sha256": "b3825fd495180ff4e55175811b3a8a9ed6176e898a5e0c64e2d94792d180769b"
+        },
+        "carr_library.durable_state": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.research.export_file": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+          "sha256": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1"
+        },
+        "carr_library.ui.academic_library_dialog": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\academic_library_dialog.py",
+          "sha256": "26002996e1f62c086c6d9d052e9f695e251e1c44ceb0b8a2eaaac250cdbad597"
+        },
+        "carr_library.ui.citation_formatting": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\citation_formatting.py",
+          "sha256": "300410b578093fbab29c5f71264b5e97270390a1d38d1c011a9566ecd0734cde"
+        },
+        "carr_library.ui.word_citations_dialog": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\word_citations_dialog.py",
+          "sha256": "b4a3b159120dce17dc505bcdd42c9b0bca0f9ddf6c28ff4e2b4decaf97bee0fd"
+        }
+      },
+      "package_inventory_files": 428,
+      "package_inventory_sha256": "5b3606835848977b59d2cd62a0884954eb22e6e1b144fbf1c0205c65dd8fcc9f",
+      "package_python_files": 408,
+      "physical_microphone": "NOT_RUN",
+      "physical_output": "NOT_RUN",
+      "proof_helper_sha256": "75e3ba017c0377409d031ae4fcbb987d993d1f95d383dc9008c84c9c0db70076",
+      "qualification": "WORD_CURRENT_SCHEMA_PROTOCOL_AND_OWNER_CONTRACTS",
+      "selected_suites": {
+        "tests/academic_integration/test_bibtex_workflow.py": 10,
+        "tests/academic_integration/test_citation_ui.py": 22,
+        "tests/academic_integration/test_documents.py": 10,
+        "tests/academic_integration/test_doi.py": 107,
+        "tests/academic_integration/test_end_to_end.py": 11,
+        "tests/academic_integration/test_formatting.py": 27,
+        "tests/academic_integration/test_regeneration.py": 22,
+        "tests/academic_integration/test_runtime_adapter.py": 15,
+        "tests/academic_integration/test_word_com.py": 57,
+        "tests/citations/test_bibliography_workbench.py": 26,
+        "tests/ui/test_academic_actions.py": 57,
+        "tests/ui/test_academic_export_handler.py": 59,
+        "tests/ui/test_academic_library_dialog.py": 53,
+        "tests/ui/test_citation_styles_jobs.py": 23,
+        "tests/ui/test_export_confirmation.py": 5,
+        "tests/ui/test_export_destination.py": 5,
+        "tests/ui/test_word_citations_dialog.py": 30
+      },
+      "status": "PASS",
+      "test_files": {
+        "tests/academic_integration/test_bibtex_workflow.py": "c660bedd3eb6acac45ca250fe70383b2375401a71aa1d7f1a056f44a2c7c899e",
+        "tests/academic_integration/test_citation_ui.py": "f76bb2e222725f311673e5e97a6e92efb9559cd467b0cd780edca945c1766061",
+        "tests/academic_integration/test_documents.py": "c7f67482e9f211c653264e8b596f5f694e47ec1dfb4289a1eeb88562d4c14cd3",
+        "tests/academic_integration/test_doi.py": "39fe3e6f5f3ec63febcf9faa4093368bd57ade174e17930ee898cfbc473ec1ce",
+        "tests/academic_integration/test_end_to_end.py": "d22486e7a14b207ef933fe8b0b084b0babfb7d382432b4af42c47da126040b5d",
+        "tests/academic_integration/test_formatting.py": "d92b8f2a84a1b8fc30cb925a97669bd2b756bb66f459ed3567d8c5721f3f6676",
+        "tests/academic_integration/test_regeneration.py": "a68d4a7956e92229540da91091a929287686d55c50b26259ee71158ac8bf75bd",
+        "tests/academic_integration/test_runtime_adapter.py": "1fcfef975dea74ebc87b38096e7c022f295a82cf3a4d9c2e76da69f62c684b4d",
+        "tests/academic_integration/test_word_com.py": "43b351ebe1ba245f9f82d87fd3a65681851fb31a8411ff42789bc13dde080cdd",
+        "tests/citations/test_bibliography_workbench.py": "072d5f83ff5716614b3c8ae3eb84ac0b4168193fe82eb9366aab67d212ec1bd6",
+        "tests/ui/test_academic_actions.py": "ba5905c54eacf167e93d5a644cdab4e489aaf54c243dd9a70176b7e6ed03a554",
+        "tests/ui/test_academic_export_handler.py": "641957296cd0033646a7fe77e9aa70a73705e6e96376a697cf8ecf0b6c7752ca",
+        "tests/ui/test_academic_library_dialog.py": "c974c68620d68892d02dd89061d06e9acc9e66b45ca1a575d70e82f12451c67c",
+        "tests/ui/test_citation_styles_jobs.py": "72e5bae0775e794bf2022637d75c3f6a1c13d0189ce821d6163385a449b2ffc5",
+        "tests/ui/test_export_confirmation.py": "3cf173cb9ca7ec1897e88bf669c4742b14b309b8da4c8f6be46c9cff493a6b64",
+        "tests/ui/test_export_destination.py": "e870e3f737f12a2f3eda631ba1fbb03498d6eeae677361868a6d13b2c85d2df9",
+        "tests/ui/test_word_citations_dialog.py": "90fc2603b6d4a5a5ae9f9159e46d8726eb4d89cee3ace75626f0c772c860ed77"
+      }
+    }
+  ]
+}

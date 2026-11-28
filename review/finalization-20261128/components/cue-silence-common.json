@@ -1,0 +1,651 @@
+{
+  "schema": "carr-completed-silence-cue-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "3c56c6c4489d2a5da7c3a9ebd3f9b5803a8b817e",
+  "tree": "ed0fa1cbecf211501781c75721edd4bcffc718b7",
+  "source_manifest": "8bb2de5baeffb93f2befd1e7a63a7249acd58613",
+  "run": 46121179440,
+  "status": "PASS",
+  "qualification": "EXACT_COMPONENT_SOURCE_INSTALLED_AND_INDEPENDENT_CUE_READER",
+  "contexts": [
+    {
+      "os": "windows",
+      "job": 140905813603,
+      "raw_blob": "a243e7e7cbdeeffe82ea3671c9c08d3c199ae2c5",
+      "contexts": [
+        {
+          "mode": "source",
+          "cases": 342,
+          "seconds": 280.5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xfail": 0,
+          "selected_suites": {
+            "tests/storage/test_backup_generated_audio.py": 14,
+            "tests/storage/test_backup_studio_media.py": 12,
+            "tests/storage/test_backup_v4_sidecars.py": 34,
+            "tests/storage/test_cue_interchange_backup.py": 24,
+            "tests/studio/test_audiobook_publication.py": 7,
+            "tests/studio/test_clip_timeline.py": 50,
+            "tests/studio/test_interchange.py": 27,
+            "tests/studio/test_production.py": 11,
+            "tests/studio/test_production_cancellation_outcomes.py": 9,
+            "tests/studio/test_production_hardening.py": 5,
+            "tests/studio/test_production_total_budget_ownership.py": 3,
+            "tests/studio/test_publishing.py": 53,
+            "tests/studio/test_publishing_cli.py": 6,
+            "tests/studio/test_runtime_identity.py": 3,
+            "tests/studio/test_silence.py": 34,
+            "tests/ui/test_progress_voice_actions.py": 40,
+            "tests/ui/test_studio_silence_actions.py": 10
+          },
+          "origins": {
+            "carr_library.audio.audiobook": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\audiobook.py",
+              "sha256": "2a7e106d16100e8cb30d1028f23fd60e90e01e1021dafb5cb3f4c2f5b5a694fc"
+            },
+            "carr_library.audio.dsp": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\dsp.py",
+              "sha256": "07c2393d0c93a7bb02b97c37ce331dc22371fbaeef19d62023ca59432b4da44f"
+            },
+            "carr_library.audio.models": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\models.py",
+              "sha256": "40d44e18048874a970ff803effe45897b4647e654606d1028b5baeb0a807a631"
+            },
+            "carr_library.audio.process": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py",
+              "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+            },
+            "carr_library.backup_compat.pcm": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_compat\\pcm.py",
+              "sha256": "2fee3561af3638cc9040743472d443bddbc22a141c784ef8ae51f3731e5b6e1c"
+            },
+            "carr_library.backup_current": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_current.py",
+              "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"
+            },
+            "carr_library.backup_producers": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_producers.py",
+              "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"
+            },
+            "carr_library.backup_sidecars": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_sidecars.py",
+              "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"
+            },
+            "carr_library.durable_state": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.studio.interchange": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\studio\\interchange.py",
+              "sha256": "442fe081f0b7797517c86a2e891709335148fbc0231ffb9ad06e12aa03ab0869"
+            },
+            "carr_library.studio.project": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\studio\\project.py",
+              "sha256": "79af584af00fa781d3f686029ecb76073acbc1ffad5661074d2cd2d60710c30a"
+            },
+            "carr_library.studio.publishing": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\studio\\publishing.py",
+              "sha256": "4e32fdd3b4dda2e857f0cce5adceae1295cf803cb56e42291155990852fb0824"
+            },
+            "carr_library.studio.render": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\studio\\render.py",
+              "sha256": "3ccd318f8a296992d544d38d834fde8be5f18c2a8a331e590a5b1ff1ad3a33cb"
+            },
+            "carr_library.studio.silence": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\studio\\silence.py",
+              "sha256": "d26d73241ea69af78f4ddc885cfbe88c044dfe00a8cab5bfa6874bd7b1596645"
+            },
+            "carr_library.ui.studio_dialog": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\studio_dialog.py",
+              "sha256": "1781ea44da180d038848a66b0631edaa75fc7b993ce64f90ae1b2eb7db9d678d"
+            }
+          },
+          "package_python_files": 408,
+          "package_inventory_sha256": "ca15cc2daa0df7f8c8ee2b9d82dde0cca1bb596930bf7bc2a01d870068964a46",
+          "proof_helper_sha256": "c3e6154c3ee1f4812195c81de19a2f3f7a6ab00609315db8438482723135cdd1",
+          "test_files": {
+            "tests/storage/test_backup_generated_audio.py": "04762e247bb7d32d3b04eae98409632dc2beb0a6e437fdab26bf0102cef7eea8",
+            "tests/storage/test_backup_studio_media.py": "98b2a32f418f415225dda86ca1d19ff7f34b62a3e9f1df377c83b25438c1c67f",
+            "tests/storage/test_backup_v4_sidecars.py": "2d13c8927747607139689f7c1a71572486c924c64045919677c29dad03560328",
+            "tests/storage/test_cue_interchange_backup.py": "4284f1f484456f4b7812a6222537745a115e3ebb52a34075a038eb1a698e8755",
+            "tests/studio/test_audiobook_publication.py": "38e47890dc208b3bde880d2d00f58ac6ba1ae388340e861f203a411d70fc766f",
+            "tests/studio/test_clip_timeline.py": "142279bf5f74b7a300b6d40dbedcce9bda08ac126b53f368d41fd60f6cd282c4",
+            "tests/studio/test_interchange.py": "7935052b3d06617450e62869cac2975ad211fdaa2a3bf1b8ef3cbe7a2416a201",
+            "tests/studio/test_production.py": "ee44957e3fba3c0fb56ca8793fc68ab70cbd573f142435edfaf7f071a6a2aad3",
+            "tests/studio/test_production_cancellation_outcomes.py": "adcb6a2689538e8b3977b4a6ab6b3e33664dfa012b4bccb942245510268d30dd",
+            "tests/studio/test_production_hardening.py": "f1d5ab166948266908f9bdc5ee893b2c13929a7e137fafd719a0e0c2c010d0ce",
+            "tests/studio/test_production_total_budget_ownership.py": "85b336afbedca19b53ccbcff648256ae8b012a55665aaab096bbabec87356baa",
+            "tests/studio/test_publishing.py": "3c44f89998e77108de3843a979ccf9ee3364e049c2626704163843afb0e1d6bb",
+            "tests/studio/test_publishing_cli.py": "f15f5ca4ab78f6a77efa2aa77fcb2d1b1a0c625c110dfd9d593ef220d7606b44",
+            "tests/studio/test_runtime_identity.py": "5b4cb9a03138ea795c8d42c06fefb7fa819bbc37236192cb7c0075ec998422ce",
+            "tests/studio/test_silence.py": "e921e01964ba413843f1815100fe8900e2a875adec19c26a226b24e33f4ffa2a",
+            "tests/ui/test_progress_voice_actions.py": "0b11c695fd7978772a78216063fae8601b8176564118d29de195a676e5415e31",
+            "tests/ui/test_studio_silence_actions.py": "c9b69c3a4bb6d62e71484338269607b59c017a2ee69e7988617a0f8e4ff26a2a"
+          },
+          "raw_summary": "2026-11-28T07:31:44.7513371Z ======================= 342 passed in 280.50s (0:04:40) ======================="
+        },
+        {
+          "mode": "installed",
+          "cases": 342,
+          "seconds": 278.98,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xfail": 0,
+          "selected_suites": {
+            "tests/storage/test_backup_generated_audio.py": 14,
+            "tests/storage/test_backup_studio_media.py": 12,
+            "tests/storage/test_backup_v4_sidecars.py": 34,
+            "tests/storage/test_cue_interchange_backup.py": 24,
+            "tests/studio/test_audiobook_publication.py": 7,
+            "tests/studio/test_clip_timeline.py": 50,
+            "tests/studio/test_interchange.py": 27,
+            "tests/studio/test_production.py": 11,
+            "tests/studio/test_production_cancellation_outcomes.py": 9,
+            "tests/studio/test_production_hardening.py": 5,
+            "tests/studio/test_production_total_budget_ownership.py": 3,
+            "tests/studio/test_publishing.py": 53,
+            "tests/studio/test_publishing_cli.py": 6,
+            "tests/studio/test_runtime_identity.py": 3,
+            "tests/studio/test_silence.py": 34,
+            "tests/ui/test_progress_voice_actions.py": 40,
+            "tests/ui/test_studio_silence_actions.py": 10
+          },
+          "origins": {
+            "carr_library.audio.audiobook": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\audiobook.py",
+              "sha256": "2a7e106d16100e8cb30d1028f23fd60e90e01e1021dafb5cb3f4c2f5b5a694fc"
+            },
+            "carr_library.audio.dsp": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\dsp.py",
+              "sha256": "07c2393d0c93a7bb02b97c37ce331dc22371fbaeef19d62023ca59432b4da44f"
+            },
+            "carr_library.audio.models": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\models.py",
+              "sha256": "40d44e18048874a970ff803effe45897b4647e654606d1028b5baeb0a807a631"
+            },
+            "carr_library.audio.process": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+              "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+            },
+            "carr_library.backup_compat.pcm": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_compat\\pcm.py",
+              "sha256": "2fee3561af3638cc9040743472d443bddbc22a141c784ef8ae51f3731e5b6e1c"
+            },
+            "carr_library.backup_current": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_current.py",
+              "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"
+            },
+            "carr_library.backup_producers": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_producers.py",
+              "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"
+            },
+            "carr_library.backup_sidecars": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_sidecars.py",
+              "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"
+            },
+            "carr_library.durable_state": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.studio.interchange": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\interchange.py",
+              "sha256": "442fe081f0b7797517c86a2e891709335148fbc0231ffb9ad06e12aa03ab0869"
+            },
+            "carr_library.studio.project": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\project.py",
+              "sha256": "79af584af00fa781d3f686029ecb76073acbc1ffad5661074d2cd2d60710c30a"
+            },
+            "carr_library.studio.publishing": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\publishing.py",
+              "sha256": "4e32fdd3b4dda2e857f0cce5adceae1295cf803cb56e42291155990852fb0824"
+            },
+            "carr_library.studio.render": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\render.py",
+              "sha256": "3ccd318f8a296992d544d38d834fde8be5f18c2a8a331e590a5b1ff1ad3a33cb"
+            },
+            "carr_library.studio.silence": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\silence.py",
+              "sha256": "d26d73241ea69af78f4ddc885cfbe88c044dfe00a8cab5bfa6874bd7b1596645"
+            },
+            "carr_library.ui.studio_dialog": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\studio_dialog.py",
+              "sha256": "1781ea44da180d038848a66b0631edaa75fc7b993ce64f90ae1b2eb7db9d678d"
+            }
+          },
+          "package_python_files": 408,
+          "package_inventory_sha256": "ca15cc2daa0df7f8c8ee2b9d82dde0cca1bb596930bf7bc2a01d870068964a46",
+          "proof_helper_sha256": "c3e6154c3ee1f4812195c81de19a2f3f7a6ab00609315db8438482723135cdd1",
+          "test_files": {
+            "tests/storage/test_backup_generated_audio.py": "04762e247bb7d32d3b04eae98409632dc2beb0a6e437fdab26bf0102cef7eea8",
+            "tests/storage/test_backup_studio_media.py": "98b2a32f418f415225dda86ca1d19ff7f34b62a3e9f1df377c83b25438c1c67f",
+            "tests/storage/test_backup_v4_sidecars.py": "2d13c8927747607139689f7c1a71572486c924c64045919677c29dad03560328",
+            "tests/storage/test_cue_interchange_backup.py": "4284f1f484456f4b7812a6222537745a115e3ebb52a34075a038eb1a698e8755",
+            "tests/studio/test_audiobook_publication.py": "38e47890dc208b3bde880d2d00f58ac6ba1ae388340e861f203a411d70fc766f",
+            "tests/studio/test_clip_timeline.py": "142279bf5f74b7a300b6d40dbedcce9bda08ac126b53f368d41fd60f6cd282c4",
+            "tests/studio/test_interchange.py": "7935052b3d06617450e62869cac2975ad211fdaa2a3bf1b8ef3cbe7a2416a201",
+            "tests/studio/test_production.py": "ee44957e3fba3c0fb56ca8793fc68ab70cbd573f142435edfaf7f071a6a2aad3",
+            "tests/studio/test_production_cancellation_outcomes.py": "adcb6a2689538e8b3977b4a6ab6b3e33664dfa012b4bccb942245510268d30dd",
+            "tests/studio/test_production_hardening.py": "f1d5ab166948266908f9bdc5ee893b2c13929a7e137fafd719a0e0c2c010d0ce",
+            "tests/studio/test_production_total_budget_ownership.py": "85b336afbedca19b53ccbcff648256ae8b012a55665aaab096bbabec87356baa",
+            "tests/studio/test_publishing.py": "3c44f89998e77108de3843a979ccf9ee3364e049c2626704163843afb0e1d6bb",
+            "tests/studio/test_publishing_cli.py": "f15f5ca4ab78f6a77efa2aa77fcb2d1b1a0c625c110dfd9d593ef220d7606b44",
+            "tests/studio/test_runtime_identity.py": "5b4cb9a03138ea795c8d42c06fefb7fa819bbc37236192cb7c0075ec998422ce",
+            "tests/studio/test_silence.py": "e921e01964ba413843f1815100fe8900e2a875adec19c26a226b24e33f4ffa2a",
+            "tests/ui/test_progress_voice_actions.py": "0b11c695fd7978772a78216063fae8601b8176564118d29de195a676e5415e31",
+            "tests/ui/test_studio_silence_actions.py": "c9b69c3a4bb6d62e71484338269607b59c017a2ee69e7988617a0f8e4ff26a2a"
+          },
+          "raw_summary": "2026-11-28T07:36:27.9069598Z ======================= 342 passed in 278.98s (0:04:38) ======================="
+        }
+      ],
+      "artifact_lines": [
+        "2026-11-28T07:36:29.3064613Z Artifact silence-inspection-windows-2022-3c56c6c4489d2a5da7c3a9ebd3f9b5803a8b817e has been successfully uploaded! Final size is 80347 bytes. Artifact ID is 15253473488",
+        "2026-11-28T07:36:29.3069462Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121179440/artifacts/15253473488"
+      ]
+    },
+    {
+      "os": "linux",
+      "job": 140905813847,
+      "raw_blob": "29424bafc4159ab97114f85da0d1dce0ba483270",
+      "contexts": [
+        {
+          "mode": "source",
+          "cases": 342,
+          "seconds": 119.7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xfail": 0,
+          "selected_suites": {
+            "tests/storage/test_backup_generated_audio.py": 14,
+            "tests/storage/test_backup_studio_media.py": 12,
+            "tests/storage/test_backup_v4_sidecars.py": 34,
+            "tests/storage/test_cue_interchange_backup.py": 24,
+            "tests/studio/test_audiobook_publication.py": 7,
+            "tests/studio/test_clip_timeline.py": 50,
+            "tests/studio/test_interchange.py": 27,
+            "tests/studio/test_production.py": 11,
+            "tests/studio/test_production_cancellation_outcomes.py": 9,
+            "tests/studio/test_production_hardening.py": 5,
+            "tests/studio/test_production_total_budget_ownership.py": 3,
+            "tests/studio/test_publishing.py": 53,
+            "tests/studio/test_publishing_cli.py": 6,
+            "tests/studio/test_runtime_identity.py": 3,
+            "tests/studio/test_silence.py": 34,
+            "tests/ui/test_progress_voice_actions.py": 40,
+            "tests/ui/test_studio_silence_actions.py": 10
+          },
+          "origins": {
+            "carr_library.audio.audiobook": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/audiobook.py",
+              "sha256": "2a7e106d16100e8cb30d1028f23fd60e90e01e1021dafb5cb3f4c2f5b5a694fc"
+            },
+            "carr_library.audio.dsp": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/dsp.py",
+              "sha256": "07c2393d0c93a7bb02b97c37ce331dc22371fbaeef19d62023ca59432b4da44f"
+            },
+            "carr_library.audio.models": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/models.py",
+              "sha256": "40d44e18048874a970ff803effe45897b4647e654606d1028b5baeb0a807a631"
+            },
+            "carr_library.audio.process": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/process.py",
+              "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+            },
+            "carr_library.backup_compat.pcm": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_compat/pcm.py",
+              "sha256": "2fee3561af3638cc9040743472d443bddbc22a141c784ef8ae51f3731e5b6e1c"
+            },
+            "carr_library.backup_current": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_current.py",
+              "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"
+            },
+            "carr_library.backup_producers": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_producers.py",
+              "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"
+            },
+            "carr_library.backup_sidecars": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_sidecars.py",
+              "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"
+            },
+            "carr_library.durable_state": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.studio.interchange": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/studio/interchange.py",
+              "sha256": "442fe081f0b7797517c86a2e891709335148fbc0231ffb9ad06e12aa03ab0869"
+            },
+            "carr_library.studio.project": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/studio/project.py",
+              "sha256": "79af584af00fa781d3f686029ecb76073acbc1ffad5661074d2cd2d60710c30a"
+            },
+            "carr_library.studio.publishing": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/studio/publishing.py",
+              "sha256": "4e32fdd3b4dda2e857f0cce5adceae1295cf803cb56e42291155990852fb0824"
+            },
+            "carr_library.studio.render": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/studio/render.py",
+              "sha256": "3ccd318f8a296992d544d38d834fde8be5f18c2a8a331e590a5b1ff1ad3a33cb"
+            },
+            "carr_library.studio.silence": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/studio/silence.py",
+              "sha256": "d26d73241ea69af78f4ddc885cfbe88c044dfe00a8cab5bfa6874bd7b1596645"
+            },
+            "carr_library.ui.studio_dialog": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/studio_dialog.py",
+              "sha256": "1781ea44da180d038848a66b0631edaa75fc7b993ce64f90ae1b2eb7db9d678d"
+            }
+          },
+          "package_python_files": 408,
+          "package_inventory_sha256": "ca15cc2daa0df7f8c8ee2b9d82dde0cca1bb596930bf7bc2a01d870068964a46",
+          "proof_helper_sha256": "c3e6154c3ee1f4812195c81de19a2f3f7a6ab00609315db8438482723135cdd1",
+          "test_files": {
+            "tests/storage/test_backup_generated_audio.py": "04762e247bb7d32d3b04eae98409632dc2beb0a6e437fdab26bf0102cef7eea8",
+            "tests/storage/test_backup_studio_media.py": "98b2a32f418f415225dda86ca1d19ff7f34b62a3e9f1df377c83b25438c1c67f",
+            "tests/storage/test_backup_v4_sidecars.py": "2d13c8927747607139689f7c1a71572486c924c64045919677c29dad03560328",
+            "tests/storage/test_cue_interchange_backup.py": "4284f1f484456f4b7812a6222537745a115e3ebb52a34075a038eb1a698e8755",
+            "tests/studio/test_audiobook_publication.py": "38e47890dc208b3bde880d2d00f58ac6ba1ae388340e861f203a411d70fc766f",
+            "tests/studio/test_clip_timeline.py": "142279bf5f74b7a300b6d40dbedcce9bda08ac126b53f368d41fd60f6cd282c4",
+            "tests/studio/test_interchange.py": "7935052b3d06617450e62869cac2975ad211fdaa2a3bf1b8ef3cbe7a2416a201",
+            "tests/studio/test_production.py": "ee44957e3fba3c0fb56ca8793fc68ab70cbd573f142435edfaf7f071a6a2aad3",
+            "tests/studio/test_production_cancellation_outcomes.py": "adcb6a2689538e8b3977b4a6ab6b3e33664dfa012b4bccb942245510268d30dd",
+            "tests/studio/test_production_hardening.py": "f1d5ab166948266908f9bdc5ee893b2c13929a7e137fafd719a0e0c2c010d0ce",
+            "tests/studio/test_production_total_budget_ownership.py": "85b336afbedca19b53ccbcff648256ae8b012a55665aaab096bbabec87356baa",
+            "tests/studio/test_publishing.py": "3c44f89998e77108de3843a979ccf9ee3364e049c2626704163843afb0e1d6bb",
+            "tests/studio/test_publishing_cli.py": "f15f5ca4ab78f6a77efa2aa77fcb2d1b1a0c625c110dfd9d593ef220d7606b44",
+            "tests/studio/test_runtime_identity.py": "5b4cb9a03138ea795c8d42c06fefb7fa819bbc37236192cb7c0075ec998422ce",
+            "tests/studio/test_silence.py": "e921e01964ba413843f1815100fe8900e2a875adec19c26a226b24e33f4ffa2a",
+            "tests/ui/test_progress_voice_actions.py": "0b11c695fd7978772a78216063fae8601b8176564118d29de195a676e5415e31",
+            "tests/ui/test_studio_silence_actions.py": "c9b69c3a4bb6d62e71484338269607b59c017a2ee69e7988617a0f8e4ff26a2a"
+          },
+          "raw_summary": "2026-11-28T07:37:23.7346861Z ======================= 342 passed in 119.70s (0:01:59) ========================"
+        },
+        {
+          "mode": "installed",
+          "cases": 342,
+          "seconds": 119.33,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xfail": 0,
+          "selected_suites": {
+            "tests/storage/test_backup_generated_audio.py": 14,
+            "tests/storage/test_backup_studio_media.py": 12,
+            "tests/storage/test_backup_v4_sidecars.py": 34,
+            "tests/storage/test_cue_interchange_backup.py": 24,
+            "tests/studio/test_audiobook_publication.py": 7,
+            "tests/studio/test_clip_timeline.py": 50,
+            "tests/studio/test_interchange.py": 27,
+            "tests/studio/test_production.py": 11,
+            "tests/studio/test_production_cancellation_outcomes.py": 9,
+            "tests/studio/test_production_hardening.py": 5,
+            "tests/studio/test_production_total_budget_ownership.py": 3,
+            "tests/studio/test_publishing.py": 53,
+            "tests/studio/test_publishing_cli.py": 6,
+            "tests/studio/test_runtime_identity.py": 3,
+            "tests/studio/test_silence.py": 34,
+            "tests/ui/test_progress_voice_actions.py": 40,
+            "tests/ui/test_studio_silence_actions.py": 10
+          },
+          "origins": {
+            "carr_library.audio.audiobook": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/audiobook.py",
+              "sha256": "2a7e106d16100e8cb30d1028f23fd60e90e01e1021dafb5cb3f4c2f5b5a694fc"
+            },
+            "carr_library.audio.dsp": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/dsp.py",
+              "sha256": "07c2393d0c93a7bb02b97c37ce331dc22371fbaeef19d62023ca59432b4da44f"
+            },
+            "carr_library.audio.models": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/models.py",
+              "sha256": "40d44e18048874a970ff803effe45897b4647e654606d1028b5baeb0a807a631"
+            },
+            "carr_library.audio.process": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/process.py",
+              "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+            },
+            "carr_library.backup_compat.pcm": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_compat/pcm.py",
+              "sha256": "2fee3561af3638cc9040743472d443bddbc22a141c784ef8ae51f3731e5b6e1c"
+            },
+            "carr_library.backup_current": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_current.py",
+              "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"
+            },
+            "carr_library.backup_producers": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_producers.py",
+              "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"
+            },
+            "carr_library.backup_sidecars": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+              "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"
+            },
+            "carr_library.durable_state": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.studio.interchange": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/studio/interchange.py",
+              "sha256": "442fe081f0b7797517c86a2e891709335148fbc0231ffb9ad06e12aa03ab0869"
+            },
+            "carr_library.studio.project": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/studio/project.py",
+              "sha256": "79af584af00fa781d3f686029ecb76073acbc1ffad5661074d2cd2d60710c30a"
+            },
+            "carr_library.studio.publishing": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/studio/publishing.py",
+              "sha256": "4e32fdd3b4dda2e857f0cce5adceae1295cf803cb56e42291155990852fb0824"
+            },
+            "carr_library.studio.render": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/studio/render.py",
+              "sha256": "3ccd318f8a296992d544d38d834fde8be5f18c2a8a331e590a5b1ff1ad3a33cb"
+            },
+            "carr_library.studio.silence": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/studio/silence.py",
+              "sha256": "d26d73241ea69af78f4ddc885cfbe88c044dfe00a8cab5bfa6874bd7b1596645"
+            },
+            "carr_library.ui.studio_dialog": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/studio_dialog.py",
+              "sha256": "1781ea44da180d038848a66b0631edaa75fc7b993ce64f90ae1b2eb7db9d678d"
+            }
+          },
+          "package_python_files": 408,
+          "package_inventory_sha256": "ca15cc2daa0df7f8c8ee2b9d82dde0cca1bb596930bf7bc2a01d870068964a46",
+          "proof_helper_sha256": "c3e6154c3ee1f4812195c81de19a2f3f7a6ab00609315db8438482723135cdd1",
+          "test_files": {
+            "tests/storage/test_backup_generated_audio.py": "04762e247bb7d32d3b04eae98409632dc2beb0a6e437fdab26bf0102cef7eea8",
+            "tests/storage/test_backup_studio_media.py": "98b2a32f418f415225dda86ca1d19ff7f34b62a3e9f1df377c83b25438c1c67f",
+            "tests/storage/test_backup_v4_sidecars.py": "2d13c8927747607139689f7c1a71572486c924c64045919677c29dad03560328",
+            "tests/storage/test_cue_interchange_backup.py": "4284f1f484456f4b7812a6222537745a115e3ebb52a34075a038eb1a698e8755",
+            "tests/studio/test_audiobook_publication.py": "38e47890dc208b3bde880d2d00f58ac6ba1ae388340e861f203a411d70fc766f",
+            "tests/studio/test_clip_timeline.py": "142279bf5f74b7a300b6d40dbedcce9bda08ac126b53f368d41fd60f6cd282c4",
+            "tests/studio/test_interchange.py": "7935052b3d06617450e62869cac2975ad211fdaa2a3bf1b8ef3cbe7a2416a201",
+            "tests/studio/test_production.py": "ee44957e3fba3c0fb56ca8793fc68ab70cbd573f142435edfaf7f071a6a2aad3",
+            "tests/studio/test_production_cancellation_outcomes.py": "adcb6a2689538e8b3977b4a6ab6b3e33664dfa012b4bccb942245510268d30dd",
+            "tests/studio/test_production_hardening.py": "f1d5ab166948266908f9bdc5ee893b2c13929a7e137fafd719a0e0c2c010d0ce",
+            "tests/studio/test_production_total_budget_ownership.py": "85b336afbedca19b53ccbcff648256ae8b012a55665aaab096bbabec87356baa",
+            "tests/studio/test_publishing.py": "3c44f89998e77108de3843a979ccf9ee3364e049c2626704163843afb0e1d6bb",
+            "tests/studio/test_publishing_cli.py": "f15f5ca4ab78f6a77efa2aa77fcb2d1b1a0c625c110dfd9d593ef220d7606b44",
+            "tests/studio/test_runtime_identity.py": "5b4cb9a03138ea795c8d42c06fefb7fa819bbc37236192cb7c0075ec998422ce",
+            "tests/studio/test_silence.py": "e921e01964ba413843f1815100fe8900e2a875adec19c26a226b24e33f4ffa2a",
+            "tests/ui/test_progress_voice_actions.py": "0b11c695fd7978772a78216063fae8601b8176564118d29de195a676e5415e31",
+            "tests/ui/test_studio_silence_actions.py": "c9b69c3a4bb6d62e71484338269607b59c017a2ee69e7988617a0f8e4ff26a2a"
+          },
+          "raw_summary": "2026-11-28T07:39:23.6389723Z ======================= 342 passed in 119.33s (0:01:59) ========================"
+        }
+      ],
+      "artifact_lines": [
+        "2026-11-28T07:39:31.1355702Z Artifact silence-inspection-ubuntu-24.04-3c56c6c4489d2a5da7c3a9ebd3f9b5803a8b817e has been successfully uploaded! Final size is 82095 bytes. Artifact ID is 15253779596",
+        "2026-11-28T07:39:31.1357764Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121179440/artifacts/15253779596"
+      ]
+    }
+  ],
+  "independent_reader": {
+    "os": "linux",
+    "selftests_passed": 6,
+    "selftests_failed": 0,
+    "selftest_summary": "2026-11-28T07:39:27.5596079Z 100% tests passed, 0 tests failed out of 6",
+    "record": {
+      "NVDA": "NOT_RUN",
+      "acoustic_quality": "NOT_RUN",
+      "actual_external_gui_editor_import": "NOT_RUN",
+      "commit": "3c56c6c4489d2a5da7c3a9ebd3f9b5803a8b817e",
+      "fixture_sha256": "7935052b3d06617450e62869cac2975ad211fdaa2a3bf1b8ef3cbe7a2416a201",
+      "library_sha256": "9ac64402a82a5574bd3a9a4bc06504b7fd4c4cdb744db13f2978c68680187d44",
+      "package_inventory_sha256": "0bac164715b7b8fc61efc6d7ca5d370efeaba8d6561e240785428a9035754b11",
+      "package_python_files": 408,
+      "parsed_sheets": [
+        {
+          "file": "chapters-0001.cue",
+          "indices_75hz": [
+            0,
+            41
+          ],
+          "sha256": "6c8a5ad67704065ee96d4346f6cda41aaf14acaffe2a8b7da5dd6d7e49c2e21a",
+          "tracks": 2
+        },
+        {
+          "file": "synthetic-boundary/chapters-0001.cue",
+          "indices_75hz": [
+            0,
+            270112,
+            540225,
+            810337,
+            1080450,
+            1350562,
+            1620675,
+            1890787,
+            2160900,
+            2431012,
+            2701125,
+            2971237,
+            3241350,
+            3511462,
+            3781575,
+            4051687,
+            4321800,
+            4591912,
+            4862025,
+            5132137,
+            5402250,
+            5672362,
+            5942475,
+            6212587,
+            6482700,
+            6752812,
+            7022925,
+            7293037,
+            7563150,
+            7833262,
+            8103375,
+            8373487,
+            8643600,
+            8913712,
+            9183825,
+            9453937,
+            9724050,
+            9994162,
+            10264275,
+            10534387,
+            10804500,
+            11074612,
+            11344725,
+            11614837,
+            11884950,
+            12155062,
+            12425175,
+            12695287,
+            12965400,
+            13235512,
+            13505625,
+            13775737,
+            14045850,
+            14315962,
+            14586075,
+            14856187,
+            15126300,
+            15396412,
+            15666525,
+            15936637,
+            16206750,
+            16476862,
+            16746975,
+            17017087,
+            17287200,
+            17557312,
+            17827425,
+            18097537,
+            18367650,
+            18637762,
+            18907875,
+            19177987,
+            19448100,
+            19718212,
+            19988325,
+            20258437,
+            20528550,
+            20798662,
+            21068775,
+            21338887,
+            21609000,
+            21879112,
+            22149225,
+            22419337,
+            22689450,
+            22959562,
+            23229675,
+            23499787,
+            23769900,
+            24040012,
+            24310125,
+            24580237,
+            24850350,
+            25120462,
+            25390575,
+            25660687,
+            25930800,
+            26200912,
+            26471025
+          ],
+          "sha256": "e131f3ef6acdb3ec69d59c6d844496d57fc761e8db89bb107c8b8dbf9754ab96",
+          "tracks": 99
+        },
+        {
+          "file": "synthetic-boundary/chapters-0002.cue",
+          "indices_75hz": [
+            26741137
+          ],
+          "sha256": "168816e05a32e16adeead179f52442aa11df56ac4f20ce168ff81ebd8857366d",
+          "tracks": 1
+        }
+      ],
+      "physical_output": "NOT_RUN",
+      "probe_sha256": "bfc018081a4ed5145aa9d626ab7e5ed4118aab1b71f42c55cc54e76150d5c1c4",
+      "production": {
+        "artifact_bytes_unchanged": true,
+        "artifact_count": 10,
+        "job": "90ef39be5f524643ba1c5db9507c2eab",
+        "master_sha256": "13e0e68c1b2421aad9f549f6b2bda25ea1820bf8f21cfc81c86b86b3695af30c",
+        "original_script_sha256": "b8d85c09a54de48fd68f14d61573c23fa5697365d39807d5877a391c4e544bde",
+        "project_fingerprint": "65f3054b6d073b749aa8f83bd71de196ec67b0e3b17d2a04eb8f47c21f796337"
+      },
+      "schema": 1,
+      "status": "PASS",
+      "upstream": "lipnitsk/libcue",
+      "upstream_commit": "cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea"
+    }
+  },
+  "limits": {
+    "native_studio": "SEPARATE_GATE; NOT_QUALIFIED_BY_THIS_RUN",
+    "external_editor_gui": "NOT_RUN",
+    "physical_output": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "final_composition": "NOT_QUALIFIED_BY_THIS_COMPONENT"
+  },
+  "historical_predecessor_evidence": "5d618cc9b800b04bbf786384b68d1c38f5e214c8"
+}

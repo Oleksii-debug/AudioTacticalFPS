@@ -1,0 +1,630 @@
+{
+  "schema": "carr.component-evidence.v1",
+  "scope": "Explicit speech preparation source/installed contracts on both OS",
+  "head": "20e56f1a8423b3943f610b7579bacedc773410d2",
+  "tree": "52c14ec0f9244e3987a3fb0fc2c4a71d71886e43",
+  "run": 46118114870,
+  "status": "PASS",
+  "source_manifest": "b174c468ba8a77cffd7ac91c47a3d8886ca6e6e8",
+  "contexts": [
+    {
+      "os": "ubuntu-24.04",
+      "job": 140896371923,
+      "source": {
+        "passed": 755,
+        "seconds": 29.4
+      },
+      "installed": {
+        "passed": 755,
+        "seconds": 26.28
+      },
+      "records": [
+        {
+          "NVDA": "NOT_RUN",
+          "actual_neural_model_quality": "NOT_RUN",
+          "cases": 755,
+          "commit": "20e56f1a8423b3943f610b7579bacedc773410d2",
+          "mode": "source",
+          "native_speech_preparation": "NOT_RUN",
+          "origins": {
+            "carr_library.audio.cleanup": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/cleanup.py",
+              "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+            },
+            "carr_library.backup_extensions": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_extensions.py",
+              "sha256": "a2e60fb7751ca0db040ae46b6ee39cda3ed3534aa731b1b6dc724223ad61fee8"
+            },
+            "carr_library.durable_state": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.library_backup": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/library_backup.py",
+              "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+            },
+            "carr_library.reader._vendor_num2words.base": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/_vendor_num2words/base.py",
+              "sha256": "52356f1717f7c3927c15f15ec42f670635bfa2f322ed0ebca6ab48791d5249b4"
+            },
+            "carr_library.reader._vendor_num2words.compat": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/_vendor_num2words/compat.py",
+              "sha256": "5e302a28aa6e3fa35981c1b383a7f736c75a5cc973d8bff9e0ff19afd5387256"
+            },
+            "carr_library.reader._vendor_num2words.currency": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/_vendor_num2words/currency.py",
+              "sha256": "6ab41fe056ea9b696fac3c278b0bab7b51cb06c57a50dbf84977de503be591c9"
+            },
+            "carr_library.reader._vendor_num2words.lang_SK": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/_vendor_num2words/lang_SK.py",
+              "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+            },
+            "carr_library.reader._vendor_num2words.utils": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/_vendor_num2words/utils.py",
+              "sha256": "5a4cfa390464bb4134f9194d11261bfd9b85021b0c0af0fe2dda0ec6cea5bd81"
+            },
+            "carr_library.reader.live_reading": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/live_reading.py",
+              "sha256": "8212a14547b95365fa6bc62944258bdc29d9a6656efe53a7ebb3c1de0d2199c3"
+            },
+            "carr_library.reader.speech_normalization": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/reader/speech_normalization.py",
+              "sha256": "691dacc83244f80a2a2bebb286feece7a0ca2b4f95c8b7d8d440a27b7e69c5d6"
+            },
+            "carr_library.speech.preparation": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/speech/preparation.py",
+              "sha256": "0d63b9bb07e49720d22d1b8736de080289a101f40b23694f6c78627c4e58958e"
+            },
+            "carr_library.speech.pronunciation_formats": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/speech/pronunciation_formats.py",
+              "sha256": "f41188abeff8c2e048268af61e17dd5af8335ad22d1411c9514ad3637cb15135"
+            },
+            "carr_library.speech.reading": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/speech/reading.py",
+              "sha256": "e33cd4c8dbc5854483f6cd8ae47ba62df1819e3b9809f06761538573b589984a"
+            },
+            "carr_library.speech.session": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/speech/session.py",
+              "sha256": "70f69fec745f7281e9c8818618ffc9b22658429cdc38a4223f94e111e89d0a54"
+            },
+            "carr_library.speech.source": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/speech/source.py",
+              "sha256": "9fc2d9c476e8ee20380c8a67fc67dad8a064ca42a57ff14c52c377e9bd67d2a8"
+            },
+            "carr_library.studio.pronunciation": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/studio/pronunciation.py",
+              "sha256": "43aea36c32e5284e511baaa239b5ce113bb84d93ef0981b0bed7b97578c54a93"
+            },
+            "carr_library.ui.pronunciation_dialog": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/pronunciation_dialog.py",
+              "sha256": "65b7c6fdfbcadfc1af95a63c7f4ed816fb0a06d1f55e7a979030aa9269e27438"
+            },
+            "carr_library.ui.speech_dialog": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/speech_dialog.py",
+              "sha256": "77edd2a8df6a33d0cafa2609b4507e361e0459ab9f05b866e96d805ab170f467"
+            },
+            "carr_library.ui.speech_preparation": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/speech_preparation.py",
+              "sha256": "fccc488c3b2f117e564edf7341e0a169361cfb757b674f67747ede66520276e7"
+            },
+            "carr_library.ui.studio_pronunciation": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/studio_pronunciation.py",
+              "sha256": "097e3a69012a73d46e48db380b05615dad00c6d16233480fa2f4acd291f5aac4"
+            }
+          },
+          "package_inventory_sha256": "e32f4db2f6b3a94ce2bbe707aead2c8db3875477d1d437c28cd20a59c5aaad6a",
+          "package_python_files": 417,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "e42381f4f1d69c03b025f6158ac2d7504b8784b4b0ff669c4fe4355d9991f85c",
+          "qualification": "EXPLICIT_SPEECH_TEXT_SOURCE_MAP_RECOVERY",
+          "selected_suites": {
+            "tests/reader/test_live_reading.py": 59,
+            "tests/reader/test_speech_normalization.py": 83,
+            "tests/speech/test_preparation.py": 25,
+            "tests/speech/test_pronunciation_formats.py": 87,
+            "tests/speech/test_pronunciation_formats_handlers.py": 9,
+            "tests/speech/test_pronunciation_handlers.py": 37,
+            "tests/speech/test_pronunciation_reader_hook.py": 10,
+            "tests/speech/test_pronunciation_review.py": 20,
+            "tests/speech/test_reader_native_lifetime.py": 18,
+            "tests/speech/test_reading.py": 49,
+            "tests/speech/test_session.py": 47,
+            "tests/speech/test_source.py": 98,
+            "tests/storage/test_library_backup_reading_state.py": 77,
+            "tests/studio/test_pronunciation.py": 24,
+            "tests/studio/test_pronunciation_dialog.py": 30,
+            "tests/ui/test_reader_dialog_lifetime.py": 31,
+            "tests/ui/test_reading_copy_save_guard.py": 14,
+            "tests/ui/test_speech_preparation.py": 28,
+            "tests/ui/test_speech_preparation_hooks.py": 9
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/reader/test_live_reading.py": "739aa1d094d892d3ca15b783948903b5b3a74ee20a12076a0ce894172623a572",
+            "tests/reader/test_speech_normalization.py": "30a89046fa59fe260b88ee60e6552afde37ef7c009f2c6cdf1e352dc5467cb00",
+            "tests/speech/test_preparation.py": "0b8812a8dd5bf15265d69cf8ad067867747f63725368cdceae0fe04ed8613f5a",
+            "tests/speech/test_pronunciation_formats.py": "6588700758267dff770b80b879ca476f72a2155425e8e0d82edf90d717e58684",
+            "tests/speech/test_pronunciation_formats_handlers.py": "711e0a71cabd3dc8848d50d77cdac34c4f3ee0114a05a378fec5bc5f6dba6bfe",
+            "tests/speech/test_pronunciation_handlers.py": "fbf424edeb7836186e1f9c8bbc5d98cfa9b7cb57bebd0268bdd4b7aa778650c7",
+            "tests/speech/test_pronunciation_reader_hook.py": "91e172b0400bb6063882716bac197a76b16d6205a3a274509e7e440fa8b92f68",
+            "tests/speech/test_pronunciation_review.py": "fe433846d4667ff7f11cbe44254a60f7987d104e9d91b103513ce18f92e8f290",
+            "tests/speech/test_reader_native_lifetime.py": "0a429924eb9bdfcd88598bad56a5977764f50eefa095427a44ccd8fdfcaaf568",
+            "tests/speech/test_reading.py": "ccbd0e21d89968bd61f02b780409bc9bf952477eaf324c7adddbe14786f8ae8f",
+            "tests/speech/test_session.py": "225d1fcd8e5613506d46346a7a0a908a58d6c498f11378a5c84b0268dcec15fc",
+            "tests/speech/test_source.py": "b3b907f91b5b0dc90a045a27b6a26bc8ce30be5f84497bbdd462c9137096a73a",
+            "tests/storage/test_library_backup_reading_state.py": "e71135cd775dcae69dd21ed4299c5ca463d7eec1d470cb0012c418b33cefbbd5",
+            "tests/studio/test_pronunciation.py": "1aef5b29a29d91f3372f228fcf0e513ba593996f01ad44bba557c209641ab757",
+            "tests/studio/test_pronunciation_dialog.py": "283e9edc672360a71407ed4a21e9a017c8ab190719b636e49725d52238549581",
+            "tests/ui/test_reader_dialog_lifetime.py": "1e559d139bd1f159b4cb8715ff9d90628975884b2637d34c0c318b1a6cd30bc0",
+            "tests/ui/test_reading_copy_save_guard.py": "f6c3cced78501162331ad08d3602f47071dc2f9fa9ee62a7735fb565b529a619",
+            "tests/ui/test_speech_preparation.py": "8041d8ab0feae33c239a18e2102ef0e76e0245041c5e401153087f02c517064c",
+            "tests/ui/test_speech_preparation_hooks.py": "67af9acd7d5b68b2d476c45f7d7dc3eaf45d94010a3f4be4b605f6abd4073008"
+          }
+        },
+        {
+          "NVDA": "NOT_RUN",
+          "actual_neural_model_quality": "NOT_RUN",
+          "cases": 755,
+          "commit": "20e56f1a8423b3943f610b7579bacedc773410d2",
+          "mode": "installed",
+          "native_speech_preparation": "NOT_RUN",
+          "origins": {
+            "carr_library.audio.cleanup": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/cleanup.py",
+              "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+            },
+            "carr_library.backup_extensions": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_extensions.py",
+              "sha256": "a2e60fb7751ca0db040ae46b6ee39cda3ed3534aa731b1b6dc724223ad61fee8"
+            },
+            "carr_library.durable_state": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.library_backup": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py",
+              "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+            },
+            "carr_library.reader._vendor_num2words.base": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/_vendor_num2words/base.py",
+              "sha256": "52356f1717f7c3927c15f15ec42f670635bfa2f322ed0ebca6ab48791d5249b4"
+            },
+            "carr_library.reader._vendor_num2words.compat": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/_vendor_num2words/compat.py",
+              "sha256": "5e302a28aa6e3fa35981c1b383a7f736c75a5cc973d8bff9e0ff19afd5387256"
+            },
+            "carr_library.reader._vendor_num2words.currency": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/_vendor_num2words/currency.py",
+              "sha256": "6ab41fe056ea9b696fac3c278b0bab7b51cb06c57a50dbf84977de503be591c9"
+            },
+            "carr_library.reader._vendor_num2words.lang_SK": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/_vendor_num2words/lang_SK.py",
+              "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+            },
+            "carr_library.reader._vendor_num2words.utils": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/_vendor_num2words/utils.py",
+              "sha256": "5a4cfa390464bb4134f9194d11261bfd9b85021b0c0af0fe2dda0ec6cea5bd81"
+            },
+            "carr_library.reader.live_reading": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/live_reading.py",
+              "sha256": "8212a14547b95365fa6bc62944258bdc29d9a6656efe53a7ebb3c1de0d2199c3"
+            },
+            "carr_library.reader.speech_normalization": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/reader/speech_normalization.py",
+              "sha256": "691dacc83244f80a2a2bebb286feece7a0ca2b4f95c8b7d8d440a27b7e69c5d6"
+            },
+            "carr_library.speech.preparation": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/speech/preparation.py",
+              "sha256": "0d63b9bb07e49720d22d1b8736de080289a101f40b23694f6c78627c4e58958e"
+            },
+            "carr_library.speech.pronunciation_formats": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/speech/pronunciation_formats.py",
+              "sha256": "f41188abeff8c2e048268af61e17dd5af8335ad22d1411c9514ad3637cb15135"
+            },
+            "carr_library.speech.reading": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/speech/reading.py",
+              "sha256": "e33cd4c8dbc5854483f6cd8ae47ba62df1819e3b9809f06761538573b589984a"
+            },
+            "carr_library.speech.session": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/speech/session.py",
+              "sha256": "70f69fec745f7281e9c8818618ffc9b22658429cdc38a4223f94e111e89d0a54"
+            },
+            "carr_library.speech.source": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/speech/source.py",
+              "sha256": "9fc2d9c476e8ee20380c8a67fc67dad8a064ca42a57ff14c52c377e9bd67d2a8"
+            },
+            "carr_library.studio.pronunciation": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/studio/pronunciation.py",
+              "sha256": "43aea36c32e5284e511baaa239b5ce113bb84d93ef0981b0bed7b97578c54a93"
+            },
+            "carr_library.ui.pronunciation_dialog": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/pronunciation_dialog.py",
+              "sha256": "65b7c6fdfbcadfc1af95a63c7f4ed816fb0a06d1f55e7a979030aa9269e27438"
+            },
+            "carr_library.ui.speech_dialog": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/speech_dialog.py",
+              "sha256": "77edd2a8df6a33d0cafa2609b4507e361e0459ab9f05b866e96d805ab170f467"
+            },
+            "carr_library.ui.speech_preparation": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/speech_preparation.py",
+              "sha256": "fccc488c3b2f117e564edf7341e0a169361cfb757b674f67747ede66520276e7"
+            },
+            "carr_library.ui.studio_pronunciation": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/studio_pronunciation.py",
+              "sha256": "097e3a69012a73d46e48db380b05615dad00c6d16233480fa2f4acd291f5aac4"
+            }
+          },
+          "package_inventory_sha256": "e32f4db2f6b3a94ce2bbe707aead2c8db3875477d1d437c28cd20a59c5aaad6a",
+          "package_python_files": 417,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "e42381f4f1d69c03b025f6158ac2d7504b8784b4b0ff669c4fe4355d9991f85c",
+          "qualification": "EXPLICIT_SPEECH_TEXT_SOURCE_MAP_RECOVERY",
+          "selected_suites": {
+            "tests/reader/test_live_reading.py": 59,
+            "tests/reader/test_speech_normalization.py": 83,
+            "tests/speech/test_preparation.py": 25,
+            "tests/speech/test_pronunciation_formats.py": 87,
+            "tests/speech/test_pronunciation_formats_handlers.py": 9,
+            "tests/speech/test_pronunciation_handlers.py": 37,
+            "tests/speech/test_pronunciation_reader_hook.py": 10,
+            "tests/speech/test_pronunciation_review.py": 20,
+            "tests/speech/test_reader_native_lifetime.py": 18,
+            "tests/speech/test_reading.py": 49,
+            "tests/speech/test_session.py": 47,
+            "tests/speech/test_source.py": 98,
+            "tests/storage/test_library_backup_reading_state.py": 77,
+            "tests/studio/test_pronunciation.py": 24,
+            "tests/studio/test_pronunciation_dialog.py": 30,
+            "tests/ui/test_reader_dialog_lifetime.py": 31,
+            "tests/ui/test_reading_copy_save_guard.py": 14,
+            "tests/ui/test_speech_preparation.py": 28,
+            "tests/ui/test_speech_preparation_hooks.py": 9
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/reader/test_live_reading.py": "739aa1d094d892d3ca15b783948903b5b3a74ee20a12076a0ce894172623a572",
+            "tests/reader/test_speech_normalization.py": "30a89046fa59fe260b88ee60e6552afde37ef7c009f2c6cdf1e352dc5467cb00",
+            "tests/speech/test_preparation.py": "0b8812a8dd5bf15265d69cf8ad067867747f63725368cdceae0fe04ed8613f5a",
+            "tests/speech/test_pronunciation_formats.py": "6588700758267dff770b80b879ca476f72a2155425e8e0d82edf90d717e58684",
+            "tests/speech/test_pronunciation_formats_handlers.py": "711e0a71cabd3dc8848d50d77cdac34c4f3ee0114a05a378fec5bc5f6dba6bfe",
+            "tests/speech/test_pronunciation_handlers.py": "fbf424edeb7836186e1f9c8bbc5d98cfa9b7cb57bebd0268bdd4b7aa778650c7",
+            "tests/speech/test_pronunciation_reader_hook.py": "91e172b0400bb6063882716bac197a76b16d6205a3a274509e7e440fa8b92f68",
+            "tests/speech/test_pronunciation_review.py": "fe433846d4667ff7f11cbe44254a60f7987d104e9d91b103513ce18f92e8f290",
+            "tests/speech/test_reader_native_lifetime.py": "0a429924eb9bdfcd88598bad56a5977764f50eefa095427a44ccd8fdfcaaf568",
+            "tests/speech/test_reading.py": "ccbd0e21d89968bd61f02b780409bc9bf952477eaf324c7adddbe14786f8ae8f",
+            "tests/speech/test_session.py": "225d1fcd8e5613506d46346a7a0a908a58d6c498f11378a5c84b0268dcec15fc",
+            "tests/speech/test_source.py": "b3b907f91b5b0dc90a045a27b6a26bc8ce30be5f84497bbdd462c9137096a73a",
+            "tests/storage/test_library_backup_reading_state.py": "e71135cd775dcae69dd21ed4299c5ca463d7eec1d470cb0012c418b33cefbbd5",
+            "tests/studio/test_pronunciation.py": "1aef5b29a29d91f3372f228fcf0e513ba593996f01ad44bba557c209641ab757",
+            "tests/studio/test_pronunciation_dialog.py": "283e9edc672360a71407ed4a21e9a017c8ab190719b636e49725d52238549581",
+            "tests/ui/test_reader_dialog_lifetime.py": "1e559d139bd1f159b4cb8715ff9d90628975884b2637d34c0c318b1a6cd30bc0",
+            "tests/ui/test_reading_copy_save_guard.py": "f6c3cced78501162331ad08d3602f47071dc2f9fa9ee62a7735fb565b529a619",
+            "tests/ui/test_speech_preparation.py": "8041d8ab0feae33c239a18e2102ef0e76e0245041c5e401153087f02c517064c",
+            "tests/ui/test_speech_preparation_hooks.py": "67af9acd7d5b68b2d476c45f7d7dc3eaf45d94010a3f4be4b605f6abd4073008"
+          }
+        }
+      ],
+      "raw_log_blob": "aa7a00ed847689c2272c49091032d092d09e974e"
+    },
+    {
+      "os": "windows-2022",
+      "job": 140896372122,
+      "source": {
+        "passed": 755,
+        "seconds": 161.19
+      },
+      "installed": {
+        "passed": 755,
+        "seconds": 168.19
+      },
+      "records": [
+        {
+          "NVDA": "NOT_RUN",
+          "actual_neural_model_quality": "NOT_RUN",
+          "cases": 755,
+          "commit": "20e56f1a8423b3943f610b7579bacedc773410d2",
+          "mode": "source",
+          "native_speech_preparation": "NOT_RUN",
+          "origins": {
+            "carr_library.audio.cleanup": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\cleanup.py",
+              "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+            },
+            "carr_library.backup_extensions": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_extensions.py",
+              "sha256": "a2e60fb7751ca0db040ae46b6ee39cda3ed3534aa731b1b6dc724223ad61fee8"
+            },
+            "carr_library.durable_state": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.library_backup": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\library_backup.py",
+              "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+            },
+            "carr_library.reader._vendor_num2words.base": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\_vendor_num2words\\base.py",
+              "sha256": "52356f1717f7c3927c15f15ec42f670635bfa2f322ed0ebca6ab48791d5249b4"
+            },
+            "carr_library.reader._vendor_num2words.compat": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\_vendor_num2words\\compat.py",
+              "sha256": "5e302a28aa6e3fa35981c1b383a7f736c75a5cc973d8bff9e0ff19afd5387256"
+            },
+            "carr_library.reader._vendor_num2words.currency": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\_vendor_num2words\\currency.py",
+              "sha256": "6ab41fe056ea9b696fac3c278b0bab7b51cb06c57a50dbf84977de503be591c9"
+            },
+            "carr_library.reader._vendor_num2words.lang_SK": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\_vendor_num2words\\lang_SK.py",
+              "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+            },
+            "carr_library.reader._vendor_num2words.utils": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\_vendor_num2words\\utils.py",
+              "sha256": "5a4cfa390464bb4134f9194d11261bfd9b85021b0c0af0fe2dda0ec6cea5bd81"
+            },
+            "carr_library.reader.live_reading": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\live_reading.py",
+              "sha256": "8212a14547b95365fa6bc62944258bdc29d9a6656efe53a7ebb3c1de0d2199c3"
+            },
+            "carr_library.reader.speech_normalization": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\reader\\speech_normalization.py",
+              "sha256": "691dacc83244f80a2a2bebb286feece7a0ca2b4f95c8b7d8d440a27b7e69c5d6"
+            },
+            "carr_library.speech.preparation": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\preparation.py",
+              "sha256": "0d63b9bb07e49720d22d1b8736de080289a101f40b23694f6c78627c4e58958e"
+            },
+            "carr_library.speech.pronunciation_formats": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\pronunciation_formats.py",
+              "sha256": "f41188abeff8c2e048268af61e17dd5af8335ad22d1411c9514ad3637cb15135"
+            },
+            "carr_library.speech.reading": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\reading.py",
+              "sha256": "e33cd4c8dbc5854483f6cd8ae47ba62df1819e3b9809f06761538573b589984a"
+            },
+            "carr_library.speech.session": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\session.py",
+              "sha256": "70f69fec745f7281e9c8818618ffc9b22658429cdc38a4223f94e111e89d0a54"
+            },
+            "carr_library.speech.source": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\speech\\source.py",
+              "sha256": "9fc2d9c476e8ee20380c8a67fc67dad8a064ca42a57ff14c52c377e9bd67d2a8"
+            },
+            "carr_library.studio.pronunciation": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\studio\\pronunciation.py",
+              "sha256": "43aea36c32e5284e511baaa239b5ce113bb84d93ef0981b0bed7b97578c54a93"
+            },
+            "carr_library.ui.pronunciation_dialog": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\pronunciation_dialog.py",
+              "sha256": "65b7c6fdfbcadfc1af95a63c7f4ed816fb0a06d1f55e7a979030aa9269e27438"
+            },
+            "carr_library.ui.speech_dialog": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_dialog.py",
+              "sha256": "77edd2a8df6a33d0cafa2609b4507e361e0459ab9f05b866e96d805ab170f467"
+            },
+            "carr_library.ui.speech_preparation": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_preparation.py",
+              "sha256": "fccc488c3b2f117e564edf7341e0a169361cfb757b674f67747ede66520276e7"
+            },
+            "carr_library.ui.studio_pronunciation": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\studio_pronunciation.py",
+              "sha256": "097e3a69012a73d46e48db380b05615dad00c6d16233480fa2f4acd291f5aac4"
+            }
+          },
+          "package_inventory_sha256": "e32f4db2f6b3a94ce2bbe707aead2c8db3875477d1d437c28cd20a59c5aaad6a",
+          "package_python_files": 417,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "e42381f4f1d69c03b025f6158ac2d7504b8784b4b0ff669c4fe4355d9991f85c",
+          "qualification": "EXPLICIT_SPEECH_TEXT_SOURCE_MAP_RECOVERY",
+          "selected_suites": {
+            "tests/reader/test_live_reading.py": 59,
+            "tests/reader/test_speech_normalization.py": 83,
+            "tests/speech/test_preparation.py": 25,
+            "tests/speech/test_pronunciation_formats.py": 87,
+            "tests/speech/test_pronunciation_formats_handlers.py": 9,
+            "tests/speech/test_pronunciation_handlers.py": 37,
+            "tests/speech/test_pronunciation_reader_hook.py": 10,
+            "tests/speech/test_pronunciation_review.py": 20,
+            "tests/speech/test_reader_native_lifetime.py": 18,
+            "tests/speech/test_reading.py": 49,
+            "tests/speech/test_session.py": 47,
+            "tests/speech/test_source.py": 98,
+            "tests/storage/test_library_backup_reading_state.py": 77,
+            "tests/studio/test_pronunciation.py": 24,
+            "tests/studio/test_pronunciation_dialog.py": 30,
+            "tests/ui/test_reader_dialog_lifetime.py": 31,
+            "tests/ui/test_reading_copy_save_guard.py": 14,
+            "tests/ui/test_speech_preparation.py": 28,
+            "tests/ui/test_speech_preparation_hooks.py": 9
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/reader/test_live_reading.py": "739aa1d094d892d3ca15b783948903b5b3a74ee20a12076a0ce894172623a572",
+            "tests/reader/test_speech_normalization.py": "30a89046fa59fe260b88ee60e6552afde37ef7c009f2c6cdf1e352dc5467cb00",
+            "tests/speech/test_preparation.py": "0b8812a8dd5bf15265d69cf8ad067867747f63725368cdceae0fe04ed8613f5a",
+            "tests/speech/test_pronunciation_formats.py": "6588700758267dff770b80b879ca476f72a2155425e8e0d82edf90d717e58684",
+            "tests/speech/test_pronunciation_formats_handlers.py": "711e0a71cabd3dc8848d50d77cdac34c4f3ee0114a05a378fec5bc5f6dba6bfe",
+            "tests/speech/test_pronunciation_handlers.py": "fbf424edeb7836186e1f9c8bbc5d98cfa9b7cb57bebd0268bdd4b7aa778650c7",
+            "tests/speech/test_pronunciation_reader_hook.py": "91e172b0400bb6063882716bac197a76b16d6205a3a274509e7e440fa8b92f68",
+            "tests/speech/test_pronunciation_review.py": "fe433846d4667ff7f11cbe44254a60f7987d104e9d91b103513ce18f92e8f290",
+            "tests/speech/test_reader_native_lifetime.py": "0a429924eb9bdfcd88598bad56a5977764f50eefa095427a44ccd8fdfcaaf568",
+            "tests/speech/test_reading.py": "ccbd0e21d89968bd61f02b780409bc9bf952477eaf324c7adddbe14786f8ae8f",
+            "tests/speech/test_session.py": "225d1fcd8e5613506d46346a7a0a908a58d6c498f11378a5c84b0268dcec15fc",
+            "tests/speech/test_source.py": "b3b907f91b5b0dc90a045a27b6a26bc8ce30be5f84497bbdd462c9137096a73a",
+            "tests/storage/test_library_backup_reading_state.py": "e71135cd775dcae69dd21ed4299c5ca463d7eec1d470cb0012c418b33cefbbd5",
+            "tests/studio/test_pronunciation.py": "1aef5b29a29d91f3372f228fcf0e513ba593996f01ad44bba557c209641ab757",
+            "tests/studio/test_pronunciation_dialog.py": "283e9edc672360a71407ed4a21e9a017c8ab190719b636e49725d52238549581",
+            "tests/ui/test_reader_dialog_lifetime.py": "1e559d139bd1f159b4cb8715ff9d90628975884b2637d34c0c318b1a6cd30bc0",
+            "tests/ui/test_reading_copy_save_guard.py": "f6c3cced78501162331ad08d3602f47071dc2f9fa9ee62a7735fb565b529a619",
+            "tests/ui/test_speech_preparation.py": "8041d8ab0feae33c239a18e2102ef0e76e0245041c5e401153087f02c517064c",
+            "tests/ui/test_speech_preparation_hooks.py": "67af9acd7d5b68b2d476c45f7d7dc3eaf45d94010a3f4be4b605f6abd4073008"
+          }
+        },
+        {
+          "NVDA": "NOT_RUN",
+          "actual_neural_model_quality": "NOT_RUN",
+          "cases": 755,
+          "commit": "20e56f1a8423b3943f610b7579bacedc773410d2",
+          "mode": "installed",
+          "native_speech_preparation": "NOT_RUN",
+          "origins": {
+            "carr_library.audio.cleanup": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+              "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+            },
+            "carr_library.backup_extensions": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_extensions.py",
+              "sha256": "a2e60fb7751ca0db040ae46b6ee39cda3ed3534aa731b1b6dc724223ad61fee8"
+            },
+            "carr_library.durable_state": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+              "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+            },
+            "carr_library.library_backup": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+              "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+            },
+            "carr_library.reader._vendor_num2words.base": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\base.py",
+              "sha256": "52356f1717f7c3927c15f15ec42f670635bfa2f322ed0ebca6ab48791d5249b4"
+            },
+            "carr_library.reader._vendor_num2words.compat": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\compat.py",
+              "sha256": "5e302a28aa6e3fa35981c1b383a7f736c75a5cc973d8bff9e0ff19afd5387256"
+            },
+            "carr_library.reader._vendor_num2words.currency": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\currency.py",
+              "sha256": "6ab41fe056ea9b696fac3c278b0bab7b51cb06c57a50dbf84977de503be591c9"
+            },
+            "carr_library.reader._vendor_num2words.lang_SK": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\lang_SK.py",
+              "sha256": "29eb6de62126ecf6a02e8078d9386519107bdc0f67e7f005e7e84f86d3a84d30"
+            },
+            "carr_library.reader._vendor_num2words.utils": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\_vendor_num2words\\utils.py",
+              "sha256": "5a4cfa390464bb4134f9194d11261bfd9b85021b0c0af0fe2dda0ec6cea5bd81"
+            },
+            "carr_library.reader.live_reading": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\live_reading.py",
+              "sha256": "8212a14547b95365fa6bc62944258bdc29d9a6656efe53a7ebb3c1de0d2199c3"
+            },
+            "carr_library.reader.speech_normalization": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\speech_normalization.py",
+              "sha256": "691dacc83244f80a2a2bebb286feece7a0ca2b4f95c8b7d8d440a27b7e69c5d6"
+            },
+            "carr_library.speech.preparation": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\preparation.py",
+              "sha256": "0d63b9bb07e49720d22d1b8736de080289a101f40b23694f6c78627c4e58958e"
+            },
+            "carr_library.speech.pronunciation_formats": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\pronunciation_formats.py",
+              "sha256": "f41188abeff8c2e048268af61e17dd5af8335ad22d1411c9514ad3637cb15135"
+            },
+            "carr_library.speech.reading": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\reading.py",
+              "sha256": "e33cd4c8dbc5854483f6cd8ae47ba62df1819e3b9809f06761538573b589984a"
+            },
+            "carr_library.speech.session": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\session.py",
+              "sha256": "70f69fec745f7281e9c8818618ffc9b22658429cdc38a4223f94e111e89d0a54"
+            },
+            "carr_library.speech.source": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\source.py",
+              "sha256": "9fc2d9c476e8ee20380c8a67fc67dad8a064ca42a57ff14c52c377e9bd67d2a8"
+            },
+            "carr_library.studio.pronunciation": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\pronunciation.py",
+              "sha256": "43aea36c32e5284e511baaa239b5ce113bb84d93ef0981b0bed7b97578c54a93"
+            },
+            "carr_library.ui.pronunciation_dialog": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\pronunciation_dialog.py",
+              "sha256": "65b7c6fdfbcadfc1af95a63c7f4ed816fb0a06d1f55e7a979030aa9269e27438"
+            },
+            "carr_library.ui.speech_dialog": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+              "sha256": "77edd2a8df6a33d0cafa2609b4507e361e0459ab9f05b866e96d805ab170f467"
+            },
+            "carr_library.ui.speech_preparation": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_preparation.py",
+              "sha256": "fccc488c3b2f117e564edf7341e0a169361cfb757b674f67747ede66520276e7"
+            },
+            "carr_library.ui.studio_pronunciation": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\studio_pronunciation.py",
+              "sha256": "097e3a69012a73d46e48db380b05615dad00c6d16233480fa2f4acd291f5aac4"
+            }
+          },
+          "package_inventory_sha256": "e32f4db2f6b3a94ce2bbe707aead2c8db3875477d1d437c28cd20a59c5aaad6a",
+          "package_python_files": 417,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "e42381f4f1d69c03b025f6158ac2d7504b8784b4b0ff669c4fe4355d9991f85c",
+          "qualification": "EXPLICIT_SPEECH_TEXT_SOURCE_MAP_RECOVERY",
+          "selected_suites": {
+            "tests/reader/test_live_reading.py": 59,
+            "tests/reader/test_speech_normalization.py": 83,
+            "tests/speech/test_preparation.py": 25,
+            "tests/speech/test_pronunciation_formats.py": 87,
+            "tests/speech/test_pronunciation_formats_handlers.py": 9,
+            "tests/speech/test_pronunciation_handlers.py": 37,
+            "tests/speech/test_pronunciation_reader_hook.py": 10,
+            "tests/speech/test_pronunciation_review.py": 20,
+            "tests/speech/test_reader_native_lifetime.py": 18,
+            "tests/speech/test_reading.py": 49,
+            "tests/speech/test_session.py": 47,
+            "tests/speech/test_source.py": 98,
+            "tests/storage/test_library_backup_reading_state.py": 77,
+            "tests/studio/test_pronunciation.py": 24,
+            "tests/studio/test_pronunciation_dialog.py": 30,
+            "tests/ui/test_reader_dialog_lifetime.py": 31,
+            "tests/ui/test_reading_copy_save_guard.py": 14,
+            "tests/ui/test_speech_preparation.py": 28,
+            "tests/ui/test_speech_preparation_hooks.py": 9
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/reader/test_live_reading.py": "739aa1d094d892d3ca15b783948903b5b3a74ee20a12076a0ce894172623a572",
+            "tests/reader/test_speech_normalization.py": "30a89046fa59fe260b88ee60e6552afde37ef7c009f2c6cdf1e352dc5467cb00",
+            "tests/speech/test_preparation.py": "0b8812a8dd5bf15265d69cf8ad067867747f63725368cdceae0fe04ed8613f5a",
+            "tests/speech/test_pronunciation_formats.py": "6588700758267dff770b80b879ca476f72a2155425e8e0d82edf90d717e58684",
+            "tests/speech/test_pronunciation_formats_handlers.py": "711e0a71cabd3dc8848d50d77cdac34c4f3ee0114a05a378fec5bc5f6dba6bfe",
+            "tests/speech/test_pronunciation_handlers.py": "fbf424edeb7836186e1f9c8bbc5d98cfa9b7cb57bebd0268bdd4b7aa778650c7",
+            "tests/speech/test_pronunciation_reader_hook.py": "91e172b0400bb6063882716bac197a76b16d6205a3a274509e7e440fa8b92f68",
+            "tests/speech/test_pronunciation_review.py": "fe433846d4667ff7f11cbe44254a60f7987d104e9d91b103513ce18f92e8f290",
+            "tests/speech/test_reader_native_lifetime.py": "0a429924eb9bdfcd88598bad56a5977764f50eefa095427a44ccd8fdfcaaf568",
+            "tests/speech/test_reading.py": "ccbd0e21d89968bd61f02b780409bc9bf952477eaf324c7adddbe14786f8ae8f",
+            "tests/speech/test_session.py": "225d1fcd8e5613506d46346a7a0a908a58d6c498f11378a5c84b0268dcec15fc",
+            "tests/speech/test_source.py": "b3b907f91b5b0dc90a045a27b6a26bc8ce30be5f84497bbdd462c9137096a73a",
+            "tests/storage/test_library_backup_reading_state.py": "e71135cd775dcae69dd21ed4299c5ca463d7eec1d470cb0012c418b33cefbbd5",
+            "tests/studio/test_pronunciation.py": "1aef5b29a29d91f3372f228fcf0e513ba593996f01ad44bba557c209641ab757",
+            "tests/studio/test_pronunciation_dialog.py": "283e9edc672360a71407ed4a21e9a017c8ab190719b636e49725d52238549581",
+            "tests/ui/test_reader_dialog_lifetime.py": "1e559d139bd1f159b4cb8715ff9d90628975884b2637d34c0c318b1a6cd30bc0",
+            "tests/ui/test_reading_copy_save_guard.py": "f6c3cced78501162331ad08d3602f47071dc2f9fa9ee62a7735fb565b529a619",
+            "tests/ui/test_speech_preparation.py": "8041d8ab0feae33c239a18e2102ef0e76e0245041c5e401153087f02c517064c",
+            "tests/ui/test_speech_preparation_hooks.py": "67af9acd7d5b68b2d476c45f7d7dc3eaf45d94010a3f4be4b605f6abd4073008"
+          }
+        }
+      ],
+      "raw_log_blob": "48a6a2c87871956b961c94cb086e97b8d1a08ca3"
+    }
+  ],
+  "each_context": {
+    "nonempty_suites": 19,
+    "selected_origins": 21,
+    "python_files": 415,
+    "pinned_license_assets": 2,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "expected_failures": 0,
+    "proof": "Exact selected commit, helper and test bytes, complete source/installed Python and COPYING/UPSTREAM equality, all selected origins before/after."
+  },
+  "historical_failure": "4359e010036b1b7deba5a39f0fd0910839f79a9b",
+  "limits": [
+    "Native preparation has its own run46118114906; its outcome is not implied here.",
+    "Physical output, speech acoustics/voice quality and NVDA remain NOT_RUN.",
+    "No final composition or live A–B/sleep runtime result is inferred."
+  ]
+}

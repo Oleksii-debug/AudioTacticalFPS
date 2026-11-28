@@ -1,0 +1,155 @@
+{
+  "schema": "carr-finalization-continuation/14",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "pr": {
+    "number": 143,
+    "branch": "carr/canonical-integrity-finish-20261127",
+    "head": "96cf8a1435187844393b5389001d07a587c417a8",
+    "status": "OPEN_OLD_FAILED_HEAD"
+  },
+  "contracts": {
+    "root_agents": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+  },
+  "composition": {
+    "pure_head": "f34cfdd334c42c67f577867c11470f33ae9758ec",
+    "pure_tree": "fea804d074d7210cad5fe7f45bd6b2cdf5e6bd3a",
+    "files": 1567,
+    "preflight": {
+      "branch": "carr/final-scope-preflight-20261128",
+      "head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
+      "tree": "10190663b49ab4457ec69392907c6d98239570c3",
+      "files": 1568,
+      "readback": true,
+      "status": "PUBLISHED_NOT_RUN"
+    },
+    "preflight_run": 46124240341,
+    "final_delta_from_preflight": [
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+        "mode": "100644",
+        "type": "blob"
+      },
+      {
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "sha": "26fd66c3d9a88cc1356480616fb23065ca91a062",
+        "mode": "100644",
+        "type": "blob"
+      }
+    ],
+    "exclude_preflight_workflow": ".github/workflows/carr-final-scope-preflight.yml"
+  },
+  "main_definition_failure": {
+    "run": 46124239342,
+    "status": "FAIL_ZERO_JOBS",
+    "cause_status": "Large expression was introduced into a106081-character scalar; finite event-head env correction source approved, actual admission pending",
+    "corrected_blob": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2"
+  },
+  "components": {
+    "about": "4395289883c6de3d4f4b77a82bd6dce684e0ba84",
+    "diagnostics": "4b82c8fe492ec5373c300f8b397074ea5f5f4659",
+    "preparation_common": "277388ce9e6444d1789fe8281aded18ebdbe705e",
+    "preparation_native": "9033d18c80d3ea299122968fe9075dac5ee128a5",
+    "live_common": "8a55ed632361b245533d91788d8c291cfe7424d5",
+    "live_native": "3e97f7fca1e68fbdb9e6752fdafd1391b9be858e",
+    "cue_silence_common": "f8befd32c9b070f11349dfa41faac7440ee5b681",
+    "word_common": "9b620e7e1045049eb3af6eb2decc79268620e7c9",
+    "merge_common": "4b69a98a4dc6e7b5cb3495470fdd0667dd286eec",
+    "merge_native": "d259039397492b121752bc777a827e4dc2108065",
+    "indexed_publication": "e0ff493a9ebac6bdfb6817e33693023efc3044e1",
+    "windows_actual512": "18a9c2c04c248166a5e7b323d0a3c33dc39ad074"
+  },
+  "pending_native": {
+    "word": {
+      "head": "12da329c74c98b0b05b55e8819b8a91b9d731476",
+      "run": 46123008528,
+      "job": 140911382157,
+      "manifest": "2b9b2c022959583498ff17df6263ff9693d80811",
+      "owner": "import_recovery_review"
+    },
+    "silence": {
+      "head": "feb07924db248c2f028517939daeec02ebeb3ce9",
+      "run": 46123004216,
+      "job": 140911371283,
+      "manifest": "e17aa3db9e4659abe2933da5f97553e508778e96",
+      "owner": "reader_review"
+    }
+  },
+  "final_gates": {
+    "status": "NOT_RUN",
+    "workflows": [
+      {
+        "path": ".github/workflows/carr-bibliography.yml",
+        "sha": "5a61e842d3bb70591fc3e5f3d0a9cb829ea8f882",
+        "name": "CARR bibliography and import acceptance",
+        "job_names": [
+          "name: Windows x64 / CPython 3.11 / installed bibliography"
+        ],
+        "known_cached": true
+      },
+      {
+        "path": ".github/workflows/carr-calibre-reading-review.yml",
+        "sha": "2de8f8fdcb91ef8ad42109cd71e8a76cdfe6c2b3",
+        "name": "Selected Calibre reading review",
+        "job_names": [
+          "name: Selected Calibre / Windows / eight actual formats"
+        ],
+        "known_cached": true
+      },
+      {
+        "path": ".github/workflows/carr-legacy-reading-review.yml",
+        "sha": "13168b80c241db1f8b59f2c90b7319b002daec08",
+        "name": "Selected legacy document and archive conversion review",
+        "job_names": [
+          "name: Selected legacy reading / ${{ matrix.os }}"
+        ],
+        "known_cached": true
+      },
+      {
+        "path": ".github/workflows/carr-library-scale.yml",
+        "sha": "75994a6df89d8b1d38ce96a82e36f159eae32283",
+        "name": "Actual library corpus scale",
+        "job_names": [
+          "name: ${{ matrix.tier.name }} / ${{ matrix.os }}"
+        ],
+        "known_cached": true
+      },
+      {
+        "path": ".github/workflows/carr-native-launcher.yml",
+        "sha": "0e8ce239bd8f00648a957ddda71088e9fa819c16",
+        "name": "CARR native Windows launch entry",
+        "job_names": [],
+        "known_cached": true
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "sha": "f659d18ab272b45cbab4eabdff2d2ac6f5acc951",
+        "name": "CARR V3 local studio and assistant",
+        "job_names": [
+          "name: Portable source integrity (synthetic engines)"
+        ],
+        "known_cached": true
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+        "name": "CARR Windows integrated desktop",
+        "job_names": [
+          "name: Windows x64 / CPython 3.11 / integrated desktop"
+        ],
+        "known_cached": true
+      }
+    ],
+    "scale_tiers": 12
+  },
+  "instructions": [
+    "Do not retry disconnected local executor.",
+    "Do not cancel healthy jobs or stop while CI queued.",
+    "Verify full trees before refs and preserve exact source package bindings.",
+    "UpdatePR143, execute all7required gates and12actualscale tiers, resolve failures thenmerge.",
+    "No externalmodel/device/NVDA/Office/signing PASS invented."
+  ]
+}

@@ -1,0 +1,400 @@
+{
+  "schema": 1,
+  "feature": "Actual installed component notices and native Help/About",
+  "run_id": 46117569608,
+  "head": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+  "tree": "fc6c38be3e81dc2341d9efaa994a67ec426923b8",
+  "manifest": "5d3278fad6d3c9dfff3c10e3ee6d374c330bf14e",
+  "status": "PASS_COMPONENT_ONLY",
+  "jobs": [
+    {
+      "job_id": 140894706832,
+      "raw_log_blob": "7ab81175bd1c0f0a6185db7e30f72a284d95b2a5",
+      "reports": [
+        {
+          "NVDA": "NOT_RUN",
+          "cases": 41,
+          "commit": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+          "large_corpus_acceptance": "NOT_RUN",
+          "mode": "source",
+          "origins": {
+            "carr_library.component_notices": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\component_notices.py",
+              "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+            },
+            "carr_library.native_checks": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\native_checks.py",
+              "sha256": "894cfcfcdf5872683399f470aed75d0aa6c05e5fbf9ac677f47b4e2f146cb0de"
+            },
+            "carr_library.native_runtime": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\native_runtime.py",
+              "sha256": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+            },
+            "carr_library.progress": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\progress.py",
+              "sha256": "769d24e61b57ebd3843d7827ea3fd3d842c8fa35944645ddb937d33239aee6bd"
+            },
+            "carr_library.ui.about_dialog": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\about_dialog.py",
+              "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+            },
+            "carr_library.ui.command_registry": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\command_registry.py",
+              "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+            },
+            "carr_library.ui.desktop_app": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+              "sha256": "33867895088e963875918b38f00cdb47e72b461256ca6e2a31b643e26f104fcb"
+            },
+            "carr_library.ui.keyboard_settings": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\keyboard_settings.py",
+              "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+            }
+          },
+          "package_inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+          "package_python_files": 408,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "14a4fc0c6085100a3b61efb85a4fde85a53e733b83c2bb11593ea48e464c627d",
+          "qualification": "ACTUAL_COMPONENT_NOTICE_CONTRACTS_ONLY",
+          "selected_suites": {
+            "tests/packaging/test_component_notices.py": 27,
+            "tests/ui/test_about_dialog.py": 14
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/packaging/test_component_notices.py": "debebf55940c30351eeb2fbdcf689b1056397893da54bd61fb7b7ad3b9ca954a",
+            "tests/ui/test_about_dialog.py": "f3f0f9fe68862c1a6cbadaa1890886289a2a98fbcfbbf4239c08c86e295b5642"
+          }
+        },
+        {
+          "NVDA": "NOT_RUN",
+          "cases": 41,
+          "commit": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+          "large_corpus_acceptance": "NOT_RUN",
+          "mode": "installed",
+          "origins": {
+            "carr_library.component_notices": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+              "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+            },
+            "carr_library.native_checks": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\native_checks.py",
+              "sha256": "894cfcfcdf5872683399f470aed75d0aa6c05e5fbf9ac677f47b4e2f146cb0de"
+            },
+            "carr_library.native_runtime": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\native_runtime.py",
+              "sha256": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+            },
+            "carr_library.progress": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\progress.py",
+              "sha256": "769d24e61b57ebd3843d7827ea3fd3d842c8fa35944645ddb937d33239aee6bd"
+            },
+            "carr_library.ui.about_dialog": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+              "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+            },
+            "carr_library.ui.command_registry": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\command_registry.py",
+              "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+            },
+            "carr_library.ui.desktop_app": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+              "sha256": "33867895088e963875918b38f00cdb47e72b461256ca6e2a31b643e26f104fcb"
+            },
+            "carr_library.ui.keyboard_settings": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+              "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+            }
+          },
+          "package_inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+          "package_python_files": 408,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "14a4fc0c6085100a3b61efb85a4fde85a53e733b83c2bb11593ea48e464c627d",
+          "qualification": "ACTUAL_COMPONENT_NOTICE_CONTRACTS_ONLY",
+          "selected_suites": {
+            "tests/packaging/test_component_notices.py": 27,
+            "tests/ui/test_about_dialog.py": 14
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/packaging/test_component_notices.py": "debebf55940c30351eeb2fbdcf689b1056397893da54bd61fb7b7ad3b9ca954a",
+            "tests/ui/test_about_dialog.py": "f3f0f9fe68862c1a6cbadaa1890886289a2a98fbcfbbf4239c08c86e295b5642"
+          }
+        }
+      ]
+    },
+    {
+      "job_id": 140894707060,
+      "raw_log_blob": "701a642368edaa91270593870cd22c8c7bc65a54",
+      "reports": [
+        {
+          "NVDA": "NOT_RUN",
+          "cases": 41,
+          "commit": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+          "large_corpus_acceptance": "NOT_RUN",
+          "mode": "source",
+          "origins": {
+            "carr_library.component_notices": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/component_notices.py",
+              "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+            },
+            "carr_library.native_checks": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/native_checks.py",
+              "sha256": "894cfcfcdf5872683399f470aed75d0aa6c05e5fbf9ac677f47b4e2f146cb0de"
+            },
+            "carr_library.native_runtime": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/native_runtime.py",
+              "sha256": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+            },
+            "carr_library.progress": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/progress.py",
+              "sha256": "769d24e61b57ebd3843d7827ea3fd3d842c8fa35944645ddb937d33239aee6bd"
+            },
+            "carr_library.ui.about_dialog": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/about_dialog.py",
+              "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+            },
+            "carr_library.ui.command_registry": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/command_registry.py",
+              "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+            },
+            "carr_library.ui.desktop_app": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/desktop_app.py",
+              "sha256": "33867895088e963875918b38f00cdb47e72b461256ca6e2a31b643e26f104fcb"
+            },
+            "carr_library.ui.keyboard_settings": {
+              "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/keyboard_settings.py",
+              "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+            }
+          },
+          "package_inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+          "package_python_files": 408,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "14a4fc0c6085100a3b61efb85a4fde85a53e733b83c2bb11593ea48e464c627d",
+          "qualification": "ACTUAL_COMPONENT_NOTICE_CONTRACTS_ONLY",
+          "selected_suites": {
+            "tests/packaging/test_component_notices.py": 27,
+            "tests/ui/test_about_dialog.py": 14
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/packaging/test_component_notices.py": "debebf55940c30351eeb2fbdcf689b1056397893da54bd61fb7b7ad3b9ca954a",
+            "tests/ui/test_about_dialog.py": "f3f0f9fe68862c1a6cbadaa1890886289a2a98fbcfbbf4239c08c86e295b5642"
+          }
+        },
+        {
+          "NVDA": "NOT_RUN",
+          "cases": 41,
+          "commit": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+          "large_corpus_acceptance": "NOT_RUN",
+          "mode": "installed",
+          "origins": {
+            "carr_library.component_notices": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/component_notices.py",
+              "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+            },
+            "carr_library.native_checks": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/native_checks.py",
+              "sha256": "894cfcfcdf5872683399f470aed75d0aa6c05e5fbf9ac677f47b4e2f146cb0de"
+            },
+            "carr_library.native_runtime": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/native_runtime.py",
+              "sha256": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+            },
+            "carr_library.progress": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/progress.py",
+              "sha256": "769d24e61b57ebd3843d7827ea3fd3d842c8fa35944645ddb937d33239aee6bd"
+            },
+            "carr_library.ui.about_dialog": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/about_dialog.py",
+              "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+            },
+            "carr_library.ui.command_registry": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/command_registry.py",
+              "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+            },
+            "carr_library.ui.desktop_app": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/desktop_app.py",
+              "sha256": "33867895088e963875918b38f00cdb47e72b461256ca6e2a31b643e26f104fcb"
+            },
+            "carr_library.ui.keyboard_settings": {
+              "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/keyboard_settings.py",
+              "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+            }
+          },
+          "package_inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+          "package_python_files": 408,
+          "physical_microphone": "NOT_RUN",
+          "physical_output": "NOT_RUN",
+          "proof_helper_sha256": "14a4fc0c6085100a3b61efb85a4fde85a53e733b83c2bb11593ea48e464c627d",
+          "qualification": "ACTUAL_COMPONENT_NOTICE_CONTRACTS_ONLY",
+          "selected_suites": {
+            "tests/packaging/test_component_notices.py": 27,
+            "tests/ui/test_about_dialog.py": 14
+          },
+          "status": "PASS",
+          "test_files": {
+            "tests/packaging/test_component_notices.py": "debebf55940c30351eeb2fbdcf689b1056397893da54bd61fb7b7ad3b9ca954a",
+            "tests/ui/test_about_dialog.py": "f3f0f9fe68862c1a6cbadaa1890886289a2a98fbcfbbf4239c08c86e295b5642"
+          }
+        }
+      ]
+    },
+    {
+      "job_id": 140894706991,
+      "raw_log_blob": "c8ee339c9f622ef07341f10527b8d3aff531df95",
+      "reports": [
+        {
+          "actual_background_workers": true,
+          "actual_installed_metadata": true,
+          "actual_native_keys": true,
+          "actual_window_destroyed": true,
+          "check_count": 19,
+          "checks": [
+            "installed-about-module-origins",
+            "one-native-help-about-command",
+            "native-help-event-opens-real-modal",
+            "named-read-only-about-and-status-controls",
+            "named-focusable-component-and-action-controls",
+            "real-installed-component-version-in-catalogue",
+            "real-product-version-and-component-specific-terms",
+            "catalogue-read-runs-on-owned-background-worker",
+            "native-choice-keys-select-installed-component",
+            "native-read-key-opens-notice-inventory",
+            "native-picker-lists-actual-installed-notices",
+            "native-picker-key-opens-upstream-text",
+            "upstream-text-matches-verified-installed-notice",
+            "upstream-reader-is-named-readonly-and-focused",
+            "native-escape-keeps-parent-about-open",
+            "native-refresh-rereads-installed-catalogue",
+            "all-product-notice-reads-use-background-workers",
+            "native-close-destroys-only-about",
+            "parent-library-and-notice-bytes-preserved"
+          ],
+          "component": "pypdf",
+          "component_version": "7.1.1",
+          "module_origins": {
+            "carr_library.component_notices": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+              "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+            },
+            "carr_library.ui.about_dialog": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+              "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+            },
+            "carr_library.ui.desktop_app": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+              "sha256": "33867895088e963875918b38f00cdb47e72b461256ca6e2a31b643e26f104fcb"
+            }
+          },
+          "notice_sha256": "adb53e8e9c8b50731c12ce58b408c6ad2bc27fbe79f2208663a1e7ca7d6e5fa3",
+          "nvda": "NOT_RUN",
+          "offline_firewall": "NOT_ASSERTED_BY_THIS_COMPONENT; final full bundle gate remains required",
+          "package_inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+          "package_python_files": 408,
+          "profile": "core",
+          "proof_helper_sha256": "763dd7362aba2e815035d17f1840c5b4aafa9f5568f0f2cd778a303a993f871a",
+          "qualification": "ACTUAL_NATIVE_ABOUT_COMPONENT_ONLY",
+          "redistribution_clearance": "NOT_ASSESSED",
+          "selected_file_sha256": {
+            "packaging/windows-cp311.lock": "7091e74de8b96493dda0eee20c509c20e385a27700b31e2990609dd65f434872",
+            "scripts/about_native_oracle.json": "c99e3d9a2b0d0999a24febb12f166f2582cc31029687df442319a388b4f858fd",
+            "tests/ui/probe_about_native.py": "965871eac2e502b6a635c83695f05cadce4f18905b3b449b57683bd14ba4d4cc"
+          },
+          "source_commit": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "job_id": 140894707083,
+      "raw_log_blob": "6dffa0058285ad54e9dd0c0317b6ef504a38f874",
+      "reports": [
+        {
+          "actual_background_workers": true,
+          "actual_installed_metadata": true,
+          "actual_native_keys": true,
+          "actual_window_destroyed": true,
+          "check_count": 19,
+          "checks": [
+            "installed-about-module-origins",
+            "one-native-help-about-command",
+            "native-help-event-opens-real-modal",
+            "named-read-only-about-and-status-controls",
+            "named-focusable-component-and-action-controls",
+            "real-installed-component-version-in-catalogue",
+            "real-product-version-and-component-specific-terms",
+            "catalogue-read-runs-on-owned-background-worker",
+            "native-choice-keys-select-installed-component",
+            "native-read-key-opens-notice-inventory",
+            "native-picker-lists-actual-installed-notices",
+            "native-picker-key-opens-upstream-text",
+            "upstream-text-matches-verified-installed-notice",
+            "upstream-reader-is-named-readonly-and-focused",
+            "native-escape-keeps-parent-about-open",
+            "native-refresh-rereads-installed-catalogue",
+            "all-product-notice-reads-use-background-workers",
+            "native-close-destroys-only-about",
+            "parent-library-and-notice-bytes-preserved"
+          ],
+          "component": "pypdf",
+          "component_version": "7.1.1",
+          "module_origins": {
+            "carr_library.component_notices": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+              "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+            },
+            "carr_library.ui.about_dialog": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+              "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+            },
+            "carr_library.ui.desktop_app": {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+              "sha256": "33867895088e963875918b38f00cdb47e72b461256ca6e2a31b643e26f104fcb"
+            }
+          },
+          "notice_sha256": "adb53e8e9c8b50731c12ce58b408c6ad2bc27fbe79f2208663a1e7ca7d6e5fa3",
+          "nvda": "NOT_RUN",
+          "offline_firewall": "NOT_ASSERTED_BY_THIS_COMPONENT; final full bundle gate remains required",
+          "package_inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+          "package_python_files": 408,
+          "profile": "semantic",
+          "proof_helper_sha256": "763dd7362aba2e815035d17f1840c5b4aafa9f5568f0f2cd778a303a993f871a",
+          "qualification": "ACTUAL_NATIVE_ABOUT_COMPONENT_ONLY",
+          "redistribution_clearance": "NOT_ASSESSED",
+          "selected_file_sha256": {
+            "packaging/windows-semantic-cp311.lock": "1486bdecac0e02568086a8261e1e8f4344e507dfb6f4a61a687baf081650f8f5",
+            "scripts/about_native_oracle.json": "c99e3d9a2b0d0999a24febb12f166f2582cc31029687df442319a388b4f858fd",
+            "tests/ui/probe_about_native.py": "965871eac2e502b6a635c83695f05cadce4f18905b3b449b57683bd14ba4d4cc"
+          },
+          "source_commit": "8c51cb28f8410d01e4675876a703fcf558a424e5",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "common_source_and_installed": {
+      "windows": 41,
+      "linux": 41
+    },
+    "native_profiles": [
+      "core",
+      "semantic"
+    ],
+    "native_assertions_per_profile": 19,
+    "python_files": 408,
+    "inventory_sha256": "8f6e03543c4482e501c0f4d88f423785ac8d8d5427e497760aeeac3f5095e679",
+    "skips": 0,
+    "expected_failures": 0
+  },
+  "not_run": [
+    "NVDA/human acceptance",
+    "Physical hardware",
+    "Final combined bundle firewall/launcher validation"
+  ],
+  "qualification": "Only this exact component head. Final combined head must rerun maintained acceptance; no final PASS transfer."
+}

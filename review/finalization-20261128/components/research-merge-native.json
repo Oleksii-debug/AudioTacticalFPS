@@ -1,0 +1,180 @@
+{
+  "schema": "carr-component-native-runtime/1",
+  "scope": "ACTUAL_NATIVE_RESEARCH_CONTENT_MERGE_COMPONENT_ONLY",
+  "head": "1e7395ad6105e0e9d952ffbd6fa17eb6d9d669a6",
+  "tree": "8809df084d20ccb63bc13c8e666ebcb38d8eadb5",
+  "manifest": "0a544e1d9ad99de1d85c872285754b03e2fdf233",
+  "run": 46122906464,
+  "job": 140911077598,
+  "conclusion": "SUCCESS",
+  "raw_log": "b4b56c5dce75f10f48eb539a138ed8acd6edc534",
+  "report": {
+    "NVDA": "NOT_RUN",
+    "actual_cancel_and_owner_withdrawal": "PASS",
+    "checks": [
+      "actual_library_menu_and_exact_review",
+      "native_cancel_publishes_nothing",
+      "direct_delete_revokes_queued_confirmation",
+      "exact_choices_and_omissions_are_required",
+      "actual_final_report_matches_committed_result",
+      "right_conflict_preserves_graph_history_and_sources",
+      "completed_restore_is_held_by_the_existing_worker",
+      "late_committed_receipt_survives_dead_native_owner",
+      "left_conflict_preserves_its_complete_original_snapshot",
+      "both_full_input_backups_remain_byte_exact",
+      "one_existing_executor_and_exact_modal_lifetimes",
+      "all_owned_private_resources_are_released"
+    ],
+    "controlled_seams": [
+      "authored folder/checksum/resource answers",
+      "hold after a genuine completed final restore"
+    ],
+    "current_library_unchanged": "PASS",
+    "exact_research_graph": "PASS",
+    "native_checks": 310,
+    "native_file_picker": "NOT_RUN",
+    "native_keyboard": "PASS",
+    "offline_firewall": "NOT_ASSERTED_BY_THIS_COMPONENT; final full bundle gate remains required",
+    "package_inventory_sha256": "dba23ae8ca0a5f828a29da5eb771e03b58fc4228d9286fbc55e311afc3646c81",
+    "package_python_files": 408,
+    "physical_keyboard": "NOT_RUN",
+    "probe_and_binding": {
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\research_merge_native_oracle.json": "07234b4f801c161a04fca836c74a01f4705d53fc923c69a84ad9c9685e47eecb",
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_import_access_smoke.py": "9a4dd0c3865a9323979296214cd2d4e6ef11ca344f9c8a372e38f90b6bb969ae",
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py": "5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916",
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_research_merge_smoke.py": "14da0f7ccb29efd92b510e9a3e0422cd9f400275839734ecdbf308b5dc8af661"
+    },
+    "proof_helper_sha256": "d0906110b7c45e80f159e55291e2d5273b01350617798244d3590b789f0399d0",
+    "qualification": "ACTUAL_NATIVE_RESEARCH_CONTENT_MERGE_COMPONENT_ONLY",
+    "result": "PASS",
+    "reviewed_omissions": "PASS",
+    "same_desktop_executor": "PASS",
+    "schema": "carr-native-research-merge/1",
+    "selected_file_sha256": {
+      "packaging/windows-cp311.lock": "7091e74de8b96493dda0eee20c509c20e385a27700b31e2990609dd65f434872",
+      "scripts/research_merge_native_oracle.json": "07234b4f801c161a04fca836c74a01f4705d53fc923c69a84ad9c9685e47eecb",
+      "scripts/windows_backup_import_access_smoke.py": "9a4dd0c3865a9323979296214cd2d4e6ef11ca344f9c8a372e38f90b6bb969ae",
+      "scripts/windows_publishing_smoke.py": "5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916",
+      "scripts/windows_research_merge_smoke.py": "14da0f7ccb29efd92b510e9a3e0422cd9f400275839734ecdbf308b5dc8af661"
+    },
+    "source_commit": "1e7395ad6105e0e9d952ffbd6fa17eb6d9d669a6",
+    "source_identity": {
+      "carr_library.application": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+        "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+      },
+      "carr_library.audio.cleanup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+        "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+      },
+      "carr_library.audio.process": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+        "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+      },
+      "carr_library.backup_budget": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_budget.py",
+        "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+      },
+      "carr_library.catalog.intake": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\catalog\\intake.py",
+        "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+      },
+      "carr_library.durable_state": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+        "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+      },
+      "carr_library.ingest.catalog_asset_copy": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\catalog_asset_copy.py",
+        "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+      },
+      "carr_library.ingest.retained_assets": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\retained_assets.py",
+        "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+      },
+      "carr_library.library_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+      },
+      "carr_library.operations.broker": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\operations\\broker.py",
+        "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+      },
+      "carr_library.research.academic_library": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\academic_library.py",
+        "sha256": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32"
+      },
+      "carr_library.research_merge": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research_merge.py",
+        "sha256": "d58a3b11a6760e6d45519abcb228bbb2790a9f4cfd135e697e86940206917104"
+      },
+      "carr_library.storage.publication": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\publication.py",
+        "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+      },
+      "carr_library.storage.revisions": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+        "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+      },
+      "carr_library.storage.schema_identity": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\schema_identity.py",
+        "sha256": "1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0"
+      },
+      "carr_library.ui.backup_actions": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_actions.py",
+        "sha256": "0d31455d97f4af7f1797631894f5aa42fc8deb93d9c7530c60cfe2c0f490b7c1"
+      },
+      "carr_library.ui.backup_incremental_dialog": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_incremental_dialog.py",
+        "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+      },
+      "carr_library.ui.backup_resources": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_resources.py",
+        "sha256": "6747b198cdd02521f1c8306aceaaf8b91f70670896a62b8347b267bc6d747faa"
+      },
+      "carr_library.ui.command_registry": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\command_registry.py",
+        "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+      },
+      "carr_library.ui.desktop_app": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "sha256": "68126596761ab14d9e178b3581053052a9900d916dab58badbe289a7292e8efa"
+      },
+      "carr_library.ui.keyboard_settings": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+        "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+      },
+      "carr_library.ui.research_merge_dialog": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\research_merge_dialog.py",
+        "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+      }
+    },
+    "unchanged_input_backups": "PASS",
+    "whole_workspace_conflicts": "PASS"
+  },
+  "artifact": {
+    "id": 15254940317,
+    "size_bytes": 47789,
+    "sha256": "5f03790454db48eade730c91de5b67979bbebcf016e273ea5a5f7c6092619918"
+  },
+  "common_contracts": {
+    "head": "cf16f98880eb5fb72c0eeb9eb6121e85a7181406",
+    "run": 46120328460,
+    "evidence": "4b69a98a4dc6e7b5cb3495470fdd0667dd286eec",
+    "cases_each_os_each_context": 237,
+    "new_core_cases": 22,
+    "new_ui_cases": 14,
+    "production_identical_to_native_head": true
+  },
+  "prior_failed_attempt": {
+    "head": "ed0f9c6796dba09183fced72a4b2ec356b28ca08",
+    "evidence": "02106e69f16e3e90d59f330a471ce536e2cece3f",
+    "correction": "Single probe hunk decodes the actual displayed JSON and compares every receipt field; product source and all 12 criteria unchanged."
+  },
+  "limits": [
+    "Named published-research-content/1 selective merge only; broader operational/audio/settings merge unsupported by this profile",
+    "Native key count310 is component-specific; final composition uses the exact12 business criteria and PASS flags",
+    "Authored folder/checksum/resource answers controlled, actual merge and completed-result hold real",
+    "No physical keyboard, native file picker, NVDA, full-profile/large-scale or component offline-firewall qualification",
+    "Final coherent head still requires maintained acceptance on its exact source"
+  ]
+}

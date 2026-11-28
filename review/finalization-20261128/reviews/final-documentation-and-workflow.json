@@ -1,0 +1,523 @@
+{
+  "schema": "carr-final-doc-source-review/1",
+  "reviewed_source_head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
+  "reviewed_source_tree": "10190663b49ab4457ec69392907c6d98239570c3",
+  "reviewed_documents": [
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "sha": "5ca4633735f04a0e4ae9d26eb9dfe8dd4236f444"
+    },
+    {
+      "path": "carr-library/README.md",
+      "sha": "a3629f642e0bef9033312a92e6dce2343034d40c"
+    },
+    {
+      "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+      "sha": "7884517a2fd9bfd70cb07900a12fe21ad69734a1"
+    },
+    {
+      "path": "carr-library/docs/ABOUT_COMPONENT_NOTICES.md",
+      "sha": "987b20e56e684f021f597f3138b435d09c52f1e1"
+    },
+    {
+      "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md",
+      "sha": "049bdf6be0ff765e7f167daa266c389fe8aec8a1"
+    },
+    {
+      "path": "carr-library/docs/AUDIO_EDITOR_INTERCHANGE.md",
+      "sha": "3ee07bc9206bba6943a25a7cfff48f5f53c924cd"
+    }
+  ],
+  "direct_evidence_reads": [
+    "4395289883c6de3d4f4b77a82bd6dce684e0ba84",
+    "f8befd32c9b070f11349dfa41faac7440ee5b681",
+    "18a9c2c04c248166a5e7b323d0a3c33dc39ad074",
+    "4b69a98a4dc6e7b5cb3495470fdd0667dd286eec",
+    "d259039397492b121752bc777a827e4dc2108065"
+  ],
+  "relative_links": {
+    "primary_documents": {
+      "head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
+      "links": [
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "SPEECH_PREPARATION.md",
+          "path": "carr-library/docs/SPEECH_PREPARATION.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LIVE_READING.md",
+          "path": "carr-library/docs/LIVE_READING.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "WORD_DESKTOP_INTEGRATION.md",
+          "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "RESEARCH_CONTENT_MERGE.md",
+          "path": "carr-library/docs/RESEARCH_CONTENT_MERGE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "AUDIO_SILENCE_INSPECTION.md",
+          "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "AUDIO_EDITOR_INTERCHANGE.md",
+          "path": "carr-library/docs/AUDIO_EDITOR_INTERCHANGE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "ABOUT_COMPONENT_NOTICES.md",
+          "path": "carr-library/docs/ABOUT_COMPONENT_NOTICES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "REDACTED_DIAGNOSTICS.md",
+          "path": "carr-library/docs/REDACTED_DIAGNOSTICS.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "UI_LOCALIZATION_PLAN.md",
+          "path": "carr-library/docs/UI_LOCALIZATION_PLAN.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "INDEPENDENT_PLAYBACK.md",
+          "path": "carr-library/docs/INDEPENDENT_PLAYBACK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "ASSISTANT_LOCAL_TOOLS.md",
+          "path": "carr-library/docs/ASSISTANT_LOCAL_TOOLS.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "VERIFIED_UPDATE_RESUME.md",
+          "path": "carr-library/docs/VERIFIED_UPDATE_RESUME.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "IMPORT_CENTER.md",
+          "path": "carr-library/docs/IMPORT_CENTER.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "AUTOMATIC_OCR_UK.md",
+          "path": "carr-library/docs/AUTOMATIC_OCR_UK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "SEARCH_PAGING_AND_RESOURCES.md",
+          "path": "carr-library/docs/SEARCH_PAGING_AND_RESOURCES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LOCAL_TRANSLATION_UK.md",
+          "path": "carr-library/docs/LOCAL_TRANSLATION_UK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "PLAYBACK_QUEUE.md",
+          "path": "carr-library/docs/PLAYBACK_QUEUE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "BACKUP_RESOURCES_AND_RECOVERY.md",
+          "path": "carr-library/docs/BACKUP_RESOURCES_AND_RECOVERY.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "STUDIO_CLIP_EDITING.md",
+          "path": "carr-library/docs/STUDIO_CLIP_EDITING.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "WORKFLOW_TEMPLATES.md",
+          "path": "carr-library/docs/WORKFLOW_TEMPLATES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LEGACY_DOCUMENT_READING.md",
+          "path": "carr-library/docs/LEGACY_DOCUMENT_READING.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "CALIBRE_READING.md",
+          "path": "carr-library/docs/CALIBRE_READING.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "SIGNED_UPDATE_MAINTENANCE.md",
+          "path": "carr-library/docs/SIGNED_UPDATE_MAINTENANCE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LARGE_LIBRARY_SCALE.md",
+          "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "READING_WORKFLOW_CHECKLIST.md",
+          "path": "carr-library/docs/READING_WORKFLOW_CHECKLIST.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "START_V3_UK.txt",
+          "path": "carr-library/docs/START_V3_UK.txt"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "DOCUMENT_FORMATS_V3.md",
+          "path": "carr-library/docs/DOCUMENT_FORMATS_V3.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "ACADEMIC_SEARCH.md",
+          "path": "carr-library/docs/ACADEMIC_SEARCH.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "V3_BIBLIOGRAPHY.md",
+          "path": "carr-library/docs/V3_BIBLIOGRAPHY.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "academic_integration.md",
+          "path": "carr-library/docs/academic_integration.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "KEYBOARD_SHORTCUTS.md",
+          "path": "carr-library/docs/KEYBOARD_SHORTCUTS.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "READING_WORKFLOW_CHECKLIST.md",
+          "path": "carr-library/docs/READING_WORKFLOW_CHECKLIST.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "TRANSCRIPTION_INTEGRATION_REVIEW.md",
+          "path": "carr-library/docs/TRANSCRIPTION_INTEGRATION_REVIEW.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "DOCUMENT_BATCHES.md",
+          "path": "carr-library/docs/DOCUMENT_BATCHES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "ORDERED_AUDIO_EFFECTS.md",
+          "path": "carr-library/docs/ORDERED_AUDIO_EFFECTS.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "OUTPUT_DEVICES.md",
+          "path": "carr-library/docs/OUTPUT_DEVICES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "READ12_SESSION_CONTROLS.md",
+          "path": "carr-library/docs/READ12_SESSION_CONTROLS.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "WORKFLOW_TEMPLATES.md",
+          "path": "carr-library/docs/WORKFLOW_TEMPLATES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "TRANSLATION_BATCH_UK.md",
+          "path": "carr-library/docs/TRANSLATION_BATCH_UK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LEGACY_DOCUMENT_READING.md",
+          "path": "carr-library/docs/LEGACY_DOCUMENT_READING.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "CALIBRE_READING.md",
+          "path": "carr-library/docs/CALIBRE_READING.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "SIGNED_UPDATE_MAINTENANCE.md",
+          "path": "carr-library/docs/SIGNED_UPDATE_MAINTENANCE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "INDEPENDENT_PLAYBACK.md",
+          "path": "carr-library/docs/INDEPENDENT_PLAYBACK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "ASSISTANT_LOCAL_TOOLS.md",
+          "path": "carr-library/docs/ASSISTANT_LOCAL_TOOLS.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "VERIFIED_UPDATE_RESUME.md",
+          "path": "carr-library/docs/VERIFIED_UPDATE_RESUME.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "IMPORT_CENTER.md",
+          "path": "carr-library/docs/IMPORT_CENTER.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "AUTOMATIC_OCR_UK.md",
+          "path": "carr-library/docs/AUTOMATIC_OCR_UK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "SEARCH_PAGING_AND_RESOURCES.md",
+          "path": "carr-library/docs/SEARCH_PAGING_AND_RESOURCES.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LOCAL_TRANSLATION_UK.md",
+          "path": "carr-library/docs/LOCAL_TRANSLATION_UK.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "PLAYBACK_QUEUE.md",
+          "path": "carr-library/docs/PLAYBACK_QUEUE.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "BACKUP_RESOURCES_AND_RECOVERY.md",
+          "path": "carr-library/docs/BACKUP_RESOURCES_AND_RECOVERY.md"
+        },
+        {
+          "source": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "url": "LARGE_LIBRARY_SCALE.md",
+          "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+          "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/REUSE_DECISIONS_V2.md",
+          "path": "carr-library/docs/REUSE_DECISIONS_V2.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/acceptance.md",
+          "path": "carr-library/docs/acceptance.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "automation/COMMON.md",
+          "path": "carr-library/automation/COMMON.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/TRANSCRIPTION_INTEGRATION_REVIEW.md",
+          "path": "carr-library/docs/TRANSCRIPTION_INTEGRATION_REVIEW.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/RUNNING.md",
+          "path": "carr-library/docs/RUNNING.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/IMPORT_CENTER.md",
+          "path": "carr-library/docs/IMPORT_CENTER.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/AUTOMATIC_OCR_UK.md",
+          "path": "carr-library/docs/AUTOMATIC_OCR_UK.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/SEARCH_PAGING_AND_RESOURCES.md",
+          "path": "carr-library/docs/SEARCH_PAGING_AND_RESOURCES.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/ACADEMIC_SEARCH.md",
+          "path": "carr-library/docs/ACADEMIC_SEARCH.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/READING_DESK.md",
+          "path": "carr-library/docs/READING_DESK.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/BACKUP_RESOURCES_AND_RECOVERY.md",
+          "path": "carr-library/docs/BACKUP_RESOURCES_AND_RECOVERY.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/LOCAL_TRANSLATION_UK.md",
+          "path": "carr-library/docs/LOCAL_TRANSLATION_UK.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/PLAYBACK_QUEUE.md",
+          "path": "carr-library/docs/PLAYBACK_QUEUE.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/ACADEMIC_WORKFLOWS.md",
+          "path": "carr-library/docs/ACADEMIC_WORKFLOWS.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/CATALOG_TOOLS.md",
+          "path": "carr-library/docs/CATALOG_TOOLS.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/SPEECH_PREPARATION.md",
+          "path": "carr-library/docs/SPEECH_PREPARATION.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/LIVE_READING.md",
+          "path": "carr-library/docs/LIVE_READING.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/WORD_DESKTOP_INTEGRATION.md",
+          "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/RESEARCH_CONTENT_MERGE.md",
+          "path": "carr-library/docs/RESEARCH_CONTENT_MERGE.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/AUDIO_SILENCE_INSPECTION.md",
+          "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/AUDIO_EDITOR_INTERCHANGE.md",
+          "path": "carr-library/docs/AUDIO_EDITOR_INTERCHANGE.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/ABOUT_COMPONENT_NOTICES.md",
+          "path": "carr-library/docs/ABOUT_COMPONENT_NOTICES.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/REDACTED_DIAGNOSTICS.md",
+          "path": "carr-library/docs/REDACTED_DIAGNOSTICS.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/EPUB_READING.md",
+          "path": "carr-library/docs/EPUB_READING.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/V3_RELEASE_READINESS.md",
+          "path": "carr-library/docs/V3_RELEASE_READINESS.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/UI_LOCALIZATION_PLAN.md",
+          "path": "carr-library/docs/UI_LOCALIZATION_PLAN.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+          "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "docs/acceptance.md",
+          "path": "carr-library/docs/acceptance.md"
+        },
+        {
+          "source": "carr-library/README.md",
+          "url": "packaging/README.md",
+          "path": "carr-library/packaging/README.md"
+        }
+      ],
+      "bad": []
+    },
+    "nine_new_guides": {
+      "head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
+      "links": [
+        {
+          "source": "carr-library/docs/REDACTED_DIAGNOSTICS.md",
+          "url": "../src/carr_library/support_diagnostics.py",
+          "path": "carr-library/src/carr_library/support_diagnostics.py"
+        },
+        {
+          "source": "carr-library/docs/REDACTED_DIAGNOSTICS.md",
+          "url": "../src/carr_library/ui/diagnostics_dialog.py",
+          "path": "carr-library/src/carr_library/ui/diagnostics_dialog.py"
+        },
+        {
+          "source": "carr-library/docs/REDACTED_DIAGNOSTICS.md",
+          "url": "../src/carr_library/research/export_file.py",
+          "path": "carr-library/src/carr_library/research/export_file.py"
+        },
+        {
+          "source": "carr-library/docs/REDACTED_DIAGNOSTICS.md",
+          "url": "../tests/diagnostics/test_support_diagnostics.py",
+          "path": "carr-library/tests/diagnostics/test_support_diagnostics.py"
+        },
+        {
+          "source": "carr-library/docs/REDACTED_DIAGNOSTICS.md",
+          "url": "../tests/ui/test_diagnostics_dialog.py",
+          "path": "carr-library/tests/ui/test_diagnostics_dialog.py"
+        },
+        {
+          "source": "carr-library/docs/REDACTED_DIAGNOSTICS.md",
+          "url": "../scripts/windows_diagnostics_smoke.py",
+          "path": "carr-library/scripts/windows_diagnostics_smoke.py"
+        },
+        {
+          "source": "carr-library/docs/UI_LOCALIZATION_PLAN.md",
+          "url": "UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+          "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md"
+        }
+      ],
+      "bad": []
+    }
+  },
+  "verdict": "SOURCE APPROVE the six exact reviewed documents for finite claim/link scope. No final required gate or twelve-tier PASS is inferred.",
+  "concrete_findings": [
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "status": "FIXED",
+      "old": "26fd66c3d9a88cc1356480616fb23065ca91a062",
+      "new": "5ca4633735f04a0e4ae9d26eb9dfe8dd4236f444",
+      "finding": "Removed one table-breaking blank line before the two new component evidence rows; exact sole change."
+    },
+    {
+      "path": "carr-library/docs/SPEECH_PREPARATION.md",
+      "sha": "5dbf8393bbe52bde6ec70cdcd87aed123d0ece84",
+      "status": "RECOMMENDED_PRECISE_CORRECTION",
+      "finding": "Qualification sentence still labels new preparation runtime NOT_RUN without distinguishing completed component755x4/native321 from the pending final composition.",
+      "proposed_scope": "Record completed exact component evidence277388ce9e6444d1789fe8281aded18ebdbe705e/9033d18c80d3ea299122968fe9075dac5ee128a5; retain exact final-head acceptance pending."
+    }
+  ],
+  "workflow_review": {
+    "before": "faf177b4e701dd10746ea78bdd54a5b2c0d36082",
+    "after": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+    "verdict": "SOURCE APPROVE exact two-hunk environment routing",
+    "proof": "Mechanical reversal reproduced all original bytes; event expression matches checkout and no other statement assigns or clears the new key. All original execution controls remain unchanged.",
+    "runtime": "Admission/execution of the corrected workflow remains a separate actual verdict.",
+    "primary_reference": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepsrun",
+    "limit_caveat": "Official documentation describes a general21,000-character run limit. Expression-specific rejection diagnosis is consistent with the observed old zero-job failure and accepted literal blocks, but not asserted as a guaranteed undocumented exception."
+  }
+}

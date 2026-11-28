@@ -1,0 +1,184 @@
+{
+  "schema": 1,
+  "status": "MEASURED_SYNTHETIC_CORPUS",
+  "qualification": "ACTUAL_WINDOWS_512MIB_COMPONENT_ONLY",
+  "head": "04ef743f2b68069516e19adefd39ef405097938a",
+  "tree": "60622ee7c61cb6fe5c44fba6f9cb877333a65c49",
+  "run": 46112104315,
+  "job": 140877690443,
+  "raw_log": "9b48bcf1e1ce377fac667a78da47f4ced39fdcad",
+  "product": {
+    "storage_revisions": "8dae69914d5c10f9ac747284a95645657dbf859b",
+    "storage_publication": "cefbfb3b22c13c9390a75872b94cb375bdca2277",
+    "audio_process": "57e15544f6b27486cfd583316304db2fa83ed295"
+  },
+  "asserted_stages": [
+    "original_generation",
+    "public_queue_admission",
+    "unchanged_source_and_policy",
+    "authored_postcommit_quiescent_exit_73",
+    "same_queue_resume",
+    "complete_catalog_source_verification",
+    "complete_search_traversal_exact_quotes_scoped_ranking",
+    "saved_budget_counts_and_unchanged_installed_bytes"
+  ],
+  "limitations": [
+    "12 final exact-head tiers remain NOT_RUN",
+    "Working allowance is not a whole-process memory sandbox",
+    "Actual coordinator own peak is measured; concurrent family peak NOT_MEASURED",
+    "No full original Windows SQL-statement-level causal claim from this component alone"
+  ],
+  "metrics": {
+    "actual_books": 1,
+    "actual_segments": 250,
+    "bounded_title_anchor_latency": {
+      "maximum_seconds": 9.381837300000143,
+      "minimum_seconds": 9.135973600000057,
+      "p50_seconds": 9.198674449999885,
+      "p95_method": "nearest rank",
+      "p95_seconds": 9.281566800000064,
+      "samples": 50
+    },
+    "catalog_seconds": 9.398749099999918,
+    "commit": "04ef743f2b68069516e19adefd39ef405097938a",
+    "comparison": "No timing ratio to cProfile-inclusive baseline is claimed.",
+    "complete_scope_ranking": [
+      {
+        "first_page_seconds": 29.39890000000014,
+        "index_bytes": 606851072,
+        "label": "first_complete_scope_call",
+        "source_pages": 250,
+        "total_results": 250,
+        "updated_index_rows": 250
+      },
+      {
+        "first_page_seconds": 30.398939700000028,
+        "index_bytes": 606851072,
+        "label": "same_source_cache_reopen",
+        "source_pages": 250,
+        "total_results": 250,
+        "updated_index_rows": 0
+      }
+    ],
+    "coordinator_memory": {
+      "coordinator_method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+      "coordinator_peak_bytes": 1836339200,
+      "largest_reaped_child_peak_bytes": null,
+      "simultaneous_family_peak_bytes": null
+    },
+    "disk": {
+      "application_profile": {
+        "allocated_bytes": null,
+        "allocation_method": "NOT_MEASURED",
+        "entries": 39,
+        "files": 30,
+        "logical_bytes": 2821986267
+      },
+      "benchmark_evidence": {
+        "allocated_bytes": null,
+        "allocation_method": "NOT_MEASURED",
+        "entries": 10,
+        "files": 8,
+        "logical_bytes": 16138
+      },
+      "external_originals": {
+        "allocated_bytes": null,
+        "allocation_method": "NOT_MEASURED",
+        "entries": 1,
+        "files": 1,
+        "logical_bytes": 536871085
+      },
+      "imports.sqlite": {
+        "main": 537665536
+      },
+      "library.sqlite": {
+        "main": 1140592640
+      },
+      "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+      "retained_originals": {
+        "allocated_bytes": null,
+        "allocation_method": "NOT_MEASURED",
+        "entries": 22,
+        "files": 22,
+        "logical_bytes": 536872030
+      }
+    },
+    "full_twelve_tier_final_release": "NOT_RUN",
+    "import_budget": {
+      "library_bytes": 3221498894,
+      "memory_bytes": 1073741824,
+      "schema": "carr-import-budget/1",
+      "seconds": 600,
+      "segment_bytes": 2147487,
+      "segments": 250,
+      "source_bytes": 536871085,
+      "steps": 251,
+      "temporary_bytes": 671088813
+    },
+    "instrumentation": "NONE; actual public scenario wall times",
+    "literal_page_latency": {
+      "maximum_seconds": 14.16494990000001,
+      "minimum_seconds": 11.052552399999968,
+      "p50_seconds": 13.374587099999985,
+      "p95_method": "nearest rank",
+      "p95_seconds": 14.16494990000001,
+      "samples": 17
+    },
+    "manifest_sha256": "9a24dcd51713b99c1c6190e6c89c67e3101ae2e6613f59e81ac7a01e5f09bf10",
+    "operations": {
+      "authored_postcommit_crash": {
+        "batch_id": "9d7d14f7ecf148d9a772427f5a04253f",
+        "boundary": "durable batch save after actual owned worker return",
+        "committed": 1,
+        "elapsed_seconds": 71.03287009999997,
+        "pid": 2724,
+        "schema": "carr-library-catalog-benchmark/1",
+        "workers": [
+          {
+            "elapsed_seconds": 58.73400000000004,
+            "executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+            "method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+            "peak_bytes": 69058560,
+            "pid": 7408,
+            "prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+            "result_sha256": "4b671763c2bf0b64fe6c94ca87b5b5647b91470991373136c3d44cb4d2aa6b13",
+            "returncode": 0
+          }
+        ]
+      },
+      "import_slices": {
+        "maximum_seconds": 71.03287009999997,
+        "minimum_seconds": 71.03287009999997,
+        "p50_seconds": 71.03287009999997,
+        "p95_method": "nearest rank",
+        "p95_seconds": 71.03287009999997,
+        "samples": 1
+      },
+      "measured_import_seconds": 71.03287009999997,
+      "measured_scan_seconds": 2.68286889999996,
+      "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+      "scan": {
+        "maximum_seconds": 2.68286889999996,
+        "minimum_seconds": 2.68286889999996,
+        "p50_seconds": 2.68286889999996,
+        "p95_method": "nearest rank",
+        "p95_seconds": 2.68286889999996,
+        "samples": 1
+      }
+    },
+    "package_sha256": "4afc9570617be17b03345e92e91c04a62d6edea8909dd0669b03324f4ba3bf0d",
+    "qualification": "ACTUAL_512MIB_GROWTH_COMPONENT_ONLY",
+    "run": "46112104315",
+    "search_memory_allowance_bytes": 1073741824,
+    "search_seconds": 1791.5721249000003,
+    "worker_peaks": {
+      "maximum_worker_own_peak_bytes": 69058560,
+      "measured_worker_exits": 1,
+      "methods": [
+        "GetProcessMemoryInfo.PeakWorkingSetSize"
+      ],
+      "note": "Actual per-worker exit peaks; concurrent family peak is not measured.",
+      "simultaneous_family_peak_bytes": null
+    }
+  }
+}

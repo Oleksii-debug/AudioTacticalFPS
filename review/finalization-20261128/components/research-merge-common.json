@@ -1,0 +1,628 @@
+{
+  "schema": "carr-component-runtime/1",
+  "scope": "PUBLISHED_RESEARCH_CONTENT_MERGE_COMMON_COMPONENT",
+  "head": "cf16f98880eb5fb72c0eeb9eb6121e85a7181406",
+  "tree": "ede027d3b1558d20d4614264af4522873544cc9a",
+  "manifest": "2d106bcb146ac6465896ac51319c8e3504eb618e",
+  "run": 46120328460,
+  "linux": {
+    "job_id": 140903206975,
+    "raw_log": "7311c798e332fba54960173774b11e4296ed0832",
+    "reports": [
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 237,
+        "commit": "cf16f98880eb5fb72c0eeb9eb6121e85a7181406",
+        "full_profile_merge": "NOT_SUPPORTED_BY_THIS_PROFILE",
+        "mode": "source",
+        "native_research_merge": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.backup_budget": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_budget.py",
+            "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+          },
+          "carr_library.backup_current": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/backup_current.py",
+            "sha256": "1c59535c6a213659c845982537ef95e59d1dc8542ce7726a312996b55f4c3644"
+          },
+          "carr_library.catalog.intake": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/catalog/intake.py",
+            "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+          },
+          "carr_library.durable_state": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.ingest.catalog_asset_copy": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+            "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+          },
+          "carr_library.ingest.publication_identity": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/publication_identity.py",
+            "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+          },
+          "carr_library.ingest.retained_assets": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/retained_assets.py",
+            "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+          },
+          "carr_library.ingest.worker": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/worker.py",
+            "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"
+          },
+          "carr_library.library_backup": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/library_backup.py",
+            "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+          },
+          "carr_library.research.academic_library": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/research/academic_library.py",
+            "sha256": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32"
+          },
+          "carr_library.research.saved_evidence": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/research/saved_evidence.py",
+            "sha256": "325f7ca48570c58d68b66a3a6018f6e02554e8d2298f01ca9fc12872452cb7c9"
+          },
+          "carr_library.research_merge": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/research_merge.py",
+            "sha256": "d58a3b11a6760e6d45519abcb228bbb2790a9f4cfd135e697e86940206917104"
+          },
+          "carr_library.storage.academic_schema": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/academic_schema.py",
+            "sha256": "5778ff82886c7346c1a17581e31cba59329fd0e38891d815d6e4287df03475b2"
+          },
+          "carr_library.storage.publication": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/publication.py",
+            "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+          },
+          "carr_library.storage.research_schema": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/research_schema.py",
+            "sha256": "6aa83f731b3b85fa5da69b3edf4df410cea74ed1970d3d993e09dd9361567e90"
+          },
+          "carr_library.storage.revisions": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/revisions.py",
+            "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+          },
+          "carr_library.storage.schema_identity": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/schema_identity.py",
+            "sha256": "1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0"
+          },
+          "carr_library.ui.backup_actions": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/backup_actions.py",
+            "sha256": "0d31455d97f4af7f1797631894f5aa42fc8deb93d9c7530c60cfe2c0f490b7c1"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.backup_resources": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/backup_resources.py",
+            "sha256": "6747b198cdd02521f1c8306aceaaf8b91f70670896a62b8347b267bc6d747faa"
+          },
+          "carr_library.ui.command_registry": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/command_registry.py",
+            "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/desktop_app.py",
+            "sha256": "68126596761ab14d9e178b3581053052a9900d916dab58badbe289a7292e8efa"
+          },
+          "carr_library.ui.keyboard_settings": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/keyboard_settings.py",
+            "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ui/research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_files": 428,
+        "package_inventory_sha256": "ae5bf5d55ad49f0a64c36a423ebc469778dde77244261316b51d6431d3c9b562",
+        "package_python_files": 408,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "f53742191c5538ca0f09c236dd4636e99c0f5b563e83e1305fcc427cfd5afaae",
+        "qualification": "PUBLISHED_RESEARCH_CONTENT_MERGE_CONTRACTS",
+        "selected_suites": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": 1,
+          "tests/research/test_academic_library.py": 107,
+          "tests/storage/test_canonical_v5_compatibility.py": 9,
+          "tests/storage/test_evidence_drafts.py": 19,
+          "tests/storage/test_index_publication_streaming.py": 12,
+          "tests/storage/test_library_backup.py": 9,
+          "tests/storage/test_publication_session.py": 19,
+          "tests/storage/test_research_content_merge.py": 22,
+          "tests/storage/test_research_schema.py": 8,
+          "tests/storage/test_revisions.py": 5,
+          "tests/storage/test_seal_integrity.py": 5,
+          "tests/ui/test_backup_menu_binding.py": 7,
+          "tests/ui/test_research_merge_dialog.py": 14
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": "877ac52684264a2e2d60c08f3a5d424298d5246b88418bc33dd0a2bd0acb69d5",
+          "tests/research/test_academic_library.py": "b6989773948f5be7771af4dd55ae6b1e1219372b3d59129308d58405ed2958ba",
+          "tests/storage/test_canonical_v5_compatibility.py": "50690ab0220d661555231a3d511b095c3bb7f662672dac33047f136d3558cde3",
+          "tests/storage/test_evidence_drafts.py": "2c3003d45ecf45cef4ec84af071f6290c01de6b839fa24737548367cfd195e42",
+          "tests/storage/test_index_publication_streaming.py": "2ccb49763c05f0e5dfb0d0dd3f4fef175f8022e0f703b572e3cf1a75488a4b32",
+          "tests/storage/test_library_backup.py": "0d0ee388476d6ada0a59c9a2fd04a50a26b2ffd26ea23ce1e18659ea39fd36b0",
+          "tests/storage/test_publication_session.py": "4483fd445b60ed81e773469d233e0e2379896863442ab5de56625d7644e4dc7d",
+          "tests/storage/test_research_content_merge.py": "3ce203dc205ef63b56b9798c8d9a610a1c430b23ebf7a0c5d85fbd13b7716400",
+          "tests/storage/test_research_schema.py": "5fad7b5d480f805673be01cf0a9bd87dd3683731d050d72b5b54609bf75a055f",
+          "tests/storage/test_revisions.py": "970c2bd853e01f175ad8c299fb5a9555b4649a3c17ceb46c014d0c403e59b872",
+          "tests/storage/test_seal_integrity.py": "09ad31256bd782b60cf08ae5f56cd1e56ae48c1ef2b68fbb2afa2af0893a1b37",
+          "tests/ui/test_backup_menu_binding.py": "0677fe3e18165d11b050c52c1c7ab994b966d645263390ca88afeae2c2b49f4a",
+          "tests/ui/test_research_merge_dialog.py": "da1a23d8a2f8cc840c8ab63f020d26756e38b44dd9d10636ef2f7e7b97a0d3f8"
+        }
+      },
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 237,
+        "commit": "cf16f98880eb5fb72c0eeb9eb6121e85a7181406",
+        "full_profile_merge": "NOT_SUPPORTED_BY_THIS_PROFILE",
+        "mode": "installed",
+        "native_research_merge": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.backup_budget": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_budget.py",
+            "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+          },
+          "carr_library.backup_current": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_current.py",
+            "sha256": "1c59535c6a213659c845982537ef95e59d1dc8542ce7726a312996b55f4c3644"
+          },
+          "carr_library.catalog.intake": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/intake.py",
+            "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+          },
+          "carr_library.durable_state": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.ingest.catalog_asset_copy": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/catalog_asset_copy.py",
+            "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+          },
+          "carr_library.ingest.publication_identity": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/publication_identity.py",
+            "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+          },
+          "carr_library.ingest.retained_assets": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/retained_assets.py",
+            "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+          },
+          "carr_library.ingest.worker": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/worker.py",
+            "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"
+          },
+          "carr_library.library_backup": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py",
+            "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+          },
+          "carr_library.research.academic_library": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/research/academic_library.py",
+            "sha256": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32"
+          },
+          "carr_library.research.saved_evidence": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/research/saved_evidence.py",
+            "sha256": "325f7ca48570c58d68b66a3a6018f6e02554e8d2298f01ca9fc12872452cb7c9"
+          },
+          "carr_library.research_merge": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/research_merge.py",
+            "sha256": "d58a3b11a6760e6d45519abcb228bbb2790a9f4cfd135e697e86940206917104"
+          },
+          "carr_library.storage.academic_schema": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/academic_schema.py",
+            "sha256": "5778ff82886c7346c1a17581e31cba59329fd0e38891d815d6e4287df03475b2"
+          },
+          "carr_library.storage.publication": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/publication.py",
+            "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+          },
+          "carr_library.storage.research_schema": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/research_schema.py",
+            "sha256": "6aa83f731b3b85fa5da69b3edf4df410cea74ed1970d3d993e09dd9361567e90"
+          },
+          "carr_library.storage.revisions": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/revisions.py",
+            "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+          },
+          "carr_library.storage.schema_identity": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/schema_identity.py",
+            "sha256": "1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0"
+          },
+          "carr_library.ui.backup_actions": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/backup_actions.py",
+            "sha256": "0d31455d97f4af7f1797631894f5aa42fc8deb93d9c7530c60cfe2c0f490b7c1"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.backup_resources": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/backup_resources.py",
+            "sha256": "6747b198cdd02521f1c8306aceaaf8b91f70670896a62b8347b267bc6d747faa"
+          },
+          "carr_library.ui.command_registry": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/command_registry.py",
+            "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/desktop_app.py",
+            "sha256": "68126596761ab14d9e178b3581053052a9900d916dab58badbe289a7292e8efa"
+          },
+          "carr_library.ui.keyboard_settings": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/keyboard_settings.py",
+            "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_files": 428,
+        "package_inventory_sha256": "ae5bf5d55ad49f0a64c36a423ebc469778dde77244261316b51d6431d3c9b562",
+        "package_python_files": 408,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "f53742191c5538ca0f09c236dd4636e99c0f5b563e83e1305fcc427cfd5afaae",
+        "qualification": "PUBLISHED_RESEARCH_CONTENT_MERGE_CONTRACTS",
+        "selected_suites": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": 1,
+          "tests/research/test_academic_library.py": 107,
+          "tests/storage/test_canonical_v5_compatibility.py": 9,
+          "tests/storage/test_evidence_drafts.py": 19,
+          "tests/storage/test_index_publication_streaming.py": 12,
+          "tests/storage/test_library_backup.py": 9,
+          "tests/storage/test_publication_session.py": 19,
+          "tests/storage/test_research_content_merge.py": 22,
+          "tests/storage/test_research_schema.py": 8,
+          "tests/storage/test_revisions.py": 5,
+          "tests/storage/test_seal_integrity.py": 5,
+          "tests/ui/test_backup_menu_binding.py": 7,
+          "tests/ui/test_research_merge_dialog.py": 14
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": "877ac52684264a2e2d60c08f3a5d424298d5246b88418bc33dd0a2bd0acb69d5",
+          "tests/research/test_academic_library.py": "b6989773948f5be7771af4dd55ae6b1e1219372b3d59129308d58405ed2958ba",
+          "tests/storage/test_canonical_v5_compatibility.py": "50690ab0220d661555231a3d511b095c3bb7f662672dac33047f136d3558cde3",
+          "tests/storage/test_evidence_drafts.py": "2c3003d45ecf45cef4ec84af071f6290c01de6b839fa24737548367cfd195e42",
+          "tests/storage/test_index_publication_streaming.py": "2ccb49763c05f0e5dfb0d0dd3f4fef175f8022e0f703b572e3cf1a75488a4b32",
+          "tests/storage/test_library_backup.py": "0d0ee388476d6ada0a59c9a2fd04a50a26b2ffd26ea23ce1e18659ea39fd36b0",
+          "tests/storage/test_publication_session.py": "4483fd445b60ed81e773469d233e0e2379896863442ab5de56625d7644e4dc7d",
+          "tests/storage/test_research_content_merge.py": "3ce203dc205ef63b56b9798c8d9a610a1c430b23ebf7a0c5d85fbd13b7716400",
+          "tests/storage/test_research_schema.py": "5fad7b5d480f805673be01cf0a9bd87dd3683731d050d72b5b54609bf75a055f",
+          "tests/storage/test_revisions.py": "970c2bd853e01f175ad8c299fb5a9555b4649a3c17ceb46c014d0c403e59b872",
+          "tests/storage/test_seal_integrity.py": "09ad31256bd782b60cf08ae5f56cd1e56ae48c1ef2b68fbb2afa2af0893a1b37",
+          "tests/ui/test_backup_menu_binding.py": "0677fe3e18165d11b050c52c1c7ab994b966d645263390ca88afeae2c2b49f4a",
+          "tests/ui/test_research_merge_dialog.py": "da1a23d8a2f8cc840c8ab63f020d26756e38b44dd9d10636ef2f7e7b97a0d3f8"
+        }
+      }
+    ],
+    "source_seconds": 26.38,
+    "installed_seconds": 24.91
+  },
+  "windows": {
+    "job_id": 140903206716,
+    "raw_log": "2d8b0550e8e06dccc73a0dba9b3c296ea0a4d23d",
+    "source_seconds": 288.61,
+    "installed_seconds": 297.07,
+    "reports": [
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 237,
+        "commit": "cf16f98880eb5fb72c0eeb9eb6121e85a7181406",
+        "full_profile_merge": "NOT_SUPPORTED_BY_THIS_PROFILE",
+        "mode": "source",
+        "native_research_merge": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.backup_budget": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_budget.py",
+            "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+          },
+          "carr_library.backup_current": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\backup_current.py",
+            "sha256": "1c59535c6a213659c845982537ef95e59d1dc8542ce7726a312996b55f4c3644"
+          },
+          "carr_library.catalog.intake": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\catalog\\intake.py",
+            "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+          },
+          "carr_library.durable_state": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.ingest.catalog_asset_copy": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ingest\\catalog_asset_copy.py",
+            "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+          },
+          "carr_library.ingest.publication_identity": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ingest\\publication_identity.py",
+            "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+          },
+          "carr_library.ingest.retained_assets": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ingest\\retained_assets.py",
+            "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+          },
+          "carr_library.ingest.worker": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ingest\\worker.py",
+            "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\library_backup.py",
+            "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+          },
+          "carr_library.research.academic_library": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\research\\academic_library.py",
+            "sha256": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32"
+          },
+          "carr_library.research.saved_evidence": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\research\\saved_evidence.py",
+            "sha256": "325f7ca48570c58d68b66a3a6018f6e02554e8d2298f01ca9fc12872452cb7c9"
+          },
+          "carr_library.research_merge": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\research_merge.py",
+            "sha256": "d58a3b11a6760e6d45519abcb228bbb2790a9f4cfd135e697e86940206917104"
+          },
+          "carr_library.storage.academic_schema": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\storage\\academic_schema.py",
+            "sha256": "5778ff82886c7346c1a17581e31cba59329fd0e38891d815d6e4287df03475b2"
+          },
+          "carr_library.storage.publication": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\storage\\publication.py",
+            "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+          },
+          "carr_library.storage.research_schema": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\storage\\research_schema.py",
+            "sha256": "6aa83f731b3b85fa5da69b3edf4df410cea74ed1970d3d993e09dd9361567e90"
+          },
+          "carr_library.storage.revisions": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\storage\\revisions.py",
+            "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+          },
+          "carr_library.storage.schema_identity": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\storage\\schema_identity.py",
+            "sha256": "1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0"
+          },
+          "carr_library.ui.backup_actions": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\backup_actions.py",
+            "sha256": "0d31455d97f4af7f1797631894f5aa42fc8deb93d9c7530c60cfe2c0f490b7c1"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.backup_resources": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\backup_resources.py",
+            "sha256": "6747b198cdd02521f1c8306aceaaf8b91f70670896a62b8347b267bc6d747faa"
+          },
+          "carr_library.ui.command_registry": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\command_registry.py",
+            "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+            "sha256": "68126596761ab14d9e178b3581053052a9900d916dab58badbe289a7292e8efa"
+          },
+          "carr_library.ui.keyboard_settings": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\keyboard_settings.py",
+            "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_files": 428,
+        "package_inventory_sha256": "ae5bf5d55ad49f0a64c36a423ebc469778dde77244261316b51d6431d3c9b562",
+        "package_python_files": 408,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "f53742191c5538ca0f09c236dd4636e99c0f5b563e83e1305fcc427cfd5afaae",
+        "qualification": "PUBLISHED_RESEARCH_CONTENT_MERGE_CONTRACTS",
+        "selected_suites": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": 1,
+          "tests/research/test_academic_library.py": 107,
+          "tests/storage/test_canonical_v5_compatibility.py": 9,
+          "tests/storage/test_evidence_drafts.py": 19,
+          "tests/storage/test_index_publication_streaming.py": 12,
+          "tests/storage/test_library_backup.py": 9,
+          "tests/storage/test_publication_session.py": 19,
+          "tests/storage/test_research_content_merge.py": 22,
+          "tests/storage/test_research_schema.py": 8,
+          "tests/storage/test_revisions.py": 5,
+          "tests/storage/test_seal_integrity.py": 5,
+          "tests/ui/test_backup_menu_binding.py": 7,
+          "tests/ui/test_research_merge_dialog.py": 14
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": "877ac52684264a2e2d60c08f3a5d424298d5246b88418bc33dd0a2bd0acb69d5",
+          "tests/research/test_academic_library.py": "b6989773948f5be7771af4dd55ae6b1e1219372b3d59129308d58405ed2958ba",
+          "tests/storage/test_canonical_v5_compatibility.py": "50690ab0220d661555231a3d511b095c3bb7f662672dac33047f136d3558cde3",
+          "tests/storage/test_evidence_drafts.py": "2c3003d45ecf45cef4ec84af071f6290c01de6b839fa24737548367cfd195e42",
+          "tests/storage/test_index_publication_streaming.py": "2ccb49763c05f0e5dfb0d0dd3f4fef175f8022e0f703b572e3cf1a75488a4b32",
+          "tests/storage/test_library_backup.py": "0d0ee388476d6ada0a59c9a2fd04a50a26b2ffd26ea23ce1e18659ea39fd36b0",
+          "tests/storage/test_publication_session.py": "4483fd445b60ed81e773469d233e0e2379896863442ab5de56625d7644e4dc7d",
+          "tests/storage/test_research_content_merge.py": "3ce203dc205ef63b56b9798c8d9a610a1c430b23ebf7a0c5d85fbd13b7716400",
+          "tests/storage/test_research_schema.py": "5fad7b5d480f805673be01cf0a9bd87dd3683731d050d72b5b54609bf75a055f",
+          "tests/storage/test_revisions.py": "970c2bd853e01f175ad8c299fb5a9555b4649a3c17ceb46c014d0c403e59b872",
+          "tests/storage/test_seal_integrity.py": "09ad31256bd782b60cf08ae5f56cd1e56ae48c1ef2b68fbb2afa2af0893a1b37",
+          "tests/ui/test_backup_menu_binding.py": "0677fe3e18165d11b050c52c1c7ab994b966d645263390ca88afeae2c2b49f4a",
+          "tests/ui/test_research_merge_dialog.py": "da1a23d8a2f8cc840c8ab63f020d26756e38b44dd9d10636ef2f7e7b97a0d3f8"
+        }
+      },
+      {
+        "NVDA": "NOT_RUN",
+        "actual_neural_model_quality": "NOT_RUN",
+        "cases": 237,
+        "commit": "cf16f98880eb5fb72c0eeb9eb6121e85a7181406",
+        "full_profile_merge": "NOT_SUPPORTED_BY_THIS_PROFILE",
+        "mode": "installed",
+        "native_research_merge": "NOT_RUN",
+        "origins": {
+          "carr_library.application": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+          },
+          "carr_library.backup_budget": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_budget.py",
+            "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+          },
+          "carr_library.backup_current": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_current.py",
+            "sha256": "1c59535c6a213659c845982537ef95e59d1dc8542ce7726a312996b55f4c3644"
+          },
+          "carr_library.catalog.intake": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\catalog\\intake.py",
+            "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+          },
+          "carr_library.durable_state": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+            "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+          },
+          "carr_library.ingest.catalog_asset_copy": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\catalog_asset_copy.py",
+            "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+          },
+          "carr_library.ingest.publication_identity": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\publication_identity.py",
+            "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+          },
+          "carr_library.ingest.retained_assets": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\retained_assets.py",
+            "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+          },
+          "carr_library.ingest.worker": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\worker.py",
+            "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"
+          },
+          "carr_library.library_backup": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+          },
+          "carr_library.research.academic_library": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\academic_library.py",
+            "sha256": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32"
+          },
+          "carr_library.research.saved_evidence": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\saved_evidence.py",
+            "sha256": "325f7ca48570c58d68b66a3a6018f6e02554e8d2298f01ca9fc12872452cb7c9"
+          },
+          "carr_library.research_merge": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research_merge.py",
+            "sha256": "d58a3b11a6760e6d45519abcb228bbb2790a9f4cfd135e697e86940206917104"
+          },
+          "carr_library.storage.academic_schema": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\academic_schema.py",
+            "sha256": "5778ff82886c7346c1a17581e31cba59329fd0e38891d815d6e4287df03475b2"
+          },
+          "carr_library.storage.publication": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\publication.py",
+            "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+          },
+          "carr_library.storage.research_schema": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\research_schema.py",
+            "sha256": "6aa83f731b3b85fa5da69b3edf4df410cea74ed1970d3d993e09dd9361567e90"
+          },
+          "carr_library.storage.revisions": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+            "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+          },
+          "carr_library.storage.schema_identity": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\schema_identity.py",
+            "sha256": "1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0"
+          },
+          "carr_library.ui.backup_actions": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_actions.py",
+            "sha256": "0d31455d97f4af7f1797631894f5aa42fc8deb93d9c7530c60cfe2c0f490b7c1"
+          },
+          "carr_library.ui.backup_incremental_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_incremental_dialog.py",
+            "sha256": "caa1aee87db2a54370ee88bc22732a64ee6796e93799b36d7aea5de56d1c552c"
+          },
+          "carr_library.ui.backup_resources": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\backup_resources.py",
+            "sha256": "6747b198cdd02521f1c8306aceaaf8b91f70670896a62b8347b267bc6d747faa"
+          },
+          "carr_library.ui.command_registry": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\command_registry.py",
+            "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "sha256": "68126596761ab14d9e178b3581053052a9900d916dab58badbe289a7292e8efa"
+          },
+          "carr_library.ui.keyboard_settings": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+            "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+          },
+          "carr_library.ui.research_merge_dialog": {
+            "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\research_merge_dialog.py",
+            "sha256": "0084cedb2bf1a87de84ea4afb578270b485816110b403f2b037d3ef9268bc2ea"
+          }
+        },
+        "package_inventory_files": 428,
+        "package_inventory_sha256": "ae5bf5d55ad49f0a64c36a423ebc469778dde77244261316b51d6431d3c9b562",
+        "package_python_files": 408,
+        "physical_microphone": "NOT_RUN",
+        "physical_output": "NOT_RUN",
+        "proof_helper_sha256": "f53742191c5538ca0f09c236dd4636e99c0f5b563e83e1305fcc427cfd5afaae",
+        "qualification": "PUBLISHED_RESEARCH_CONTENT_MERGE_CONTRACTS",
+        "selected_suites": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": 1,
+          "tests/research/test_academic_library.py": 107,
+          "tests/storage/test_canonical_v5_compatibility.py": 9,
+          "tests/storage/test_evidence_drafts.py": 19,
+          "tests/storage/test_index_publication_streaming.py": 12,
+          "tests/storage/test_library_backup.py": 9,
+          "tests/storage/test_publication_session.py": 19,
+          "tests/storage/test_research_content_merge.py": 22,
+          "tests/storage/test_research_schema.py": 8,
+          "tests/storage/test_revisions.py": 5,
+          "tests/storage/test_seal_integrity.py": 5,
+          "tests/ui/test_backup_menu_binding.py": 7,
+          "tests/ui/test_research_merge_dialog.py": 14
+        },
+        "status": "PASS",
+        "test_files": {
+          "tests/catalog/test_metadata_backup_roundtrip.py": "877ac52684264a2e2d60c08f3a5d424298d5246b88418bc33dd0a2bd0acb69d5",
+          "tests/research/test_academic_library.py": "b6989773948f5be7771af4dd55ae6b1e1219372b3d59129308d58405ed2958ba",
+          "tests/storage/test_canonical_v5_compatibility.py": "50690ab0220d661555231a3d511b095c3bb7f662672dac33047f136d3558cde3",
+          "tests/storage/test_evidence_drafts.py": "2c3003d45ecf45cef4ec84af071f6290c01de6b839fa24737548367cfd195e42",
+          "tests/storage/test_index_publication_streaming.py": "2ccb49763c05f0e5dfb0d0dd3f4fef175f8022e0f703b572e3cf1a75488a4b32",
+          "tests/storage/test_library_backup.py": "0d0ee388476d6ada0a59c9a2fd04a50a26b2ffd26ea23ce1e18659ea39fd36b0",
+          "tests/storage/test_publication_session.py": "4483fd445b60ed81e773469d233e0e2379896863442ab5de56625d7644e4dc7d",
+          "tests/storage/test_research_content_merge.py": "3ce203dc205ef63b56b9798c8d9a610a1c430b23ebf7a0c5d85fbd13b7716400",
+          "tests/storage/test_research_schema.py": "5fad7b5d480f805673be01cf0a9bd87dd3683731d050d72b5b54609bf75a055f",
+          "tests/storage/test_revisions.py": "970c2bd853e01f175ad8c299fb5a9555b4649a3c17ceb46c014d0c403e59b872",
+          "tests/storage/test_seal_integrity.py": "09ad31256bd782b60cf08ae5f56cd1e56ae48c1ef2b68fbb2afa2af0893a1b37",
+          "tests/ui/test_backup_menu_binding.py": "0677fe3e18165d11b050c52c1c7ab994b966d645263390ca88afeae2c2b49f4a",
+          "tests/ui/test_research_merge_dialog.py": "da1a23d8a2f8cc840c8ab63f020d26756e38b44dd9d10636ef2f7e7b97a0d3f8"
+        }
+      }
+    ]
+  },
+  "native": "SEPARATE_FAILED_FIRST_NATIVE_RUN; common PASS does not qualify native. Run46121388672 stopped at report-path fixture comparison after genuine completion report arrived.",
+  "limits": [
+    "Named published-research-content/1 profile only",
+    "No full-profile/audio/operational merge claim",
+    "No large-profile throughput, physical or NVDA qualification",
+    "Final coherent head still requires its own acceptance"
+  ],
+  "verdict": "PASS: 237 source + 237 installed on each OS; all 36 new core/UI cases executed"
+}
