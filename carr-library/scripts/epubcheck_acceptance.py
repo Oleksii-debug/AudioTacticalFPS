@@ -26,6 +26,16 @@ def digest(path):
     return value.hexdigest()
 
 
+
+def require_sealed_audio(bundle, executable, name, checksum, manifest):
+    """Bind conformance to the same sealed tool paths used by the bundle builder."""
+    from carr_library.audio_runtime import DIRECTORY, TOOLS
+    relative = DIRECTORY + '/' + TOOLS[name]
+    if (not Path(executable).samefile(Path(bundle) / relative)
+            or checksum != manifest['files'].get(relative)):
+        raise RuntimeError('Conformance audio runtime escaped the installed bundle: ' + name)
+
+
 class SyntheticTones:
     def voices(self):
         return (SimpleNamespace(id='synthetic-tone', name='Synthetic conformance tone',
@@ -95,10 +105,7 @@ def inspect(archive, java, lock_path, *, require_installed=False):
             raise RuntimeError('The publisher is outside the selected installed bundle.')
         manifest = json.loads((bundle_root / 'bundle-manifest.json').read_text(encoding='utf-8'))
         for name, executable in binaries.items():
-            relative = 'audio/bin/' + name + '.exe'
-            if (not executable.samefile(bundle_root / relative)
-                    or audio_hashes[name] != manifest['files'].get(relative)):
-                raise RuntimeError('Conformance audio runtime escaped the installed bundle: ' + name)
+            require_sealed_audio(bundle_root, executable, name, audio_hashes[name], manifest)
     results = []
     with TemporaryDirectory(prefix='resonance-epubcheck-') as temporary:
         root = Path(temporary).resolve()

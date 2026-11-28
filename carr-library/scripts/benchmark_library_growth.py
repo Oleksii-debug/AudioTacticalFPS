@@ -25,7 +25,7 @@ import sys
 import threading
 from time import monotonic, perf_counter
 
-BASE_SOURCE_COMMIT = "e032eabf5cdff41a0829de681f4ba8c92272cb18"
+BASE_SOURCE_COMMIT = "4d4f5872a99bd7099257a21078555565e017029e"
 SOURCE_BINDINGS = {
     "application.py": "a5aeac86640cb3221de726b452f9e8e2094a6035cc53f30775fdd173b5f0ee9f",
     "catalog/intake.py": "9a22419d2fe245806c501f59024d850083648dc7228c1ea92dab642332bf8a28",
@@ -453,6 +453,109 @@ def cancellation_probe(directory, attempts, segments, check, stopped):
                       "No native UI cancellation or isolated-worker startup measurement.")
 
 
+PROFILE_LABELS = frozenset(("import-000001", "import-000500", "import-001000", "search-000001"))
+PROFILE_FOCUS = (
+    "/carr_library/application.py", "/carr_library/storage/revisions.py",
+    "/carr_library/ingest/pipeline.py", "/carr_library/ingest/retained_assets.py",
+    "/carr_library/catalog/intake.py", "/carr_library/catalog/registration.py",
+    "/carr_library/citations/text_attestation.py", "/carr_library/durable_state.py",
+)
+
+
+def profile_call(directory, source, label, call_identity, function, *args, **kwargs):
+    """Profile one unchanged real call and immediately preserve bounded JSON."""
+    import cProfile
+    import pstats
+
+    require(label in PROFILE_LABELS, "Unknown bounded profile sample.")
+    require(type(call_identity) is dict and len(canonical(call_identity)) <= 64 * 1024,
+            "Profile argument identity exceeds its bound.")
+    path = Path(directory) / ("profile-" + label + ".json")
+    require(not path.exists(), "Profile receipt already exists; do not repeat the operation.")
+    profiler = cProfile.Profile()
+    started = perf_counter()
+
+    def save(outcome, error=None):
+        profiler.disable()
+        elapsed = perf_counter() - started
+        statistics = pstats.Stats(profiler)
+        require(len(statistics.stats) <= 20_000, "Profile function inventory exceeds its bound.")
+
+        def identity(key):
+            filename, line, name = key
+            require(type(filename) is str and len(filename.encode("utf-8")) <= 1024
+                    and type(name) is str and len(name.encode("utf-8")) <= 1024
+                    and type(line) is int and line >= 0,
+                    "Invalid or oversized profile function identity.")
+            return dict(filename=filename, line=line, function=name)
+
+        def timing(value, *, caller=False):
+            # CPython3.11 cProfile uses (cc,nc,tt,ct) for functions, but
+            # (nc,cc,tt,ct) for caller edges; preserve that distinction.
+            first, second, own, cumulative = value
+            primitive, calls = (second, first) if caller else (first, second)
+            require(type(calls) is int and type(primitive) is int
+                    and 0 <= primitive <= calls
+                    and all(type(x) in (int, float) and math.isfinite(x) and x >= 0
+                            for x in (own, cumulative)),
+                    "Invalid actual profile counters.")
+            return dict(calls=calls, primitive_calls=primitive,
+                        self_seconds=own, cumulative_seconds=cumulative)
+
+        ordered = sorted(statistics.stats,
+                         key=lambda key: (-statistics.stats[key][3], key))
+        native_reads = [key for key in ordered if key[2] in (
+            "<method 'read' of '_io.BufferedReader' objects>",
+            "<method 'read' of '_io.FileIO' objects>")]
+        focused = list(dict.fromkeys(native_reads + [key for key in ordered
+            if key[0].replace("\\", "/").endswith(PROFILE_FOCUS)]))
+        selected = list(dict.fromkeys(focused[:160] + ordered[:96]))
+        rows = []
+        for key in selected:
+            value = statistics.stats[key]
+            callers = sorted(value[4].items(), key=lambda item: (-item[1][3], item[0]))
+            rows.append(dict(identity=identity(key), **timing(value[:4]),
+                callers=[dict(identity=identity(parent), **timing(counts, caller=True))
+                         for parent, counts in callers[:16]],
+                omitted_callers=max(0, len(callers) - 16)))
+        record = dict(schema="carr-library-selected-call-profile/1",
+            source=source, sample=label, call_identity=call_identity,
+            callable=dict(module=function.__module__, name=function.__qualname__),
+            outcome=outcome, wall_seconds_with_profiling=elapsed,
+            profiled_thread=threading.get_ident(), process_id=os.getpid(),
+            total_calls=statistics.total_calls, primitive_calls=statistics.prim_calls,
+            total_self_seconds=statistics.total_tt,
+            total_functions=len(ordered), reported_functions=len(rows),
+            omitted_functions=len(ordered) - len(rows),
+            focused_functions=len(focused), omitted_focused_functions=max(0, len(focused) - 160),
+            limits=dict(functions=256, focused_functions=160, hottest_functions=96,
+                        callers_per_function=16, serialized_bytes=MAX_REPORT_BYTES),
+            functions=rows,
+            scope="cProfile of this actual current-thread call only. Other threads are not profiled. "
+                  "Self and cumulative times include profiling overhead; cumulative rows overlap and "
+                  "must not be added. This is call attribution, not an uninstrumented performance result.")
+        if error is not None:
+            record["exception"] = dict(type=type(error).__name__, message=str(error)[:2048])
+        digest = write_record(path, record)
+        receipt = dict(path=path.name, sha256=digest, bytes=path.stat().st_size,
+                       sample=label, outcome=outcome)
+        print(json.dumps(dict(event="pilot-call-profile", **receipt), ensure_ascii=True), flush=True)
+        return receipt
+
+    try:
+        result = profiler.runcall(function, *args, **kwargs)
+    except BaseException as exc:
+        try:
+            save("exception", exc)
+        except Exception as receipt_error:
+            # Preserve the operation's original failure; it can never be PASS.
+            print(json.dumps(dict(event="pilot-call-profile-failed", sample=label,
+                receipt_error=type(receipt_error).__name__,
+                original_error=type(exc).__name__), ensure_ascii=True), flush=True)
+        raise
+    return result, save("returned")
+
+
 def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
              seconds=CHILD_SECONDS, require_installed=False, temporary_root=None):
     require(type(books) is int and 1 <= books <= MAX_BOOKS, "Invalid book count.")
@@ -476,6 +579,18 @@ def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
                                 "native UI open/cancel", "isolated import worker throughput",
                                 "full application process restart", "10k/50k books", "multi-GB files"])
     sampler = DiskSampler(directory, temporary_root)
+    report["call_attribution"] = dict(
+        enabled=books == 1000, selected_samples=sorted(PROFILE_LABELS) if books == 1000 else [],
+        receipts=[], timing_scope="Selected calls and the case aggregate are instrumentation-affected; "
+        "no uninstrumented speed or SQL-only causality claim.")
+
+    def observed(label, describe, function, *args, **kwargs):
+        if books != 1000 or label not in PROFILE_LABELS:
+            return function(*args, **kwargs)
+        result, receipt = profile_call(directory, identity, label, describe(),
+                                       function, *args, **kwargs)
+        report["call_attribution"]["receipts"].append(receipt)
+        return result
 
     def stopped():
         return monotonic() >= deadline or sampler.error is not None
@@ -521,7 +636,12 @@ def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
                 text = corpus_text(number, segments)
                 raw = text.encode("utf-8")
                 begin = perf_counter()
-                result = app.add_text(scope, f"Pilot book {number:06d}", text,
+                result = observed(f"import-{number + 1:06d}",
+                    lambda: dict(book_ordinal=number + 1, completed_books_before=len(records), workspace=scope,
+                         edition=book_id(number), work=f"pilot-work-{number:06d}",
+                         title_sha256=sha256(f"Pilot book {number:06d}".encode("utf-8")).hexdigest(),
+                         source_sha256=sha256(raw).hexdigest(), source_bytes=len(raw), source_segments=segments),
+                    app.add_text, scope, f"Pilot book {number:06d}", text,
                     edition_id=book_id(number), work_id=f"pilot-work-{number:06d}",
                     cancelled=stopped)
                 duration = perf_counter() - begin
@@ -604,8 +724,14 @@ def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
                 offset = 0
                 while True:
                     begin = perf_counter()
-                    page = app.search_page(scope, MARKER, mode="terms", cursor=cursor,
-                                           offset=offset, limit=100, timeout=60, cancelled=stopped)
+                    page = observed("search-000001" if calls == 0 else "unprofiled-search",
+                        lambda: dict(call_ordinal=calls + 1, workspace=scope, completed_books=len(records),
+                             corpus_receipts_sha256=sha256(canonical(records)).hexdigest(),
+                             query_sha256=sha256(MARKER.encode("utf-8")).hexdigest(),
+                             cursor_sha256=sha256(canonical(cursor)).hexdigest(),
+                             mode="terms", offset=offset, limit=100, timeout=60),
+                        app.search_page, scope, MARKER, mode="terms", cursor=cursor,
+                        offset=offset, limit=100, timeout=60, cancelled=stopped)
                     search_times.append(perf_counter() - begin)
                     calls += 1
                     require(calls <= books * segments + 1 and page.source_pages <= 100
@@ -743,6 +869,28 @@ def cleanup_owner():
     return module._terminate_process_tree
 
 
+def validate_profile_receipts(directory, report, identity):
+    """A completed instrumented case must retain all four exact sample receipts."""
+    attribution = report.get("call_attribution")
+    require(type(attribution) is dict and attribution.get("enabled") is True,
+            "Completed instrumented case omitted its profile scope.")
+    receipts = attribution.get("receipts")
+    require(type(receipts) is list and len(receipts) == len(PROFILE_LABELS)
+            and {row.get("sample") for row in receipts if type(row) is dict} == PROFILE_LABELS,
+            "Completed instrumented case omitted or duplicated a required sample.")
+    for row in receipts:
+        require(row.get("path") == "profile-" + row["sample"] + ".json"
+                and row.get("outcome") == "returned",
+                "Completed profile receipt has an invalid path or outcome.")
+        path = Path(directory) / row["path"]
+        profile, digest = read_record(path)
+        require(digest == row.get("sha256") and path.stat().st_size == row.get("bytes")
+                and profile.get("schema") == "carr-library-selected-call-profile/1"
+                and profile.get("source") == identity and profile.get("sample") == row["sample"]
+                and profile.get("outcome") == "returned",
+                "Completed profile sample changed after measurement.")
+
+
 def run_child(directory, books, proof_path, tested_commit, *, seconds=CHILD_SECONDS):
     directory = Path(directory).resolve()
     require(not directory.exists(), "Child case directory already exists.")
@@ -792,6 +940,8 @@ def run_child(directory, books, proof_path, tested_commit, *, seconds=CHILD_SECO
                           completed_phase=report.get("phase"))
             if process.returncode == 0 and not timed_out and cleanup_error is None:
                 validate_success(report, books, identity)
+                if books == 1000:
+                    validate_profile_receipts(directory, report, identity)
                 result["status"] = "PASS"
         except (ValueError, OSError, TypeError, KeyError) as exc:
             result["receipt_error"] = str(exc)[:2048]
@@ -861,8 +1011,9 @@ def main(argv=None):
     result = dict(schema=SCHEMA, generated_at=datetime.now(timezone.utc).isoformat(),
                   source=identity, cases=outcomes,
                   status="PASS" if all(x["status"] == "PASS" for x in outcomes) else "INCOMPLETE",
-                  scope="Independent generated-corpus measurements; no combined unique-book capacity "
-                        "or ordinary release-gate verdict.")
+                  scope="Instrumented generated-corpus call attribution. Selected calls and aggregate "
+                        "times include profiling overhead; cumulative rows overlap and are not additive. "
+                        "No uninstrumented speed, SQL-only causality or ordinary release-gate verdict.")
     write_record(root / "pilot-report.json", result)
     return 0 if result["status"] == "PASS" else 1
 

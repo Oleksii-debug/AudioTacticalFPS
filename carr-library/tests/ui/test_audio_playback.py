@@ -429,3 +429,172 @@ def test_native_probe_close_wait_requires_both_event_and_dead_original_peer(even
              and node.args[1].value in labels]
     assert len(calls) == 2
     assert all(isinstance(call.args[0], ast.Name) and call.args[0].id == 'frame_is_destroyed' for call in calls)
+
+
+
+def _native_mix_driver(on_yield):
+    """Compile the actual probe observation and its existing bounded pump."""
+    import ast
+    import ctypes
+    import json
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_audio_player_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    names = {'_mix_snapshot', '_wait_for_mix_apply', 'pump'}
+    nodes = [node for node in ast.walk(tree)
+             if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in nodes} == names and len(nodes) == len(names)
+    clock = [0.0]
+    def sleep(seconds):
+        assert seconds == .01
+        clock[0] += seconds
+    namespace = dict(C=ctypes, json=json, errors=[],
+        app=SimpleNamespace(Yield=lambda: on_yield(clock[0])),
+        time=SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    exec(compile(ast.fix_missing_locations(ast.Module(body=nodes, type_ignores=[])),
+                 str(script), 'exec'), namespace)
+    return namespace, clock, tree
+
+
+def test_native_mix_wait_observes_each_actual_quiet_admission(owner, frame, monkeypatch, capsys):
+    import json
+    from carr_library.speech._wave_output import PlaybackLevels
+
+    # Only stopped control state is exercised here, never a claimed native device.
+    monkeypatch.setattr(WavePlayer, 'live_mix_available', property(lambda self: True))
+    current, other = owner.player, WavePlayer()
+    release_at = [0.25]
+    def yield_ui(now):
+        if now >= release_at[0]:
+            frame.progress_panel.ready = True
+        if owner.callbacks:
+            owner.callbacks.pop(0)()
+    driver, clock, _ = _native_mix_driver(yield_ui)
+    targets = (PlaybackLevels(43), PlaybackLevels(43, True, -.25),
+               PlaybackLevels(43, False, -.25))
+    try:
+        for expected in targets:
+            previous_generation = owner.generation
+            release_at[0] = clock[0] + .25
+            frame.progress_panel.ready = False
+            def dispatch():
+                owner.execute(lambda: current.set_levels(expected.volume,
+                    muted=expected.muted, balance=expected.balance), audible=True)
+                assert current.levels != expected and owner.callbacks
+            def ui():
+                return dict(volume='43', balance=str(expected.balance * 100),
+                            muted=expected.muted)
+            driver['_wait_for_mix_apply'](owner, current, expected, dispatch, driver['pump'],
+                lambda: driver['_mix_snapshot'](owner, current, other, expected, ui))
+            assert clock[0] >= release_at[0]
+            assert owner.generation == previous_generation + 1 and current.levels == expected
+            assert current._wave is None and not current._open
+            assert all(hold.closed for hold in frame.progress_panel.holds)
+            saved, token = PlaylistStore(owner.root).load()
+            assert token is not None and (saved.volume, saved.muted, saved.balance) == (expected.volume, expected.muted, expected.balance)
+        records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+        assert [row['native_mix_observation'] for row in records] == ['before', 'after'] * 3
+        for row, expected in zip(records[1::2], targets):
+            assert row['values']['current'] == dict(volume=expected.volume,
+                muted=expected.muted, balance=expected.balance)
+            assert row['values']['current_output'] == {'open': False}
+            assert row['values']['owner']['notice'] == ''
+    finally:
+        other.close()
+
+
+@pytest.mark.parametrize('failure', ['no-dispatch', 'quiet-pending', 'closed', 'superseded', 'action-error'])
+def test_native_mix_wait_refuses_unadmitted_or_invalidated_actions(
+        owner, frame, failure, monkeypatch, capsys):
+    import json
+    from carr_library.speech._wave_output import PlaybackLevels
+
+    monkeypatch.setattr(WavePlayer, 'live_mix_available', property(lambda self: True))
+    current, expected = owner.player, PlaybackLevels(43, True, -.25)
+    driver, clock, _ = _native_mix_driver(lambda now: None)
+    def dispatch():
+        if failure == 'no-dispatch':
+            return
+        def action():
+            if failure == 'action-error':
+                raise RuntimeError('observed control failure')
+            current.set_levels(expected.volume, muted=expected.muted, balance=expected.balance)
+        frame.progress_panel.ready = failure == 'action-error'
+        owner.execute(action, audible=True)
+        if failure == 'closed':
+            owner.close()
+        elif failure == 'superseded':
+            owner.stop()
+    def snapshot():
+        return dict(generation=owner.generation, closed=owner.closed, notice=owner.notice,
+                    muted=current.levels.muted, volume=current.levels.volume)
+    timeout = failure in ('no-dispatch', 'quiet-pending')
+    with pytest.raises(TimeoutError if timeout else RuntimeError):
+        driver['_wait_for_mix_apply'](owner, current, expected, dispatch, driver['pump'], snapshot)
+    records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert [row['native_mix_observation'] for row in records] == [
+        'before', 'timeout' if timeout else 'failed']
+    assert records[-1]['error']['type'] == ('TimeoutError' if timeout else 'RuntimeError')
+    assert current.levels != expected and current._wave is None and not current._open
+    if timeout:
+        assert 12 <= clock[0] < 12.02
+    if failure == 'action-error':
+        assert 'observed control failure' in records[-1]['error']['detail']
+    owner.close()
+    frame.progress_panel.ready = True
+    while owner.callbacks:
+        owner.callbacks.pop(0)()
+    assert current.levels != expected and all(hold.closed for hold in frame.progress_panel.holds)
+
+
+def test_native_mix_snapshot_keeps_native_disagreement_and_original_independence_assertion(capsys):
+    import ast
+    import ctypes
+    from carr_library.speech._wave_output import PlaybackLevels
+
+    driver, _, tree = _native_mix_driver(lambda now: None)
+    calls, words = [], {11: 0, 12: 0x12345678}
+    class Library:
+        def waveOutGetVolume(self, handle, value):
+            calls.append(handle.value)
+            ctypes.cast(value, ctypes.POINTER(ctypes.c_uint32)).contents.value = words[handle.value]
+            return 0
+        def waveOutSetVolume(self, *args):
+            pytest.fail('Evidence capture must never change native volume.')
+    def player(identity, levels):
+        return SimpleNamespace(levels=levels, _wave=SimpleNamespace(
+            handle=ctypes.c_void_p(identity), library=Library(), _caps=12))
+    expected = PlaybackLevels(43, True, -.25)
+    current, other = player(11, expected), player(12, PlaybackLevels(61))
+    owner = SimpleNamespace(generation=2, pending=None, closed=False, notice='')
+    values = driver['_mix_snapshot'](owner, current, other, expected,
+        lambda: dict(volume='43', balance='-25', muted=True))
+    assert calls == [11, 12] and values['current_output']['packed'] == 0
+    assert values['other_output']['packed'] == 0x12345678
+    assert values['ui'] == dict(volume='43', balance='-25', muted=True)
+    check_call, = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name) and node.func.id == 'check'
+        and node.args and isinstance(node.args[0], ast.Constant)
+        and node.args[0].value == 'live mute and balance preserve volume and other player']
+    def check(label, condition):
+        assert condition, label
+    environment = dict(current=current, current_level=ctypes.c_uint32(0),
+        other_before=ctypes.c_uint32(0x99999999), other_after=ctypes.c_uint32(words[12]),
+        check=check)
+    statement = ast.fix_missing_locations(ast.Module(body=[ast.Expr(value=check_call)], type_ignores=[]))
+    with pytest.raises(AssertionError, match='preserve volume and other player'):
+        exec(compile(statement, '<actual native independence assertion>', 'exec'), environment)
+    assert calls == [11, 12] and not capsys.readouterr().out
+
+
+def test_native_mix_wait_cannot_treat_unchanged_old_settings_as_admission(owner, capsys):
+    import json
+
+    driver, _, _ = _native_mix_driver(lambda now: pytest.fail('No wait is needed for invalid probe setup.'))
+    dispatched = []
+    with pytest.raises(ValueError, match='requires changed settings'):
+        driver['_wait_for_mix_apply'](owner, owner.player, owner.player.levels,
+            lambda: dispatched.append(True), driver['pump'],
+            lambda: dict(generation=owner.generation))
+    records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert not dispatched and [row['native_mix_observation'] for row in records] == ['before', 'failed']

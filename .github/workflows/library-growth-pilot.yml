@@ -1,4 +1,4 @@
-name: CARR genuine library growth pilot
+name: CARR genuine library growth call attribution
 
 on:
   push:
@@ -183,7 +183,7 @@ jobs:
               if exit_code == 0 and set(captured) != set(suites):
                   errors.append(dict(receipt_error='Missing required control report'))
               receipt = dict(schema='carr-growth-control-evidence/1', tested_commit=os.environ['GITHUB_SHA'],
-                             application_source_commit='e032eabf5cdff41a0829de681f4ba8c92272cb18',
+                             application_source_commit='4d4f5872a99bd7099257a21078555565e017029e',
                              ci_check_sha256=runner_sha, strict_runner_exit=exit_code,
                              suites=suites, junit_reports=captured, query_properties=profiles, errors=errors,
                              scope='Actual strict source controls and SQL plans; no pilot or ordinary acceptance verdict')
@@ -195,14 +195,14 @@ jobs:
           $controls | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/pilot-controls.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Measure the genuine small-TXT corpus with separate bounded children
+      - name: Measure and profile selected genuine import and search calls
         timeout-minutes: 32
         run: |
           $started = [DateTime]::UtcNow
           & $env:CARR_PYTHON -I -B scripts/benchmark_library_growth.py --output-dir ci-library-growth --source-proof ci-native-audio-diagnostic/installed-source.json --tested-commit $env:GITHUB_SHA --sizes 100 1000 2>&1 | Tee-Object 'ci-native-audio-diagnostic/library-growth-pilot.txt'
           $pilotExit = $LASTEXITCODE
           $finished = [DateTime]::UtcNow
-          @{ tested_commit = $env:GITHUB_SHA; baseline_application_commit = 'e032eabf5cdff41a0829de681f4ba8c92272cb18'; exit_code = $pilotExit; started_at = $started.ToString('o'); completed_at = $finished.ToString('o'); elapsed_seconds = ($finished - $started).TotalSeconds; child_timeout_seconds = 900; scope = '100/1000 fresh real small-TXT cases on combined source; incomplete scales remain incomplete; no isolated SQL causality or ordinary acceptance claim' } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/library-growth-exit.json'
+          @{ tested_commit = $env:GITHUB_SHA; baseline_application_commit = '4d4f5872a99bd7099257a21078555565e017029e'; exit_code = $pilotExit; started_at = $started.ToString('o'); completed_at = $finished.ToString('o'); elapsed_seconds = ($finished - $started).TotalSeconds; child_timeout_seconds = 900; scope = '100/1000 exact real TXT cases with selected current-thread call profiling; timings include instrumentation; incomplete scales remain incomplete; no uninstrumented speed or SQL-only causality claim' } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/library-growth-exit.json'
           if ($pilotExit -ne 0) { exit $pilotExit }
 
       - name: Preserve exact measurements and incomplete-case evidence
@@ -220,5 +220,6 @@ jobs:
             carr-library/ci-library-growth/child-*.log
             carr-library/ci-library-growth/books-*/case-report.json
             carr-library/ci-library-growth/books-*/checkpoint-*.json
+            carr-library/ci-library-growth/books-*/profile-*.json
           if-no-files-found: error
           retention-days: 3

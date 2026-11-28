@@ -233,3 +233,93 @@ print(json.dumps(result))
     assert result["process_reaped"] and result["status"] == "TIMEOUT"
     assert (tmp_path / "child-1000-outcome.json").is_file()
     assert (tmp_path / "child-1000.log").is_file()
+
+
+
+def test_actual_selected_import_and_search_profiles_keep_results_and_bounded_receipts(tmp_path):
+    from carr_library.application import LibraryApp
+
+    proof = proof_for_current_package(tmp_path / "profile-proof.json")
+    source = pilot.source_identity(proof, TESTED)
+    directory = tmp_path / "profiles"
+    directory.mkdir()
+    app = LibraryApp(tmp_path / "profile-library")
+    workspace = app.create_workspace("Actual profile control")
+    text = pilot.corpus_text(7, 2)
+    result, imported = pilot.profile_call(directory, source, "import-000001",
+        dict(workspace=workspace, completed_books_before=0, source_sha256=sha256(text.encode()).hexdigest()),
+        app.add_text, workspace, "Profile source", text,
+        edition_id=pilot.book_id(7), work_id="profile-work")
+    assert result["state"] == "complete" and result["completed"] == 2
+    assert app.assets.resolve(result["asset"]).read_bytes() == text.encode("utf-8")
+    page, searched = pilot.profile_call(directory, source, "search-000001",
+        dict(workspace=workspace, query_sha256=sha256(pilot.MARKER.encode()).hexdigest()),
+        app.search_page, workspace, pilot.MARKER, mode="terms", limit=100, timeout=60)
+    assert len(page.results) == 2 and all(hit.verified and hit.quote == pilot.MARKER for hit in page.results)
+    assert pilot.corpus_counts(app, workspace) == {
+        "catalog_books": 1, "active_editions": 1, "source_segments": 2, "indexed_segments": 2}
+    names = set()
+    for receipt in (imported, searched):
+        record, digest = pilot.read_record(directory / receipt["path"])
+        assert digest == receipt["sha256"] and receipt["outcome"] == record["outcome"] == "returned"
+        assert record["source"] == source and record["sample"] == receipt["sample"]
+        assert 0 < record["wall_seconds_with_profiling"]
+        assert 0 < record["reported_functions"] <= 256
+        assert record["reported_functions"] == len(record["functions"])
+        assert record["total_functions"] == record["reported_functions"] + record["omitted_functions"]
+        assert all(len(row["callers"]) <= 16 and row["calls"] >= row["primitive_calls"] >= 0
+                   for row in record["functions"])
+        assert record["limits"]["serialized_bytes"] == pilot.MAX_REPORT_BYTES
+        assert "cumulative rows overlap" in record["scope"] and "Other threads are not profiled" in record["scope"]
+        names.update((row["identity"]["filename"].replace("\\", "/"), row["identity"]["function"])
+                     for row in record["functions"])
+    assert any(path.endswith("/storage/revisions.py") and name == "_check" for path, name in names)
+    assert any(path.endswith("/application.py") and name == "search_page" for path, name in names)
+    assert any(path.endswith("/citations/text_attestation.py") for path, name in names)
+    assert any(name == "<method 'read' of '_io.BufferedReader' objects>" for path, name in names)
+    # Two valid controls cannot masquerade as the required four-sample 1k run.
+    with pytest.raises(ValueError, match="required sample"):
+        pilot.validate_profile_receipts(directory, {
+            "call_attribution": {"enabled": True, "receipts": [imported, searched]}}, source)
+
+
+def test_profiled_actual_failure_keeps_the_exception_and_writes_an_exception_receipt(tmp_path):
+    from carr_library.application import LibraryApp
+
+    proof = proof_for_current_package(tmp_path / "profile-proof.json")
+    source = pilot.source_identity(proof, TESTED)
+    directory = tmp_path / "profiles"
+    directory.mkdir()
+    app = LibraryApp(tmp_path / "profile-library")
+    workspace = app.create_workspace("Actual failed profile control")
+    before = app.database.read_bytes()
+    with pytest.raises(ValueError) as caught:
+        pilot.profile_call(directory, source, "search-000001",
+            dict(workspace=workspace, deliberately_invalid_mode=True),
+            app.search_page, workspace, pilot.MARKER, mode="unknown-profile-mode")
+    record, _ = pilot.read_record(directory / "profile-search-000001.json")
+    assert record["outcome"] == "exception" and record["source"] == source
+    assert record["exception"] == {"type": type(caught.value).__name__, "message": str(caught.value)}
+    assert app.database.read_bytes() == before
+    assert record["reported_functions"] > 0
+
+
+@pytest.mark.parametrize("guard", ["invalid-label", "existing-receipt"])
+def test_profile_bounds_refuse_before_repeating_an_operation(tmp_path, guard):
+    directory = tmp_path / "profiles"
+    directory.mkdir()
+    label = "../escaped" if guard == "invalid-label" else "import-000001"
+    existing = directory / "profile-import-000001.json"
+    if guard == "existing-receipt":
+        pilot.write_record(existing, {"preserved": True})
+    before = existing.read_bytes() if existing.exists() else None
+    calls = []
+    def operation():
+        calls.append(True)
+        pytest.fail("A rejected profile sample must not execute its operation.")
+    with pytest.raises(ValueError):
+        pilot.profile_call(directory, {"fixture": True}, label, {}, operation)
+    assert calls == []
+    assert (existing.read_bytes() if existing.exists() else None) == before
+    assert sorted(path.name for path in directory.iterdir()) == (
+        ["profile-import-000001.json"] if before is not None else [])
