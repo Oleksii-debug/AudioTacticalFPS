@@ -19,7 +19,7 @@ def _text(value, label, maximum=1_000_000, empty=False):
 
 
 def _number(value, label, lower, upper):
-    if type(value) not in (int, float) or not math.isfinite(value) or not lower <= value <= upper:
+    if type(value) not in (int, float) or not lower <= value <= upper or not math.isfinite(value):
         raise ValueError(f'{label} must be between {lower} and {upper}.')
     return value
 

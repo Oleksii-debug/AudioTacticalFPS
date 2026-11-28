@@ -8,7 +8,9 @@ import pytest
 from carr_library import backup_sidecars, runtime_settings
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup
-from test_engine_settings_backup import NAME, configuration, resign, snapshot_files, write_settings
+from test_engine_settings_backup import (
+    NAME, configuration, guard_collection_imports, resign, snapshot_files, write_settings,
+)
 
 
 MISSING = object()
@@ -39,7 +41,7 @@ def test_primary_declaration_roundtrips_without_provider_probe_or_activation(
         assert (name, package) == ('.runtime_settings', 'carr_library')
         imports.append(name)
         return real_import(name, package)
-    monkeypatch.setattr(backup_sidecars, 'import_module', pure_validator_only)
+    collection_imports = guard_collection_imports(monkeypatch, pure_validator_only)
     monkeypatch.setattr(runtime_settings, 'voice_registry', forbidden)
     monkeypatch.setattr(runtime_settings, 'load_settings', forbidden)
     monkeypatch.setattr(subprocess, 'Popen', forbidden)
@@ -58,6 +60,9 @@ def test_primary_declaration_roundtrips_without_provider_probe_or_activation(
     assert workspace in {item.id for item in LibraryApp(restored).workspaces()}
     assert snapshot_files(folder) == before
     assert bool(imports) is (declaration is not MISSING and declaration is not None)
+    assert set(collection_imports) == {
+        ('.speech.tabs', 'carr_library'), ('.speech.playlist', 'carr_library'),
+    }
 
 
 @pytest.mark.parametrize('declaration', [True, {}, {'enabled': 1}, {'enabled': True},
