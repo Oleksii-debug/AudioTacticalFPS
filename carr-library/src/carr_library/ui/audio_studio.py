@@ -56,7 +56,7 @@ def _inspection_criteria_values(threshold, minimum):
         raise ValueError('Enter numeric dBFS and minimum seconds for this inspection.')
     try:
         values = float(threshold), float(minimum)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError('Enter numeric dBFS and minimum seconds for this inspection.') from exc
     if (not all(math.isfinite(value) for value in values)
             or not -120 <= values[0] <= 0 or not 0 < values[1] <= 86400):
@@ -688,19 +688,63 @@ class StudioController:
 
     def export_inspection_report(self, report, path, *, approval=None,
                                  cancelled=lambda: False):
-        from ..audio.jobs import check_cancelled
-        from ..audio.production import completed_silence_report_text
-        check_cancelled(cancelled)
-        selected = self._completed_inspection_target(cancelled=cancelled)
-        self._bind_completed_inspection(report, selected)
-        if _path_digest(selected['manifest'], budget=1024 * 1024) != report['completion_sha256']:
-            raise ValueError('The completed production changed after inspection. Inspect it again.')
-        destination = self.inspection_export_destination(path)
-        # Omitting native replacement approval is create-only. An approval for
-        # a previously absent path also retains the publisher's no-clobber rule.
-        return write_export(destination, completed_silence_report_text(report),
-            private_root=self.private_root, cancelled=cancelled,
-            require_absent=approval is None, approval=approval)
+        if not self._render_lock.acquire(blocking=False):
+            raise ValueError('Wait for the current Studio operation before exporting its inspection report.')
+        try:
+            draft, result = self.draft, self.result
+            state, result_state = _json_text(self.to_dict()), _json_text(result)
+            external_cancelled = cancelled
+
+            def stopped():
+                return (external_cancelled() or self.draft is not draft or self.result is not result
+                        or _json_text(self.to_dict()) != state
+                        or _json_text(self.result) != result_state)
+
+            cancelled = stopped
+            from contextlib import ExitStack
+            from ..audio.jobs import (check_cancelled, file_identity, regular_file,
+                                      sha256_file, verified_reader)
+            from ..audio.production import completed_silence_report_text
+            from ..research.export_file import ExportReceipt
+            check_cancelled(cancelled)
+            selected = self._completed_inspection_target(cancelled=cancelled)
+            self._bind_completed_inspection(report, selected)
+            destination = self.inspection_export_destination(path)
+            text = completed_silence_report_text(report)
+            receipt = None
+            try:
+                # The GUI invokes this through its existing worker. All retained
+                # readers remain owned through publication, including on Windows
+                # where they deny replacement and writing by other processes.
+                with ExitStack() as readers:
+                    identities = {}
+                    for name, field in (('complete.json', 'completion_sha256'),
+                                        ('master.wav', 'master_sha256'),
+                                        ('timeline.json', 'timeline_sha256')):
+                        source = selected['manifest'].parent / name
+                        info = regular_file(source)
+                        if name.endswith('.json') and (info.st_nlink != 1 or info.st_size > 16 * 1024 ** 2):
+                            raise ValueError('The retained inspection JSON exceeds its verified reader budget.')
+                        identity = identities[name] = file_identity(info)
+                        readers.enter_context(verified_reader(source, expected_identity=identity))
+                        if sha256_file(source, cancelled=cancelled, expected_identity=identity) != report[field]:
+                            raise ValueError('The completed production changed after inspection. Inspect it again.')
+                    check_cancelled(cancelled)
+                    # Omitting native replacement approval is create-only. A
+                    # previously absent target remains protected from new writers.
+                    receipt = write_export(destination, text, private_root=self.private_root,
+                        cancelled=cancelled, require_absent=approval is None, approval=approval)
+            except Exception as exc:
+                if receipt is None:
+                    raise
+                # Publication is already committed. A later reader/cleanup failure
+                # must be visible without suggesting a duplicate export retry.
+                warning = 'Report saved, but final retained-audio verification could not settle: ' + str(exc)
+                previous = getattr(receipt, 'cleanup_warning', None)
+                return ExportReceipt(receipt.path, (previous + ' ' if previous else '') + warning)
+            return receipt
+        finally:
+            self._render_lock.release()
 
     def _publication_service(self, *, bind_plan=False, resources=False, cancelled=lambda: False):
         from ..audio.publishing import PublicationService
@@ -1928,7 +1972,7 @@ class AudioStudioDialog:
                     raise ValueError('The Studio source or completed run changed; the late inspection was not displayed.')
                 # Keep the same completed production result object. Findings
                 # belong only to this read-only report and never fail rendering.
-                self._show_inspection_report(report, current)
+                self._show_inspection_report(report, current, owned)
                 if current():
                     self._message(f"Completed audio inspection: {report['interval_count']} review warning(s). "
                                   'The completed production is unchanged.', focus=True)
@@ -1951,7 +1995,7 @@ class AudioStudioDialog:
             picker.Destroy()
 
     def _export_inspection_report(self, report, parent, current):
-        from ..research.export_file import export_completion
+        """Collect native destination approval; heavy retained-byte checks run later."""
         if not current():
             raise ValueError('The inspected Studio source or completed run changed.')
         path = self._inspection_report_path(parent)
@@ -1968,11 +2012,31 @@ class AudioStudioDialog:
             return None
         if not current():
             raise ValueError('The inspected Studio source or completed run changed during export approval.')
-        receipt = self.controller.export_inspection_report(
-            report, path, approval=approval, cancelled=lambda: not current())
-        return export_completion('Inspection report saved: ' + str(receipt.path), receipt)
+        return path, approval
 
-    def _show_inspection_report(self, report, current):
+    def _publish_inspection_report(self, report, request, current, owned):
+        from ..research.export_file import export_completion
+        if self.busy or self.closed or self.close_pending or not current():
+            self._error(ValueError('The inspected Studio source or completed run changed before report export.'))
+            return
+        controller = self.controller
+        path, approval = request
+
+        def stopped():
+            return self.cancelled.is_set() or not owned()
+
+        def finished(receipt):
+            # A committed publication remains committed after a late stop.
+            # Only its current owner may update this window's status.
+            if current():
+                self._message(export_completion(
+                    'Inspection report saved: ' + str(receipt.path), receipt), focus=True)
+
+        self._run('Verifying retained audio and exporting its inspection report.',
+            lambda: controller.export_inspection_report(
+                report, path, approval=approval, cancelled=stopped), finished)
+
+    def _show_inspection_report(self, report, current, owned):
         from ..audio.production import completed_silence_report_text
         text = completed_silence_report_text(report)
         if not current():
@@ -1981,6 +2045,7 @@ class AudioStudioDialog:
         dialog = wx.Dialog(self.dialog, title='Completed audio inspection report',
                            size=(860, 620), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         dialog.SetName('Completed audio inspection report window')
+        request = None
         try:
             layout = wx.BoxSizer(wx.VERTICAL)
             reader = wx.TextCtrl(dialog, value=text, style=wx.TE_READONLY | wx.TE_MULTILINE)
@@ -2022,10 +2087,13 @@ class AudioStudioDialog:
                 status.SetFocus()
 
             def export_report(event):
+                nonlocal request
                 try:
-                    message = self._export_inspection_report(report, dialog, current)
-                    if message is not None:
-                        status.ChangeValue(message)
+                    selected = self._export_inspection_report(report, dialog, current)
+                    if selected is not None:
+                        request = selected
+                        dialog.EndModal(wx.ID_OK)
+                        return
                 except Exception as exc:
                     status.ChangeValue(str(exc))
                 status.SetFocus()
@@ -2039,6 +2107,11 @@ class AudioStudioDialog:
             dialog.ShowModal()
         finally:
             dialog.Destroy()
+        if request is not None:
+            # Unwind this report's modal loop before starting the same Studio
+            # executor. Hashing a large master never blocks the native dialog.
+            self.wx.CallAfter(lambda: self._publish_inspection_report(
+                report, request, current, owned))
 
     def verify_book(self, event=None):
         try:

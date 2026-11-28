@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "kind": "completed-audio-silence-inspection-studio-source",
+  "date": "2026-11-28",
+  "application_parent": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "source_review_checkpoint": "677d7edfadfea29890b61355cf1a79d29f71e814",
+  "status": "SOURCE_ONLY_RUNTIME_NOT_RUN",
+  "backend_dependency": {
+    "commit": "955d3521a84df68e6c49cf3816db0627df32e1bb",
+    "production_blob": "ef6831df6a436fb8374993821788d4ecf849837b",
+    "note": "Final backend successor retains API and adds two source/plan formatter lines."
+  },
+  "scope": [
+    "Production-page explicit warning-only inspection criteria and completed source/run binding",
+    "Existing Studio executor/cancellation; real retained PCM service; no model/render/repair",
+    "Copy plus separately approved report export; completion/master/timeline verified readers held through existing publication",
+    "Export verification remains on the existing worker after the report modal unwinds",
+    "Committed export remains committed if late input-reader cleanup fails; visible warning",
+    "No source/project/completion/audio/cache/schema mutations"
+  ],
+  "tests": {
+    "module": "tests.ui.test_audio_studio",
+    "baseline_cases": 60,
+    "added_cases": 45,
+    "expected_cases": 105,
+    "baseline_bytes_unchanged": true,
+    "added_function_counter": {
+      "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+      "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+      "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+      "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+      "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+      "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+      "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+      "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+      "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+      "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+      "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+      "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+      "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+      "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+      "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+      "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+      "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+      "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+      "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+      "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+      "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+      "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
+    }
+  },
+  "qualification": {
+    "source": "NOT_RUN",
+    "isolated_installed": "NOT_RUN",
+    "native_controls": "PROBE_IN_PROGRESS",
+    "manual_nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "acoustic_accuracy": "NOT_QUALIFIED"
+  },
+  "limits": [
+    "Synthetic PCM fixtures exercise current schema and owner contracts; no model/language quality claim.",
+    "Legacy completions lacking exact current source/plan/timeline bindings are refused.",
+    "Background scene music is explicitly unknown where retained timeline has no such field."
+  ]
+}
