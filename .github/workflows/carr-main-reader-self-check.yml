@@ -1,0 +1,43 @@
+name: CARR inert reader parser controls only
+on:
+  push:
+    branches: ['carr/main-reader-self-check-*']
+    paths:
+      - carr-library/scripts/main_artifact_reader.py
+      - .github/workflows/carr-main-reader-self-check.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-main-reader-self-check-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  parser-controls-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Parser controls only; no application or artifact qualification
+        run: |
+          set -euo pipefail
+          python --version
+          # --self-check returns before reading the input config or calling inspect.
+          # This step has no GH_TOKEN and never downloads or executes archive data.
+          python -I -B -X utf8 carr-library/scripts/main_artifact_reader.py --self-check | tee main-reader-parser-controls.json
+      - name: Preserve the parser-only receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-main-reader-controls-${{ github.sha }}-${{ github.run_attempt }}
+          path: main-reader-parser-controls.json
+          if-no-files-found: warn
