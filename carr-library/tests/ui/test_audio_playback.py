@@ -436,11 +436,12 @@ def _native_mix_driver(on_yield):
     """Compile the actual probe observation and its existing bounded pump."""
     import ast
     import ctypes
+    from hashlib import sha256
     import json
 
     script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_audio_player_smoke.py'
     tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
-    names = {'_mix_snapshot', '_wait_for_mix_apply', 'pump'}
+    names = {'_queued_pcm', '_mix_snapshot', '_wait_for_mix_apply', 'pump'}
     nodes = [node for node in ast.walk(tree)
              if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in nodes} == names and len(nodes) == len(names)
@@ -448,7 +449,7 @@ def _native_mix_driver(on_yield):
     def sleep(seconds):
         assert seconds == .01
         clock[0] += seconds
-    namespace = dict(C=ctypes, json=json, errors=[],
+    namespace = dict(C=ctypes, sha256=sha256, json=json, errors=[],
         app=SimpleNamespace(Yield=lambda: on_yield(clock[0])),
         time=SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
     exec(compile(ast.fix_missing_locations(ast.Module(body=nodes, type_ignores=[])),
@@ -561,16 +562,27 @@ def test_native_mix_snapshot_keeps_native_disagreement_and_original_independence
             return 0
         def waveOutSetVolume(self, *args):
             pytest.fail('Evidence capture must never change native volume.')
-    def player(identity, levels):
+    def player(identity, levels, pcm):
+        data = (ctypes.c_char * len(pcm)).from_buffer_copy(pcm)
+        token = SimpleNamespace(data=data,
+            header=SimpleNamespace(length=len(pcm), data=ctypes.addressof(data)))
         return SimpleNamespace(levels=levels, _wave=SimpleNamespace(
-            handle=ctypes.c_void_p(identity), library=Library(), _caps=12))
+            handle=ctypes.c_void_p(identity), library=Library(), _caps=12,
+            levels=levels, pending=[token], paused=True))
     expected = PlaybackLevels(43, True, -.25)
-    current, other = player(11, expected), player(12, PlaybackLevels(61))
+    current_pcm, other_pcm = b'\0\0\0\0', b'\x11\x22\x33\x44'
+    current, other = player(11, expected, current_pcm), player(12, PlaybackLevels(61), other_pcm)
     owner = SimpleNamespace(generation=2, pending=None, closed=False, notice='')
     values = driver['_mix_snapshot'](owner, current, other, expected,
         lambda: dict(volume='43', balance='-25', muted=True))
     assert calls == [11, 12] and values['current_output']['packed'] == 0
     assert values['other_output']['packed'] == 0x12345678
+    assert values['current_output']['pcm_levels'] == dict(volume=43, muted=True, balance=-.25)
+    assert values['other_output']['pcm_levels'] == dict(volume=61, muted=False, balance=0)
+    assert values['current_output']['queued_bytes'] == len(current_pcm)
+    assert values['other_output']['queued_bytes'] == len(other_pcm)
+    assert values['current_output']['queued_pcm_sha256'] == driver['sha256'](current_pcm).hexdigest()
+    assert values['other_output']['queued_pcm_sha256'] == driver['sha256'](other_pcm).hexdigest()
     assert values['ui'] == dict(volume='43', balance='-25', muted=True)
     check_call, = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name) and node.func.id == 'check'
@@ -578,12 +590,40 @@ def test_native_mix_snapshot_keeps_native_disagreement_and_original_independence
         and node.args[0].value == 'live mute and balance preserve volume and other player']
     def check(label, condition):
         assert condition, label
-    environment = dict(current=current, current_level=ctypes.c_uint32(0),
+    environment = dict(current=current, other=other, current_level=ctypes.c_uint32(0),
+        current_before=ctypes.c_uint32(words[11]), current_pcm=current_pcm,
+        other_pcm_before=other_pcm, other_levels_before=other.levels,
         other_before=ctypes.c_uint32(0x99999999), other_after=ctypes.c_uint32(words[12]),
-        check=check)
+        _queued_pcm=driver['_queued_pcm'], check=check)
     statement = ast.fix_missing_locations(ast.Module(body=[ast.Expr(value=check_call)], type_ignores=[]))
     with pytest.raises(AssertionError, match='preserve volume and other player'):
         exec(compile(statement, '<actual native independence assertion>', 'exec'), environment)
+    # The unchanged native predicate must first accept a complete valid baseline;
+    # each independent driver, PCM or owner-state disagreement must then refuse.
+    environment['other_before'] = ctypes.c_uint32(words[12])
+    code = compile(statement, '<actual native independence assertion>', 'exec')
+    exec(code, environment)
+    for field, changed in (
+            ('current_level', ctypes.c_uint32(1)),
+            ('other_after', ctypes.c_uint32(0)),
+            ('current_pcm', b'\1\0\0\0'),
+            ('current_pcm', b''),
+            ('other_pcm_before', b'\x44\x33\x22\x11'),
+            ('other_levels_before', PlaybackLevels(62))):
+        previous = environment[field]
+        environment[field] = changed
+        with pytest.raises(AssertionError, match='preserve volume and other player'):
+            exec(code, environment)
+        environment[field] = previous
+    for native, field, changed in (
+            (current._wave, 'levels', PlaybackLevels(43, False, -.25)),
+            (other._wave, 'paused', False)):
+        previous = getattr(native, field)
+        setattr(native, field, changed)
+        with pytest.raises(AssertionError, match='preserve volume and other player'):
+            exec(code, environment)
+        setattr(native, field, previous)
+    exec(code, environment)
     assert calls == [11, 12] and not capsys.readouterr().out
 
 
