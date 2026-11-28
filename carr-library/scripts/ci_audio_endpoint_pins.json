@@ -1,0 +1,73 @@
+{
+  "schema": "carr-ci-vbcable-pins/1",
+  "url": "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip",
+  "archive_size": 1324680,
+  "archive_sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90",
+  "vendor_page": "https://vb-audio.com/Cable/",
+  "license_url": "https://vb-audio.com/Services/licensing.htm",
+  "notice_sha256": "f865f3e78e37006d48e56c93f51eff4ca79acda9969854400d79bfa3db38a8d5",
+  "archive_members": {
+    "vbMmeCable64_win10.inf": 11361,
+    "pin_in.ico": 7358,
+    "pin_out.ico": 7358,
+    "readme.txt": 3846,
+    "vbaudio_cable_2003.cat": 8868,
+    "vbaudio_cable_2003.sys": 34024,
+    "vbaudio_cable_vista.cat": 8872,
+    "vbaudio_cable_vista.sys": 34024,
+    "vbaudio_cable_win7.cat": 8868,
+    "vbaudio_cable_win7.sys": 34024,
+    "vbaudio_cable_xp.cat": 8860,
+    "vbaudio_cable_xp.sys": 34024,
+    "vbaudio_cable64_2003.cat": 8876,
+    "vbaudio_cable64_2003.sys": 41192,
+    "vbaudio_cable64_vista.cat": 8880,
+    "vbaudio_cable64_vista.sys": 41192,
+    "vbaudio_cable64_win7.cat": 8876,
+    "vbaudio_cable64_win7.sys": 41192,
+    "vbaudio_cable64_win10.cat": 12993,
+    "vbaudio_cable64_win10.sys": 144632,
+    "vbaudio_cable64arm_win10.sys": 152824,
+    "VBCABLE_ControlPanel.exe": 930848,
+    "VBCABLE_Setup.exe": 914176,
+    "VBCABLE_Setup_x64.exe": 937728,
+    "vbMmeCable_2003.inf": 4586,
+    "vbMmeCable_vista.inf": 4142,
+    "vbMmeCable_win7.inf": 4138,
+    "vbMmeCable_xp.inf": 4576,
+    "vbMmeCable64_2003.inf": 4596,
+    "vbMmeCable64_vista.inf": 4150,
+    "vbMmeCable64_win7.inf": 4146
+  },
+  "stage_files": {
+    "vbMmeCable64_win10.inf": {
+      "size": 11361,
+      "sha256": "cecf9181b6c85842d707330efc594824a749a1d9e01db46eba0e60e72f0a66ee"
+    },
+    "vbaudio_cable64_win10.sys": {
+      "size": 144632,
+      "sha256": "7ebcbbe7004d185f7b29613cd27fdc2dd71c1712224b767a74d2f66bdc33a7ef"
+    },
+    "vbaudio_cable64_win10.cat": {
+      "size": 12993,
+      "sha256": "5d24c17858b49ad83bb856c66c24c5c2aecdb89cbaae2f8179c15d351124fa9f"
+    },
+    "vbaudio_cable64arm_win10.sys": {
+      "size": 152824,
+      "sha256": "85c217af826c2e1d478b52afc7c2248889c8478030d44e8134bd4c23b8915216"
+    }
+  },
+  "signers": {
+    "vbaudio_cable64_win10.sys": {
+      "03c73f8446369bdcbe07edbc2009e335d0fac3907d6550558d27ae11787ebc25": "BUREL VINCENT Entrepreneur individuel",
+      "735521239659d359cc4aaef67a4432d36ca585b4db26e93593905a77f5b3efa4": "Microsoft Windows Hardware Compatibility Publisher"
+    },
+    "vbaudio_cable64_win10.cat": {
+      "735521239659d359cc4aaef67a4432d36ca585b4db26e93593905a77f5b3efa4": "Microsoft Windows Hardware Compatibility Publisher"
+    },
+    "vbaudio_cable64arm_win10.sys": {
+      "03c73f8446369bdcbe07edbc2009e335d0fac3907d6550558d27ae11787ebc25": "BUREL VINCENT Entrepreneur individuel",
+      "735521239659d359cc4aaef67a4432d36ca585b4db26e93593905a77f5b3efa4": "Microsoft Windows Hardware Compatibility Publisher"
+    }
+  }
+}
