@@ -95,17 +95,18 @@ def test_cancel_during_mapping_rejected_substring(db, monkeypatch):
     from carr_library.search import literal
     c,add=db
     add('C','c','xneedle '*4000)
-    real_fold = literal._fold
-    calls = 0
-    def fold(value):
-        nonlocal calls
-        if len(value)==1:
-            calls += 1
-        return real_fold(value)
-    monkeypatch.setattr(literal,'_fold',fold)
+    real_mapped = literal._ascii_mapped
+    mapped_characters = 0
+    def mapped(value, check):
+        nonlocal mapped_characters
+        result = real_mapped(value, check)
+        mapped_characters += len(value)
+        return result
+    # Cancel after actual mapping work, independent of per-character folding.
+    monkeypatch.setattr(literal,'_ascii_mapped',mapped)
     with pytest.raises(TimeoutError):
-        search(c,'C','needle',cancelled=lambda: calls>=1)
-    assert 1 <= calls <= 1024
+        search(c,'C','needle',cancelled=lambda: mapped_characters>=1)
+    assert 1 <= mapped_characters <= 1024
 
 
 @pytest.mark.parametrize('mode', ['phrase','terms'])

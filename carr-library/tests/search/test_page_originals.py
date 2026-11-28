@@ -248,7 +248,8 @@ def test_real_unselected_tail_failure_never_seals_a_partial_digest_table(
     monkeypatch.setattr(intake, "_stamp", stable_observation)
     monkeypatch.setattr(originals, "text_segments", damaged_stream)
     try:
-        with pytest.raises((OSError, ValueError), match="changed|source|original|Original"):
+        with pytest.raises((OSError, ValueError),
+                           match="changed|source|original|Original|^retained asset digest mismatch$"):
             app.search_page(workspace, "Needle", limit=37, timeout=120)
         assert events and events[0] == 1 and "EOF" not in events
         assert closed[-1]["digests"] == 0 and closed[-1]["sealed"] == ()

@@ -313,3 +313,105 @@ def test_close_current_owner_after_lookahead_withdraws_before_grant(library, mon
     with pytest.raises(ValueError, match="cursor.*owner"):
         _search(book, cursor=book.prior.cursor)
     assert book.path.read_bytes() == book.raw
+
+
+@pytest.mark.parametrize("change", ["bytes", "equal_byte_inode"])
+def test_later_original_final_read_cannot_hide_earlier_original_drift(
+        tmp_path, monkeypatch, change):
+    """A genuine B read changes already-verified A before the page is granted."""
+    app = LibraryApp(tmp_path / "pair-library")
+    workspace = app.create_workspace("Two current originals in one result page")
+    first = app.add_text(workspace, "First source", "Needle Alpha retained text.\r\n")
+    second = app.add_text(workspace, "Second source", "Needle Bravo retained text.\r\n")
+    assert first["state"] == second["state"] == "complete"
+    originals_by_hash = {}
+    for result in (first, second):
+        path = app.assets.resolve(result["asset"])
+        originals_by_hash[result["asset"]] = (path, path.read_bytes())
+    assert len(originals_by_hash) == 2
+    prior = app.search_page(workspace, "Needle", limit=1)
+    assert len(prior.results) == 1 and prior.has_more_results
+    before = dict(app._selections)
+    completed, mutations = [], []
+    state = {"final": False, "current": None}
+    real_validate = originals.PageOriginals.validate
+    real_retained = LibraryApp._retained_source
+    real_hash = retained_assets._hash_stream
+    closed = _release_observer(monkeypatch)
+
+    def validate(self, *args, **options):
+        # The second real original was reached by the genuine lookahead.
+        assert len(self._originals) == 2
+        state["final"] = True
+        try:
+            return real_validate(self, *args, **options)
+        finally:
+            state["final"] = False
+
+    def retained(self, db, selected_workspace, identity, **options):
+        if not state["final"]:
+            return real_retained(self, db, selected_workspace, identity, **options)
+        state["current"] = identity
+        try:
+            result = real_retained(self, db, selected_workspace, identity, **options)
+            completed.append((identity, result))
+            return result
+        finally:
+            state["current"] = None
+
+    class ObservedLaterRead:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def read(self, size):
+            block = self.stream.read(size)
+            if block and not mutations:
+                identity, result = completed[0]
+                target, original = originals_by_hash[identity.asset_sha256]
+                assert Path(result[0]) == target
+                before_stat = target.stat()
+                if change == "bytes":
+                    altered = original.replace(b"Needle", b"Noodle", 1)
+                    assert altered != original and len(altered) == len(original)
+                    with target.open("r+b") as output:
+                        output.write(altered)
+                        output.flush()
+                        os.fsync(output.fileno())
+                    # This case exercises a real changed stamp on both OS,
+                    # including Windows' creation-time meaning of st_ctime.
+                    os.utime(target, ns=(before_stat.st_atime_ns,
+                                         before_stat.st_mtime_ns + 1_000_000_000))
+                    assert target.stat().st_mtime_ns != before_stat.st_mtime_ns
+                else:
+                    replacement = target.with_name(target.name + ".new-inode")
+                    replacement.write_bytes(original)
+                    os.utime(replacement, ns=(before_stat.st_atime_ns,
+                                              before_stat.st_mtime_ns))
+                    assert replacement.stat().st_ino != before_stat.st_ino
+                    os.replace(replacement, target)
+                    assert target.stat().st_ino != before_stat.st_ino
+                    assert target.read_bytes() == original
+                mutations.append(identity)
+            return block
+
+    def hashed(stream, **options):
+        if state["final"] and len(completed) == 1:
+            assert state["current"] != completed[0][0]
+            return real_hash(ObservedLaterRead(stream), **options)
+        return real_hash(stream, **options)
+
+    monkeypatch.setattr(originals.PageOriginals, "validate", validate)
+    monkeypatch.setattr(LibraryApp, "_retained_source", retained)
+    monkeypatch.setattr(retained_assets, "_hash_stream", hashed)
+    try:
+        with pytest.raises(ValueError, match="original.*changed|Original.*changed"):
+            app.search_page(workspace, "Needle", limit=1)
+        assert len(completed) == 2 and completed[0][0] != completed[1][0]
+        assert mutations == [completed[0][0]]
+        unchanged_path, unchanged_bytes = originals_by_hash[completed[1][0].asset_sha256]
+        assert unchanged_path.read_bytes() == unchanged_bytes
+        assert len(closed) == 1 and closed[0].closed and not closed[0]._originals
+        assert not closed[0]._wanted and closed[0].bytes == closed[0]._wanted_count == 0
+        assert app._selections == before
+    finally:
+        assert app.close_search()
