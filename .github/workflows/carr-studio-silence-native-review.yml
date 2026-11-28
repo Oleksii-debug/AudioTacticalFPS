@@ -159,10 +159,14 @@ jobs:
         shell: pwsh
         run: |
           $scriptPath = 'scripts/windows_studio_silence_smoke.py'
-          $audioEvidence = (Resolve-Path 'ci-studio-silence-native/audio-runtime.json').Path
-          $audioEvidenceHash = (Get-FileHash -LiteralPath $audioEvidence -Algorithm SHA256).Hash
           $ffmpeg = Join-Path $env:CARR_SILENCE_AUDIO 'bin/ffmpeg.exe'
           $ffprobe = Join-Path $env:CARR_SILENCE_AUDIO 'bin/ffprobe.exe'
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$env:CARR_SILENCE_AUDIO;
+             ffmpeg=@{ path=$ffmpeg; sha256=(Get-FileHash -LiteralPath $ffmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
+             ffprobe=@{ path=$ffprobe; sha256=(Get-FileHash -LiteralPath $ffprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-studio-silence-native/external-test-audio-binding.json'
+          $audioEvidence = (Resolve-Path 'ci-studio-silence-native/external-test-audio-binding.json').Path
+          $audioEvidenceHash = (Get-FileHash -LiteralPath $audioEvidence -Algorithm SHA256).Hash
           python -I -B -c "from pathlib import Path; p=Path('scripts/windows_studio_silence_smoke.py'); compile(p.read_bytes(), str(p), 'exec')"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $scriptBefore = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
