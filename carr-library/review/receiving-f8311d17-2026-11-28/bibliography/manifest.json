@@ -1,0 +1,50 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105047642,
+  "job_id": 140855804357,
+  "provenance": "Complete connector-returned decoded log retained unchanged. Hashes describe UTF-8 encoded decoded text, not original GitHub transport bytes or artifact members. Extracted JSON comes from log lines with timestamps removed and a final LF added. Verdict rows preserve one-based log line numbers.",
+  "extracted_json_lines": {
+    "source-wheel.log-extracted.json": 361,
+    "installed-native.log-extracted.json": 496,
+    "runtime.log-extracted.json": 366
+  },
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 7588,
+      "sha256": "09a8d4d56d32ce702e6ac7a2085b5b2b5173aaf642e3077d7fef433a8dafecc3"
+    },
+    {
+      "path": "source-module-verdicts.json",
+      "utf8_bytes": 4276,
+      "sha256": "aca43addf7b04ffa4636934969e8aaf1b3be38e157a0a94dc24e7ffd3d34487a"
+    },
+    {
+      "path": "source-wheel.log-extracted.json",
+      "utf8_bytes": 337,
+      "sha256": "f2c6f78412e79e77b53759c968c515fa7ebd9bfebcc6ff73dbe76c840144e0da"
+    },
+    {
+      "path": "installed-native.log-extracted.json",
+      "utf8_bytes": 1015,
+      "sha256": "d73a2078c6dbfed4f8c786fac5aa55a7cb97bc54a85dbbd347a0053deb7d40f0"
+    },
+    {
+      "path": "runtime.log-extracted.json",
+      "utf8_bytes": 200,
+      "sha256": "53ac1897a73827ee7655fc863d0cf21242c3b00d8d3071a36fcf8c2c68c04bf7"
+    },
+    {
+      "path": "completed-job.decoded.log",
+      "utf8_bytes": 139816,
+      "sha256": "fbf60e2b30ff4e0f50e0aa7ba00b463043b24a52c86297a8c3a4bef8a9fff412"
+    }
+  ],
+  "uploaded_artifact_metadata": {
+    "id": 15247556834,
+    "size_in_bytes": 6637,
+    "digest": "sha256:81e426004bfff8f5c3b94691cbaeeff6ac4bdae59b131ae9654c0fceaccd4df6",
+    "original_zip_or_members_downloaded": false
+  }
+}

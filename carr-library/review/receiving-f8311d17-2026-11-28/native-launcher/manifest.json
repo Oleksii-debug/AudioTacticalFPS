@@ -1,0 +1,44 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105047655,
+  "provenance": "Complete connector-returned decoded job logs retained unchanged. File hashes describe UTF-8 encoded decoded text, not original GitHub transport bytes or artifact members. Extracted JSON strips timestamp prefixes, retains its printed formatting, and adds a final LF. Each repeated build/probe value was checked equal before counting it once.",
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 10019,
+      "sha256": "468ccafecd11b29ffe03ae1189ef9b1134132d26923d4dfcb9ec66791892713e"
+    },
+    {
+      "path": "msvc-build.log-extracted.json",
+      "utf8_bytes": 2715,
+      "sha256": "31a282fcb137a8fcc8935dc90b24c068ad0a25e5258a92a38c12fb222a96542d"
+    },
+    {
+      "path": "msvc-native-probe.log-extracted.json",
+      "utf8_bytes": 793,
+      "sha256": "502d4a193f62043bdacacd7c18ce4faa31b2c80f810407abe79e6efeaf31fb1d"
+    },
+    {
+      "path": "msvc-completed-job.decoded.log",
+      "utf8_bytes": 34208,
+      "sha256": "e139725c50062d96a57bb3dda617d9d5d11c7d52dcba2a929db3a69c0866c84c"
+    },
+    {
+      "path": "zig-build.log-extracted.json",
+      "utf8_bytes": 1544,
+      "sha256": "404288f2538053d4bdeeb078790e556cbc31d95ec32578cd6028927890f6d8ec"
+    },
+    {
+      "path": "zig-native-probe.log-extracted.json",
+      "utf8_bytes": 793,
+      "sha256": "22983c0522d476ad470de860516611673b8bd213af922e2d4ccd28b250f0cc68"
+    },
+    {
+      "path": "zig-completed-job.decoded.log",
+      "utf8_bytes": 30920,
+      "sha256": "a4126aa6b89efacf4ecb422ceb0a3b4e6db160997612d8584aba36142b7560cb"
+    }
+  ],
+  "uploaded_artifacts": false
+}

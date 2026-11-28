@@ -1,0 +1,218 @@
+[
+  {
+    "line": 679,
+    "path": "tests/assistant/test_transcription_workflow.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 691,
+    "path": "tests/transcription/test_supplied_worker_bridge.py",
+    "passed": 91,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 702,
+    "path": "tests/storage/test_transcription_recovery.py",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 713,
+    "path": "tests/storage/test_import_publication_backup.py",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 725,
+    "path": "tests/ui/test_progress_job_review.py",
+    "passed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 736,
+    "path": "tests/transcription/test_protocol_routing.py",
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 747,
+    "path": "tests/transcription/test_owned_admission.py",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 758,
+    "path": "tests/transcription/test_protocol_fixture.py",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 769,
+    "path": "tests/transcription/test_runtime_admission.py",
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 783,
+    "path": "tests/transcription/test_runtime_inventory.py",
+    "passed": 172,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 794,
+    "path": "tests/storage/test_asr_additional_profile.py",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 806,
+    "path": "tests/storage/test_state_json_reader.py",
+    "passed": 63,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 818,
+    "path": "tests/transcription/test_control_reads.py",
+    "passed": 33,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 829,
+    "path": "tests/transcription/test_service.py",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 840,
+    "path": "tests/transcription/test_admission_boundaries.py",
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 851,
+    "path": "tests/transcription/test_restore.py",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 862,
+    "path": "tests/e2e/test_transcription_cli.py",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 875,
+    "path": "tests/storage/test_transcription_backup.py",
+    "passed": 143,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 886,
+    "path": "tests/storage/test_transcription_composite_backup.py",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 898,
+    "path": "tests/operations/test_resources.py",
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 909,
+    "path": "tests/operations/test_facade.py",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 920,
+    "path": "tests/operations/test_transcription_views.py",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 931,
+    "path": "tests/e2e/test_operations_cli.py",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 942,
+    "path": "tests/storage/test_atomic_state_publication.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 953,
+    "path": "tests/audio/test_audio_process.py",
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 964,
+    "path": "tests/audio/test_process_deadline.py",
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 993,
+    "path": "tests/operations_posix/test_fork_ownership.py",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  }
+]

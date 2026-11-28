@@ -1,0 +1,190 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "provenance": {
+    "kind": "completed GitHub job metadata and complete decoded job log",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "source_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+    "run_id": 46105047649,
+    "job_id": 140855804803,
+    "run_attempt": 1,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105047649/job/140855804803",
+    "workflow": ".github/workflows/carr-transcription-bridge.yml",
+    "workflow_blob": "847b1e36301a5f3185555d727a27bc20363ae23e",
+    "decoded_log_utf8_sha256": "b103567775d69e3cf17ac751eae23c1ab5fcf81d5ca5b245eb8db2d1a1ef8d64",
+    "decoded_log_characters": 92891,
+    "decoded_log_utf8_bytes": 94173
+  },
+  "terminal": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T04:05:09Z",
+    "completed_at": "2026-11-28T04:07:02Z"
+  },
+  "common_source_contracts": {
+    "status": "PASS",
+    "selected_modules": 26,
+    "completed_modules": 26,
+    "passed": 822,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "all_pytest_exits_zero": true,
+    "selectors": [
+      "tests/assistant/test_transcription_workflow.py",
+      "tests/transcription/test_supplied_worker_bridge.py",
+      "tests/storage/test_transcription_recovery.py",
+      "tests/storage/test_import_publication_backup.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/transcription/test_protocol_routing.py",
+      "tests/transcription/test_owned_admission.py",
+      "tests/transcription/test_protocol_fixture.py",
+      "tests/transcription/test_runtime_admission.py",
+      "tests/transcription/test_runtime_inventory.py",
+      "tests/storage/test_asr_additional_profile.py",
+      "tests/storage/test_state_json_reader.py",
+      "tests/transcription/test_control_reads.py",
+      "tests/transcription/test_service.py",
+      "tests/transcription/test_admission_boundaries.py",
+      "tests/transcription/test_restore.py",
+      "tests/e2e/test_transcription_cli.py",
+      "tests/storage/test_transcription_backup.py",
+      "tests/storage/test_transcription_composite_backup.py",
+      "tests/operations/test_resources.py",
+      "tests/operations/test_facade.py",
+      "tests/operations/test_transcription_views.py",
+      "tests/e2e/test_operations_cli.py",
+      "tests/storage/test_atomic_state_publication.py",
+      "tests/audio/test_audio_process.py",
+      "tests/audio/test_process_deadline.py"
+    ]
+  },
+  "native_posix_fork_ownership": {
+    "status": "PASS",
+    "modules": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "selector": "tests/operations_posix/test_fork_ownership.py"
+  },
+  "overall_pytest": {
+    "modules": 27,
+    "passed": 823,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "identity": {
+    "built_wheel_sha256": "b23c13634898c3b541e0b603fa5b83da04fdeaa4fa9971d0afc3ba4c59458eb3",
+    "built_wheel_size_bytes": 2598584,
+    "source_commit_printed_in_log": true,
+    "execution_scope": "Normal configured source pytest harness after package installation; no separate installed pytest lane or full installed module inventory is claimed."
+  },
+  "uploaded_artifact_count": 0,
+  "artifact_scope": "The exact workflow has no artifact-upload step. This receipt preserves complete decoded job text.",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T04:05:10Z",
+      "completed_at": "2026-11-28T04:05:10Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T04:05:10Z",
+      "completed_at": "2026-11-28T04:05:12Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T04:05:12Z",
+      "completed_at": "2026-11-28T04:05:12Z"
+    },
+    {
+      "name": "Install the actual source package and test dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T04:05:12Z",
+      "completed_at": "2026-11-28T04:05:29Z"
+    },
+    {
+      "name": "Verify retained inputs, actual child protocol, recovery and CLI",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T04:05:29Z",
+      "completed_at": "2026-11-28T04:06:58Z"
+    },
+    {
+      "name": "Require native POSIX inherited-reservation ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T04:06:58Z",
+      "completed_at": "2026-11-28T04:06:59Z"
+    },
+    {
+      "name": "Require actual Windows reader-handle publication",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 7,
+      "started_at": "2026-11-28T04:06:59Z",
+      "completed_at": "2026-11-28T04:06:59Z"
+    },
+    {
+      "name": "Install actual native desktop controls",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 8,
+      "started_at": "2026-11-28T04:06:59Z",
+      "completed_at": "2026-11-28T04:06:59Z"
+    },
+    {
+      "name": "Exercise actual native controls and shared background operation",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 9,
+      "started_at": "2026-11-28T04:06:59Z",
+      "completed_at": "2026-11-28T04:06:59Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T04:06:59Z",
+      "completed_at": "2026-11-28T04:06:59Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-11-28T04:06:59Z",
+      "completed_at": "2026-11-28T04:07:00Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-11-28T04:07:00Z",
+      "completed_at": "2026-11-28T04:07:00Z"
+    }
+  ],
+  "qualification_limits": [
+    "Linux-only receiving result; Windows lane status and native controls are recorded separately after terminal completion.",
+    "Windows-only workflow steps are correctly skipped on Linux; zero-skipped refers to the required pytest cases.",
+    "Actual supplied child protocols and synthetic PCM/fixtures are tested; private ASR model inference, microphone capture, acoustic quality and human NVDA are not claimed.",
+    "Source/test/product deadlines and source-authority guards were not changed for this result.",
+    "No raw artifact-member bytes, binaries, credentials, models or private user data are included."
+  ]
+}

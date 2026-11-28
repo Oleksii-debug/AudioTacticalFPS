@@ -10,6 +10,33 @@
       "job": 140850017077,
       "sparse_tree": "16835382db4c9e292b7f06121d7f035493bfc8c4",
       "kind": "terminal Windows supplied-bridge receiving"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105047655,
+      "jobs": [
+        140855804731,
+        140855805048
+      ],
+      "sparse_tree": "4e639f14ddff21df69ba7d8fa1aa7ebc2d05e404",
+      "kind": "terminal MSVC and Zig native launchers",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/native-launcher/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105047642,
+      "job": 140855804357,
+      "sparse_tree": "18e359f73faa715ae44b5d70fcfd2e816567aa05",
+      "kind": "terminal bibliography",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105047649,
+      "job": 140855804803,
+      "sparse_tree": "18e359f73faa715ae44b5d70fcfd2e816567aa05",
+      "kind": "terminal Linux supplied bridge",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/supplied-bridge-linux/qualification.json"
     }
   ],
   "application_changes": [],

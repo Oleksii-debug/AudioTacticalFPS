@@ -1,0 +1,203 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "provenance": {
+    "kind": "terminal GitHub metadata and complete decoded job log",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "run_id": 46105047642,
+    "run_attempt": 1,
+    "job_id": 140855804357,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105047642/job/140855804357",
+    "workflow": ".github/workflows/carr-bibliography.yml",
+    "workflow_blob": "53d7e3142f94dbab7e67273550b9809189c94b81",
+    "decoded_log_utf8_sha256": "fbf60e2b30ff4e0f50e0aa7ba00b463043b24a52c86297a8c3a4bef8a9fff412",
+    "decoded_log_characters": 139814,
+    "artifact_members_downloaded": false,
+    "decoded_log_utf8_bytes": 139816
+  },
+  "terminal": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T03:59:19Z",
+    "completed_at": "2026-11-28T04:07:05Z"
+  },
+  "strict_source_contracts": {
+    "status": "PASS",
+    "selected_modules": 29,
+    "completed_modules": 29,
+    "passed": 1092,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "all_module_pytest_exits_zero": true,
+    "selector_membership_exact": true,
+    "execution_scope": "Normal configured source pytest harness; this is not a second installed pytest lane.",
+    "verdicts_file": "source-module-verdicts.json"
+  },
+  "installed_native_bibliography": {
+    "status": "PASS",
+    "dynamic_checks": 69,
+    "installed_module_byte_proofs": 5,
+    "record_file": "installed-native.log-extracted.json",
+    "scope": {
+      "checks": 69,
+      "custom_style_file_choice": "controlled path only",
+      "installed_modules": {
+        "carr_library.citations.bibliography_workbench": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+        "carr_library.citations.csl": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+        "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+        "carr_library.ui.academic_library_dialog": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+        "carr_library.ui.citation_styles_dialog": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"
+      },
+      "installer": "NOT_RUN",
+      "manual_keyboard": "NOT_RUN",
+      "native_clipboard": "PASS",
+      "native_custom_style": "PASS",
+      "native_file_pickers": "NOT_RUN",
+      "native_keyboard": "PASS",
+      "nvda": "NOT_RUN",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "python": "3.11.9",
+      "result": "PASS",
+      "service_exports": [
+        "text",
+        "html",
+        "docx"
+      ],
+      "style": "harvard",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    }
+  },
+  "source_wheel": {
+    "payload_files": 490,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 395,
+    "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "source_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+    "wheel_sha256": "2c2f2432e2d7d937ac06e8d04a637703a89b6ac0610c55d69ee0cb28c7577149"
+  },
+  "runtime": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "windows": "Windows-10-10.0.20348-SP0",
+    "sqlite": "3.45.1",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "uploaded_artifact": {
+    "id": 15247556834,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NzU1NjgzNA==",
+    "name": "bibliography-windows-f8311d17fa960448b350cb739b5a90584c30c74b",
+    "size_in_bytes": 6637,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15247556834",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15247556834/zip",
+    "expired": false,
+    "digest": "sha256:81e426004bfff8f5c3b94691cbaeeff6ac4bdae59b131ae9654c0fceaccd4df6",
+    "created_at": "2026-11-28T04:07:01Z",
+    "updated_at": "2026-11-28T04:07:01Z",
+    "expires_at": "2026-12-05T04:07:00Z",
+    "workflow_run": {
+      "id": 46105047642,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+    }
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T03:59:20Z",
+      "completed_at": "2026-11-28T03:59:21Z"
+    },
+    {
+      "name": "Preserve the exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T03:59:21Z",
+      "completed_at": "2026-11-28T03:59:22Z"
+    },
+    {
+      "name": "Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T03:59:22Z",
+      "completed_at": "2026-11-28T03:59:32Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T03:59:32Z",
+      "completed_at": "2026-11-28T03:59:32Z"
+    },
+    {
+      "name": "Build, verify and install the actual application wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T03:59:32Z",
+      "completed_at": "2026-11-28T04:00:24Z"
+    },
+    {
+      "name": "Exercise installed native BibTeX and citation controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T04:00:24Z",
+      "completed_at": "2026-11-28T04:00:29Z"
+    },
+    {
+      "name": "Run strict bibliography, replay and export acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T04:00:29Z",
+      "completed_at": "2026-11-28T04:07:00Z"
+    },
+    {
+      "name": "Retain text acceptance evidence only",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T04:07:00Z",
+      "completed_at": "2026-11-28T04:07:01Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T04:07:01Z",
+      "completed_at": "2026-11-28T04:07:01Z"
+    },
+    {
+      "name": "Post Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T04:07:01Z",
+      "completed_at": "2026-11-28T04:07:03Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T04:07:03Z",
+      "completed_at": "2026-11-28T04:07:03Z"
+    }
+  ],
+  "qualification_limits": [
+    "The source harness and installed native probe are separate scopes; do not label 1092 as installed pytest cases.",
+    "Native synthetic keyboard/clipboard/custom-style controls pass, while manual keyboard, native file pickers, NVDA and installer qualification remain NOT_RUN as recorded.",
+    "The wheel verifier binds exact commit/tree and runtime files; no complete 380-module installed inventory was printed by this workflow.",
+    "Artifact ZIP digest/size are matching GitHub API/upload observations; original ZIP/member bytes were not downloaded or rehashed.",
+    "No model-quality, acoustic, signing or full-release acceptance is inferred."
+  ]
+}

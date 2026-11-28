@@ -1,0 +1,364 @@
+﻿2026-11-28T04:02:26.9330496Z Current runner version: '2.338.2'
+2026-11-28T04:02:26.9360555Z ##[group]Runner Image Provisioner
+2026-11-28T04:02:26.9361297Z Hosted Compute Agent
+2026-11-28T04:02:26.9361822Z Version: 20261111.635
+2026-11-28T04:02:26.9362393Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T04:02:26.9363058Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T04:02:26.9363685Z Worker ID: {c698255e-9f4b-4e33-9901-4cf1384f4b42}
+2026-11-28T04:02:26.9364318Z Region: northcentralus
+2026-11-28T04:02:26.9364820Z Cloud: Azure
+2026-11-28T04:02:26.9365335Z ##[endgroup]
+2026-11-28T04:02:26.9366604Z ##[group]Operating System
+2026-11-28T04:02:26.9367189Z Microsoft Windows Server 2022
+2026-11-28T04:02:26.9367741Z 10.0.20348
+2026-11-28T04:02:26.9368201Z Datacenter
+2026-11-28T04:02:26.9368652Z ##[endgroup]
+2026-11-28T04:02:26.9369112Z ##[group]Runner Image
+2026-11-28T04:02:26.9369614Z Image: windows-2022
+2026-11-28T04:02:26.9370100Z Version: 20261123.376.1
+2026-11-28T04:02:26.9371426Z Included Software: https://github.com/actions/runner-images/blob/win22/20261123.376/images/windows/Windows2022-Readme.md
+2026-11-28T04:02:26.9372833Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20261123.376
+2026-11-28T04:02:26.9373699Z ##[endgroup]
+2026-11-28T04:02:26.9374695Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T04:02:26.9376428Z Contents: read
+2026-11-28T04:02:26.9376972Z Metadata: read
+2026-11-28T04:02:26.9377432Z ##[endgroup]
+2026-11-28T04:02:26.9379390Z Secret source: Actions
+2026-11-28T04:02:26.9380176Z Cache mode: write
+2026-11-28T04:02:26.9380880Z Prepare workflow directory
+2026-11-28T04:02:26.9726908Z Prepare all required actions
+2026-11-28T04:02:26.9799569Z Getting action download info
+2026-11-28T04:02:27.1647159Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T04:02:27.2823948Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T04:02:27.5509078Z Complete job name: pinned-zig-native-launcher
+2026-11-28T04:02:27.7103597Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T04:02:27.7104775Z with:
+2026-11-28T04:02:27.7105202Z   ref: f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:02:27.7105753Z   persist-credentials: false
+2026-11-28T04:02:27.7106259Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T04:02:27.7110180Z   token: ***
+2026-11-28T04:02:27.7110563Z   ssh-strict: true
+2026-11-28T04:02:27.7110946Z   ssh-user: git
+2026-11-28T04:02:27.7111316Z   clean: true
+2026-11-28T04:02:27.7111721Z   sparse-checkout-cone-mode: true
+2026-11-28T04:02:27.7112198Z   fetch-depth: 1
+2026-11-28T04:02:27.7112577Z   fetch-tags: false
+2026-11-28T04:02:27.7112964Z   show-progress: true
+2026-11-28T04:02:27.7113351Z   lfs: false
+2026-11-28T04:02:27.7113709Z   submodules: false
+2026-11-28T04:02:27.7114100Z   set-safe-directory: true
+2026-11-28T04:02:27.7114575Z   allow-unsafe-pr-checkout: false
+2026-11-28T04:02:27.7115238Z ##[endgroup]
+2026-11-28T04:02:27.8557359Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T04:02:27.8559246Z ##[group]Getting Git version info
+2026-11-28T04:02:27.8559966Z Working directory is 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T04:02:27.9593841Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T04:02:28.2374807Z git version 2.56.1.windows.1
+2026-11-28T04:02:28.2416495Z ##[endgroup]
+2026-11-28T04:02:28.2431351Z Temporarily overriding HOME='D:\a\_temp\42f0b089-3fb0-4cad-a88e-7db41f9bb8e0' before making global git config changes
+2026-11-28T04:02:28.2432626Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T04:02:28.2441965Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T04:02:28.3001795Z Deleting the contents of 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T04:02:28.3006430Z ##[group]Determining repository object format
+2026-11-28T04:02:28.3008696Z ##[endgroup]
+2026-11-28T04:02:28.3009633Z ##[group]Initializing the repository
+2026-11-28T04:02:28.3017852Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T04:02:28.3652140Z Initialized empty Git repository in D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T04:02:28.3687153Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T04:02:28.4240451Z ##[endgroup]
+2026-11-28T04:02:28.4241393Z ##[group]Disabling automatic garbage collection
+2026-11-28T04:02:28.4310463Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-28T04:02:28.4564981Z ##[endgroup]
+2026-11-28T04:02:28.4566731Z ##[group]Setting up auth
+2026-11-28T04:02:28.4567959Z Removing SSH command configuration
+2026-11-28T04:02:28.4575796Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T04:02:28.4865590Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T04:02:29.7313010Z Removing HTTP extra header
+2026-11-28T04:02:29.7322227Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T04:02:29.7632102Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T04:02:30.2363426Z Removing includeIf entries pointing to credentials config files
+2026-11-28T04:02:30.2373506Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T04:02:30.2668607Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T04:02:30.7384106Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-28T04:02:30.7700325Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D:\a\_temp\git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:30.8010216Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D:\a\_temp\git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:30.8367172Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:30.8668129Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:30.8959344Z ##[endgroup]
+2026-11-28T04:02:30.8959868Z ##[group]Fetching the repository
+2026-11-28T04:02:30.8970263Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:02:32.7346264Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T04:02:32.7346874Z  * branch            f8311d17fa960448b350cb739b5a90584c30c74b -> FETCH_HEAD
+2026-11-28T04:02:32.7385473Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet f8311d17fa960448b350cb739b5a90584c30c74b^{object}
+2026-11-28T04:02:32.7701446Z f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:02:32.7726549Z ##[endgroup]
+2026-11-28T04:02:32.7728417Z ##[group]Determining the checkout info
+2026-11-28T04:02:32.7728910Z ##[endgroup]
+2026-11-28T04:02:32.7736507Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-28T04:02:32.8082214Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-28T04:02:32.8376926Z ##[group]Checking out the ref
+2026-11-28T04:02:32.8384942Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:02:33.3395923Z Note: switching to 'f8311d17fa960448b350cb739b5a90584c30c74b'.
+2026-11-28T04:02:33.3396885Z 
+2026-11-28T04:02:33.3397231Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T04:02:33.3397995Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T04:02:33.3398684Z state without impacting any branches by switching back to a branch.
+2026-11-28T04:02:33.3398957Z 
+2026-11-28T04:02:33.3399429Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T04:02:33.3399910Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T04:02:33.3400154Z 
+2026-11-28T04:02:33.3400288Z   git switch -c <new-branch-name>
+2026-11-28T04:02:33.3400466Z 
+2026-11-28T04:02:33.3400558Z Or undo this operation with:
+2026-11-28T04:02:33.3400710Z 
+2026-11-28T04:02:33.3400781Z   git switch -
+2026-11-28T04:02:33.3400896Z 
+2026-11-28T04:02:33.3401107Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T04:02:33.3401425Z 
+2026-11-28T04:02:33.3401767Z HEAD is now at f8311d1 Complete Unicode-safe bundle fixtures and retain exact Windows receiving evidence
+2026-11-28T04:02:33.3499447Z ##[endgroup]
+2026-11-28T04:02:33.3897684Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T04:02:33.4172001Z f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:02:33.4201585Z ##[group]Removing auth
+2026-11-28T04:02:33.4201918Z Removing SSH command configuration
+2026-11-28T04:02:33.4211820Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T04:02:33.4506122Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T04:02:33.9367091Z Removing HTTP extra header
+2026-11-28T04:02:33.9383356Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T04:02:33.9679852Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T04:02:34.4341671Z Removing includeIf entries pointing to credentials config files
+2026-11-28T04:02:34.4355059Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T04:02:34.4628117Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T04:02:34.4629600Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T04:02:34.4630657Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T04:02:34.4631324Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T04:02:34.4660107Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T04:02:34.4920328Z D:\a\_temp\git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:34.4955308Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D\:\\a\\_temp\\git\-credentials\-617d39ed\-1530\-4cda\-b44a\-bf0fd8b246fb\.config
+2026-11-28T04:02:34.5248755Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T04:02:34.5521598Z D:\a\_temp\git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:34.5556526Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-617d39ed\-1530\-4cda\-b44a\-bf0fd8b246fb\.config
+2026-11-28T04:02:34.5856457Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T04:02:34.6133207Z /github/runner_temp/git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:34.6164637Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-617d39ed\-1530\-4cda\-b44a\-bf0fd8b246fb\.config
+2026-11-28T04:02:34.6458893Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T04:02:34.6719723Z /github/runner_temp/git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config
+2026-11-28T04:02:34.6749849Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-617d39ed\-1530\-4cda\-b44a\-bf0fd8b246fb\.config
+2026-11-28T04:02:34.7043332Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T04:02:35.1700398Z Removing credentials config 'D:\a\_temp\git-credentials-617d39ed-1530-4cda-b44a-bf0fd8b246fb.config'
+2026-11-28T04:02:35.1711496Z ##[endgroup]
+2026-11-28T04:02:35.2065232Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T04:02:35.2065679Z with:
+2026-11-28T04:02:35.2065860Z   python-version: 3.11
+2026-11-28T04:02:35.2066088Z   architecture: x64
+2026-11-28T04:02:35.2066277Z   check-latest: false
+2026-11-28T04:02:35.2069032Z   token: ***
+2026-11-28T04:02:35.2069347Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T04:02:35.2069727Z   update-environment: true
+2026-11-28T04:02:35.2069943Z   allow-prereleases: false
+2026-11-28T04:02:35.2070143Z   freethreaded: false
+2026-11-28T04:02:35.2070329Z ##[endgroup]
+2026-11-28T04:02:35.3530324Z ##[group]Installed versions
+2026-11-28T04:02:35.3654685Z Successfully set up CPython (3.11.9)
+2026-11-28T04:02:35.3655295Z ##[endgroup]
+2026-11-28T04:02:35.3882943Z ##[group]Run $archive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+2026-11-28T04:02:35.3883644Z [36;1m$archive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'[0m
+2026-11-28T04:02:35.3884337Z [36;1mInvoke-WebRequest -Uri 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $archive[0m
+2026-11-28T04:02:35.3885082Z [36;1mif ((Get-Item $archive).Length -ne 82229343) { throw 'Unexpected compiler archive length.' }[0m
+2026-11-28T04:02:35.3886085Z [36;1mif ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') { throw 'Compiler archive digest mismatch.' }[0m
+2026-11-28T04:02:35.3887040Z [36;1mExpand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP[0m
+2026-11-28T04:02:35.4056612Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T04:02:35.4056977Z env:
+2026-11-28T04:02:35.4057294Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:02:35.4057868Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T04:02:35.4058347Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:02:35.4058765Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:02:35.4059180Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:02:35.4059730Z ##[endgroup]
+2026-11-28T04:03:03.0059165Z ##[group]Run $zig = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1/zig.exe'
+2026-11-28T04:03:03.0059820Z [36;1m$zig = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1/zig.exe'[0m
+2026-11-28T04:03:03.0060349Z [36;1m$archive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'[0m
+2026-11-28T04:03:03.0060899Z [36;1m$private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'[0m
+2026-11-28T04:03:03.0061768Z [36;1mpython carr-library/packaging/native-launcher/build_launcher.py --zig $zig --toolchain-archive $archive --output-dir $private --build-probe[0m
+2026-11-28T04:03:03.0062525Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T04:03:03.0106110Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T04:03:03.0106454Z env:
+2026-11-28T04:03:03.0106719Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:03:03.0107224Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T04:03:03.0107688Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:03:03.0108084Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:03:03.0108486Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:03:03.0108797Z ##[endgroup]
+2026-11-28T04:04:01.9360177Z {
+2026-11-28T04:04:01.9360641Z   "schema": 1,
+2026-11-28T04:04:01.9360960Z   "toolchain": {
+2026-11-28T04:04:01.9361289Z     "version": "0.14.1",
+2026-11-28T04:04:01.9361931Z     "archive_sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+2026-11-28T04:04:01.9362712Z     "archive_bytes": 82229343,
+2026-11-28T04:04:01.9363227Z     "binary_sha256": "1ddf230367e07738c4a769eae66c1db7469e37bd520e81c86356453d0db2b9fd",
+2026-11-28T04:04:01.9363809Z     "primary_url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip"
+2026-11-28T04:04:01.9364230Z   },
+2026-11-28T04:04:01.9364405Z   "source_sha256": {
+2026-11-28T04:04:01.9364757Z     "launcher.c": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+2026-11-28T04:04:01.9365327Z     "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+2026-11-28T04:04:01.9365874Z     "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+2026-11-28T04:04:01.9366448Z     "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+2026-11-28T04:04:01.9367044Z     "toolchain.lock.json": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+2026-11-28T04:04:01.9367488Z   },
+2026-11-28T04:04:01.9367676Z   "target": "x86_64-windows-gnu",
+2026-11-28T04:04:01.9367897Z   "pe": {
+2026-11-28T04:04:01.9368060Z     "schema": 1,
+2026-11-28T04:04:01.9368257Z     "file": "ResearchLibrary.exe",
+2026-11-28T04:04:01.9368484Z     "bytes": 15360,
+2026-11-28T04:04:01.9368855Z     "sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+2026-11-28T04:04:01.9369255Z     "machine": "x86_64",
+2026-11-28T04:04:01.9369473Z     "subsystem": "windows-gui",
+2026-11-28T04:04:01.9369686Z     "aslr": true,
+2026-11-28T04:04:01.9369875Z     "high_entropy_aslr": true,
+2026-11-28T04:04:01.9370087Z     "dep": true,
+2026-11-28T04:04:01.9370271Z     "timestamp": 3721080413,
+2026-11-28T04:04:01.9370475Z     "imports": [
+2026-11-28T04:04:01.9370652Z       "KERNEL32.dll",
+2026-11-28T04:04:01.9370838Z       "USER32.dll",
+2026-11-28T04:04:01.9371012Z       "SHELL32.dll"
+2026-11-28T04:04:01.9371179Z     ],
+2026-11-28T04:04:01.9371386Z     "reproducible_build_marker": true,
+2026-11-28T04:04:01.9371690Z     "embedded_as_invoker": true,
+2026-11-28T04:04:01.9371927Z     "certificate_table_present": false,
+2026-11-28T04:04:01.9372180Z     "authenticode_signed": false,
+2026-11-28T04:04:01.9372474Z     "windows_execution_verified": false,
+2026-11-28T04:04:01.9372719Z     "nvda_verified": false
+2026-11-28T04:04:01.9373904Z   },
+2026-11-28T04:04:01.9376034Z   "release_status": "unsigned-private-candidate"
+2026-11-28T04:04:01.9376400Z }
+2026-11-28T04:04:01.9874787Z ##[group]Run $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'
+2026-11-28T04:04:01.9875504Z [36;1m$private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'[0m
+2026-11-28T04:04:01.9876477Z [36;1mpython carr-library/packaging/native-launcher/probe_windows.py --launcher "$private/ResearchLibrary.exe" --child "$private/windows_child_probe.exe" --report "$private/windows-probe.json"[0m
+2026-11-28T04:04:01.9877344Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T04:04:01.9919755Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T04:04:01.9920103Z env:
+2026-11-28T04:04:01.9920392Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:01.9920837Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T04:04:01.9921306Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:01.9921751Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:01.9922148Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:01.9922457Z ##[endgroup]
+2026-11-28T04:04:02.5468702Z {
+2026-11-28T04:04:02.5469088Z   "schema": 1,
+2026-11-28T04:04:02.5469477Z   "status": "passed",
+2026-11-28T04:04:02.5469845Z   "checks": [
+2026-11-28T04:04:02.5470349Z     "unicode-spaces-fixed-argv-offline-optional-runtimes",
+2026-11-28T04:04:02.5471025Z     "read-only-ready-probe",
+2026-11-28T04:04:02.5471477Z     "fixed-installation-check",
+2026-11-28T04:04:02.5471968Z     "child-exit-status-propagated",
+2026-11-28T04:04:02.5472486Z     "extra-arguments-rejected",
+2026-11-28T04:04:02.5473044Z     "incomplete-state-preserved-without-reinstall",
+2026-11-28T04:04:02.5473718Z     "missing-runtime-does-not-search-path",
+2026-11-28T04:04:02.5474397Z     "fresh-package-reuses-fixed-offline-installer",
+2026-11-28T04:04:02.5475050Z     "research-data-sentinel-preserved"
+2026-11-28T04:04:02.5475551Z   ],
+2026-11-28T04:04:02.5475846Z   "check_count": 9,
+2026-11-28T04:04:02.5476535Z   "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+2026-11-28T04:04:02.5477732Z   "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+2026-11-28T04:04:02.5478479Z   "native_launcher_execution_verified": true,
+2026-11-28T04:04:02.5478955Z   "actual_python_installation_verified": false,
+2026-11-28T04:04:02.5479380Z   "nvda_verified": false,
+2026-11-28T04:04:02.5479769Z   "authenticode_verified": false
+2026-11-28T04:04:02.5480162Z }
+2026-11-28T04:04:02.6138606Z ##[group]Run git rev-parse HEAD
+2026-11-28T04:04:02.6138966Z [36;1mgit rev-parse HEAD[0m
+2026-11-28T04:04:02.6139728Z [36;1m$private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-zig-private'[0m
+2026-11-28T04:04:02.6140344Z [36;1mforeach ($name in @('build-evidence.json', 'windows-probe.json')) {[0m
+2026-11-28T04:04:02.6140740Z [36;1m  $file = Join-Path $private $name[0m
+2026-11-28T04:04:02.6141051Z [36;1m  if (Test-Path $file) { Get-Content $file }[0m
+2026-11-28T04:04:02.6141328Z [36;1m}[0m
+2026-11-28T04:04:02.6180675Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T04:04:02.6181014Z env:
+2026-11-28T04:04:02.6181276Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:02.6181726Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T04:04:02.6182172Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:02.6182603Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:02.6182991Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T04:04:02.6183306Z ##[endgroup]
+2026-11-28T04:04:02.8827489Z f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:04:02.9494750Z {
+2026-11-28T04:04:02.9498145Z   "schema": 1,
+2026-11-28T04:04:02.9499696Z   "toolchain": {
+2026-11-28T04:04:02.9501184Z     "version": "0.14.1",
+2026-11-28T04:04:02.9502767Z     "archive_sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+2026-11-28T04:04:02.9503575Z     "archive_bytes": 82229343,
+2026-11-28T04:04:02.9505102Z     "binary_sha256": "1ddf230367e07738c4a769eae66c1db7469e37bd520e81c86356453d0db2b9fd",
+2026-11-28T04:04:02.9506699Z     "primary_url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip"
+2026-11-28T04:04:02.9507444Z   },
+2026-11-28T04:04:02.9508799Z   "source_sha256": {
+2026-11-28T04:04:02.9510538Z     "launcher.c": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+2026-11-28T04:04:02.9512070Z     "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+2026-11-28T04:04:02.9513414Z     "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+2026-11-28T04:04:02.9515068Z     "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+2026-11-28T04:04:02.9516465Z     "toolchain.lock.json": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+2026-11-28T04:04:02.9517942Z   },
+2026-11-28T04:04:02.9519367Z   "target": "x86_64-windows-gnu",
+2026-11-28T04:04:02.9520783Z   "pe": {
+2026-11-28T04:04:02.9522225Z     "schema": 1,
+2026-11-28T04:04:02.9523579Z     "file": "ResearchLibrary.exe",
+2026-11-28T04:04:02.9525171Z     "bytes": 15360,
+2026-11-28T04:04:02.9526533Z     "sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+2026-11-28T04:04:02.9527637Z     "machine": "x86_64",
+2026-11-28T04:04:02.9529114Z     "subsystem": "windows-gui",
+2026-11-28T04:04:02.9530594Z     "aslr": true,
+2026-11-28T04:04:02.9532026Z     "high_entropy_aslr": true,
+2026-11-28T04:04:02.9533465Z     "dep": true,
+2026-11-28T04:04:02.9534828Z     "timestamp": 3721080413,
+2026-11-28T04:04:02.9536262Z     "imports": [
+2026-11-28T04:04:02.9537664Z       "KERNEL32.dll",
+2026-11-28T04:04:02.9539152Z       "USER32.dll",
+2026-11-28T04:04:02.9540591Z       "SHELL32.dll"
+2026-11-28T04:04:02.9541987Z     ],
+2026-11-28T04:04:02.9543424Z     "reproducible_build_marker": true,
+2026-11-28T04:04:02.9544833Z     "embedded_as_invoker": true,
+2026-11-28T04:04:02.9546223Z     "certificate_table_present": false,
+2026-11-28T04:04:02.9547892Z     "authenticode_signed": false,
+2026-11-28T04:04:02.9549375Z     "windows_execution_verified": false,
+2026-11-28T04:04:02.9550835Z     "nvda_verified": false
+2026-11-28T04:04:02.9552274Z   },
+2026-11-28T04:04:02.9553733Z   "release_status": "unsigned-private-candidate"
+2026-11-28T04:04:02.9555191Z }
+2026-11-28T04:04:02.9567897Z {
+2026-11-28T04:04:02.9568143Z   "schema": 1,
+2026-11-28T04:04:02.9568345Z   "status": "passed",
+2026-11-28T04:04:02.9569939Z   "checks": [
+2026-11-28T04:04:02.9571529Z     "unicode-spaces-fixed-argv-offline-optional-runtimes",
+2026-11-28T04:04:02.9572693Z     "read-only-ready-probe",
+2026-11-28T04:04:02.9574047Z     "fixed-installation-check",
+2026-11-28T04:04:02.9575502Z     "child-exit-status-propagated",
+2026-11-28T04:04:02.9576820Z     "extra-arguments-rejected",
+2026-11-28T04:04:02.9578770Z     "incomplete-state-preserved-without-reinstall",
+2026-11-28T04:04:02.9580830Z     "missing-runtime-does-not-search-path",
+2026-11-28T04:04:02.9582219Z     "fresh-package-reuses-fixed-offline-installer",
+2026-11-28T04:04:02.9583780Z     "research-data-sentinel-preserved"
+2026-11-28T04:04:02.9585098Z   ],
+2026-11-28T04:04:02.9586567Z   "check_count": 9,
+2026-11-28T04:04:02.9588279Z   "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+2026-11-28T04:04:02.9589711Z   "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+2026-11-28T04:04:02.9591445Z   "native_launcher_execution_verified": true,
+2026-11-28T04:04:02.9592976Z   "actual_python_installation_verified": false,
+2026-11-28T04:04:02.9594433Z   "nvda_verified": false,
+2026-11-28T04:04:02.9595875Z   "authenticode_verified": false
+2026-11-28T04:04:02.9597479Z }
+2026-11-28T04:04:03.0182763Z Post job cleanup.
+2026-11-28T04:04:03.1815921Z Post job cleanup.
+2026-11-28T04:04:03.4102740Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T04:04:03.4397731Z git version 2.56.1.windows.1
+2026-11-28T04:04:03.4464571Z Temporarily overriding HOME='D:\a\_temp\6b79c770-247b-43e4-89f3-f1f26eb2926e' before making global git config changes
+2026-11-28T04:04:03.4466228Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T04:04:03.4477329Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T04:04:03.4882260Z Removing SSH command configuration
+2026-11-28T04:04:03.4899154Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T04:04:03.5214158Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T04:04:04.0439194Z Removing HTTP extra header
+2026-11-28T04:04:04.0452019Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T04:04:04.0741515Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T04:04:04.5315049Z Removing includeIf entries pointing to credentials config files
+2026-11-28T04:04:04.5325868Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T04:04:04.5618727Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T04:04:05.0497407Z Cleaning up orphan processes
