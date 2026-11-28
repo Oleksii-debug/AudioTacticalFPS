@@ -183,7 +183,7 @@ def test_selected_virtualenv_remains_the_actual_worker_runtime(prepared, tmp_pat
     marker = 'carr_synthetic_selected_environment_marker'
     (packages / (marker + '.py')).write_text('VALUE = "selected runtime"\n', encoding='utf-8')
     # This package exists only in the deliberately selected environment.
-    probe = subprocess.run([str(executable), '-I', '-c', f'import {marker}; print({marker}.VALUE)'],
+    probe = subprocess.run([str(executable), '-I', '-B', '-c', f'import {marker}; print({marker}.VALUE)'],
                            capture_output=True, text=True, encoding='utf-8', timeout=15)
     assert probe.returncode == 0 and probe.stdout.strip() == 'selected runtime', probe.stderr
     worker = tmp_path / 'venv-worker.py'
