@@ -373,3 +373,64 @@ def test_runtime_manifest_survives_only_outside_every_managed_payload(configurat
         handoff.OwnerUpdateConfiguration(configuration.path, sha256(encoded).hexdigest())
     assert seal.read_bytes() == configuration.manifest_path.read_bytes()
     assert not (configuration.work / 'handoffs').exists()
+
+
+@pytest.mark.parametrize('change', ['none', 'interpreter-after-verification', 'completed-identity', 'configuration'])
+def test_restart_uses_only_exact_owned_installed_entrypoint_and_current_library(
+        managed, monkeypatch, tmp_path, change):
+    # Real managed inventory and native lease; only the final new application
+    # process and registration are explicit fixtures, never a native restart claim.
+    import carr_library.security.managed_installation as managed_module
+    monkeypatch.setattr(managed_module, 'WindowsRegistration', lambda: managed.registration)
+    configuration = _configuration_for(managed)
+    configuration.path = tmp_path / 'independent-ready-host.json'
+    configuration.path.write_bytes(b'Explicit inert owner configuration marker')
+    configuration.sha256 = sha256(configuration.path.read_bytes()).hexdigest()
+    marker = maintenance.marker(managed.root)
+    identity = {key: marker[key] for key in ('bundle_sha256', 'setup_sha256', 'owner_sha256')}
+    original = maintenance.owned
+    calls, reads = [], []
+    expected_python = managed.root / 'app/.venv/Scripts/python.exe'
+
+    def current_owned(*args, **kwargs):
+        value = original(*args, **kwargs)
+        reads.append(True)
+        if change == 'interpreter-after-verification' and len(reads) == 2:
+            expected_python.write_bytes(b'Changed after the complete installation inventory check')
+        return value
+    monkeypatch.setattr(maintenance, 'owned', current_owned)
+    if change == 'completed-identity':
+        identity['owner_sha256'] = '0' * 64
+    if change == 'configuration':
+        configuration.check = lambda: (_ for _ in ()).throw(TrustError('Explicit configuration changed'))
+    monkeypatch.setenv('CARR_PROGRAM_DIR', str(tmp_path / 'external-host'))
+    monkeypatch.setenv('PYTHONPATH', str(tmp_path / 'untrusted-import-path'))
+    monkeypatch.setenv('__PYVENV_LAUNCHER__', 'untrusted-interpreter-selection')
+
+    def launch(command, **options):
+        calls.append((command, options))
+        assert command == [str(expected_python), '-I', '-B', '-X', 'utf8', '-m', 'carr_library',
+            '--data-dir', str(managed.app.root), '--update-configuration', str(configuration.path),
+            '--update-configuration-sha256', configuration.sha256]
+        assert options['cwd'] == str(managed.root / 'app')
+        assert options['env']['CARR_PROGRAM_DIR'] == str(managed.root / 'app')
+        assert not any(key.upper().startswith(('PYTHON', 'PIP')) for key in options['env'])
+        assert '__PYVENV_LAUNCHER__' not in options['env']
+        assert options['close_fds'] is True and options['stdin'] == subprocess.DEVNULL
+        with pytest.raises(RuntimeError):
+            with maintenance.installation_lease(managed.root, exclusive=True):
+                pytest.fail('Restart admission released its actual shared installation lease.')
+        return SimpleNamespace(pid=23456)
+    monkeypatch.setattr(supervisor.subprocess, 'Popen', launch)
+    if change == 'none':
+        assert supervisor._restart(configuration, maintenance, identity) == {
+            'status': 'STARTED_NOT_QUALIFIED', 'pid': 23456}
+        assert len(calls) == 1 and len(reads) == 2
+        _assert_original(managed)
+    else:
+        with pytest.raises(TrustError, match='changed'):
+            supervisor._restart(configuration, maintenance, identity)
+        assert calls == []
+        assert managed.app.search(managed.workspace, 'Ukrainian')[0].quote == 'Ukrainian'
+    with maintenance.installation_lease(managed.root, exclusive=True):
+        pass

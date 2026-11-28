@@ -1,6 +1,6 @@
 """Configured updater portable source and installed contracts.
 
-Four whole modules: handoff26, external-host preparation18, actual UI handlers15,
+Four whole modules: handoff30, external-host preparation18, actual UI handlers15,
 and explicit controller14. The HTTPS15 loopback suite and actual Windows A/B
 activation are separate required qualifications; no offline policy is weakened.
 """
@@ -19,13 +19,13 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
-    "tests/security/test_update_handoff.py": 26,
+    "tests/security/test_update_handoff.py": 30,
     "tests/security/test_update_runtime.py": 18,
     "tests/security/test_update_ui.py": 15,
     "tests/security/test_update_controller_actions.py": 14
 }
 PINS = {
-    "tests/security/test_update_handoff.py": "726ecf2e5aa158073a422bec79fbef85e088588f",
+    "tests/security/test_update_handoff.py": "cdb76726200bf12518501b9efa03b5b865cf48e7",
     "tests/security/test_update_runtime.py": "e1e424dfcb009adbc8a29fd44492092b090c8c9c",
     "tests/security/test_update_ui.py": "4b7c1e0b0d379654d769da667b11e453cb55a221",
     "tests/security/test_update_controller_actions.py": "1daad6582495e049952e9c36404214059453ada1",
@@ -58,7 +58,7 @@ PINS = {
     "src/carr_library/security/update_http_worker.py": "d998af37e81fb047d1f5802a0162d93dd627f314",
     "src/carr_library/security/update_transport.py": "73d05451e7f15e4310ea1d2ed18e35355602ad87",
     "src/carr_library/security/update_handoff.py": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570",
-    "src/carr_library/security/update_host.py": "b00aa7e06bfc1f68080b64bc8d85174866f16f5b",
+    "src/carr_library/security/update_host.py": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff",
     "src/carr_library/security/update_runtime.py": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
     "src/carr_library/delivery_contract.py": "90163967acd50760bf15e8a98b74e0bd76aa63f2",
     "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",

@@ -225,14 +225,14 @@ The configured desktop exposes **Prepare update host** with a default-No review.
 The packaged command performs the same operation:
 
 ~~~powershell
-& 'C:\Apps\Resonance\app\ResearchLibrary.exe' prepare-update-host --recipe 'C:\OwnerPolicy\update-host-recipe.json' --recipe-sha256 '<independently supplied recipe SHA256>'
+& 'C:\Apps\Resonance\app\.venv\Scripts\python.exe' -I -B -X utf8 -m carr_library prepare-update-host --recipe 'C:\OwnerPolicy\update-host-recipe.json' --recipe-sha256 '<independently supplied recipe SHA256>'
 ~~~
 
 It returns the generated configuration path and digest without applying an
 update. Subsequent launches explicitly select that ready configuration:
 
 ~~~powershell
-& 'C:\Apps\Resonance\app\ResearchLibrary.exe' --data-dir 'D:\Research\Library' --update-configuration 'C:\OwnerPolicy\prepared-update-host.json' --update-configuration-sha256 '<digest returned by verified preparation>'
+& 'C:\Apps\Resonance\app\.venv\Scripts\python.exe' -I -B -X utf8 -m carr_library --data-dir 'D:\Research\Library' --update-configuration 'C:\OwnerPolicy\prepared-update-host.json' --update-configuration-sha256 '<digest returned by verified preparation>'
 ~~~
 
 For first interactive preparation, the same configuration arguments can select
@@ -274,8 +274,11 @@ potentially committed owner. An absent decision expires without setup. The
 private handoff result.json and existing managed-activation.json report actual
 outcomes; a postcommit exception does not imply rollback.
 
-Explicit restart launches only the verified standard launcher whose marker
-identities still equal the completed transaction. It carries the exact library
+Explicit restart launches only the owned installed Python entrypoint whose
+complete inventory and marker identities still equal the completed transaction.
+The fixed native launcher remains unchanged and accepts only its diagnostic
+switches; configured arguments use the existing module entrypoint with its
+actual application lease. It carries the exact library
 and ready configuration arguments and reports STARTED_NOT_QUALIFIED until the
 new application itself is observed.
 
@@ -291,8 +294,8 @@ explicit authority; an application target does not grant those permissions.
 
 ### Additional regression boundary
 
-New portable inventory: handoff/transaction/real-lease 26, preparation 18,
-actual-handler/shared-executor 15, controller/configuration 14: 73 total.
+New portable inventory: handoff/transaction/real-lease 30, preparation 18,
+actual-handler/shared-executor 15, controller/configuration 14: 77 total.
 A separate 15-case suite uses real local TLS, official TUF and actual transfer
 children. It requires the explicit loopback gate and is not admitted through an
 all-network-denied runner.

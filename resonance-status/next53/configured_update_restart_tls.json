@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "kind": "configured-updater-restart-and-TLS-gate",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "1b4437926de76a091becfbc706b246fe6d54d777",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/security/update_host.py",
+      "preimage": "b00aa7e06bfc1f68080b64bc8d85174866f16f5b",
+      "blob": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "preimage": "726ecf2e5aa158073a422bec79fbef85e088588f",
+      "blob": "cdb76726200bf12518501b9efa03b5b865cf48e7"
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "238b4bd2eccb9de8af38d934efb4392c9b982896",
+      "blob": "53514286ca6ae129f315bd83070f486ef8ec7e57"
+    },
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "preimage": "a4e69ba67036f2e41fb628f677cf5d15b249ae4f",
+      "blob": "7b49ac1a4396ba1430e2cb6275c61e6e458744e6"
+    },
+    {
+      "path": "carr-library/scripts/ci_update_https_contracts.py",
+      "preimage": null,
+      "blob": "ee8da361aa934f30391a422fb6ab3d1d7a9fa338"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "preimage": "9a885ba877364c203c13a29e2180da011d018a9e",
+      "blob": "02666afdf5d87564448216f31b2cc3df4ca0f55a"
+    }
+  ],
+  "ordinary": {
+    "suites": {
+      "tests/security/test_update_handoff.py": 30,
+      "tests/security/test_update_runtime.py": 18,
+      "tests/security/test_update_ui.py": 15,
+      "tests/security/test_update_controller_actions.py": 14
+    },
+    "total": 77,
+    "new_function": "test_restart_uses_only_exact_owned_installed_entrypoint_and_current_library",
+    "companion_changes": [],
+    "origin_changes": [],
+    "pins": 53
+  },
+  "tls": {
+    "cases_per_mode": 15,
+    "modes": [
+      "source",
+      "isolated-installed"
+    ],
+    "pins": 29,
+    "origins": 20,
+    "firewall": "Verified actual Windows selected/base Python/pythonw external-address blocks; only loopback synthetic TLS",
+    "native": "NOT_RUN"
+  },
+  "upstream_native_launcher": "fbef9b7a1b4142c7247f675d96677804828686c9",
+  "qualification": "Real source/TUF/lease and explicitly fixture-substituted setup/registry where declared. Native prepared-host/current A-to-B/checked restart remain separate pending proof. No production authority or NVDA claim.",
+  "peer_review": {
+    "restart_source_and_four_case_addition": "Canonical independently accepted exact host10ef4bbc and testcdb76726, including actual managed inventory/shared lease, fixed installed module entrypoint and all four refusal/positive controls.",
+    "https_worker_transport_and_15_cases": "Canonical independently accepted exact d998/73d/561, no production TLS claim.",
+    "ordinary_gate_base": "Canonical and Locate accepted a4e69/9a885; current7b49/02666 changes only handoff26 to30, exact host/test/helper pins and ordinary77 labels/count assertions.",
+    "https_gate": "Canonical accepted ee8da361 source/installed loopback policy; Locate accepted appended068c3f41 workflow job, which is byte-identical in02666.",
+    "execution": "NOT_RUN"
+  }
+}

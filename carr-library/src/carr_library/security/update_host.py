@@ -223,26 +223,34 @@ def _execute(configuration, maintenance, *, current, package=None, recover=False
 
 
 def _restart(configuration, maintenance, identity):
-    """Start only the new verified standard launcher after the exclusive lease."""
+    """Start the exact owned installed entrypoint after the exclusive lease."""
     with maintenance.installation_lease(configuration.root):
         configuration.check()
         from .managed_installation import WindowsManagedSetupAdapter
         marker = WindowsManagedSetupAdapter(maintenance).verify_current(configuration.root)
         if identity is None or any(marker[key] != identity[key] for key in identity):
             raise TrustError('The completed installation changed before restart.')
-        launcher = configuration.root / 'app' / 'ResearchLibrary.exe'
-        file_info(launcher)
-        # verify_current in the completed transaction checked this exact manifest.
-        raw = read_bytes(launcher.parent / 'bundle-manifest.json', 16 * 1024**2)
-        expected = json_value(raw, maximum=16 * 1024**2)['files'].get('ResearchLibrary.exe')
+        # ResearchLibrary.exe deliberately accepts only its fixed diagnostic
+        # switches. Explicit library/configuration arguments belong to the
+        # existing -m carr_library entrypoint, which acquires its own actual
+        # application lease. Verify the owned interpreter before that handoff.
+        program = configuration.root / 'app'
+        python = program / '.venv/Scripts/python.exe'
+        file_info(python)
+        owned = maintenance.owned(configuration.root, marker['bundle_sha256'],
+                                  marker['setup_sha256'])
+        expected = owned['files'].get('.venv/Scripts/python.exe')
         from .update_handoff import _hash_file
-        if expected is None or _hash_file(launcher, maximum=32 * 1024**2)[0] != expected:
-            raise TrustError('The verified restart launcher changed.')
+        if expected is None or _hash_file(python, maximum=32 * 1024**2)[0] != expected:
+            raise TrustError('The verified installed restart interpreter changed.')
         environment = {k: v for k, v in os.environ.items()
-                       if not k.upper().startswith(('PYTHON', 'PIP'))}
-        process = subprocess.Popen([str(launcher), '--data-dir', str(configuration.library),
+                       if not k.upper().startswith(('PYTHON', 'PIP'))
+                       and k.upper() != '__PYVENV_LAUNCHER__'}
+        environment['CARR_PROGRAM_DIR'] = str(program)
+        process = subprocess.Popen([str(python), '-I', '-B', '-X', 'utf8', '-m', 'carr_library',
+            '--data-dir', str(configuration.library),
             '--update-configuration', str(configuration.path), '--update-configuration-sha256', configuration.sha256],
-            cwd=str(launcher.parent), env=environment, stdin=subprocess.DEVNULL,
+            cwd=str(program), env=environment, stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
             creationflags=getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0))
         # Explicitly requested application restart is an ownership handoff, not
