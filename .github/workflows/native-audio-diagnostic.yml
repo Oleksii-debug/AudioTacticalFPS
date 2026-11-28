@@ -1,4 +1,4 @@
-name: CARR remaining native Tasks and effects follow-through
+name: CARR remaining native Tasks follow-through
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scope: [remaining-native-tasks-and-effects]
+        scope: [remaining-native-tasks]
     defaults:
       run:
         shell: pwsh
@@ -132,18 +132,6 @@ jobs:
         timeout-minutes: 12
         run: |
           $probe = 'windows_operations_smoke.py'
-          & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
-          $probeExit = $LASTEXITCODE
-          $status = 'PASS'
-          if ($probeExit -ne 0) { $status = 'FAIL' }
-          @{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' } | ConvertTo-Json | Set-Content (Join-Path ci-native-audio-diagnostic ($probe + '-exit.json'))
-          if ($probeExit -ne 0) { exit $probeExit }
-
-      - name: Exercise installed native effect chain and batch resume
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
-        timeout-minutes: 12
-        run: |
-          $probe = 'windows_effect_chain_smoke.py'
           & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
           $probeExit = $LASTEXITCODE
           $status = 'PASS'

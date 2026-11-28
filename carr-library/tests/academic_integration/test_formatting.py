@@ -56,12 +56,12 @@ def test_real_styles_preserve_page_extent_and_apply_the_actual_rules(
 
 def test_upstream_pins_licenses_and_all_asset_digests():
     manifest = formatting._manifest()
-    upstream = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text())
+    upstream = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text(encoding='utf-8'))
     assert manifest['processor']['runtime'] == 'quickjs-ng'
     assert manifest['processor']['package_version'] == upstream['processor']['package_version']
     assert manifest['processor']['version'] == upstream['processor']['reported_engine_version']
     assert manifest['processor']['chosen_license'] == 'CPAL-1.0'
-    assert 'ATTRIBUTION' in (csl._ROOT / '_vendor_citeproc/CPAL').read_text()
+    assert 'ATTRIBUTION' in (csl._ROOT / '_vendor_citeproc/CPAL').read_text(encoding='utf-8')
     assert manifest['processor']['resources'] == csl._HASHES
     assert manifest['processor']['sha256'] == csl._HASHES['_vendor_citeproc/citeproc.js']
     for name, digest in csl._HASHES.items():

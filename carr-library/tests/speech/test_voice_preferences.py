@@ -50,14 +50,14 @@ def test_reload_persists_exact_ids_profiles_and_external_declarations(tmp_path):
     value = settings.load_settings(tmp_path)
     settings.save_settings(tmp_path, value)
     path = settings.settings_path(tmp_path)
-    source = json.loads(path.read_text())
+    source = json.loads(path.read_text(encoding='utf-8'))
     source['ffmpeg'] = '/uninstalled-after-relocation/ffmpeg'
-    path.write_text(json.dumps(source))
+    path.write_text(json.dumps(source), encoding='utf-8')
     selected = preferences()
     saved = settings.save_voice_preferences(tmp_path, selected, expected=empty())
     selected['profiles']['Тихе читання']['volume'] = 99
     assert saved == settings.load_voice_preferences(tmp_path) == preferences()
-    restored = json.loads(path.read_text())
+    restored = json.loads(path.read_text(encoding='utf-8'))
     assert restored['ffmpeg'] == source['ffmpeg']
     assert {key: val for key, val in restored.items() if key != 'voice_preferences'} == {
         key: val for key, val in source.items() if key != 'voice_preferences'}
