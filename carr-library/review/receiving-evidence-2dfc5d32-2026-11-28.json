@@ -179,6 +179,24 @@
       "job": 140882980222,
       "kind": "Isolated Word completion-fixture diagnostic: 22 source and 22 installed Windows cases passed, zero failures/skips. All 383 application bytes match parent. Root and independent peer verified exact log, installed strict gate and complete inventory; earlier five failure causes remain unproven.",
       "qualification": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "sparse_tree": "bc9fdb5254f9d7cb733f8d3a101c40b47ba887b2",
+      "run": 46105047646,
+      "job": 140855804552,
+      "helper_run": 46114303310,
+      "helper_job": 140884537025,
+      "kind": "Immutable guarded full-bundle archive diagnosis: bounded exact text records 9,078 passed and two real-spawn failures. Both child traces fail opening <stdin> before the fixture target; full original-member digest retained, full XML not read. Capture remains independent; enclosing job still active.",
+      "qualification": "carr-library/review/receiving-f831-guarded-bundle-failure-2026-11-28/provenance.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "a2cf6958692e23bdf28dbc4d26f3a0ab49b3b87c",
+      "run": 46111570967,
+      "job": 140876049044,
+      "kind": "Terminal Linux installed Reader: all 21 selectors / 746 passed, zero failures/skips; all 383 emitted source/wheel/installed rows match current candidate. Windows native and human NVDA remain separate.",
+      "qualification": "carr-library/review/reader-voice-2dfc5d32-2026-11-28/linux-installed-receipt.json"
     }
   ],
   "candidate_runs": {

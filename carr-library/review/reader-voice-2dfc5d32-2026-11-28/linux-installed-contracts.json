@@ -1,0 +1,38 @@
+{
+  "schema": "carr-observed-installed-verdict/1",
+  "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "job_id": 140876049044,
+  "selected_modules": 21,
+  "selection": [
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_progress_voice_actions.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/speech/test_synthesis_admission.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/speech/test_progress_speech.py",
+    "tests/ui/test_operation_progress.py",
+    "tests/ui/test_progress_media_quiet.py",
+    "tests/ui/test_studio_progress_isolation.py",
+    "tests/speech/test_registered_studio_voices.py",
+    "tests/audio/test_model_voices.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/speech/test_session.py",
+    "tests/speech/test_reading_tabs.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/storage/test_reading_tabs_backup.py",
+    "tests/ui/test_save_all_access.py",
+    "tests/speech/test_source.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/storage/test_voice_preferences_backup.py"
+  ],
+  "observed_installed_cases_pass": 746,
+  "observed_pytest_summary": "746 passed in 23.73s",
+  "counts": {
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0
+  },
+  "policy": "Actual -I -B -X utf8 installed invocation, empty pytest pythonpath and importlib mode, existing PYTEST_CHILD offline/xfail policy, strict JUnit rejection of failure/error/skip.",
+  "per_module_counts": "Not individually emitted by this installed aggregate; no historical or source-module counts are substituted."
+}

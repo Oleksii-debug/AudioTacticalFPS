@@ -1,0 +1,100 @@
+{
+  "schema": "carr-pinned-guarded-bundle-failure/1",
+  "status": "RECEIVED",
+  "application_head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "source_run": 46105047646,
+  "source_job": 140855804552,
+  "source_event": "push",
+  "source_branch": "carr/ci-endpoint-evaluation-20261127",
+  "reader_run": 46114303310,
+  "reader_job": 140884537025,
+  "reader_head": "eb75379fd63c44c084718c936b9b93af03c16c34",
+  "reader_script_blob": "b349f42abf756a6c76457f0baa2b168341645029",
+  "reader_status": "success",
+  "archives": [
+    {
+      "id": 15250473998,
+      "name": "carr-windows-pre-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 474065,
+      "sha256": "f8182f7a63281cb87e40f342634f777e4918379e2bf872c1bc70e830af833461",
+      "created_at": "2026-11-28T05:51:40Z",
+      "updated_at": "2026-11-28T05:51:40Z",
+      "run": 46105047646,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "main"
+    },
+    {
+      "id": 15247522107,
+      "name": "carr-windows-audio-endpoint-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 3944,
+      "sha256": "97970c8ba69449eebe1e9802855c558e78fc8b7ec689bb1dbe23c9be518e5cb6",
+      "created_at": "2026-11-28T04:09:01Z",
+      "updated_at": "2026-11-28T04:09:01Z",
+      "run": 46105047646,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "endpoint"
+    },
+    {
+      "id": 15247404007,
+      "name": "carr-windows-recording-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 16773,
+      "sha256": "3e8ef34ab26753159095572a934ca6b2147d361cdc819ae3ebe73a48b8e26250",
+      "created_at": "2026-11-28T04:11:42Z",
+      "updated_at": "2026-11-28T04:11:42Z",
+      "run": 46105047646,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "recording"
+    }
+  ],
+  "completion": {
+    "run": 46105047646,
+    "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "artifacts": 3,
+    "selected_files": 112,
+    "zip_digests_verified": true,
+    "application_acceptance": "NOT_ASSESSED",
+    "long_logs": "bounded excerpts; full member hashes retained",
+    "private_assets": "NOT_READ"
+  },
+  "bundle_text": {
+    "archive": 15250473998,
+    "path": "full-bundle-workflows.txt",
+    "original_bytes": 49262,
+    "original_sha256": "ed1ae34a52bda1562c8323a486f9eb4381c5d07ca5edd4d9e8adcbf3c07ea457",
+    "retention": "Bounded original-text excerpt plus full original-member digest; not the complete49262-byte text.",
+    "excerpt_file": "full-bundle-workflows-excerpt.json",
+    "excerpt_text_sha256": "4b2112df318d4058b74757f9b4dea892a615c5581909c6b227902f2ea49501c4"
+  },
+  "actual_summary": {
+    "passed": 9078,
+    "failed": 2,
+    "seconds": 4881.26,
+    "skips_in_text_summary": 0,
+    "junit_rows_downloaded": false
+  },
+  "failed_cases": [
+    "tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping",
+    "tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission"
+  ],
+  "observed_failure": {
+    "parent": "queue.Empty at the unchanged5s and10s readiness waits",
+    "child": "multiprocessing.spawn.prepare -> _fixup_main_from_path -> runpy.run_path -> OSError[Errno22] for carr-library/<stdin>",
+    "boundary": "Child bootstrap fails before the importable resource-fixture target is entered.",
+    "scope": "Receiving pytest-host entry; no production ResourceBroker failure is established."
+  },
+  "junit_available": {
+    "archive": 15250473998,
+    "path": "full-bundle-workflows.xml",
+    "bytes": 1462925,
+    "selected": false,
+    "current_raw_junit_cap": 262144,
+    "note": "This XML exceeds the unchanged raw-JUnit output cap. No cap was increased and no extra read is required to establish the two exact failures from the complete final text excerpt."
+  },
+  "limitations": [
+    "The enclosing MAIN job remains active; only completed immutable archive members were read.",
+    "The full bundle is FAILED.9078passing cases do not make its aggregate successful.",
+    "The read-only helper ran no application code and extracted no member to disk.",
+    "Capture failure is a separate retained diagnostic; this proof does not alter device or OS policy.",
+    "No product correction or new acceptance run has executed as part of this evidence."
+  ]
+}

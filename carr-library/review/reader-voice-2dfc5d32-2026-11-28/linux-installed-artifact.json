@@ -1,0 +1,20 @@
+{
+  "id": 15251184813,
+  "node_id": "MDg6QXJ0aWZhY3QxNTI1MTE4NDgxMw==",
+  "name": "carr-reader-voice-controls-ubuntu-24.04-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+  "size_in_bytes": 36151,
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251184813",
+  "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251184813/zip",
+  "expired": false,
+  "digest": "sha256:0cb4d6a40e9355849b7b6fe2a440b7455e9f0ae2a19ae8925f18ae14ac215a0e",
+  "created_at": "2026-11-28T06:19:15Z",
+  "updated_at": "2026-11-28T06:19:15Z",
+  "expires_at": "2026-12-05T06:19:15Z",
+  "workflow_run": {
+    "id": 46111570967,
+    "repository_id": 1341777614,
+    "head_repository_id": 1341777614,
+    "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+    "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+  }
+}
