@@ -1,4 +1,4 @@
-name: CARR exact Windows endpoint and capture receipts
+name: CARR exact Windows standard installation receipts
 on:
   push:
     branches: [carr/windows-687-receipts-20261127]
@@ -23,7 +23,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Read only the two pinned immutable public Windows artifacts
+      - name: Read only the pinned immutable public Windows artifact
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

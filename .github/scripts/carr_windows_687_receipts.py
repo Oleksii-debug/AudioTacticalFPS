@@ -14,16 +14,13 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46088683366
+RUN = 46088685885
 HEAD = "17c581015fc1ca6f3294f4cce1fe894f33a843cd"
-BRANCH = "carr/ci-endpoint-evaluation-20261127"
+BRANCH = "carr/standard-installation-evaluation-20261128"
 SOURCES = (
-    ("endpoint", 15239898079, 3946,
-     "4d3bc8ecf4bc28d2918ed1c926374c0efb648031162980489fbef952316c9077",
-     "carr-windows-audio-endpoint-" + HEAD + "-1"),
-    ("recording", 15240107836, 16757,
-     "ff0a323ab294ad5d8704fd1f407068cf028c7a2c38d6c72c49e552e364be6caa",
-     "carr-windows-recording-" + HEAD + "-1"),
+    ("standard", 15240398613, 137752,
+     "9016128c2b8fa951c665e01a7343b2d89dacd29ebbd57f8c9c121e1d4ec4c777",
+     "carr-standard-installation-windows-2022-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
 MAX_MEMBER_BYTES = 4 * 1024 * 1024
@@ -32,6 +29,24 @@ MAX_OUTPUT_BYTES = 2 * 1024 * 1024
 BUNDLE_PREFIXES = ("bundle-", "full-bundle-", "core-bundle-", "offline-bundle-")
 ENDPOINT_RECEIPTS = frozenset(("audio-endpoint.json", "endpoint-evaluation.json", "audio-services.json",
                                "recording-access-diagnostic.json"))
+STANDARD_RECEIPTS = frozenset((
+    "native/uninstall.log",
+    "native/uninstall-process.log",
+    "native/repair.log",
+    "native/repair-process.log",
+    "native/repaired-native-check.log",
+    "native/install.log",
+    "native/install-process.log",
+    "native/modified-uninstall.log",
+    "native/modified-uninstall-process.log",
+    "native/busy-uninstall.log",
+    "native/busy-uninstall-process.log",
+    "native/shortcuts.json",
+    "native/result.json",
+    "setup-build.json",
+    "native-standard-installation.txt",
+    "native-standard-verdict.json",
+))
 ERROR_LINE = re.compile(r"Traceback|AssertionError|TimeoutError|RuntimeError|ValueError|"
                         r"PermissionError|OSError|FileNotFoundError|FAIL(?:ED)?\b|"
                         r"\bERROR\b|Exception|access violation", re.I)
@@ -89,7 +104,10 @@ def line(kind, value):
 
 
 def wanted(name, mode):
-    # Only explicitly reviewed top-level JSON/text receipts are consumed.
+    # Standard setup admits only these exact public receipt paths.
+    if mode == "standard":
+        return name in STANDARD_RECEIPTS
+    # Other modes consume only explicitly reviewed top-level JSON/text receipts.
     path = PurePosixPath(name)
     if len(path.parts) != 1 or path.suffix not in (".json", ".txt", ".log"):
         return False
@@ -125,7 +143,7 @@ def main():
     if (run["id"] != RUN or run["head_sha"] != HEAD or run["head_branch"] != BRANCH
             or run["run_attempt"] != 1 or run["status"] not in ("in_progress", "completed")
             or run["repository"]["full_name"] != REPOSITORY
-            or run["path"] != ".github/workflows/carr-windows.yml"):
+            or run["path"] != ".github/workflows/carr-standard-installation-evaluation.yml"):
         raise ValueError("Source run identity changed")
     # The application job may still run. Only already-uploaded immutable
     # artifacts are read; no live job log or unfinished stream is requested.
@@ -216,7 +234,7 @@ def main():
                     emit(line("CARR_WINDOWS_JSON_SUMMARY", {**info, "summary": summary}))
                     failed = (str(parsed.get("status", "")).upper() in ("FAIL", "FAILED", "ERROR")
                               or bool(parsed.get("failure") or parsed.get("error") or parsed.get("errors")))
-                    if not failed and name not in ENDPOINT_RECEIPTS:
+                    if not failed and name not in ENDPOINT_RECEIPTS and name not in STANDARD_RECEIPTS:
                         continue
                 snippet, complete = excerpt(text)
                 emit(line("CARR_WINDOWS_TEXT", {
