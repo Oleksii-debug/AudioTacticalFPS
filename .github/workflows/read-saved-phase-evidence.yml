@@ -1,4 +1,4 @@
-name: Read saved CARR phase evidence
+name: Read exact saved CARR broad service evidence
 
 on:
   push:
@@ -30,16 +30,16 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15244469110
-          SOURCE_RUN = 46097465453
+          ARTIFACT_ID = 15245590335
+          SOURCE_RUN = 46097465426
           SOURCE_HEAD = "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357"
-          ZIP_BYTES = 103668
-          ZIP_SHA256 = "9f10eeb90ec939c7035c33c9895c6a90b683cb7c3822c0a3e2df3f3031a142ab"
+          ZIP_BYTES = 49370
+          ZIP_SHA256 = "7153213594c9434f610b90b81f69e6bb44f6bab0082354d86e925c22ad708f65"
           MAX_MEMBERS = 128
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
-          REQUIRED_FILES = {"tested-commit.txt", "full-bundle-build.json"}
+          REQUIRED_FILES = {"v3-tests.xml"}
 
           def fixed_get(endpoint, limit):
               result = subprocess.run(
@@ -105,7 +105,7 @@ jobs:
                   text = content.decode("utf-8")
                   decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
-                  raise ValueError("The two required complete-bundle phase diagnostics are absent or ambiguous.")
+                  raise ValueError("The required completed broad-service JUnit report is absent or ambiguous.")
 
           print(json.dumps({
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
