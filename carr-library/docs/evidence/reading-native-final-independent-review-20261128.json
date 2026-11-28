@@ -1,9 +1,9 @@
 {
   "schema": "carr-reading-native-final-independent-review/1",
-  "status": "ROOT_SOURCE_GO_PENDING_FINAL_COMPOSITION_PEER_NOT_EXECUTED",
+  "status": "SOURCE_COMPOSITION_GO_THREE_FOCUSED_RUNS_QUEUED",
   "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
   "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
-  "reviewed_at_utc": "2026-11-28T10:24:50Z",
+  "reviewed_at_utc": "2026-11-28T10:26:57Z",
   "root_source_checks": {
     "sole_parent": true,
     "tree": true,
@@ -493,15 +493,55 @@
       "runtime": "NOT_RUN; no qualification of previously skipped steps."
     }
   ],
-  "composition_peer": "PENDING",
+  "composition_peer": {
+    "reviewer": "capacity_measurements",
+    "status": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
+    "checks": 22,
+    "source": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+    "scope": "Exact six ordered parents;1833leaves/3M9A/no deletion;9selected component paths;only reviewed c395 reading script runtime change;425app/628testtree/569+7regression/49workflows/21readerpins unchanged;98links;matrix pure one-property add/24requirements;full erratum reconstruction;no execution claim.",
+    "blocker": null
+  },
   "observed_parent_review": "09ac-focused-independent-review-20261128.json",
   "preserved_boundaries": {
     "full_platform": "NOT_QUALIFIED",
-    "current_execution": "NOT_RUN",
+    "current_execution": "PENDING_ACTUAL_RESULTS",
     "historical_success_transfer": false,
     "canonical": "UNCHANGED",
     "pr_head": "UNCHANGED_7C",
     "reader": "HISTORICAL_FAILED_7C_UNBOUND"
   },
-  "scope": "The evidence branch deliberately retains its historical application tree. The source candidate is87d1; never promote this evidence tree."
+  "scope": "The evidence branch deliberately retains its historical application tree. The source candidate is87d1; never promote this evidence tree.",
+  "focused_runs": {
+    "native": {
+      "run": 46135188389,
+      "job": 140948783918,
+      "attempt": 1,
+      "branch": "carr/native-main-final-87d1-20261128-d3a",
+      "status": "queued",
+      "conclusion": null,
+      "kind": "native",
+      "created_at": "2026-11-28T10:26:22Z"
+    },
+    "basic": {
+      "run": 46135188425,
+      "job": 140948783886,
+      "attempt": 1,
+      "branch": "carr/local-translation-final-87d1-20261128-d3a",
+      "status": "queued",
+      "conclusion": null,
+      "kind": "basic",
+      "created_at": "2026-11-28T10:26:22Z"
+    },
+    "inspection": {
+      "run": 46135189185,
+      "job": 140948785978,
+      "attempt": 1,
+      "branch": "carr/silence-inspection-final-87d1-20261128-d3a",
+      "status": "queued",
+      "conclusion": null,
+      "kind": "inspection",
+      "created_at": "2026-11-28T10:26:23Z"
+    }
+  }
 }
