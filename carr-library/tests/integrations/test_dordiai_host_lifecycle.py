@@ -280,6 +280,8 @@ def test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render(runtime,
     original_scandir = os.scandir
 
     def blocked(path):
+        if isinstance(path, int):
+            return original_scandir(path)  # Preserve fd-based TemporaryDirectory cleanup.
         if Path(path) == hidden:
             raise failure('PRIVATE-ASSET-PATH')
         return original_scandir(path)
@@ -294,6 +296,7 @@ def test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render(runtime,
             with pytest.raises(ValueError, match='could not be read completely'):
                 registry.synthesize('Cannot use a partial inventory.', voice.id, tmp_path / 'refused.wav')
             assert not (tmp_path / 'refused.wav').exists()
+            assert not tuple(tmp_path.glob('.speech-*')), 'Refused synthesis left owned staging behind.'
             assert not (runtime / 'requests.jsonl').exists()
         assert provider.fingerprint(voice.id) == before
     finally:
@@ -311,6 +314,8 @@ def test_inventory_walk_error_preserves_cancellation_without_updating_identity(r
     original_scandir, cancel = os.scandir, Event()
 
     def blocked(path):
+        if isinstance(path, int):
+            return original_scandir(path)  # Preserve fd-based TemporaryDirectory cleanup.
         if Path(path) == hidden:
             cancel.set()
             raise PermissionError('Synthetic denied subtree.')

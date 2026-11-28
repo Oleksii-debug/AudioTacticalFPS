@@ -95,6 +95,31 @@ def capture_package(staged, *, maximum_bytes, cancelled=lambda: False):
     return PackageSnapshot(path, identity, checksum, owner.st_size)
 
 
+def capture_package_destination(path, *, private_root, cancelled=lambda: False):
+    """Capture an absent target through the existing export destination policy.
+
+    Package creation grants no permission to inspect a competing file. Use the
+    current no-clobber destination primitive before any digest/native file
+    handle, and retain its original requested route and parent identity.
+    """
+    if not callable(cancelled):
+        raise ValueError('A package export cancellation callback is required.')
+    def check():
+        if cancelled():
+            raise AudioCancelled('Package export cancelled before destination approval.')
+    check()
+    requested, private = _export_paths(path, private_root)
+    occupied = FileExistsError('Choose a new package destination; existing files are never inspected or overwritten.')
+    snapshot = _destination(requested, private, reject_existing=occupied)
+    check()
+    if _destination(requested, private, expected=snapshot, reject_existing=occupied) != snapshot:
+        raise AudioError('The selected package destination changed during approval.')
+    target, parent_identity, state = snapshot
+    if state is not None:
+        raise AudioError('The package destination must be absent.')
+    return ExportDestination(requested, private, target, parent_identity, None, None)
+
+
 def publish_package(staged, output, *, private_root, expected_sha256, maximum_bytes,
                     approval, cancelled=lambda: False):
     """Return the existing export receipt only for this attempt's exact bytes.

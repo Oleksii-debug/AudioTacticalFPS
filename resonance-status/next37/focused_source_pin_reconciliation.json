@@ -1,0 +1,127 @@
+{
+  "schema": "carr-focused-source-pin-reconciliation/1",
+  "status": "STATIC_NOT_RUN",
+  "base_head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "7aa53346bdf525229187050302ce8a817fc49c46",
+      "after": "d5260f6f704c162b2b8b6abf0868bcac26e99127",
+      "replaced": [
+        {
+          "path": "src/carr_library/library_backup.py",
+          "before": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+          "after": "30ed3b152fc1cd26b338200b270e73f2e193a3f9"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "9f78d1bb9ae3a2db1f0691c849a97342b5de5da0",
+      "after": "c52e92e52ad84003a481889def21cc8364e5acf6",
+      "replaced": [
+        {
+          "path": "src/carr_library/studio/publishing.py",
+          "before": "bf9a653f5baa37e452430658b1043b9a9019d90a",
+          "after": "e369f0d40cbc818d9374e1d4f84bc3e28e09ad63"
+        },
+        {
+          "path": "src/carr_library/library_backup.py",
+          "before": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+          "after": "30ed3b152fc1cd26b338200b270e73f2e193a3f9"
+        },
+        {
+          "path": "src/carr_library/runtime_settings.py",
+          "before": "269814e94549fdff700027afa450686a4a15f81b",
+          "after": "00df790d393f9d54f87d0dcf891e6506916437a1"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "47ca6950d785552b6cbd1754e899a4bb7e69469f",
+      "after": "9b9ebeae4c72117b6cdc66daa1d7a8f1712b86c3",
+      "replaced": [
+        {
+          "path": "src/carr_library/runtime_settings.py",
+          "before": "269814e94549fdff700027afa450686a4a15f81b",
+          "after": "00df790d393f9d54f87d0dcf891e6506916437a1"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "before": "f0901304cffb1ed0406235f81dfa39eabb6b8386",
+      "after": "ac813e21c651a2dc3b2f156c3ddd6a9d435730c3",
+      "replacements": {
+        "841bc48f36b70415d0aedbd67987e0bcd5f2d409": "d5260f6f704c162b2b8b6abf0868bcac26e99127",
+        "d36d2ab93043bff46048bb6146769a1a19f29db8": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+        "all 189 source and 189 isolated installed cases": "all 216 source and 216 isolated installed cases"
+      },
+      "counts": {
+        "841bc48f36b70415d0aedbd67987e0bcd5f2d409": 2,
+        "d36d2ab93043bff46048bb6146769a1a19f29db8": 1,
+        "all 189 source and 189 isolated installed cases": 2
+      },
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "4ece19add65d92e6f04c63ac1066b11549dd5fcf",
+      "after": "5697b5a07da1a12e6cb4f076a11aaf35c94eff8a",
+      "replacements": {
+        "7aa53346bdf525229187050302ce8a817fc49c46": "d5260f6f704c162b2b8b6abf0868bcac26e99127",
+        "d36d2ab93043bff46048bb6146769a1a19f29db8": "30ed3b152fc1cd26b338200b270e73f2e193a3f9"
+      },
+      "counts": {
+        "7aa53346bdf525229187050302ce8a817fc49c46": 2,
+        "d36d2ab93043bff46048bb6146769a1a19f29db8": 2
+      },
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "2bd226a077d2a6cbf659d4d5a07f0de3162bede3",
+      "after": "c1f6c79db829d90d063e6b17bb26b42debbac532",
+      "replacements": {
+        "9f78d1bb9ae3a2db1f0691c849a97342b5de5da0": "c52e92e52ad84003a481889def21cc8364e5acf6"
+      },
+      "counts": {
+        "9f78d1bb9ae3a2db1f0691c849a97342b5de5da0": 1
+      },
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "91f6cf17450253d0946d6a58ee936856dd69658f",
+      "after": "3c2f0cc7277fbce5bab753ff3c3440f994b913ac",
+      "replacements": {
+        "47ca6950d785552b6cbd1754e899a4bb7e69469f": "9b9ebeae4c72117b6cdc66daa1d7a8f1712b86c3"
+      },
+      "counts": {
+        "47ca6950d785552b6cbd1754e899a4bb7e69469f": 1
+      },
+      "inverse_exact": true
+    }
+  ],
+  "scope": "Only exact reviewed source/helper Git pins and two stale next11 display labels189→216. Every executable child, check, count map, budget, native body and retention rule unchanged.",
+  "gate_cases": {
+    "capacity": [
+      216,
+      216
+    ],
+    "book": [
+      108,
+      108
+    ],
+    "reading_publication": [
+      69,
+      69
+    ]
+  },
+  "review": {
+    "root": "All preimages exact; reversing only declared replacements reproduces all seven originals.",
+    "peer": "Canonical ACCEPTED_STATIC_NOT_RUN: all fourteen before/after blobs fetched; exact replacement multiplicities and all seven inverse reconstructions independently verified."
+  },
+  "new_execution": "NOT_RUN"
+}

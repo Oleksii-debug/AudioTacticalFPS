@@ -54,7 +54,7 @@ PINS = {
     'src/carr_library/backup_capacity.py': '1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
     'src/carr_library/application.py': '82af31743ca5cc6557477f6492c08b912751f4a4',
     'src/carr_library/__main__.py': '99b3c98d5f60cfa6ba1074d74c32acc14250fd16',
-    'src/carr_library/library_backup.py': 'd36d2ab93043bff46048bb6146769a1a19f29db8',
+    'src/carr_library/library_backup.py': '30ed3b152fc1cd26b338200b270e73f2e193a3f9',
     'src/carr_library/pending_backup.py': 'b2c3fc3a52e9d2fef5c019196ef239381c519fc7',
     'src/carr_library/backup_sidecars.py': '5c2ec87913e8ad252dce9aa8cff7ccc22dca3525',
     'src/carr_library/storage/revisions.py': '417a9920d4c25eacd36cc81f7441ea321c18d632',

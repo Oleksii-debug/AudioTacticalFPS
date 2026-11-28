@@ -59,6 +59,8 @@ class DordiaiAuthority:
             self._has_packages = True
         self._configuration = None
         self._store = None
+        self._state_root = None
+        self._state_directories = ()
         self._binding = None
         if configuration is not None:
             from ..runtime_settings import validate_dordiai_configuration
@@ -69,11 +71,19 @@ class DordiaiAuthority:
         if state_root is not None:
             if self._configuration is None:
                 raise ValueError('Capture the current voice configuration with its library.')
-            from ..audio.voice_settings import VoiceSettingsStore
             selected, _ = _directory(state_root)
-            if selected.name != 'state':
-                raise ValueError('Use the current library state directory.')
-            self._store = VoiceSettingsStore(selected.parent)
+            self._state_root = selected
+            audio = selected / 'audio'
+            paths = dict.fromkeys((*reversed(audio.parents), audio))
+            self._state_directories = tuple(_directory(path) for path in paths)
+            # Legacy runtime_settings has always accepted an explicit state
+            # directory with any name.  Only managed library authority uses
+            # the canonical library/state facade.
+            if self._binding is not None:
+                from ..audio.voice_settings import VoiceSettingsStore
+                if selected.name != 'state':
+                    raise ValueError('Use the current library state directory.')
+                self._store = VoiceSettingsStore(selected.parent)
         if self._binding is not None:
             if self._store is None or self._binding['restored']:
                 raise ValueError('Managed or restored voices require explicit current-library review.')
@@ -128,9 +138,20 @@ class DordiaiAuthority:
             present = True
         if present != self._has_packages:
             self._reject('Voice package ownership changed; reopen the selected provider.')
-        if self._store is not None:
-            if self._store.read()['runtime_configuration'] != self._configuration:
+        if self._state_root is not None:
+            from ..runtime_settings import _read_settings
+            self._check_settings_scope()
+            current = _read_settings(self._state_root)['dordiai']
+            self._check_settings_scope()
+            if current != self._configuration:
                 self._reject('The current voice configuration changed; reload after explicit review.')
+
+    def _check_settings_scope(self):
+        for path, identity in self._state_directories:
+            if _directory(path) != (path, identity):
+                self._reject('The selected voice settings directory changed.')
+        if self._store is not None:
+            self._store.check()
 
     def _index(self):
         from ..audio.voice_packages import _index

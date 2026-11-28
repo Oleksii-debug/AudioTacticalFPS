@@ -409,8 +409,8 @@ class VoiceProfileLifecycle:
             raise ValueError('Voice registration changed after export review.')
         if destination.is_relative_to(manifest.root) or destination.is_relative_to(self.root.resolve()):
             raise ValueError('Export to a private directory outside the installation and research library.')
-        from ..studio.publishing import capture_publication_destination
-        approval = capture_publication_destination(destination, private_root=self.root, cancelled=cancelled)
+        from .package_publication import capture_package_destination
+        approval = capture_package_destination(destination, private_root=self.root, cancelled=cancelled)
         parent_identity = approval.parent_identity
         total = sum(row['size_bytes'] for row in document['files'].values())
         allowance = total + total // 100 + len(document['files']) * 4096 + 4 * 1024**2

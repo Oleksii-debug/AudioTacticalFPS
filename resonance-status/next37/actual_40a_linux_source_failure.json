@@ -1,0 +1,227 @@
+{
+  "schema": "carr-voice-management-actual/1",
+  "source_commit": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+  "source_tree": "b2054e099542f9784ff40f4cd1572c3ac615029c",
+  "run_id": 46094267681,
+  "platforms": {
+    "Linux": {
+      "job_id": 140821929865,
+      "status": "FAIL",
+      "phase": "source-whole-contracts",
+      "whole_suites": 21,
+      "whole_pass": 14,
+      "whole_fail": 7,
+      "expected_cases": 483,
+      "rows": [
+        {
+          "suite": "tests/audio/test_voice_package_management.py",
+          "status": "FAIL",
+          "passed": 29,
+          "failed_or_collection_errors": 1,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "suite": "tests/audio/test_voice_management_state.py",
+          "status": "PASS",
+          "passed": 25,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/audio/test_voice_reference_management.py",
+          "status": "FAIL",
+          "passed": 23,
+          "failed_or_collection_errors": 7,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "suite": "tests/audio/test_voice_protected_management.py",
+          "status": "FAIL",
+          "passed": 14,
+          "failed_or_collection_errors": 1,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "suite": "tests/audio/test_voice_publication_lifetime.py",
+          "status": "FAIL",
+          "passed": 0,
+          "failed_or_collection_errors": 1,
+          "skipped": 0,
+          "pytest_exit": 2
+        },
+        {
+          "suite": "tests/audio/test_voice_ownership.py",
+          "status": "PASS",
+          "passed": 30,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_owner_lease.py",
+          "status": "FAIL",
+          "passed": 21,
+          "failed_or_collection_errors": 1,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_managed_authority.py",
+          "status": "PASS",
+          "passed": 18,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_voice_packages.py",
+          "status": "PASS",
+          "passed": 46,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_voice_reference.py",
+          "status": "PASS",
+          "passed": 32,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_engine_settings_lifetime.py",
+          "status": "PASS",
+          "passed": 43,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_voices.py",
+          "status": "PASS",
+          "passed": 40,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_speech.py",
+          "status": "PASS",
+          "passed": 10,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_host_lifecycle.py",
+          "status": "FAIL",
+          "passed": 11,
+          "failed_or_collection_errors": 2,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_settings.py",
+          "status": "FAIL",
+          "passed": 15,
+          "failed_or_collection_errors": 2,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_probe_cancellation.py",
+          "status": "PASS",
+          "passed": 7,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/integrations/test_dordiai_convergence.py",
+          "status": "PASS",
+          "passed": 10,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/audio/test_bundled_runtime_settings.py",
+          "status": "PASS",
+          "passed": 8,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_v3_state_backup.py",
+          "status": "PASS",
+          "passed": 42,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup.py",
+          "status": "PASS",
+          "passed": 9,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_state_backup_portability.py",
+          "status": "PASS",
+          "passed": 27,
+          "failed_or_collection_errors": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 460,
+        "failed_or_collection_errors": 15,
+        "skipped": 0
+      },
+      "collection_note": "Publication lifetime whole9 failed collection because the imported capture_publication_destination name does not exist; its one JUnit collection-error row is not nine executed test cases.",
+      "root_causes": [
+        {
+          "scope": "lifecycle export, reference creation, protected export, publication lifetime collection",
+          "observed": "Nonexistent capture_publication_destination imported from current studio.publishing; existing destination contract lives in research.export_file.",
+          "repair": "Root pending exact create-only destination adapter over existing export primitive; no foreign-file reads."
+        },
+        {
+          "scope": "Legacy provider current-settings observation",
+          "observed": "New provider guard rejects previously supported explicit state directory paths and produces an early disabled-runtime error.",
+          "repair": "Canonical pending exact explicit-directory authority preserving old provider contracts."
+        },
+        {
+          "scope": "Old host-lifecycle negative fixture",
+          "observed": "Expected inventory ValueError is masked when patched os.scandir receives an integer fd from TemporaryDirectory cleanup.",
+          "repair": "Locate final54ee delegates integer descriptor and retains no-staging assertion."
+        }
+      ],
+      "downstream": {
+        "installed": "NOT_RUN",
+        "current_manager_actual_owner": "NOT_RUN",
+        "native": "NOT_RUN"
+      },
+      "artifact": {
+        "id": 15243270356,
+        "size_bytes": 26504,
+        "sha256": "219948483d3c0ac411af6e0aa50f688f467c60f82e279a37c4f63a96ecf8713e"
+      }
+    },
+    "Windows": {
+      "job_id": 140821929403,
+      "status": "IN_PROGRESS",
+      "no_verdict_claimed": true
+    }
+  },
+  "repair_execution": "NOT_RUN",
+  "release": "NOT_RUN"
+}

@@ -42,7 +42,7 @@ PINS = {
     "src/carr_library/extract/document_formats.py": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
     "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
     "src/carr_library/file_publication.py": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f",
-    "src/carr_library/runtime_settings.py": "269814e94549fdff700027afa450686a4a15f81b",
+    "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
     "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
     "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",

@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   voice-management-linux:
-    name: Voice483 source,483 installed and actual owner facade on Linux
+    name: Voice495 source,495 installed and actual owner facade on Linux
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     concurrency:
@@ -53,7 +53,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_voice_management_contracts.py":"f0db457f3663b385498e7251552e13547ebfc955","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","scripts/ci_owner_voice_api_smoke.py":"e22c226ef24cf48957d04c32f25cb472e48c764e","scripts/ci_voice_management_owner_smoke.py":"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_voice_management_contracts.py":"4831ad3665997c3faa573cd132b1a8e3ee220381","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","scripts/ci_owner_voice_api_smoke.py":"e22c226ef24cf48957d04c32f25cb472e48c764e","scripts/ci_voice_management_owner_smoke.py":"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -69,7 +69,7 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):
               compile(getattr(module, name), '<voice-management-'+name+'>', 'exec')
-          assert len(module.SUITES) == 21 and sum(module.SUITES.values()) == 483
+          assert len(module.SUITES) == 21 and sum(module.SUITES.values()) == 495
           assert len(module.PINS) == 67 and module.OWNER_CONTRACT['required_check_count'] == 25
           assert len(module.OWNER_CONTRACT['origin_modules']) == 18
           assert set(module.OWNER_CONTRACT['origin_modules']) <= set(module.MODULES)
@@ -107,7 +107,7 @@ jobs:
           $acquireOwner | & python -I -B -X utf8 - $ownerApi
           if ($LASTEXITCODE -ne 0) { throw 'Exact owner metadata closure acquisition failed.' }
           "CARR_VOICE_OWNER_API_DIR=$ownerApi" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Require483 source,483 isolated installed and both actual owner facade phases
+      - name: Require495 source,495 isolated installed and both actual owner facade phases
         # Reserve 35 minutes for acquisition, setup and retained cleanup evidence.
         # Individual whole-suite and owner-operation deadlines remain unchanged.
         timeout-minutes: 325
@@ -164,7 +164,7 @@ jobs:
           if-no-files-found: error
 
   voice-management-windows:
-    name: Voice483 source,483 installed, actual owner facade and native83 controls
+    name: Voice495 source,495 installed, actual owner facade and native83 controls
     runs-on: windows-2022
     timeout-minutes: 360
     concurrency:
@@ -206,7 +206,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_voice_management_contracts.py":"f0db457f3663b385498e7251552e13547ebfc955","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","scripts/ci_owner_voice_api_smoke.py":"e22c226ef24cf48957d04c32f25cb472e48c764e","scripts/ci_voice_management_owner_smoke.py":"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_voice_management_contracts.py":"4831ad3665997c3faa573cd132b1a8e3ee220381","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","scripts/ci_owner_voice_api_smoke.py":"e22c226ef24cf48957d04c32f25cb472e48c764e","scripts/ci_voice_management_owner_smoke.py":"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -222,7 +222,7 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):
               compile(getattr(module, name), '<voice-management-'+name+'>', 'exec')
-          assert len(module.SUITES) == 21 and sum(module.SUITES.values()) == 483
+          assert len(module.SUITES) == 21 and sum(module.SUITES.values()) == 495
           assert len(module.PINS) == 67 and module.OWNER_CONTRACT['required_check_count'] == 25
           assert len(module.OWNER_CONTRACT['origin_modules']) == 18
           assert set(module.OWNER_CONTRACT['origin_modules']) <= set(module.MODULES)
@@ -260,7 +260,7 @@ jobs:
           $acquireOwner | & python -I -B -X utf8 - $ownerApi
           if ($LASTEXITCODE -ne 0) { throw 'Exact owner metadata closure acquisition failed.' }
           "CARR_VOICE_OWNER_API_DIR=$ownerApi" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Require483 source,483 isolated installed, real owner facade and native83 controls
+      - name: Require495 source,495 isolated installed, real owner facade and native83 controls
         # Reserve 35 minutes for acquisition, setup and retained cleanup evidence.
         # Individual whole-suite and owner-operation deadlines remain unchanged.
         timeout-minutes: 325

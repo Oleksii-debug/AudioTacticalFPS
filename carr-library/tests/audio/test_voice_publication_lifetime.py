@@ -14,7 +14,7 @@ from carr_library.audio.cleanup import CleanupOwner
 from carr_library.audio.models import AudioCancelled, AudioCleanupPending
 from carr_library.audio.voice_transport import retained_context, retained_temporary_directory
 from carr_library.operations import ResourceBroker, ResourceLimits, ResourceRequest
-from carr_library.studio.publishing import capture_publication_destination
+from carr_library.audio.package_publication import capture_package_destination
 
 
 def prepare(tmp_path):
@@ -23,7 +23,7 @@ def prepare(tmp_path):
     staged = private / 'staging/reference.zip'
     staged.write_bytes(b'exact inspected data-only package bytes')
     output = tmp_path / 'selected.zip'
-    approval = capture_publication_destination(output, private_root=private)
+    approval = capture_package_destination(output, private_root=private)
     arguments = dict(private_root=private, expected_sha256=sha256(staged.read_bytes()).hexdigest(),
                      maximum_bytes=1024, approval=approval)
     return staged, output, arguments
@@ -185,3 +185,79 @@ while not release.exists():
             child.stderr.close()
         thread.join(6)
         assert not thread.is_alive()
+
+
+def test_package_destination_capture_never_opens_an_existing_competitor(tmp_path, monkeypatch):
+    from carr_library.research import export_file
+    private = tmp_path / 'library'
+    private.mkdir()
+    output = tmp_path / 'previous.zip'
+    previous = b'private independent bytes that package creation may not inspect'
+    output.write_bytes(previous)
+    original_path_open, original_os_open = Path.open, os.open
+    def path_open(path, *args, **kwargs):
+        assert path != output, 'Package review cannot open a competing file.'
+        return original_path_open(path, *args, **kwargs)
+    def os_open(path, *args, **kwargs):
+        assert isinstance(path, int) or Path(path) != output, 'Package review cannot open a competing descriptor.'
+        return original_os_open(path, *args, **kwargs)
+    def no_handle(*args, **kwargs):
+        pytest.fail('Package review cannot acquire a native metadata handle for a competitor.')
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'open', path_open)
+        patch.setattr(os, 'open', os_open)
+        patch.setattr(export_file, '_windows_change_time', no_handle)
+        with pytest.raises(FileExistsError):
+            capture_package_destination(output, private_root=private)
+    assert output.read_bytes() == previous
+
+
+@pytest.mark.parametrize('change', ['competing-file', 'replaced-parent', 'late-cancel'])
+def test_package_destination_capture_rechecks_original_route_after_callback(tmp_path, change):
+    private, parent = tmp_path / 'library', tmp_path / 'exports'
+    private.mkdir()
+    parent.mkdir()
+    output, retained = parent / 'selected.zip', tmp_path / 'retained-exports'
+    calls = []
+    def cancelled():
+        calls.append(True)
+        if len(calls) == 2:
+            if change == 'competing-file':
+                output.write_bytes(b'independent concurrent output')
+            elif change == 'replaced-parent':
+                parent.rename(retained)
+                parent.mkdir()
+            return change == 'late-cancel'
+        return False
+    expected = {'competing-file': FileExistsError, 'replaced-parent': ValueError,
+                'late-cancel': AudioCancelled}[change]
+    with pytest.raises(expected):
+        capture_package_destination(output, private_root=private, cancelled=cancelled)
+    assert len(calls) == 2
+    if change == 'competing-file':
+        assert output.read_bytes() == b'independent concurrent output'
+    else:
+        assert not output.exists()
+    if change == 'replaced-parent':
+        assert retained.is_dir()
+    assert list(private.iterdir()) == []
+
+
+def test_package_destination_preserves_requested_route_through_actual_publication(tmp_path):
+    staged, output, arguments = prepare(tmp_path)
+    requested = tmp_path / '..' / tmp_path.name / output.name
+    approval = capture_package_destination(requested, private_root=arguments['private_root'])
+    assert approval.requested == requested.absolute()
+    assert approval.target == output and approval.require_absent
+    assert approval.state is None and approval.content_sha256 is None
+    arguments['approval'] = approval
+    receipt = package_publication.publish_package(staged, requested, **arguments)
+    assert receipt.path == output and not receipt.cleanup_warning
+    assert sha256(output.read_bytes()).hexdigest() == arguments['expected_sha256']
+
+
+def test_package_destination_precancellation_performs_no_path_inspection(tmp_path):
+    with pytest.raises(AudioCancelled):
+        capture_package_destination(tmp_path / 'absent-parent' / 'selected.zip',
+            private_root=tmp_path / 'missing-library', cancelled=lambda: True)
+    assert list(tmp_path.iterdir()) == []

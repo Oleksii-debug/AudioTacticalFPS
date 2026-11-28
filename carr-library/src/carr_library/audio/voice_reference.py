@@ -407,9 +407,9 @@ class VoiceReferenceService:
                cancelled=lambda: False, progress=None):
         if type(review) is not ReferenceReview or consent is not True or quality_reviewed is not True:
             raise ValueError('Review the exact reference and explicitly confirm permission and the recording/text review.')
-        from ..studio.publishing import capture_publication_destination
+        from .package_publication import capture_package_destination
         self._check(cancelled, review.library_identity)
-        approval = capture_publication_destination(destination, private_root=self.root, cancelled=cancelled)
+        approval = capture_package_destination(destination, private_root=self.root, cancelled=cancelled)
         if approval.target.suffix.lower() not in ('.zip', '.dordiai-voice'):
             raise ValueError('Choose a new local .zip or .dordiai-voice data package.')
         manager, previous, manifest = self._current(cancelled)

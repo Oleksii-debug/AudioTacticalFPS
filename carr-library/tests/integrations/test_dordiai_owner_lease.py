@@ -274,3 +274,63 @@ def test_authority_metadata_cannot_escape_its_active_worker_scope(runtime, opera
         with pytest.raises(ValueError, match='active operation scope'):
             call()
         assert not (runtime / 'models/voices/packages').exists()
+
+
+@pytest.mark.parametrize('scope', ['library', 'state', 'audio'])
+@pytest.mark.parametrize('boundary', ['before-read', 'after-read'])
+def test_explicit_legacy_state_scope_cannot_rebind_to_same_byte_directory(
+        runtime, tmp_path, monkeypatch, scope, boundary):
+    from carr_library import runtime_settings
+    library = tmp_path / 'existing-library'
+    state = library / 'custom-engine-state'
+    value = load_settings(state)
+    row = {'enabled': True, 'runtime_directory': str(runtime), 'python_executable': sys.executable,
+           'expected_worker_sha256': sha256(ACTOR.encode()).hexdigest()}
+    value['dordiai'] = row
+    save_settings(state, value)
+    registry = VoiceRegistry()
+    provider = install_dordiai_provider(registry, row, state_root=state)
+    try:
+        voice = next(v for v in registry.voices() if v.language == 'uk')
+        first = tmp_path / 'first-explicit-state.wav'
+        registry.synthesize('Captured arbitrary state directory.', voice.id, first)
+        child = provider.adapter._worker
+        assert child is not None and child.process.poll() is None
+        before_output = first.read_bytes()
+        request_log = runtime / 'requests.jsonl'
+        before_requests = request_log.read_bytes()
+        target = {'library': library, 'state': state, 'audio': state / 'audio'}[scope]
+        before_identity = (target.stat().st_dev, target.stat().st_ino)
+        settings_path = runtime_settings.settings_path(state)
+        before_settings = settings_path.read_bytes()
+        moved = tmp_path / ('retired-' + scope)
+        swapped = []
+        def replace_exact_directory():
+            target.rename(moved)
+            shutil.copytree(moved, target)
+            assert (target.stat().st_dev, target.stat().st_ino) != before_identity
+            assert settings_path.read_bytes() == before_settings
+            swapped.append(True)
+        original = runtime_settings._read_settings
+        if boundary == 'before-read':
+            replace_exact_directory()
+        else:
+            def read_then_replace(selected):
+                result = original(selected)
+                if Path(selected) == state and not swapped:
+                    replace_exact_directory()
+                return result
+            monkeypatch.setattr(runtime_settings, '_read_settings', read_then_replace)
+        with pytest.raises(ValueError, match='settings directory changed'):
+            provider.fingerprint(voice.id)
+        assert swapped == [True]
+        assert child.process.poll() is not None and child._cleanup_done
+        assert first.read_bytes() == before_output
+        assert request_log.read_bytes() == before_requests
+        assert settings_path.read_bytes() == before_settings
+        with pytest.raises(ValueError):
+            registry.synthesize('Revoked queued state directory.', voice.id, tmp_path / 'stale-state.wav')
+        assert not (tmp_path / 'stale-state.wav').exists()
+        assert not tuple(tmp_path.glob('.speech-*'))
+    finally:
+        registry.close()

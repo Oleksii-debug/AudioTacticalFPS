@@ -1,0 +1,1148 @@
+{
+  "schema": 1,
+  "classification": "ACTUAL_CI_PARTIAL_SUCCESS_WITH_REPRODUCED_NATIVE_FAILURES",
+  "observed_utc": "2026-11-28 01:40:44 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59",
+  "tree": "6f4951a1708fb9e057a99b80a60d1e0e7d97575c",
+  "run": 46093750313,
+  "component_manifest": "7ad123144987a7caf2d4d4f087088a478b92e88f",
+  "portable": [
+    {
+      "job": 140820330380,
+      "platform": "ubuntu-24.04",
+      "summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 289,
+        "source_commit": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59",
+        "source_passed": 289,
+        "source_tree": "6f4951a1708fb9e057a99b80a60d1e0e7d97575c",
+        "status": "PASS"
+      },
+      "source_whole_verdicts": [
+        "PASS: tests/conversion/test_selected_conversion.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_document_conversion.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/extract/test_document_formats_xml.py: junit_passed=114, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+      ]
+    },
+    {
+      "job": 140820330663,
+      "platform": "windows-2022",
+      "summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 289,
+        "source_commit": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59",
+        "source_passed": 289,
+        "source_tree": "6f4951a1708fb9e057a99b80a60d1e0e7d97575c",
+        "status": "PASS"
+      },
+      "source_whole_verdicts": [
+        "PASS: tests/conversion/test_selected_conversion.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_document_conversion.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/extract/test_document_formats_xml.py: junit_passed=114, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15243265219,
+      "name": "selected-conversion-windows-2022-89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59-1",
+      "size_in_bytes": 107999,
+      "digest": "sha256:938e95273da351e0537d4acc51f5785b9eb6e7d10632191578907bc2bb19b73a",
+      "expired": false,
+      "run": 46093750313,
+      "head": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59"
+    },
+    {
+      "id": 15242069662,
+      "name": "selected-conversion-ubuntu-24.04-89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59-1",
+      "size_in_bytes": 49710,
+      "digest": "sha256:9cf87eb7e2195f2ddbb20322a1a123c6ed73f856879fe187b539261ec898c68b",
+      "expired": false,
+      "run": 46093750313,
+      "head": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59"
+    }
+  ],
+  "old_conversion_suites": [
+    {
+      "line": 1793,
+      "mode": "source",
+      "status": "PASS",
+      "cases": 34,
+      "junit_sha256": "2d5432d5a02290387b2a4d77b132991910181147bd84abfcebc98150193539d4",
+      "test_sha256": {
+        "tests/conversion/test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+        "tests/conversion/fixtures/ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+      },
+      "old_child_receipt_sha256": "9c6d9566bcb597919859e4abd7966aaedbf047a354d62c13d1be1f567a3f40d7",
+      "actual_loopback_denial": "PASS",
+      "owned_temporary_cleanup": "PASS",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "child_origins": {
+        "mode": "source",
+        "status": "PASS",
+        "helper_sha256": "991c4f56be525a335cfe3e15438576a1895cc5d0bccaa3a53f64c66a16de86eb",
+        "before_after_equal": true,
+        "sha256_by_module": {
+          "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+          "carr_library.audio.cleanup": "c6da0ddefb74fea87c0625ef12fe9802244787b7914bb77d4d00b5a9058ef0ce",
+          "carr_library.audio.process": "85f5e90424e6f8db7c92a22f5a556e7effd3a5401073a6864d940f46f05e6fb6",
+          "carr_library.audio.windows_job": "be38dc5d5a7b5ed9a19ed8507e2b2a3757280f739c6bf3fff5ab562e49e30805",
+          "carr_library.backup_sidecars": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c",
+          "carr_library.catalog.intake": "2a3cee3eb094f450c2cfab666d6f3f08b81f4b26c3e74a8152e66f6c957a800f",
+          "carr_library.conversion._selected_files": "5463f7a7ada40126ad9e398746df16c660145d5848cb0be689ea0ab7da50e99e",
+          "carr_library.conversion.calibre": "621355a2b6eb1cc3823e899bcb97f850920e45e946e7381abafaf86450d4bace",
+          "carr_library.conversion.formats": "bcfd2203c20aebd8fc3d7085785b55f8ca9e8156d222ff2ffab439916e51652d",
+          "carr_library.conversion.models": "97e3335a1e57fd137af0a0ebdee74280cc122a25943ec0bf95f0475ad3ef8f92",
+          "carr_library.conversion.office": "0661ed4deb8a2fba538cfe513ca42bdb41faeea65f3cdb5f50e962484f3cebf2",
+          "carr_library.conversion.selected": "a37c9075c16abe916ec8c7309bac59234eb7da77d23a1372f1a4bca2989b918e",
+          "carr_library.conversion.selected_adapters": "72387d2e824ca03a452f4cea143502976936e7fbbe745a950da71c2bae777e8b",
+          "carr_library.conversion.selected_worker": "a20093e1a571234f9e1174a88a1fef0571fdb5a19d247117086ebd2a7a7a01af",
+          "carr_library.conversion.service": "6bdcf453d7d69e116fbbfb93da159eca26c1e868da2dcc423f9ca8c38ed73c90",
+          "carr_library.conversion.worker": "7764365603770c7699c5171ccb5a1d0ab8830a53561b5457cbe23675659ab19f",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.extract.document_formats": "544b01246070d392896b83d7dba6371c5f8217e9669861c8e4d668e339a97fe4",
+          "carr_library.extract.document_formats_xml": "35e6caf7abd6a718ac52dc1eb7ac3f8bb80b1dddaaf12804f31dd7307f5432d1",
+          "carr_library.file_publication": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0",
+          "carr_library.operations.broker": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882",
+          "carr_library.speech._io": "a96b8d9d48fca468656823688b277e189c9af41140fef5ed5aaaa2c1437809bb"
+        }
+      }
+    },
+    {
+      "line": 1983,
+      "mode": "installed",
+      "status": "PASS",
+      "cases": 34,
+      "junit_sha256": "9dc94ae9fb19bbc44d39fddcac1571eec9aea8c4d586d167229095faf239b3c4",
+      "test_sha256": {
+        "tests/conversion/test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+        "tests/conversion/fixtures/ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+      },
+      "old_child_receipt_sha256": "21d6129264eb720eeb929b09096469d5ac796a6358ec3532c422cdab30a6d3f8",
+      "actual_loopback_denial": "PASS",
+      "owned_temporary_cleanup": "PASS",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "child_origins": {
+        "mode": "installed",
+        "status": "PASS",
+        "helper_sha256": "991c4f56be525a335cfe3e15438576a1895cc5d0bccaa3a53f64c66a16de86eb",
+        "before_after_equal": true,
+        "sha256_by_module": {
+          "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+          "carr_library.audio.cleanup": "c6da0ddefb74fea87c0625ef12fe9802244787b7914bb77d4d00b5a9058ef0ce",
+          "carr_library.audio.process": "85f5e90424e6f8db7c92a22f5a556e7effd3a5401073a6864d940f46f05e6fb6",
+          "carr_library.audio.windows_job": "be38dc5d5a7b5ed9a19ed8507e2b2a3757280f739c6bf3fff5ab562e49e30805",
+          "carr_library.backup_sidecars": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c",
+          "carr_library.catalog.intake": "2a3cee3eb094f450c2cfab666d6f3f08b81f4b26c3e74a8152e66f6c957a800f",
+          "carr_library.conversion._selected_files": "5463f7a7ada40126ad9e398746df16c660145d5848cb0be689ea0ab7da50e99e",
+          "carr_library.conversion.calibre": "621355a2b6eb1cc3823e899bcb97f850920e45e946e7381abafaf86450d4bace",
+          "carr_library.conversion.formats": "bcfd2203c20aebd8fc3d7085785b55f8ca9e8156d222ff2ffab439916e51652d",
+          "carr_library.conversion.models": "97e3335a1e57fd137af0a0ebdee74280cc122a25943ec0bf95f0475ad3ef8f92",
+          "carr_library.conversion.office": "0661ed4deb8a2fba538cfe513ca42bdb41faeea65f3cdb5f50e962484f3cebf2",
+          "carr_library.conversion.selected": "a37c9075c16abe916ec8c7309bac59234eb7da77d23a1372f1a4bca2989b918e",
+          "carr_library.conversion.selected_adapters": "72387d2e824ca03a452f4cea143502976936e7fbbe745a950da71c2bae777e8b",
+          "carr_library.conversion.selected_worker": "a20093e1a571234f9e1174a88a1fef0571fdb5a19d247117086ebd2a7a7a01af",
+          "carr_library.conversion.service": "6bdcf453d7d69e116fbbfb93da159eca26c1e868da2dcc423f9ca8c38ed73c90",
+          "carr_library.conversion.worker": "7764365603770c7699c5171ccb5a1d0ab8830a53561b5457cbe23675659ab19f",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.extract.document_formats": "544b01246070d392896b83d7dba6371c5f8217e9669861c8e4d668e339a97fe4",
+          "carr_library.extract.document_formats_xml": "35e6caf7abd6a718ac52dc1eb7ac3f8bb80b1dddaaf12804f31dd7307f5432d1",
+          "carr_library.file_publication": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0",
+          "carr_library.operations.broker": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882",
+          "carr_library.speech._io": "a96b8d9d48fca468656823688b277e189c9af41140fef5ed5aaaa2c1437809bb"
+        }
+      }
+    }
+  ],
+  "formats": [
+    {
+      "mode": "source",
+      "status": "FAIL",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]",
+      "actual_versions": {
+        "calibre": "ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>",
+        "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+        "pandoc": "pandoc 3.14\r\nFeatures: +server +lua\r\nScripting engine: Lua 5.4\r\nUser data directory: C:\\Users\\runneradmin\\AppData\\Roaming\\pandoc\r\nCopyright (C) 2006-2025 John MacFarlane. Web:  https://pandoc.org\r\nThis is free software; see the source for copying conditions. There is no\r\nwarranty, not even for merchantability or fitness for a particular purpose."
+      },
+      "actual_owned_jobs": 13,
+      "all_owned_jobs_closed": "PASS",
+      "failed_xls_structure": {
+        "status": "CAPTURED",
+        "scope": "Exact failed synthetic XLS intermediate; structure only.",
+        "source_sha256": "3158e7636d0f18cbf0def76a46c8acdec54fbdd69f9551302cc7e442d70f4462",
+        "intermediate_sha256": "402773c78ffd095a93f83bd795035c3f8360d6af24393d786344e86b892f5c07",
+        "intermediate_bytes": 9948,
+        "styles_sha256": "1ee865ff283e3afe72eae601e32707a7de6bcfb0166ec3097c4f8e209ec997c4",
+        "styles_bytes": 24864,
+        "xml_nodes": 306,
+        "document_text_retained": false,
+        "input_or_intermediate_exported": false,
+        "format_acceptance": "UNCHANGED",
+        "native_quality": "NOT_RUN",
+        "shared_structure_key": "exact_shared_disabled_header_structure"
+      }
+    },
+    {
+      "mode": "installed",
+      "status": "FAIL",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]",
+      "actual_versions": {
+        "calibre": "ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>",
+        "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+        "pandoc": "pandoc 3.14\r\nFeatures: +server +lua\r\nScripting engine: Lua 5.4\r\nUser data directory: C:\\Users\\runneradmin\\AppData\\Roaming\\pandoc\r\nCopyright (C) 2006-2025 John MacFarlane. Web:  https://pandoc.org\r\nThis is free software; see the source for copying conditions. There is no\r\nwarranty, not even for merchantability or fitness for a particular purpose."
+      },
+      "actual_owned_jobs": 13,
+      "all_owned_jobs_closed": "PASS",
+      "failed_xls_structure": {
+        "status": "CAPTURED",
+        "scope": "Exact failed synthetic XLS intermediate; structure only.",
+        "source_sha256": "3158e7636d0f18cbf0def76a46c8acdec54fbdd69f9551302cc7e442d70f4462",
+        "intermediate_sha256": "5b2cd493527d93601038e48b9a5e5ae3f4ec89571e985ef5d829ad27ff37a791",
+        "intermediate_bytes": 9948,
+        "styles_sha256": "1ee865ff283e3afe72eae601e32707a7de6bcfb0166ec3097c4f8e209ec997c4",
+        "styles_bytes": 24864,
+        "xml_nodes": 306,
+        "document_text_retained": false,
+        "input_or_intermediate_exported": false,
+        "format_acceptance": "UNCHANGED",
+        "native_quality": "NOT_RUN",
+        "shared_structure_key": "exact_shared_disabled_header_structure"
+      }
+    }
+  ],
+  "gui_reader_events": [
+    {
+      "line": 2001,
+      "value": {
+        "event": "reader-handoff-entered",
+        "parent_is_host": true,
+        "text": {
+          "characters": 97,
+          "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+          "cr": 3,
+          "lf": 3,
+          "crlf": 3,
+          "leading_codepoints": [
+            83,
+            121,
+            110,
+            116,
+            104,
+            101,
+            116,
+            105,
+            99,
+            32,
+            115,
+            101,
+            108,
+            101,
+            99,
+            116
+          ],
+          "trailing_codepoints": [
+            111,
+            110,
+            100,
+            32,
+            112,
+            97,
+            114,
+            97,
+            103,
+            114,
+            97,
+            112,
+            104,
+            46,
+            13,
+            10
+          ]
+        }
+      }
+    },
+    {
+      "line": 2002,
+      "value": {
+        "event": "reader-value-mismatch",
+        "expected": {
+          "characters": 97,
+          "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+          "cr": 3,
+          "lf": 3,
+          "crlf": 3,
+          "leading_codepoints": [
+            83,
+            121,
+            110,
+            116,
+            104,
+            101,
+            116,
+            105,
+            99,
+            32,
+            115,
+            101,
+            108,
+            101,
+            99,
+            116
+          ],
+          "trailing_codepoints": [
+            111,
+            110,
+            100,
+            32,
+            112,
+            97,
+            114,
+            97,
+            103,
+            114,
+            97,
+            112,
+            104,
+            46,
+            13,
+            10
+          ]
+        },
+        "actual": {
+          "characters": 94,
+          "utf8_sha256": "be8b57316cf8ef6689474dabe379ff47fa6920c433bb522b072752c906e6b756",
+          "cr": 0,
+          "lf": 3,
+          "crlf": 0,
+          "leading_codepoints": [
+            83,
+            121,
+            110,
+            116,
+            104,
+            101,
+            116,
+            105,
+            99,
+            32,
+            115,
+            101,
+            108,
+            101,
+            99,
+            116
+          ],
+          "trailing_codepoints": [
+            99,
+            111,
+            110,
+            100,
+            32,
+            112,
+            97,
+            114,
+            97,
+            103,
+            114,
+            97,
+            112,
+            104,
+            46,
+            10
+          ]
+        },
+        "handoffs": [
+          {
+            "parent_is_host": true,
+            "text": {
+              "characters": 97,
+              "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+              "cr": 3,
+              "lf": 3,
+              "crlf": 3,
+              "leading_codepoints": [
+                83,
+                121,
+                110,
+                116,
+                104,
+                101,
+                116,
+                105,
+                99,
+                32,
+                115,
+                101,
+                108,
+                101,
+                99,
+                116
+              ],
+              "trailing_codepoints": [
+                111,
+                110,
+                100,
+                32,
+                112,
+                97,
+                114,
+                97,
+                103,
+                114,
+                97,
+                112,
+                104,
+                46,
+                13,
+                10
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "line": 2088,
+      "value": {
+        "event": "reader-handoff-entered",
+        "parent_is_host": true,
+        "text": {
+          "characters": 97,
+          "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+          "cr": 3,
+          "lf": 3,
+          "crlf": 3,
+          "leading_codepoints": [
+            83,
+            121,
+            110,
+            116,
+            104,
+            101,
+            116,
+            105,
+            99,
+            32,
+            115,
+            101,
+            108,
+            101,
+            99,
+            116
+          ],
+          "trailing_codepoints": [
+            111,
+            110,
+            100,
+            32,
+            112,
+            97,
+            114,
+            97,
+            103,
+            114,
+            97,
+            112,
+            104,
+            46,
+            13,
+            10
+          ]
+        }
+      }
+    },
+    {
+      "line": 2089,
+      "value": {
+        "event": "reader-value-mismatch",
+        "expected": {
+          "characters": 97,
+          "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+          "cr": 3,
+          "lf": 3,
+          "crlf": 3,
+          "leading_codepoints": [
+            83,
+            121,
+            110,
+            116,
+            104,
+            101,
+            116,
+            105,
+            99,
+            32,
+            115,
+            101,
+            108,
+            101,
+            99,
+            116
+          ],
+          "trailing_codepoints": [
+            111,
+            110,
+            100,
+            32,
+            112,
+            97,
+            114,
+            97,
+            103,
+            114,
+            97,
+            112,
+            104,
+            46,
+            13,
+            10
+          ]
+        },
+        "actual": {
+          "characters": 94,
+          "utf8_sha256": "be8b57316cf8ef6689474dabe379ff47fa6920c433bb522b072752c906e6b756",
+          "cr": 0,
+          "lf": 3,
+          "crlf": 0,
+          "leading_codepoints": [
+            83,
+            121,
+            110,
+            116,
+            104,
+            101,
+            116,
+            105,
+            99,
+            32,
+            115,
+            101,
+            108,
+            101,
+            99,
+            116
+          ],
+          "trailing_codepoints": [
+            99,
+            111,
+            110,
+            100,
+            32,
+            112,
+            97,
+            114,
+            97,
+            103,
+            114,
+            97,
+            112,
+            104,
+            46,
+            10
+          ]
+        },
+        "handoffs": [
+          {
+            "parent_is_host": true,
+            "text": {
+              "characters": 97,
+              "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+              "cr": 3,
+              "lf": 3,
+              "crlf": 3,
+              "leading_codepoints": [
+                83,
+                121,
+                110,
+                116,
+                104,
+                101,
+                116,
+                105,
+                99,
+                32,
+                115,
+                101,
+                108,
+                101,
+                99,
+                116
+              ],
+              "trailing_codepoints": [
+                111,
+                110,
+                100,
+                32,
+                112,
+                97,
+                114,
+                97,
+                103,
+                114,
+                97,
+                112,
+                104,
+                46,
+                13,
+                10
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "gui_failure": "real existing reader receives the exact verified UTF-8 copy",
+  "gui_cleanup_observations": [
+    "PASS: native host Close drains the shared worker and retained finalizers",
+    "PASS: actual reader finalizers release their existing worker owners",
+    "PASS: actual converter private Job and child are closed before any fallback",
+    "PASS: current conversion resource leases and staging are empty after cleanup",
+    "PASS: all source or installed origins remain unchanged after actual cleanup",
+    "PASS: native host Close drains the shared worker and retained finalizers",
+    "PASS: actual reader finalizers release their existing worker owners",
+    "PASS: actual converter private Job and child are closed before any fallback",
+    "PASS: current conversion resource leases and staging are empty after cleanup",
+    "PASS: all source or installed origins remain unchanged after actual cleanup"
+  ],
+  "required_phase_failures": [
+    "REQUIRED SELECTED CONVERSION FAILED [formats-source]: Actual formats-source conversion proof failed.",
+    "REQUIRED SELECTED CONVERSION FAILED [formats-installed]: Actual formats-installed conversion proof failed.",
+    "REQUIRED SELECTED CONVERSION FAILED [gui-source]: Actual gui-source control proof failed.",
+    "REQUIRED SELECTED CONVERSION FAILED [gui-installed]: Actual gui-installed control proof failed."
+  ],
+  "interpretation": [
+    "Each OS passed all eight whole portable source suites and all eight independently staged isolated-installed suites, 289 cases in each route. These are executions, not unique coverage when summed.",
+    "Both unchanged old 34-case conversion suites passed with actual loopback denial and source/installed child origins bound.",
+    "Both actual-format phases stop at the same XLS hidden-text refusal; no 14-format success claim is made.",
+    "The exact failed intermediate structure contains 12 disabled header/footer nodes: eight empty and four populated; the latter include text:p/text:span/text:sheet-name or text:page-number and non-whitespace text. The current empty-only exception does not admit them.",
+    "Source and installed styles.xml have the same SHA256 and structure; ZIP container hashes differ. Only bounded structure/hash data is retained, not source/intermediate payloads.",
+    "Both reader calls receive the expected 97-character string with three CRLF pairs; native editor reads contain 94 characters, zero CR and three LF. Actual recorded data establishes this mismatch; no product correction or native PASS is inferred.",
+    "All reported child/host cleanup observations precede fallback. Current native six-phase aggregate remains FAIL until corrected rerun proves each requirement."
+  ],
+  "exact_shared_disabled_header_structure": [
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:header-left"
+      ],
+      "nodes": [
+        {
+          "tag": "style:header-left",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:header-first"
+      ],
+      "nodes": [
+        {
+          "tag": "style:header-first",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:footer-left"
+      ],
+      "nodes": [
+        {
+          "tag": "style:footer-left",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:footer-first"
+      ],
+      "nodes": [
+        {
+          "tag": "style:footer-first",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:header-left"
+      ],
+      "nodes": [
+        {
+          "tag": "style:header-left",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:header-first"
+      ],
+      "nodes": [
+        {
+          "tag": "style:header-first",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:footer-left"
+      ],
+      "nodes": [
+        {
+          "tag": "style:footer-left",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:footer-first"
+      ],
+      "nodes": [
+        {
+          "tag": "style:footer-first",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 0,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:header-left"
+      ],
+      "nodes": [
+        {
+          "tag": "style:header-left",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:p",
+          "depth": 1,
+          "attributes": [],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:span",
+          "depth": 2,
+          "attributes": [
+            {
+              "name": "text:style-name",
+              "characters": 3,
+              "non_whitespace": true,
+              "fixed_value": null
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:sheet-name",
+          "depth": 3,
+          "attributes": [],
+          "children": 0,
+          "text_present": true,
+          "text_non_whitespace": true,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:header-first"
+      ],
+      "nodes": [
+        {
+          "tag": "style:header-first",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:p",
+          "depth": 1,
+          "attributes": [],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:span",
+          "depth": 2,
+          "attributes": [
+            {
+              "name": "text:style-name",
+              "characters": 3,
+              "non_whitespace": true,
+              "fixed_value": null
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:sheet-name",
+          "depth": 3,
+          "attributes": [],
+          "children": 0,
+          "text_present": true,
+          "text_non_whitespace": true,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:footer-left"
+      ],
+      "nodes": [
+        {
+          "tag": "style:footer-left",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:p",
+          "depth": 1,
+          "attributes": [],
+          "children": 2,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:span",
+          "depth": 2,
+          "attributes": [
+            {
+              "name": "text:style-name",
+              "characters": 3,
+              "non_whitespace": true,
+              "fixed_value": null
+            }
+          ],
+          "children": 0,
+          "text_present": true,
+          "text_non_whitespace": true,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:span",
+          "depth": 2,
+          "attributes": [
+            {
+              "name": "text:style-name",
+              "characters": 3,
+              "non_whitespace": true,
+              "fixed_value": null
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:page-number",
+          "depth": 3,
+          "attributes": [],
+          "children": 0,
+          "text_present": true,
+          "text_non_whitespace": true,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    },
+    {
+      "path": [
+        "office:document-styles",
+        "office:master-styles",
+        "style:master-page",
+        "style:footer-first"
+      ],
+      "nodes": [
+        {
+          "tag": "style:footer-first",
+          "depth": 0,
+          "attributes": [
+            {
+              "name": "style:display",
+              "characters": 5,
+              "non_whitespace": true,
+              "fixed_value": "false"
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:p",
+          "depth": 1,
+          "attributes": [],
+          "children": 2,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:span",
+          "depth": 2,
+          "attributes": [
+            {
+              "name": "text:style-name",
+              "characters": 3,
+              "non_whitespace": true,
+              "fixed_value": null
+            }
+          ],
+          "children": 0,
+          "text_present": true,
+          "text_non_whitespace": true,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:span",
+          "depth": 2,
+          "attributes": [
+            {
+              "name": "text:style-name",
+              "characters": 3,
+              "non_whitespace": true,
+              "fixed_value": null
+            }
+          ],
+          "children": 1,
+          "text_present": false,
+          "text_non_whitespace": false,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        },
+        {
+          "tag": "text:page-number",
+          "depth": 3,
+          "attributes": [],
+          "children": 0,
+          "text_present": true,
+          "text_non_whitespace": true,
+          "tail_present": false,
+          "tail_non_whitespace": false
+        }
+      ]
+    }
+  ]
+}
