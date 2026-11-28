@@ -480,6 +480,9 @@ def _run_native():
         press(dialog.prepare)
         yield waiting(hold.ready.is_set, 'The real snapshot did not reach the cancellation hold')
         press(dialog.cancel)
+        yield waiting(dialog.session.cancelled.is_set, 'The native Cancel event did not reach its owner')
+        check('native Cancel is acknowledged while the real completed snapshot remains held',
+              dialog.session.busy and dialog.session.preview is None and not jobs[-1].future.done())
         hold.release.set()
         yield waiting(lambda: quiet() and not dialog.session.busy, 'Cancellation did not settle')
         check('native cancellation publishes no new preview', dialog.session.preview is None
