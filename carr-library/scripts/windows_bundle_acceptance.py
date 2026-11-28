@@ -11,6 +11,24 @@ import sys
 
 
 MAX_REPORT_BYTES = 32768
+CORE_NATIVE_CHECKS = (
+    "windows_v3_smoke.py",
+    "windows_assistant_smoke.py",
+    "windows_automatic_ocr_smoke.py",
+    "windows_audio_metadata_smoke.py",
+    "windows_workflow_templates_smoke.py",
+    "ocr_catalog_smoke.py",
+    "windows_installer_launchers_smoke.py",
+    "probe_source_open_native.py",
+    "windows_academic_smoke.py",
+    "native_academic_tools_smoke.py",
+    "windows_ocr_models_smoke.py",
+    "probe_advanced_search_native.py",
+    "windows_bibliography_interchange_smoke.py",
+    "windows_progress_smoke.py",
+    "native_keyboard_settings_smoke.py",
+    "native_document_formats_smoke.py",
+)
 NATIVE_CHECKS = (
     "windows_transcription_smoke.py",
     "native_trust_status_smoke.py",
@@ -46,12 +64,12 @@ VALIDATION_CHECKS = (
 REQUIRED_CHECKS = NATIVE_CHECKS + VALIDATION_CHECKS
 
 
-def verdict(value):
+def _verdict(value, required, *, native_required, validation_required):
     if (not isinstance(value, dict) or set(value) != {"schema", "checks"}
             or type(value["schema"]) is not int or value["schema"] != 1):
         raise ValueError("Invalid installed-bundle exit report.")
     rows = value["checks"]
-    if not isinstance(rows, list) or len(rows) != len(REQUIRED_CHECKS):
+    if not isinstance(rows, list) or len(rows) != len(required):
         raise ValueError("Every required installed-bundle check must complete.")
     names = []
     failed = []
@@ -64,17 +82,28 @@ def verdict(value):
         names.append(row["name"])
         if row["exit_code"] != 0:
             failed.append(dict(row))
-    if tuple(names) != REQUIRED_CHECKS:
+    if tuple(names) != required:
         raise ValueError("Required checks are missing, repeated, changed, or reordered.")
     return {
         "schema": 1,
         "status": "FAIL" if failed else "PASS",
         "completed": len(rows),
-        "required": len(REQUIRED_CHECKS),
-        "native_required": len(NATIVE_CHECKS),
-        "validation_required": len(VALIDATION_CHECKS),
+        "required": len(required),
+        "native_required": native_required,
+        "validation_required": validation_required,
         "failed": failed,
     }
+
+
+def verdict(value):
+    return _verdict(value, REQUIRED_CHECKS,
+                    native_required=len(NATIVE_CHECKS),
+                    validation_required=len(VALIDATION_CHECKS))
+
+
+def core_verdict(value):
+    return _verdict(value, CORE_NATIVE_CHECKS,
+                    native_required=len(CORE_NATIVE_CHECKS), validation_required=0)
 
 
 def unique_object(items):
@@ -97,9 +126,12 @@ def read_report(path):
 def main(argv=None):
     arguments = sys.argv[1:] if argv is None else argv
     try:
-        if len(arguments) != 1:
-            raise ValueError("Expected one installed-bundle exit report.")
-        result = verdict(read_report(arguments[0]))
+        if len(arguments) == 1:
+            result = verdict(read_report(arguments[0]))
+        elif len(arguments) == 2 and arguments[0] == "--core":
+            result = core_verdict(read_report(arguments[1]))
+        else:
+            raise ValueError("Expected one installed-bundle exit report, or --core and one core report.")
     except (OSError, UnicodeError, ValueError) as error:
         result = {"schema": 1, "status": "FAIL", "error": str(error)[:256]}
     print(json.dumps(result, sort_keys=True), flush=True)

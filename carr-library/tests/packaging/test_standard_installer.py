@@ -946,7 +946,7 @@ def test_independent_package_gates_require_verified_build_not_native_success():
     ready = '"verified_bundle_ready=true" | Out-File -FilePath $env:GITHUB_OUTPUT'
     assert block.count(ready) == 1
     before_ready = block.split(ready, 1)[0]
-    assert before_ready.index("ci-results/full-bundle-verified.json") < before_ready.rindex(
+    assert before_ready.index("ci-results/full-bundle-build-verified.json") < before_ready.rindex(
         'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }')
     assert 'module.verify(root)' in before_ready
     assert "manifest['bundled_model'] and manifest['bundled_ocr']" in before_ready
@@ -1137,4 +1137,210 @@ if sys.platform == 'win32':
             encoding='utf-8'))
         assert response['status'] == ('FAIL' if failed else 'PASS')
         assert response['failed'] == ([dict(name=failed, exit_code=77)] if failed else [])
+        assert (tmp_path / 'tested-application-wheel.json').exists() is (not failed)
+
+
+def core_bundle_exit_report():
+    return dict(schema=1, checks=[
+        dict(name=name, exit_code=0) for name in bundle_gate.CORE_NATIVE_CHECKS
+    ])
+
+
+def core_bundle_workflow_lines(block):
+    import re
+    lines = block.splitlines()
+    pairs = []
+    for index, line in enumerate(lines):
+        match = re.fullmatch(r"\s*Add-CoreBundleCheck '([^']+)' \$LASTEXITCODE", line)
+        if match:
+            pairs.append((match.group(1), lines[index - 1]))
+    return pairs
+
+
+def test_early_native_probes_keep_their_exact_commands_and_independent_required_outcomes():
+    _, block = bundle_workflow_block()
+    pairs = core_bundle_workflow_lines(block)
+    assert [name for name, _command in pairs] == list(bundle_gate.CORE_NATIVE_CHECKS)
+    assert len(pairs) == 16
+    for name, command in pairs:
+        assert command.strip().startswith('& $installedPython -I -B ')
+        assert name in command
+        assert 'Tee-Object' in command
+    first = block.index(pairs[0][1])
+    last = block.index(pairs[-1][1])
+    ready = block.index('"verified_bundle_ready=true"')
+    assert block.index("ci-results/core-bundle-install.txt") < ready < first
+    assert block.index("ci-results/core-bundle-self-test.json") < ready
+    assert block.index("ci-results/full-bundle-audio-native.txt") < ready
+    assert block.index("ci-results/installed-native-launcher.json") < ready
+    assert block.index("ci-results/full-bundle-build-verified.json") < ready
+    assert block.index("ci-results/full-bundle-verified.json") > last
+    assert 'if ($LASTEXITCODE -ne 0)' not in block[first:last]
+    assert 'exit $LASTEXITCODE' not in block[first:last]
+    assert block.index("ci-results/full-bundle-verified.json") < block.index('$bundleChecks = ')
+    assert block.index('$bundleChecks = ') < block.index(
+        "& $bundledPython -I -B scripts/windows_bundle_acceptance.py --core ")
+    assert block.index('$bundleCoreGateExit = $LASTEXITCODE') < block.index(
+        "& $python -I -B scripts/windows_bundle_acceptance.py ")
+    assert block.index('if ($bundleCoreGateExit -ne 0) { exit $bundleCoreGateExit }') < block.index(
+        "Copy-Item -LiteralPath $testedManifestPath")
+    assert block.index('if ($bundleCoreGateExit -ne 0) { exit $bundleCoreGateExit }') < block.index(
+        "installed_bundle='PASS'")
+
+
+def test_complete_core_inventory_is_separate_from_the_existing_tail_verdict():
+    result = bundle_gate.core_verdict(core_bundle_exit_report())
+    assert result == dict(schema=1, status='PASS', completed=16, required=16,
+                          native_required=16, validation_required=0, failed=[])
+    with pytest.raises(ValueError):
+        bundle_gate.verdict(core_bundle_exit_report())
+    with pytest.raises(ValueError):
+        bundle_gate.core_verdict(bundle_exit_report())
+
+
+@pytest.mark.parametrize('name', [
+    'windows_v3_smoke.py', 'windows_assistant_smoke.py',
+    'windows_automatic_ocr_smoke.py', 'windows_audio_metadata_smoke.py',
+    'windows_workflow_templates_smoke.py', 'ocr_catalog_smoke.py',
+    'windows_installer_launchers_smoke.py', 'probe_source_open_native.py',
+    'windows_academic_smoke.py', 'native_academic_tools_smoke.py',
+    'windows_ocr_models_smoke.py', 'probe_advanced_search_native.py',
+    'windows_bibliography_interchange_smoke.py', 'windows_progress_smoke.py',
+    'native_keyboard_settings_smoke.py', 'native_document_formats_smoke.py',
+])
+def test_each_early_native_failure_is_a_required_failure(name):
+    report = core_bundle_exit_report()
+    row = next(item for item in report['checks'] if item['name'] == name)
+    row['exit_code'] = 77
+    result = bundle_gate.core_verdict(report)
+    assert result['status'] == 'FAIL'
+    assert result['completed'] == result['required'] == 16
+    assert result['failed'] == [dict(name=name, exit_code=77)]
+
+
+@pytest.mark.parametrize('mutation', [
+    'missing', 'duplicate', 'reorder', 'unknown', 'boolean-exit',
+    'oversize-exit', 'extra-field',
+])
+def test_core_exit_report_rejects_missing_or_ambiguous_evidence(mutation):
+    report = core_bundle_exit_report()
+    rows = report['checks']
+    if mutation == 'missing':
+        rows.pop()
+    elif mutation == 'duplicate':
+        rows[-1] = dict(rows[0])
+    elif mutation == 'reorder':
+        rows[0], rows[-1] = rows[-1], rows[0]
+    elif mutation == 'unknown':
+        rows[0]['name'] = 'unreviewed.py'
+    elif mutation == 'boolean-exit':
+        rows[0]['exit_code'] = False
+    elif mutation == 'oversize-exit':
+        rows[0]['exit_code'] = 2 ** 80
+    else:
+        rows[0]['ignored_failure'] = True
+    with pytest.raises(ValueError):
+        bundle_gate.core_verdict(report)
+
+
+@pytest.mark.parametrize('kind', ['pass', 'failed-book', 'missing', 'wrong-mode'])
+def test_actual_core_gate_cli_keeps_its_failure_and_exact_mode(tmp_path, kind):
+    report = core_bundle_exit_report()
+    if kind == 'failed-book':
+        report['checks'][0]['exit_code'] = 77
+    elif kind == 'missing':
+        report['checks'].pop()
+    selected = tmp_path / 'core-exits.json'
+    raw = json.dumps(report).encode('utf-8')
+    selected.write_bytes(raw)
+    mode = '--unreviewed' if kind == 'wrong-mode' else '--core'
+    result = subprocess.run(
+        [sys.executable, '-I', '-B', str(ROOT / 'scripts/windows_bundle_acceptance.py'),
+         mode, str(selected)], capture_output=True, timeout=10, check=False,
+    )
+    expected = 0 if kind == 'pass' else 1
+    assert result.returncode == expected, result.stderr
+    response = json.loads(result.stdout)
+    assert response['status'] == ('PASS' if expected == 0 else 'FAIL')
+    assert selected.read_bytes() == raw
+    assert len(result.stdout) < 2048
+
+
+def complete_bundle_powershell_harness(block):
+    """Exercise the actual two ledgers and both final gates with controlled children."""
+    import re
+    import textwrap
+    body = textwrap.dedent(block.split('        run: |\n', 1)[1])
+    setup_start = body.index('$bundleCoreChecks = ')
+    setup_end = body.index('# Keep every original native command', setup_start)
+    lines = body[setup_end:].splitlines()
+    core = [body[setup_start:setup_end]]
+    for index, line in enumerate(lines):
+        if index + 1 >= len(lines):
+            break
+        match = re.fullmatch(r"\s*Add-CoreBundleCheck ('[^']+') \$LASTEXITCODE", lines[index + 1])
+        if match:
+            indent = line[:len(line) - len(line.lstrip())]
+            core.append(indent + "& $python -I -B 'controlled-child.py' " +
+                        match.group(1) + " $failedName")
+            core.append(lines[index + 1])
+    assert len([line for line in core if line.strip().startswith('Add-CoreBundleCheck ')]) == 16
+    gate_start = body.index('& $bundledPython -I -B scripts/windows_bundle_acceptance.py --core ')
+    gate_end = body.index('& $python -I -B scripts/windows_bundle_acceptance.py ', gate_start)
+    core_gate = body[gate_start:gate_end]
+    tail = bundle_powershell_harness(block)
+    tail_gate = '& $python -I -B scripts/windows_bundle_acceptance.py '
+    assert tail.count(tail_gate) == 1
+    tail = tail.replace(tail_gate, core_gate + tail_gate, 1)
+    guard = 'if ($bundleCoreGateExit -ne 0) { exit $bundleCoreGateExit }'
+    assert body.count(guard) == 1
+    return '\n'.join(core) + '\n' + tail + guard + '\n'
+
+
+if sys.platform == 'win32':
+    @pytest.mark.parametrize('failed', [
+        '', 'windows_v3_smoke.py', 'native_document_formats_smoke.py',
+        'windows_epub_reading_smoke.py',
+    ], ids=['all-pass', 'early-book-failure', 'last-core-failure', 'tail-playback-failure'])
+    def test_actual_powershell_runs_both_native_inventories_before_strict_acceptance(tmp_path, failed):
+        _, block = bundle_workflow_block()
+        script = complete_bundle_powershell_harness(block)
+        (tmp_path / 'scripts').mkdir()
+        (tmp_path / 'ci-results').mkdir()
+        (tmp_path / 'scripts/windows_bundle_acceptance.py').write_bytes(
+            (ROOT / 'scripts/windows_bundle_acceptance.py').read_bytes())
+        (tmp_path / 'controlled-child.py').write_text(
+            "import json,pathlib,sys\n"
+            "name=sys.argv[1]; failed=sys.argv[2] if len(sys.argv)>2 else ''\n"
+            "with pathlib.Path('executed.jsonl').open('a',encoding='utf-8') as out:\n"
+            " out.write(json.dumps(name)+'\\n')\n"
+            "print(name,flush=True)\n"
+            "raise SystemExit(77 if name==failed else 0)\n", encoding='utf-8')
+        escaped_python = sys.executable.replace("'", "''")
+        prefix = ("$ErrorActionPreference = 'Stop'\n"
+                  "$python = '" + escaped_python + "'\n"
+                  "$bundledPython = $python\n"
+                  "$failedName = '" + failed + "'\n")
+        target = tmp_path / 'complete-orchestration.ps1'
+        target.write_text(prefix + script +
+            "Set-Content 'tested-application-wheel.json' '{\"installed_bundle\":\"PASS\"}'\n",
+            encoding='utf-8')
+        result = subprocess.run(
+            ['pwsh', '-NoLogo', '-NoProfile', '-File', str(target)],
+            cwd=tmp_path, capture_output=True, timeout=60, check=False,
+        )
+        assert result.returncode == (1 if failed else 0), result.stdout + result.stderr
+        executed = [json.loads(line) for line in
+                    (tmp_path / 'executed.jsonl').read_text(encoding='utf-8').splitlines()]
+        assert executed == list(bundle_gate.CORE_NATIVE_CHECKS + bundle_gate.REQUIRED_CHECKS)
+        core = json.loads((tmp_path / 'ci-results/full-bundle-core-verdict.json').read_text(
+            encoding='utf-8'))
+        tail = json.loads((tmp_path / 'ci-results/full-bundle-required-verdict.json').read_text(
+            encoding='utf-8'))
+        expected_core = 'FAIL' if failed in bundle_gate.CORE_NATIVE_CHECKS else 'PASS'
+        expected_tail = 'FAIL' if failed in bundle_gate.REQUIRED_CHECKS else 'PASS'
+        assert core['status'] == expected_core and core['completed'] == 16
+        assert tail['status'] == expected_tail and tail['completed'] == 28
+        assert core['failed'] == ([dict(name=failed, exit_code=77)] if expected_core == 'FAIL' else [])
+        assert tail['failed'] == ([dict(name=failed, exit_code=77)] if expected_tail == 'FAIL' else [])
         assert (tmp_path / 'tested-application-wheel.json').exists() is (not failed)
