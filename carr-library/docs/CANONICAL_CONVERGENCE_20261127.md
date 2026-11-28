@@ -776,7 +776,7 @@ runtime. No masked XML or parameter text was reconstructed. The unchanged
 | `8706a80468a6d641f615b14be7f537f819e1aea1` | Keep the 20 broad selectors/options in required 4/16 partitions and expose the same verified OCR runtime. All native/source bodies and deadlines remain. | New partition/guard execution NOT_RUN. V3 has six required jobs; the earlier five-job description records the preceding db5-only state. |
 | `d2c940f40a918b4c886efd253e791d2c35c38231` | Verify exact native text prefixes for Unicode and newline mappings before bounded fallback. | bbf source cases and actual exact highlight passed; subsequent playback acceptance failed at stage 2. |
 | `9deeebfb2112c8e387adfe6b2f77183d877c470a` | Select one exact native button among the selected dialog's descendants after the ScrolledPanel change. | bbf's separate installed document probe passed all 28 checks. This does not replace a later complete-bundle run. |
-| `b11e49948cfe3b2584fc95a301116ccc342836a7` | Emit bounded actual playback/status observations before the existing expiry error and owned modal cleanup. | Source approved only; all 25 native check lines and the 120-second guard remain unchanged. |
+| `b11e49948cfe3b2584fc95a301116ccc342836a7` | Emit bounded actual playback/status observations before the existing expiry error and owned modal cleanup. | Source approved only; all original native check calls and the 120-second guard remain unchanged. |
 
 The bbf focused job verifies every one of 341 checkout Python files against its
 installed counterpart, not a reverse enumeration of every installed file.

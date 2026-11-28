@@ -282,12 +282,13 @@
         "reader_run": 46084095140,
         "reader_job": 140789519891,
         "verified_members": 87,
-        "unusable_member": "local-transport.xml (nineteen transmitted bytes lost; not treated as evidence)",
+        "unusable_member": "local-transport.xml (retrieved text was nineteen bytes shorter and failed hash verification; excluded)",
         "book": {
           "member": "installed-native-v3.txt",
           "bytes": 4624,
           "sha256": "ed03219c7dc4a7ac35bb0cade4bd670eac435dd5ce5170e93d74d8a8e4ba828b",
-          "groups_passed": 16,
+          "native_v3_groups_passed": 16,
+          "groups_scope": "Whole installed native V3 probe, including Book workflows.",
           "first_result_seconds": 65.468,
           "explicit_approvals": 2,
           "books": 2,
@@ -354,12 +355,12 @@
     {
       "commit": "9deeebfb2112c8e387adfe6b2f77183d877c470a",
       "status": "SOURCE_APPROVED_FOCUSED_FLAT_INSTALLED_PROBE_PASSED",
-      "change": "Find one exact named native Button among the selected dialog descendants; actual bbf document28checks passed; sealed-bundle successor remains unexecuted."
+      "change": "Find one native Button with the exact label among the selected dialog descendants; actual bbf document28checks passed; sealed-bundle successor remains unexecuted."
     },
     {
       "commit": "b11e49948cfe3b2584fc95a301116ccc342836a7",
       "status": "SOURCE_APPROVED_NOT_RUN",
-      "change": "At the existing EPUB120-second expiry, emit bounded actual playback/status/cancellation observations before retaining the same error and modal cleanup. All25 native check lines remain."
+      "change": "At the existing EPUB120-second expiry, emit bounded actual playback/status/cancellation observations before retaining the same error and modal cleanup. All original native check calls remain."
     }
   ],
   "focused": {

@@ -325,7 +325,8 @@ partitions and exposes that same verified OCR runtime to the existing guards.
 V3 consequently requires six jobs: native, three strict source partitions and
 two broad partitions. The new partition execution remains **NOT_RUN** here.
 
-The preserved 95ef full-bundle phase proves 16 native Book groups, a first
+The preserved 95ef full-bundle phase proves 16 native V3 check groups, including
+Book workflows, a first
 verified result at 65.468 seconds and exact retained-output reuse. Its document
 probe then failed an obsolete immediate-child button lookup. At the checkpoint's
 00:17:54 UTC observation, integrated source phase 56 was still in progress; no
