@@ -85,8 +85,8 @@ def test_txt_replay_rejects_conflicting_identity(imported):
 
 def test_cancelled_completed_replay_never_adds_membership(imported):
     app, ws, _, first, requested, src, _, meta, initial = imported
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: True, **meta)
+    result = app.import_file(ws, src, collections=(first, requested), cancelled=lambda: True, **meta)
+    assert result['state'] == 'cancelled' and 'id' not in result
     assert app.browse(ws, collection=requested) == ()
     assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']
 
@@ -132,8 +132,8 @@ def test_superseded_replay_requires_current_metadata_without_reactivation(import
 
 def test_cancelled_completed_replay_preserves_membership(imported):
     app, ws, _, first, requested, src, _, meta, initial = imported
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)
+    result = app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)
+    assert result['state'] == 'cancelled' and 'id' not in result
     assert app.browse(ws, collection=requested) == ()
     assert app.browse(ws, collection=first)
 

@@ -114,6 +114,7 @@ def main():
             try:
                 callback()
             except Exception:
+                trace_failure_state()
                 remember_failure('Native EPUB driver callback failed at stage ' + str(stage))
                 abort()
         return invoke
@@ -164,15 +165,18 @@ def main():
             raise AssertionError('Unique accessible control missing: ' + name)
         return matches[0]
 
-    def expire():
-        if finished:
-            return
+    def trace_failure_state():
         try:
             trace_highlight()
         except Exception as error:
-            # Observation failure must not suppress the deadline or modal cleanup.
+            # Observation failure must not suppress the original error or cleanup.
             print('EPUB failure-state observation unavailable: ' + type(error).__name__
                   + ': ' + str(error)[:256], flush=True)
+
+    def expire():
+        if finished:
+            return
+        trace_failure_state()
         try:
             raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
         except Exception:

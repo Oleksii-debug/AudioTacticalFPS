@@ -110,9 +110,20 @@ def test_reading_studio_transcription_and_pending_html_survive_two_restores(
         volume=None, collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     planned = snapshot(html.parent, html.name).manifest()
     request = prepare_request(app.root, workspace, html, metadata, Config(), expected_manifest=planned)
+    retained_before_cancel = []
+    def stop_after_retained_html():
+        admitted = load_request(app.root, request['request_id'])
+        if not admitted.get('asset_sha256'):
+            return False
+        assert admitted['asset_sha256'] == html_hash
+        assert app.assets.resolve(html_hash).read_bytes() == html_raw
+        retained_before_cancel.append(admitted['asset_sha256'])
+        return True
+
     with pytest.raises(InterruptedError):
         app._import_file(workspace, html, **metadata, _request_id=request['request_id'],
-            _expected_manifest=planned, cancelled=lambda: True)
+            _expected_manifest=planned, cancelled=stop_after_retained_html)
+    assert retained_before_cancel and set(retained_before_cancel) == {html_hash}
     assert app.assets.resolve(html_hash).read_bytes() == html_raw
     html.unlink()
 

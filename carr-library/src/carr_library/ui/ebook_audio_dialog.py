@@ -271,12 +271,20 @@ class EbookAudioDialog:
                     prepared.close(); return
                 self._pending = prepared
                 def start():
-                    self.guard()
-                    if self.transport.start(prepared, ticket):
-                        self._pending = None
-                        self._highlight()
-                        self.timer.Start(100)
-                        self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')
+                    try:
+                        self.guard()
+                        if self.transport.start(prepared, ticket):
+                            self._pending = None
+                            self._highlight()
+                            self.timer.Start(100)
+                            self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')
+                    except Exception as exc:
+                        # A failed native start closes its transport and revokes
+                        # its own ticket. Report from the admitted owner before
+                        # the quiet callback mistakes that cleanup for a stale
+                        # request. A closed owner must not touch native controls.
+                        if not self.closed:
+                            self._error(exc)
                 play_when_quiet((self.progress,), start, schedule=self.wx.CallLater,
                     alive=lambda: not self.closed and ticket == self.transport.ticket and not self.cancelled.is_set(),
                     on_error=self._error)

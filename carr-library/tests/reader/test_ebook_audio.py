@@ -452,3 +452,199 @@ def test_actual_studio_publication_import_and_recorded_overlay_roundtrip(tmp_pat
         assert not page.verified and app._selections == {}
     finally:
         session.close(); service.close()
+
+
+def _recorded_dialog_start_harness(session, player, *, quiet=True):
+    """Actual controller/transport/quiet callbacks with a queued owner boundary."""
+    from concurrent.futures import Future
+
+    queued, scheduled, prepared, messages = [], [], [], []
+    real_prepare = session.prepare
+    def prepare(*args, **kwargs):
+        value = real_prepare(*args, **kwargs)
+        prepared.append(value)
+        return value
+    session.prepare = prepare
+
+    class Executor:
+        def submit(self, operation):
+            future = Future()
+            try:
+                future.set_result(operation())
+            except BaseException as error:
+                future.set_exception(error)
+            return future
+        shutdown = Mock()
+
+    hold = SimpleNamespace(ready=quiet, close=Mock())
+    progress = SimpleNamespace(hold_audio=lambda: hold, refresh_audio_state=Mock(),
+                               unregister_player=Mock())
+    dialog = object.__new__(EbookAudioDialog)
+    dialog.session, dialog.player = session, player
+    dialog.transport = OverlayPlayback(session, player)
+    dialog.closed = dialog.busy = False
+    dialog.cancelled = Event()
+    dialog._pending = None
+    dialog.guard = session.guard
+    dialog.buttons = []
+    dialog.executor = Executor()
+    dialog.progress = progress
+    dialog.timer = SimpleNamespace(Start=Mock(), Stop=Mock())
+    dialog.status = SimpleNamespace(ChangeValue=messages.append, SetFocus=Mock())
+    dialog.dialog = SimpleNamespace(IsModal=lambda: False)
+    dialog.wx = SimpleNamespace(CallAfter=queued.append,
+        CallLater=lambda delay, callback: scheduled.append((delay, callback)), ID_CANCEL=5101)
+    dialog._highlight = Mock()
+    return SimpleNamespace(dialog=dialog, queued=queued, scheduled=scheduled,
+        prepared=prepared, messages=messages, hold=hold)
+
+
+@pytest.mark.parametrize('failure', ['device', 'admission'])
+def test_recorded_dialog_reports_admitted_start_failure_after_transport_cleanup(imported, failure):
+    session = EbookAudioSession(imported[-1], 1)
+    player = TrackedPlayer()
+    error = RuntimeError('Native device refused the prepared recording.')
+    player.play = Mock(side_effect=error)
+    harness = _recorded_dialog_start_harness(session, player)
+    dialog = harness.dialog
+    original = session.page
+    try:
+        dialog.play()
+        assert dialog.busy and len(harness.queued) == 1
+        prepared, = harness.prepared
+        assert prepared.path.is_file() and prepared.frames == 4800
+        with wave.open(str(prepared.path), 'rb') as rendered:
+            assert rendered.getnframes() == 4800 and any(rendered.readframes(4800))
+        if failure == 'admission':
+            prepared.path.write_bytes(b'changed after complete preparation')
+        harness.queued.pop(0)()
+        assert not dialog.busy and not dialog.closed
+        assert dialog.transport.generation > 1 and not dialog.transport.active
+        assert dialog.transport.prepared is None and dialog._pending is None
+        assert not prepared.path.exists()
+        assert dialog.cancelled.is_set()
+        assert not harness.scheduled and not player.played
+        harness.hold.close.assert_called_once_with()
+        dialog.status.SetFocus.assert_called_once_with()
+        dialog.timer.Start.assert_not_called()
+        if failure == 'device':
+            assert harness.messages[-1] == str(error)
+            player.play.assert_called_once_with(prepared.path)
+        else:
+            assert 'changed after verification' in harness.messages[-1]
+            player.play.assert_not_called()
+        assert imported[-1].page(1) == original
+    finally:
+        dialog.close()
+
+
+def test_recorded_dialog_failed_native_close_retains_the_prepared_recording(imported):
+    session = EbookAudioSession(imported[-1], 1)
+    class UnconfirmedPlayer(TrackedPlayer):
+        fail_close = False
+        def play(self, path):
+            assert Path(path).is_file()
+            self.fail_close = True
+            raise RuntimeError('Native device start failed.')
+        def close(self):
+            if self.fail_close:
+                raise RuntimeError('Native device closure remains unconfirmed.')
+            super().close()
+    player = UnconfirmedPlayer()
+    harness = _recorded_dialog_start_harness(session, player)
+    dialog = harness.dialog
+    try:
+        dialog.play()
+        prepared, = harness.prepared
+        harness.queued.pop(0)()
+        assert not dialog.busy and not dialog.closed
+        assert dialog._pending is prepared and dialog.transport.prepared is prepared
+        assert prepared.path.is_file()
+        assert 'Native device closure remains unconfirmed.' in harness.messages[-1]
+        assert 'The audio device has not confirmed closure:' in harness.messages[-1]
+        dialog.status.SetFocus.assert_called_once_with()
+        harness.hold.close.assert_called_once_with()
+        dialog.timer.Start.assert_not_called()
+        assert not dialog.transport.active and not player.played
+        player.fail_close = False
+        dialog.close()
+        assert dialog.closed and not prepared.path.exists()
+        assert dialog._pending is None and dialog.transport.prepared is None
+    finally:
+        player.fail_close = False
+        dialog.close()
+
+
+@pytest.mark.parametrize('revocation', ['stop', 'close'])
+def test_recorded_dialog_deferred_start_refuses_revoked_owner_or_ticket(imported, revocation):
+    session = EbookAudioSession(imported[-1], 1)
+    player = TrackedPlayer()
+    harness = _recorded_dialog_start_harness(session, player, quiet=False)
+    dialog = harness.dialog
+    try:
+        dialog.play()
+        prepared, = harness.prepared
+        harness.queued.pop(0)()
+        assert dialog._pending is prepared and prepared.path.is_file()
+        assert len(harness.scheduled) == 1 and harness.scheduled[0][0] == 25
+        getattr(dialog, revocation)()
+        before = tuple(harness.messages)
+        harness.hold.ready = True
+        _, attempt = harness.scheduled.pop(0)
+        attempt()
+        assert tuple(harness.messages) == before
+        assert not player.played and not dialog.transport.active
+        assert dialog._pending is None and not prepared.path.exists()
+        assert dialog.closed is (revocation == 'close')
+        harness.hold.close.assert_called_once_with()
+        dialog.timer.Start.assert_not_called()
+    finally:
+        dialog.close()
+
+
+def test_recorded_dialog_start_error_after_owner_close_never_touches_dead_status(imported):
+    session = EbookAudioSession(imported[-1], 1)
+    player = TrackedPlayer()
+    harness = _recorded_dialog_start_harness(session, player)
+    dialog = harness.dialog
+    def unavailable_after_close(path):
+        assert Path(path).is_file()
+        dialog.close()
+        dialog.status.ChangeValue = lambda value: pytest.fail('Closed native status was touched.')
+        raise RuntimeError('The native start failed after owner closure.')
+    player.play = unavailable_after_close
+    try:
+        dialog.play()
+        prepared, = harness.prepared
+        harness.queued.pop(0)()
+        assert dialog.closed and not dialog.busy
+        assert dialog._pending is None and dialog.transport.prepared is None
+        assert not prepared.path.exists() and not player.played
+        assert harness.messages[-1] == 'Recorded audio stopped. Prepared playback was cancelled.'
+        harness.hold.close.assert_called_once_with()
+        dialog.timer.Start.assert_not_called()
+    finally:
+        dialog.close()
+
+
+def test_recorded_dialog_successful_start_keeps_the_actual_prepared_audio(imported):
+    session = EbookAudioSession(imported[-1], 1)
+    player = TrackedPlayer()
+    harness = _recorded_dialog_start_harness(session, player)
+    dialog = harness.dialog
+    try:
+        dialog.play()
+        prepared, = harness.prepared
+        harness.queued.pop(0)()
+        assert not dialog.busy and not dialog.closed and not dialog.cancelled.is_set()
+        assert dialog.transport.active and dialog.transport.prepared is prepared
+        assert dialog._pending is None and prepared.path.is_file()
+        assert player.played == [prepared.path] and player.state == 'playing'
+        assert harness.messages[-1].startswith('Playing authored recorded segment.')
+        dialog._highlight.assert_called_once_with()
+        dialog.timer.Start.assert_called_once_with(100)
+        harness.hold.close.assert_called_once_with()
+        dialog.close()
+        assert not prepared.path.exists() and dialog.closed
+    finally:
+        dialog.close()

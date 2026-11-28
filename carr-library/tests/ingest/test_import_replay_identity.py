@@ -182,8 +182,8 @@ def test_replay_rechecks_active_revision_before_registering(imported, monkeypatc
 
 def test_cancelled_replay_does_not_add_membership(imported):
     before = source_state(imported)
-    with pytest.raises(InterruptedError, match='cancelled'):
-        replay(imported, cancelled=lambda: True)
+    result = replay(imported, cancelled=lambda: True)
+    assert result['state'] == 'cancelled' and 'id' not in result
     assert source_state(imported) == before
     assert imported.app.browse(imported.workspace, collection=imported.requested) == ()
 
