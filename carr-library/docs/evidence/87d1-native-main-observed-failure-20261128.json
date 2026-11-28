@@ -1,0 +1,3240 @@
+{
+  "schema": "carr-native-main-observed-failure/1",
+  "status": "OBSERVED_FAILURE",
+  "observed_at_utc": "2026-11-28 10:52:20 UTC",
+  "scope": "Completed exact 87d1 early native focused run only. Earlier successful receipts are preserved within this failed run; they do not qualify the whole native lane, full main, or a successor.",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+    "tracked_files": 1833
+  },
+  "execution": {
+    "run": {
+      "id": 46135188389,
+      "name": "CARR early exact main native gates",
+      "head_branch": "carr/native-main-final-87d1-20261128-d3a",
+      "head_sha": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "path": ".github/workflows/carr-native-main-final.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_attempt": 1,
+      "created_at": "2026-11-28T10:26:22Z",
+      "run_started_at": "2026-11-28T10:26:22Z",
+      "updated_at": "2026-11-28T10:37:14Z",
+      "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135188389"
+    },
+    "job": {
+      "id": 140948783918,
+      "run_id": 46135188389,
+      "run_attempt": 1,
+      "head_branch": "carr/native-main-final-87d1-20261128-d3a",
+      "head_sha": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "name": "Windows x64 / CPython 3.11 / exact main native gates",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-28T10:26:22Z",
+      "started_at": "2026-11-28T10:30:23Z",
+      "completed_at": "2026-11-28T10:37:13Z",
+      "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135188389/job/140948783918",
+      "labels": [
+        "windows-2022"
+      ],
+      "runner_name": "GitHub Actions 1000490587",
+      "duration_seconds": 410,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-28T10:30:24Z",
+          "completed_at": "2026-11-28T10:30:25Z"
+        },
+        {
+          "name": "Preserve the exact committed source bytes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-28T10:30:25Z",
+          "completed_at": "2026-11-28T10:30:26Z"
+        },
+        {
+          "name": "Enable complete reviewed Git history on the Windows runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-28T10:30:26Z",
+          "completed_at": "2026-11-28T10:30:26Z"
+        },
+        {
+          "name": "Check out the exact event commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-28T10:30:26Z",
+          "completed_at": "2026-11-28T10:30:36Z"
+        },
+        {
+          "name": "Set up native x64 CPython",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-28T10:30:36Z",
+          "completed_at": "2026-11-28T10:30:36Z"
+        },
+        {
+          "name": "Compile the exact source and regression entrypoints",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-28T10:30:36Z",
+          "completed_at": "2026-11-28T10:30:44Z"
+        },
+        {
+          "name": "Install the actual desktop package in a fresh environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-28T10:30:44Z",
+          "completed_at": "2026-11-28T10:31:17Z"
+        },
+        {
+          "name": "Bind the complete installed package and checkout before native gates",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-28T10:31:17Z",
+          "completed_at": "2026-11-28T10:31:20Z"
+        },
+        {
+          "name": "Check the installed application through its self-test entrypoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-28T10:31:20Z",
+          "completed_at": "2026-11-28T10:31:21Z"
+        },
+        {
+          "name": "Check the installed offline OCR catalogue and console entrypoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-28T10:31:21Z",
+          "completed_at": "2026-11-28T10:31:22Z"
+        },
+        {
+          "name": "Exercise native academic references and reading controls",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-28T10:31:22Z",
+          "completed_at": "2026-11-28T10:31:25Z"
+        },
+        {
+          "name": "Exercise native advanced query builder and source search",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-28T10:31:25Z",
+          "completed_at": "2026-11-28T10:31:28Z"
+        },
+        {
+          "name": "Retain explicit core-only fallback and offline startup coverage",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-28T10:31:28Z",
+          "completed_at": "2026-11-28T10:31:31Z"
+        },
+        {
+          "name": "Match production dependencies before required source suites",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-28T10:31:31Z",
+          "completed_at": "2026-11-28T10:31:46Z"
+        },
+        {
+          "name": "Prove fixed PowerShell native classification before bundle work",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-28T10:31:46Z",
+          "completed_at": "2026-11-28T10:33:02Z"
+        },
+        {
+          "name": "Prepare the verified OCR engine before its required source regression",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-28T10:33:02Z",
+          "completed_at": "2026-11-28T10:34:46Z"
+        },
+        {
+          "name": "Exercise actual managed OCR with Unicode Windows paths",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-28T10:34:46Z",
+          "completed_at": "2026-11-28T10:35:09Z"
+        },
+        {
+          "name": "Require Windows OCR script models and reviewed publication boundaries early",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-11-28T10:35:09Z",
+          "completed_at": "2026-11-28T10:36:07Z"
+        },
+        {
+          "name": "Prepare the sealed local FFmpeg runtime before audio regressions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-11-28T10:36:07Z",
+          "completed_at": "2026-11-28T10:36:19Z"
+        },
+        {
+          "name": "Exercise only the explicit synthetic local-planning HTTP fixture",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-11-28T10:36:19Z",
+          "completed_at": "2026-11-28T10:36:30Z"
+        },
+        {
+          "name": "Exercise actual native citations and destination confirmation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-11-28T10:36:30Z",
+          "completed_at": "2026-11-28T10:36:38Z"
+        },
+        {
+          "name": "Exercise installed native translation approval and immutable derivatives",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-11-28T10:36:38Z",
+          "completed_at": "2026-11-28T10:36:39Z"
+        },
+        {
+          "name": "Exercise installed Advanced translation with real native controls and synthetic provider",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-28T10:36:39Z",
+          "completed_at": "2026-11-28T10:36:40Z"
+        },
+        {
+          "name": "Exercise installed search continuation with actual native keys and retained sources",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-28T10:36:40Z",
+          "completed_at": "2026-11-28T10:36:48Z"
+        },
+        {
+          "name": "Exercise installed signed-client controls with a synthetic authority",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-28T10:36:48Z",
+          "completed_at": "2026-11-28T10:36:51Z"
+        },
+        {
+          "name": "Record actual Office qualification or explicit Word unavailability",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-11-28T10:36:51Z",
+          "completed_at": "2026-11-28T10:36:52Z"
+        },
+        {
+          "name": "Exercise installed language evidence and explicit native voice refresh",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-11-28T10:36:52Z",
+          "completed_at": "2026-11-28T10:36:54Z"
+        },
+        {
+          "name": "Exercise native Import Center and durable batch workflow",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 28,
+          "started_at": "2026-11-28T10:36:54Z",
+          "completed_at": "2026-11-28T10:36:57Z"
+        },
+        {
+          "name": "Exercise native reading copies, save commands and keyboard preferences",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 29,
+          "started_at": "2026-11-28T10:36:57Z",
+          "completed_at": "2026-11-28T10:37:01Z"
+        },
+        {
+          "name": "Exercise installed document formats and native accessible reading",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 30,
+          "started_at": "2026-11-28T10:37:01Z",
+          "completed_at": "2026-11-28T10:37:04Z"
+        },
+        {
+          "name": "Exercise the installed native OCR catalogue and shared model manager",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-11-28T10:37:04Z",
+          "completed_at": "2026-11-28T10:37:05Z"
+        },
+        {
+          "name": "Exercise native wx startup and source-opening events",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 32,
+          "started_at": "2026-11-28T10:37:05Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native saved-evidence page selection and note recovery",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 33,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native reference metadata review and historical outline export",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 34,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native academic comparison, bibliography and catalog review",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 35,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native research-notebook search and keyboard actions",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 36,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native EPUB section navigation and image descriptions",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 37,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native library reports and academic exports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 38,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native EPUB contents and exact chapter search",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 39,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native full-source reader and page bookmarks",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 40,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Exercise native catalog reports and source comparison export",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 41,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Locate installed Microsoft x64 development tools",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 42,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Compile private native launcher and test child with MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 43,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Execute exact launcher on native Windows with synthetic child",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 44,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Require the exact nine native launcher checks",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 45,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Prepare the pinned local model through the existing upstream verifier",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 46,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Require unchanged source and installed payload after every copied gate",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 47,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:07Z"
+        },
+        {
+          "name": "Preserve exact-commit early native receipts and raw logs",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 48,
+          "started_at": "2026-11-28T10:37:07Z",
+          "completed_at": "2026-11-28T10:37:09Z"
+        },
+        {
+          "name": "Post Set up native x64 CPython",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 95,
+          "started_at": "2026-11-28T10:37:09Z",
+          "completed_at": "2026-11-28T10:37:09Z"
+        },
+        {
+          "name": "Post Check out the exact event commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 96,
+          "started_at": "2026-11-28T10:37:09Z",
+          "completed_at": "2026-11-28T10:37:11Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 97,
+          "started_at": "2026-11-28T10:37:11Z",
+          "completed_at": "2026-11-28T10:37:11Z"
+        }
+      ]
+    },
+    "failed_focused_step": 32,
+    "copied_main_step": 34,
+    "skipped_focused_steps": [
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ]
+  },
+  "failure": {
+    "invoked_probe": "carr-library/tests/ui/probe_source_open_native.py",
+    "invoked_helper": "carr-library/tests/ui/federated_native_smoke.py",
+    "receipt": {
+      "raw_line": 4223,
+      "timestamp": "2026-11-28T10:37:07.5667140Z",
+      "value": {
+        "status": "FAIL",
+        "errors": [
+          "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\federated_native_smoke.py\", line 62, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\federated_native_smoke.py\", line 125, in search_ready\n    assert {hit.workspace for hit in controller.rows} == {active[0], workspace}\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        ],
+        "windows_nvda": "NOT_RUN"
+      }
+    },
+    "exit_code": 1,
+    "assertion": "{hit.workspace for hit in controller.rows} == {active[0], workspace}",
+    "source_line": 125,
+    "actual_current_rows": "NOT_PRINTED",
+    "actual_page_cursor": "NOT_PRINTED",
+    "actual_worker_timing": "NOT_PRINTED",
+    "source_open_boundary": "The actual traceback is inside the delegated federated helper. The wrapper invokes that helper only after its original-source checks and focus callback. This is source-correlated control-flow progress, not a separately emitted source-open PASS. Its sole terminal receipt is FAIL.",
+    "source_derived_mismatch": {
+      "status": "SOURCE_ANALYSIS_ONLY",
+      "description": "The current native Search Center requests paged=True. FederatedSearch.search_page stops after a nonempty current library page and exposes remaining selected libraries via next_cursor. The old fixture expects both selected libraries in one current page.",
+      "runtime_limit": "The source-established expectation mismatch is consistent with the failed equality. The raw log does not show which library was on the current page, the cursor, or worker timing.",
+      "separately_reviewable_repair_commit": "3149f07451c54460fd04f1ac76fb38589226ec76",
+      "repair_evidence_path": "carr-library/docs/evidence/federated-native-pagination-fixture-repair-20261128.json",
+      "repair_evidence_git_blob": "c7fe36710ead5197dd440e11e82a6949b00d9b76",
+      "successor_execution": "NOT_RUN_BY_THIS_PROOF"
+    }
+  },
+  "bindings": {
+    "before_receipt": {
+      "raw_line": 1599,
+      "timestamp": "2026-11-28T10:31:20.1239826Z",
+      "value": {
+        "installed_package_files": 442,
+        "phase": "before",
+        "receipt_sha256": "11030b2ddfc1b488a0c503ef387bdae435693d57b833c38fc022d1cdc4473fa5",
+        "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+        "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+        "status": "PASS",
+        "tracked_files": 1833
+      }
+    },
+    "producer_enforcement": "The source-reviewed binder streams tracked bytes with exact Git-blob and SHA256 checks and matches the complete installed application payload before the copied gates.",
+    "before_full_map": "NOT_INDEPENDENTLY_READ_FROM_ARTIFACT",
+    "tracked_count": 1833,
+    "installed_payload_count": 442,
+    "binder_script_sha256": "86efff7ff3b299c6587993f85f9ff09af9825f6737d5eb5127e7420da056c86a",
+    "binder_script_hash_reconciliation": "The current workflow here-string body, with the actual PowerShell CRLF representation and no terminal newline, independently hashes to the emitted binder SHA256.",
+    "after_receipt": "ABSENT_STEP_47_SKIPPED",
+    "after_full_map": "NOT_RUN",
+    "source_files": [
+      {
+        "path": ".github/workflows/carr-native-main-final.yml",
+        "git_blob": "3971121f4239d14590ee92e1cc5eeb09afff6573",
+        "sha256": "1afeb19bb2c9dce472858427844a8917f1c59b477674b8ad4eacda9ac8418295",
+        "utf8_bytes": 39814,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "git_blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+        "sha256": "70befd739fd9cac7467fcbfdaf57e0153404d9fd7e843e5edab707aa6c3581fd",
+        "utf8_bytes": 190999,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/packaging/probe_standard_update_windows.py",
+        "git_blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+        "sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e",
+        "utf8_bytes": 34947,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/packaging/source_wheel.py",
+        "git_blob": "bba3d0cda29b475d51347434d832af9187840547",
+        "sha256": "fbac5259cba4dc89269d114482f2f0af8ae464ecac84e2505860263f64375d85",
+        "utf8_bytes": 15068,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/packaging/windows-cp311.lock",
+        "git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+        "sha256": "4e49bacae7e7b805d5f9219ca4baeb14b413786c3db787d5aba4ab72a48397c5",
+        "utf8_bytes": 34471,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/packaging/windows-integrated-cp311.lock",
+        "git_blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4",
+        "sha256": "12d587307f4ca4ebfadc881726ee9f0710b2f58af797fdebd5d4a732cc803edd",
+        "utf8_bytes": 97564,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/qualify_standard_library.ps1",
+        "git_blob": "1a4417a3c40e50033d5eb40bb3ed6db1bac3d962",
+        "sha256": "dd0bebfdfd8ceee2eb082c2663d58c6da4eaf0f9912c638df5d66c0c0a4ac04a",
+        "utf8_bytes": 11548,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/source_syntax_acceptance.py",
+        "git_blob": "8c1b916755aa1313a4109d78159507947ff48527",
+        "sha256": "a3a79a512e508cc715417ad7b22ebea59ffa74a4d8d6e47a6b0937a5ffcb639d",
+        "utf8_bytes": 3836,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+        "git_blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+        "sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54",
+        "utf8_bytes": 9437,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_academic_smoke.py",
+        "git_blob": "5c15a13059193578a785ab977918a90626d1b5e0",
+        "sha256": "6f2ead3f572836c44a94fc3fb2105874942c8632b1ac721437bea4b58ed9f200",
+        "utf8_bytes": 20010,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_citation_styles_smoke.py",
+        "git_blob": "b142011dac4414d794c90ac6707b5c23b233b09b",
+        "sha256": "2e3a704ba847babe76c8f7b51dd632e5512750a7f412436a56a036b5181e0a1c",
+        "utf8_bytes": 51716,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_language_matrix_smoke.py",
+        "git_blob": "77a34d7b94386f6c262a917a648442adaaf94e41",
+        "sha256": "45a1aca03a4dfe151af634336c15faa1039782dc15938f2597aee12729bbf611",
+        "utf8_bytes": 4842,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_ocr_languages_smoke.py",
+        "git_blob": "d71618bdc69568e06444a9a1030cfac0cdf7c0a7",
+        "sha256": "c4a29611098d0e0592db7514ee54cbad9d83788c69f698362c1a5db555c32717",
+        "utf8_bytes": 16593,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_ocr_models_smoke.py",
+        "git_blob": "32e5b608fc29b88b267bff63b9d7da2d4f1e1921",
+        "sha256": "85a3fbd8f3c0541931c54d9e56ae816b3ef466def7b934a41abdf0ce190243ce",
+        "utf8_bytes": 19258,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_smoke.py",
+        "git_blob": "781a38e2f02d2209db5333e6421b7873bf6e35e1",
+        "sha256": "ec8afc47fc1d293871d1255491aafdedc80635d33d036349dc1b5921202af2fb",
+        "utf8_bytes": 14852,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+        "git_blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd",
+        "sha256": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+        "utf8_bytes": 18845,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+        "git_blob": "c395b238c2ebc8aac7d98aa94a7028bb4b479439",
+        "sha256": "84203698444eb05fec85e5a24fbda3ce4fc2e542be8579ede41b880384fe22ec",
+        "utf8_bytes": 11916,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/scripts/windows_word_citations_smoke.py",
+        "git_blob": "2a4d304b1c811c4140571d7435e07372d859bfa4",
+        "sha256": "8b15da0b15657f72f3d5096a68877b3bca40ca5f9b1e8443d4d535e5ae995acb",
+        "utf8_bytes": 8890,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/__main__.py",
+        "git_blob": "df0c144258141fb7768dabf3e9d05e4db9e28974",
+        "sha256": "f394d62a695cd02008f382851f7ee03922b7f31821581f854021bc6f349cc3aa",
+        "utf8_bytes": 18832,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/application.py",
+        "git_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+        "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8",
+        "utf8_bytes": 77559,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+        "git_blob": "912ae43318a5268cf9eb922ac511e235b5302ef3",
+        "sha256": "910a1590945a7602e57957c70cbf887d14d3b4177b7ba08d3e580d03d9afda70",
+        "utf8_bytes": 16737,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/citations/csl.py",
+        "git_blob": "7145d04ef689a5b5d12955ceb1482c29c0d14de6",
+        "sha256": "d5a7cff21c9b2cd44628ff2c66b3c2b6c79fba60cd2b4f6f8133a2e3ad604e95",
+        "utf8_bytes": 48327,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/document_formats.py",
+        "git_blob": "3e788c31efd61c2a1fae06a0f2b6a8849649e346",
+        "sha256": "21d743af2e2e563c9fc06061e878f63f5143f21c47ec9ef98a6d00764b21efa8",
+        "utf8_bytes": 14372,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/managed_ocr.py",
+        "git_blob": "70388de61362bb959ef9c4f1a10fb729b0764ebb",
+        "sha256": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477",
+        "utf8_bytes": 4486,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/model_catalog.py",
+        "git_blob": "6c8765e3ebb83206903bc74e4fc3751e862056d1",
+        "sha256": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12",
+        "utf8_bytes": 5301,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+        "git_blob": "2e50c806140e0ee13b00091709497d31cbc99778",
+        "sha256": "5b3c464080d6ff24e60eb2c7f54f0463c720d16823f69e7707466e3229ddf20d",
+        "utf8_bytes": 16329,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+        "git_blob": "a77d6d5e3042c0f2ddd2b7b5b8831dc6d5e8a79d",
+        "sha256": "0902f074efff5c85023128bebd3502c98b041481adb465716c62c44f7b8597a6",
+        "utf8_bytes": 18591,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/ocr-model-catalog.json",
+        "git_blob": "620838122518996f48fe07cd888dddfb4eacd36f",
+        "sha256": "1e55383fc79da1ce2d72ffca2dcd4b4fb24d69e29cd23425562cc20af7775e0b",
+        "utf8_bytes": 137251,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/TESSDATA_BEST_LICENSE",
+        "git_blob": "d9a10c0d8e868ebf8da0b3dc95bb0be634c34bfe",
+        "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+        "utf8_bytes": 10173,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/extract/TESSDATA_FAST_LICENSE",
+        "git_blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "utf8_bytes": 11358,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/source_file.py",
+        "git_blob": "1483c4ddbb6fde1446639c2e786da2fc86df61ad",
+        "sha256": "9fb007742c5345c478a7a466eb9b06037a1df67f377b4318d32fe5bc7796128b",
+        "utf8_bytes": 10858,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/research/bibtex_import.py",
+        "git_blob": "48d656d3fe5a7d2a6f56483413252e0ad8e3459f",
+        "sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+        "utf8_bytes": 25781,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/search/advanced.py",
+        "git_blob": "e7145794a2fa4bd7952546da3f7f9a282c22a55a",
+        "sha256": "58d8133499b7dd95bcdb408f4109bb7d0c6bc9430a6fd317f5556055c353225a",
+        "utf8_bytes": 14307,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/search/federated.py",
+        "git_blob": "301e096f4405070d63966b37ccf7e45f9e7a6fe4",
+        "sha256": "df6e3ad3bfc5ba61dbc8ae0eb01b71da9b4533c1ac978c6121f2fb1551fff75e",
+        "utf8_bytes": 25165,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/search/pagination.py",
+        "git_blob": "2441f3f8b4895309467d6e18fbe08152af4d38c5",
+        "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071",
+        "utf8_bytes": 18579,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/security/standard_windows.py",
+        "git_blob": "7880fb12b71726e76a6dd9ebdae11fdbff99ee93",
+        "sha256": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a",
+        "utf8_bytes": 25641,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+        "git_blob": "c64b4abdc9fcc758e2678af576b22823346cebce",
+        "sha256": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+        "utf8_bytes": 54500,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/advanced_search.py",
+        "git_blob": "4efe82abeac0203d2f58c058f655105d2853ecf7",
+        "sha256": "ada882820cd043b4a05027e1835f722afdff283700c4110380d3339a21144894",
+        "utf8_bytes": 11296,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+        "git_blob": "3a2962103876a75412bae8a3bbd967c2e45a1fa2",
+        "sha256": "29e64bea7c72b5d9533733c3001e8026b3d2f3a4c2b5164c79e01e7a79d8ea76",
+        "utf8_bytes": 20252,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+        "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17",
+        "utf8_bytes": 74039,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+        "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8",
+        "utf8_bytes": 33642,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/import_center.py",
+        "git_blob": "f757c8748ef273938992a1518f327012616d5ec1",
+        "sha256": "62ded099ed5c712f009447a0981407b721b323838d7e611106a1a8a643af7966",
+        "utf8_bytes": 28407,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+        "git_blob": "58912be85954a059c680783ccda66769757ec491",
+        "sha256": "be9aacf22fc20b0e40a7d11046d639b7f8b545d31808d378817e29947c960548",
+        "utf8_bytes": 30759,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/narration_editor.py",
+        "git_blob": "da98eddc262c4fff582d742fc66a05b2985883d0",
+        "sha256": "70f88f59beb37485f0dbdf6bd8aa9c94b8d1d3de82d2ac22ad35a86e316911d9",
+        "utf8_bytes": 37745,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/ocr_model_manager.py",
+        "git_blob": "d87272c912134074be2254b0fe34a9dd000783af",
+        "sha256": "e374e1bc04814d8e89c42aeb7533de780bcdb30a2c42330c8858d8ce9f36b32b",
+        "utf8_bytes": 21750,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/productivity.py",
+        "git_blob": "348cc35dd963e99d01659dc89a85bea1e95e299f",
+        "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767",
+        "utf8_bytes": 17321,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/search_paging.py",
+        "git_blob": "f16b026c0ec71405e4f20e56a311bfd05a65df0d",
+        "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d",
+        "utf8_bytes": 2505,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/federated_native_smoke.py",
+        "git_blob": "4240ebe61fa763de0fbbdd1648643833e3054bf6",
+        "sha256": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e",
+        "utf8_bytes": 11406,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+        "git_blob": "40ba40266b5b8d2954563c60d965c61985b8257b",
+        "sha256": "5827314af7add0cbf816f9957ea47fdc9bf68fd7f8271f725b849bee8b256ca6",
+        "utf8_bytes": 14333,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/native_import_center_smoke.py",
+        "git_blob": "baded3dff24d2974e9ba8bd6633b79a6d5e50985",
+        "sha256": "657ed4a78d17e5b46b078972c0b6aaaea2e528924ee79f58aabb5792d552b462",
+        "utf8_bytes": 9382,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/native_trust_status_smoke.py",
+        "git_blob": "08c35c4ae5618a17dca08f782fb837dad1f4b1e9",
+        "sha256": "02b42f1f69f048997a186fad6a1ae9506969202d3326449744ac0968b72c7ab5",
+        "utf8_bytes": 18603,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_advanced_search_native.py",
+        "git_blob": "c8609fc5cda1d95ac82c2c13e2a0a99a40833b01",
+        "sha256": "488e3702e8117ebea53924b7868603440a6a562515322f523f9d7866c247c881",
+        "utf8_bytes": 19271,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+        "git_blob": "3cff32ca38b7097a943cf92d36512356076dede6",
+        "sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8",
+        "utf8_bytes": 15359,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_source_open_native.py",
+        "git_blob": "1035939697c06967cbc0de6fce58c10bb369192f",
+        "sha256": "2f615c3bde959e2edf85ba90f95f407c0df6b83488db64b213aaaabf793df115",
+        "utf8_bytes": 8442,
+        "body_read": "fresh GitHub file retrieval at exact 87d1; Git blob and SHA256 independently recomputed"
+      }
+    ],
+    "emitted_hash_comparisons": [
+      {
+        "family": "academic",
+        "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+        "reported_sha256": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+        "current_git_blob": "c64b4abdc9fcc758e2678af576b22823346cebce",
+        "expected_sha256": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+        "matches": true
+      },
+      {
+        "family": "advanced_query",
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "reported_sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17",
+        "current_git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+        "expected_sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17",
+        "matches": true
+      },
+      {
+        "family": "advanced_query",
+        "path": "carr-library/src/carr_library/ui/advanced_search.py",
+        "reported_sha256": "ada882820cd043b4a05027e1835f722afdff283700c4110380d3339a21144894",
+        "current_git_blob": "4efe82abeac0203d2f58c058f655105d2853ecf7",
+        "expected_sha256": "ada882820cd043b4a05027e1835f722afdff283700c4110380d3339a21144894",
+        "matches": true
+      },
+      {
+        "family": "advanced_query",
+        "path": "carr-library/src/carr_library/search/advanced.py",
+        "reported_sha256": "58d8133499b7dd95bcdb408f4109bb7d0c6bc9430a6fd317f5556055c353225a",
+        "current_git_blob": "e7145794a2fa4bd7952546da3f7f9a282c22a55a",
+        "expected_sha256": "58d8133499b7dd95bcdb408f4109bb7d0c6bc9430a6fd317f5556055c353225a",
+        "matches": true
+      },
+      {
+        "family": "citations",
+        "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+        "reported_sha256": "910a1590945a7602e57957c70cbf887d14d3b4177b7ba08d3e580d03d9afda70",
+        "current_git_blob": "912ae43318a5268cf9eb922ac511e235b5302ef3",
+        "expected_sha256": "910a1590945a7602e57957c70cbf887d14d3b4177b7ba08d3e580d03d9afda70",
+        "matches": true
+      },
+      {
+        "family": "citations",
+        "path": "carr-library/src/carr_library/citations/csl.py",
+        "reported_sha256": "d5a7cff21c9b2cd44628ff2c66b3c2b6c79fba60cd2b4f6f8133a2e3ad604e95",
+        "current_git_blob": "7145d04ef689a5b5d12955ceb1482c29c0d14de6",
+        "expected_sha256": "d5a7cff21c9b2cd44628ff2c66b3c2b6c79fba60cd2b4f6f8133a2e3ad604e95",
+        "matches": true
+      },
+      {
+        "family": "citations",
+        "path": "carr-library/src/carr_library/research/bibtex_import.py",
+        "reported_sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+        "current_git_blob": "48d656d3fe5a7d2a6f56483413252e0ad8e3459f",
+        "expected_sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+        "matches": true
+      },
+      {
+        "family": "citations",
+        "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+        "reported_sha256": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+        "current_git_blob": "c64b4abdc9fcc758e2678af576b22823346cebce",
+        "expected_sha256": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+        "matches": true
+      },
+      {
+        "family": "citations",
+        "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+        "reported_sha256": "29e64bea7c72b5d9533733c3001e8026b3d2f3a4c2b5164c79e01e7a79d8ea76",
+        "current_git_blob": "3a2962103876a75412bae8a3bbd967c2e45a1fa2",
+        "expected_sha256": "29e64bea7c72b5d9533733c3001e8026b3d2f3a4c2b5164c79e01e7a79d8ea76",
+        "matches": true
+      },
+      {
+        "family": "search_continuation",
+        "path": "carr-library/src/carr_library/application.py",
+        "reported_sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8",
+        "current_git_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+        "expected_sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8",
+        "matches": true
+      },
+      {
+        "family": "search_continuation",
+        "path": "carr-library/src/carr_library/search/pagination.py",
+        "reported_sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071",
+        "current_git_blob": "2441f3f8b4895309467d6e18fbe08152af4d38c5",
+        "expected_sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071",
+        "matches": true
+      },
+      {
+        "family": "search_continuation",
+        "path": "carr-library/src/carr_library/ui/search_paging.py",
+        "reported_sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d",
+        "current_git_blob": "f16b026c0ec71405e4f20e56a311bfd05a65df0d",
+        "expected_sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d",
+        "matches": true
+      },
+      {
+        "family": "search_continuation",
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "reported_sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8",
+        "current_git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+        "expected_sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/model_catalog.py",
+        "reported_sha256": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12",
+        "current_git_blob": "6c8765e3ebb83206903bc74e4fc3751e862056d1",
+        "expected_sha256": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+        "reported_sha256": "0902f074efff5c85023128bebd3502c98b041481adb465716c62c44f7b8597a6",
+        "current_git_blob": "a77d6d5e3042c0f2ddd2b7b5b8831dc6d5e8a79d",
+        "expected_sha256": "0902f074efff5c85023128bebd3502c98b041481adb465716c62c44f7b8597a6",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/managed_ocr.py",
+        "reported_sha256": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477",
+        "current_git_blob": "70388de61362bb959ef9c4f1a10fb729b0764ebb",
+        "expected_sha256": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+        "reported_sha256": "5b3c464080d6ff24e60eb2c7f54f0463c720d16823f69e7707466e3229ddf20d",
+        "current_git_blob": "2e50c806140e0ee13b00091709497d31cbc99778",
+        "expected_sha256": "5b3c464080d6ff24e60eb2c7f54f0463c720d16823f69e7707466e3229ddf20d",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/ocr-model-catalog.json",
+        "reported_sha256": "1e55383fc79da1ce2d72ffca2dcd4b4fb24d69e29cd23425562cc20af7775e0b",
+        "current_git_blob": "620838122518996f48fe07cd888dddfb4eacd36f",
+        "expected_sha256": "1e55383fc79da1ce2d72ffca2dcd4b4fb24d69e29cd23425562cc20af7775e0b",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/TESSDATA_FAST_LICENSE",
+        "reported_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "current_git_blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+        "expected_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/extract/TESSDATA_BEST_LICENSE",
+        "reported_sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+        "current_git_blob": "d9a10c0d8e868ebf8da0b3dc95bb0be634c34bfe",
+        "expected_sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/ui/ocr_model_manager.py",
+        "reported_sha256": "e374e1bc04814d8e89c42aeb7533de780bcdb30a2c42330c8858d8ce9f36b32b",
+        "current_git_blob": "d87272c912134074be2254b0fe34a9dd000783af",
+        "expected_sha256": "e374e1bc04814d8e89c42aeb7533de780bcdb30a2c42330c8858d8ce9f36b32b",
+        "matches": true
+      },
+      {
+        "family": "ocr_model_manager",
+        "path": "carr-library/src/carr_library/__main__.py",
+        "reported_sha256": "f394d62a695cd02008f382851f7ee03922b7f31821581f854021bc6f349cc3aa",
+        "current_git_blob": "df0c144258141fb7768dabf3e9d05e4db9e28974",
+        "expected_sha256": "f394d62a695cd02008f382851f7ee03922b7f31821581f854021bc6f349cc3aa",
+        "matches": true
+      },
+      {
+        "family": "shell_classification",
+        "path": "carr-library/src/carr_library/security/standard_windows.py",
+        "reported_sha256": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a",
+        "current_git_blob": "7880fb12b71726e76a6dd9ebdae11fdbff99ee93",
+        "expected_sha256": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a",
+        "matches": true
+      },
+      {
+        "family": "shell_classification",
+        "path": "carr-library/packaging/probe_standard_update_windows.py",
+        "reported_sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e",
+        "current_git_blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+        "expected_sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e",
+        "matches": true
+      },
+      {
+        "family": "shell_classification",
+        "path": "carr-library/scripts/qualify_standard_library.ps1",
+        "reported_sha256": "dd0bebfdfd8ceee2eb082c2663d58c6da4eaf0f9912c638df5d66c0c0a4ac04a",
+        "current_git_blob": "1a4417a3c40e50033d5eb40bb3ed6db1bac3d962",
+        "expected_sha256": "dd0bebfdfd8ceee2eb082c2663d58c6da4eaf0f9912c638df5d66c0c0a4ac04a",
+        "matches": true
+      },
+      {
+        "family": "shell_classification",
+        "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+        "reported_sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54",
+        "current_git_blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+        "expected_sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54",
+        "matches": true
+      }
+    ],
+    "emitted_hash_comparison_count": 26,
+    "unique_emitted_source_files": 25
+  },
+  "runtime": {
+    "receipt": {
+      "raw_line": 1453,
+      "timestamp": "2026-11-28T10:31:17.5749564Z",
+      "value": {
+        "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+        "windows": "Windows-10-10.0.20348-SP0",
+        "sqlite": "3.45.1",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    "production_pins": {
+      "defusedxml": "0.7.1",
+      "annotated-doc": "0.0.7",
+      "annotated-types": "0.8.0",
+      "anyio": "4.16.0",
+      "certifi": "2026.11.20",
+      "charset-normalizer": "3.5.3",
+      "colorama": "0.4.6",
+      "fastembed": "0.9.1",
+      "filelock": "3.29.0",
+      "flatbuffers": "25.12.19",
+      "fsspec": "2026.9.0",
+      "h11": "0.16.0",
+      "hf-xet": "1.8.0",
+      "httpcore": "1.0.9",
+      "httpx": "0.28.1",
+      "huggingface-hub": "1.16.1",
+      "idna": "3.20",
+      "loguru": "0.7.3",
+      "lxml": "6.1.3",
+      "markdown-it-py": "4.3.0",
+      "mdurl": "0.1.2",
+      "mmh3": "5.3.1",
+      "numpy": "2.3.5",
+      "onnxruntime": "1.32.0",
+      "packaging": "26.4",
+      "pillow": "13.0.0",
+      "platformdirs": "4.10.0",
+      "protobuf": "7.36.2",
+      "py-rust-stemmers": "0.1.8",
+      "pydantic": "2.14.4",
+      "pydantic-core": "2.50.5",
+      "pygments": "2.21.0",
+      "pypdf": "7.1.1",
+      "pypdfium2": "5.13.0",
+      "python-docx": "1.2.0",
+      "pyyaml": "6.0.4",
+      "requests": "2.34.2",
+      "rich": "15.0.0",
+      "shellingham": "1.5.4",
+      "tokenizers": "0.23.3",
+      "tqdm": "4.70.1",
+      "typer": "0.29.3",
+      "typing-extensions": "4.16.0",
+      "typing-inspection": "0.4.5",
+      "urllib3": "2.8.0",
+      "win32-setctime": "1.2.1",
+      "wxpython": "4.2.4",
+      "bibtexparser": "2.1.0",
+      "pylatexenc": "2.11",
+      "quickjs-ng": "0.18.0.2",
+      "cryptography": "50.0.2",
+      "cffi": "2.1.1",
+      "pycparser": "3.12",
+      "tuf": "7.0.1",
+      "securesystemslib": "1.6.0",
+      "pywin32": "312"
+    },
+    "production_pin_count": 56,
+    "pin_equality": "Complete printed name/version map equals the exact current integrated lock.",
+    "pywin32_abi": {
+      "raw_line": 1988,
+      "timestamp": "2026-11-28T10:31:46.1025880Z",
+      "value": {
+        "status": "PASS",
+        "pinned_pywin32_native_abi": "PASS",
+        "actual_office": "NOT_RUN"
+      }
+    },
+    "platform_scope": "Native Windows x64 / CPython 3.11.9 / wxPython 4.2.4; no manual NVDA or physical audio claim."
+  },
+  "early_prerequisites": {
+    "syntax": {
+      "raw_line": 1291,
+      "timestamp": "2026-11-28T10:30:43.9923725Z",
+      "value": {
+        "status": "PASS",
+        "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+        "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+        "syntax_files": 1118,
+        "failures": {},
+        "entrypoints": {
+          "scripts:research-library": "carr_library.__main__:main",
+          "scripts:research-library-bibliography": "carr_library.bibliography_cli:main",
+          "scripts:research-library-translate": "carr_library.translation_cli:main",
+          "scripts:research-library-ocr-models": "carr_library.extract.ocr_model_catalog:main",
+          "scripts:research-library-trust": "carr_library.security.__main__:main",
+          "gui-scripts:research-library-desktop": "carr_library.__main__:main"
+        }
+      }
+    },
+    "installed_self_test": {
+      "raw_line": 1623,
+      "timestamp": "2026-11-28T10:31:21.6750986Z",
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "original import",
+          "scoped search",
+          "exact quotation",
+          "workspace isolation",
+          "saved research",
+          "reopen persistence",
+          "academic reading list",
+          "bibliography export",
+          "backup and restore"
+        ],
+        "native_gui": "NOT_RUN",
+        "windows_nvda": "NOT_RUN"
+      }
+    },
+    "installed_offline_ocr_catalogue": {
+      "raw_line": 1650,
+      "timestamp": "2026-11-28T10:31:22.4438477Z",
+      "value": {
+        "status": "PASS",
+        "installed_package": true,
+        "platform": "win32",
+        "catalogue_models": {
+          "fast": 162,
+          "best": 162
+        },
+        "module_cli": "PASS",
+        "real_bundled_model_preparation": "NOT_REQUESTED",
+        "nvda": "NOT_RUN"
+      }
+    },
+    "source_suite_receipts": [
+      {
+        "raw_line": 1791,
+        "timestamp": "2026-11-28T10:31:30.0839012Z",
+        "status": "PASS",
+        "selector": "tests/e2e/test_semantic_fallback_status.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 1831,
+        "timestamp": "2026-11-28T10:31:31.0978726Z",
+        "status": "PASS",
+        "selector": "tests/e2e/test_offline_startup.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 2237,
+        "timestamp": "2026-11-28T10:34:53.8199359Z",
+        "status": "PASS",
+        "selector": "tests/extract/test_managed_ocr.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 2259,
+        "timestamp": "2026-11-28T10:35:08.4200268Z",
+        "status": "PASS",
+        "selector": "tests/e2e/test_managed_ocr_import.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 2370,
+        "timestamp": "2026-11-28T10:35:09.6551804Z",
+        "status": "PASS",
+        "selector": "tests/ui/test_ocr_selection.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 2756,
+        "timestamp": "2026-11-28T10:35:12.0694723Z",
+        "status": "PASS",
+        "selector": "tests/extract/test_ocr_languages.py",
+        "passed": 108,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 2922,
+        "timestamp": "2026-11-28T10:35:49.8279535Z",
+        "status": "PASS",
+        "selector": "tests/extract/test_ocr_runtime.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 2954,
+        "timestamp": "2026-11-28T10:36:03.9003135Z",
+        "status": "PASS",
+        "selector": "tests/e2e/test_pdf_review_cancellation.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 3186,
+        "timestamp": "2026-11-28T10:36:07.5920133Z",
+        "status": "PASS",
+        "selector": "tests/packaging/test_delivery_archive.py",
+        "passed": 69,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "raw_line": 3407,
+        "timestamp": "2026-11-28T10:36:30.6570157Z",
+        "status": "PASS",
+        "selector": "tests/loopback/test_local_planning.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "source_suite_count": 10,
+    "reported_passed": 323,
+    "reported_failed": 0,
+    "reported_skipped": 0,
+    "source_suite_limit": "These ten required prerequisite suites were read from their complete ci_check receipts. This is not the integrated 451-selector source run and is not an independent read of archived raw JUnit.",
+    "shell_classification": {
+      "raw_line": 2016,
+      "timestamp": "2026-11-28T10:33:02.6566169Z",
+      "value": {
+        "checks": [
+          "absent-pathext-refuses-before-python",
+          "fixed-exe-runs-absolute-isolated-python-in-pipeline",
+          "ambient-extension-poison-cannot-change-fixed-environment"
+        ],
+        "failed": 0,
+        "fixed_pathext": ".EXE",
+        "fixed_shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "fixed_shell_sha256": "38f4384643b3fa0de714d2367b712c2e0fa1c89e2cfd131ae6b831ad962b1033",
+        "fixture_cleanup": "PASS",
+        "host_environment_unchanged": true,
+        "installed_library_50": "NOT_RUN_BY_THIS_SMOKE",
+        "invoke_logged_sha256": "1cf185bad3849f9c956a34e19b8da14d043cc47d0b0bdbc9af39855e8de3dd60",
+        "managed_upgrade_15": "NOT_RUN_BY_THIS_SMOKE",
+        "observations": [
+          {
+            "mode": "absent",
+            "output_bytes": 494,
+            "output_file": "standard-qualification-shell-absent.log",
+            "output_sha256": "fde9e9180387b9251c218a77129d96e380a964de3f5fbd7efff12499097f57a9",
+            "python_started": false,
+            "returncode": 1,
+            "shell": {
+              "pathext": ".CPL",
+              "version": "5.1.20348.5773"
+            }
+          },
+          {
+            "child": {
+              "isolated": true,
+              "no_bytecode": true,
+              "os": "nt",
+              "pid": 4300,
+              "python": "D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+              "status": "PASS"
+            },
+            "mode": "fixed",
+            "output_bytes": 235,
+            "output_file": "standard-qualification-shell-fixed.log",
+            "output_sha256": "dce3be66920061ed9d756771fca786d808ef527b6870df708407f00fcd0bb0ce",
+            "python_started": true,
+            "returncode": 0,
+            "shell": {
+              "pathext": ".EXE;.CPL",
+              "version": "5.1.20348.5773"
+            },
+            "tee_sha256": "de4d8125fa6cf7a0cad865bb98e5c53318b9a81907d94401adf90143adfda980"
+          },
+          {
+            "child": {
+              "isolated": true,
+              "no_bytecode": true,
+              "os": "nt",
+              "pid": 3160,
+              "python": "D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+              "status": "PASS"
+            },
+            "mode": "poisoned",
+            "output_bytes": 235,
+            "output_file": "standard-qualification-shell-poisoned.log",
+            "output_sha256": "d16ac127bda9742a8b7c077e6245a7cc3cf1148ea1f5e591f56870ccad2ea297",
+            "python_started": true,
+            "returncode": 0,
+            "shell": {
+              "pathext": ".EXE;.CPL",
+              "version": "5.1.20348.5773"
+            },
+            "tee_sha256": "ef1ddc750ed063d107a63648a3861a01bd7e791414c05e8c17a458150b07dff9"
+          }
+        ],
+        "observed_fixed_pathext": ".EXE;.CPL",
+        "owned_process_family": true,
+        "passed": 3,
+        "python": "D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+        "python_sha256": "21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
+        "schema": "carr-standard-qualification-shell/1",
+        "skipped": 0,
+        "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+        "source_sha256": {
+          "installed/security/standard_windows.py": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a",
+          "packaging/probe_standard_update_windows.py": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e",
+          "scripts/qualify_standard_library.ps1": "dd0bebfdfd8ceee2eb082c2663d58c6da4eaf0f9912c638df5d66c0c0a4ac04a",
+          "scripts/standard_qualification_shell_acceptance.py": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54"
+        },
+        "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+        "status": "PASS"
+      }
+    },
+    "ffmpeg_runtime": {
+      "raw_line": 3312,
+      "status": "PASS",
+      "version": "9.1",
+      "archive_sha256": "f9a83be8f97b8989a223a15e4af234accd0842bacf7c126af5a3aae759785e48",
+      "archive_url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-full_build.zip",
+      "source_commit": "74e4393595cf2b5857f0da925c4e0dd74ea306e5",
+      "distribution": "private personal-use package",
+      "limit": "Producer verification receipt only; no retained binary/source archive was independently read, and no redistribution or production release clearance is inferred."
+    }
+  },
+  "earlier_native_receipts": {
+    "academic": {
+      "receipt": {
+        "raw_line": 1726,
+        "timestamp": "2026-11-28T10:31:25.3490382Z",
+        "value": {
+          "checks": 40,
+          "external_viewer": "recording callback only",
+          "installed_ui_sha256": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+          "manual_keyboard": "NOT_RUN",
+          "native_file_pickers": "NOT_RUN",
+          "nvda": "NOT_RUN",
+          "platform": "Windows",
+          "result": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        }
+      },
+      "raw_label_counter": {
+        "academic library has its keyboard shortcut": 1,
+        "academic operations preserve retained original bytes and saved source evidence": 1,
+        "academic UI comes from the installed package": 1,
+        "archived references leave the default native results": 1,
+        "closing the academic modal preserves the parent notebook, scope and draft": 1,
+        "declining discard keeps the native editor and draft": 1,
+        "duplicate suggestions retain both references and explain a reason": 1,
+        "explicit personal-note export includes the requested notes": 1,
+        "keyboard focus can return to the retained native research draft": 1,
+        "linked-document action passes a verified viewing copy to the launcher callback": 1,
+        "missing native selection does not copy an arbitrary last reference": 1,
+        "native academic filters have readable names": 1,
+        "native archive view exposes a restore action for the correct reference": 1,
+        "native create saved real metadata and reading state": 1,
+        "native detail view displays the selected saved reference": 1,
+        "native edit persists its explicit reading choices": 1,
+        "native export action excludes private notes by default": 1,
+        "native export action exports all active references despite visible filters": 1,
+        "native filters use real scoped reading and tag queries": 1,
+        "native first page reports more results without hiding them": 1,
+        "native import details correspond to the selected entry": 1,
+        "native import preview does not preselect any reference": 1,
+        "native modal action returned its expected result": 4,
+        "native next page reaches the remaining references exactly once": 1,
+        "native previous page returns to the same records": 1,
+        "native reference details are read only": 1,
+        "native reference editor has separate bibliography and reading pages": 1,
+        "native reference list accepts actual keyboard focus": 1,
+        "normal desktop startup visibly exposes named citation processor attribution": 1,
+        "only the explicitly checked import was saved": 1,
+        "real desktop exposes the Academic menu": 1,
+        "restored reference returns with active metadata": 1,
+        "stale native edit cannot overwrite saved notes": 1,
+        "stale native form keeps its draft and exposes the conflict": 1,
+        "validation failure focuses actual native status": 1,
+        "validation failure preserves typed notes and invalid field": 1,
+        "wx uses real native Windows controls": 1
+      },
+      "raw_occurrences": 40,
+      "provenance": "Installed academic UI hash independently equals current source; external viewer is a recording callback and native file pickers/manual keyboard/NVDA remain NOT_RUN."
+    },
+    "advanced_query": {
+      "receipt": {
+        "raw_line": 1750,
+        "timestamp": "2026-11-28T10:31:28.7601812Z",
+        "value": {
+          "status": "PASS",
+          "platform": "Windows",
+          "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+          "native_runtime_active": false,
+          "windows_nvda": "NOT_RUN",
+          "checks": [
+            "real TXT imports and separate library",
+            "named native dialog fields",
+            "keyboard Tab and Shift+Tab",
+            "native readable Help and focus return",
+            "negative-only validation and status focus",
+            "reviewable Build preview",
+            "keyboard Tab and Shift+Tab through readonly preview and status",
+            "editing invalidates Use",
+            "Cancel preserves query and results",
+            "All/Any/Exclude/NEAR Use updates advanced mode",
+            "stale results cleared",
+            "query focus returned",
+            "actual asynchronous advanced Enter search",
+            "unordered nearby match and excluded/distant sources rejected",
+            "workspace isolation",
+            "exact source quotation",
+            "actual clipboard copy",
+            "controls restored and readable status focus"
+          ],
+          "modules_sha256": {
+            "desktop_app": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17",
+            "query_builder": "ada882820cd043b4a05027e1835f722afdff283700c4110380d3339a21144894",
+            "advanced": "58d8133499b7dd95bcdb408f4109bb7d0c6bc9430a6fd317f5556055c353225a"
+          }
+        }
+      },
+      "provenance": "Installed-mode isolated invocation with no source override; three reported module hashes independently equal current source. The 18 check names come from the terminal receipt; this probe does not print separate PASS labels."
+    },
+    "citations": {
+      "receipt": {
+        "raw_line": 3614,
+        "timestamp": "2026-11-28T10:36:38.1486591Z",
+        "value": {
+          "checks": 108,
+          "custom_style_file_choice": "controlled path only",
+          "export_file_choice": "controlled temporary paths only",
+          "installed_modules": {
+            "carr_library.citations.bibliography_workbench": "910a1590945a7602e57957c70cbf887d14d3b4177b7ba08d3e580d03d9afda70",
+            "carr_library.citations.csl": "d5a7cff21c9b2cd44628ff2c66b3c2b6c79fba60cd2b4f6f8133a2e3ad604e95",
+            "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+            "carr_library.ui.academic_library_dialog": "2fec97026863324983c3b7462bc754820c99ecf05e020d250ddc46341241fe3a",
+            "carr_library.ui.citation_styles_dialog": "29e64bea7c72b5d9533733c3001e8026b3d2f3a4c2b5164c79e01e7a79d8ea76"
+          },
+          "installer": "NOT_RUN",
+          "manual_keyboard": "NOT_RUN",
+          "native_clipboard": "PASS",
+          "native_custom_style": "PASS",
+          "native_export_format": "PASS",
+          "native_file_pickers": "NOT_RUN",
+          "native_keyboard": "PASS",
+          "native_overwrite_accessible_focus": "NOT_RUN",
+          "native_overwrite_confirmation": "PASS",
+          "nvda": "NOT_RUN",
+          "platform": "Windows-10-10.0.20348-SP0",
+          "python": "3.11.9",
+          "result": "PASS",
+          "service_exports": [
+            "text",
+            "html",
+            "docx"
+          ],
+          "style": "harvard",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        }
+      },
+      "raw_label_counter": {
+        "a cancelled callback cannot publish a preview after the window closes": 1,
+        "a preview cannot be copied through another library controller": 1,
+        "all bibliography operations stayed offline": 1,
+        "all feature modules come from this environment site-packages": 1,
+        "all-active scope excludes archived and foreign references and private notes": 1,
+        "async formatting disables changing options while keeping Close available": 5,
+        "async validation failure is focused and leaves no publishable preview": 1,
+        "bibliography work preserves retained originals and exact saved source evidence": 1,
+        "BibTeX preview resolves safe macros and Unicode without importing": 1,
+        "cancelled export creates no destination": 1,
+        "cancelled export reports cancellation": 1,
+        "changed metadata also prevents service export": 1,
+        "changed metadata prevents native clipboard replacement and focuses the reason": 1,
+        "citation controls have explicit accessible names and read-only results": 1,
+        "completed preview is readable, focused and enables publication actions": 4,
+        "copy and export require a completed preview": 1,
+        "create-only export refuses an existing destination": 1,
+        "custom export preserves the captured style after its file changes": 1,
+        "default No declines without queuing work or changing the selected file": 1,
+        "Escape closes the native dialog and cancels its queued real worker job": 1,
+        "explicit personal names format while protected corporate names remain literal": 1,
+        "export format uses the real native modal list and original choices": 4,
+        "installed service exports an editable Word bibliography": 1,
+        "installed service exports exact UTF-8 plain text": 1,
+        "installed service exports inert self-contained HTML": 1,
+        "isolated installed CPython 3.11 x64 is running": 1,
+        "native action button is keyboard reachable": 20,
+        "native bibliography button copies exactly the current formatted text": 1,
+        "native BibTeX details expose key provenance and unsupported metadata": 1,
+        "native BibTeX import keeps an application identity and source key provenance": 1,
+        "native BibTeX review starts with no selected imports": 1,
+        "native citation button copies exactly the current citation examples": 1,
+        "native custom-style action requests its explicit local picker": 2,
+        "native custom-style load failure preserves the valid snapshot and preview": 1,
+        "native export action requests only its explicit save picker": 4,
+        "native export runs in the actual worker with publication controls disabled": 3,
+        "native export scenarios dispose controlled pickers without replacing real dialogs": 1,
+        "native format selection matches the requested export": 4,
+        "native keyboard selection returns from the custom style to Harvard": 1,
+        "native preview uses the actual custom CSL engine and both active references": 1,
+        "overwrite confirmation is the owned foreground native modal dialog": 3,
+        "real format selection and native export publish a fresh HTML file through the worker": 1,
+        "real formatting executes outside the native UI thread": 5,
+        "real local style loading captures exact bytes and updates the native selector": 1,
+        "real Shift+Tab and Enter choose Yes and submit exactly one export worker": 2,
+        "real Shift+Tab returns from reference scope to citation style": 1,
+        "real Tab traverses from citation style to reference scope": 1,
+        "real Yes after a competing save fails closed and preserves the newer bytes": 1,
+        "real Yes replaces only the unchanged approved destination": 1,
+        "refused create-only export preserves the existing bytes": 1,
+        "rejected stale export leaves no output": 1,
+        "selected-reference preview preserves literal names and excludes other records": 1,
+        "Space selects exactly the intended native import row": 1,
+        "the competing save occurs while the actual overwrite question remains open": 1,
+        "the controlled file choices have both been disposed": 1,
+        "the native new-export scenario starts with an absent destination": 1,
+        "the pinned bibliography and native dependencies are installed": 1,
+        "the real format dialog exposes its native OK button": 4,
+        "Word bibliography contains no external relationships": 1,
+        "wx uses native Windows controls": 1
+      },
+      "raw_occurrences": 108,
+      "provenance": "Five reported installed module hashes independently match current source. Controlled paths, external/manual/NVDA limits remain as recorded."
+    },
+    "basic_translation": {
+      "receipt": {
+        "raw_line": 3671,
+        "timestamp": "2026-11-28T10:36:39.2646514Z",
+        "value": {
+          "schema": "carr-native-translation-smoke/1",
+          "status": "PASS",
+          "installed_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\providers.py",
+          "native_controls": true,
+          "synthetic_provider_requests": 2,
+          "exact_reviewed_pair": "en->uk",
+          "source_immutable": true,
+          "quotation_authority": false,
+          "derivative_hashes": {
+            "bilingual.txt": "f32a6b7353b79cfe49703cf5631478e903d09b7216672ed1f7afdd7bf2522cd9",
+            "original.txt": "12a7bc3776e8e41b194c9140aa53191ae4b1152d8763c0e44ef25b9834e1e5de",
+            "translated.txt": "b690c8de087fca9f41854e6d67fecb7232624dcdad4aec8c0552b5bed2b63066",
+            "translation.narration.json": "c9dabdc211968ef9106680e06123ac9961f549726366c541e490326287428da0"
+          },
+          "approval_and_folder_picker": "injected explicit synthetic decisions",
+          "actual_google_api": "NOT_RUN",
+          "actual_credential_vault": "NOT_RUN",
+          "nvda": "NOT_RUN"
+        }
+      },
+      "source_assertion_sites": 14,
+      "diagnostics": [
+        {
+          "raw_line": 3641,
+          "timestamp": "2026-11-28T10:36:38.6417141Z",
+          "value": {
+            "elapsed_seconds": 0,
+            "event": 1,
+            "isolated": true,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "starting",
+            "windows": true
+          }
+        },
+        {
+          "raw_line": 3642,
+          "timestamp": "2026-11-28T10:36:38.7538835Z",
+          "value": {
+            "elapsed_seconds": 0.125,
+            "event": 2,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "installed-modules-imported"
+          }
+        },
+        {
+          "raw_line": 3643,
+          "timestamp": "2026-11-28T10:36:38.7557514Z",
+          "value": {
+            "elapsed_seconds": 0.125,
+            "event": 3,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-application-created"
+          }
+        },
+        {
+          "raw_line": 3644,
+          "timestamp": "2026-11-28T10:36:38.7909656Z",
+          "value": {
+            "elapsed_seconds": 0.156,
+            "event": 4,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "service-created"
+          }
+        },
+        {
+          "raw_line": 3645,
+          "timestamp": "2026-11-28T10:36:38.8141532Z",
+          "value": {
+            "elapsed_seconds": 0.188,
+            "event": 5,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "entering-application-loop"
+          }
+        },
+        {
+          "raw_line": 3646,
+          "timestamp": "2026-11-28T10:36:38.8146843Z",
+          "value": {
+            "elapsed_seconds": 0.188,
+            "event": 6,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "opening-owned-modal"
+          }
+        },
+        {
+          "raw_line": 3647,
+          "timestamp": "2026-11-28T10:36:38.8716195Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.25,
+            "event": 7,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-0",
+            "synthetic_requests": 0,
+            "working": false
+          }
+        },
+        {
+          "raw_line": 3648,
+          "timestamp": "2026-11-28T10:36:38.8842260Z",
+          "value": {
+            "elapsed_seconds": 0.25,
+            "event": 8,
+            "operation": "Fetching supported translation languages",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-starting"
+          }
+        },
+        {
+          "raw_line": 3649,
+          "timestamp": "2026-11-28T10:36:38.9324695Z",
+          "value": {
+            "closing": false,
+            "elapsed_seconds": 0.297,
+            "event": 9,
+            "operation": "Fetching supported translation languages",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-callback"
+          }
+        },
+        {
+          "raw_line": 3650,
+          "timestamp": "2026-11-28T10:36:38.9328909Z",
+          "value": {
+            "elapsed_seconds": 0.297,
+            "event": 10,
+            "operation": "Fetching supported translation languages",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-result-ready"
+          }
+        },
+        {
+          "raw_line": 3651,
+          "timestamp": "2026-11-28T10:36:38.9425919Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.313,
+            "event": 11,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-1",
+            "synthetic_requests": 1,
+            "working": false
+          }
+        },
+        {
+          "raw_line": 3652,
+          "timestamp": "2026-11-28T10:36:38.9973900Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.375,
+            "event": 12,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-2",
+            "synthetic_requests": 1,
+            "working": false
+          }
+        },
+        {
+          "raw_line": 3653,
+          "timestamp": "2026-11-28T10:36:39.0199221Z",
+          "value": {
+            "elapsed_seconds": 0.391,
+            "event": 13,
+            "operation": "Translating explicitly approved text",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-starting"
+          }
+        },
+        {
+          "raw_line": 3654,
+          "timestamp": "2026-11-28T10:36:39.0597356Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.438,
+            "event": 14,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-3",
+            "synthetic_requests": 1,
+            "working": true
+          }
+        },
+        {
+          "raw_line": 3655,
+          "timestamp": "2026-11-28T10:36:39.1218795Z",
+          "value": {
+            "closing": false,
+            "elapsed_seconds": 0.5,
+            "event": 15,
+            "operation": "Translating explicitly approved text",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-callback"
+          }
+        },
+        {
+          "raw_line": 3656,
+          "timestamp": "2026-11-28T10:36:39.1221504Z",
+          "value": {
+            "elapsed_seconds": 0.5,
+            "event": 16,
+            "operation": "Translating explicitly approved text",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-result-ready"
+          }
+        },
+        {
+          "raw_line": 3657,
+          "timestamp": "2026-11-28T10:36:39.1376296Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.5,
+            "event": 17,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-3",
+            "synthetic_requests": 2,
+            "working": false
+          }
+        },
+        {
+          "raw_line": 3658,
+          "timestamp": "2026-11-28T10:36:39.1524774Z",
+          "value": {
+            "elapsed_seconds": 0.516,
+            "event": 18,
+            "operation": "Exporting translation derivative",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-starting"
+          }
+        },
+        {
+          "raw_line": 3659,
+          "timestamp": "2026-11-28T10:36:39.1845954Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.563,
+            "event": 19,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-4",
+            "synthetic_requests": 2,
+            "working": true
+          }
+        },
+        {
+          "raw_line": 3660,
+          "timestamp": "2026-11-28T10:36:39.1986083Z",
+          "value": {
+            "closing": false,
+            "elapsed_seconds": 0.563,
+            "event": 20,
+            "operation": "Exporting translation derivative",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-callback"
+          }
+        },
+        {
+          "raw_line": 3661,
+          "timestamp": "2026-11-28T10:36:39.1988725Z",
+          "value": {
+            "elapsed_seconds": 0.563,
+            "event": 21,
+            "operation": "Exporting translation derivative",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-result-ready"
+          }
+        },
+        {
+          "raw_line": 3662,
+          "timestamp": "2026-11-28T10:36:39.2478667Z",
+          "value": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.625,
+            "event": 22,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-4",
+            "synthetic_requests": 2,
+            "working": false
+          }
+        },
+        {
+          "raw_line": 3663,
+          "timestamp": "2026-11-28T10:36:39.2535414Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 23,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-controls-complete",
+            "synthetic_requests": 2
+          }
+        },
+        {
+          "raw_line": 3664,
+          "timestamp": "2026-11-28T10:36:39.2538923Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 24,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "owned-modal-returned"
+          }
+        },
+        {
+          "raw_line": 3665,
+          "timestamp": "2026-11-28T10:36:39.2592243Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 25,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "application-loop-returned"
+          }
+        },
+        {
+          "raw_line": 3666,
+          "timestamp": "2026-11-28T10:36:39.2594645Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 26,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "settling-native-worker"
+          }
+        },
+        {
+          "raw_line": 3667,
+          "timestamp": "2026-11-28T10:36:39.2597252Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 27,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-worker-settled"
+          }
+        },
+        {
+          "raw_line": 3668,
+          "timestamp": "2026-11-28T10:36:39.2599404Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 28,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-frame-cleaned"
+          }
+        },
+        {
+          "raw_line": 3669,
+          "timestamp": "2026-11-28T10:36:39.2627146Z",
+          "value": {
+            "elapsed_seconds": 0.625,
+            "event": 29,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "temporary-workspace-cleaned"
+          }
+        },
+        {
+          "raw_line": 3670,
+          "timestamp": "2026-11-28T10:36:39.2631644Z",
+          "value": {
+            "elapsed_seconds": 0.641,
+            "event": 30,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "receipt-written"
+          }
+        }
+      ],
+      "diagnostic_count": 30,
+      "provenance": "Installed providers origin is recorded. Exact synthetic original text hash is independently checked; other derivative hashes are recorded identities, not rehashed exported bytes. Google API, real credential vault and NVDA remain NOT_RUN."
+    },
+    "advanced_translation": {
+      "receipt": {
+        "raw_line": 3716,
+        "timestamp": "2026-11-28T10:36:40.4468668Z",
+        "value": {
+          "schema": "carr-native-translation-v3-smoke/1",
+          "status": "PASS",
+          "installed_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\providers.py",
+          "native_controls": true,
+          "synthetic_provider_requests": 2,
+          "exact_reviewed_pair": "en->uk",
+          "source_immutable": true,
+          "quotation_authority": false,
+          "derivative_hashes": {
+            "bilingual.txt": "09efa672e7712ea19ea58eaf538d836d047c0ec339c0e5eac6925bf6ef708d3d",
+            "original.txt": "b44b2e3d845324b0316d94bb43e1d968c00f63f1971106211e012cebecab7bf1",
+            "translated.txt": "117baa0a361e452b5ecd7f0324c3747038b202ca53f07111c43d84c851eb2af2",
+            "translation.narration.json": "57d2239b23a1947401b14fec3ad9b7bc84aefc51f18c880994bb52d915f709b0"
+          },
+          "approval_and_folder_picker": "injected explicit synthetic decisions",
+          "actual_google_api": "NOT_RUN",
+          "actual_credential_vault": "PASS",
+          "explicit_advanced_model": true,
+          "glossary_verified": true,
+          "directional_languages": true,
+          "nvda": "NOT_RUN",
+          "vault_cleanup": "PASS",
+          "runtime_cleanup": "PASS",
+          "native_event_loop": "owned-modal-unwound"
+        }
+      },
+      "workflow_wrapper": {
+        "raw_line": 3717,
+        "timestamp": "2026-11-28T10:36:40.5321113Z",
+        "value": {
+          "actual_credential_vault": "PASS",
+          "actual_google_api": "NOT_RUN",
+          "approval_and_folder_picker": "injected explicit synthetic decisions",
+          "derivative_hashes": {
+            "bilingual.txt": "09efa672e7712ea19ea58eaf538d836d047c0ec339c0e5eac6925bf6ef708d3d",
+            "original.txt": "b44b2e3d845324b0316d94bb43e1d968c00f63f1971106211e012cebecab7bf1",
+            "translated.txt": "117baa0a361e452b5ecd7f0324c3747038b202ca53f07111c43d84c851eb2af2",
+            "translation.narration.json": "57d2239b23a1947401b14fec3ad9b7bc84aefc51f18c880994bb52d915f709b0"
+          },
+          "directional_languages": true,
+          "exact_reviewed_pair": "en->uk",
+          "explicit_advanced_model": true,
+          "glossary_verified": true,
+          "installed_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\providers.py",
+          "installed_package": true,
+          "native_controls": true,
+          "native_event_loop": "owned-modal-unwound",
+          "nvda": "NOT_RUN",
+          "quotation_authority": false,
+          "runtime_cleanup": "PASS",
+          "schema": "carr-native-translation-v3-smoke/1",
+          "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+          "source_immutable": true,
+          "status": "PASS",
+          "synthetic_provider_requests": 2,
+          "vault_cleanup": "PASS"
+        }
+      },
+      "provenance": "Wrapper differs only by current source_commit and installed_package=true. Actual credential-vault/runtime cleanup is PASS; synthetic provider requests are 2; Google API and NVDA remain NOT_RUN. Exported bytes were not independently read."
+    },
+    "search_continuation": {
+      "receipt": {
+        "raw_line": 3788,
+        "timestamp": "2026-11-28T10:36:48.2538324Z",
+        "value": {
+          "result": "PASS",
+          "checks": [
+            "desktop-navigation-accessible-and-initially-disabled",
+            "desktop-first-page-bounded-100",
+            "desktop-first-page-accessible-counts",
+            "desktop-next-native-key-reaches-final-21",
+            "desktop-forward-results-have-no-overlap",
+            "desktop-old-page-source-handle-withdrawn",
+            "desktop-previous-native-key-reruns-first-page",
+            "desktop-previous-allocates-fresh-source-handles",
+            "desktop-native-copy-rechecks-exact-source",
+            "center-native-space-selects-explicit-second-library",
+            "center-navigation-accessible",
+            "center-first-page-bounded-10",
+            "center-accessible-counts-and-batch-order",
+            "center-next-native-key-reaches-page-two",
+            "center-next-results-have-no-overlap",
+            "center-previous-native-key-reruns-first-page",
+            "center-old-page-source-handle-withdrawn",
+            "center-native-copy-rechecks-exact-source",
+            "center-query-change-withdraws-results-and-navigation",
+            "center-escape-preserves-host-library",
+            "synthetic-original-bytes-unchanged"
+          ],
+          "actual_native_keys": true,
+          "actual_source_copy": true,
+          "synthetic_corpus": true,
+          "nvda": "NOT_RUN",
+          "real_corpus_benchmark": "NOT_RUN",
+          "platform": "Windows-10-10.0.20348-SP0",
+          "python": "3.11.9",
+          "module_origins": {
+            "carr_library.application": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\application.py",
+              "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+            },
+            "carr_library.search.pagination": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\search\\pagination.py",
+              "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071"
+            },
+            "carr_library.ui.search_paging": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\search_paging.py",
+              "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d"
+            },
+            "carr_library.ui.federated_search": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\federated_search.py",
+              "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+            }
+          }
+        }
+      },
+      "workflow_wrapper": {
+        "raw_line": 3789,
+        "timestamp": "2026-11-28T10:36:48.3890784Z",
+        "value": {
+          "actual_native_keys": true,
+          "actual_source_copy": true,
+          "checks": [
+            "desktop-navigation-accessible-and-initially-disabled",
+            "desktop-first-page-bounded-100",
+            "desktop-first-page-accessible-counts",
+            "desktop-next-native-key-reaches-final-21",
+            "desktop-forward-results-have-no-overlap",
+            "desktop-old-page-source-handle-withdrawn",
+            "desktop-previous-native-key-reruns-first-page",
+            "desktop-previous-allocates-fresh-source-handles",
+            "desktop-native-copy-rechecks-exact-source",
+            "center-native-space-selects-explicit-second-library",
+            "center-navigation-accessible",
+            "center-first-page-bounded-10",
+            "center-accessible-counts-and-batch-order",
+            "center-next-native-key-reaches-page-two",
+            "center-next-results-have-no-overlap",
+            "center-previous-native-key-reruns-first-page",
+            "center-old-page-source-handle-withdrawn",
+            "center-native-copy-rechecks-exact-source",
+            "center-query-change-withdraws-results-and-navigation",
+            "center-escape-preserves-host-library",
+            "synthetic-original-bytes-unchanged"
+          ],
+          "installed_package": true,
+          "module_origins": {
+            "carr_library.application": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\application.py",
+              "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+            },
+            "carr_library.search.pagination": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\search\\pagination.py",
+              "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071"
+            },
+            "carr_library.ui.federated_search": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\federated_search.py",
+              "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+            },
+            "carr_library.ui.search_paging": {
+              "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\search_paging.py",
+              "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d"
+            }
+          },
+          "nvda": "NOT_RUN",
+          "platform": "Windows-10-10.0.20348-SP0",
+          "python": "3.11.9",
+          "real_corpus_benchmark": "NOT_RUN",
+          "result": "PASS",
+          "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+          "synthetic_corpus": true
+        }
+      },
+      "raw_label_counter": {
+        "center-accessible-counts-and-batch-order": 1,
+        "center-escape-preserves-host-library": 1,
+        "center-first-page-bounded-10": 1,
+        "center-native-copy-rechecks-exact-source": 1,
+        "center-native-space-selects-explicit-second-library": 1,
+        "center-navigation-accessible": 1,
+        "center-next-native-key-reaches-page-two": 1,
+        "center-next-results-have-no-overlap": 1,
+        "center-old-page-source-handle-withdrawn": 1,
+        "center-previous-native-key-reruns-first-page": 1,
+        "center-query-change-withdraws-results-and-navigation": 1,
+        "desktop-first-page-accessible-counts": 1,
+        "desktop-first-page-bounded-100": 1,
+        "desktop-forward-results-have-no-overlap": 1,
+        "desktop-native-copy-rechecks-exact-source": 1,
+        "desktop-navigation-accessible-and-initially-disabled": 1,
+        "desktop-next-native-key-reaches-final-21": 1,
+        "desktop-old-page-source-handle-withdrawn": 1,
+        "desktop-previous-allocates-fresh-source-handles": 1,
+        "desktop-previous-native-key-reruns-first-page": 1,
+        "synthetic-original-bytes-unchanged": 1
+      },
+      "raw_occurrences": 21,
+      "provenance": "All four installed module origins and hashes agree with the current source. Actual native key/source-copy checks are scoped to the synthetic corpus."
+    },
+    "signed_client": {
+      "receipt": {
+        "raw_line": 3857,
+        "timestamp": "2026-11-28T10:36:51.6444013Z",
+        "value": {
+          "status": "PASS",
+          "checks": [
+            "Actual desktop Help exposes the signed client status",
+            "Native Help event reaches the status action",
+            "Default status is a named native read-only multiline control",
+            "Private default shows perpetual operation and no fake authority actions",
+            "Terms and profile are readable before accepting",
+            "Import requires explicit native checkbox acceptance",
+            "Native acceptance event enables import",
+            "Reviewed signed grant is durably verified",
+            "Configured polling uses an actual running wx.Timer",
+            "Native idle timer holds metadata checks while the frame is working",
+            "Native idle transition verifies signed metadata on the background thread",
+            "Automatic native checks leave payloads and existing signed permission untouched",
+            "Configured update status retains the explicit native repository review action",
+            "Native owner destruction stops the metadata worker",
+            "Native owner destruction stops or destroys the actual timer"
+          ],
+          "nvda": "NOT_RUN",
+          "production_authority": "NOT_CONFIGURED",
+          "production_installer_upgrade": "NOT_RUN",
+          "ui_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+          "polling_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\security\\polling.py"
+        }
+      },
+      "workflow_wrapper": {
+        "raw_line": 3858,
+        "timestamp": "2026-11-28T10:36:51.7595335Z",
+        "value": {
+          "checks": [
+            "Actual desktop Help exposes the signed client status",
+            "Native Help event reaches the status action",
+            "Default status is a named native read-only multiline control",
+            "Private default shows perpetual operation and no fake authority actions",
+            "Terms and profile are readable before accepting",
+            "Import requires explicit native checkbox acceptance",
+            "Native acceptance event enables import",
+            "Reviewed signed grant is durably verified",
+            "Configured polling uses an actual running wx.Timer",
+            "Native idle timer holds metadata checks while the frame is working",
+            "Native idle transition verifies signed metadata on the background thread",
+            "Automatic native checks leave payloads and existing signed permission untouched",
+            "Configured update status retains the explicit native repository review action",
+            "Native owner destruction stops the metadata worker",
+            "Native owner destruction stops or destroys the actual timer"
+          ],
+          "nvda": "NOT_RUN",
+          "polling_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\security\\polling.py",
+          "production_authority": "NOT_CONFIGURED",
+          "production_installer_upgrade": "NOT_RUN",
+          "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+          "status": "PASS",
+          "ui_module": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py"
+        }
+      },
+      "raw_label_counter": {
+        "Actual desktop Help exposes the signed client status": 1,
+        "Automatic native checks leave payloads and existing signed permission untouched": 1,
+        "Configured polling uses an actual running wx.Timer": 1,
+        "Configured update status retains the explicit native repository review action": 1,
+        "Default status is a named native read-only multiline control": 1,
+        "Import requires explicit native checkbox acceptance": 1,
+        "Native acceptance event enables import": 1,
+        "Native Help event reaches the status action": 1,
+        "Native idle timer holds metadata checks while the frame is working": 1,
+        "Native idle transition verifies signed metadata on the background thread": 1,
+        "Native owner destruction stops or destroys the actual timer": 1,
+        "Native owner destruction stops the metadata worker": 1,
+        "Private default shows perpetual operation and no fake authority actions": 1,
+        "Reviewed signed grant is durably verified": 1,
+        "Terms and profile are readable before accepting": 1
+      },
+      "raw_occurrences": 15,
+      "provenance": "Installed UI/polling paths are recorded. This uses a synthetic authority; production authority/installer qualification is not established."
+    },
+    "word": {
+      "receipt": {
+        "raw_line": 3903,
+        "timestamp": "2026-11-28T10:36:52.3264487Z",
+        "value": {
+          "actual_nvda": "NOT_RUN",
+          "actual_office": "NOT_RUN",
+          "check_names": [],
+          "checks": 0,
+          "reason": "Desktop Microsoft Word is not installed/registered.",
+          "schema": "carr-native-word-citations/1",
+          "status": "NOT_RUN"
+        }
+      },
+      "workflow_wrapper": {
+        "raw_line": 3904,
+        "timestamp": "2026-11-28T10:36:52.3845228Z",
+        "value": {
+          "actual_nvda": "NOT_RUN",
+          "actual_office": "NOT_RUN",
+          "check_names": [],
+          "checks": 0,
+          "reason": "Desktop Microsoft Word is not installed/registered.",
+          "schema": "carr-native-word-citations/1",
+          "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+          "status": "NOT_RUN"
+        }
+      },
+      "qualification": "NOT_RUN: desktop Microsoft Word is not installed/registered. A successful workflow step here records unavailability; it is not a Word feature PASS."
+    },
+    "language_evidence": {
+      "receipt": {
+        "raw_line": 3931,
+        "timestamp": "2026-11-28T10:36:54.5203521Z",
+        "value": {
+          "capabilities_per_entry": 22,
+          "catalog_entries": 135,
+          "explicit_background_refresh": "PASS",
+          "installed_voices_enumerated": 7,
+          "native_controls": "PASS",
+          "nvda": "NOT_RUN",
+          "qualified_languages": 0,
+          "registry": "existing Audio Studio adapters",
+          "speech_synthesis": "NOT_RUN",
+          "status": "PASS"
+        }
+      },
+      "qualification": "Native controls and explicit voice refresh passed. The receipt reports 135 catalogue entries, 22 capabilities per entry, 7 enumerated voices and 0 qualified languages; speech synthesis and NVDA are NOT_RUN."
+    }
+  },
+  "import_center": {
+    "focused_step": 28,
+    "copied_main_step": 30,
+    "receipt": {
+      "raw_line": 3960,
+      "timestamp": "2026-11-28T10:36:57.0147895Z",
+      "value": {
+        "status": "PASS",
+        "native_controls": "PASS",
+        "planned_import_search_reopen": "PASS",
+        "nvda": "NOT_RUN"
+      }
+    },
+    "viewports": [
+      {
+        "raw_line": 3958,
+        "value": {
+          "phase": "default",
+          "window": [
+            920,
+            760
+          ],
+          "client": [
+            904,
+            721
+          ],
+          "outer_minimum": [
+            240,
+            284
+          ],
+          "viewport": [
+            887,
+            637
+          ],
+          "content_minimum": [
+            639,
+            673
+          ],
+          "virtual": [
+            887,
+            673
+          ]
+        }
+      },
+      {
+        "raw_line": 3959,
+        "value": {
+          "phase": "minimum",
+          "window": [
+            800,
+            650
+          ],
+          "client": [
+            784,
+            611
+          ],
+          "outer_minimum": [
+            240,
+            284
+          ],
+          "viewport": [
+            767,
+            527
+          ],
+          "content_minimum": [
+            639,
+            673
+          ],
+          "virtual": [
+            767,
+            673
+          ]
+        }
+      }
+    ],
+    "source_assertion_sites": 41,
+    "retained_original_assertion_sites": 23,
+    "added_layout_assertion_sites": 18,
+    "provenance": "Source-native: this probe explicitly inserts the current checkout src path even though it runs under the isolated installed interpreter. Do not label this receipt installed-module qualification.",
+    "geometry_reconciliation": "Both actual default and existing minimum sizes have outer minimum bounds within the client, while the scroll viewport contains virtual content larger than its visible height. The full import/search/reopen flow reaches the unchanged four-field PASS receipt.",
+    "scope": "Actual current native geometry/focus/import/reopen execution. No manual keyboard or NVDA claim."
+  },
+  "reading": {
+    "focused_step": 29,
+    "copied_main_step": 31,
+    "receipt": {
+      "raw_line": 4016,
+      "timestamp": "2026-11-28T10:37:01.3060802Z",
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "productivity and editor load from the installed wheel",
+          "real Windows wx runtime",
+          "File is the first Alt menu",
+          "Options and Reading remain accessible",
+          "native academic, search, reader and save menus compose",
+          "complete native command inventory has unique shortcuts",
+          "main Save exposes Ctrl+S",
+          "native File Save dispatches",
+          "File Save commits the selected evidence note",
+          "shortcut change updates native menu",
+          "shortcut persists after reopening preferences",
+          "conflicting key leaves native menu unchanged",
+          "original text is a native read-only multiline control",
+          "editor permits Tab navigation",
+          "provenance distinguishes a reading copy from quotation evidence",
+          "native button event: &Save project (Ctrl+S)",
+          "native Save persists edits but retains exact original",
+          "native timer publishes a recoverable draft",
+          "autosave does not silently replace saved version",
+          "native button event: &Save project (Ctrl+S)",
+          "native button event: C&lose",
+          "reading copy survives closing and reopening the store",
+          "source bytes and authenticated citation remain unchanged",
+          "complete backup restores saved reading-copy revisions",
+          "complete backup restores page resume and bookmark",
+          "complete backup restores keyboard preferences"
+        ],
+        "count": 26,
+        "nvda": "NOT_RUN"
+      }
+    },
+    "raw_ordered_labels": [
+      "productivity and editor load from the installed wheel",
+      "real Windows wx runtime",
+      "File is the first Alt menu",
+      "Options and Reading remain accessible",
+      "native academic, search, reader and save menus compose",
+      "complete native command inventory has unique shortcuts",
+      "main Save exposes Ctrl+S",
+      "native File Save dispatches",
+      "File Save commits the selected evidence note",
+      "shortcut change updates native menu",
+      "shortcut persists after reopening preferences",
+      "conflicting key leaves native menu unchanged",
+      "original text is a native read-only multiline control",
+      "editor permits Tab navigation",
+      "provenance distinguishes a reading copy from quotation evidence",
+      "native button event: &Save project (Ctrl+S)",
+      "native Save persists edits but retains exact original",
+      "native timer publishes a recoverable draft",
+      "autosave does not silently replace saved version",
+      "native button event: &Save project (Ctrl+S)",
+      "native button event: C&lose",
+      "reading copy survives closing and reopening the store",
+      "source bytes and authenticated citation remain unchanged",
+      "complete backup restores saved reading-copy revisions",
+      "complete backup restores page resume and bookmark",
+      "complete backup restores keyboard preferences"
+    ],
+    "actual_label_counter": {
+      "autosave does not silently replace saved version": 1,
+      "complete backup restores keyboard preferences": 1,
+      "complete backup restores page resume and bookmark": 1,
+      "complete backup restores saved reading-copy revisions": 1,
+      "complete native command inventory has unique shortcuts": 1,
+      "conflicting key leaves native menu unchanged": 1,
+      "editor permits Tab navigation": 1,
+      "File is the first Alt menu": 1,
+      "File Save commits the selected evidence note": 1,
+      "main Save exposes Ctrl+S": 1,
+      "native academic, search, reader and save menus compose": 1,
+      "native button event: &Save project (Ctrl+S)": 2,
+      "native button event: C&lose": 1,
+      "native File Save dispatches": 1,
+      "native Save persists edits but retains exact original": 1,
+      "native timer publishes a recoverable draft": 1,
+      "Options and Reading remain accessible": 1,
+      "original text is a native read-only multiline control": 1,
+      "productivity and editor load from the installed wheel": 1,
+      "provenance distinguishes a reading copy from quotation evidence": 1,
+      "reading copy survives closing and reopening the store": 1,
+      "real Windows wx runtime": 1,
+      "shortcut change updates native menu": 1,
+      "shortcut persists after reopening preferences": 1,
+      "source bytes and authenticated citation remain unchanged": 1
+    },
+    "source_expected_counter": {
+      "autosave does not silently replace saved version": 1,
+      "complete backup restores keyboard preferences": 1,
+      "complete backup restores page resume and bookmark": 1,
+      "complete backup restores saved reading-copy revisions": 1,
+      "complete native command inventory has unique shortcuts": 1,
+      "conflicting key leaves native menu unchanged": 1,
+      "editor permits Tab navigation": 1,
+      "File is the first Alt menu": 1,
+      "File Save commits the selected evidence note": 1,
+      "main Save exposes Ctrl+S": 1,
+      "native academic, search, reader and save menus compose": 1,
+      "native button event: &Save project (Ctrl+S)": 2,
+      "native button event: C&lose": 1,
+      "native File Save dispatches": 1,
+      "native Save persists edits but retains exact original": 1,
+      "native timer publishes a recoverable draft": 1,
+      "Options and Reading remain accessible": 1,
+      "original text is a native read-only multiline control": 1,
+      "productivity and editor load from the installed wheel": 1,
+      "provenance distinguishes a reading copy from quotation evidence": 1,
+      "reading copy survives closing and reopening the store": 1,
+      "real Windows wx runtime": 1,
+      "shortcut change updates native menu": 1,
+      "shortcut persists after reopening preferences": 1,
+      "source bytes and authenticated citation remain unchanged": 1
+    },
+    "occurrences": 26,
+    "unique_labels": 25,
+    "literal_check_call_sites": 24,
+    "fixed_label_sites": 23,
+    "dynamic_button_call_site": 1,
+    "dynamic_occurrences": {
+      "native button event: &Save project (Ctrl+S)": 2,
+      "native button event: C&lose": 1
+    },
+    "actual_menu_inventory": {
+      "Academic/Academic library": "Ctrl+Shift+B",
+      "Academic/Add selected book to academic library": "",
+      "Academic/Check catalog quality": "",
+      "Academic/Compare sources in active topic": "Ctrl+Alt+M",
+      "Academic/DOI lookup and open-access sources": "",
+      "Academic/Export research outline with subtopics": "",
+      "Academic/Import bibliographic metadata from RIS": "",
+      "Audio/Languages and capability evidence": "",
+      "Audio/Open Audio Studio": "Ctrl+Alt+A",
+      "Audio/Prepare selected book for narration": "",
+      "Audio/Record microphone and manage saved inputs": "",
+      "Bibliography/Export library or collection bibliography": "",
+      "Bibliography/Review reference metadata for selected book": "",
+      "Edit/Copy": "",
+      "Edit/Cut": "",
+      "Edit/Paste": "",
+      "Edit/Redo": "",
+      "Edit/Select all": "",
+      "Edit/Undo": "",
+      "File/Import text as a reading copy": "",
+      "File/New reading copy": "",
+      "File/Open saved reading copy": "",
+      "File/Recover research-note draft": "",
+      "File/Save all changes": "Ctrl+Shift+S",
+      "File/Save current changes": "Ctrl+S",
+      "File/Transcription: local audio and video": "",
+      "Help/About Resonance and component notices�": "",
+      "Help/Check this installation": "",
+      "Help/Document formats": "",
+      "Help/Keyboard guide": "F1",
+      "Help/License and signed updates": "",
+      "Library/Add original text": "Ctrl+Shift+N",
+      "Library/Archive library": "",
+      "Library/Back up all libraries": "",
+      "Library/Edit selected book metadata": "Ctrl+Shift+M",
+      "Library/Exit": "Alt+F4",
+      "Library/Import Center: files, folders and queues": "",
+      "Library/Import books": "Ctrl+I",
+      "Library/Incremental library snapshots�": "",
+      "Library/Library tools": "Ctrl+Shift+L",
+      "Library/New library": "Ctrl+N",
+      "Library/OCR language models: Fast and Best": "",
+      "Library/Open existing library folder": "",
+      "Library/Portable snapshots and transfer�": "",
+      "Library/Read EPUB book": "Ctrl+Shift+R",
+      "Library/Read electronic book contents": "Ctrl+Shift+O",
+      "Library/Read synchronized EPUB or DAISY": "",
+      "Library/Rename or describe library": "",
+      "Library/Restore archived library": "",
+      "Library/Restore backup to a new folder": "",
+      "Library/Resume interrupted import": "Ctrl+Shift+I",
+      "Library/Review pending imported page": "",
+      "Library/Saved playback queue": "",
+      "Options/Find a command": "Ctrl+Shift+P",
+      "Options/Keyboard shortcuts": "Ctrl+Alt+K",
+      "Options/Mute or unmute extra progress feedback": "",
+      "Options/Progress feedback settings": "",
+      "Options/Query current progress": "",
+      "Reading/Export reading positions and bookmarks": "",
+      "Reading/Import reading positions and bookmarks": "",
+      "Reading/New editable reading copy": "",
+      "Reading/Open saved reading copy": "",
+      "Reading/Read selected book": "Ctrl+R",
+      "Research/Build advanced query": "Ctrl+Alt+Q",
+      "Research/Edit tags for selected evidence": "Ctrl+Shift+T",
+      "Research/Export active topic": "Ctrl+E",
+      "Research/Export source comparison matrix": "",
+      "Research/Export topic and subtopics": "Ctrl+Shift+E",
+      "Research/Find evidence by tag": "Ctrl+Alt+T",
+      "Research/Library overview": "",
+      "Research/Manage saved topic searches�": "",
+      "Research/Refresh libraries and topics": "F5",
+      "Research/Research Search Center": "Ctrl+Alt+F",
+      "Research/Run a saved topic search": "",
+      "Research/Save a topic search": "",
+      "Research/Search saved research": "Ctrl+Shift+F",
+      "Research/Source metadata and indexing checklist": "",
+      "Research/View tags for selected evidence": "",
+      "Settings/AI and API connections": "",
+      "Source/Review selected PDF page": "",
+      "Source/Revoke selected PDF page review": "",
+      "Tools/Convert documents to reading text": "",
+      "Tools/Import earlier reading history or reader session": "",
+      "Tools/Local assistant": "Ctrl+Alt+J",
+      "Tools/Local engine profiles": "",
+      "Tools/Open retained reading-copy history": "",
+      "Tools/Reading conversion formats and limits": "",
+      "Tools/Tasks and resources": "",
+      "Tools/Translate documents, chapters or batch": "",
+      "Tools/Translate selected text": ""
+    },
+    "required_eight_menu_bindings": {
+      "File/Save current changes": "Ctrl+S",
+      "File/Save all changes": "Ctrl+Shift+S",
+      "Research/Build advanced query": "Ctrl+Alt+Q",
+      "Research/Research Search Center": "Ctrl+Alt+F",
+      "Academic/Compare sources in active topic": "Ctrl+Alt+M",
+      "Academic/Academic library": "Ctrl+Shift+B",
+      "Reading/Read selected book": "Ctrl+R",
+      "Library/Read EPUB book": "Ctrl+Shift+R"
+    },
+    "menu_binding_and_unique_nonempty_shortcut_check": "PASS",
+    "provenance": "The reading producer explicitly verifies current productivity and narration-editor imports are from the installed wheel. It exercises current keyboard_commands/KeymapStore, real Save twice and Close once, persistence, conflict refusal, original-source retention and complete backup restoration.",
+    "count_note": "There are 26 emitted occurrences, not 29. The 24 static call sites include one dynamic native-button call executed three times; the two Save occurrences are preserved.",
+    "ocr_languages_in_same_step": {
+      "receipt": {
+        "raw_line": 4034,
+        "timestamp": "2026-11-28T10:37:01.7347577Z",
+        "value": {
+          "status": "PASS",
+          "checks": 17,
+          "installed_models": [],
+          "runtime_integrity": "unavailable",
+          "english_inference": "NOT_RUN",
+          "nvda": "NOT_RUN"
+        }
+      },
+      "raw_ordered_labels": [
+        "manager loads from the installed wheel",
+        "controls use native Windows wx",
+        "filter and list controls have readable names",
+        "offline pack flow is in the existing native dialog",
+        "shared manager and compatible pack bindings are available",
+        "status is a native read-only multiline control",
+        "filter receives native keyboard focus",
+        "Tab navigation reaches the installed-model list",
+        "missing engine is explicit without a false OCR result",
+        "status text can receive native keyboard focus",
+        "native button exists: Continue with available text",
+        "native button dispatches: Continue with available text",
+        "native modal returns expected result",
+        "accepted native choice returns canonical OCR Config",
+        "reopened dialog preserves accepted order",
+        "native modal returns expected result",
+        "cancel does not return an accepted configuration"
+      ],
+      "actual_label_counter": {
+        "accepted native choice returns canonical OCR Config": 1,
+        "cancel does not return an accepted configuration": 1,
+        "controls use native Windows wx": 1,
+        "filter and list controls have readable names": 1,
+        "filter receives native keyboard focus": 1,
+        "manager loads from the installed wheel": 1,
+        "missing engine is explicit without a false OCR result": 1,
+        "native button dispatches: Continue with available text": 1,
+        "native button exists: Continue with available text": 1,
+        "native modal returns expected result": 2,
+        "offline pack flow is in the existing native dialog": 1,
+        "reopened dialog preserves accepted order": 1,
+        "shared manager and compatible pack bindings are available": 1,
+        "status is a native read-only multiline control": 1,
+        "status text can receive native keyboard focus": 1,
+        "Tab navigation reaches the installed-model list": 1
+      },
+      "scope": "Native language-choice inspection only in this invocation. installed_models is empty, runtime_integrity is unavailable, and English inference/NVDA are NOT_RUN. Earlier separate managed-OCR prerequisite tests do not change this receipt."
+    }
+  },
+  "document_formats": {
+    "focused_step": 30,
+    "copied_main_step": 32,
+    "receipt": {
+      "raw_line": 4088,
+      "timestamp": "2026-11-28T10:37:04.5038443Z",
+      "value": {
+        "checks": 27,
+        "input_selection": "synthetic paths supplied to actual Import Center",
+        "native_file_picker_operation": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.extract.document_formats": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\extract\\document_formats.py",
+          "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "carr_library.ui.import_center": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\import_center.py"
+        },
+        "platform": "Windows",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    "raw_ordered_labels": [
+      "native document modules are loaded from the installed distribution",
+      "native file selector includes all additional formats",
+      "document support help is reachable from the native menu",
+      "format help has a named read-only multiline text control",
+      "format help describes unverified text and unsupported conversions",
+      "format help can receive native keyboard focus",
+      "native document help menu event is handled",
+      "native import controls expose their spoken names",
+      "document preflight runs asynchronously with cancellation enabled",
+      "native queue recognizes HTML and Markdown as two documents",
+      "native Start queued files button event launches work",
+      "native queue completes both actual document imports",
+      "queue does not approve additional format text",
+      "native selected-file event is handled",
+      "selected file details explain unverified logical segments",
+      "actual result details control can receive keyboard focus",
+      "native document import workflow completed",
+      "native import retains source bytes and digest exactly",
+      "script text is not searchable after real HTML parsing",
+      "native document reader loads asynchronously",
+      "native reader shows actual imported Unicode text",
+      "native reader exposes named read-only source text",
+      "native reader exposes the unverified logical source location",
+      "native imported text receives keyboard focus",
+      "native next-document-segment button event is handled",
+      "native next-segment reads second source paragraph",
+      "reading never converts imported text into approved quotation"
+    ],
+    "actual_label_counter": {
+      "actual result details control can receive keyboard focus": 1,
+      "document preflight runs asynchronously with cancellation enabled": 1,
+      "document support help is reachable from the native menu": 1,
+      "format help can receive native keyboard focus": 1,
+      "format help describes unverified text and unsupported conversions": 1,
+      "format help has a named read-only multiline text control": 1,
+      "native document help menu event is handled": 1,
+      "native document import workflow completed": 1,
+      "native document modules are loaded from the installed distribution": 1,
+      "native document reader loads asynchronously": 1,
+      "native file selector includes all additional formats": 1,
+      "native import controls expose their spoken names": 1,
+      "native import retains source bytes and digest exactly": 1,
+      "native imported text receives keyboard focus": 1,
+      "native next-document-segment button event is handled": 1,
+      "native next-segment reads second source paragraph": 1,
+      "native queue completes both actual document imports": 1,
+      "native queue recognizes HTML and Markdown as two documents": 1,
+      "native reader exposes named read-only source text": 1,
+      "native reader exposes the unverified logical source location": 1,
+      "native reader shows actual imported Unicode text": 1,
+      "native selected-file event is handled": 1,
+      "native Start queued files button event launches work": 1,
+      "queue does not approve additional format text": 1,
+      "reading never converts imported text into approved quotation": 1,
+      "script text is not searchable after real HTML parsing": 1,
+      "selected file details explain unverified logical segments": 1
+    },
+    "expected_literal_labels": [
+      "native document modules are loaded from the installed distribution",
+      "native file selector includes all additional formats",
+      "document support help is reachable from the native menu",
+      "format help has a named read-only multiline text control",
+      "format help describes unverified text and unsupported conversions",
+      "format help can receive native keyboard focus",
+      "native document help menu event is handled",
+      "native queue completes both actual document imports",
+      "queue does not approve additional format text",
+      "native selected-file event is handled",
+      "selected file details explain unverified logical segments",
+      "actual result details control can receive keyboard focus",
+      "native queue recognizes HTML and Markdown as two documents",
+      "native Start queued files button event launches work",
+      "native import controls expose their spoken names",
+      "document preflight runs asynchronously with cancellation enabled",
+      "native document import workflow completed",
+      "native import retains source bytes and digest exactly",
+      "script text is not searchable after real HTML parsing",
+      "native document reader loads asynchronously",
+      "native reader shows actual imported Unicode text",
+      "native reader exposes named read-only source text",
+      "native reader exposes the unverified logical source location",
+      "native imported text receives keyboard focus",
+      "native next-document-segment button event is handled",
+      "native next-segment reads second source paragraph",
+      "reading never converts imported text into approved quotation"
+    ],
+    "occurrences": 27,
+    "provenance": "Three recorded module origins are under the current installed site-packages, source_override is null, and all 27 source-derived fixed labels match the raw Counter.",
+    "scope": "Actual HTML/Markdown imports and native reader; source paths are synthetic. Native file picker operation and NVDA remain NOT_RUN."
+  },
+  "ocr_model_manager": {
+    "focused_step": 31,
+    "copied_main_step": 33,
+    "receipt": {
+      "raw_line": 4196,
+      "timestamp": "2026-11-28T10:37:05.5613450Z",
+      "value": {
+        "status": "PASS",
+        "checks": 81,
+        "cases": [
+          "installed wheel records carr_library/extract/model_catalog.py",
+          "installed file is outside the source checkout: carr_library/extract/model_catalog.py",
+          "installed wheel checksum and size match: carr_library/extract/model_catalog.py",
+          "installed wheel records carr_library/extract/ocr_model_store.py",
+          "installed file is outside the source checkout: carr_library/extract/ocr_model_store.py",
+          "installed wheel checksum and size match: carr_library/extract/ocr_model_store.py",
+          "installed wheel records carr_library/extract/managed_ocr.py",
+          "installed file is outside the source checkout: carr_library/extract/managed_ocr.py",
+          "installed wheel checksum and size match: carr_library/extract/managed_ocr.py",
+          "installed wheel records carr_library/extract/ocr_model_catalog.py",
+          "installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py",
+          "installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py",
+          "installed wheel records carr_library/extract/ocr-model-catalog.json",
+          "installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json",
+          "installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json",
+          "installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE",
+          "installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE",
+          "installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE",
+          "installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE",
+          "installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE",
+          "installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE",
+          "installed wheel records carr_library/ui/ocr_model_manager.py",
+          "installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py",
+          "installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py",
+          "installed wheel records carr_library/__main__.py",
+          "installed file is outside the source checkout: carr_library/__main__.py",
+          "installed wheel checksum and size match: carr_library/__main__.py",
+          "catalogue and UI imports resolve to the verified installed wheel",
+          "catalogue API fingerprints the installed JSON bytes",
+          "fast catalogue contains language and script models",
+          "fast license matches both its reviewed Git blob and wheel record",
+          "best catalogue contains language and script models",
+          "best license matches both its reviewed Git blob and wheel record",
+          "fast installed CLI exits successfully without downloads",
+          "fast installed CLI reads the exact catalogue and empty private store",
+          "best installed CLI exits successfully without downloads",
+          "best installed CLI reads the exact catalogue and empty private store",
+          "catalogue and CLI inspection create no model or application files",
+          "native wx platform matches the requested acceptance platform",
+          "native model-manager controls expose readable accessibility names",
+          "model profile and selectable list use native wx controls",
+          "model details, estimates, source and status are read-only",
+          "native model manager starts with the full Fast catalogue and no selection",
+          "native event reaches Find OCR models by language, script or identifier",
+          "native search readback preserves Ukrainian",
+          "Ukrainian search resolves the native ukr row",
+          "native event reaches OCR models; Space selects or clears a model",
+          "native details read back the selected language and exact revision",
+          "native event reaches OCR models; Space selects or clears a model",
+          "native checklist selection updates the spoken-text summary",
+          "native event reaches Find OCR models by language, script or identifier",
+          "native search readback preserves Latin",
+          "Latin search exposes the official script model",
+          "filtering retains and discloses the hidden Ukrainian selection",
+          "native event reaches button",
+          "Select all shown checks actual visible native rows",
+          "native event reaches OCR model profile",
+          "Best profile has separate selections and its own exact revision",
+          "native event reaches button",
+          "native event reaches OCR model profile",
+          "returning to Fast preserves all Fast selections and estimate",
+          "native event reaches OCR model profile",
+          "returning to Best preserves its independent selection",
+          "native event reaches button",
+          "Clear selection clears every Best selection",
+          "native event reaches OCR model profile",
+          "clearing Best leaves Fast selections unchanged",
+          "native event reaches button",
+          "native event reaches Find OCR models by language, script or identifier",
+          "native search readback preserves no-model-matches-this-fixture",
+          "an empty native search has readable recovery guidance",
+          "native event reaches Find OCR models by language, script or identifier",
+          "native search readback preserves Latin",
+          "native search recovers without restoring cleared selections",
+          "inspection has not started an installation or selected a source folder",
+          "parent unsaved note is unchanged while the model dialog is open",
+          "native event reaches button",
+          "Close completes the actual native modal without installing models",
+          "parent note and usable parent window survive dialog closure",
+          "native model inspection creates no model or application files",
+          "no Python network operation was attempted"
+        ],
+        "installed_file_sha256": {
+          "carr_library/extract/model_catalog.py": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12",
+          "carr_library/extract/ocr_model_store.py": "0902f074efff5c85023128bebd3502c98b041481adb465716c62c44f7b8597a6",
+          "carr_library/extract/managed_ocr.py": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477",
+          "carr_library/extract/ocr_model_catalog.py": "5b3c464080d6ff24e60eb2c7f54f0463c720d16823f69e7707466e3229ddf20d",
+          "carr_library/extract/ocr-model-catalog.json": "1e55383fc79da1ce2d72ffca2dcd4b4fb24d69e29cd23425562cc20af7775e0b",
+          "carr_library/extract/TESSDATA_FAST_LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "carr_library/extract/TESSDATA_BEST_LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+          "carr_library/ui/ocr_model_manager.py": "e374e1bc04814d8e89c42aeb7533de780bcdb30a2c42330c8858d8ce9f36b32b",
+          "carr_library/__main__.py": "f394d62a695cd02008f382851f7ee03922b7f31821581f854021bc6f349cc3aa"
+        },
+        "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+        "wx_platform": "__WXMSW__",
+        "native_gui": "PASS",
+        "windows_execution": "PASS",
+        "manual_keyboard": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "models_installed": false,
+        "models_downloaded": false,
+        "network_guard": "Python socket operations denied"
+      }
+    },
+    "raw_ordered_labels": [
+      "installed wheel records carr_library/extract/model_catalog.py",
+      "installed file is outside the source checkout: carr_library/extract/model_catalog.py",
+      "installed wheel checksum and size match: carr_library/extract/model_catalog.py",
+      "installed wheel records carr_library/extract/ocr_model_store.py",
+      "installed file is outside the source checkout: carr_library/extract/ocr_model_store.py",
+      "installed wheel checksum and size match: carr_library/extract/ocr_model_store.py",
+      "installed wheel records carr_library/extract/managed_ocr.py",
+      "installed file is outside the source checkout: carr_library/extract/managed_ocr.py",
+      "installed wheel checksum and size match: carr_library/extract/managed_ocr.py",
+      "installed wheel records carr_library/extract/ocr_model_catalog.py",
+      "installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py",
+      "installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py",
+      "installed wheel records carr_library/extract/ocr-model-catalog.json",
+      "installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json",
+      "installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json",
+      "installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE",
+      "installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE",
+      "installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE",
+      "installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE",
+      "installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE",
+      "installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE",
+      "installed wheel records carr_library/ui/ocr_model_manager.py",
+      "installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py",
+      "installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py",
+      "installed wheel records carr_library/__main__.py",
+      "installed file is outside the source checkout: carr_library/__main__.py",
+      "installed wheel checksum and size match: carr_library/__main__.py",
+      "catalogue and UI imports resolve to the verified installed wheel",
+      "catalogue API fingerprints the installed JSON bytes",
+      "fast catalogue contains language and script models",
+      "fast license matches both its reviewed Git blob and wheel record",
+      "best catalogue contains language and script models",
+      "best license matches both its reviewed Git blob and wheel record",
+      "fast installed CLI exits successfully without downloads",
+      "fast installed CLI reads the exact catalogue and empty private store",
+      "best installed CLI exits successfully without downloads",
+      "best installed CLI reads the exact catalogue and empty private store",
+      "catalogue and CLI inspection create no model or application files",
+      "native wx platform matches the requested acceptance platform",
+      "native model-manager controls expose readable accessibility names",
+      "model profile and selectable list use native wx controls",
+      "model details, estimates, source and status are read-only",
+      "native model manager starts with the full Fast catalogue and no selection",
+      "native event reaches Find OCR models by language, script or identifier",
+      "native search readback preserves Ukrainian",
+      "Ukrainian search resolves the native ukr row",
+      "native event reaches OCR models; Space selects or clears a model",
+      "native details read back the selected language and exact revision",
+      "native event reaches OCR models; Space selects or clears a model",
+      "native checklist selection updates the spoken-text summary",
+      "native event reaches Find OCR models by language, script or identifier",
+      "native search readback preserves Latin",
+      "Latin search exposes the official script model",
+      "filtering retains and discloses the hidden Ukrainian selection",
+      "native event reaches button",
+      "Select all shown checks actual visible native rows",
+      "native event reaches OCR model profile",
+      "Best profile has separate selections and its own exact revision",
+      "native event reaches button",
+      "native event reaches OCR model profile",
+      "returning to Fast preserves all Fast selections and estimate",
+      "native event reaches OCR model profile",
+      "returning to Best preserves its independent selection",
+      "native event reaches button",
+      "Clear selection clears every Best selection",
+      "native event reaches OCR model profile",
+      "clearing Best leaves Fast selections unchanged",
+      "native event reaches button",
+      "native event reaches Find OCR models by language, script or identifier",
+      "native search readback preserves no-model-matches-this-fixture",
+      "an empty native search has readable recovery guidance",
+      "native event reaches Find OCR models by language, script or identifier",
+      "native search readback preserves Latin",
+      "native search recovers without restoring cleared selections",
+      "inspection has not started an installation or selected a source folder",
+      "parent unsaved note is unchanged while the model dialog is open",
+      "native event reaches button",
+      "Close completes the actual native modal without installing models",
+      "parent note and usable parent window survive dialog closure",
+      "native model inspection creates no model or application files",
+      "no Python network operation was attempted"
+    ],
+    "actual_label_counter": {
+      "an empty native search has readable recovery guidance": 1,
+      "best catalogue contains language and script models": 1,
+      "best installed CLI exits successfully without downloads": 1,
+      "best installed CLI reads the exact catalogue and empty private store": 1,
+      "best license matches both its reviewed Git blob and wheel record": 1,
+      "Best profile has separate selections and its own exact revision": 1,
+      "catalogue and CLI inspection create no model or application files": 1,
+      "catalogue and UI imports resolve to the verified installed wheel": 1,
+      "catalogue API fingerprints the installed JSON bytes": 1,
+      "Clear selection clears every Best selection": 1,
+      "clearing Best leaves Fast selections unchanged": 1,
+      "Close completes the actual native modal without installing models": 1,
+      "fast catalogue contains language and script models": 1,
+      "fast installed CLI exits successfully without downloads": 1,
+      "fast installed CLI reads the exact catalogue and empty private store": 1,
+      "fast license matches both its reviewed Git blob and wheel record": 1,
+      "filtering retains and discloses the hidden Ukrainian selection": 1,
+      "inspection has not started an installation or selected a source folder": 1,
+      "installed file is outside the source checkout: carr_library/__main__.py": 1,
+      "installed file is outside the source checkout: carr_library/extract/managed_ocr.py": 1,
+      "installed file is outside the source checkout: carr_library/extract/model_catalog.py": 1,
+      "installed file is outside the source checkout: carr_library/extract/ocr_model_catalog.py": 1,
+      "installed file is outside the source checkout: carr_library/extract/ocr_model_store.py": 1,
+      "installed file is outside the source checkout: carr_library/extract/ocr-model-catalog.json": 1,
+      "installed file is outside the source checkout: carr_library/extract/TESSDATA_BEST_LICENSE": 1,
+      "installed file is outside the source checkout: carr_library/extract/TESSDATA_FAST_LICENSE": 1,
+      "installed file is outside the source checkout: carr_library/ui/ocr_model_manager.py": 1,
+      "installed wheel checksum and size match: carr_library/__main__.py": 1,
+      "installed wheel checksum and size match: carr_library/extract/managed_ocr.py": 1,
+      "installed wheel checksum and size match: carr_library/extract/model_catalog.py": 1,
+      "installed wheel checksum and size match: carr_library/extract/ocr_model_catalog.py": 1,
+      "installed wheel checksum and size match: carr_library/extract/ocr_model_store.py": 1,
+      "installed wheel checksum and size match: carr_library/extract/ocr-model-catalog.json": 1,
+      "installed wheel checksum and size match: carr_library/extract/TESSDATA_BEST_LICENSE": 1,
+      "installed wheel checksum and size match: carr_library/extract/TESSDATA_FAST_LICENSE": 1,
+      "installed wheel checksum and size match: carr_library/ui/ocr_model_manager.py": 1,
+      "installed wheel records carr_library/__main__.py": 1,
+      "installed wheel records carr_library/extract/managed_ocr.py": 1,
+      "installed wheel records carr_library/extract/model_catalog.py": 1,
+      "installed wheel records carr_library/extract/ocr_model_catalog.py": 1,
+      "installed wheel records carr_library/extract/ocr_model_store.py": 1,
+      "installed wheel records carr_library/extract/ocr-model-catalog.json": 1,
+      "installed wheel records carr_library/extract/TESSDATA_BEST_LICENSE": 1,
+      "installed wheel records carr_library/extract/TESSDATA_FAST_LICENSE": 1,
+      "installed wheel records carr_library/ui/ocr_model_manager.py": 1,
+      "Latin search exposes the official script model": 1,
+      "model details, estimates, source and status are read-only": 1,
+      "model profile and selectable list use native wx controls": 1,
+      "native checklist selection updates the spoken-text summary": 1,
+      "native details read back the selected language and exact revision": 1,
+      "native event reaches button": 5,
+      "native event reaches Find OCR models by language, script or identifier": 4,
+      "native event reaches OCR model profile": 4,
+      "native event reaches OCR models; Space selects or clears a model": 2,
+      "native model inspection creates no model or application files": 1,
+      "native model manager starts with the full Fast catalogue and no selection": 1,
+      "native model-manager controls expose readable accessibility names": 1,
+      "native search readback preserves Latin": 2,
+      "native search readback preserves no-model-matches-this-fixture": 1,
+      "native search readback preserves Ukrainian": 1,
+      "native search recovers without restoring cleared selections": 1,
+      "native wx platform matches the requested acceptance platform": 1,
+      "no Python network operation was attempted": 1,
+      "parent note and usable parent window survive dialog closure": 1,
+      "parent unsaved note is unchanged while the model dialog is open": 1,
+      "returning to Best preserves its independent selection": 1,
+      "returning to Fast preserves all Fast selections and estimate": 1,
+      "Select all shown checks actual visible native rows": 1,
+      "Ukrainian search resolves the native ukr row": 1
+    },
+    "occurrences": 81,
+    "unique_labels": 69,
+    "installed_hash_count": 9,
+    "provenance": "The full 81-entry cases array equals all raw PASS occurrences in order, preserving duplicated native-event labels. All nine emitted installed file hashes independently equal the exact current source bytes. Wheel RECORD checks are producer execution evidence; the wheel archive was not independently read here.",
+    "scope": "Actual installed catalogue/shared-model-manager UI inspection. models_installed=false, models_downloaded=false, Python network operations denied. No OCR model quality, physical inference or NVDA claim."
+  },
+  "raw_log": {
+    "transport": "GitHub completed decoded job-log endpoint; the entire returned text was retained for hashing.",
+    "characters": 612261,
+    "utf8_bytes": 612271,
+    "sha256": "f00ff0aa48a39c01d9c20f5cbf87467b1f8b3d1728b163bccfd75413470eea64",
+    "first_timestamp": "2026-11-28T10:30:24.6772898Z",
+    "last_timestamp": "2026-11-28T10:37:11.0690511Z",
+    "complete_log_read": true,
+    "parsing": "Only interpreted lines normalize CRLF/lone CR and strip ANSI/timestamp wrappers. Raw bytes/length/hash are unchanged. Actual JSON-only receipts and PASS lines are separated from echoed commands.",
+    "zip_or_member_execution": false
+  },
+  "artifact": {
+    "metadata": {
+      "id": 15259607296,
+      "name": "carr-native-main-final-87d1ec6a05963531c5c1907f74884faddac2093e-1",
+      "size_in_bytes": 253437,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15259607296",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15259607296/zip",
+      "expired": false,
+      "created_at": "2026-11-28T10:37:09Z",
+      "expires_at": "2026-12-05T10:37:07Z",
+      "updated_at": "2026-11-28T10:37:09Z",
+      "digest": "sha256:89c93eb124dea2c699509d26f17058cf2e56abcf817b1d7147ab95ce5059a6a0",
+      "workflow_run": {
+        "id": 46135188389,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/native-main-final-87d1-20261128-d3a",
+        "head_sha": "87d1ec6a05963531c5c1907f74884faddac2093e"
+      }
+    },
+    "upload_reported_files": 44,
+    "api_and_upload_name_id_size_digest_match": true,
+    "zip_downloaded": false,
+    "zip_decoded": false,
+    "raw_junit_independently_read": false,
+    "full_binding_map_independently_read": false
+  },
+  "provenance_erratum": {
+    "commit": "ec70134c192f35d59a09821116d0a8c2214053dd",
+    "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json",
+    "git_blob": "5cd8c388c45f8bdfbb696501bebb30722ba4ad08",
+    "original_2701_inventory_sha256": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+    "original_disposition": "Retained historical row inventory was invalid as a complete current-2701 body binding because one search-probe SHA was stale.",
+    "corrected_2701_inventory_sha256": "a286ab1f4a2d072c2b60d80bdd643d18055b139266f79c76339bf2fe4d2089c0",
+    "separate_09ac_inventory_sha256": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
+    "current_scope": "Neither historical inventory digest is relabelled as an 87d1 complete inventory. This proof freshly reads and hashes its 54 specified current source files and uses the actual before binder receipt. No refetch of all 88 historical audit bodies is claimed."
+  },
+  "independent_reconciliation": {
+    "predicate_count": 44,
+    "all_true": true,
+    "predicates": {
+      "run_identity": true,
+      "job_identity": true,
+      "only_failed_step": true,
+      "earlier_steps_success": true,
+      "later_33_to_47_skipped": true,
+      "uploader_cleanup_success": true,
+      "syntax_source_exact": true,
+      "before_binding": true,
+      "no_after_binding": true,
+      "binder_script_hash": true,
+      "python_and_wx": true,
+      "runtime_lock_56": true,
+      "early_10_suites_323": true,
+      "academic40": true,
+      "advanced_query18": true,
+      "citation108": true,
+      "basic13": true,
+      "basic_four_hashes": true,
+      "basic_ordered_cleanup": true,
+      "advanced_wrapper": true,
+      "search21": true,
+      "search_wrapper": true,
+      "search_installed_origins": true,
+      "signed15": true,
+      "word_explicit_not_run": true,
+      "language_scope": true,
+      "import_four_fields": true,
+      "import_viewports": true,
+      "import_41_source_assertions": true,
+      "reading26": true,
+      "reading_save_twice_close_once": true,
+      "reading_menu_eight_and_unique": true,
+      "ocr_languages17_missing_runtime": true,
+      "formats27": true,
+      "formats_installed_origins": true,
+      "ocr_models81": true,
+      "ocr_model_nine_hashes": true,
+      "all_emitted_hash_bindings": true,
+      "federated_exact_trace": true,
+      "no_separate_source_open_pass": true,
+      "exit1_not_timeout": true,
+      "artifact_api": true,
+      "artifact_upload": true,
+      "raw_log_exact": true
+    },
+    "meaning": "These are consistency checks of the failed run's evidence, not an application PASS."
+  },
+  "separate_current_focus": {
+    "commit": "73964f1a2f8a55980b5f9138748e5c8c0db75ada",
+    "run_id": 46135188425,
+    "job_id": 140948783886,
+    "result": "PASS",
+    "population": "Basic plus source 324 / installed 324 / 8 native",
+    "limit": "Separate current-head evidence; populations and outcomes are not transferred into this failed native lane."
+  },
+  "full_main": "NOT_QUALIFIED_BY_THIS_FOCUSED_RUN",
+  "full_platform_status": "NOT_QUALIFIED",
+  "mutation_scope": "This component adds only this evidence JSON and its Markdown summary, with sole parent 87d1. No application, test, probe, workflow, oracle or ref changes."
+}
