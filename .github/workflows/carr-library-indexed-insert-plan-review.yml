@@ -1,0 +1,65 @@
+name: Native indexed INSERT plan diagnosis
+on:
+  push:
+    branches: [carr/library-indexed-insert-plan-review-20261128]
+    paths:
+      - '.github/diagnostics/probe_indexed_insert_plan.py'
+      - '.github/workflows/carr-library-indexed-insert-plan-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: indexed-insert-plan-${{ github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  native-plan:
+    name: Actual current-schema INSERT opcodes / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_INSERT_PLAN_HEAD: ${{ github.sha }}
+      CARR_INSERT_PLAN_RUN: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact canonical package and existing trusted dependencies
+        run: |
+          python -m pip install .
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+      - name: Inspect actual SQLite instructions without executing candidate inserts
+        timeout-minutes: 3
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          mkdir -p ci-indexed-insert-plan
+          python -I -B -X utf8 ../.github/diagnostics/probe_indexed_insert_plan.py 2>&1 | tee ci-indexed-insert-plan/native.txt
+      - name: Preserve selected identity
+        if: always()
+        run: |
+          mkdir -p ci-indexed-insert-plan
+          git rev-parse HEAD > ci-indexed-insert-plan/commit.txt
+          git rev-parse HEAD^{tree} > ci-indexed-insert-plan/tree.txt
+          python -m pip freeze > ci-indexed-insert-plan/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: indexed-insert-plan-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-indexed-insert-plan
+          if-no-files-found: error
