@@ -10,8 +10,35 @@ from hashlib import sha256
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from urllib.parse import urlparse
 from zipfile import ZipFile
+
+
+def schema_resolver(etree, paths):
+    """Resolve only exact aliases of the already pinned local schema files."""
+    approved = {}
+    for name, path in paths.items():
+        # Generate aliases from admitted paths. Never decode or normalise an
+        # incoming URL, infer a path from its basename, or allow a file host.
+        uri = path.as_uri()
+        aliases = {str(path), uri}
+        if uri.startswith('file:///'):
+            # libxml2 emits this equivalent local spelling on Windows when an
+            # approved DTD refers to a sibling entity (for example file:/D:/...).
+            aliases.add('file:/' + uri[len('file:///'):])
+        aliases.add('http://www.w3.org/TR/REC-SMIL/SMIL10.dtd' if name == 'SMIL10.dtd'
+                    else 'http://www.w3.org/TR/xhtml1/DTD/' + name)
+        for alias in aliases:
+            if alias in approved and approved[alias] != path:
+                raise ValueError('The selected validation schema aliases are ambiguous.')
+            approved[alias] = path
+
+    class Resolver(etree.Resolver):
+        def resolve(self, url, public_id, context):
+            path = approved.get(url)
+            if path is None:
+                raise ValueError('The schema validator refused an unapproved resource: ' + url)
+            return self.resolve_filename(str(path), context)
+    return Resolver
 
 
 def validate(publication, schemas):
@@ -27,16 +54,7 @@ def validate(publication, schemas):
         if regular(path).st_size != expected['size'] or sha256(path.read_bytes()).hexdigest() != expected['sha256']:
             raise ValueError('The explicitly selected validation schema does not match its pin: ' + name)
         paths[name], identities[name] = path, expected['sha256']
-    class Resolver(etree.Resolver):
-        def resolve(self, url, public_id, context):
-            parsed = urlparse(url)
-            name = Path(parsed.path).name
-            allowed = {str(path) for path in paths.values()} | {
-                'http://www.w3.org/TR/xhtml1/DTD/' + name for name in paths if name != 'SMIL10.dtd'} | {
-                'http://www.w3.org/TR/REC-SMIL/SMIL10.dtd'}
-            if url not in allowed or name not in paths:
-                raise ValueError('The schema validator refused an unapproved resource: ' + url)
-            return self.resolve_filename(str(paths[name]), context)
+    Resolver = schema_resolver(etree, paths)
     publication = local_path(publication, exists=True)
     provenance = daisy.inspect_daisy(publication)
     before = publishing._digest(publication, lambda: None, 32 * 1024**3)

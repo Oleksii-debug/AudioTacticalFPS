@@ -37,6 +37,8 @@ def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: Fals
             return False
         try:
             data = resolve_asset(identity)
+        except (InterruptedError, TimeoutError):
+            raise
         except (OSError, LookupError, ValueError):
             return False
         if isinstance(data, FileSnapshot):
@@ -50,6 +52,8 @@ def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: Fals
                     if count == locator.index:
                         selected = digest(segment)
                 return count == row[1] and nonempty and selected == raw_sha256
+            except (InterruptedError, TimeoutError):
+                raise
             except (OSError, LookupError, ValueError, UnicodeError):
                 return False
         if (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES

@@ -1111,6 +1111,72 @@ def measure_corpus(directory, spec, *, restart=False, cancelled=lambda: False, p
     return result
 
 
+
+def diagnostic_profile_report(profiler):
+    """Bounded counters only: no raw profile, arguments, locals or private paths."""
+    import pstats
+    statistics = pstats.Stats(profiler).stats
+    maximum_functions, maximum_callers = 80, 6
+    repository = Path(__file__).resolve().parents[2]
+    prefixes = ((repository, 'checkout/'),
+                (Path(sys.base_prefix).absolute(), 'python/'),
+                (Path(sys.prefix).absolute(), 'environment/'))
+
+    def location(key):
+        filename, line, name = key
+        relative = None
+        if filename == '~':
+            relative = 'native'
+        elif filename.startswith('<'):
+            relative = 'generated'
+        elif Path(filename).is_absolute():
+            for prefix, label in prefixes:
+                try:
+                    relative = label + Path(filename).relative_to(prefix).as_posix()
+                    break
+                except ValueError:
+                    continue
+        return {'file': (relative or 'external-code')[:240],
+                'line': max(0, int(line)),
+                'function': re.sub(r'[^A-Za-z0-9_<>.]+', '_', name)[:160]}
+
+    def values(counts):
+        primitive, total, own, cumulative = counts
+        require(type(primitive) is int and type(total) is int
+                and 0 <= primitive <= total
+                and all(type(value) in (int, float) and math.isfinite(value)
+                        and value >= 0 for value in (own, cumulative)),
+                'Invalid measured profiler counters.')
+        return {'primitive_calls': primitive, 'total_calls': total,
+                'self_seconds': float(own), 'cumulative_seconds': float(cumulative)}
+
+    ordered = sorted(statistics.items(), key=lambda pair: (
+        -pair[1][3], -pair[1][2], location(pair[0])['file'],
+        pair[0][1], location(pair[0])['function']))
+    rows = []
+    for key, (primitive, total, own, cumulative, callers) in ordered[:maximum_functions]:
+        caller_rows = sorted(callers.items(), key=lambda pair: (
+            -pair[1][3], -pair[1][2], location(pair[0])['file'],
+            pair[0][1], location(pair[0])['function']))
+        rows.append({**location(key),
+                     **values((primitive, total, own, cumulative)),
+                     'callers': [{**location(caller),
+                                  # cProfile caller edges store total before primitive.
+                                  **values((counts[1], counts[0], counts[2], counts[3]))}
+                                 for caller, counts in caller_rows[:maximum_callers]],
+                     'omitted_callers': max(0, len(caller_rows) - maximum_callers)})
+    result = {'schema': 'carr-corpus-cprofile/1', 'qualification': 'DIAGNOSTIC_ONLY',
+              'scope': 'Unchanged complete measure phase, including retained-source checks, full traversal and origin verification.',
+              'timings': 'Instrumented cProfile timings; not comparable to unprofiled capacity measurements.',
+              'maximum_functions': maximum_functions, 'maximum_callers': maximum_callers,
+              'observed_functions': len(statistics),
+              'omitted_functions': max(0, len(statistics) - maximum_functions),
+              'functions': rows}
+    require(len(json.dumps(result, ensure_ascii=True, allow_nan=False).encode('ascii'))
+            <= 512 * 1024, 'Profiler receipt exceeds its fixed JSON allowance.')
+    return result
+
+
 def _deny_network(event, args):
     if event in ('socket.connect', 'socket.getaddrinfo', 'socket.bind'):
         raise PermissionError('The corpus benchmark is offline.')
@@ -1123,6 +1189,8 @@ def child_main(config_path, expected_digest, phase, case_dir):
     config = read_json(config_path, expected_sha256=expected_digest)
     require(config.get('schema') == SCHEMA, 'Invalid benchmark configuration.')
     options = capacity_options(config.get('capacity'))
+    profile_enabled = config.get('diagnostic_profile', False)
+    require(type(profile_enabled) is bool, 'Invalid diagnostic profiler selection.')
     require(phase in phase_names(options), 'Invalid benchmark phase.')
     directory = local(case_dir, exists=True)
     require(str(directory.parent) == config['output'], 'Child corpus is outside the selected output.')
@@ -1139,7 +1207,13 @@ def child_main(config_path, expected_digest, phase, case_dir):
     progress = {}
     bootstrap_seconds = perf_counter() - bootstrap_started
     before = kernel.peak_rss_bytes()
+    profiler = None
+    if profile_enabled and phase == 'measure':
+        import cProfile
+        profiler = cProfile.Profile()
     try:
+        if profiler is not None:
+            profiler.enable()
         if phase == 'build':
             build = build_retained_fixture if options['construction'] == 'retained-fixture' else build_corpus
             result = build(directory, spec, progress=progress)
@@ -1160,6 +1234,13 @@ def child_main(config_path, expected_digest, phase, case_dir):
     except Exception as exc:
         result = {'status': 'FAIL', 'phase': phase, 'progress': progress,
                   'reason': type(exc).__name__, 'diagnostic': str(exc)[:2000]}
+    finally:
+        if profiler is not None:
+            profiler.disable()
+    if profiler is not None:
+        result['diagnostic_profile'] = diagnostic_profile_report(profiler)
+        print('CORPUS_PROFILE ' + json.dumps(result['diagnostic_profile'],
+              ensure_ascii=True, allow_nan=False, sort_keys=True), flush=True)
     result.update(pid=os.getpid(), python_executable=sys.executable, python_prefix=sys.prefix,
                   bootstrap_seconds=bootstrap_seconds,
                   baseline_peak_rss_bytes=before, process_peak_rss_bytes=kernel.peak_rss_bytes(),
@@ -1217,8 +1298,10 @@ def run_phase(config_path, config_digest, phase, directory, config):
             'process_wall_seconds': perf_counter() - phase_started}
 
 
-def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_application=None, capacity=None):
+def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_application=None,
+                  capacity=None, diagnostic_profile=False):
     require(__debug__, 'Run the benchmark without optimization flags.')
+    require(type(diagnostic_profile) is bool, 'Invalid diagnostic profiler selection.')
     require(type(sizes) in (list, tuple) and 1 <= len(sizes) <= 10
             and len(set(sizes)) == len(sizes), 'Choose distinct corpus sizes.')
     for count in sizes:
@@ -1243,6 +1326,8 @@ def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_applica
               'harness_sha256': file_hash(Path(__file__))}
     if capacity_enabled(options):
         config['capacity'] = options
+    if diagnostic_profile:
+        config['diagnostic_profile'] = True
     config_path = output / 'configuration.json'
     save_json(config_path, config)
     config_digest = file_hash(config_path, maximum=MAX_JSON)
@@ -1300,6 +1385,10 @@ def run_benchmark(output_dir, sizes, case, *, source_root=None, expected_applica
         report['claims'] = dict(CLAIMS,
             sustained_declared_corpus_import_throughput='NOT_MEASURED_BY_CAPACITY_SETUP_OR_BOUNDED_SAMPLES',
             backup_capacity='Only an actual PASS backup phase qualifies its reported populated corpus.')
+    if diagnostic_profile:
+        report['diagnostic_profile'] = True
+        report['claims'] = dict(report['claims'],
+            profiled_timing_qualification='DIAGNOSTIC_ONLY; profiling overhead is included in actual phase work.')
     save_json(output / 'library-corpus-scale.json', report)
     return report
 
@@ -1326,6 +1415,8 @@ def main(argv=None):
     parser.add_argument('--backup-capacity-profile', choices=BACKUP_CAPACITY_PROFILES,
                         help='Explicit supported backup allowance; requires --complete-backup.')
     parser.add_argument('--phase-timeout', type=float, default=3600)
+    parser.add_argument('--diagnostic-profile', action='store_true',
+                        help='Diagnostic-only bounded cProfile counters for the unchanged measure phase; no binary profile.')
     parser.add_argument('--max-disk-bytes', type=int, default=24 * 1024 ** 3,
                         help='Measured per-case checkpoint budget; not a filesystem quota.')
     parser.add_argument('--min-free-bytes', type=int, default=1024 ** 3)
@@ -1346,7 +1437,8 @@ def main(argv=None):
     if args.backup_capacity_profile is not None:
         options['backup_capacity_profile'] = args.backup_capacity_profile
     report = run_benchmark(args.output_dir, args.sizes, case, source_root=root,
-                           expected_application=args.expected_application_origin, capacity=options)
+                           expected_application=args.expected_application_origin, capacity=options,
+                           diagnostic_profile=args.diagnostic_profile)
     print(json.dumps({'status': report['status'],
                       'evidence': str(args.output_dir / 'library-corpus-scale.json')}, ensure_ascii=True), flush=True)
     return 0 if report['status'] == 'PASS' else 2 if report['status'] == 'PARTIAL' else 1

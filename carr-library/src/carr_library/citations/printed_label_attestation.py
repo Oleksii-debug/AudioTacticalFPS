@@ -23,6 +23,8 @@ def printed_label_guard(workspace, attest_text, lookup_label):
                         or approval.replacement != locator):
                     return False
             return attest_text(identity, locator, raw_sha256) is True
+        except (InterruptedError, TimeoutError):
+            raise
         except (OSError, LookupError, ValueError, RuntimeError):
             return False
 

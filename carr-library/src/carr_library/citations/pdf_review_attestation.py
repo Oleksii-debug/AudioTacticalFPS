@@ -101,6 +101,8 @@ def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=ren
             if isinstance(data, FileSnapshot):
                 data.verify(cancelled=cancelled)
             return review.renderer == renderer_identity and review.rendered_sha256 == fingerprint
+        except (InterruptedError, TimeoutError):
+            raise
         except (OSError, LookupError, ValueError, RuntimeError, ImportError):
             return False
 
