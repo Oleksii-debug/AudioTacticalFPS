@@ -21,11 +21,14 @@ ROOT = Path(__file__).resolve().parents[1]
 WINDOWS_OWNER = ROOT / 'src' / 'carr_library' / 'audio' / 'windows_process.py'
 SUITE_TIMEOUT_SECONDS = 600
 
-# Exact measured native suites retain every case and the existing per-case
+# Exact measured suites retain every case and the existing per-case
 # watchdog. Word r5 reached 10 cases at 600 s; the 7959 duration run made
 # continuous progress through 34/51 cases at 600 s, including all 10 codecs.
+# The 656-case assistant selector passed in 539.06 s on f77; 014 reached
+# 613 case starts at its 600 s limit, with 43 cases still unstarted.
 # All other required suites keep the existing ten-minute process deadline.
-SUITE_SECONDS = {'tests/citations/test_word_com.py': 1800,
+SUITE_SECONDS = {'tests/assistant': 900,
+                 'tests/citations/test_word_com.py': 1800,
                  'tests/audio/test_book_duration.py': 1200}
 
 
