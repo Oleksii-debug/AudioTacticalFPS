@@ -1,0 +1,420 @@
+{
+  "schema": "carr-main-native-early-focus-source-parity/1",
+  "status": "SOURCE_REVIEW_REQUIRED_NOT_EXECUTED",
+  "baseline": {
+    "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "source_tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+    "tracked_files": 1810,
+    "application_package_files": 425
+  },
+  "main_authority": {
+    "path": ".github/workflows/carr-windows.yml",
+    "git_blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "sha256": "70befd739fd9cac7467fcbfdaf57e0153404d9fd7e843e5edab707aa6c3581fd",
+    "numbering": "The step numbers are the actual integrated-desktop job step numbers; setup-job step 1 is supplied by GitHub."
+  },
+  "added_workflow": {
+    "path": ".github/workflows/carr-native-main-final.yml",
+    "sha256": "1afeb19bb2c9dce472858427844a8917f1c59b477674b8ad4eacda9ac8418295",
+    "push_branches": [
+      "carr/native-main-final-*"
+    ],
+    "pull_request_trigger": false,
+    "workflow_dispatch": false,
+    "cancel_in_progress": false,
+    "runner": "windows-2022",
+    "python": "CPython 3.11 x64",
+    "job_timeout_minutes": 360
+  },
+  "copied_prerequisites": [
+    {
+      "main_step": 2,
+      "name": "Enable complete reviewed Git history on the Windows runner",
+      "block_sha256": "26e1d6aeef955b42d31834804b95c790059226ef3b9ef3b8f877d1aea8da7e61",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 3,
+      "name": "Check out the exact event commit",
+      "block_sha256": "c86200fdc0df605fba862d1a79423c6ad0c68d5e767a500e7622fe269e1616b2",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 6,
+      "name": "Set up native x64 CPython",
+      "block_sha256": "618c5e0956c73e682da387eae39f46d10c0003e5eacf9449125464811c398b73",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 7,
+      "name": "Compile the exact source and regression entrypoints",
+      "block_sha256": "5023d84c0b4765aa31de72a0fab0fbe6a70ced162f23a4dbd3869743c7a75a90",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 8,
+      "name": "Install the actual desktop package in a fresh environment",
+      "block_sha256": "65cda6d04f97aaabc629423645969b394b97460193ab82c77fb92c64ac6245d4",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 9,
+      "name": "Check the installed application through its self-test entrypoint",
+      "block_sha256": "b86ea0571c847741167b9075bfe8ea61ed0b42e06033496d4f74ac1f142c5e00",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 10,
+      "name": "Check the installed offline OCR catalogue and console entrypoint",
+      "block_sha256": "5ca8672a53470f61c78b50bbeb0070aea7d3eb5e921536e0eef6b5ee6c7f6125",
+      "timeout_minutes": 2
+    },
+    {
+      "main_step": 11,
+      "name": "Exercise native academic references and reading controls",
+      "block_sha256": "612fd99781b34f05acbfee5162d29fd9b42e6ef6bd46da07dca411d8ec2ed431",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 12,
+      "name": "Exercise native advanced query builder and source search",
+      "block_sha256": "394e0805123f6fa80c4ec52f10d197f94e245e4992dac5f296667007dfea5b15",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 13,
+      "name": "Retain explicit core-only fallback and offline startup coverage",
+      "block_sha256": "1a3c81b2e5e4cbe89b320b25aa4c971c5feb7951360a4d06bde0521981c9fb1a",
+      "timeout_minutes": 5
+    },
+    {
+      "main_step": 14,
+      "name": "Match production dependencies before required source suites",
+      "block_sha256": "c8969e20624be20ea7d4639fe74bb2cc0ed1b85749d5461236ab4bc960fe3129",
+      "timeout_minutes": 10
+    },
+    {
+      "main_step": 15,
+      "name": "Prove fixed PowerShell native classification before bundle work",
+      "block_sha256": "dcecea62df6ef67476cacc42e8973aaa618fce10110604b5341c6eaf31a5e0d1",
+      "timeout_minutes": 4
+    },
+    {
+      "main_step": 16,
+      "name": "Prepare the verified OCR engine before its required source regression",
+      "block_sha256": "019c6e92d8df8e4b6de42f57b9a08129d77a1daa1bfd2504a0c044a8fae03fe3",
+      "timeout_minutes": 10
+    },
+    {
+      "main_step": 17,
+      "name": "Exercise actual managed OCR with Unicode Windows paths",
+      "block_sha256": "74b80a9434f34cca5daf1561a7cb297ad9f3ad2c1aa7ccff0b83e802ed6e91f4",
+      "timeout_minutes": 5
+    },
+    {
+      "main_step": 18,
+      "name": "Require Windows OCR script models and reviewed publication boundaries early",
+      "block_sha256": "be5cd34dc8a200209545755dca88a1c25dd698c141fe13b15826053a2ade8dad",
+      "timeout_minutes": 4
+    },
+    {
+      "main_step": 19,
+      "name": "Prepare the sealed local FFmpeg runtime before audio regressions",
+      "block_sha256": "8a2ef65d89350da8427084340b78a742629b326b015c9baad217873123ca7b84",
+      "timeout_minutes": 15
+    },
+    {
+      "main_step": 20,
+      "name": "Exercise only the explicit synthetic local-planning HTTP fixture",
+      "block_sha256": "4f1778376cecc19a7149070c3078c22ca85abf5e7f97fc37adb453d19d052e02",
+      "timeout_minutes": 3
+    }
+  ],
+  "copied_native_and_preparation_steps": [
+    {
+      "main_step": 23,
+      "name": "Exercise actual native citations and destination confirmation",
+      "block_sha256": "81b75810769352e334a474dc198b6d7fe3495f4b286207476930388d20b1cc8f",
+      "timeout_minutes": 4
+    },
+    {
+      "main_step": 24,
+      "name": "Exercise installed native translation approval and immutable derivatives",
+      "block_sha256": "dbe5135184be2bead0e0dddad3a8de488fb863612fe1ce36e9626ffb517fce02",
+      "timeout_minutes": 4
+    },
+    {
+      "main_step": 25,
+      "name": "Exercise installed Advanced translation with real native controls and synthetic provider",
+      "block_sha256": "1addf2adeb2311334879aee2fa957952f8458140a8f70f7a57302f15fd2c2663",
+      "timeout_minutes": 4
+    },
+    {
+      "main_step": 26,
+      "name": "Exercise installed search continuation with actual native keys and retained sources",
+      "block_sha256": "bebbe945be370aa4a1fb6940897793e105dfcd22a47be9722a39884d3ff6b3b0",
+      "timeout_minutes": 4
+    },
+    {
+      "main_step": 27,
+      "name": "Exercise installed signed-client controls with a synthetic authority",
+      "block_sha256": "4d65042d6becd094c09a68cfbc03b4132fc0c089a56d81763783be849ed55ee8",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 28,
+      "name": "Record actual Office qualification or explicit Word unavailability",
+      "block_sha256": "e294bad8a311bfc7fe30a80e5717d9fb2388ed61afce4859a0b73c3edcfdf2ef",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 29,
+      "name": "Exercise installed language evidence and explicit native voice refresh",
+      "block_sha256": "2f6b32546160a434d956b799dbd26a852c5d90787271c63c73afb50929df48cd",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 30,
+      "name": "Exercise native Import Center and durable batch workflow",
+      "block_sha256": "5f3c4d6661647f9f1e3e9367dae96d89d40166cea5f5092e06d9d65442275352",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 31,
+      "name": "Exercise native reading copies, save commands and keyboard preferences",
+      "block_sha256": "af921a7fe7e5e8e07e71d960bcbfaf4fe27c97bbac6f6abd5b5de6168c012d54",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 32,
+      "name": "Exercise installed document formats and native accessible reading",
+      "block_sha256": "a92c45b5aedd6e59261dde9cd0fa18cb18ae2494f7b3d912054bba54a2fcfa76",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 33,
+      "name": "Exercise the installed native OCR catalogue and shared model manager",
+      "block_sha256": "4cf7a714d27d913b7fccab01fb9afcd160cf693c967832f92a13bbccbbfba9e8",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 34,
+      "name": "Exercise native wx startup and source-opening events",
+      "block_sha256": "e114eb23088667fc77936db081167ed0ca293b2496784afe6b903ee5c68a29e4",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 35,
+      "name": "Exercise native saved-evidence page selection and note recovery",
+      "block_sha256": "56080e5d2bc261759973bd6d8d702259065fc419a81e6ac010fc5196899ef0e2",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 36,
+      "name": "Exercise native reference metadata review and historical outline export",
+      "block_sha256": "04ca939ec9b3dbf7f1ddd8a9766c089d437e48c187a9d4698d6c9e04658b8bc4",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 37,
+      "name": "Exercise native academic comparison, bibliography and catalog review",
+      "block_sha256": "ccc5984885d31d3acc698319b6296503dc13c94a3b12519f047cb6f4b604f447",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 38,
+      "name": "Exercise native research-notebook search and keyboard actions",
+      "block_sha256": "310e66307be50bf9875d718a2025c11b66893a1bb28c1922f73650b1508c80e4",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 39,
+      "name": "Exercise native EPUB section navigation and image descriptions",
+      "block_sha256": "422295caa6ecb84b29ccdc8d3b3eca5b05a6986e65aa7644008d1abd7a4a6f4a",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 40,
+      "name": "Exercise native library reports and academic exports",
+      "block_sha256": "f8fad8e7577eacde5a96bdf668eed91806100c96cb842897b7265319d364defe",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 41,
+      "name": "Exercise native EPUB contents and exact chapter search",
+      "block_sha256": "043b7a8ec11eb6c31984270523b14b26e802ae575b962643a06f2c0de0b8b8e3",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 42,
+      "name": "Exercise native full-source reader and page bookmarks",
+      "block_sha256": "82754e983740bc51c09cbc469bfdf09e94759ecb8cb09adf8348dfcc2bfa6c53",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 43,
+      "name": "Exercise native catalog reports and source comparison export",
+      "block_sha256": "66226e36188310b58fee6f21792ea820494fb953fb382641562162dec4c371d4",
+      "timeout_minutes": 3
+    },
+    {
+      "main_step": 44,
+      "name": "Locate installed Microsoft x64 development tools",
+      "block_sha256": "f7b9e1183b5d2b1ddfa14c00c145f8f7607d2efe33067d0e8db10138063b8e4e",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 45,
+      "name": "Compile private native launcher and test child with MSVC",
+      "block_sha256": "bf898ff14d677d0cc541b20a401ff26b0611d8694f030a161ecfa88e1327e885",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 46,
+      "name": "Execute exact launcher on native Windows with synthetic child",
+      "block_sha256": "873f261b1279743fd35d8f105ed4fe115527761781bb926b495465c385c60804",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 47,
+      "name": "Require the exact nine native launcher checks",
+      "block_sha256": "a84af03d3b1d0c8793672bcb4830dc0ac497000629b0b22793d8cb7c60627713",
+      "timeout_minutes": null
+    },
+    {
+      "main_step": 48,
+      "name": "Prepare the pinned local model through the existing upstream verifier",
+      "block_sha256": "c746cf79809c13208c3478d001ff2520f21df48e7aee56b580d6ed2de561468b",
+      "timeout_minutes": 10
+    }
+  ],
+  "omitted_main_steps": [
+    {
+      "steps": [
+        4,
+        5
+      ],
+      "reason": "Original O and maintenance A checkouts are consumed by the omitted bundle/standard installer lane, not by any copied prerequisite or step 23–48."
+    },
+    {
+      "steps": [
+        21,
+        22
+      ],
+      "reason": "The long full source population and its protected-inventory aggregate remain mandatory in the unchanged main workflow; this earlier native run does not replace them."
+    },
+    {
+      "steps": [
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "reason": "Full-bundle construction, installed loopback/local translation, installer and O/A/B maintenance remain in the unchanged main workflow."
+    }
+  ],
+  "prerequisite_contract": {
+    "environment": "The complete main job environment is copied unchanged, including explicit event-commit selection and offline application defaults.",
+    "installation": "The exact main fresh-venv installation, desktop lock, supplemental test tools, package install and installed self-test are retained.",
+    "full_runtime": "The exact integrated lock assertion still requires all 56 name/version pins, plus the existing native pywin32 ABI check.",
+    "native_runtimes": "Existing selected OCR and FFmpeg preparation/verification is retained without another downloader, runtime policy or source pin.",
+    "cold_start": "Every native block 23–48 runs without the full source suites. No successful source-suite side effects are assumed.",
+    "model": "Main step 48 remains the same explicitly pinned build-time model acquisition and verification; no inference or vendor-quality qualification is added.",
+    "checkout_bytes": "The existing bibliography pre-checkout step is reused byte-for-byte to disable core.autocrlf. Project '* -text' and all main prerequisite/native blocks remain unchanged."
+  },
+  "additive_binding": {
+    "before": "After main step 8 and before the first installed checks, an isolated -I -B installed interpreter verifies the exact event SHA/tree, clean tracked source, full tracked-source SHA256 map and complete installed carr_library/bootstrap package payload. Every tracked file also matches its exact committed Git blob: SHA1 over the canonical blob header and the same bytes used for SHA256, with the opened fstat byte size equal to the observed read count.",
+    "package_recipe": {
+      "path": "carr-library/packaging/source_wheel.py",
+      "git_blob": "bba3d0cda29b475d51347434d832af9187840547",
+      "api": "_blob and _inventory"
+    },
+    "payload": "The current explicit setuptools package/package-data inventory is compared exactly to both installed package roots. Every declared source/data file must match; extra non-bytecode package files are refused. Only ordinary __pycache__/*.pyc files are excluded, as interpreter-generated cache rather than packaged source.",
+    "after": "Only after all copied gates succeed, the same source/interpreter/origin/payload identity must equal the saved before receipt. The owned temporary binding script SHA256 is checked before re-execution.",
+    "receipts": [
+      "ci-results/native-main-binding-before.json",
+      "ci-results/native-main-binding-before.txt",
+      "ci-results/native-main-binding-after.json",
+      "ci-results/native-main-binding-after.txt"
+    ],
+    "timeout_minutes_per_binding": 4,
+    "exact_source_bytes": {
+      "api": "SHA1(b'blob ' + decimal opened fstat size + b'\\0' + actual streamed bytes) == ls-tree object identity",
+      "same_read_sha256": true,
+      "observed_size_must_equal_opened_size": true,
+      "per_file_git_subprocesses": false,
+      "normalization": false
+    }
+  },
+  "unchanged_reader_source_blobs": {
+    "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+    ".github/workflows/carr-windows.yml": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "carr-library/packaging/probe_standard_update_windows.py": "3ac3401e48e937c78142e8d296cb408f32df0429",
+    "carr-library/scripts/standard_qualification_shell_acceptance.py": "ec240ce21e39f261a09bf4403179be894c548e8d",
+    "carr-library/scripts/v3_acceptance_oracles.json": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+    "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+    "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+    "carr-library/scripts/reader_interactive_native_gate.py": "7e415972d50ae4851934e60e585b739add6242e4",
+    "carr-library/scripts/local_translation_oracles.json": "a954839a9e373b60f13f35b16c57d7160e43750c",
+    "carr-library/scripts/translation_scope_oracles.json": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+    "carr-library/scripts/reader_appearance_acceptance_oracle.json": "a63625ec4911c9258927fff5dd8f32e7efe9f665",
+    "carr-library/scripts/assistant_interactive_acceptance_oracle.json": "bb16b437acbb980999729a5312ae4322dcd69198",
+    "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+    "carr-library/scripts/qualify_reader_appearance.py": "4bb2a090a42dffd5cba9c5c11814a9055b9000ee",
+    "carr-library/scripts/local_translation_acceptance.py": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+    "carr-library/scripts/translation_scope_acceptance.py": "60d841da5b74fde0ee8491899c12aa516b461851",
+    "carr-library/packaging/source_wheel.py": "bba3d0cda29b475d51347434d832af9187840547",
+    "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b",
+    "carr-library/scripts/ci_standard_installer.ps1": "f1c00bcdb02b520316d2d9832f0ce4ce61bd2905",
+    "carr-library/scripts/ci_check.py": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+    "carr-library/tests/loopback/test_local_planning.py": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab"
+  },
+  "preservation": {
+    "main_workflow_modified": false,
+    "application_source_modified": false,
+    "test_source_modified": false,
+    "reader_source_pins_modified": 0,
+    "mandatory_main_native_blocks_byte_identical": 26,
+    "copied_prerequisite_blocks_byte_identical": 17,
+    "main_native_assertions_or_oracles_edited": false,
+    "default_fail_fast": true,
+    "continue_on_error": false,
+    "success_requires_every_copied_gate_and_after_binding": true,
+    "copied_source_byte_policy_blocks_byte_identical": 1
+  },
+  "evidence_retention": {
+    "upload": "Always upload carr-library/ci-results using the existing pinned upload-artifact action, with an isolated artifact name and the same seven-day retention.",
+    "raw_logs": "Existing native Tee-Object outputs and typed producer receipts remain unchanged. Complete GitHub job stdout/stderr, including compilation/setup output not separately captured by its existing producer, must be retrieved after completion for the observed proof.",
+    "incomplete": "On an earlier failure the after-binding and later gates are skipped; surviving raw output and the before receipt do not constitute a full native PASS."
+  },
+  "composition": {
+    "sole_parent": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "added_paths": [
+      ".github/workflows/carr-native-main-final.yml",
+      "carr-library/docs/evidence/main-native-early-focus-source-parity-20261128.json"
+    ],
+    "required_next": "Root must compose the independently reviewed search-continuation native fixture correction before selecting a fresh branch for execution. This source-only workflow component preserves the baseline probe unchanged.",
+    "refs_changed": false,
+    "workflow_launched": false
+  },
+  "limits": [
+    "No CI run or native PASS is claimed by this component.",
+    "This earlier focused workflow does not replace full source, installed bundle, standard installer, artifact-read or final-main acceptance.",
+    "No old success is transferred to the eventual composed source."
+  ],
+  "copied_source_byte_policy": {
+    "authority_path": ".github/workflows/carr-bibliography.yml",
+    "authority_blob": "071b297771d16a762d62d80af3f780da2343a207",
+    "name": "Preserve the exact committed source bytes",
+    "block_sha256": "5d95217bf2d8fb6aa384a8d6eb837116981282ae24754ec08bb0861299d63dea",
+    "position": "Before checkout, as a separate unchanged copied block; no main prerequisite block is edited.",
+    "purpose": "The existing reviewed core.autocrlf=false checkout preparation allows whole-repository raw-byte Git verification, including nonproject workflow files. No local content normalization or digest exception is permitted."
+  },
+  "correction": {
+    "earlier_source_component": "514731a36064ebdaf3f8057b8b8f10feed7b0592",
+    "observed_runtime": "NOT_RUN",
+    "source_review_gap": "A clean normalized Git diff plus working-file hashes alone did not directly prove equality with each committed blob.",
+    "inverse": "Removing only the copied pre-checkout block and replacing the narrow hash-helper/call-site change reproduces the previous workflow byte-for-byte."
+  }
+}

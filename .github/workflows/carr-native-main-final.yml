@@ -1,0 +1,619 @@
+name: CARR early exact main native gates
+
+on:
+  push:
+    branches: ['carr/native-main-final-*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-native-main-final-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  native-main:
+    name: Windows x64 / CPython 3.11 / exact main native gates
+    runs-on: windows-2022
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Preserve the exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Enable complete reviewed Git history on the Windows runner
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.longpaths true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Compile the exact source and regression entrypoints
+        run: |
+          python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/source_syntax_acceptance.py --source-commit $env:CARR_EXPECTED_SOURCE_COMMIT --output ci-results/source-syntax-preflight.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($path in @('scripts/ci_standard_installer.ps1', 'scripts/ci_standard_update.ps1', 'scripts/qualify_standard_library.ps1')) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath $path).Path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          }
+
+      - name: Install the actual desktop package in a fresh environment
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-results/tested-tree.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 setuptools==84.2.1 wheel==0.48.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Bind the complete installed package and checkout before native gates
+        timeout-minutes: 4
+        run: |
+          $binding = Join-Path $env:RUNNER_TEMP 'carr-native-main-source-binding.py'
+          if (Test-Path -LiteralPath $binding) { throw 'The native source binder must be a fresh owned file.' }
+          $code = @'
+          import hashlib
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import stat
+          import subprocess
+          import sys
+          import tomllib
+          
+          project = Path.cwd().resolve(strict=True)
+          repository = project.parent
+          phase = sys.argv[1]
+          assert phase in ('before', 'after') and sys.flags.isolated and sys.flags.dont_write_bytecode
+          
+          def git(*arguments):
+              return subprocess.check_output(
+                  ['git', '--no-replace-objects', *arguments], cwd=repository,
+                  env=dict(os.environ, GIT_NO_LAZY_FETCH='1', GIT_TERMINAL_PROMPT='0'),
+                  timeout=30)
+          
+          source = os.environ['CARR_EXPECTED_SOURCE_COMMIT']
+          assert re.fullmatch(r'[0-9a-f]{40}', source)
+          assert source == os.environ['GITHUB_SHA'] == git('rev-parse', 'HEAD').decode('ascii').strip()
+          tree = git('rev-parse', 'HEAD^{tree}').decode('ascii').strip()
+          assert re.fullmatch(r'[0-9a-f]{40}', tree)
+          assert not git('diff', '--name-only', 'HEAD', '--', ':/').strip()
+          assert git('rev-parse', 'HEAD:.github/workflows/carr-windows.yml').decode('ascii').strip() == '6a826f25a0a4724b5665b3cfbcf34ab97336971d'
+          assert git('rev-parse', 'HEAD:carr-library/packaging/source_wheel.py').decode('ascii').strip() == 'bba3d0cda29b475d51347434d832af9187840547'
+          
+          def file_hash(path, git_blob=None):
+              digest = hashlib.sha256()
+              with path.open('rb') as stream:
+                  opened = os.fstat(stream.fileno())
+                  assert stat.S_ISREG(opened.st_mode), str(path)
+                  object_digest = hashlib.sha1(b'blob ' + str(opened.st_size).encode('ascii') + b'\0')
+                  observed_size = 0
+                  while chunk := stream.read(1024 * 1024):
+                      digest.update(chunk)
+                      object_digest.update(chunk)
+                      observed_size += len(chunk)
+              assert observed_size == opened.st_size, str(path)
+              if git_blob is not None:
+                  assert re.fullmatch(r'[0-9a-f]{40}', git_blob) and object_digest.hexdigest() == git_blob, str(path)
+              return digest.hexdigest()
+          
+          entries, checkout = {}, {}
+          for raw in git('ls-tree', '-rz', '--full-tree', 'HEAD').split(b'\0'):
+              if not raw:
+                  continue
+              header, raw_name = raw.split(b'\t', 1)
+              mode, kind, identity = header.decode('ascii').split()
+              name = raw_name.decode('utf-8')
+              assert kind == 'blob' and mode in ('100644', '100755'), name
+              path = repository / name
+              info = path.lstat()
+              assert stat.S_ISREG(info.st_mode) and not path.is_symlink(), name
+              assert not getattr(info, 'st_file_attributes', 0) & 0x400, name
+              assert path.resolve(strict=True).is_relative_to(repository), name
+              entries[name] = (mode, kind, identity)
+              checkout[name] = {'mode': mode, 'git_blob': identity, 'sha256': file_hash(path, identity)}
+          assert checkout
+          
+          spec = importlib.util.spec_from_file_location(
+              '_native_main_source_wheel', project / 'packaging' / 'source_wheel.py')
+          recipe = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(recipe)
+          metadata = tomllib.loads(recipe._blob(repository, entries, 'carr-library/pyproject.toml').decode('utf-8'))
+          admitted, required = recipe._inventory(metadata, entries)
+          assert required and {name.split('/')[0] for name in admitted} == {'carr_library', 'bootstrap'}
+          expected = {name: checkout[origin]['sha256'] for name, origin in admitted.items()}
+          prefix = Path(sys.prefix).resolve(strict=True)
+          origins, installed = {}, {}
+          for package in ('carr_library', 'bootstrap'):
+              origin = Path(importlib.import_module(package).__file__).resolve(strict=True)
+              assert origin.is_relative_to(prefix) and 'site-packages' in {part.casefold() for part in origin.parts}
+              origins[package] = str(origin)
+              for path in origin.parent.rglob('*'):
+                  info = path.lstat()
+                  assert not path.is_symlink() and not getattr(info, 'st_file_attributes', 0) & 0x400, str(path)
+                  assert path.resolve(strict=True).is_relative_to(origin.parent), str(path)
+                  if stat.S_ISDIR(info.st_mode):
+                      continue
+                  assert stat.S_ISREG(info.st_mode), str(path)
+                  relative = path.relative_to(origin.parent)
+                  if '__pycache__' in relative.parts and path.suffix == '.pyc':
+                      continue
+                  installed[package + '/' + relative.as_posix()] = file_hash(path)
+          assert installed == expected, 'Complete installed package payload differs from the selected source recipe.'
+          identity = {
+              'source_commit': source, 'source_tree': tree,
+              'run_id': int(os.environ['GITHUB_RUN_ID']), 'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'isolated': True, 'python': sys.version, 'python_executable': str(Path(sys.executable).resolve(strict=True)),
+              'binding_script_sha256': file_hash(Path(__file__)),
+              'module_origins': origins, 'tracked_source': checkout, 'installed_package_files': installed,
+              'required_runtime_files': len(required),
+              'main_workflow_git_blob': '6a826f25a0a4724b5665b3cfbcf34ab97336971d',
+              'package_recipe_git_blob': 'bba3d0cda29b475d51347434d832af9187840547',
+          }
+          results = project / 'ci-results'
+          if phase == 'after':
+              before = json.loads((results / 'native-main-binding-before.json').read_text(encoding='utf-8'))
+              assert before['schema'] == 'carr-native-main-source-binding/1' and before['status'] == 'PASS' and before['phase'] == 'before'
+              assert before['identity'] == identity, 'Source, installed payload, interpreter or binding changed during the copied gates.'
+          report = {'schema': 'carr-native-main-source-binding/1', 'status': 'PASS', 'phase': phase, 'identity': identity}
+          output = results / ('native-main-binding-' + phase + '.json')
+          with output.open('x', encoding='utf-8') as stream:
+              json.dump(report, stream, ensure_ascii=False, sort_keys=True, indent=2)
+              stream.write('\n')
+              stream.flush()
+              os.fsync(stream.fileno())
+          print(json.dumps({'status': 'PASS', 'phase': phase, 'source_commit': source, 'source_tree': tree,
+                            'tracked_files': len(checkout), 'installed_package_files': len(installed),
+                            'receipt_sha256': file_hash(output)}, sort_keys=True), flush=True)
+          '@
+          [System.IO.File]::WriteAllText($binding, $code, [System.Text.UTF8Encoding]::new($false))
+          $bindingHash = (Get-FileHash -LiteralPath $binding -Algorithm SHA256).Hash.ToLowerInvariant()
+          "CARR_NATIVE_MAIN_BINDER_SHA256=$bindingHash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $env:CARR_PYTHON -I -B -X utf8 $binding before 2>&1 | Tee-Object 'ci-results/native-main-binding-before.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check the installed application through its self-test entrypoint
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check the installed offline OCR catalogue and console entrypoint
+        timeout-minutes: 2
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrModels = Join-Path (Split-Path $env:CARR_PYTHON) 'research-library-ocr-models.exe'
+          & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native academic references and reading controls
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-library.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native advanced query builder and source search
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain explicit core-only fallback and offline startup coverage
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_semantic_fallback_status.py tests/e2e/test_offline_startup.py 2>&1 | Tee-Object 'ci-results/core-fallback.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Match production dependencies before required source suites
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-integrated-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==56 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,pathlib,sys,pythoncom,pywintypes,win32com.client; assert all(pathlib.Path(m.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()) for m in (pythoncom,pywintypes,win32com.client)); pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED); pythoncom.CoUninitialize(); print(json.dumps({'status':'PASS','pinned_pywin32_native_abi':'PASS','actual_office':'NOT_RUN'}))" | Tee-Object 'ci-results/word-runtime-abi.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prove fixed PowerShell native classification before bundle work
+        timeout-minutes: 4
+        run: |
+          $sourceCommit = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceCommit -cne $env:CARR_EXPECTED_SOURCE_COMMIT) { throw 'The shell classification probe requires the exact event source.' }
+          $sourceTree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/standard_qualification_shell_acceptance.py --source-commit $sourceCommit --source-tree $sourceTree --output ci-results/standard-qualification-shell.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the verified OCR engine before its required source regression
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Exercise actual managed OCR with Unicode Windows paths
+        timeout-minutes: 5
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/managed-ocr-unicode.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+          }
+
+      - name: Require Windows OCR script models and reviewed publication boundaries early
+        timeout-minutes: 4
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_ocr_languages.py tests/extract/test_ocr_runtime.py tests/e2e/test_pdf_review_cancellation.py tests/packaging/test_delivery_archive.py 2>&1 | Tee-Object 'ci-results/windows-regression-boundaries.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
+
+      - name: Prepare the sealed local FFmpeg runtime before audio regressions
+        timeout-minutes: 15
+        run: |
+          $audioRoot = Join-Path $env:RUNNER_TEMP 'carr-pinned-audio'
+          New-Item -ItemType Directory -Force $audioRoot | Out-Null
+          $audioWork = Join-Path $audioRoot 'explicit-local-audio'
+          $audioBin = Join-Path $audioWork 'runtime'
+          & $env:CARR_PYTHON packaging/setup_local_audio.py --download --destination $audioWork | Tee-Object 'ci-results/local-audio-setup.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio.runtime import verify_runtime; value=verify_runtime(sys.argv[1]); assert value['native_validation']['status']=='PASS'; print(json.dumps(value,sort_keys=True))" $audioBin | Tee-Object 'ci-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Exercise only the explicit synthetic local-planning HTTP fixture
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | Tee-Object 'ci-results/local-planning-loopback-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import pathlib,re; text=pathlib.Path('ci-results/local-planning-loopback-source.txt').read_text(encoding='utf-8-sig'); assert re.search(r'^PASS: tests/loopback/test_local_planning.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0$',text,re.M); assert 'Required suites complete: 1; passed=1; failed=0' in text; print('PASS: exact fourteen source local-planning HTTP cases; synthetic model only')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native citations and destination confirmation
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/citation-styles-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native translation approval and immutable derivatives
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_translation_smoke.py --output ci-results/translation-native.json 2>&1 | Tee-Object 'ci-results/translation-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed Advanced translation with real native controls and synthetic provider
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_translation_v3_smoke.py --output ci-results/translation-v3-native.json 2>&1 | Tee-Object 'ci-results/translation-v3-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,pathlib,sys; report=json.loads(pathlib.Path('ci-results/translation-v3-native.json').read_text(encoding='utf-8')); assert report['schema']=='carr-native-translation-v3-smoke/1' and report['status']=='PASS'; assert all(report[k] is True for k in ('native_controls','source_immutable','explicit_advanced_model','glossary_verified','directional_languages')); assert report['synthetic_provider_requests']==2 and report['exact_reviewed_pair']=='en->uk' and report['quotation_authority'] is False and report['actual_credential_vault']=='PASS'; assert report['approval_and_folder_picker']=='injected explicit synthetic decisions' and report['actual_google_api']==report['nvda']=='NOT_RUN'; assert pathlib.Path(report['installed_module']).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()); report.update(source_commit=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),installed_package=True); print(json.dumps(report,sort_keys=True))" | Tee-Object 'ci-results/translation-v3-native-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed search continuation with actual native keys and retained sources
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_search_continuation_native.py --native 2>&1 | Tee-Object 'ci-results/search-pagination-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))['native_search_pagination']
+          assert report['result']=='PASS' and len(report['checks'])==oracle['expected_check_count']
+          assert Counter(report['checks'])==Counter(oracle['oracle'])
+          assert all(report[name] is True for name in oracle['true_flags'])
+          assert all(report[name]==value for name,value in oracle['required_statuses'].items())
+          assert set(report['module_origins'])==set(oracle['module_origins'])
+          for name,record in report['module_origins'].items():
+              path=pathlib.Path(record['path']).resolve()
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()), str(path)
+              source=pathlib.Path('src')/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert record['sha256']==sha256(path.read_bytes()).hexdigest()==sha256(source.read_bytes()).hexdigest(), name
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          report['installed_package']=True
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B - ci-results/search-pagination-native.txt ci-results/search-pagination-native-proof.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed signed-client controls with a synthetic authority
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/trust-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          import json,pathlib,sys
+          raw=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig')
+          reports=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')]
+          report=reports[-1]
+          oracle=json.loads(pathlib.Path('scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))
+          assert report['status']=='PASS' and Counter(report['checks'])==Counter(oracle['native_trust']) and len(report['checks'])==15
+          assert report['nvda']=='NOT_RUN' and report['production_authority']=='NOT_CONFIGURED' and report['production_installer_upgrade']=='NOT_RUN'
+          for name in ('ui_module','polling_module'):
+              assert pathlib.Path(report[name]).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()), report[name]
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B - ci-results/trust-native.txt ci-results/trust-native-proof.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Record actual Office qualification or explicit Word unavailability
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_word_citations_smoke.py 2>&1 | Tee-Object 'ci-results/word-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          import json,pathlib,sys
+          raw=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))
+          assert report['schema']=='carr-native-word-citations/1' and report['actual_nvda']=='NOT_RUN'
+          if report['status']=='PASS':
+              assert report['actual_office']=='PASS' and report['controlled_boundary'] is False
+              assert report['checks']==20 and Counter(report['check_names'])==Counter(oracle['native_word'])
+          else:
+              assert report['status']==report['actual_office']=='NOT_RUN' and report['checks']==0 and report['check_names']==[]
+              assert isinstance(report['reason'],str) and report['reason']
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B - ci-results/word-native.txt ci-results/word-native-proof.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed language evidence and explicit native voice refresh
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_language_matrix_smoke.py 2>&1 | Tee-Object 'ci-results/language-matrix-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native Import Center and durable batch workflow
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native reading copies, save commands and keyboard preferences
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_v3_reading_smoke.py 2>&1 | Tee-Object 'ci-results/native-v3-reading.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_ocr_languages_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-languages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed document formats and native accessible reading
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise the installed native OCR catalogue and shared model manager
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native wx startup and source-opening events
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native saved-evidence page selection and note recovery
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native reference metadata review and historical outline export
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-workflows.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native academic comparison, bibliography and catalog review
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native research-notebook search and keyboard actions
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_notebook_search_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-notebook-search.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native EPUB section navigation and image descriptions
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_ebook_reader_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-ebook-reader.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native library reports and academic exports
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native EPUB contents and exact chapter search
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_ebook_native.py 2>&1 | Tee-Object 'ci-results/native-ebook-contents.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native full-source reader and page bookmarks
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native catalog reports and source comparison export
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_catalog_insights_native.py 2>&1 | Tee-Object 'ci-results/native-catalog-insights.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Locate installed Microsoft x64 development tools
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }
+          "CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Compile private native launcher and test child with MSVC
+        shell: cmd
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "packaging\native-launcher\build_msvc.ps1" -OutputDirectory "%RUNNER_TEMP%\carr-native-launcher-private"
+          if errorlevel 1 exit /b %errorlevel%
+      - name: Execute exact launcher on native Windows with synthetic child
+        shell: pwsh
+        run: |
+          $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-private'
+          python packaging/native-launcher/probe_windows.py --launcher "$private/ResearchLibrary.exe" --child "$private/windows_child_probe.exe" --report "$private/windows-probe.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require the exact nine native launcher checks
+        run: |
+          $nativeLauncher = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-private'
+          Copy-Item -LiteralPath "$nativeLauncher/build-evidence.json" -Destination 'ci-results/native-launcher-build.json'
+          Copy-Item -LiteralPath "$nativeLauncher/windows-probe.json" -Destination 'ci-results/native-launcher-process.json'
+          & $env:CARR_PYTHON -I -B -c "import json,pathlib; proof=json.loads(pathlib.Path('ci-results/native-launcher-process.json').read_text(encoding='utf-8-sig')); build=json.loads(pathlib.Path('ci-results/native-launcher-build.json').read_text(encoding='utf-8-sig')); expected=['unicode-spaces-fixed-argv-offline-optional-runtimes','read-only-ready-probe','fixed-installation-check','child-exit-status-propagated','extra-arguments-rejected','incomplete-state-preserved-without-reinstall','missing-runtime-does-not-search-path','fresh-package-reuses-fixed-offline-installer','research-data-sentinel-preserved']; assert proof['status']=='passed' and proof['checks']==expected and proof['check_count']==9; assert proof['launcher_sha256']==build['pe']['sha256'] and proof['native_launcher_execution_verified'] is True and proof['actual_python_installation_verified'] is False and proof['nvda_verified'] is False and proof['authenticode_verified'] is False; print('PASS: exact native launcher process evidence')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the pinned local model through the existing upstream verifier
+        timeout-minutes: 10
+        run: |
+          $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
+          $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-model-ci/model-manifest.json'
+          $acquire = @'
+          import importlib.util, json, pathlib, shutil, sys
+          from huggingface_hub import hf_hub_download
+          spec = importlib.util.spec_from_file_location('model_build', pathlib.Path('packaging/model_bundle.py').resolve())
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          target, manifest = map(pathlib.Path, sys.argv[1:])
+          target.mkdir(parents=True, exist_ok=False)
+          for name in sorted(helper.FILES):
+              source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
+              shutil.copyfile(source, target / name)
+          proof = helper.seal(target)
+          with manifest.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True)
+          print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
+          '@
+          # Only this explicit build-time child may fetch the pinned public model.
+          # Importing the application before acquisition would enforce offline mode.
+          $env:HF_HUB_OFFLINE = '0'
+          try {
+            $acquire | & $env:CARR_PYTHON -I -B - $model $modelManifest | Tee-Object 'ci-results/model-acquisition.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:HF_HUB_OFFLINE = '1'
+          }
+          & $env:CARR_PYTHON -I -B -c "import sys; from carr_library.semantic import verify_model_bundle; verify_model_bundle(sys.argv[1], sys.argv[2]); print('PASS: exact approved local model')" $model $modelManifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Require unchanged source and installed payload after every copied gate
+        timeout-minutes: 4
+        run: |
+          $binding = Join-Path $env:RUNNER_TEMP 'carr-native-main-source-binding.py'
+          if ((Get-FileHash -LiteralPath $binding -Algorithm SHA256).Hash.ToLowerInvariant() -cne $env:CARR_NATIVE_MAIN_BINDER_SHA256) { throw 'The exact native source binder changed.' }
+          & $env:CARR_PYTHON -I -B -X utf8 $binding after 2>&1 | Tee-Object 'ci-results/native-main-binding-after.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve exact-commit early native receipts and raw logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-native-main-final-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
+
