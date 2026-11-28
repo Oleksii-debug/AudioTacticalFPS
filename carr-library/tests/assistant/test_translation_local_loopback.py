@@ -323,18 +323,23 @@ def test_actual_stalled_local_body_is_cancelled_and_scope_guards_stay_on_request
         tmp_path, server):
     service, p = initialized(tmp_path, server)
     approval, cost = translation_approval(p, 'Explicit stalled text', 'en', 'uk', '0')
-    received, release, stop = Event(), Event(), Event()
+    received, release, stop, watchdog_checked = Event(), Event(), Event(), Event()
     server.state['stall'] = received, release
     owner_thread, guard_threads, cancel_threads = get_ident(), [], []
     def cancel_after_first_byte():
-        if received.wait(5):
+        # Exercise the real watchdog too; a fast owner-thread poll may otherwise
+        # finish before its first scheduled tick without any lifetime defect.
+        if received.wait(5) and watchdog_checked.wait(5):
             stop.set()
     canceller = Thread(target=cancel_after_first_byte, name='local-test-canceller')
     canceller.start()
     def scope_guard():
         guard_threads.append(get_ident())
     def interrupted():
-        cancel_threads.append(get_ident())
+        identity = get_ident()
+        cancel_threads.append(identity)
+        if identity != owner_thread:
+            watchdog_checked.set()
         return stop.is_set()
     before = monotonic()
     try:
@@ -471,6 +476,115 @@ def test_actual_tls_keeps_socket_owner_after_http_response_transfer(tmp_path, mo
         if canceller is not None:
             canceller.join(5)
             assert not canceller.is_alive()
+        host.shutdown()
+        host.server_close()
+        serving.join(5)
+        assert not serving.is_alive()
+
+
+@pytest.mark.parametrize('phase', ['response-headers', 'tls-handshake'])
+def test_actual_stalled_local_protocol_phase_cancels_and_releases_one_socket(monkeypatch, phase):
+    """No mocked transport: a TCP peer deliberately withholds protocol progress."""
+    from urllib.parse import urlsplit
+    import socket
+    accepted, release, stop = Event(), Event(), Event()
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(('127.0.0.1', 0))
+    listener.listen(1)
+    listener.settimeout(5)
+    port = listener.getsockname()[1]
+    captured, peer_errors = [], []
+    def peer():
+        try:
+            with listener.accept()[0] as client:
+                client.settimeout(5)
+                first = client.recv(65536)
+                assert first
+                captured.append(first)
+                accepted.set()
+                release.wait(8)
+        except BaseException as exc:
+            peer_errors.append(exc)
+    worker = Thread(target=peer, name='local-stalled-protocol-peer')
+    worker.start()
+    def cancel_after_protocol_bytes():
+        if accepted.wait(5):
+            stop.set()
+    canceller = Thread(target=cancel_after_protocol_bytes, name='local-stalled-protocol-canceller')
+    canceller.start()
+    owners = []
+    original_connect = providers._Connection._connect
+    def observed_connect(owner, address):
+        owners.append(owner)
+        return original_connect(owner, address)
+    monkeypatch.setattr(providers._Connection, '_connect', observed_connect)
+    target = urlsplit(('https' if phase == 'tls-handshake' else 'http') + '://127.0.0.1:' + str(port))
+    owner = None
+    started = monotonic()
+    try:
+        with pytest.raises(InterruptedError):
+            owner = providers._Connection(target, local=True, deadline=started + 8, cancelled=stop.is_set)
+            owner.request('GET', '/languages')
+            owner.getresponse()
+        assert accepted.is_set() and monotonic() - started < 5
+        assert len(owners) == 1 and captured
+    finally:
+        if owner is not None:
+            owner.close()
+        release.set()
+        canceller.join(5)
+        worker.join(5)
+        listener.close()
+        assert not canceller.is_alive() and not worker.is_alive()
+    assert not peer_errors
+    retained = owners[0]
+    assert retained.done.is_set() and not retained.watcher.is_alive()
+    assert retained.active_socket.fileno() == retained.raw_socket.fileno() == -1
+    assert retained.connection.sock is None
+
+
+def test_actual_chunked_response_preserves_unicode_across_wire_boundaries(tmp_path):
+    """The standard HTTP parser handles chunks split inside UTF-8 code points."""
+    requests = []
+    value = 'Київ — Žilina &amp; exact derivative'
+    raw = json.dumps({'translatedText': value}, ensure_ascii=False).encode('utf-8')
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = 'HTTP/1.1'
+        def log_message(self, *args): pass
+        def do_POST(self):
+            request = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+            requests.append((self.path, request))
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Transfer-Encoding', 'chunked')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            for byte in raw:
+                self.wfile.write(b'1\r\n' + bytes([byte]) + b'\r\n')
+                self.wfile.flush()
+            self.wfile.write(b'0\r\n\r\n')
+            self.wfile.flush()
+    host = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    host.daemon_threads = True
+    serving = Thread(target=lambda: host.serve_forever(poll_interval=0.02), name='local-chunked-peer')
+    serving.start()
+    try:
+        p = ProviderProfile('chunked_local', 'Synthetic chunked protocol fixture', 'libretranslate-local',
+            'http://127.0.0.1:' + str(host.server_port), 'synthetic-protocol-only',
+            ('translation.text', 'translation.languages'), local=True, enabled=True)
+        gateway = Gateway(tmp_path / 'chunked-ledger')
+        approval, cost = translation_approval(p, 'Selected chunked text', 'en', 'uk', '0')
+        result = gateway.request(p, 'translation.text',
+            {'q': 'Selected chunked text', 'source': 'en', 'target': 'uk'},
+            task_id=approval.task_id, data_class='selected-excerpt',
+            authorization=approval, max_cost=cost, operation_id='chunked_request', timeout=8)
+        assert result['text'] == value
+        assert requests == [('/translate', {
+            'q': 'Selected chunked text', 'source': 'en', 'target': 'uk', 'format': 'text'})]
+        assert gateway.ledger.get(approval.id)['operations']['chunked_request']['status'] == 'complete'
+        assert not any(t.name == 'carr-provider-watchdog' and t.is_alive()
+                       for t in __import__('threading').enumerate())
+    finally:
         host.shutdown()
         host.server_close()
         serving.join(5)

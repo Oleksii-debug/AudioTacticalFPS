@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import http.client
+import io
 import errno
 import ipaddress
 import select
@@ -65,12 +66,54 @@ def _addresses(host, port, *, local, deadline, cancelled):
     return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, target)]
 
 
+class _ConnectionReader(io.RawIOBase):
+    """HTTPResponse input whose native reads remain cancellable on every OS."""
+    def __init__(self, owner):
+        super().__init__()
+        self.owner = owner
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        if self.closed:
+            raise ValueError('The local response stream is closed.')
+        if not len(buffer):
+            return 0
+        chunk = self.owner._receive(len(buffer))
+        buffer[:len(chunk)] = chunk
+        return len(chunk)
+
+
+class _ConnectionSocket:
+    """Borrow the one retained socket for the standard HTTP parser.
+
+    HTTPConnection may close its view after headers while HTTPResponse is still
+    reading a close-delimited body. The outer owner releases the native socket
+    only after those reads finish and its watchdog has joined.
+    """
+    def __init__(self, owner):
+        self.owner = owner
+
+    def sendall(self, data):
+        self.owner._sendall(data)
+
+    def makefile(self, mode):
+        if mode != 'rb':
+            raise ValueError('The local HTTP parser requires a read-only stream.')
+        return io.BufferedReader(_ConnectionReader(self.owner), buffer_size=64 * 1024)
+
+    def close(self):
+        pass  # This borrowed HTTP view cannot release the native owner.
+
+
 class _Connection:
     """Direct loopback HTTP(S) with a deadline covering reads and TLS handshake.
 
     Keep the actual socket independently of HTTPConnection: a close-delimited
     response transfers ownership to HTTPResponse and clears connection.sock.
-    The watchdog must still be able to interrupt its buffered/TLS body reads.
+    Native reads, writes and TLS handshake poll the same deadline/cancellation;
+    they never depend on cross-thread shutdown waking a blocking Winsock read.
     """
     def __init__(self, target, *, local, deadline, cancelled):
         self.deadline = deadline
@@ -105,7 +148,7 @@ class _Connection:
                 else:
                     break
             self.check()
-            self.raw_socket.settimeout(min(30.0, deadline - monotonic()))
+            self.raw_socket.setblocking(False)
             self.connection = http.client.HTTPConnection(target.hostname, port,
                 timeout=min(30.0, deadline - monotonic()))
             self.connection.default_port = 443 if target.scheme == 'https' else 80
@@ -113,7 +156,7 @@ class _Connection:
             if target.scheme == 'https':
                 self.active_socket = ssl.create_default_context().wrap_socket(self.raw_socket,
                     server_hostname=target.hostname, do_handshake_on_connect=False)
-            self.connection.sock = self.active_socket
+            self.connection.sock = _ConnectionSocket(self)
             self.check()
             # Start only after the raw-to-TLS ownership transfer. The active
             # socket remains fixed while the watchdog can access it.
@@ -122,7 +165,7 @@ class _Connection:
             self.watcher = watcher
             watcher.start()
             if target.scheme == 'https':
-                self.active_socket.do_handshake()
+                self._handshake()
             self.check()
         except BaseException:
             try:
@@ -156,6 +199,69 @@ class _Connection:
                 error = self.raw_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if error:
             raise OSError(error, 'Provider connection failed.')
+
+    def _wait_io(self, *, reading, deadline):
+        self.check()
+        remaining = min(self.deadline, deadline) - monotonic()
+        if remaining <= 0:
+            raise TimeoutError('The local connection exceeded its operation allowance.')
+        select.select([self.active_socket] if reading else [],
+                      [] if reading else [self.active_socket],
+                      [self.active_socket], min(.05, remaining))
+        self.check()
+
+    def _handshake(self):
+        deadline = min(self.deadline, monotonic() + 30)
+        while True:
+            self.check()
+            try:
+                self.active_socket.do_handshake()
+                self.check()
+                return
+            except ssl.SSLWantReadError:
+                self._wait_io(reading=True, deadline=deadline)
+            except ssl.SSLWantWriteError:
+                self._wait_io(reading=False, deadline=deadline)
+
+    def _receive(self, maximum):
+        deadline = min(self.deadline, monotonic() + 30)
+        while True:
+            self.check()
+            try:
+                chunk = self.active_socket.recv(maximum)
+            except ssl.SSLWantWriteError:
+                self._wait_io(reading=False, deadline=deadline)
+            except (ssl.SSLWantReadError, BlockingIOError):
+                self._wait_io(reading=True, deadline=deadline)
+            except OSError:
+                self.check()
+                raise
+            else:
+                self.check()
+                return chunk
+
+    def _sendall(self, data):
+        deadline = min(self.deadline, monotonic() + 30)
+        view, sent = memoryview(data), 0
+        try:
+            while sent < len(view):
+                self.check()
+                try:
+                    count = self.active_socket.send(view[sent:])
+                except ssl.SSLWantReadError:
+                    self._wait_io(reading=True, deadline=deadline)
+                except (ssl.SSLWantWriteError, BlockingIOError):
+                    self._wait_io(reading=False, deadline=deadline)
+                except OSError:
+                    self.check()
+                    raise
+                else:
+                    if not count:
+                        raise OSError('The local connection closed while sending the approved request.')
+                    sent += count
+            self.check()
+        finally:
+            view.release()
 
     def _interrupt(self):
         while not self.done.wait(0.025):

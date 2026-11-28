@@ -403,7 +403,7 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
             if accounts.get(p.id) != p:
                 raise PermissionError('The account changed. Reopen the batch.')
             chooser = wx.MessageDialog(dialog,
-                f'Fetch the declared supported languages from {p.endpoint} using {p.name}? '
+                f'Fetch the declared supported languages from {p.endpoint} using {p.name}? ' +
                 ('No document text is sent. This contacts only the selected local endpoint.' if p.local else
                  'No document text is sent. This is an explicit remote account request.'),
                 'Fetch translation languages', wx.YES_NO | wx.NO_DEFAULT)
