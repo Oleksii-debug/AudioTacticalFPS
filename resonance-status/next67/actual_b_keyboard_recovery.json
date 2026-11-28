@@ -1,0 +1,140 @@
+{
+  "schema": "resonance-actual-b-lane/1",
+  "status": "ACTUAL_PASS",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job": {
+    "id": 140911206996,
+    "name": "Windows x64 / native commands and draft recovery",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:49:23Z",
+    "completed_at": "2026-11-28T07:50:35Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911206996"
+  },
+  "lane": "keyboard_recovery",
+  "facts": {
+    "source_wholes": 7,
+    "source_cases": 238,
+    "native_report_groups": [
+      34,
+      23,
+      14
+    ],
+    "native_key_backend": "wx.UIActionSimulator",
+    "manual_nvda": "NOT_RUN"
+  },
+  "whole_source_rows": [
+    {
+      "path": "tests/ui/test_command_registry.py",
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/storage/test_keyboard_preferences.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_keyboard_manager.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_reader_command_dispatch.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_reader_keymap_context.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/storage/test_evidence_drafts.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_evidence_draft_recovery.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_reports": [
+    {
+      "checks": 34,
+      "native_key_backend": "wx.UIActionSimulator",
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+        "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+        "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+      },
+      "platform": "Windows",
+      "settings_controls": "native; command filter and shortcut text supplied by probe",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "checks": 23,
+      "native_key_backend": "wx.UIActionSimulator",
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+        "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+        "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+        "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+      },
+      "platform": "Windows",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "checks": 14,
+      "nvda": "NOT_RUN",
+      "origins": {
+        "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+        "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+      },
+      "platform": "Windows",
+      "source_override": null,
+      "status": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    }
+  ],
+  "decoded_log": {
+    "bytes": 91530,
+    "sha256": "881547f2b3ba291bb61cf4090ccc0531d9f3195bf857593422b500fe25d92a33"
+  },
+  "artifact": {
+    "id": 15254735895,
+    "name": "carr-keyboard-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "bytes": 8087,
+    "sha256": "431328bf9547eca844a5d682ca2b02140c2af56c74e7dc4c7742bbbf4b1e4e30",
+    "upload_digest_matches": true
+  },
+  "qualification": "Only this exact source and described actual lane. Full integrated source, installed, compiled configured update and native acceptance remain separate.",
+  "limitations": [
+    "No transfer to a successor commit.",
+    "Manual NVDA, physical audio, private models and production deployment are not established by this lane."
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "schema": "resonance-actual-b-lane/1",
+  "status": "ACTUAL_PASS",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job": {
+    "id": 140911207158,
+    "name": "Required portable encrypted backup / Ubuntu CPython 3.11 / strict encrypted transfer",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:50:37Z",
+    "completed_at": "2026-11-28T07:52:01Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911207158"
+  },
+  "lane": "portable_linux",
+  "facts": {
+    "source_wholes": 8,
+    "source_cases": 272,
+    "installed_cases": 272,
+    "failed_or_skipped": 0,
+    "separate_posix_fork": {
+      "source_cases": 1,
+      "installed_cases": 1,
+      "actual_fork": true
+    }
+  },
+  "whole_source_rows": [
+    {
+      "path": "tests/sync/test_archive.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/sync/test_crypto.py",
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/sync/test_service.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/sync/test_complete_state.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/sync/test_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/sync/test_vault.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/sync/test_service_commit_boundaries.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_portable_sync.py",
+      "passed": 103,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/operations/test_resources_posix.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_reports": [
+    {
+      "status": "PASS",
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+      "platform": "Linux-7.0.0-1018-aws-x86_64-with-glibc2.39",
+      "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+      "dependency_evidence": "Full pinned wheels/locks retained in exact job artifact"
+    },
+    {
+      "status": "PASS",
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+      "wheel_sha256": "fc26b175c5f2a4bf5648c12d142d58de2fa8f19998ea207dea71c79428999f40",
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "payload_files": 485,
+      "required_runtime_files": 414
+    },
+    {
+      "status": "PASS",
+      "installed_module": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/service.py",
+      "tests": 272,
+      "failed_or_skipped": 0,
+      "suite_counts": {
+        "test_service": 18,
+        "test_service_commit_boundaries": 13,
+        "test_vault": 46,
+        "test_complete_state": 2,
+        "test_cli": 5,
+        "test_portable_sync": 103,
+        "test_archive": 26,
+        "test_crypto": 59
+      },
+      "source_origins": {
+        "carr_library.sync.archive": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/archive.py",
+          "source_sha256": "c61ec3488a48029c4236f8c478dc518d71c5b69f1dbb62e90f5c1d708b12ec4d"
+        },
+        "carr_library.sync.crypto": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/crypto.py",
+          "source_sha256": "5096319ea0d41e1e78052434641e51be093d700be7c3600afc5793970c1ff805"
+        },
+        "carr_library.sync.service": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/service.py",
+          "source_sha256": "d23a2e87ea6a0c1f53605929e331c28aa1a311b59b4283c9ebc2727ecf614734"
+        },
+        "carr_library.sync.vault": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/vault.py",
+          "source_sha256": "9984a6b9641b212dbbb5739fcba2622b977784511f57c1f2a13aa0e9f056aa22"
+        },
+        "carr_library.sync.cli": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/cli.py",
+          "source_sha256": "aab55ca7490c150c80427adc3c993d133dc153b11ff808972ddf86b1c0783240"
+        },
+        "carr_library.ui.portable_sync": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/ui/portable_sync.py",
+          "source_sha256": "e70d507f9abe57f61d8801dbdc4fda390a30720713880ef038366c60c33ef47a"
+        },
+        "carr_library.file_publication": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/file_publication.py",
+          "source_sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+        },
+        "carr_library.library_backup": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/library_backup.py",
+          "source_sha256": "d012d328d95fac01ffb67cba2956a644409bbaa7d0395f17bdd1c35fd1029b51"
+        },
+        "carr_library.pending_backup": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/pending_backup.py",
+          "source_sha256": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b"
+        },
+        "carr_library.backup_sidecars": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+          "source_sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+        },
+        "carr_library.backup_producers": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/backup_producers.py",
+          "source_sha256": "0d94d3ee0608f21cda12f55b523345159b2fca0b3592cc20135a0750b553122a"
+        },
+        "carr_library.state_backup": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/state_backup.py",
+          "source_sha256": "c6bf568510fc48e6e5c103003d08cc00918a7b9819d30cbabd50a4e9b87d4ccb"
+        }
+      },
+      "nvda": "NOT_RUN"
+    },
+    {
+      "status": "PASS",
+      "actual_posix_fork": true,
+      "cases": 1,
+      "failed": 0,
+      "skipped": 0,
+      "installed_modules": {
+        "carr_library.operations.models": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/models.py",
+          "sha256": "52c7385b3cfa243a86767cdd28498bc7c2d7141480133419f75b20482f88c9ee"
+        },
+        "carr_library.operations._locks": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/_locks.py",
+          "sha256": "cfed74a38aaec5e5fbbc707d30df2a1b20bc982750526c6371898d7d877151dc"
+        },
+        "carr_library.operations.broker": {
+          "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/broker.py",
+          "sha256": "05cf0aa8672b2a98686aea51e5de7e52326c0dd61ade02418f6cefdc24be5022"
+        }
+      },
+      "qualification": "Actual fork ownership; no Windows skip substitutes for this required Linux case"
+    }
+  ],
+  "decoded_log": {
+    "bytes": 127252,
+    "sha256": "9892b8d44284556b9b7a741fc8d18f8b8e5cc0521f318d7e8c60aa4ab9e362ad"
+  },
+  "artifact": {
+    "id": 15254725888,
+    "name": "carr-sync-ubuntu-24.04-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "bytes": 17609,
+    "sha256": "6db4f5424f3558625f89055bb5c85b34d28ba614fb2b2248efed8e977e30ad81",
+    "upload_digest_matches": true
+  },
+  "qualification": "Only this exact source and described actual lane. Full integrated source, installed, compiled configured update and native acceptance remain separate.",
+  "limitations": [
+    "No transfer to a successor commit.",
+    "Manual NVDA, physical audio, private models and production deployment are not established by this lane."
+  ]
+}

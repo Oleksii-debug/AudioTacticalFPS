@@ -1,0 +1,277 @@
+{
+  "schema": "resonance-actual-b-lane/1",
+  "status": "ACTUAL_PASS",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job": {
+    "id": 140911207101,
+    "name": "Required signed client and maintenance boundaries / Ubuntu CPython 3.11 / strict signed client",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:49:34Z",
+    "completed_at": "2026-11-28T07:50:35Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911207101"
+  },
+  "lane": "trusted_linux",
+  "facts": {
+    "source_wholes": 18,
+    "source_cases": 387,
+    "installed_cases": 353,
+    "failed_or_skipped": 0,
+    "production_issuer": "UNCONFIGURED"
+  },
+  "whole_source_rows": [
+    {
+      "path": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/packaging/test_managed_update_native_policy.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/packaging/test_native_launcher_bundle.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/packaging/test_standard_installer.py",
+      "passed": 102,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_anchor_locking.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_canonical_boundary.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_controller.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_entitlements.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_idle_renewal.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_independent_review_boundaries.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_installation.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_managed_installation.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_managed_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_publication_integrity.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_refresh.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/security/test_updates.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_trust_status_handlers.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/packaging/test_installed_trusted_client_probe.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_reports": [
+    {
+      "status": "PASS",
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+      "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+      "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+      "dependency_evidence": "Full pinned wheels/locks retained in exact job artifact"
+    },
+    {
+      "status": "PASS",
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+      "wheel_sha256": "b9cbc8efd2a24961c110e74bdd765722976c83d5d8302f95b8daed2660fbc12c",
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "payload_files": 485,
+      "required_runtime_files": 414
+    },
+    {
+      "status": "PASS",
+      "cases": 353,
+      "failed_or_skipped": 0,
+      "suite_counts": {
+        "tests/packaging/test_managed_launch_boundary.py": 8,
+        "tests/packaging/test_managed_update_native_policy.py": 7,
+        "tests/packaging/test_native_launcher_bundle.py": 19,
+        "tests/packaging/test_standard_installer.py": 102,
+        "tests/security/test_anchor_locking.py": 1,
+        "tests/security/test_canonical_boundary.py": 27,
+        "tests/security/test_controller.py": 10,
+        "tests/security/test_entitlements.py": 30,
+        "tests/security/test_idle_renewal.py": 4,
+        "tests/security/test_independent_review_boundaries.py": 5,
+        "tests/security/test_installation.py": 39,
+        "tests/security/test_managed_installation.py": 34,
+        "tests/security/test_managed_registration.py": 10,
+        "tests/security/test_publication_integrity.py": 18,
+        "tests/security/test_refresh.py": 5,
+        "tests/security/test_updates.py": 23,
+        "tests/ui/test_trust_status_handlers.py": 11
+      },
+      "installed_origins": {
+        "carr_library.security.anchors": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/anchors.py",
+          "sha256": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.boundary": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/boundary.py",
+          "sha256": "60fe38d06826ed0822d565742e2c6ce744c85dbb6ebd3b2277d6990f72a579ec",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.controller": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/controller.py",
+          "sha256": "3c1cc0b9c8f8fdb82b9a924b77d53004e6a96938057d177c1168973cf08e02af",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.entitlements": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/entitlements.py",
+          "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.installation": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/installation.py",
+          "sha256": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.managed_installation": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/managed_installation.py",
+          "sha256": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.refresh": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/refresh.py",
+          "sha256": "e85d72183279fc0a48b5979e091cd82761d14d9500a3b351eb3c2c80e469712b",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.updates": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/updates.py",
+          "sha256": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.security.windows_registration": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/windows_registration.py",
+          "sha256": "fb1b15d9fb031e4260e66205bd79109901bdd830f91477f129f89f29f3bba1c5",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.installation_lease": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/installation_lease.py",
+          "sha256": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.managed_installation": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/managed_installation.py",
+          "sha256": "1582a4f24401e98345210d08b013b1a9a50f87e9f694597cc498f3db1a761e93",
+          "qualification": "imported-installed-runtime"
+        },
+        "carr_library.ui.trust_status": {
+          "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/ui/trust_status.py",
+          "sha256": "2716f33a0e05d5d7c810d1d86c47d000d580a14b1cd5e3cf9046fcb0d54ba082",
+          "qualification": "installed-source-presence-only; native wx NOT_RUN"
+        }
+      },
+      "packaging_evidence": "Reviewed source helpers; separate actual native setup gates are required",
+      "production_issuer": "UNCONFIGURED",
+      "manual_nvda": "NOT_RUN"
+    }
+  ],
+  "decoded_log": {
+    "bytes": 149474,
+    "sha256": "bdcf7056f533795c310022aca2f7a0b1ad10e72d7637af440e855233f3e69fc2"
+  },
+  "artifact": {
+    "id": 15253489917,
+    "name": "trusted-client-ubuntu-24.04-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "bytes": 59420,
+    "sha256": "ddc95dbd6a77c6caeb8ddf0af237ff1652aa05dddb9c3dbe7022999fedf6468a",
+    "upload_digest_matches": true
+  },
+  "qualification": "Only this exact source and described actual lane. Full integrated source, installed, compiled configured update and native acceptance remain separate.",
+  "limitations": [
+    "No transfer to a successor commit.",
+    "Manual NVDA, physical audio, private models and production deployment are not established by this lane."
+  ]
+}

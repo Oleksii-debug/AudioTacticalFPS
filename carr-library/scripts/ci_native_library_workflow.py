@@ -18,7 +18,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 PINS = {
-    "tests/ui/native_library_workflow_smoke.py": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+    "tests/ui/native_library_workflow_smoke.py": "2bc30526bfb15076f168a2706bb79cc6b5744f66",
     "src/carr_library/library_assistant.py": "f96aa939066c16105c3398e507f43ef1e438d571",
     "src/carr_library/ui/library_assistant.py": "c8e9e0ca148d929ead1b44f7cef17efbb76f6568",
     "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",

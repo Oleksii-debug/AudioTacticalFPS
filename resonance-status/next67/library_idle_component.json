@@ -1,0 +1,79 @@
+{
+  "schema": "carr-native-library-idle-admission-successor/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 07:55:11 UTC",
+  "base_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "base_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "actual_evidence": "d6e1e945592a8afc365fa1f3f80ccb8fb3d2cdab",
+  "changes": [
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "preimage": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+      "git_blob": "2bc30526bfb15076f168a2706bb79cc6b5744f66",
+      "hunks": [
+        {
+          "before": "            def open_from_menu():\n                item = frame.library_assistant_menu_item\n",
+          "after": "            def open_from_menu():\n                if frame.working or getattr(frame, 'busy', False):\n                    wait_for(lambda: not frame.working and not getattr(frame, 'busy', False),\n                             open_from_menu)\n                    return\n                item = frame.library_assistant_menu_item\n"
+        }
+      ],
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+      "git_blob": "8ffc5598f8ed0bcbf570b3bd676f86a14f30c16c",
+      "pin_replacements": [
+        {
+          "before": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+          "after": "2bc30526bfb15076f168a2706bb79cc6b5744f66",
+          "count": 1
+        }
+      ],
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "4965fd48b26b87e75ba14b9e470780943edab649",
+      "git_blob": "b50202409935cd0a8ca6816313fb641b5f4e600b",
+      "pin_replacements": [
+        {
+          "before": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+          "after": "2bc30526bfb15076f168a2706bb79cc6b5744f66",
+          "count": 1
+        },
+        {
+          "before": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+          "after": "8ffc5598f8ed0bcbf570b3bd676f86a14f30c16c",
+          "count": 1
+        }
+      ],
+      "inverse_exact": true
+    }
+  ],
+  "behavior": "Both first-open and reopened menu activations call the same open_from_menu function. If either real host busy flag remains true, the existing guarded wait_for schedules another turn within the original global deadline. The original event dispatch and fresh-view checks execute only after the actual worker clears both flags.",
+  "preserved": {
+    "native_checks": 6,
+    "installed_origins": 9,
+    "source_pins": 12,
+    "workflow_pins": 13,
+    "inner_deadline_seconds": 40,
+    "watchdog_seconds": 60,
+    "parent_seconds": 180,
+    "full_source_wholes": 490,
+    "new_test_cases": 0,
+    "real_menu_event": true,
+    "source_and_installed_proofs": true,
+    "cleanup": true,
+    "fresh_view_assertion": true,
+    "original_error_diagnostics": true
+  },
+  "peer": {
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "record": "2cbeb465b771694dd6f77b7d20de1bbb59eba8af"
+  },
+  "constraints": [
+    "No writes to working/busy, no new timer or executor, no bypass of the product admission guard.",
+    "All existing native success assertions and the first-open/pause/reopen lifecycle remain required.",
+    "The focused actual Windows rerun must establish readiness and all six native checks; no current PASS or parser claim."
+  ]
+}

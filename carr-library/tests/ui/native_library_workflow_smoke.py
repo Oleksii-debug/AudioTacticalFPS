@@ -316,6 +316,10 @@ def run_native():
                 click(view.close_button)
 
             def open_from_menu():
+                if frame.working or getattr(frame, 'busy', False):
+                    wait_for(lambda: not frame.working and not getattr(frame, 'busy', False),
+                             open_from_menu)
+                    return
                 item = frame.library_assistant_menu_item
                 assert ui_module.install_library_assistant_actions(frame) is item
                 tools = [frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
