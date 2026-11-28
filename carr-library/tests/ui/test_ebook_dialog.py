@@ -631,7 +631,7 @@ def _recorded_epub_native_probe_handlers():
     overlay, reader = Owner('overlay'), Owner('reader')
     reader._audio_dialog = overlay
     env = {
-        'errors': [], 'finished': False, 'stage': 1,
+        'errors': [], 'finished': False, 'stage': 1, 'key_pending': False,
         'shutdown': {'requested': False, 'reader_returned': False, 'attempted': set()},
         'pressed': set(), 'reader': reader, 'overlay': overlay,
         'wx': SimpleNamespace(ID_CANCEL=5101,
@@ -887,3 +887,86 @@ def test_recorded_overlay_highlight_uses_exact_positions_after_soft_wrapped_prov
     assert control.GetRange(*control.selection) == fragment
     assert control.position == control.selection[0]
     assert control.GetValue() == raw
+
+
+def _recorded_epub_playback_observation():
+    from threading import Event
+
+    harness = _recorded_epub_native_probe_handlers()
+    raw = 'Exact α 😀 source & words.'
+    harness.env.update(stage=2, expected_page=SimpleNamespace(raw_text=raw))
+    harness.overlay.busy = False
+    harness.overlay.cancelled = Event()
+    harness.overlay.session = SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+        chapter=SimpleNamespace(cues=(SimpleNamespace(start=0, end=len(raw)),)))
+    harness.overlay.text = SimpleNamespace(GetSelection=lambda: (0, 26),
+        GetStringSelection=lambda: raw, GetValue=lambda: raw)
+    harness.overlay.status = SimpleNamespace(GetValue=lambda: 'Ready. No audio has started.')
+    harness.overlay.player = SimpleNamespace(state='stopped')
+    harness.overlay.transport = SimpleNamespace(ticket=(0, 1), active=False, closed=False,
+                                                 interrupted=False, prepared=None)
+    harness.overlay._pending = None
+    return harness
+
+
+@pytest.mark.parametrize('state', ['ready', 'preparation-error', 'deferred-start'])
+def test_recorded_epub_deadline_reports_exact_playback_state_before_cleanup(capsys, state):
+    import json
+
+    harness = _recorded_epub_playback_observation()
+    if state == 'preparation-error':
+        harness.overlay.cancelled.set()
+        harness.overlay.status.GetValue = lambda: 'The selected audio device refused preparation.'
+    elif state == 'deferred-start':
+        harness.overlay._pending = object()
+        harness.overlay.status.GetValue = lambda: 'Preparing the exact recorded audio interval…'
+    expected_status = harness.overlay.status.GetValue()
+    expected_pending = harness.overlay._pending
+    harness.env['expire']()
+    output = capsys.readouterr().out
+    line = next(line for line in output.splitlines() if line.startswith('{"epub_highlight_diagnostic"'))
+    diagnostic = json.loads(line)['epub_highlight_diagnostic']
+    assert diagnostic['stage'] == 2 and diagnostic['busy'] is False and diagnostic['closed'] is False
+    assert diagnostic['status']['prefix'] == expected_status
+    assert diagnostic['playback'] == {
+        'cancelled': state == 'preparation-error', 'key_pending': False,
+        'player_state': 'stopped', 'transport_ticket': [0, 1], 'transport_active': False,
+        'transport_closed': False, 'transport_interrupted': False,
+        'prepared_present': False, 'pending_present': state == 'deferred-start',
+    }
+    assert output.index(line) < output.index('FAIL: Native EPUB deadline expired.')
+    assert len(harness.env['errors']) == 1 and 'deadline at stage 2' in harness.env['errors'][0]
+    assert harness.overlay._pending is expected_pending and harness.events == []
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_playback_getter_error_is_bounded_without_hiding_status(capsys):
+    import json
+
+    harness = _recorded_epub_playback_observation()
+
+    class UnavailablePlayer:
+        @property
+        def state(self):
+            raise RuntimeError('unavailable-' + 'x' * 3000)
+
+    harness.overlay.player = UnavailablePlayer()
+    harness.env['trace_highlight']()
+    value = json.loads(capsys.readouterr().out.splitlines()[1])['epub_highlight_diagnostic']
+    assert value['playback']['player_state']['unavailable'] == 'RuntimeError'
+    assert len(value['playback']['player_state']['reason']) == 256
+    assert value['status']['prefix'] == 'Ready. No audio has started.'
+    assert harness.events == [] and harness.pending == [] and harness.env['errors'] == []
+
+
+def test_recorded_epub_failed_failure_state_read_does_not_suppress_deadline_or_cleanup(capsys):
+    harness = _recorded_epub_playback_observation()
+    harness.overlay.text.GetSelection = Mock(side_effect=RuntimeError('native text peer is unavailable'))
+    harness.env['expire']()
+    output = capsys.readouterr().out
+    assert 'EPUB failure-state observation unavailable: RuntimeError: native text peer is unavailable' in output
+    assert 'FAIL: Native EPUB deadline expired.' in output
+    assert len(harness.env['errors']) == 1 and 'deadline at stage 2' in harness.env['errors'][0]
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]

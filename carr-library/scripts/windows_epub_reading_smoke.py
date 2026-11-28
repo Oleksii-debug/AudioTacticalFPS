@@ -168,6 +168,12 @@ def main():
         if finished:
             return
         try:
+            trace_highlight()
+        except Exception as error:
+            # Observation failure must not suppress the deadline or modal cleanup.
+            print('EPUB failure-state observation unavailable: ' + type(error).__name__
+                  + ': ' + str(error)[:256], flush=True)
+        try:
             raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
         except Exception:
             remember_failure('Native EPUB deadline expired.')
@@ -180,8 +186,25 @@ def main():
         def text_record(value):
             return {'characters': len(value), 'sha256': sha256(value.encode('utf-8')).hexdigest(),
                     'prefix': value[:2048]}
+        def observe(read):
+            try:
+                return read()
+            except Exception as error:
+                return {'unavailable': type(error).__name__, 'reason': str(error)[:256]}
+        playback = {
+            'cancelled': observe(lambda: overlay.cancelled.is_set()),
+            'key_pending': key_pending,
+            'player_state': observe(lambda: overlay.player.state),
+            'transport_ticket': observe(lambda: list(overlay.transport.ticket)),
+            'transport_active': observe(lambda: overlay.transport.active),
+            'transport_closed': observe(lambda: overlay.transport.closed),
+            'transport_interrupted': observe(lambda: overlay.transport.interrupted),
+            'prepared_present': observe(lambda: overlay.transport.prepared is not None),
+            'pending_present': getattr(overlay, '_pending', None) is not None,
+        }
         print(json.dumps({'epub_highlight_diagnostic': {
             'stage': stage, 'busy': overlay.busy, 'closed': overlay.closed,
+            'playback': playback,
             'native_selection': list(overlay.text.GetSelection()),
             'selected': text_record(overlay.text.GetStringSelection()),
             'control': text_record(overlay.text.GetValue()),
