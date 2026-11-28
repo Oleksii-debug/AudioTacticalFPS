@@ -594,7 +594,7 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
     layout = wx.BoxSizer(wx.VERTICAL)
     layout.Add(wx.StaticText(dialog, label='Search commands. Use Tab to choose a result, then Run command.'),
                0, wx.ALL | wx.EXPAND, 8)
-    search = wx.TextCtrl(dialog)
+    search = wx.TextCtrl(dialog, style=wx.TE_PROCESS_ENTER)
     search.SetName('Search commands by name')
     layout.Add(search, 0, wx.ALL | wx.EXPAND, 8)
     results = wx.ListBox(dialog)
@@ -645,7 +645,7 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
             event.Skip()
 
     search.Bind(wx.EVT_TEXT, rebuild)
-    search.Bind(wx.EVT_KEY_DOWN, enter)
+    search.Bind(wx.EVT_TEXT_ENTER, accept)
     results.Bind(wx.EVT_KEY_DOWN, enter)
     results.Bind(wx.EVT_LISTBOX, selected)
     results.Bind(wx.EVT_LISTBOX_DCLICK, accept)
