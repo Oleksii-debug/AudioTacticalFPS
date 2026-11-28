@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "ac0c38196c9cad7120c6d8b36a972654d26f3b6a",
+  "cause": {
+    "commit": "2f61c1fa1800fd3f76a68a01acc7addd8de9d99b",
+    "run": 46100316524,
+    "job": 140841032545,
+    "actual": "11 passed; two scenario cases failed because the exact scoped AST helper extraction omitted the newly added observe_stage diagnostic. Native phase was NOT_RUN."
+  },
+  "correction": "Extract the actual observe_stage helper alongside the six existing scoped helpers. No scenario, product, assertions, cases, watchdog, endpoint, playback, Close, or owner-drain behavior changes.",
+  "expected": {
+    "source_cases": 13,
+    "isolated_installed_cases": 13,
+    "native_cleanup_deadline_seconds": 90,
+    "ordinary_playback_qualification": "NOT_RUN"
+  },
+  "changes": [
+    {
+      "path": "carr-library/tests/ui/test_native_saved_audio_cleanup.py",
+      "before": "712167756982f5b728e7118603f70399efe18ec0",
+      "sha": "95b059d406086fb52f847fee51247b506220466e"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": "1218923b17ed96bf626486a1e5aed118e3b34063",
+      "sha": "2f8ede5db9594460d8c0ae34317867f45d4671e8"
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": "66f24ab1ae486e2f5a6d7adbefa2d6189c23b096",
+      "sha": "d7480b1ae118b111b6de257114c61ba46ae1e722"
+    }
+  ]
+}

@@ -26,7 +26,7 @@ def helpers(**values):
     path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_audio_player_smoke.py'
     tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
     main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
-    names = ('cleanup_step', 'unwind', 'observe_close', 'close_host', 'finish_host', 'result_report')
+    names = ('cleanup_step', 'unwind', 'observe_stage', 'observe_close', 'close_host', 'finish_host', 'result_report')
     functions = []
     for name in names:
         function, = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name == name]
