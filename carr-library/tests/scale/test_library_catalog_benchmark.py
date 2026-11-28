@@ -200,7 +200,7 @@ def test_real_multi_mib_segment_uses_the_explicit_search_window_memory_allowance
     state = adapter.initialize(directory, page_files=2, slice_items=2, steps=2,
         slice_seconds=60, memory_bytes=512*adapter.MIB,
         search_disk_bytes=128*adapter.MIB, reserve_bytes=0, foreign_libraries=1)
-    assert state["search_memory_bytes"] == 97*adapter.MIB
+    assert state["search_memory_bytes"] == 97*adapter.MIB + 3*32
     assert adapter.run_import(directory, seconds=180)["status"] == "IMPORT_COMPLETE"
     assert adapter.verify_catalog(directory, seconds=180)["raw_utf8_bytes"] == 3*adapter.MIB
     result = adapter.search_catalog(directory, seconds=180, query_seconds=120, query_samples=2)
@@ -211,3 +211,27 @@ def test_real_multi_mib_segment_uses_the_explicit_search_window_memory_allowance
     assert result["complete_scope_ranking"][1]["updated_index_rows"] == 0
     assert result["unicode_quotations"][0]["last_segment"] == 1
     assert result["federated_cleanup_confirmed"] is True
+
+
+@pytest.mark.parametrize("kind", ["corpus", "large_text"])
+def test_authored_bom_is_counted_in_the_original_record_allowance(adapter, tmp_path, kind):
+    from carr_library.catalog.intake import file_snapshot, TextSegments, IntakeError
+
+    directory = tmp_path / "actual-bom-profile"
+    spec = (adapter.fixture.CorpusSpec(1, 1, 256) if kind == "corpus"
+            else adapter.fixture.LargeTextSpec(259, 1))
+    generation = adapter.fixture.generate_fixture(directory, spec,
+        search_spool_budget_bytes=4*adapter.MIB, free_reserve_bytes=0,
+        memory_headroom_bytes=128*adapter.MIB)
+    assert generation["status"] == "FIXTURE_GENERATED_NOT_BENCHMARKED"
+    source = directory / "sources" / "book-00000.txt"
+    original = source.read_bytes()
+    assert len(original) == 259 and original[:3] == b"\xef\xbb\xbf"
+    budget = adapter._profile(generation, seconds=60, steps=2, memory_bytes=512*adapter.MIB)
+    assert budget.source_bytes == len(original) and budget.segment_bytes == len(original)
+    captured = file_snapshot(source.parent, source.name, max_bytes=budget.source_bytes)
+    with pytest.raises(IntakeError, match="segment exceeds the selected allowance"):
+        TextSegments(captured, max_segments=1, max_segment_bytes=budget.segment_bytes-1)
+    segments = TextSegments(captured, max_segments=1, max_segment_bytes=budget.segment_bytes)
+    assert len(segments) == 1 and segments[0].encode("utf-8") == original[3:]
+    assert source.read_bytes() == original

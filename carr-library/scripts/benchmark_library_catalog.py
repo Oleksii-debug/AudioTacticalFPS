@@ -213,6 +213,9 @@ def _profile(generation, *, seconds, steps, memory_bytes):
         segment = max(fixture.LargeTextSpec(source, segments).sizes())
     else:
         raise ValueError("Unknown generated source profile.")
+    # The first original record includes its three-byte UTF-8 BOM. The strict
+    # intake allowance counts original bytes before utf-8-sig removes that BOM.
+    segment += len(b"\xef\xbb\xbf")
     growth = max(64*MIB, generation["generated_bytes"] * 6
                  + generation["segments"] * 1024 + generation["completed_books"] * 16384)
     return ImportBudget(source_bytes=source, segment_bytes=segment, segments=segments,
