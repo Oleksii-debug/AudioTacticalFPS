@@ -1,0 +1,91 @@
+Selected lines from the complete connector-decoded job.log, with timestamps retained.
+This is log-extracted evidence, not original artifact-member bytes.
+
+2026-11-28T04:25:56.1000004Z   Created wheel for universal-research-library: filename=universal_research_library-0.2.0.dev2-py3-none-any.whl size=2598712 sha256=9ec25847618c9a7302afc3c00a2cf06fbd1f2483069f8ff04b153504c2e45241
+2026-11-28T04:28:29.8239213Z {"status": "PASS", "module_origin": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library", "python_modules": 380, "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"}
+2026-11-28T04:28:33.5963523Z {"checks": 27, "input_selection": "synthetic paths supplied to actual Import Center", "native_file_picker_operation": "NOT_RUN", "nvda": "NOT_RUN", "origins": {"carr_library.extract.document_formats": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\extract\\document_formats.py", "carr_library.ui.desktop_app": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py", "carr_library.ui.import_center": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\import_center.py"}, "platform": "Windows", "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library", "status": "PASS", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T04:28:35.8035636Z {"checks": 28, "input_selection": "synthetic paths supplied to actual Import Center", "native_file_picker_operation": "NOT_RUN", "nvda": "NOT_RUN", "origins": {"carr_library.extract.document_formats": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats.py", "carr_library.ui.desktop_app": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py", "carr_library.ui.import_center": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\import_center.py"}, "platform": "Windows", "source_override": null, "status": "PASS", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T04:28:39.8324244Z PASS: tests/assistant/test_local_planning.py: junit_passed=94, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:41.0653099Z PASS: tests/assistant/test_state_io.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:41.5077602Z PASS: tests/catalog/test_archive_portability.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:41.8875618Z PASS: tests/catalog/test_intake_portability.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:42.2981889Z PASS: tests/catalog/test_epub_metadata.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:44.8447461Z PASS: tests/catalog/test_registration.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:52.2895567Z PASS: tests/extract/test_page_ocr.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:53.6871997Z PASS: tests/extract/test_ocr_language_regions.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:58.0236433Z PASS: tests/extract/test_ocr_evidence_fidelity.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:29:11.1725883Z PASS: tests/extract/test_automatic_ocr_native.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:29:33.3419699Z PASS: tests/studio/test_production_cancellation_outcomes.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:05.4143374Z PASS: tests/studio/test_production.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:08.7534530Z PASS: tests/studio/test_production_hardening.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:10.8121982Z PASS: tests/studio/test_clip_dialog.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:02.8524809Z PASS: tests/academic_integration/test_formatting.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:17.8232481Z PASS: tests/storage/test_production_operation_backup.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:20.1474523Z PASS: tests/ui/test_studio_output_settings.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:24.8965339Z .PASS: tests/studio/test_book_audio.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:26.5515655Z .PASS: tests/storage/test_backup_scan_bounds.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:27.0537898Z PASS: tests/storage/test_state_backup_portability.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:33.5077307Z PASS: tests/storage/test_studio_draft_backup.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:46.4273712Z PASS: tests/storage/test_v3_state_backup.py: junit_passed=43, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:57.7468165Z PASS: tests/storage/test_backup_sidecars.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:32:31.5589857Z PASS: tests/storage/test_canonical_backup_compat.py: junit_passed=68, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:32:52.2246348Z PASS: tests/transcription/test_runtime_inventory.py: junit_passed=172, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:32:54.7959896Z PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:37:34.9886378Z PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:37:37.3271454Z PASS: tests/storage/test_asr_additional_profile.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:37:58.2491736Z PASS: tests/transcription/test_admission_boundaries.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:37:59.7960225Z PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:38:25.9005065Z PASS: tests/packaging/test_standard_installer.py: junit_passed=149, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:38:31.8505744Z PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:38:35.9842329Z PASS: tests/operations/test_resources.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:38:41.1725076Z PASS: tests/operations/test_facade.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:38:50.7993957Z PASS: tests/operations/test_production_admission.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:38:52.4197609Z PASS: tests/e2e/test_operations_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:01.2301174Z PASS: tests/e2e/test_import_worker_publication.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:02.0854848Z PASS: tests/ui/test_operations_policy.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:09.8678231Z PASS: tests/speech/test_synthesis_admission.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:12.2169720Z PASS: tests/ui/test_reader_playback.py: junit_passed=108, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:19.8522896Z PASS: tests/speech/test_progress_speech.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:20.8665158Z PASS: tests/ui/test_operation_progress.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:22.2972121Z PASS: tests/ui/test_progress_media_quiet.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:23.1658833Z PASS: tests/ui/test_studio_progress_isolation.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:28.1253236Z PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:30.4304318Z PASS: tests/audio/test_model_voices.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:36.3603927Z PASS: tests/storage/test_backup_book_plan_bindings.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:43.2699451Z PASS: tests/ui/test_book_audio_dialog.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:49.7204018Z PASS: tests/speech/test_python_helper.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:50.0279677Z PASS: tests/speech/test_registered_studio_voices.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:54.4902642Z PASS: tests/speech/test_runtime_settings_restore.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:55.2919604Z PASS: tests/ui/test_engine_settings_review.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:56.4264826Z PASS: tests/audio/test_cleanup_contexts.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:40:57.4225582Z .PASS: tests/audio/test_audio_process.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:02.7706692Z PASS: tests/storage/test_python_helper_backup.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:04.6150207Z PASS: tests/audio/test_capture_access_diagnostic.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:05.5823934Z PASS: tests/audio/test_recording_windows_process.py: junit_passed=56, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:07.3967254Z PASS: tests/audio/test_process_deadline.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:08.4280275Z PASS: tests/ui/test_ebook_dialog.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:14.2451758Z PASS: tests/ui/test_ebook_audio_initialization.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:20.6806150Z PASS: tests/reader/test_ebook_audio_lifecycle.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:21.6765000Z PASS: tests/speech/test_wave_output.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:23.1871774Z PASS: tests/speech/test_player_controls.py: junit_passed=87, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:23.7615819Z PASS: tests/speech/test_player_transport.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:24.3738875Z PASS: tests/speech/test_output_devices.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:34.4213618Z PASS: tests/speech/test_listening.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:35.2237840Z PASS: tests/speech/test_playlist.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:45.5310954Z .PASS: tests/reader/test_ebook_audio.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:49.3306220Z PASS: tests/search/test_source_page_benchmark.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:41:55.8558283Z PASS: tests/ui/test_federated_labels.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:01.0546472Z PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:03.1850183Z ..PASS: tests/ui/test_reader_synthesis.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:03.6569841Z tests\ui\test_progress_job_review.py ..............PASS: tests/ui/test_progress_voice_actions.py: junit_passed=38, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:04.3391044Z PASS: tests/ui/test_progress_job_review.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:05.6857431Z PASS: tests/storage/test_state_json_reader.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:07.2266571Z PASS: tests/transcription/test_control_reads.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:15.8343490Z PASS: tests/storage/test_reader_synthesis_backup.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:33.5880636Z PASS: tests/studio/test_publishing.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:42:34.6335918Z PASS: tests/studio/test_daisy_publishing.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:43:59.3611891Z PASS: tests/studio/test_measured_audio.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:43:59.6345088Z Required suites complete: 80; passed=80; failed=0
+2026-11-28T04:44:00.6921032Z SHA256 digest of uploaded artifact is 4eb9e076259426298c445719f696430fbaaa5e5e540ab104f7da66290aeb9555
+2026-11-28T04:44:01.1953439Z Artifact carr-component-followup-windows-2022-source-f8311d17fa960448b350cb739b5a90584c30c74b-1 successfully finalized. Artifact ID 15248771155
+2026-11-28T04:44:01.1955114Z Artifact carr-component-followup-windows-2022-source-f8311d17fa960448b350cb739b5a90584c30c74b-1 has been successfully uploaded! Final size is 8422 bytes. Artifact ID is 15248771155

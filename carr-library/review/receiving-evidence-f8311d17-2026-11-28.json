@@ -139,6 +139,41 @@
       "sparse_tree": "56da110c0b89989837040638d6922dcb2aacd71c",
       "kind": "terminal Linux source component contracts",
       "qualification": "carr-library/review/component-f8311d17-2026-11-28/linux-source/receipt.json"
+    },
+    {
+      "tested_source": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988,
+      "job": 140850017588,
+      "sparse_tree": "89dbcc4105879870553eaa478dff19ac582c8a40",
+      "kind": "terminal failed MAIN; all445source modules11521PASS; capture/bundle failure retained",
+      "qualification": "carr-library/review/receiving-10e3-main-terminal-2026-11-28/provenance.json"
+    },
+    {
+      "tested_source": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+      "run": 46101840613,
+      "job": 140845813926,
+      "sparse_tree": "4b51ff006a11cd172ee1443d915cc80acb5e2c6b",
+      "kind": "terminal failed V3; known temporary-path fixture in source/installed/progress; no timeout",
+      "qualification": "carr-library/review/receiving-78dc8ab6-2026-11-28/v3-terminal/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105051241,
+      "jobs": [
+        140855816041,
+        140855816083
+      ],
+      "sparse_tree": "b54c96c95e3364625218d92186af8abbba4df7ae",
+      "kind": "terminal Windows source/installed component contracts and separate native/venv scopes",
+      "qualification": "carr-library/review/component-f8311d17-2026-11-28/manifest-windows.json"
+    },
+    {
+      "tested_source": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103183038,
+      "job": 140850017242,
+      "sparse_tree": "b0850fd3fcd87476c1c151aba7bb72b480618f48",
+      "kind": "terminal successful V3; source6821PASS installed-shared2014PASS recovery641PASS; native and overlapping phases separate",
+      "qualification": "carr-library/review/receiving-10e3-v3-terminal-2026-11-28/provenance.json"
     }
   ],
   "application_changes": [],

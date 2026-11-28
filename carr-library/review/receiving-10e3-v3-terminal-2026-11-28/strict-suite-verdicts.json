@@ -1,0 +1,119 @@
+[
+  {
+    "line": 1755,
+    "status": "PASS",
+    "selector": "tests/speech/test_progress_speech.py",
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1767,
+    "status": "PASS",
+    "selector": "tests/studio/test_production_cancellation_outcomes.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1779,
+    "status": "PASS",
+    "selector": "tests/ui/test_operation_progress.py",
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1790,
+    "status": "PASS",
+    "selector": "tests/ui/test_progress_numeric_limits.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1802,
+    "status": "PASS",
+    "selector": "tests/ui/test_progress_job_review.py",
+    "passed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1813,
+    "status": "PASS",
+    "selector": "tests/ui/test_studio_progress_isolation.py",
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1824,
+    "status": "PASS",
+    "selector": "tests/ui/test_progress_media_quiet.py",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1836,
+    "status": "PASS",
+    "selector": "tests/ui/test_progress_voice_actions.py",
+    "passed": 38,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1847,
+    "status": "PASS",
+    "selector": "tests/e2e/test_import_progress.py",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1858,
+    "status": "PASS",
+    "selector": "tests/storage/test_progress_preferences_backup.py",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1889,
+    "status": "PASS",
+    "selector": "tests/assistant/test_translation_v3.py",
+    "passed": 58,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1920,
+    "status": "PASS",
+    "selector": "tests/assistant/test_local_planning.py",
+    "passed": 94,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 1931,
+    "status": "PASS",
+    "selector": "tests/assistant/test_planning_handlers.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  }
+]

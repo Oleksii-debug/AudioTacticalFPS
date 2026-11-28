@@ -1,0 +1,233 @@
+{
+  "schema": "carr-terminal-runtime-evidence/1",
+  "scope": "Exact10e3 ordinary Windows MAIN; completed job only",
+  "observed_at_utc": "2026-11-28 05:02 UTC",
+  "identity": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+    "tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+    "branch": "carr/ci-endpoint-evaluation-20261127",
+    "event": "push",
+    "attempt": 1,
+    "run": 46103182988,
+    "job": 140850017588,
+    "workflow": ".github/workflows/carr-windows.yml",
+    "workflow_blob": "23f5e6524e5b230a71cff2e8d06beace7d225450",
+    "created_at": "2026-11-28T03:30:32Z",
+    "updated_at": "2026-11-28T04:56:28Z",
+    "job_status": "completed",
+    "job_conclusion": "failure"
+  },
+  "required_source": {
+    "step": 70,
+    "status": "PASS",
+    "declared_selectors": 445,
+    "unique_selectors": 445,
+    "received_verdicts": 445,
+    "passing_modules": 445,
+    "failed_modules": 0,
+    "junit_passed": 11521,
+    "junit_failed": 0,
+    "junit_skipped": 0,
+    "all_pytest_exits_zero": true,
+    "exact_selector_multiset_match": true,
+    "exact_workflow_inventory_order_match": true,
+    "bootstrap_selector_included": "bootstrap/semantic_compat/test_probe.py",
+    "bootstrap_cases": 6,
+    "missing": [],
+    "extra": [],
+    "note": "Case events summed only within these445 required source module executions; not merged with earlier overlapping strict/native/bundle scopes."
+  },
+  "earlier_strict": {
+    "module_executions": 9,
+    "junit_passed": 280,
+    "junit_failed": 0,
+    "junit_skipped": 0,
+    "note": "These nine earlier executions overlap the final source inventory and are retained separately."
+  },
+  "relevant_source": [
+    {
+      "line": 13963,
+      "status": "PASS",
+      "module": "tests/search/test_source_page_benchmark.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "PASS: tests/search/test_source_page_benchmark.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 14333,
+      "status": "PASS",
+      "module": "tests/speech/test_voice_preferences.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "PASS: tests/speech/test_voice_preferences.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 15890,
+      "status": "PASS",
+      "module": "tests/audio/test_process_deadline.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "...PASS: tests/audio/test_process_deadline.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 16745,
+      "status": "PASS",
+      "module": "tests/citations/test_csl.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "PASS: tests/citations/test_csl.py: junit_passed=79, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 18044,
+      "status": "PASS",
+      "module": "tests/speech/test_progress_speech.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "PASS: tests/speech/test_progress_speech.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 18315,
+      "status": "PASS",
+      "module": "tests/academic_integration/test_formatting.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "PASS: tests/academic_integration/test_formatting.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 18395,
+      "status": "PASS",
+      "module": "tests/studio/test_clip_dialog.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "raw": "..PASS: tests/studio/test_clip_dialog.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "aggregate": {
+    "status": "FAIL",
+    "failed_steps": [
+      {
+        "name": "Require measured capture from the explicitly reviewed virtual input",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 26
+      },
+      {
+        "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 66
+      }
+    ],
+    "skipped_steps": [
+      {
+        "name": "Build pinned standard setup and execute actual install, repair and uninstall",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 67
+      },
+      {
+        "name": "Require the retained bundle local proposal through actual loopback HTTP",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 68
+      },
+      {
+        "name": "Retain the exact wheel only after the full Windows aggregate succeeds",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 71
+      },
+      {
+        "name": "Post Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 143
+      }
+    ],
+    "capture": "Step26 actual selected capture FAILED. Exact same-run raw receipts and read-only diagnosis are preserved separately in f09ddbc2; no policy/consent/device changes.",
+    "bundle": "Step66 required bundle workflows failed after1339 passing and1 failing case event; observer CP1252 UnicodeEncodeError obscures the underlying failing assertion in this console. Earlier guarded raw bundle member records the same incomplete outcome. No full-bundle qualification.",
+    "new_source_failure": "NONE in completed445-selector source phase",
+    "wheel_retention": "SKIPPED; no eligible release wheel from this aggregate"
+  },
+  "native_existing_evidence": {
+    "tree": "f09ddbc2f0d8d7826d35fadd26f51a796df9648d",
+    "scope": "Same exact10e3/run46103182988 pre-source, recording and endpoint artifacts verified by guarded reader46106678777/job140860888732.",
+    "source_navigation_checks": 50,
+    "installed_navigation_checks": 50,
+    "installed_clip_checks": 158,
+    "selected_clip_loop_repeats": 2,
+    "note": "No native count inferred from progress text or initial FAILED placeholder reports. Exact final raw reports and hashes are in that evidence tree."
+  },
+  "artifacts": [
+    {
+      "id": 15248927065,
+      "name": "carr-windows-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "size": 345852,
+      "digest": "sha256:6ae2d12570217807f3a87b3740d30e34a9234a49cc7a3436b5418e2bde6a87b2",
+      "expired": false,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988
+    },
+    {
+      "id": 15247277543,
+      "name": "carr-windows-pre-source-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "size": 324087,
+      "digest": "sha256:3b67d07e32140ac060ff4e6b3b9414f9b3c8f79f8ee364cea644945b49d8c097",
+      "expired": false,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988
+    },
+    {
+      "id": 15246751161,
+      "name": "carr-windows-audio-endpoint-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "size": 3945,
+      "digest": "sha256:85e25f2103a6b6c55999933f8861da2c02fa1628cf9b6f3978cd677d020e78d8",
+      "expired": false,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988
+    },
+    {
+      "id": 15246148009,
+      "name": "carr-windows-recording-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+      "size": 16765,
+      "digest": "sha256:0fddda1b2cfa683277364246e796cf8b4671bc6a31c2d0ed4ff93b83b1a66f63",
+      "expired": false,
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988
+    }
+  ],
+  "log": {
+    "representation": "Exact decoded GitHub job log, stored as returned; SHA256 is over its UTF-8 encoding, not the archived transport bytes.",
+    "characters": 1929173,
+    "sha256_utf8": "3a5fccac4eb0620febba98bdf4ab9ecae9b34bd15e6f391066c31c9b16b81259",
+    "parser": "Timestamp/BOM stripping used only for parsing; raw log retained unchanged. PASS/FAIL regex admits both tests/ and bootstrap/ paths. Source rows start at the exact required-source runner command and end at its completion."
+  },
+  "source_inventory": {
+    "application_python_modules": 380,
+    "application_modules_equal_f831": true,
+    "qualification_transfer": false
+  },
+  "claims": {
+    "new_silence_component": "NOT_RUN and absent from this tested head",
+    "human_listening": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "physical_microphone": "NOT_QUALIFIED",
+    "all_platform_release": "NOT_QUALIFIED",
+    "other_heads": "No PASS is transferred to f831 or a later candidate."
+  }
+}

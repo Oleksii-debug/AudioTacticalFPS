@@ -1,0 +1,15 @@
+{
+  "id": 46105051241,
+  "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "head_branch": "carr/component-followup-evaluation-20261127",
+  "event": "push",
+  "run_attempt": 1,
+  "path": ".github/workflows/carr-component-followup-evaluation.yml",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T03:54:29Z",
+  "updated_at": "2026-11-28T04:57:17Z",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105051241",
+  "checked_before_logs": true,
+  "api_source": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46105051241"
+}

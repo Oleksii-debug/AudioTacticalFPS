@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "run_id": 46101840613,
+  "job_id": 140845813926,
+  "checkout": "Explicit78dc8ab6 checkout and matching completed run/job API identity; PR event artifact name is not used as a source binding.",
+  "source": {
+    "status": "FAIL",
+    "passed": 6820,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 0,
+    "actual_summary": "1 failed, 6820 passed in 4917.06s (1:21:57)",
+    "elapsed_seconds": 4917.06,
+    "timed_out": false,
+    "failed_cases": [
+      "FAILED tests/speech/test_progress_speech.py::test_progress_model_reserves_actual_shared_resources_only_while_synthesizing - AssertionError: assert {'additional_...20971520, ...} == {'additional_...20971520, ...}"
+    ]
+  },
+  "installed_shared": {
+    "status": "FAIL",
+    "passed": 2013,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 0,
+    "actual_summary": "1 failed, 2013 passed in 451.31s (0:07:31)",
+    "no_validated_passing_json": true
+  },
+  "installed_backup": {
+    "status": "PASS",
+    "passed": 641,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "expected_failures": false,
+    "origins": {
+      "carr_library": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__init__.py",
+      "carr_library.state_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_backup.py",
+      "carr_library.state_recovery": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_recovery.py",
+      "carr_library.ingest.worker": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\worker.py",
+      "carr_library.application": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+      "carr_library.pending_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\pending_backup.py",
+      "carr_library.library_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+      "carr_library.recording_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\recording_backup.py",
+      "carr_library.speech.reading": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\reading.py",
+      "carr_library.speech.source": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\source.py",
+      "carr_library.ui.speech_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+      "carr_library.speech.runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\runtime.py",
+      "carr_library.academic_integration.doi": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\doi.py",
+      "carr_library.speech.session": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\session.py",
+      "carr_library.extract.ocr_runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\ocr_runtime.py",
+      "carr_library.storage.revisions": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+      "carr_library.storage.schema_identity": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\schema_identity.py"
+    },
+    "ocr_inventory_cases": [
+      "test_directory_inventory_checks_budget_between_entries",
+      "test_empty_directory_inventory_has_a_bound",
+      "test_unreadable_directory_rejects_entire_inventory"
+    ],
+    "ocr_inventory_exact": true,
+    "state_inventory_exact": true,
+    "state_inventory_cases": [
+      "test_state_inventory_rejects_unreadable_subtree[restore]",
+      "test_state_inventory_rejects_unreadable_subtree[snapshot]",
+      "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+      "test_state_root_lookup_error_is_not_absence[NotADirectoryError]",
+      "test_state_root_lookup_error_is_not_absence[PermissionError]",
+      "test_state_root_missing_is_optional_only_when_requested"
+    ],
+    "manual_nvda": "NOT_RUN"
+  },
+  "separate_required_suites": [
+    {
+      "status": "FAIL",
+      "module": "tests/speech/test_progress_speech.py",
+      "passed": 52,
+      "failed": 1,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "status": "PASS",
+      "module": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_operation_progress.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_numeric_limits.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_studio_progress_isolation.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_media_quiet.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/e2e/test_import_progress.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/storage/test_progress_preferences_backup.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_translation_v3.py",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_local_planning.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_planning_handlers.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "cause": "All three failed steps observed the same canonical Windows temporary-directory assertion mismatch: RUNNER~1 versus runneradmin. The exact fixture correction is present in10e3 and f831; no successor PASS is transferred to this run.",
+  "failed_steps": [
+    {
+      "number": 8,
+      "name": "Verify installed reader, translation, voice and delivery services"
+    },
+    {
+      "number": 14,
+      "name": "Require progress isolation and actual selected-voice rendering regressions"
+    },
+    {
+      "number": 18,
+      "name": "Validate local services, DSP, integrity and provider permission boundaries"
+    }
+  ],
+  "native_scene_step": {
+    "step": 13,
+    "status": "SKIPPED",
+    "reason": "Earlier required installed phase failed; no native scene/SAPI/progress/clip result is inferred."
+  },
+  "native_recording_process": {
+    "status": "PASS",
+    "checks": 15,
+    "scope": "actual owned process lifetime only; physical microphone and listening NOT_RUN"
+  },
+  "loopback_http": {
+    "status": "PASS",
+    "passed": 12,
+    "actual_summary": "12 passed in 8.59s",
+    "step": 17,
+    "scope": "Existing local proposal and loopback test while external egress blocked; no actual language model claim."
+  },
+  "other_native_steps": [
+    {
+      "number": 11,
+      "name": "Require native voice preferences and fresh inventory review",
+      "status": "success",
+      "check_count": "NOT_EXTRACTED; retain complete log"
+    },
+    {
+      "number": 12,
+      "name": "Require source and installed native reading tabs and focus",
+      "status": "success",
+      "check_count": "NOT_EXTRACTED; retain complete log"
+    }
+  ],
+  "job_log": {
+    "sha256": "e80959025efea8a0b95e445af357db7bd84f0a4af93c3685e4fd204722eac4bb",
+    "bytes": 204366
+  },
+  "artifact": {
+    "id": 15249267008,
+    "name": "carr-v3-evidence-46101840613-1",
+    "size_in_bytes": 206066,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15249267008",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15249267008/zip",
+    "expired": false,
+    "created_at": "2026-11-28T04:56:43Z",
+    "expires_at": "2026-12-05T04:56:43Z",
+    "updated_at": "2026-11-28T04:56:43Z",
+    "digest": "sha256:99c2d8db08ec23da5e634cd467c6742327b32a2ec91637cc7eacf982ffc30492",
+    "workflow_run": {
+      "id": 46101840613,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+    }
+  },
+  "limitations": {
+    "manual_nvda": "NOT_RUN",
+    "human_listening": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "real_optional_models": "NOT_RUN",
+    "release_qualification": false,
+    "qualification_transfer": false
+  }
+}

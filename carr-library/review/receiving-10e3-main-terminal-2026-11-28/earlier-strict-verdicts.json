@@ -1,0 +1,92 @@
+[
+  {
+    "line": 738,
+    "status": "PASS",
+    "module": "tests/packaging/test_ci_check.py",
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/packaging/test_ci_check.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 756,
+    "status": "PASS",
+    "module": "tests/e2e/test_pdf_review_cancellation.py",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/e2e/test_pdf_review_cancellation.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 762,
+    "status": "PASS",
+    "module": "tests/storage/test_v3_state_backup.py",
+    "passed": 43,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/storage/test_v3_state_backup.py: junit_passed=43, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 2951,
+    "status": "PASS",
+    "module": "tests/e2e/test_semantic_fallback_status.py",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/e2e/test_semantic_fallback_status.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 2962,
+    "status": "PASS",
+    "module": "tests/e2e/test_offline_startup.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/e2e/test_offline_startup.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 3239,
+    "status": "PASS",
+    "module": "tests/extract/test_managed_ocr.py",
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/extract/test_managed_ocr.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 3250,
+    "status": "PASS",
+    "module": "tests/e2e/test_managed_ocr_import.py",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/e2e/test_managed_ocr_import.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 3262,
+    "status": "PASS",
+    "module": "tests/extract/test_ocr_languages.py",
+    "passed": 102,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/extract/test_ocr_languages.py: junit_passed=102, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "line": 3274,
+    "status": "PASS",
+    "module": "tests/ui/test_ocr_selection.py",
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "raw": "PASS: tests/ui/test_ocr_selection.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0"
+  }
+]

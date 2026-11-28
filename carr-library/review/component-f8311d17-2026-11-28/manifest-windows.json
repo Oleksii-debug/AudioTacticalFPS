@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "kind": "terminal-receiving-evidence",
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105051241,
+  "run_attempt": 1,
+  "run_conclusion": "success",
+  "job_ids": [
+    140855816041,
+    140855816083
+  ],
+  "provenance": "Completed metadata was checked before fetching either log. Full job.log files preserve the returned connector-decoded text exactly. All derived JSON/excerpts are labeled; original artifact ZIP/member bytes were not downloaded.",
+  "shared_source_reference": {
+    "evidence_ref": "c46718b4b3b90786c6290b04e34e51e38db84781",
+    "path": "carr-library/review/component-f8311d17-2026-11-28/application-inventory-reference.json",
+    "blob": "85202eed4bc29c2c436fdb4ed57028a5b5cb936f",
+    "reference_blob": "85202eed4bc29c2c436fdb4ed57028a5b5cb936f",
+    "modules": 380,
+    "current_git_python_modules": 380,
+    "all_git_blob_identities_equal": true,
+    "canonical_map_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b",
+    "reference_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+  },
+  "observations": {
+    "source": {
+      "modules": 80,
+      "passed": 2890,
+      "failed": 0,
+      "skipped": 0,
+      "native_document_format_checks": {
+        "source": 27,
+        "installed": 28
+      }
+    },
+    "installed": {
+      "selected_modules": 80,
+      "passed": 2890,
+      "subtests_passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "separate_actual_windows_venv_cases": 21,
+      "native_clip_dynamic_checks": 120,
+      "loop_playback": "NOT_RUN"
+    },
+    "installed_checkout_inventory_each": {
+      "python_modules": 380,
+      "canonical_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+    }
+  },
+  "limitations": [
+    "No newer source or test successor receives these f831 execution results.",
+    "No original downloaded artifact-byte hashes are claimed beyond GitHub metadata corroborated by upload logs.",
+    "Dynamic native check counts are not independent pytest test counts.",
+    "No human listening, physical input/output, NVDA, private engine or final release qualification is inferred."
+  ],
+  "validation": {
+    "all_saved_blobs_full_readback_exact": true,
+    "count": 17
+  },
+  "files": [
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-run-metadata.json",
+      "git_blob": "8331bedb3ff7125e1818772df5d2e6cee171872a",
+      "utf8_bytes": 614,
+      "utf8_sha256": "e0b748a863011f66f17477d027e01122af8430e444355f2173d80ce33ac8ea2c"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/job.log",
+      "git_blob": "840f80b6b8f57e077326a7ca1ef1886bd3d0c26d",
+      "utf8_bytes": 177757,
+      "utf8_sha256": "9ea8788d1b098adbcfb1cf81d9b44bdbee9aed905ed3bca7df96e3584a49a471"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/job-metadata.json",
+      "git_blob": "94b7a70b8dc704bb48b0ff130b8842cec6c06396",
+      "utf8_bytes": 5992,
+      "utf8_sha256": "991ba6d6b537b7366501995760a8a682a7b171410bda7aff611e137569f64b9c"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/artifact-metadata.json",
+      "git_blob": "19719a7ea8a72579b1ff8cd4cd3c585b818235a0",
+      "utf8_bytes": 894,
+      "utf8_sha256": "232bf88788308699b6f23c97bb63deb6fde6583856084a73d65ce585782f2471"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/application-source.json",
+      "git_blob": "29258aaf9a8d2bea5ab25b1b56ce625d684b12f2",
+      "utf8_bytes": 241,
+      "utf8_sha256": "540c702309e08c92d3ff92b90880fa16355132d341d10dbe75530a0c4d381198"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/native-document-formats-source.json",
+      "git_blob": "93c71cbcf78d2ab5e7c01242f848c5708c133756",
+      "utf8_bytes": 736,
+      "utf8_sha256": "0cdba17e00b888fcce3dce60a2b87bf8884ccf9d9b61c24d60a1f7aec344a511"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/native-document-formats-installed.json",
+      "git_blob": "22b7ddf804cb7d01ce6d4c64370ca57ac13d85d2",
+      "utf8_bytes": 710,
+      "utf8_sha256": "8e67afae6d76528a20502030dd80d47b0d70125faa3e9dd85588c6bd3b1afc95"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/receipt.json",
+      "git_blob": "d15300f0ba1c8e8ab86fb9d888938076be664a09",
+      "utf8_bytes": 30806,
+      "utf8_sha256": "fb6e86c5860be8e60f5cdae9a46fc67570c0687969075e8baa83629d485a9bd9"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-source/decoded-summary.txt",
+      "git_blob": "aa11acbf2c504bd4a0ab8f3a1735ad2391357775",
+      "utf8_bytes": 13009,
+      "utf8_sha256": "f11107d7ceae655137051b5ec01821e71d74b52619e0df4f0086051b2f9ce5e9"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/job.log",
+      "git_blob": "719e0eec4412f6f0dfc401edb2a99c9bef722986",
+      "utf8_bytes": 117234,
+      "utf8_sha256": "960996e2e71e823c815045e6292289296a5575937fc2f87191bd3e4ade70d0da"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/job-metadata.json",
+      "git_blob": "b817379bb0f411b56a406868a9d18a0cd16988c5",
+      "utf8_bytes": 5995,
+      "utf8_sha256": "84d73df792ee332b025e9e54f8f1c9d204b6e4067c39a2533cb014aa0c013848"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/artifact-metadata.json",
+      "git_blob": "3972491b85d983ec26dc1f42370d28db8f872c22",
+      "utf8_bytes": 898,
+      "utf8_sha256": "fc9e161b8aab14567836cd9e695b14d6d64b62f5e713a8d82c82b2e75ffdf36f"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/application-source.json",
+      "git_blob": "29258aaf9a8d2bea5ab25b1b56ce625d684b12f2",
+      "utf8_bytes": 241,
+      "utf8_sha256": "540c702309e08c92d3ff92b90880fa16355132d341d10dbe75530a0c4d381198"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/venv-deadline-identity.json",
+      "git_blob": "78e27c4dd996b559e9108559ec501e0343c4c73b",
+      "utf8_bytes": 481,
+      "utf8_sha256": "84cffe5542089944543cfb68a022d9b0265316718567e19d390288d7bfab7e5c"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/native-clip-editor.json",
+      "git_blob": "74786857145a115058be2b37e273d873a3f0086d",
+      "utf8_bytes": 5276,
+      "utf8_sha256": "5eb22a512e4174b7eca2b37017c7e116a78ba3382e0f7dee529cf2b65e7722e5"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/receipt.json",
+      "git_blob": "12770f126ec5c3957dcc7298698481e4da1c9423",
+      "utf8_bytes": 9310,
+      "utf8_sha256": "b187d576402a9233c2264af22a37cf5e767e729a10ba54a7ae3dab0a2fb0b829"
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/windows-installed/decoded-summary.txt",
+      "git_blob": "b501fb493ae1afb3eb18b2357cbcf625648ed2bc",
+      "utf8_bytes": 7231,
+      "utf8_sha256": "98fe2498e49361cfc367d7325480289a29886433128e2e4cd90f545ea1fc6d96"
+    }
+  ]
+}
