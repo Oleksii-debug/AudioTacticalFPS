@@ -266,12 +266,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             return []
         where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
         params.extend(ids)
-    from .paging import checked_page_ids
+    from .paging import PAGED_ACTIVE_SOURCE, checked_page_ids
     page_clause, page_parameters = checked_page_ids(page_ids)
     where += page_clause
     params.extend(page_parameters)
+    source = PAGED_ACTIVE_SOURCE if page_ids is not None else 'active_page'
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-           'verified,raw,digest FROM active_page WHERE ' + where +
+           'verified,raw,digest FROM ' + source + ' WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
     index = sqlite3.connect(':memory:')
     rows, result = [], []

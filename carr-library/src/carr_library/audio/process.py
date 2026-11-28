@@ -171,8 +171,11 @@ def _can_own_posix_group():
             and Path('/proc/self/stat').is_file())
 
 
+_SCRATCH_STAGE_NAMES = ('before-index-insert', 'after-index-insert')
+
+
 def _scratch_overflow_sample(root, limit, total, count, regular_count,
-                             pending_count, trigger, largest):
+                             pending_count, trigger, largest, stages):
     """Diagnostic only: original lstat samples from one sequential check.
 
     This is a sampled prefix, not simultaneous physical disk allocation.
@@ -196,6 +199,9 @@ def _scratch_overflow_sample(root, limit, total, count, regular_count,
              'enumerated_entries': count, 'sampled_regular_files': regular_count,
              'pending_paths': pending_count, 'trigger': row(trigger),
              'largest_prior_samples': [row(sample) for sample in largest],
+             'stage_samples': [row(sample) for sample in stages],
+             'stage_sample_status': 'OBSERVED' if len(stages) == 1 else 'UNKNOWN',
+             'stage_sampling': 'original samples first in this sequential check; not atomic',
              'truncated': regular_count > len(largest) + 1}
     while True:
         encoded = json.dumps(value, ensure_ascii=True, separators=(',', ':'))
@@ -214,7 +220,11 @@ def _scratch_overflow_sample(root, limit, total, count, regular_count,
         else:
             # Native stat integers have finite platform widths; this also
             # preserves the original refusal if formatting ever exceeds them.
-            return '{"schema":"carr-scratch-original-lstat-prefix/1","truncated":true}'
+            return json.dumps({'schema': 'carr-scratch-original-lstat-prefix/1',
+                               'truncated': True,
+                               'stage_names': [sample[0].name for sample in stages],
+                               'stage_sample_status': value['stage_sample_status']},
+                              ensure_ascii=True, separators=(',', ':'))
 
 
 def run_process(args, *, budget=None, cancelled=lambda: False,
@@ -426,7 +436,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         check_native_deadline()
         total, count = 0, 0
         # Diagnostic-only bounded retention of the original stat observations.
-        regular_count, largest_samples = 0, []
+        regular_count, largest_samples, stage_samples = 0, [], []
         pending = list(watched)
         while pending:
             path = pending.pop()
@@ -439,11 +449,18 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             if stat.S_ISDIR(info.st_mode):
                 try:
                     with os.scandir(path) as entries:
+                        stage_paths = []
                         for entry in entries:
                             count += 1
                             if count > budget.max_staging_files:
                                 raise AudioError('Audio worker exceeded its staging file budget.')
-                            pending.append(Path(entry.path))
+                            if path == watched[0] and entry.name in _SCRATCH_STAGE_NAMES:
+                                stage_paths.append(Path(entry.path))
+                            else:
+                                pending.append(Path(entry.path))
+                        # Observe only the authored marker first; every other
+                        # pending path retains its original relative order.
+                        pending.extend(stage_paths)
                 except FileNotFoundError:
                     # Native converters may remove their private scratch
                     # directory after lstat. Only confirmed absence is benign;
@@ -470,11 +487,17 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')
+            if (len(stage_samples) < 2 and path.parent == watched[0]
+                    and path.name in _SCRATCH_STAGE_NAMES
+                    and info.st_size == 0 and info.st_nlink == 1):
+                # The ordinary/no-reparse predicate above already passed.
+                # A missing or renamed marker is UNKNOWN, never re-sampled.
+                stage_samples.append((path, info))
             regular_count += 1
             total += info.st_size
             if total > budget.max_output_bytes:
                 detail = _scratch_overflow_sample(watched[0], budget.max_output_bytes,
-                    total, count, regular_count, len(pending), (path, info), largest_samples)
+                    total, count, regular_count, len(pending), (path, info), largest_samples, stage_samples)
                 raise AudioError('Audio worker exceeded its output disk budget. ' + detail)
             largest_samples.append((path, info))
             largest_samples.sort(key=lambda sample: sample[1].st_size, reverse=True)

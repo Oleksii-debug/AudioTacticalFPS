@@ -429,7 +429,13 @@ def _run_native():
     _nested_modal_failure_acceptance(wx, gui, check, select_failure_handler)
     check('actual native Windows controls', wx.Platform == '__WXMSW__')
 
-    root = Path(mkdtemp(prefix='carr-native-backup-import-'))
+    authored_root = Path(mkdtemp(prefix='carr-native-backup-import-'))
+    authored_identity = durable_state.regular(authored_root, directory=True)
+    root = durable_state.local_path(authored_root, exists=True)
+    canonical_identity = durable_state.regular(root, directory=True)
+    check('canonical authored fixture is the same actual private directory',
+          (authored_identity.st_dev, authored_identity.st_ino)
+          == (canonical_identity.st_dev, canonical_identity.st_ino))
     source_root, backups, restored_parent = (root / 'Authored sources', root / 'Backups', root / 'Restored')
     for directory in (source_root, backups, restored_parent):
         directory.mkdir()
@@ -841,8 +847,13 @@ def _run_native():
               and delta_receipt['base_required'] is True
               and delta_receipt['base_sha256'] == full_digest)
         delta, delta_digest = Path(delta_receipt['path']), delta_receipt['manifest_sha256']
+        delta_in_selected_parent = delta.parent == backups and delta != full and delta.is_dir()
+        if not delta_in_selected_parent:
+            print('NATIVE_BACKUP_PATHS ' + json.dumps({
+                'receipt': str(delta)[:512], 'selected_parent': str(backups)[:512],
+                'selected_full': str(full)[:512]}, ensure_ascii=False), flush=True)
         check('the delta publishes only inside the explicitly chosen backup parent',
-              delta.parent == backups and delta != full and delta.is_dir())
+              delta_in_selected_parent)
         delta_raw = checked_file(delta / 'manifest.json')
         check('actual incremental checksum matches its real published manifest',
               sha256(delta_raw).hexdigest() == delta_digest

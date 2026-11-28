@@ -25,6 +25,15 @@ MAX_SOURCE_CHARACTERS = 5_000_000
 CATALOG_PAGE_SIZE = 500
 _CURSOR_KEYS = {'schema', 'scope', 'edition_after', 'after_page'}
 
+# Bounded page-ID callers retain their exact outer scope and row predicates.
+# Keep the selected page as the first join before the complete active key.
+PAGED_ACTIVE_SOURCE = (
+    '(SELECT p.*,r.workspace,r.edition,r.asset FROM page p '
+    'CROSS JOIN revision r ON r.id=p.revision '
+    'CROSS JOIN active a ON a.workspace=r.workspace '
+    'AND a.edition=r.edition AND a.revision=r.id)'
+)
+
 @dataclass(frozen=True)
 class SearchResources:
     """Explicit operation allowance, not a total library/result limit.

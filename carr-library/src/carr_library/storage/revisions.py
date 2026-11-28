@@ -164,6 +164,69 @@ class Page:
     printed: str | None = None
     verified: bool = False
 
+@contextmanager
+def _diagnostic_index_phase():
+    """One zero-byte marker, only inside the existing owned worker bootstrap."""
+    import io
+    import sys
+
+    if (os.name != 'nt' or not sys.flags.isolated or len(sys.argv) < 4
+            or sys.argv[0] != '-c'
+            or not isinstance(getattr(sys.stdin, 'buffer', None), io.BytesIO)):
+        yield
+        return
+    request = Path(sys.argv[1])
+    spelling = request.parent
+    checksum = sys.argv[2]
+    if (request.name != 'request.json' or not spelling.is_absolute()
+            or not spelling.name.startswith('carr-import-worker-')
+            or len(spelling.name) > 64
+            or len(checksum) != 64 or any(c not in '0123456789abcdef' for c in checksum)
+            or any(os.environ.get(key) != str(spelling) for key in ('TMPDIR', 'TEMP', 'TMP'))):
+        yield
+        return
+
+    from ..durable_state import local_path, regular
+
+    def directory_stamp(value):
+        return value.st_dev, value.st_ino, value.st_mode, int(getattr(value, 'st_file_attributes', 0))
+
+    initial = directory_stamp(regular(spelling, directory=True))
+    root = local_path(spelling, exists=True)
+    if directory_stamp(regular(root, directory=True)) != initial:
+        raise ValueError('Diagnostic worker temporary directory identity changed.')
+    request_info = regular(local_path(request, root=root, exists=True))
+    if not 0 < request_info.st_size <= 64000:
+        raise ValueError('Diagnostic worker request size changed.')
+    before = root / 'before-index-insert'
+    after = root / 'after-index-insert'
+    if os.path.lexists(before) or os.path.lexists(after):
+        raise ValueError('Diagnostic index phase already has an owner.')
+    with before.open('xb') as marker:
+        identity = os.fstat(marker.fileno())
+        marker.flush()
+        os.fsync(marker.fileno())
+    marker_identity = (identity.st_dev, identity.st_ino, identity.st_mode)
+
+    def check_marker(path):
+        if (directory_stamp(regular(local_path(spelling, exists=True), directory=True)) != initial
+                or directory_stamp(regular(root, directory=True)) != initial):
+            raise ValueError('Diagnostic worker temporary directory identity changed.')
+        current = regular(path)
+        if ((current.st_dev, current.st_ino, current.st_mode) != marker_identity
+                or current.st_size != 0):
+            raise ValueError('Diagnostic zero-byte phase marker changed.')
+
+    check_marker(before)
+    # Exceptions leave the actual "before" observation for the same process owner.
+    yield
+    check_marker(before)
+    if os.path.lexists(after):
+        raise ValueError('Diagnostic index phase destination is already present.')
+    os.rename(before, after)
+    check_marker(after)
+
+
 class Storage:
     def __init__(self, path, *, schema_version=None):
         if schema_version is not None and (type(schema_version) is not int or schema_version not in SCHEMAS):
@@ -304,7 +367,8 @@ class Storage:
                 'AND r.edition=a.edition JOIN page p ON p.revision=r.id '
                 'WHERE a.workspace=? AND a.edition=?)', (workspace, edition))
             db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
-            db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
+            with _diagnostic_index_phase():
+                db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
         except BaseException:
             if self.db.in_transaction:
                 db.execute('ROLLBACK TO stage_revision')
@@ -377,7 +441,32 @@ class Storage:
         for row in self.db.execute('SELECT raw,digest FROM page'):
             if sha256(row[0].encode()).hexdigest()!=row[1]:
                 raise ValueError('raw digest mismatch')
-        if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
+        # Probe unique IDs without materializing a second raw-text index.
+        # Unary + preserves EXCEPT's no-affinity comparison; IS handles NULL.
+        if self.db.execute("""
+            SELECT 1 FROM active a
+            CROSS JOIN revision r
+            CROSS JOIN page p
+            WHERE r.id=a.revision
+              AND r.workspace=a.workspace AND r.edition=a.edition
+              AND p.revision=r.id
+              AND NOT EXISTS (
+                  SELECT 1 FROM indexed i WHERE i.id=p.id
+                    AND (+i.raw COLLATE BINARY) IS (+p.raw COLLATE BINARY)
+              )
+            LIMIT 1
+        """).fetchone() or self.db.execute("""
+            SELECT 1 FROM indexed i WHERE NOT EXISTS (
+                SELECT 1 FROM page p
+                CROSS JOIN revision r
+                CROSS JOIN active a
+                WHERE p.id=i.id AND r.id=p.revision
+                  AND a.workspace=r.workspace AND a.edition=r.edition
+                  AND a.revision=r.id
+                  AND (+p.raw COLLATE BINARY) IS (+i.raw COLLATE BINARY)
+            )
+            LIMIT 1
+        """).fetchone():
             raise ValueError('active index content mismatch')
         self.db.execute("INSERT INTO page_fts(page_fts,rank) VALUES('integrity-check',1)")
         if self.schema_version >= 3:
