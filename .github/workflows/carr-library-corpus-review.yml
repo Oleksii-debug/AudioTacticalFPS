@@ -1,31 +1,20 @@
-name: Actual installed library corpus measurements
+name: Actual public import cost diagnosis (not corpus qualification)
 on:
   push:
     branches: [carr/library-catalog-review-20261127]
-    paths: ['.github/workflows/carr-library-corpus-review.yml']
+    paths: ['.github/workflows/carr-library-corpus-review.yml', '.github/diagnostics/profile_library_import.py']
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: actual-library-corpus-${{ github.ref_name }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
-  corpus:
-    name: ${{ matrix.tier.name }} / ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        os: [ubuntu-24.04, windows-2022]
-        tier:
-          - {name: books-1000, books: 1000, bytes: 0, segments: 40, spool_mib: 4096}
-          - {name: books-10000, books: 10000, bytes: 0, segments: 40, spool_mib: 4096}
-          - {name: books-50000, books: 50000, bytes: 0, segments: 40, spool_mib: 4096}
-          - {name: text-65m, books: 0, bytes: 68157613, segments: 17, spool_mib: 4096}
-          - {name: text-129m, books: 0, bytes: 135266477, segments: 33, spool_mib: 4096}
-          - {name: text-2g, books: 0, bytes: 2147483648, segments: 1000, spool_mib: 8192}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 300
+  diagnostic:
+    name: Actual parent and existing owned worker costs / ubuntu-24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: carr-library
@@ -36,11 +25,11 @@ jobs:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
-      CARR_SCALE_TIER: ${{ matrix.tier.name }}
-      CARR_SCALE_BOOKS: ${{ matrix.tier.books }}
-      CARR_SCALE_BYTES: ${{ matrix.tier.bytes }}
-      CARR_SCALE_SEGMENTS: ${{ matrix.tier.segments }}
-      CARR_SCALE_SPOOL_MIB: ${{ matrix.tier.spool_mib }}
+      CARR_SCALE_TIER: diagnostic-books-1000
+      CARR_SCALE_BOOKS: '1000'
+      CARR_SCALE_BYTES: '0'
+      CARR_SCALE_SEGMENTS: '40'
+      CARR_SCALE_SPOOL_MIB: '4096'
       CARR_SCALE_HEAD: ${{ github.sha }}
       CARR_SCALE_RUN: ${{ github.run_id }}
     steps:
@@ -50,7 +39,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
-      - name: Select this runner's fresh measured profile path
+      - name: Select a fresh diagnostic profile
         run: |
           python -I -B -X utf8 - <<'PY'
           import os
@@ -59,7 +48,7 @@ jobs:
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
               stream.write("CARR_SCALE_DIR=" + str(path) + "\n")
           PY
-      - name: Install the exact composed application
+      - name: Install the unchanged composed application
         run: python -m pip install ".[test,sync]"
       - name: Bind all installed package bytes and the actual measurement scripts
         run: |
@@ -95,7 +84,7 @@ jobs:
                   assert path.resolve().is_relative_to(root), path
                   assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path
                   assert observed.st_size <= 32 * 1024**2, path
-                  rows.append((path.relative_to(root).as_posix(), sha256(path.read_bytes()).hexdigest()))
+                  rows.append([path.relative_to(root).as_posix(), sha256(path.read_bytes()).hexdigest()])
               assert len(rows) >= 380 and len(rows) == len({row[0] for row in rows}), len(rows)
               return rows
           
@@ -121,6 +110,10 @@ jobs:
                   raw = path.read_bytes()
                   compile(raw, str(path), "exec")
                   scripts[name] = sha256(raw).hexdigest()
+              diagnostic = ROOT.parent / ".github" / "diagnostics" / "profile_library_import.py"
+              diagnostic_bytes = diagnostic.read_bytes()
+              compile(diagnostic_bytes, str(diagnostic), "exec")
+              scripts["profile_library_import.py"] = sha256(diagnostic_bytes).hexdigest()
               return {"package_files": len(first), "inventory": first,
                       "package_sha256": sha256(json.dumps(first, separators=(",", ":")).encode()).hexdigest(),
                       "origins": origins, "scripts": scripts,
@@ -288,6 +281,14 @@ jobs:
           mode = sys.argv[1]
           if mode == "before":
               write("installed-before.json", identity())
+          elif mode == "diagnostic-after":
+              before, after = read(OUT / "installed-before.json"), identity()
+              write("installed-after.json", after)
+              for key in ("inventory", "package_sha256", "origins", "scripts", "executable"):
+                  assert before[key] == after[key], ("Implementation changed during diagnosis.", key)
+              print(json.dumps({"status": "DIAGNOSTIC_ONLY", "package_files": after["package_files"],
+                                "package_sha256": after["package_sha256"], "origins": after["origins"],
+                                "scripts": after["scripts"], "corpus_tier_qualification": "NOT_RUN"}))
           elif mode == "collect":
               collect()
           elif mode == "finish":
@@ -297,59 +298,91 @@ jobs:
           PY
           unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
           python -I -B -X utf8 ci-library-corpus/check.py before
-      - name: Generate and independently hash the actual original corpus
-        id: generate
-        timeout-minutes: 20
+      - name: Generate 1000 genuine original books with 40 segments each
+        timeout-minutes: 5
         run: |
-          if [ "$CARR_SCALE_BOOKS" -gt 0 ]; then
-            python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --books "$CARR_SCALE_BOOKS" --segments "$CARR_SCALE_SEGMENTS" --search-spool-bytes "$((CARR_SCALE_SPOOL_MIB * 1024 * 1024))" --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-corpus/generate.json
-          else
-            python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --large-bytes "$CARR_SCALE_BYTES" --segments "$CARR_SCALE_SEGMENTS" --search-spool-bytes "$((CARR_SCALE_SPOOL_MIB * 1024 * 1024))" --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-corpus/generate.json
-          fi
-      - name: Admit the measured profile through the actual public queue
-        id: initialize
-        timeout-minutes: 15
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib "$CARR_SCALE_SPOOL_MIB" --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 > ci-library-corpus/initialize.jsonl
-      - name: Interrupt the actual coordinator after one committed and quiescent publication
-        id: interruption
-        timeout-minutes: 35
+          python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --books 1000 --segments 40 --search-spool-bytes 4294967296 --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-corpus/generate.json
+      - name: Admit the same public profile with four bounded actual slices
+        timeout-minutes: 5
         run: |
-          set +e
-          python -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds 1800 --crash-after-first-commit > ci-library-corpus/authored-crash-output.log 2>&1
-          phase_status=$?
-          set -e
-          if [ "$phase_status" -ne 73 ]; then
-            cat ci-library-corpus/authored-crash-output.log
-            exit 1
-          fi
-      - name: Resume the same durable queue in a new actual process
-        id: resume
-        timeout-minutes: 95
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds 5400 > ci-library-corpus/resume.jsonl
-      - name: Reopen and verify every original catalog segment and retained source
-        id: catalog
-        timeout-minutes: 35
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl
-      - name: Measure actual complete traversal, exact quotations and scoped ranking
-        id: search
-        timeout-minutes: 65
-        run: python -I -B -X utf8 scripts/benchmark_library_catalog.py search "$CARR_SCALE_DIR" --seconds 3600 --query-seconds 1800 --query-samples 50 > ci-library-corpus/search.jsonl
-      - name: Preserve actual measured phase records and independent original manifest
-        id: collect
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib 4096 --reserve-mib 1024 --page-files 1000 --slice-items 250 --slice-seconds 600 --steps 1001 --foreign-libraries 21 > ci-library-corpus/initialize.jsonl
+      - name: Profile the actual parent and existing isolated owned workers
+        timeout-minutes: 32
+        run: |
+          python -I -B -X utf8 ../.github/diagnostics/profile_library_import.py "$CARR_SCALE_DIR" --output ci-library-corpus/import-profile 2>&1 | tee ci-library-corpus/import-cost.txt
+      - name: Reopen and independently verify every resulting original and raw segment
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl
+      - name: Read the immutable prior 1k artifact without repeating its work
+        if: always()
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh --version
+          gh api repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15239970684/zip > ci-library-corpus/prior-1k.zip
+          python -I -B -X utf8 - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import zipfile
+          archive = Path("ci-library-corpus/prior-1k.zip")
+          assert archive.stat().st_size == 1742372, "The original artifact size changed."
+          assert sha256(archive.read_bytes()).hexdigest() == "b888dcff845bfa301fd783e255876fabfb2ffa364f7f186792854657e6c071e5"
+          summary = {}
+          with zipfile.ZipFile(archive) as source:
+              all_entries = source.infolist()
+              assert len(all_entries) <= 64
+              entries = [entry for entry in all_entries if not entry.is_dir()]
+              assert len(entries) == 26 and len({entry.filename for entry in entries}) == 26
+              for entry in entries:
+                  name = Path(entry.filename).name
+                  if name not in {"resume.jsonl", "verify.jsonl", "search.jsonl", "installed-before.json"}:
+                      continue
+                  assert 0 <= entry.file_size <= 2 * 1024**2
+                  data = source.read(entry)
+                  if name.endswith(".jsonl"):
+                      values = []
+                      for row in data.splitlines():
+                          assert len(row) <= 1024**2
+                          value = json.loads(row)
+                          assert isinstance(value, dict)
+                          values.append(value)
+                      assert values
+                      if name == "resume.jsonl":
+                          summary[name] = values
+                      else:
+                          final = values[-1]
+                          summary[name] = {key: final[key] for key in (
+                              "status", "source_books", "source_segments", "source_windows",
+                              "elapsed_seconds", "startup_seconds", "literal_page_latency",
+                              "bounded_title_anchor_latency", "complete_scope_ranking",
+                              "explicit_library_navigation", "federated_cleanup_confirmed",
+                              "worker_peaks", "operations", "memory", "disk",
+                              "implementation_unchanged") if key in final}
+                  else:
+                      final = json.loads(data)
+                      summary[name] = {key: final[key] for key in ("package_files", "package_sha256", "scripts")}
+          assert set(summary) == {"resume.jsonl", "verify.jsonl", "search.jsonl", "installed-before.json"}
+          text = json.dumps(summary, sort_keys=True)
+          assert len(text.encode()) <= 256 * 1024
+          Path("ci-library-corpus/prior-1k-summary.json").write_text(text + "\n", encoding="utf-8")
+          print("CARR_PRIOR_ACTUAL_1K " + text, flush=True)
+          PY
+      - name: Preserve actual diagnostic state and immutable original manifest
         if: always()
         run: python -I -B -X utf8 ci-library-corpus/check.py collect
-      - name: Require complete exact counts and unchanged installed bytes
+      - name: Require unchanged source, installed bytes and observer
         if: always()
-        env:
-          CARR_SCALE_PHASE_OUTCOMES: '{"generate":"${{ steps.generate.outcome }}","initialize":"${{ steps.initialize.outcome }}","interruption":"${{ steps.interruption.outcome }}","resume":"${{ steps.resume.outcome }}","catalog":"${{ steps.catalog.outcome }}","search":"${{ steps.search.outcome }}","collect":"${{ steps.collect.outcome }}"}'
-        run: python -I -B -X utf8 ci-library-corpus/check.py finish
+        run: python -I -B -X utf8 ci-library-corpus/check.py diagnostic-after
       - name: Preserve selected dependency identity
         if: always()
         run: python -I -m pip freeze > ci-library-corpus/dependencies.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: actual-library-${{ matrix.os }}-${{ matrix.tier.name }}-${{ github.sha }}
+          name: actual-import-cost-${{ github.sha }}
           path: carr-library/ci-library-corpus/
           if-no-files-found: error
           retention-days: 14
