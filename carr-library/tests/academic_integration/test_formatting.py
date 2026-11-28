@@ -55,11 +55,11 @@ def test_real_styles_preserve_page_extent_and_apply_the_actual_rules(
 
 def test_upstream_pins_licenses_and_all_asset_digests():
     root = formatting._ROOT
-    manifest = json.loads((root / 'UPSTREAM.json').read_text())
+    manifest = json.loads((root / 'UPSTREAM.json').read_text(encoding='utf-8'))
     raw = (root / 'vendor/citeproc.js').read_bytes()
     assert sha256(raw).hexdigest() == manifest['processor']['sha256']
     assert manifest['processor']['chosen_license'] == 'CPAL-1.0'
-    assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text()
+    assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text(encoding='utf-8')
     for style in manifest['styles']:
         assert sha256((root / 'styles' / style['filename']).read_bytes()).hexdigest() == style['sha256']
     for name, digest in manifest['locales'].items():

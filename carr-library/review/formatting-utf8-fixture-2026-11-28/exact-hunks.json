@@ -1,0 +1,48 @@
+{
+  "path": "carr-library/tests/academic_integration/test_formatting.py",
+  "before_blob": "349f32097e93164e07fbbe978392d955c596a596",
+  "after_blob": "9176a857eda42b2443378659070babc831b3f466",
+  "hunks": [
+    {
+      "oldLine": 58,
+      "newLine": 58,
+      "contextBefore": [
+        "",
+        "def test_upstream_pins_licenses_and_all_asset_digests():",
+        "    root = formatting._ROOT"
+      ],
+      "removed": [
+        "    manifest = json.loads((root / 'UPSTREAM.json').read_text())"
+      ],
+      "added": [
+        "    manifest = json.loads((root / 'UPSTREAM.json').read_text(encoding='utf-8'))"
+      ],
+      "contextAfter": [
+        "    raw = (root / 'vendor/citeproc.js').read_bytes()",
+        "    assert sha256(raw).hexdigest() == manifest['processor']['sha256']",
+        "    assert manifest['processor']['chosen_license'] == 'CPAL-1.0'"
+      ]
+    },
+    {
+      "oldLine": 62,
+      "newLine": 62,
+      "contextBefore": [
+        "    raw = (root / 'vendor/citeproc.js').read_bytes()",
+        "    assert sha256(raw).hexdigest() == manifest['processor']['sha256']",
+        "    assert manifest['processor']['chosen_license'] == 'CPAL-1.0'"
+      ],
+      "removed": [
+        "    assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text()"
+      ],
+      "added": [
+        "    assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text(encoding='utf-8')"
+      ],
+      "contextAfter": [
+        "    for style in manifest['styles']:",
+        "        assert sha256((root / 'styles' / style['filename']).read_bytes()).hexdigest() == style['sha256']",
+        "    for name, digest in manifest['locales'].items():"
+      ]
+    }
+  ],
+  "inverse_exact": true
+}

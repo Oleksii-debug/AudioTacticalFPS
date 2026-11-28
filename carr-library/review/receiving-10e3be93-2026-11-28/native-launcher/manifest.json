@@ -1,0 +1,48 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "scope": "native-launcher",
+  "provenance": "Completed GitHub job metadata and the connector-returned complete decoded log strings. Original artifact member bytes are not claimed.",
+  "transformations": {
+    "complete_log": "Retained unchanged, including BOM/timestamps/ANSI/line endings; hash is over decoded string re-encoded UTF-8.",
+    "json": "Only timestamp framing is removed from each emitted JSON; one LF is appended.",
+    "verdicts": "Parsed completed harness rows retain original one-based line numbers."
+  },
+  "files": [
+    {
+      "path": "msvc-build.log-extracted.json",
+      "utf8_bytes": 2715,
+      "sha256": "31a282fcb137a8fcc8935dc90b24c068ad0a25e5258a92a38c12fb222a96542d"
+    },
+    {
+      "path": "msvc-probe.log-extracted.json",
+      "utf8_bytes": 793,
+      "sha256": "502d4a193f62043bdacacd7c18ce4faa31b2c80f810407abe79e6efeaf31fb1d"
+    },
+    {
+      "path": "msvc-completed-job.decoded.log",
+      "utf8_bytes": 35465,
+      "sha256": "601dd901948f57c380d5a20efec9f719a6e03481bad6184c70da3e27b95906d9"
+    },
+    {
+      "path": "zig-build.log-extracted.json",
+      "utf8_bytes": 1544,
+      "sha256": "404288f2538053d4bdeeb078790e556cbc31d95ec32578cd6028927890f6d8ec"
+    },
+    {
+      "path": "zig-probe.log-extracted.json",
+      "utf8_bytes": 793,
+      "sha256": "22983c0522d476ad470de860516611673b8bd213af922e2d4ccd28b250f0cc68"
+    },
+    {
+      "path": "zig-completed-job.decoded.log",
+      "utf8_bytes": 30903,
+      "sha256": "8c1b06cf8ca4ef644bfcab2949fd6380074dbff37afc303742881af9dd2d3852"
+    },
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 9897,
+      "sha256": "dc2885bd4ea8d78625c743556b7a145dfdcea007231fe9b0f5fe48b29964aa1a"
+    }
+  ]
+}

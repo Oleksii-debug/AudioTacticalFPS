@@ -1,0 +1,308 @@
+{
+  "schema": "carr-ci-mode-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "run": 46101828603,
+  "platform": "windows-2022",
+  "mode": "installed",
+  "job": 140845774538,
+  "status": "failure",
+  "execution": "ACTUAL_CI",
+  "interpreter": {
+    "implementation": "CPython",
+    "version": "3.11.9",
+    "installed_invocation": "python -I -B -m pytest"
+  },
+  "summary": "2 failed, 2888 passed, 12 subtests passed in 1608.13s (0:26:48)",
+  "passed": 2888,
+  "failed": 2,
+  "passing_subtests": 12,
+  "errors_reported": 0,
+  "skips_reported": 0,
+  "strict_junit_guard": "Failed as required because two actual testcase failures were present; no INSTALLED_CASES_PASS marker was emitted.",
+  "declared_selector_count": 80,
+  "declared_selectors": [
+    "tests/academic_integration/test_formatting.py",
+    "tests/assistant/test_local_planning.py",
+    "tests/assistant/test_state_io.py",
+    "tests/catalog/test_archive_portability.py",
+    "tests/catalog/test_intake_portability.py",
+    "tests/catalog/test_epub_metadata.py",
+    "tests/catalog/test_registration.py",
+    "tests/extract/test_page_ocr.py",
+    "tests/extract/test_ocr_language_regions.py",
+    "tests/extract/test_ocr_evidence_fidelity.py",
+    "tests/extract/test_automatic_ocr_native.py",
+    "tests/studio/test_production_cancellation_outcomes.py",
+    "tests/studio/test_production.py",
+    "tests/studio/test_production_hardening.py",
+    "tests/studio/test_clip_dialog.py",
+    "tests/studio/test_book_audio.py",
+    "tests/storage/test_production_operation_backup.py",
+    "tests/ui/test_studio_output_settings.py",
+    "tests/storage/test_studio_draft_backup.py",
+    "tests/storage/test_backup_scan_bounds.py",
+    "tests/storage/test_state_backup_portability.py",
+    "tests/storage/test_v3_state_backup.py",
+    "tests/storage/test_backup_sidecars.py",
+    "tests/storage/test_canonical_backup_compat.py",
+    "tests/transcription/test_runtime_inventory.py",
+    "tests/transcription/test_runtime_admission.py",
+    "tests/transcription/test_admission_boundaries.py",
+    "tests/transcription/test_service.py",
+    "tests/storage/test_asr_additional_profile.py",
+    "tests/storage/test_transcription_backup.py",
+    "tests/packaging/test_windows_bundle.py",
+    "tests/packaging/test_standard_installer.py",
+    "tests/packaging/test_managed_launch_boundary.py",
+    "tests/operations/test_resources.py",
+    "tests/operations/test_facade.py",
+    "tests/operations/test_production_admission.py",
+    "tests/e2e/test_operations_cli.py",
+    "tests/e2e/test_import_worker_publication.py",
+    "tests/ui/test_operations_policy.py",
+    "tests/speech/test_synthesis_admission.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/speech/test_progress_speech.py",
+    "tests/ui/test_operation_progress.py",
+    "tests/ui/test_progress_media_quiet.py",
+    "tests/ui/test_studio_progress_isolation.py",
+    "tests/speech/test_registered_studio_voices.py",
+    "tests/audio/test_model_voices.py",
+    "tests/storage/test_backup_book_plan_bindings.py",
+    "tests/ui/test_book_audio_dialog.py",
+    "tests/speech/test_python_helper.py",
+    "tests/storage/test_python_helper_backup.py",
+    "tests/speech/test_runtime_settings_restore.py",
+    "tests/ui/test_engine_settings_review.py",
+    "tests/audio/test_cleanup_contexts.py",
+    "tests/audio/test_audio_process.py",
+    "tests/audio/test_process_deadline.py",
+    "tests/audio/test_capture_access_diagnostic.py",
+    "tests/audio/test_recording_windows_process.py",
+    "tests/ui/test_ebook_audio_initialization.py",
+    "tests/ui/test_ebook_dialog.py",
+    "tests/reader/test_ebook_audio.py",
+    "tests/reader/test_ebook_audio_lifecycle.py",
+    "tests/speech/test_wave_output.py",
+    "tests/speech/test_player_controls.py",
+    "tests/speech/test_player_transport.py",
+    "tests/speech/test_output_devices.py",
+    "tests/speech/test_listening.py",
+    "tests/speech/test_playlist.py",
+    "tests/search/test_source_page_benchmark.py",
+    "tests/packaging/test_windows_launcher_bundle.py",
+    "tests/ui/test_federated_labels.py",
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_progress_voice_actions.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/storage/test_state_json_reader.py",
+    "tests/transcription/test_control_reads.py",
+    "tests/studio/test_publishing.py",
+    "tests/studio/test_daisy_publishing.py",
+    "tests/studio/test_measured_audio.py"
+  ],
+  "source_inventory": {
+    "status": "PASS",
+    "module_origin": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library",
+    "python_modules": 380,
+    "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+  },
+  "failures": [
+    {
+      "test": "tests/academic_integration/test_formatting.py::test_upstream_pins_licenses_and_all_asset_digests",
+      "diagnosis": "The fixture read the UTF-8 CPAL license with locale-default Path.read_text. The isolated Windows interpreter used CP1252 and raised UnicodeDecodeError on byte0x9d before the existing ATTRIBUTION assertion. Actual formatter ownership/rendering tests were not the failing boundary.",
+      "test_blob": "349f32097e93164e07fbbe978392d955c596a596",
+      "asset_blob": "0ed5b69013c62675941639f3acad0ce3d746a4a7",
+      "prepared_correction": {
+        "tree": "f58695ea6dec3298d354f45e30c489ac5d77d033",
+        "test_blob": "9176a857eda42b2443378659070babc831b3f466",
+        "status": "SOURCE_REVIEWED / NOT_RUN; not part of tested78 head"
+      }
+    },
+    {
+      "test": "tests/speech/test_progress_speech.py::test_progress_model_reserves_actual_shared_resources_only_while_synthesizing",
+      "diagnosis": "Same short-versus-canonical temporary directory path mismatch as the completed Windows source and separate reader78 modes. Seven other ResourceRequest fields are identical.",
+      "prepared_correction": {
+        "tree": "174ee1292e9a93f63d9f78e233ef775fe5c318f6",
+        "test_blob": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157",
+        "status": "SOURCE_REVIEWED / NOT_RUN; not part of tested78 head"
+      }
+    }
+  ],
+  "failure_trace": "windows-installed-failures.txt",
+  "genuine_windows_venv": {
+    "status": "PASS",
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "summary": "21 passed in 9.76s",
+    "strict_junit_marker": "VENV_DEADLINE_CASES_PASS 21",
+    "identity": {
+      "status": "PASS",
+      "executable": "D:\\a\\_temp\\carr-deadline-fixture-python\\Scripts\\python.exe",
+      "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "installed_package": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library",
+      "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+    }
+  },
+  "installed_native_clip": {
+    "status": "PASS",
+    "check_count": 120,
+    "receipt_file": "windows-installed-decoded-receipts.json",
+    "native_keyboard": "PASS",
+    "fixture": "synthetic PCM rendered by actual FFmpeg",
+    "loop_preview": {
+      "status": "NOT_RUN",
+      "reason": "No exact reviewed output endpoint was supplied for loop playback.",
+      "acoustic_listening": "NOT_RUN",
+      "physical_output_device": "NOT_RUN"
+    },
+    "nvda": "NOT_RUN",
+    "native_file_pickers": "NOT_RUN",
+    "physical_microphone": "NOT_RUN"
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4
+    },
+    {
+      "name": "Require actual portable audio and OCR commands",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 5
+    },
+    {
+      "name": "Install exact application and component test prerequisites",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6
+    },
+    {
+      "name": "Prepare pinned audio for actual clip processing and native controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7
+    },
+    {
+      "name": "Prepare the existing verified OCR engine for automatic-language controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8
+    },
+    {
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9
+    },
+    {
+      "name": "Require installed module origin and exact complete Python source inventory",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10
+    },
+    {
+      "name": "Require source and installed native additional-document imports",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11
+    },
+    {
+      "name": "Require source updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 12
+    },
+    {
+      "name": "Require installed updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 13
+    },
+    {
+      "name": "Require real Windows virtual-environment EOF and cleanup contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14
+    },
+    {
+      "name": "Require installed native clip editing and explicit loop controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15
+    },
+    {
+      "name": "Retain public synthetic source and installed evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 31
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33
+    }
+  ],
+  "artifact": {
+    "id": 15247185451,
+    "name": "carr-component-followup-windows-2022-installed-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+    "size_in_bytes": 61317,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15247185451",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15247185451/zip",
+    "expired": false,
+    "created_at": "2026-11-28T03:45:59Z",
+    "expires_at": "2026-12-05T03:45:58Z",
+    "updated_at": "2026-11-28T03:45:59Z",
+    "digest": "sha256:264a9f24604e5332cf5dc3a3dc133a42bd52ed673e92f011a663f1fc9b9e8455",
+    "workflow_run": {
+      "id": 46101828603,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/component-followup-evaluation-20261127",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+    }
+  },
+  "retrieval": {
+    "kind": "Completed decoded job log plus terminal job/run/artifact metadata; artifact ZIP not downloaded.",
+    "decoded_log_sha256": "2dec318cf395557c0f5a7edfddc5292e758acb1144982e173f9d92180161c1d7",
+    "decoded_log_characters": 125811
+  },
+  "scope": "This completed Windows installed mode only. Quiet pytest output gives the whole selected-run total, not separate per-module receipt counts. Independent venv/native steps actually ran after the failed unit step; the overall job/run remain failure."
+}

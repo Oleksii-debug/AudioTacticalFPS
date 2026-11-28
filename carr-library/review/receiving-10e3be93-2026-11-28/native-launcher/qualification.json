@@ -1,0 +1,265 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "source_tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+  "run_id": 46103182992,
+  "run_attempt": 1,
+  "run_conclusion": "success",
+  "workflow": ".github/workflows/carr-native-launcher.yml",
+  "workflow_blob": "b3fb988da8ffa9312fdd09d788b25caecef825a8",
+  "receiving": [
+    {
+      "mode": "msvc",
+      "job_id": 140850017134,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103182992/job/140850017134",
+      "started_at": "2026-11-28T03:30:35Z",
+      "completed_at": "2026-11-28T03:31:06Z",
+      "status": "PASS",
+      "dynamic_check_count": 9,
+      "source_commit_reported": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "target": "Windows x64 / MSVC",
+      "toolchain": {
+        "link.exe": {
+          "version": "14.44.35230.0",
+          "sha256": "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+        },
+        "cl.exe": {
+          "version": "19.44.35230.0",
+          "sha256": "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+        },
+        "rc.exe": {
+          "version": "10.0.26100.9457 (WinBuild.160101.0800)",
+          "sha256": "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+        }
+      },
+      "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+      "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+      "native_launcher_execution_verified": true,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false,
+      "release_status": "unsigned-private-candidate",
+      "decoded_log_utf8_sha256": "601dd901948f57c380d5a20efec9f719a6e03481bad6184c70da3e27b95906d9",
+      "decoded_log_characters": 35463,
+      "build_lines": [
+        215,
+        265
+      ],
+      "probe_lines": [
+        279,
+        300
+      ],
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-28T03:30:36Z",
+          "completed_at": "2026-11-28T03:30:37Z"
+        },
+        {
+          "name": "Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-28T03:30:37Z",
+          "completed_at": "2026-11-28T03:30:46Z"
+        },
+        {
+          "name": "Set up Python for stdlib-only probes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-28T03:30:46Z",
+          "completed_at": "2026-11-28T03:30:47Z"
+        },
+        {
+          "name": "Locate installed Microsoft x64 development tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-28T03:30:47Z",
+          "completed_at": "2026-11-28T03:30:48Z"
+        },
+        {
+          "name": "Compile private native launcher and test child with MSVC",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-28T03:30:48Z",
+          "completed_at": "2026-11-28T03:31:03Z"
+        },
+        {
+          "name": "Execute exact launcher on native Windows with synthetic child",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-28T03:31:03Z",
+          "completed_at": "2026-11-28T03:31:03Z"
+        },
+        {
+          "name": "Record exact source commit and private executable hashes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-28T03:31:03Z",
+          "completed_at": "2026-11-28T03:31:04Z"
+        },
+        {
+          "name": "Post Set up Python for stdlib-only probes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-28T03:31:04Z",
+          "completed_at": "2026-11-28T03:31:04Z"
+        },
+        {
+          "name": "Post Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-28T03:31:04Z",
+          "completed_at": "2026-11-28T03:31:06Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-28T03:31:06Z",
+          "completed_at": "2026-11-28T03:31:06Z"
+        }
+      ]
+    },
+    {
+      "mode": "zig",
+      "job_id": 140850017358,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103182992/job/140850017358",
+      "started_at": "2026-11-28T03:32:45Z",
+      "completed_at": "2026-11-28T03:34:27Z",
+      "status": "PASS",
+      "dynamic_check_count": 9,
+      "source_commit_reported": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "target": "x86_64-windows-gnu",
+      "toolchain": {
+        "version": "0.14.1",
+        "archive_sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+        "archive_bytes": 82229343,
+        "binary_sha256": "1ddf230367e07738c4a769eae66c1db7469e37bd520e81c86356453d0db2b9fd",
+        "primary_url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip"
+      },
+      "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+      "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+      "native_launcher_execution_verified": true,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false,
+      "release_status": "unsigned-private-candidate",
+      "decoded_log_utf8_sha256": "8c1b06cf8ca4ef644bfcab2949fd6380074dbff37afc303742881af9dd2d3852",
+      "decoded_log_characters": 30901,
+      "build_lines": [
+        192,
+        233
+      ],
+      "probe_lines": [
+        246,
+        267
+      ],
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-28T03:32:46Z",
+          "completed_at": "2026-11-28T03:32:46Z"
+        },
+        {
+          "name": "Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-28T03:32:46Z",
+          "completed_at": "2026-11-28T03:32:54Z"
+        },
+        {
+          "name": "Set up Python for the shared stdlib build and probe",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-28T03:32:54Z",
+          "completed_at": "2026-11-28T03:32:54Z"
+        },
+        {
+          "name": "Verify the pinned official Zig distribution before extraction",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-28T03:32:54Z",
+          "completed_at": "2026-11-28T03:33:22Z"
+        },
+        {
+          "name": "Build private PE with the exact shared cross-build command",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-28T03:33:22Z",
+          "completed_at": "2026-11-28T03:34:22Z"
+        },
+        {
+          "name": "Execute the Zig PE on actual Windows",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-28T03:34:22Z",
+          "completed_at": "2026-11-28T03:34:23Z"
+        },
+        {
+          "name": "Record source and native-tested private executable identity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-28T03:34:23Z",
+          "completed_at": "2026-11-28T03:34:23Z"
+        },
+        {
+          "name": "Post Set up Python for the shared stdlib build and probe",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-28T03:34:23Z",
+          "completed_at": "2026-11-28T03:34:23Z"
+        },
+        {
+          "name": "Post Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-28T03:34:23Z",
+          "completed_at": "2026-11-28T03:34:25Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-28T03:34:25Z",
+          "completed_at": "2026-11-28T03:34:25Z"
+        }
+      ]
+    }
+  ],
+  "uploaded_artifacts": {
+    "total_count": 0,
+    "artifacts": []
+  },
+  "qualification_limits": [
+    "Both compilers execute the exact built private launcher against a synthetic child on native Windows; the same9 probe assertions are counted once per compiler despite repeated log printing.",
+    "These launcher probes explicitly do not verify actual Python installation, NVDA or Authenticode; unsigned-private-candidate remains the release status.",
+    "The earlier PE build records retain their pre-execution windows_execution_verified=false field; the later native probe separately records actual launcher execution=true.",
+    "This workflow has no uploaded artifacts; complete decoded job logs and their emitted build/probe identities are retained here.",
+    "No binary, private model, recording, credential or user data is included. No result is transferred from another candidate."
+  ]
+}

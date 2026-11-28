@@ -172,6 +172,80 @@ no simulated endpoint can satisfy that native gate. Individual source
 checkpoints or the supplementary reader workflow do not qualify a delivery
 artifact by themselves.
 
+## Manual follow-up for Seek and progress — candidate 78dc8ab6
+
+These instructions target source commit
+`78dc8ab6838e964bc115418c47c4ec3ef4226a91`. They add human checks to the
+existing acceptance procedures; **every check below starts NOT_RUN**. Record
+the tested commit, installed artifact checksum, Windows and NVDA versions,
+selected voice and output device, date, and observed result for each case.
+Recheck the applicable source identity before using these instructions for a
+later build. Automated widget or PCM results do not establish NVDA or listening
+acceptance.
+
+Use a short, non-sensitive reading copy and an already reviewed local voice.
+Keep its original bytes and reading text for comparison. Do not install a new
+model or change capture permissions for these checks. Leave A/B repeat and
+sleep disabled initially.
+
+### Seek by percentage and seconds
+
+1. Choose **Read**, then explicitly pause with **F7**. Record the current
+   recording's duration. With NVDA, reach **Seek to time or percentage** and
+   open **Seek playback**. Confirm the field's instructions explain seconds,
+   the current duration, and `0%` through `100%`. Enter `50%` and accept.
+   The reported position should be half that recording's duration, within the
+   displayed precision or explicit backend approximation. Playback remains
+   paused, using the same recording and output.
+2. Repeat with `100%`, then with `0.25` seconds when the recording exceeds
+   that duration. Confirm the endpoint and seconds entry are understandable,
+   and that neither action starts narration or creates a new recording. Resume
+   only by an explicit **F7** action. Compare the reading text with its saved
+   pre-check copy.
+3. While paused, open Seek and cancel with **Escape**. Position and playback
+   state must remain unchanged. Separately try `-1%`, `100.1%`, `nan%`
+   and a nonnumeric value. Each must produce an accessible refusal without
+   moving playback; correct the value through a fresh explicit action.
+4. Edit the reading copy after rendering, then request Seek. Confirm the
+   stale recording is refused with an instruction to read again. A newly
+   selected tab must not play another tab's recording. Restore a
+   saved draft or tab and verify that opening it starts no audio.
+5. If a transition can be observed waiting for progress audio to become quiet,
+   accept Seek and then use **F8** or **Close** before that transition runs.
+   It must not start later or affect a replacement reader. Record this subcase
+   as NOT_RUN if the waiting state cannot be reproduced. Close a normally
+   paused reader as a separate case and confirm output stops; reopening
+   requires an explicit reading or playback action.
+
+### Optional progress speech
+
+1. In **Help → Progress sound settings...**, begin with **Off**. Query the
+   current operation with **Ctrl+Alt+G** while focus is in a working control.
+   Confirm NVDA can read the reported state and that ordinary progress updates
+   neither move focus nor start standalone sound. Check the accessible names
+   for the mode, interval, volume and quiet controls.
+2. Explicitly choose **Use voice for progress...** in Reader or Audio Studio,
+   then select **Speech: selected local voice** in progress settings. Selecting
+   the voice alone must not enable sound. Run a permitted operation and verify
+   that any notification uses the chosen voice and a short progress message,
+   without reading document contents or replacing an unavailable voice.
+   Confirm **Quiet mode** and the playback-muting option have their stated
+   effects. Return to **Off** and confirm queued announcements do not play later.
+3. When a reviewed heavy local provider and a real competing operation are
+   already available, exercise a notification waiting for resources. Switch
+   progress sound to **Off**, change the library, or close the application
+   while it is still waiting; confirm the old notification cannot revive. Exercise
+   reader **Read** waiting for the same resources separately: its preparing
+   status must remain understandable, and **F8** must cancel that reader
+   request. Do not treat F8 as a global progress-sound command. Record absent
+   providers or unobserved contention as NOT_RUN.
+
+Keep an observed cancellation delay or cleanup error in the result; do not
+infer successful native shutdown from a closed window alone. The
+[resource guide](runtime_resources.md) describes the cooperative reservations
+and cleanup limits. These procedures make no GPU, voice-quality, language,
+performance or final-installation qualification claim.
+
 ## Official comparison references
 
 Reviewed 2026-11-27. These references describe workflows only. Their binaries,

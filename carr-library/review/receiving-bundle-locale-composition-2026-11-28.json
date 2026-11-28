@@ -1,0 +1,750 @@
+{
+  "schema": 1,
+  "parent_commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "parent_tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+  "canonical_specification": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "agents_blob": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "issue": 1,
+    "issue_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "scope": "Two observed locale-related fixture corrections and one failure-reporting correction; append scoped manual instructions and preserve exact-head terminal receiving evidence.",
+  "parts": [
+    {
+      "name": "fixture",
+      "tree": "f9e7295b0d7b666c2ebe001a544681dc3e9f2bec",
+      "paths": 2
+    },
+    {
+      "name": "observer",
+      "tree": "f27fcf854372fa212f58699eae4854266576ce21",
+      "paths": 2
+    },
+    {
+      "name": "manual",
+      "tree": "e460386fba8d57444395aae5a8f7fc305f23b3db",
+      "paths": 2
+    },
+    {
+      "name": "bundle5d",
+      "tree": "37e7e664b934d2f1b3b0da446337f9c1bd55907a",
+      "paths": 9
+    },
+    {
+      "name": "ordinary78",
+      "tree": "747526a2883f941a7825e1270910cd8ece2dfa61",
+      "paths": 15
+    },
+    {
+      "name": "reader10",
+      "tree": "1dd0fd221847b8098e4035a582daced39dfb4889",
+      "paths": 16
+    },
+    {
+      "name": "canonical10",
+      "tree": "663cc5b59a9dd928a79e88ea0759863cf2587d7d",
+      "paths": 12
+    },
+    {
+      "name": "component78",
+      "tree": "0fa82738cde4014f44f9cf50463b974bfc305731",
+      "paths": 5
+    },
+    {
+      "name": "readiness",
+      "tree": "949e6612bdbde2c87809f3126c6907f66266a23c",
+      "paths": 1
+    },
+    {
+      "name": "native_bibliography10",
+      "tree": "faf35d994005ebd5c321b0ea652d83fd0fda97ee",
+      "paths": 15
+    },
+    {
+      "name": "component78_terminal",
+      "tree": "e546835d6c717855dc45fb18406f35276e8f280d",
+      "paths": 8
+    },
+    {
+      "name": "formatting_utf8",
+      "tree": "77a8ef3cab4be1e12b21123e1e4620dc535cfd8a",
+      "paths": 3
+    },
+    {
+      "name": "bridge10_linux",
+      "tree": "7017ea18761a4bb3ea1dd1220e389ce5f2a3807d",
+      "paths": 4
+    }
+  ],
+  "changed_paths": [
+    {
+      "path": "carr-library/review/voice-preferences-utf8-2026-11-28/review.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "00e5513a9213d070dae99fa6c25cba1ace719b01",
+      "part": "fixture"
+    },
+    {
+      "path": "carr-library/tests/speech/test_voice_preferences.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "843542a6f220f7333f89a3a64278cda46bf4a650",
+      "part": "fixture"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "029cf775f6acdf7407ddeaab196949451698ead9",
+      "part": "observer"
+    },
+    {
+      "path": "carr-library/review/bundle-failure-diagnostics-2026-11-28/source-review.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e6fc56e04305a47e99dc062c902129cbb4ea745",
+      "part": "observer"
+    },
+    {
+      "path": "carr-library/docs/READING_WORKFLOW_ACCEPTANCE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d34c1229e7975db9ae3213190eecb17017033893",
+      "part": "manual"
+    },
+    {
+      "path": "carr-library/review/manual-reader-78dc8ab6-2026-11-28/instructions-review.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc49f78efd58de0f4752dd2a03a644dbbca8e056",
+      "part": "manual"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/artifact-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65b976ec9df7448d7bc3a7b02d34440d779e616d",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/bundle-clip-derived.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e25603967b857793a007c9a9f3a95604045f4ff1",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/installed-clip-derived.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ef165b2e004bc78561b2e9acfd5aabd4f3a4c3a",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d9cee1e406e14168bd3811b5aa903db62a4ca2f",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/member-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c44f83c7094f26d013357f9a37d97f52403d4ff2",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/bundle-scene-clip-editor.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b12913a4e91421314ec2470300aa235e891712f",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/full-bundle-workflows.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd2ee7853cd2baa160ac9cf172d4df23254a8bad",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/full-bundle-workflows.xml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7aa3138f910c61048118dc54f3266daf4bc670e2",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bundle-receiving/raw/installed-scene-clip-editor.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "044fe361609d4f2b3b2e6829179e1823d7f9312f",
+      "part": "bundle5d"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-decoded-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45f78cc3f75ef5302d2072ba3e5800f24eeaba55",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-native-derived.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a5c03ad458cd230e19b052efbd7386561fa93eb5",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-source-verdicts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95cdd0ab10cd6d2248ecf441a050307f8fc22285",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-wheel-derived.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30469e9bc24b7b0426fddac9c56099b298001cda",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-linux-decoded-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04cea496a9bec842de21b512113237a7b3efb44e",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-linux-source-verdicts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "edffc6fc727c93411ba8d3f7b2a0b5a781532872",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-native-derived.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa033a5df582bac4010e66df518977dba62d3db6",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-windows-decoded-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e12c6b09204196bc3211a578ffa9007a3d1d90f1",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-windows-source-verdicts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d4d09bb5f8d05242e04fc94821515ab794ed483",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/jobs-and-artifacts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eed7a306b702c21905be31c51723d411af2a82f0",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea4064ac083c9e1a846a6159e652cca37a411fee",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-msvc-decoded-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fb38c74f6b2017a8dd2a830d74991d3655664f8",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-msvc-derived-receipts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "75ccdc154ae6a2ff5c1a69f2b902f9e140897679",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-zig-decoded-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d66d8257eecfaddf5fd7689ec9ec1474e4a61bb",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-zig-derived-receipts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3070cefefd03ae16a8e48346f2055cd91e486d3",
+      "part": "ordinary78"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/common-python-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6612083103fdeb348924d97ab4a1fe20a01815ed",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-installed-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5bc77ba6cbb4b68783c02492c9e211ab4bc5c90c",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-installed-receipt.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c59b799e30af9ffd7305b6fa8188e2c975437855",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-installed-source-installed-python-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90ced57f42009f9c7eb7f684d4c9618865296eae",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-source-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1031a347db0bf1f86bca2e9afc58819f249e0d7a",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-source-receipt.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45a24d44b8bb1eabac697351c62caf6998f2aa80",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-source-source-installed-python-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65c1e1d2ea064086f116d15aefa57d460f246315",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/receiving-manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a30d8e132812ed41115b8b44d00a4e75f710adfb",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "df9fa2bd723c734e4a7808871113f043ff50dc5a",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-native-checks.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7b66e7010e97923d3d38fbb1ab690c306f08e4e",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-receipt.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8f9189c24064895c248b0ef63627ae1172c6523",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-source-installed-python-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eebe546484373724b5744b97391076289ddfac3e",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7d85f7f501691201caa3ff34d2665e2cb7015086",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-native-checks.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7b66e7010e97923d3d38fbb1ab690c306f08e4e",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-receipt.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c65cd9018c82d6c6c5f1a98e5b8c92d675910f83",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-source-installed-python-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "96808ebbc0ec0a03dba2e10309a9788d901cf687",
+      "part": "reader10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/completed-job.decoded.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70ff744fcfb73d6663f578778576ef93ff315df6",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/installed-catalog-exports.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d7c29c5ded548b7d1aba7b2c3ceaa343cdfb493",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/installed-save-all.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c32a2448bd6bb4a9b22c28a6f0543f1470825bda",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/installed-summary.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f045724efb3f5d18ac18fce9c730b64492958ab",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/installed-workflow-voice-preview.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fecaea6fc7fcdf2f8dfd9daa15e3d843fa437a85",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "161487dcbfe8ad6514b7b837cff300880d45921e",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/qualification.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d42e2972bf352598816d185f6e5cd9e66b64705",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/reader-keymap.phase-derived.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e0300906e58b350b6de9b0e9bbf83bacee7f80b",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/source-catalog-exports.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9954a753974519f27ab0e31ff285e726c2619b82",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/source-module-verdicts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1744b2090e49cbc813ebae7ac4be51bf7252c770",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/source-save-all.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8a663e61274beaa54a3746716540ee8ee5b86fc",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/canonical-compatibility/workflow-contract.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "399728743b71872e98c344b7c90d51cf2db2fd27",
+      "part": "canonical10"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/completed-three-modes.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d929c154216f40b52166c8bf89e49bae2ec0a3de",
+      "part": "component78"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/linux-installed.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9cf7bbfaa084153f054ef63a7592447d543be96",
+      "part": "component78"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/linux-source.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65616da14855f176578e614b9f403653d146deda",
+      "part": "component78"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/windows-source-progress-path-failure.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "069f9995836d2eb3bee60d8f9e4c7a48fda4ac01",
+      "part": "component78"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/windows-source.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ee3752c11cb56660923b442b588c23ede7ba27c",
+      "part": "component78"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3f3be29cf477b9170e4050339098b1d6a7bac30",
+      "part": "readiness"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/completed-job.decoded.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce1073bfa57d2f142262e9dc4f96848f839309b2",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/installed-native.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e68a9ab7e8f82528bb33eced668b91bf2f92885a",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8fdc05963b7d9f0a58763ea8854aec2bae069b8f",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/qualification.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d4a9473f17dae38b1ce19109f67db389d927c5d",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/runtime.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ebf955e874e214b31c02b3ea5c2fb6349d801bd",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/source-module-verdicts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a870ded2ea745c1097a21255444d486cea15e3f",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/bibliography/source-wheel.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f86ae8463b4992f4569079be513e41192e030617",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d74dba9c58f34027f1e23290c982eeaebf89996",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/msvc-build.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e66a5861f2db3849bb3c7e7a4337a97492113cf5",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/msvc-completed-job.decoded.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93e869b0f99fb5e38c7ea0578e73f8c5a5fb0f02",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/msvc-probe.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e322bd1cff0be269fab2f449a03d856846c073dd",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/qualification.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15fe603097e912332a240f945135660999f1590a",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/zig-build.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b933be5424f67fd89753923f0096613d95ef015",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/zig-completed-job.decoded.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58459cc1cbc747d45e9bb3029fbd74ae42f3a7a5",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/native-launcher/zig-probe.log-extracted.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23f7465e4aee16c11b20cee97cbda3cbc360c74c",
+      "part": "native_bibliography10"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/completed-four-modes.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47d7df044da61ac8afe19735294bf9c4991a24f1",
+      "part": "component78_terminal"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/windows-installed-decoded-receipts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ae90e088efbf7006f34ef20c3690cca1a080e3f",
+      "part": "component78_terminal"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/windows-installed-failures.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "96983b5887603c65e39a21beba0be60955836a81",
+      "part": "component78_terminal"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/windows-installed.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "026ef5a4f54efe1a7c9859bfa80a2eccc647f65f",
+      "part": "component78_terminal"
+    },
+    {
+      "path": "carr-library/review/formatting-utf8-fixture-2026-11-28/exact-hunks.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5a279c3b1e78a7e75b0ad43b842d71b075f8491",
+      "part": "formatting_utf8"
+    },
+    {
+      "path": "carr-library/review/formatting-utf8-fixture-2026-11-28/review.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4be1a68b6aba2c0736ef8f873b6af72949b35181",
+      "part": "formatting_utf8"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_formatting.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9176a857eda42b2443378659070babc831b3f466",
+      "part": "formatting_utf8"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/supplied-bridge-linux/completed-job.decoded.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "522edd970f94347654d10fe72dbe4226864dc30e",
+      "part": "bridge10_linux"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/supplied-bridge-linux/manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7fd12de1aaa0cb86f953590fdbe4d13b726c3c1b",
+      "part": "bridge10_linux"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/supplied-bridge-linux/qualification.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8c40b25ab67d7336d467c68334a888e1b35528a",
+      "part": "bridge10_linux"
+    },
+    {
+      "path": "carr-library/review/receiving-10e3be93-2026-11-28/supplied-bridge-linux/source-module-verdicts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e5ec1d939e2803cf233ed90411e394bd56bb8cd",
+      "part": "bridge10_linux"
+    }
+  ],
+  "deleted_paths": [],
+  "application_python": {
+    "paths": 380,
+    "all_blobs_unchanged": true,
+    "baseline": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b"
+  },
+  "source_reviews": {
+    "voice_preferences_utf8": "Root and Locate confirm only2reads+1write now explicitUTF8; all40assertions/23testfunctions and other bytes retained.",
+    "diagnostic_observer": "Root and Locate confirm single1-to-3-line hunk; no globalencoding change or suppression of pytest status; XML remains exact underlyingreport.",
+    "manual_appendix": "All prior rows/statuses retained; new humanchecksNOT_RUN, actualcommit/artifact/voice/output/NVDA records required.",
+    "formatting_utf8": "Audio, Voice and root confirm only two explicit UTF-8 asset reads; exact inverse to349f3209, all39cases/98assertion predicates/25functions and .1-second/under3-second native-owner checks retained.",
+    "nearby_reader_locale_audit": {
+      "reviewer": "voice_reading",
+      "scope": "All21 exact10e3 Reader selectors and their direct JSON producers; source-only.",
+      "result": "No second deterministic non-ASCII/default-locale mismatch after the voice-preferences fix.",
+      "remaining_implicit_operations": [
+        "test_model_voices: default ensure_ascii=True JSON, including escaped paths",
+        "test_session: ASCII corruption JSON fixture",
+        "test_synthesis_admission: fixed ASCII actual-render-child marker"
+      ],
+      "production_contract": {
+        "writer": "durable_state encodes ensure_ascii=False JSON as UTF-8; decode is explicit UTF-8",
+        "durable_state_blob": "31537c518245cca6450dc68510c5046f216d6dca",
+        "runtime_settings_blob": "e3e0f76791aafb36272f2c43f56ba2dc2450ee6f"
+      },
+      "execution": "NOT_RUN"
+    }
+  },
+  "invariants": [
+    "all product Python bytes unchanged",
+    "all permissions, source/quotation and selected endpoint/branch guards unchanged",
+    "all test cases/assertions/parameters/timeouts/selectors unchanged",
+    "head-qualified non-cancelling MAIN/V3 concurrency preserved",
+    "no private assets/models/recordings/binaries added",
+    "no PASS transferred from retained older heads"
+  ],
+  "successor_execution": "REQUIRED; earlierreceipts are historical exact-head qualifications only"
+}

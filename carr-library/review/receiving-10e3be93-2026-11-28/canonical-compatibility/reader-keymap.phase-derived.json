@@ -1,0 +1,318 @@
+[
+  {
+    "mode": "source",
+    "status": "PASS",
+    "provenance": "Derived from successful timestamped phase lines in the completed job log, not downloaded artifact JSON",
+    "probe_blob": "375e98132df87b450c46237cfa3371bced15a28c",
+    "phase_count": 36,
+    "dynamic_check_count": 34,
+    "derivation": "Pinned check(name,condition) appends then calls checkpoint(name); main emits separate starting and complete phases. Only the check phases are counted.",
+    "manual_nvda": "NOT_RUN",
+    "phases": [
+      {
+        "line": 951,
+        "phase": "starting"
+      },
+      {
+        "line": 952,
+        "phase": "modal reader opens the first exact source"
+      },
+      {
+        "line": 953,
+        "phase": "reader is tested in a real native modal context"
+      },
+      {
+        "line": 954,
+        "phase": "reader exposes the shared configurable command adapter"
+      },
+      {
+        "line": 955,
+        "phase": "actual Ctrl+PageDown opens the next source"
+      },
+      {
+        "line": 956,
+        "phase": "actual Ctrl+PageUp opens the previous source"
+      },
+      {
+        "line": 957,
+        "phase": "actual Where am I shortcut focuses the named native location control"
+      },
+      {
+        "line": 958,
+        "phase": "actual bookmark shortcut persists the current source location"
+      },
+      {
+        "line": 959,
+        "phase": "shared chord dispatches to Reader bookmarks in the modal context"
+      },
+      {
+        "line": 960,
+        "phase": "actual Reader shortcut settings save through native chooser and text controls"
+      },
+      {
+        "line": 961,
+        "phase": "old next shortcut is inactive after remapping"
+      },
+      {
+        "line": 962,
+        "phase": "new next shortcut dispatches the real source navigation"
+      },
+      {
+        "line": 963,
+        "phase": "unmodified previous shortcut still works after remapping"
+      },
+      {
+        "line": 964,
+        "phase": "native keyboard guide reports the current remapped shortcut"
+      },
+      {
+        "line": 965,
+        "phase": "an explicitly unassigned action has neither old nor custom key"
+      },
+      {
+        "line": 966,
+        "phase": "a rejected native-context collision preserves saved choices"
+      },
+      {
+        "line": 967,
+        "phase": "editing and screen-reader protected assignments leave the keymap unchanged"
+      },
+      {
+        "line": 968,
+        "phase": "ordinary typing and Insert do not navigate or change the read-only original"
+      },
+      {
+        "line": 969,
+        "phase": "shortcut cannot bypass an explicitly disabled native command"
+      },
+      {
+        "line": 970,
+        "phase": "reader operation is held while its native commands are disabled"
+      },
+      {
+        "line": 971,
+        "phase": "busy native shortcuts neither open prompts nor clear pending cancellation"
+      },
+      {
+        "line": 972,
+        "phase": "cancelled work leaves the displayed and persisted source unchanged"
+      },
+      {
+        "line": 973,
+        "phase": "reset removes the custom native shortcut"
+      },
+      {
+        "line": 974,
+        "phase": "reset restores the default native shortcut"
+      },
+      {
+        "line": 975,
+        "phase": "keyboard reading preserves the unsaved host note and citation state"
+      },
+      {
+        "line": 976,
+        "phase": "custom Reader key is saved through the shared preference store"
+      },
+      {
+        "line": 977,
+        "phase": "actual Escape closes the modal Reader"
+      },
+      {
+        "line": 978,
+        "phase": "a reopened native Reader restores the measured source location"
+      },
+      {
+        "line": 979,
+        "phase": "the reopened source has native focus"
+      },
+      {
+        "line": 980,
+        "phase": "reopen preserves removal of the old default key"
+      },
+      {
+        "line": 981,
+        "phase": "persisted custom key drives the reopened production dialog"
+      },
+      {
+        "line": 982,
+        "phase": "reopened Reader closes through actual Escape"
+      },
+      {
+        "line": 983,
+        "phase": "all original source pages remain unchanged after remap, clear, reset and reopen"
+      },
+      {
+        "line": 984,
+        "phase": "host accepts native keyboard focus after Reader closes"
+      },
+      {
+        "line": 985,
+        "phase": "same chord invokes the host context only after Reader closes"
+      },
+      {
+        "line": 986,
+        "phase": "complete"
+      }
+    ]
+  },
+  {
+    "mode": "installed",
+    "status": "PASS",
+    "provenance": "Derived from successful timestamped phase lines in the completed job log, not downloaded artifact JSON",
+    "probe_blob": "375e98132df87b450c46237cfa3371bced15a28c",
+    "phase_count": 37,
+    "dynamic_check_count": 35,
+    "derivation": "Pinned check(name,condition) appends then calls checkpoint(name); main emits separate starting and complete phases. Only the check phases are counted.",
+    "manual_nvda": "NOT_RUN",
+    "phases": [
+      {
+        "line": 1075,
+        "phase": "starting"
+      },
+      {
+        "line": 1076,
+        "phase": "modal reader opens the first exact source"
+      },
+      {
+        "line": 1077,
+        "phase": "reader is tested in a real native modal context"
+      },
+      {
+        "line": 1078,
+        "phase": "reader exposes the shared configurable command adapter"
+      },
+      {
+        "line": 1079,
+        "phase": "reader and keyboard modules load from the installed distribution"
+      },
+      {
+        "line": 1080,
+        "phase": "actual Ctrl+PageDown opens the next source"
+      },
+      {
+        "line": 1081,
+        "phase": "actual Ctrl+PageUp opens the previous source"
+      },
+      {
+        "line": 1082,
+        "phase": "actual Where am I shortcut focuses the named native location control"
+      },
+      {
+        "line": 1083,
+        "phase": "actual bookmark shortcut persists the current source location"
+      },
+      {
+        "line": 1084,
+        "phase": "shared chord dispatches to Reader bookmarks in the modal context"
+      },
+      {
+        "line": 1085,
+        "phase": "actual Reader shortcut settings save through native chooser and text controls"
+      },
+      {
+        "line": 1086,
+        "phase": "old next shortcut is inactive after remapping"
+      },
+      {
+        "line": 1087,
+        "phase": "new next shortcut dispatches the real source navigation"
+      },
+      {
+        "line": 1088,
+        "phase": "unmodified previous shortcut still works after remapping"
+      },
+      {
+        "line": 1089,
+        "phase": "native keyboard guide reports the current remapped shortcut"
+      },
+      {
+        "line": 1090,
+        "phase": "an explicitly unassigned action has neither old nor custom key"
+      },
+      {
+        "line": 1091,
+        "phase": "a rejected native-context collision preserves saved choices"
+      },
+      {
+        "line": 1092,
+        "phase": "editing and screen-reader protected assignments leave the keymap unchanged"
+      },
+      {
+        "line": 1093,
+        "phase": "ordinary typing and Insert do not navigate or change the read-only original"
+      },
+      {
+        "line": 1094,
+        "phase": "shortcut cannot bypass an explicitly disabled native command"
+      },
+      {
+        "line": 1095,
+        "phase": "reader operation is held while its native commands are disabled"
+      },
+      {
+        "line": 1096,
+        "phase": "busy native shortcuts neither open prompts nor clear pending cancellation"
+      },
+      {
+        "line": 1097,
+        "phase": "cancelled work leaves the displayed and persisted source unchanged"
+      },
+      {
+        "line": 1098,
+        "phase": "reset removes the custom native shortcut"
+      },
+      {
+        "line": 1099,
+        "phase": "reset restores the default native shortcut"
+      },
+      {
+        "line": 1100,
+        "phase": "keyboard reading preserves the unsaved host note and citation state"
+      },
+      {
+        "line": 1101,
+        "phase": "custom Reader key is saved through the shared preference store"
+      },
+      {
+        "line": 1102,
+        "phase": "actual Escape closes the modal Reader"
+      },
+      {
+        "line": 1103,
+        "phase": "a reopened native Reader restores the measured source location"
+      },
+      {
+        "line": 1104,
+        "phase": "the reopened source has native focus"
+      },
+      {
+        "line": 1105,
+        "phase": "reopen preserves removal of the old default key"
+      },
+      {
+        "line": 1106,
+        "phase": "persisted custom key drives the reopened production dialog"
+      },
+      {
+        "line": 1107,
+        "phase": "reopened Reader closes through actual Escape"
+      },
+      {
+        "line": 1108,
+        "phase": "all original source pages remain unchanged after remap, clear, reset and reopen"
+      },
+      {
+        "line": 1109,
+        "phase": "host accepts native keyboard focus after Reader closes"
+      },
+      {
+        "line": 1110,
+        "phase": "same chord invokes the host context only after Reader closes"
+      },
+      {
+        "line": 1111,
+        "phase": "complete"
+      }
+    ]
+  }
+]

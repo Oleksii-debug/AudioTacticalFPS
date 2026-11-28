@@ -1,0 +1,231 @@
+{
+  "schema": 1,
+  "kind": "terminal-focused-reader-receiving",
+  "observed_at_utc": "2026-11-28 03:40:09 UTC",
+  "source_commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "source_tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run": {
+    "id": 46103184543,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103184543",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+    "blob": "b683358bf3325749f852040cef8a9e704c4c414a"
+  },
+  "status": "PASS_WITHIN_DECLARED_SCOPE",
+  "modes": [
+    {
+      "job_id": 140850022098,
+      "os": "ubuntu-24.04",
+      "mode": "source",
+      "conclusion": "success",
+      "selected_modules": 21,
+      "passed": 746,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "native_checks": null,
+      "inventory_status": "PASS",
+      "complete_python_modules": 380,
+      "artifact_id": 15246696680,
+      "artifact_sha256": "sha256:0b5efc92bb01a549e2c3e07d4c7b4e61632f3399c0066db5899e37c8839f92a9"
+    },
+    {
+      "job_id": 140850022002,
+      "os": "ubuntu-24.04",
+      "mode": "installed",
+      "conclusion": "success",
+      "selected_modules": 21,
+      "passed": 746,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "native_checks": null,
+      "inventory_status": "PASS",
+      "complete_python_modules": 380,
+      "artifact_id": 15246263982,
+      "artifact_sha256": "sha256:78186559c3aaf3d8d7ce2dac83dd33065ba9564fa9b55f0cc73acce6820d7939"
+    },
+    {
+      "job_id": 140850021989,
+      "os": "windows-2022",
+      "mode": "source",
+      "conclusion": "success",
+      "selected_modules": 21,
+      "passed": 746,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "native_checks": 80,
+      "inventory_status": "PASS",
+      "complete_python_modules": 380,
+      "artifact_id": 15246134833,
+      "artifact_sha256": "sha256:e122029e4c2adeefa640880c18a2d5827f069ca80b3e6536e4b08f3847f22ad7"
+    },
+    {
+      "job_id": 140850021709,
+      "os": "windows-2022",
+      "mode": "installed",
+      "conclusion": "success",
+      "selected_modules": 21,
+      "passed": 746,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "native_checks": 80,
+      "inventory_status": "PASS",
+      "complete_python_modules": 380,
+      "artifact_id": 15246249317,
+      "artifact_sha256": "sha256:0339b54be289daacbdf6ab4c33aa99e1e5cd2eb5901fe9471894d1ac9b3285be"
+    }
+  ],
+  "inventory": {
+    "modules": 380,
+    "all_four_actual_python_rows_equal": true,
+    "row_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971"
+  },
+  "actual_affected_source_verdicts": [
+    {
+      "path": "tests/speech/test_progress_speech.py",
+      "linux_passed": 53,
+      "windows_passed": 53,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "path": "tests/ui/test_reader_playback.py",
+      "linux_passed": 108,
+      "windows_passed": 108,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "correction_observed": {
+    "path": "carr-library/tests/speech/test_progress_speech.py",
+    "blob": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157",
+    "result": "New actual tests passed in all four modes after the canonical Windows temp-parent fixture correction."
+  },
+  "separate_unexecuted_work": {
+    "utf8_fixture": {
+      "tree": "f9e7295b0d7b666c2ebe001a544681dc3e9f2bec",
+      "test_blob": "843542a6f220f7333f89a3a64278cda46bf4a650",
+      "status": "NOT_RUN",
+      "included_in_tested_head": false
+    },
+    "manual_appendix": {
+      "tree": "e460386fba8d57444395aae5a8f7fc305f23b3db",
+      "status": "NOT_RUN",
+      "included_in_tested_head": false
+    }
+  },
+  "evidence_policy": {
+    "logs_fetched_only_after_job_completion": true,
+    "previous_counts_transferred": false,
+    "complete_decoded_job_logs_retained": true,
+    "source_installed_inventories_retained": true,
+    "artifact_metadata_only_no_archive_extraction": true,
+    "data_blob_readback": "All15 data files read back exactly before this manifest."
+  },
+  "scope_limits": [
+    "These21-module selections and native voice-option probes qualify only this exact recorded execution.",
+    "Native percentage Seek uses a separate endpoint script; these receipts do not assert it ran.",
+    "Workflow steps excluded by OS/mode conditions are distinguished from test skips; selected tests have zero skips.",
+    "No human NVDA, audible listening, voice-model/language quality, capture, full bundle or final release qualification."
+  ],
+  "files": [
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-source-job.log",
+      "blob": "1031a347db0bf1f86bca2e9afc58819f249e0d7a",
+      "sha256": "a2d745e2a53c68cb4a28f14c73530411886b95db6b37e63e592c636a078f1e83",
+      "utf8_bytes": 334916
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-source-source-installed-python-inventory.json",
+      "blob": "65c1e1d2ea064086f116d15aefa57d460f246315",
+      "sha256": "2a2961dfd4bee1fc3aeccf40b2c94a261749bdfaf578f34e1c6cb8daa309c71a",
+      "utf8_bytes": 56297
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-source-receipt.json",
+      "blob": "45a24d44b8bb1eabac697351c62caf6998f2aa80",
+      "sha256": "7bb3f2058ee9e696a153547d56e95ed948892760dfe97c632d87ed0cc0d8c8f4",
+      "utf8_bytes": 13456
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-installed-job.log",
+      "blob": "5bc77ba6cbb4b68783c02492c9e211ab4bc5c90c",
+      "sha256": "8d046038b27f4c485563009c879429eb7086787524f833e4175438d2cf836f53",
+      "utf8_bytes": 317748
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-installed-source-installed-python-inventory.json",
+      "blob": "90ced57f42009f9c7eb7f684d4c9618865296eae",
+      "sha256": "7fa8283ff3c4aa3bd75928b855d4f0638a5e8fba64dcee40b231ced09d2f9776",
+      "utf8_bytes": 56300
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/linux-installed-receipt.json",
+      "blob": "c59b799e30af9ffd7305b6fa8188e2c975437855",
+      "sha256": "e60f26cd129e0e754fc281d8b483592756a15ab7f08045ab0572c927bb5ab243",
+      "utf8_bytes": 9604
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-job.log",
+      "blob": "7d85f7f501691201caa3ff34d2665e2cb7015086",
+      "sha256": "006f6fab26449712ef46df3215182501e38d4847d4c4637274f727c39881c145",
+      "utf8_bytes": 290816
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-source-installed-python-inventory.json",
+      "blob": "96808ebbc0ec0a03dba2e10309a9788d901cf687",
+      "sha256": "ca8ab1b80abc0c2d02e7eab7047d00dd98fd51ae977da93e804701736f12b958",
+      "utf8_bytes": 56312
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-receipt.json",
+      "blob": "c65cd9018c82d6c6c5f1a98e5b8c92d675910f83",
+      "sha256": "1cfd07283042791e08428b67519e89670c69925b8915f16ceb48641c92b8b0ca",
+      "utf8_bytes": 13782
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-source-native-checks.txt",
+      "blob": "a7b66e7010e97923d3d38fbb1ab690c306f08e4e",
+      "sha256": "058e1ead83267ab0402552403b7cf582ab801e12862fcf9020253db27bb4534e",
+      "utf8_bytes": 3215
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-job.log",
+      "blob": "df9fa2bd723c734e4a7808871113f043ff50dc5a",
+      "sha256": "b929373712d637466df4642dfbfa231a687a70c065bcbbda4b39316335849127",
+      "utf8_bytes": 273634
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-source-installed-python-inventory.json",
+      "blob": "eebe546484373724b5744b97391076289ddfac3e",
+      "sha256": "e70ab8aeb20ab8bd4531fbd26f02f853659f6840f3471d5bd0fb520742a21c4d",
+      "utf8_bytes": 56315
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-receipt.json",
+      "blob": "d8f9189c24064895c248b0ef63627ae1172c6523",
+      "sha256": "3697b1860f0b32d7ed43d55fa136ea6a3e08ed743343a06d72fae70f9ead24c0",
+      "utf8_bytes": 9944
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/windows-installed-native-checks.txt",
+      "blob": "a7b66e7010e97923d3d38fbb1ab690c306f08e4e",
+      "sha256": "058e1ead83267ab0402552403b7cf582ab801e12862fcf9020253db27bb4534e",
+      "utf8_bytes": 3215
+    },
+    {
+      "path": "carr-library/review/reader-voice-10e3be93-2026-11-28/common-python-inventory.json",
+      "blob": "6612083103fdeb348924d97ab4a1fe20a01815ed",
+      "sha256": "225c82b80906d96ccccc2ed5846105777f63c71a2f4f45b92f506a4645c8c12e",
+      "utf8_bytes": 65126
+    }
+  ]
+}

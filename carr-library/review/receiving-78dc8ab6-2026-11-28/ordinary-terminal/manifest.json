@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "source_head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "provenance": "Terminal GitHub job metadata and complete connector-decoded job logs. Hashes below bind those decoded UTF-8 strings, not original ZIP member bytes. Derived JSON is extracted from those logs.",
+  "results": {
+    "native_launcher": {
+      "run": 46101840596,
+      "zig": {
+        "job": 140845813813,
+        "passed": 9
+      },
+      "msvc": {
+        "job": 140845814025,
+        "passed": 9
+      },
+      "native_launcher_execution": true,
+      "synthetic_child": true,
+      "actual_python_installation": false,
+      "authenticode": false,
+      "nvda": false
+    },
+    "bibliography": {
+      "run": 46101840595,
+      "job": 140845813782,
+      "source_modules": 29,
+      "source_passed": 1092,
+      "source_failed": 0,
+      "source_skipped": 0,
+      "installed_native_checks": 69,
+      "wheel": "9b5c28e5238800557926c11f9a85f3f2c33425b307d5db766631fc48e9e057e8",
+      "manual_keyboard": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "native_file_pickers": "NOT_RUN"
+    },
+    "supplied_bridge": {
+      "run": 46101840581,
+      "linux": {
+        "job": 140845814308,
+        "source_modules": 27,
+        "passed": 823,
+        "failed": 0,
+        "skipped": 0
+      },
+      "windows": {
+        "job": 140845814027,
+        "source_modules": 28,
+        "passed": 826,
+        "failed": 0,
+        "skipped": 0,
+        "native_checks": 9
+      },
+      "worker_scope": "Actual isolated supplied worker protocol using synthetic model/inputs; no acoustic inference or language-quality claim.",
+      "manual_nvda": "NOT_RUN",
+      "native_folder_picker": "NOT_RUN"
+    }
+  },
+  "aggregate_platform_qualification": false,
+  "no_success_transferred_to_other_heads": true,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-zig-decoded-job.log",
+      "sha256": "878a11c929c87902060b3e8b6e92218b80e7645c6223ab19fcc39e2c1333ff9d",
+      "bytes": 30907
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-msvc-decoded-job.log",
+      "sha256": "31937a28f4c7f99ea29e93c964a23ac6a7d3d4d07b67a68eef8cb7ca25c501ab",
+      "bytes": 34194
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-decoded-job.log",
+      "sha256": "ff3326e40488e2c324a637991434bbe3acaa0de09bab47b65cf3244510165805",
+      "bytes": 139797
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-linux-decoded-job.log",
+      "sha256": "1cb6a22043f4bf088306c7b186bd73b3c60692e16470e67bc0761455323f65b9",
+      "bytes": 94164
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-windows-decoded-job.log",
+      "sha256": "27e9fb81338decd3468e7f6b8c2ce30b1df85d6a718221e4b2e00666015eb9b0",
+      "bytes": 105110
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-zig-derived-receipts.json",
+      "sha256": "aa7206f4c87849584798e769fd1854187c7d6260fafa326a360c2471aa9b12f7",
+      "bytes": 2470
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/native-msvc-derived-receipts.json",
+      "sha256": "c35e2859dc298072a8c5104b18aa6aeda40a1d7a09e501daca52c6fc811f92e1",
+      "bytes": 2791
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-source-verdicts.json",
+      "sha256": "e9baf8ce63ce15dd45a6782bb687a6c36d6f699c8b4b9cf410d140e81846a05a",
+      "bytes": 5109
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-linux-source-verdicts.json",
+      "sha256": "c0d6ed1126581b7507e060bac7d5aa6ca81de60a805fa80ae6b5fe64f18bc2f3",
+      "bytes": 4838
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-windows-source-verdicts.json",
+      "sha256": "44a7bdc9efbdb29b6803bf192db37a67b09c05bc3e0a560a0c8dcfb5e8c738ff",
+      "bytes": 5040
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-wheel-derived.json",
+      "sha256": "60ac9ee8106107e4b55cdb34bb2a9ca30ad4306241f711557f39d90d420383ca",
+      "bytes": 353
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bibliography-native-derived.json",
+      "sha256": "392189dd86eee26fdc92f24df8ea21c556fba477d48de772e583e19f50c330fd",
+      "bytes": 1089
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/bridge-native-derived.json",
+      "sha256": "878d452047f89abab902631e271e53782af7d73a659e4e3192da7f52c80ce4a1",
+      "bytes": 552
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/jobs-and-artifacts.json",
+      "sha256": "02dc6ad412ffc22c051079e54a4b09bd1bd4bb9deb6daa988ef9b8fabb53a071",
+      "bytes": 22371
+    }
+  ]
+}

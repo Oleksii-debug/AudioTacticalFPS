@@ -1,0 +1,296 @@
+{
+  "schema": "carr-reviewed-ci-receipt/1",
+  "provenance": {
+    "kind": "terminal GitHub run/job/artifact metadata and complete decoded job log",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "run_id": 46103183055,
+    "job_id": 140850017293,
+    "run_attempt": 1,
+    "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+    "head_branch": "carr/ci-endpoint-evaluation-20261127",
+    "tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+    "workflow": ".github/workflows/carr-reconciliation-checks.yml",
+    "workflow_blob": "1c698acbfb85594a60c152b4db0a756b2c8cf2f3",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103183055/job/140850017293",
+    "decoded_log_characters": 146258,
+    "decoded_log_utf8_sha256": "07f250fee5236a4b7b3453099ab5f207dc98d5a9e23c9998e3c3e139a6f969e1",
+    "artifact_members_downloaded": false
+  },
+  "terminal": {
+    "run_status": "completed",
+    "run_conclusion": "success",
+    "job_status": "completed",
+    "job_conclusion": "success",
+    "job_started_at": "2026-11-28T03:31:08Z",
+    "job_completed_at": "2026-11-28T03:40:16Z"
+  },
+  "source": {
+    "status": "PASS",
+    "selected_modules": 39,
+    "completed_modules": 39,
+    "passed": 1186,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "all_module_pytest_exit_codes_zero": true,
+    "selector_membership_exact": true,
+    "elapsed_step_seconds": 213,
+    "module_verdicts_file": "source-module-verdicts.json"
+  },
+  "installed": {
+    "status": "PASS",
+    "selected_modules": 39,
+    "selectors_identical_to_source": true,
+    "junit_testcases": 1186,
+    "passed": 1186,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "expected_failures": [],
+    "additional_pytest_subtests_passed": 7,
+    "pytest_seconds": 265.65,
+    "elapsed_step_seconds": 266,
+    "junit_bytes_downloaded": false,
+    "summary_provenance": "Workflow parses its completed JUnit and emits the retained JSON; original XML bytes were not downloaded.",
+    "summary_file": "installed-summary.log-extracted.json"
+  },
+  "native_gates": [
+    {
+      "step": 7,
+      "name": "Require native source Save All and recovery",
+      "status": "PASS",
+      "dynamic_check_count": 46,
+      "record_file": "source-save-all.log-extracted.json"
+    },
+    {
+      "step": 8,
+      "name": "Require native source Reader keyboard dispatch",
+      "status": "PASS",
+      "dynamic_check_count": 34,
+      "record_file": "reader-keymap.phase-derived.json",
+      "record_mode": "source"
+    },
+    {
+      "step": 9,
+      "name": "Require native installed Save All and recovery",
+      "status": "PASS",
+      "dynamic_check_count": 47,
+      "record_file": "installed-save-all.log-extracted.json"
+    },
+    {
+      "step": 10,
+      "name": "Require native installed Reader keyboard dispatch",
+      "status": "PASS",
+      "dynamic_check_count": 35,
+      "record_file": "reader-keymap.phase-derived.json",
+      "record_mode": "installed"
+    },
+    {
+      "step": 11,
+      "name": "Require native source asynchronous catalog exports",
+      "status": "PASS",
+      "dynamic_check_count": 52,
+      "record_file": "source-catalog-exports.log-extracted.json"
+    },
+    {
+      "step": 12,
+      "name": "Require native installed asynchronous catalog exports",
+      "status": "PASS",
+      "dynamic_check_count": 52,
+      "record_file": "installed-catalog-exports.log-extracted.json"
+    },
+    {
+      "step": 13,
+      "name": "Require native installed asynchronous voice preview",
+      "status": "PASS",
+      "dynamic_check_count": 44,
+      "record_file": "installed-workflow-voice-preview.log-extracted.json"
+    }
+  ],
+  "identity": {
+    "built_wheel_sha256": "cc7f27d1a5118860e72b7ee278a2ea3ed5f53775836d25ba5f592d33988a7442",
+    "built_wheel_size_bytes": 2598712,
+    "python": "3.11.9",
+    "pytest": "9.0.2",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+    "installed_exact_module_bytes": 34,
+    "installed_proof_scope": "The workflow freshly imports34 named modules, verifies their paths are inside purelib and outside checkout, and compares their full bytes to exact checkout files before installed pytest.",
+    "product_python_git_blob_count": 380,
+    "all_product_python_git_blobs_equal_to_78": true,
+    "comparison_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "comparison_scope": "Independent Git-tree source comparison only; this is not a claim that this workflow repeated a380-module installed inventory."
+  },
+  "limits": {
+    "aggregate_step_timeout_minutes": 10,
+    "job_timeout_minutes": 20,
+    "each_native_step_timeout_minutes": 3,
+    "source_ci_check_jobs": 2,
+    "product_or_test_deadlines_changed": false
+  },
+  "uploaded_artifact": {
+    "id": 15246083620,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NjA4MzYyMA==",
+    "name": "carr-canonical-compatibility-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+    "size_in_bytes": 39667,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246083620",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246083620/zip",
+    "expired": false,
+    "digest": "sha256:c6d1577f796f2366bef6c879498d90764d0b7786f2dc6926a018730bff55fd58",
+    "created_at": "2026-11-28T03:40:13Z",
+    "updated_at": "2026-11-28T03:40:13Z",
+    "expires_at": "2026-12-05T03:40:12Z",
+    "workflow_run": {
+      "id": 46103183055,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b"
+    }
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T03:31:09Z",
+      "completed_at": "2026-11-28T03:31:09Z"
+    },
+    {
+      "name": "Check out the exact source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T03:31:09Z",
+      "completed_at": "2026-11-28T03:31:17Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T03:31:17Z",
+      "completed_at": "2026-11-28T03:31:17Z"
+    },
+    {
+      "name": "Install the exact source into a fresh environment",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T03:31:17Z",
+      "completed_at": "2026-11-28T03:31:46Z"
+    },
+    {
+      "name": "Require integrated canonical source contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T03:31:46Z",
+      "completed_at": "2026-11-28T03:35:19Z"
+    },
+    {
+      "name": "Require the same contracts from the installed application",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T03:35:19Z",
+      "completed_at": "2026-11-28T03:39:45Z"
+    },
+    {
+      "name": "Require native source Save All and recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T03:39:45Z",
+      "completed_at": "2026-11-28T03:39:47Z"
+    },
+    {
+      "name": "Require native source Reader keyboard dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T03:39:47Z",
+      "completed_at": "2026-11-28T03:39:55Z"
+    },
+    {
+      "name": "Require native installed Save All and recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T03:39:55Z",
+      "completed_at": "2026-11-28T03:39:57Z"
+    },
+    {
+      "name": "Require native installed Reader keyboard dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T03:39:57Z",
+      "completed_at": "2026-11-28T03:40:04Z"
+    },
+    {
+      "name": "Require native source asynchronous catalog exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T03:40:04Z",
+      "completed_at": "2026-11-28T03:40:07Z"
+    },
+    {
+      "name": "Require native installed asynchronous catalog exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T03:40:07Z",
+      "completed_at": "2026-11-28T03:40:09Z"
+    },
+    {
+      "name": "Require native installed asynchronous voice preview",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T03:40:09Z",
+      "completed_at": "2026-11-28T03:40:12Z"
+    },
+    {
+      "name": "Retain source identity and contract receipts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T03:40:12Z",
+      "completed_at": "2026-11-28T03:40:13Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27,
+      "started_at": "2026-11-28T03:40:13Z",
+      "completed_at": "2026-11-28T03:40:13Z"
+    },
+    {
+      "name": "Post Check out the exact source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 28,
+      "started_at": "2026-11-28T03:40:13Z",
+      "completed_at": "2026-11-28T03:40:15Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 29,
+      "started_at": "2026-11-28T03:40:15Z",
+      "completed_at": "2026-11-28T03:40:15Z"
+    }
+  ],
+  "qualification_limits": [
+    "This complete receiving result applies to10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b; earlier incomplete5d runs are not relabeled.",
+    "Native checks are dynamic assertions, not additional independent pytest case counts.",
+    "Native reader keymap records are reconstructed only from emitted successful phases and the exact checked probe, not claimed as original artifact-member JSON.",
+    "NVDA, human audio quality/listening and manual file chooser/keyboard acceptance remain NOT_RUN where stated by the probes.",
+    "No endpoint/capture, private-model inference, signing or final release qualification is inferred.",
+    "The artifact ZIP digest is matching GitHub API and upload-log metadata; ZIP and original XML/JSON member bytes were not downloaded."
+  ]
+}

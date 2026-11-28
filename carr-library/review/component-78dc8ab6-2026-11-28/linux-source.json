@@ -4,7 +4,7 @@
   "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
   "run": 46101828603,
   "platform": "ubuntu-24.04",
-  "scope": "Completed mode only; Windows modes remain unqualified until terminal evidence.",
+  "scope": "This completed Linux source mode only; other modes have separate evidence.",
   "execution": "ACTUAL_CI",
   "mode": "source",
   "job": 140845774510,

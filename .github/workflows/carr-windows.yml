@@ -1981,7 +1981,9 @@ jobs:
           class ImmediateFailures:
               def pytest_runtest_logreport(self, report):
                   if report.failed:
-                      print('\nINSTALLED_CASE_FAILURE ' + report.nodeid + '\n' + str(report.longrepr), flush=True)
+                      message = '\nINSTALLED_CASE_FAILURE ' + report.nodeid + '\n' + str(report.longrepr)
+                      # Keep every diagnostic code point visible on legacy Windows streams.
+                      print(message.encode('ascii', errors='backslashreplace').decode('ascii'), flush=True)
           status = pytest.main([*sys.argv[2:], *contents_suites], plugins=[ImmediateFailures()])
           if status:
               raise SystemExit(status)

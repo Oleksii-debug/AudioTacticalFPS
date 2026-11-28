@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "kind": "manual-reader-acceptance-instructions",
+  "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "status": "NOT_RUN",
+  "execution_performed": false,
+  "document": {
+    "path": "carr-library/docs/READING_WORKFLOW_ACCEPTANCE.md",
+    "before": "edf400d07b597d59185c6e7bf12051b7e3925f8f",
+    "after": "d34c1229e7975db9ae3213190eecb17017033893",
+    "sha256": "b30586bd2c10bfddce53aade829c85b3c46c2fd17d68fd50d4f586bfc972d9d5",
+    "bytes": 33507
+  },
+  "change": {
+    "operation": "insert",
+    "before_heading": "## Official comparison references",
+    "text": "## Manual follow-up for Seek and progress — candidate 78dc8ab6\n\nThese instructions target source commit\n`78dc8ab6838e964bc115418c47c4ec3ef4226a91`. They add human checks to the\nexisting acceptance procedures; **every check below starts NOT_RUN**. Record\nthe tested commit, installed artifact checksum, Windows and NVDA versions,\nselected voice and output device, date, and observed result for each case.\nRecheck the applicable source identity before using these instructions for a\nlater build. Automated widget or PCM results do not establish NVDA or listening\nacceptance.\n\nUse a short, non-sensitive reading copy and an already reviewed local voice.\nKeep its original bytes and reading text for comparison. Do not install a new\nmodel or change capture permissions for these checks. Leave A/B repeat and\nsleep disabled initially.\n\n### Seek by percentage and seconds\n\n1. Choose **Read**, then explicitly pause with **F7**. Record the current\n   recording's duration. With NVDA, reach **Seek to time or percentage** and\n   open **Seek playback**. Confirm the field's instructions explain seconds,\n   the current duration, and `0%` through `100%`. Enter `50%` and accept.\n   The reported position should be half that recording's duration, within the\n   displayed precision or explicit backend approximation. Playback remains\n   paused, using the same recording and output.\n2. Repeat with `100%`, then with `0.25` seconds when the recording exceeds\n   that duration. Confirm the endpoint and seconds entry are understandable,\n   and that neither action starts narration or creates a new recording. Resume\n   only by an explicit **F7** action. Compare the reading text with its saved\n   pre-check copy.\n3. While paused, open Seek and cancel with **Escape**. Position and playback\n   state must remain unchanged. Separately try `-1%`, `100.1%`, `nan%`\n   and a nonnumeric value. Each must produce an accessible refusal without\n   moving playback; correct the value through a fresh explicit action.\n4. Edit the reading copy after rendering, then request Seek. Confirm the\n   stale recording is refused with an instruction to read again. A newly\n   selected tab must not play another tab's recording. Restore a\n   saved draft or tab and verify that opening it starts no audio.\n5. If a transition can be observed waiting for progress audio to become quiet,\n   accept Seek and then use **F8** or **Close** before that transition runs.\n   It must not start later or affect a replacement reader. Record this subcase\n   as NOT_RUN if the waiting state cannot be reproduced. Close a normally\n   paused reader as a separate case and confirm output stops; reopening\n   requires an explicit reading or playback action.\n\n### Optional progress speech\n\n1. In **Help → Progress sound settings...**, begin with **Off**. Query the\n   current operation with **Ctrl+Alt+G** while focus is in a working control.\n   Confirm NVDA can read the reported state and that ordinary progress updates\n   neither move focus nor start standalone sound. Check the accessible names\n   for the mode, interval, volume and quiet controls.\n2. Explicitly choose **Use voice for progress...** in Reader or Audio Studio,\n   then select **Speech: selected local voice** in progress settings. Selecting\n   the voice alone must not enable sound. Run a permitted operation and verify\n   that any notification uses the chosen voice and a short progress message,\n   without reading document contents or replacing an unavailable voice.\n   Confirm **Quiet mode** and the playback-muting option have their stated\n   effects. Return to **Off** and confirm queued announcements do not play later.\n3. When a reviewed heavy local provider and a real competing operation are\n   already available, exercise a notification waiting for resources. Switch\n   progress sound to **Off**, change the library, or close the application\n   while it is still waiting; confirm the old notification cannot revive. Exercise\n   reader **Read** waiting for the same resources separately: its preparing\n   status must remain understandable, and **F8** must cancel that reader\n   request. Do not treat F8 as a global progress-sound command. Record absent\n   providers or unobserved contention as NOT_RUN.\n\nKeep an observed cancellation delay or cleanup error in the result; do not\ninfer successful native shutdown from a closed window alone. The\n[resource guide](runtime_resources.md) describes the cooperative reservations\nand cleanup limits. These procedures make no GPU, voice-quality, language,\nperformance or final-installation qualification claim.\n\n",
+    "exact_inverse_removes_only_insertion": true
+  },
+  "preservation": {
+    "all_old_bytes_in_order": true,
+    "rw_rows_count": 28,
+    "all_rw_rows_and_statuses_byte_identical": true,
+    "requested_input_formats_section_byte_identical": true,
+    "historical_evidence_sections_byte_identical": true,
+    "existing_manual_acceptance_sections_byte_identical": true
+  },
+  "inspected_current_sources": [
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "1cb8d68b81161d9b37f90da26a9f174bd57d2261"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operation_progress.py",
+      "sha": "e6d3d7c4441c8111f44b593b8807e33379f2bbf7"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "sha": "09f009355d77a2de3a0e071c59058a7b10db0054"
+    },
+    {
+      "path": "carr-library/docs/runtime_resources.md",
+      "sha": "587c14c9b172615c6f385bf0374a5b037321aed0"
+    }
+  ],
+  "scope": [
+    "NVDA/manual percentages, seconds, Cancel, malformed values, current recording binding, passive recovery, Stop/Close",
+    "Explicit selected local progress voice, Off/quiet/playback muting, focus and queued-cancellation checks",
+    "Conditional real resource contention; absent provider or unobserved state stays NOT_RUN",
+    "F8 reader cancellation is distinguished from progress Off; no global shortcut claim"
+  ],
+  "exclusions": [
+    "No source, workflow, ref or PR metadata mutation",
+    "No NVDA, listening, private-model, language, GPU, performance or final-installation qualification",
+    "No predecessor or automated PASS transferred to the manual checks"
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "schema": "carr-ci-terminal-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "run": 46101828603,
+  "workflow": ".github/workflows/carr-component-followup-evaluation.yml",
+  "branch": "carr/component-followup-evaluation-20261127",
+  "event": "push",
+  "run_attempt": 1,
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "created_at": "2026-11-28T03:13:43Z",
+  "updated_at": "2026-11-28T03:46:04Z",
+  "scope": "All four modes of this exact component receiving run; not ordinary release, sealed-bundle, capture or human qualification.",
+  "modes": [
+    {
+      "file": "linux-source.json",
+      "job": 140845774510,
+      "status": "success",
+      "modules": 81,
+      "passed": 2893,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "linux-installed.json",
+      "job": 140845774246,
+      "status": "success",
+      "selectors": 81,
+      "passed": 2893,
+      "passing_subtests": 12,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "file": "windows-source.json",
+      "job": 140845774486,
+      "status": "failure",
+      "modules": 80,
+      "passed": 2889,
+      "failed": 1,
+      "skipped": 0
+    },
+    {
+      "file": "windows-installed.json",
+      "job": 140845774538,
+      "status": "failure",
+      "selectors": 80,
+      "passed": 2888,
+      "passing_subtests": 12,
+      "failed": 2,
+      "errors_reported": 0,
+      "skips_reported": 0
+    }
+  ],
+  "application_identity": {
+    "python_modules": 380,
+    "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b",
+    "scope": "Exact complete Python inventory passed in all four modes."
+  },
+  "actual_receiving_boundaries": {
+    "citation_source": {
+      "linux_passed": 39,
+      "windows_passed": 39,
+      "failed": 0
+    },
+    "clip_dialog_source": {
+      "linux_passed": 54,
+      "windows_passed": 54,
+      "failed": 0
+    },
+    "windows_installed_venv": {
+      "passed": 21,
+      "strict_marker": "VENV_DEADLINE_CASES_PASS 21"
+    },
+    "windows_installed_native_clip": {
+      "checks": 120,
+      "status": "PASS",
+      "loop_preview": "NOT_RUN: no exact reviewed output endpoint supplied"
+    },
+    "windows_source_followups": "Separate venv and native clip steps were skipped after the source unit failure."
+  },
+  "failure_classes": [
+    "Progress-speech fixture expected a removed directory's short Windows spelling instead of capturing the admitted canonical path; both Windows modes fail this one assertion.",
+    "Windows installed isolated interpreter exposed a locale-default fixture read of the UTF-8 CPAL license. The formatting product code was not changed by the prepared correction."
+  ],
+  "prepared_corrections": {
+    "progress_test_blob": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157",
+    "formatting_test_blob": "9176a857eda42b2443378659070babc831b3f466",
+    "status": "Both source-reviewed only; neither belongs to tested78."
+  },
+  "limitations": [
+    "Installed pytest is quiet: preserve overall totals and exact failed nodes without inventing independent per-module counts.",
+    "Genuine Windows-venv success is independently observed only in the installed job; ordinary source deadline checks are a separate gate.",
+    "The native clip probe verifies actual wx/FFmpeg editing and passive loop controls; loop audio, acoustic listening, physical output/capture, file-picker interaction and NVDA are not qualified.",
+    "No pass is transferred to another head. The overall component run remains failure.",
+    "Artifact ZIP hashes are GitHub metadata; no ZIP contents were downloaded in this evidence collection."
+  ],
+  "artifacts": [
+    {
+      "id": 15247185451,
+      "name": "carr-component-followup-windows-2022-installed-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+      "size_in_bytes": 61317,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15247185451",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15247185451/zip",
+      "expired": false,
+      "created_at": "2026-11-28T03:45:59Z",
+      "expires_at": "2026-12-05T03:45:58Z",
+      "updated_at": "2026-11-28T03:45:59Z",
+      "digest": "sha256:264a9f24604e5332cf5dc3a3dc133a42bd52ed673e92f011a663f1fc9b9e8455",
+      "workflow_run": {
+        "id": 46101828603,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/component-followup-evaluation-20261127",
+        "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+      }
+    },
+    {
+      "id": 15246420858,
+      "name": "carr-component-followup-ubuntu-24.04-source-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+      "size_in_bytes": 5102,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246420858",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246420858/zip",
+      "expired": false,
+      "created_at": "2026-11-28T03:17:54Z",
+      "expires_at": "2026-12-05T03:17:53Z",
+      "updated_at": "2026-11-28T03:17:54Z",
+      "digest": "sha256:17391558fee0d3b55c4b328de0dedad45e35e1b844a07ba25f0f0e86a8aa2af5",
+      "workflow_run": {
+        "id": 46101828603,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/component-followup-evaluation-20261127",
+        "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+      }
+    },
+    {
+      "id": 15246182002,
+      "name": "carr-component-followup-ubuntu-24.04-installed-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+      "size_in_bytes": 50982,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246182002",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246182002/zip",
+      "expired": false,
+      "created_at": "2026-11-28T03:20:45Z",
+      "expires_at": "2026-12-05T03:20:43Z",
+      "updated_at": "2026-11-28T03:20:45Z",
+      "digest": "sha256:23dc57105c5568d7e3baed4896b49bc332a1f7bef50cde5d3895b21efdcab16d",
+      "workflow_run": {
+        "id": 46101828603,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/component-followup-evaluation-20261127",
+        "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+      }
+    },
+    {
+      "id": 15245937997,
+      "name": "carr-component-followup-windows-2022-source-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+      "size_in_bytes": 9437,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245937997",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245937997/zip",
+      "expired": false,
+      "created_at": "2026-11-28T03:33:33Z",
+      "expires_at": "2026-12-05T03:33:32Z",
+      "updated_at": "2026-11-28T03:33:33Z",
+      "digest": "sha256:6abdbb7e0bad4f8db35e9dcef2ad03f6669ce5c4fbe87a4ec1f9d1ecf6d803c8",
+      "workflow_run": {
+        "id": 46101828603,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/component-followup-evaluation-20261127",
+        "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "linux-source.json",
+      "sha256": "f25cba28fca58cc492058d3a4a3922ef9b17e273d807ddd49c5b04f272fe0d63"
+    },
+    {
+      "path": "linux-installed.json",
+      "sha256": "6341f33102c618ba5158b8bdd2f4e67a6f230d4503e4aacbf38c8cccbc4b7aac"
+    },
+    {
+      "path": "windows-source.json",
+      "sha256": "34d6bafeabdc3a27cad646e3c7d40612dd04a4e1eabbee7cddd6cb50415a43a0"
+    },
+    {
+      "path": "windows-source-progress-path-failure.txt",
+      "sha256": "4ad1213b76b5ecb497a8949bed863790a2ee4aed3b20c13b787e7a64c428012b"
+    },
+    {
+      "path": "windows-installed.json",
+      "sha256": "afe8b24b61cc16022a04bd5c31508660a1ec34d07b7c9a594a9b25a774d924fc"
+    },
+    {
+      "path": "windows-installed-failures.txt",
+      "sha256": "a81bdeabe58a9a0852d369207d8efc8aa1dfe3a72b2f5566a29fd40c5bfdfc82"
+    },
+    {
+      "path": "windows-installed-decoded-receipts.json",
+      "sha256": "8cf565d12e0055d5441941ecbac3b779283f0ef351e5ca98533637d986cdd01d"
+    }
+  ]
+}

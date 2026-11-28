@@ -761,3 +761,83 @@ stack or unverified runtime is bundled. See
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,
 automatic model acquisition or publishing private voice profiles.
+
+## Receiving follow-up: bundle locale diagnostics after 10e3be93
+
+This follow-up starts from exact receiving head
+`10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b`. All 380 application Python
+module bytes remain unchanged. It repairs two observed UTF-8 fixture defects
+and one diagnostic-output defect. Voice-preferences JSON now names UTF-8 for
+both reads and its write; the citation fixture names UTF-8 when reading its
+upstream manifest and CPAL license. The installed pytest failure observer
+displays non-ASCII code points as ASCII escapes so a legacy Windows console
+cannot interrupt the remaining tests while printing a failure. No global Python encoding, product
+deadline, assertion, selector, selected-device guard or permission changes.
+
+### Newly completed receiving evidence
+
+- Exact **10e3be93 Reader**: all four Linux/Windows source/installed modes
+  completed with **746 passed**, zero failures/skips. Both source selections
+  completed all 21 modules, including 53 progress-speech and 108 Reader playback
+  cases. Both Windows native voice-option probes completed 80 checks. All four
+  newly measured inventories contain the same 380 Python modules. See
+  [Reader receiving](../review/reader-voice-10e3be93-2026-11-28/receiving-manifest.json).
+- Exact **10e3be93 canonical compatibility**: all 39 source modules completed
+  with **1,186 passed**; installed selection completed **1,186 passed and seven
+  subtests**, with strict JUnit acceptance. All seven native steps passed. The
+  installed contract compares 34 selected module hashes; the separate full
+  source-tree comparison covers 380 modules. See
+  [compatibility qualification](../review/receiving-10e3be93-2026-11-28/canonical-compatibility/qualification.json).
+- Exact **78dc8ab6 ordinary terminal receipts**: both native compiler probes
+  passed nine checks; bibliography completed 1,092 source-harness cases and
+  69 installed native checks; supplied bridge completed 823 Linux cases and
+  826 Windows cases, plus nine Windows native controls. Synthetic bridge
+  fixtures establish protocol behavior, not acoustic inference. See
+  [ordinary terminal receiving](../review/receiving-78dc8ab6-2026-11-28/ordinary-terminal/manifest.json).
+- Exact **78dc8ab6 components**: Linux source/installed each completed 2,893
+  passing cases; installed adds 12 subtests. Windows source completed 2,889
+  passing cases and the one known temporary-path fixture failure already
+  corrected and exercised by 10e3 Reader. Citation's 39 and clip editing's 54
+  cases passed on both completed source platforms. Separate Windows venv and
+  native clip steps were skipped after the source aggregate failure.
+  Windows installed subsequently completed **2,888 passed, two failed and
+  12 subtests**: the same progress-path fixture plus the locale-default CPAL
+  license read corrected here. All seven new actual citation-family cases
+  passed. Its separate genuine Windows virtualenv gate passed 21 cases and
+  native clip controls passed 120 checks; unpaired loop playback was NOT_RUN.
+  See the [complete four-mode receipt](../review/component-78dc8ab6-2026-11-28/completed-four-modes.json).
+- Exact **10e3be93 native launcher and bibliography** also completed: both
+  compiler probes passed nine checks, and bibliography passed 1,092 source
+  cases plus 69 installed native checks. Their own [native](../review/receiving-10e3be93-2026-11-28/native-launcher/qualification.json)
+  and [bibliography](../review/receiving-10e3be93-2026-11-28/bibliography/qualification.json)
+  receipts retain the tested identities without inheriting the 78 results.
+
+### Original full-bundle evidence and its limits
+
+The immutable **5d19dde7** pre-source artifact was read without executing or
+extracting application assets. The helper verified its ZIP identity; retained
+raw text/XML member bytes were independently decoded, hashed and read back.
+The complete bundle collected 9,001 cases, then completed **1,339 passes and
+one failure** before one internal diagnostic-output error stopped execution;
+**7,661 collected cases did not execute**. The original JUnit has 1,341 records,
+including the internal error. This is a **FAIL**, not a partial qualification.
+
+The failed test used locale-default `path.read_text()` on the application's
+UTF-8 Ukrainian profile JSON. Its immediately preceding application save/load
+assertion succeeded. The observer then raised a separate CP1252 encoding
+error while printing the failure. The reviewed corrections above address those
+two observed defects; they require their successor's own runtime evidence.
+
+The separate selected-output installed clip probe passed **158 checks**,
+including two real repeats on the exact reviewed output, unchanged preview and
+project bytes, disabling the loop and stopping its playback owner. The bundle's
+unpaired clip invocation passed 120 widget/render checks and explicitly marked
+loop playback NOT_RUN. Physical output listening and NVDA remain NOT_RUN.
+See [original bundle receiving](../review/receiving-5d19dde7-2026-11-28/bundle-receiving/manifest.json).
+
+The new manual Seek/progress appendix starts every human check at NOT_RUN and
+pins its source basis; it does not inherit automated widget results. Selected
+capture remains an unresolved acceptance item, and active full Windows/V3
+runs must retain their own terminal results. No earlier PASS qualifies this
+follow-up or a final wheel, archive, signed installer, real model/language
+quality, NVDA, or distribution rights.

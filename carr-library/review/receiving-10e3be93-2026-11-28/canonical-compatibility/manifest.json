@@ -1,0 +1,110 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head_sha": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+    "tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+    "run_id": 46103183055,
+    "job_id": 140850017293,
+    "run_attempt": 1,
+    "decoded_log_utf8_sha256": "07f250fee5236a4b7b3453099ab5f207dc98d5a9e23c9998e3c3e139a6f969e1",
+    "decoded_log_characters": 146258
+  },
+  "transformations": {
+    "complete_log": "The connector-returned complete decoded job-log string is retained unchanged, including its BOM, timestamps, ANSI sequences and original line endings. Its hash is over this decoded text encoded as UTF-8, not over the original GitHub ZIP response.",
+    "log_extracted_json": "Timestamp prefixes are removed from emitted JSON; a single LF is appended. No artifact-member byte identity is claimed.",
+    "source_verdicts": "Parsed exact39 harness completion rows; each row retains its one-based source line.",
+    "keymap": "Phase-derived records distinguish34/35 successful check phases from starting/complete markers. Exact probe375e98132df87b450c46237cfa3371bced15a28c binds this interpretation."
+  },
+  "record_line_ranges": {
+    "installed-summary.log-extracted.json": [
+      863,
+      863
+    ],
+    "source-save-all.log-extracted.json": [
+      930,
+      930
+    ],
+    "installed-save-all.log-extracted.json": [
+      1054,
+      1054
+    ],
+    "source-catalog-exports.log-extracted.json": [
+      1185,
+      1185
+    ],
+    "installed-catalog-exports.log-extracted.json": [
+      1259,
+      1259
+    ],
+    "installed-workflow-voice-preview.log-extracted.json": [
+      1324,
+      1324
+    ]
+  },
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 10498,
+      "sha256": "7b57b0873eb94640ed68d920db033280d1ad0477b9339eef5c858a9697603696"
+    },
+    {
+      "path": "workflow-contract.json",
+      "utf8_bytes": 7514,
+      "sha256": "d94e99383bb3f61b95e726e3000cec1fb679ca5568d9dc73cc8ab63e8cf0114a"
+    },
+    {
+      "path": "source-module-verdicts.json",
+      "utf8_bytes": 5702,
+      "sha256": "6b33bf114d607a1d3268c4bdd593968945c160bcaca974e7172f7b65ecf7f904"
+    },
+    {
+      "path": "installed-summary.log-extracted.json",
+      "utf8_bytes": 163,
+      "sha256": "2e53b4860a8d0bd0428bf137897b546f90edec12a85bba7b25213572be551559"
+    },
+    {
+      "path": "source-save-all.log-extracted.json",
+      "utf8_bytes": 3404,
+      "sha256": "f1c0cbc0000e129650d3b54b78be22c7d21f11b88a4efb8941b14b95fe010c4e"
+    },
+    {
+      "path": "installed-save-all.log-extracted.json",
+      "utf8_bytes": 3450,
+      "sha256": "8c69307cdfe7ed4b7ddcd4dd64717a388043788394cfc8d4841e8d6b76276e16"
+    },
+    {
+      "path": "source-catalog-exports.log-extracted.json",
+      "utf8_bytes": 2480,
+      "sha256": "325119d1ee44483ec526def87ce797802fb40e8d3033614eed562c459e54e10b"
+    },
+    {
+      "path": "installed-catalog-exports.log-extracted.json",
+      "utf8_bytes": 2481,
+      "sha256": "56bf5ddaedd0c5af9c43935b7e007a7930cd198403922b834d6f705e5f4eef94"
+    },
+    {
+      "path": "installed-workflow-voice-preview.log-extracted.json",
+      "utf8_bytes": 2396,
+      "sha256": "07a630d719ce31b94f127778dfc206fe2ebba127290e11bdd28cdb803187d5e8"
+    },
+    {
+      "path": "reader-keymap.phase-derived.json",
+      "utf8_bytes": 9271,
+      "sha256": "51ed003d2defa116847b6e51c2457561e4593dc873605d6cc67c5562cc475262"
+    },
+    {
+      "path": "completed-job.decoded.log",
+      "utf8_bytes": 146260,
+      "sha256": "07f250fee5236a4b7b3453099ab5f207dc98d5a9e23c9998e3c3e139a6f969e1"
+    }
+  ],
+  "artifact": {
+    "id": 15246083620,
+    "name": "carr-canonical-compatibility-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+    "size_in_bytes": 39667,
+    "digest": "sha256:c6d1577f796f2366bef6c879498d90764d0b7786f2dc6926a018730bff55fd58",
+    "original_archive_downloaded": false
+  },
+  "source_review": "No new failure occurred and no product, fixture, deadline, guard or ref mutation was needed."
+}

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "kind": "test-fixture-utf8-correction",
+  "base_commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "status": "NOT_RUN",
+  "execution_performed": false,
+  "diagnosis": {
+    "observed_by": "root, recovered original 5d sealed-bundle JUnit",
+    "junit_sha256": "16fabea1e9ec1e9bfc3a0e2b403fa01c6e3861e429a58deb3846885fe9ccc675",
+    "junit_bytes": 210449,
+    "failing_case": "tests/speech/test_voice_preferences.py::test_reload_persists_exact_ids_profiles_and_external_declarations",
+    "boundary": "Fixture Path.read_text without encoding attempts CP1252 decoding of the product's UTF-8 Ukrainian profile.",
+    "production_load_save_assertions": "Reported PASS immediately before this fixture read.",
+    "scope": "Fixture text file I/O only; no production or global Python encoding change."
+  },
+  "file": {
+    "path": "carr-library/tests/speech/test_voice_preferences.py",
+    "before": "cb1b0528c1e3cd6971563ef191d49469049cf0c1",
+    "after": "843542a6f220f7333f89a3a64278cda46bf4a650",
+    "before_bytes": 18054,
+    "after_bytes": 18104,
+    "before_sha256": "2a385bbdf45a33f54f31756676b3fb8fcd5f5e8d7e38cde96d9db536c03b6dff",
+    "after_sha256": "782a6adffc186ea7ebbb6793caac9261d9a32cfe94913e39a258651e361d76c0"
+  },
+  "hunks": [
+    {
+      "before": "    source = json.loads(path.read_text())\n    source['ffmpeg'] = r'C:\\uninstalled-after-relocation\\ffmpeg.exe'\n    path.write_text(json.dumps(source))",
+      "after": "    source = json.loads(path.read_text(encoding='utf-8'))\n    source['ffmpeg'] = r'C:\\uninstalled-after-relocation\\ffmpeg.exe'\n    path.write_text(json.dumps(source), encoding='utf-8')"
+    },
+    {
+      "before": "    restored = json.loads(path.read_text())",
+      "after": "    restored = json.loads(path.read_text(encoding='utf-8'))"
+    }
+  ],
+  "preservation": {
+    "allOldAssertionsByteIdentical": true,
+    "assertionLines": 40,
+    "exactInverse": true,
+    "changedTextCalls": 3,
+    "testDefinitions": 23
+  },
+  "review": {
+    "all_text_file_calls": "Both Path.read_text calls and the sole Path.write_text call now specify encoding='utf-8'.",
+    "byte_io": "Existing read_bytes/write_bytes and Python's defined UTF-8 str.encode calls are unchanged.",
+    "all_other_bytes": "Exact inverse of the two declared hunks recovers the whole preimage.",
+    "assertions_budgets_parameters": "Unchanged."
+  }
+}

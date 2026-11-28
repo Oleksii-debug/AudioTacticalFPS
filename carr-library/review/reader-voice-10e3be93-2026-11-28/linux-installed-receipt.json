@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-11-28 03:40:09 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+  "source_tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+  "run": {
+    "id": 46103184543,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103184543",
+    "event": "push",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "job": {
+    "id": 140850022002,
+    "name": "Reader voice controls / ubuntu-24.04 / installed",
+    "runner_os": "ubuntu-24.04",
+    "mode": "installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T03:34:10Z",
+    "completed_at": "2026-11-28T03:35:42Z"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+    "blob": "b683358bf3325749f852040cef8a9e704c4c414a"
+  },
+  "identity": {
+    "status": "PASS",
+    "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+    "executable": "/home/runner/work/_temp/carr-reader-voice-python/bin/python",
+    "prefix": "/home/runner/work/_temp/carr-reader-voice-python",
+    "source_package": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library",
+    "installed_package": "/home/runner/work/_temp/carr-reader-voice-python/lib/python3.11/site-packages/carr_library",
+    "complete_python_modules": 380,
+    "common_python_rows_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "mode_inventory_file": "linux-installed-source-installed-python-inventory.json",
+    "mode_inventory_utf8_sha256": "7fa8283ff3c4aa3bd75928b855d4f0638a5e8fba64dcee40b231ced09d2f9776",
+    "wheel": {
+      "payload_files": 490,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 395,
+      "source_commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "source_tree": "ce46aaed7efb87bdfaf121ce109709f6d0426649",
+      "wheel_sha256": "d6e6c4063a0cd95ce2fb741763a1bc1e59bcd4898a3780e611083bea1d896813"
+    },
+    "dependency_selection": {
+      "effective_requirements_sha256": "278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0",
+      "excluded": [
+        "comtypes",
+        "wxpython"
+      ],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0"
+      },
+      "platform": "linux",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": false
+    }
+  },
+  "contracts": {
+    "selected_module_count": 21,
+    "selected_suites": [
+      "tests/ui/test_reader_synthesis.py",
+      "tests/ui/test_progress_voice_actions.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/speech/test_synthesis_admission.py",
+      "tests/ui/test_reader_playback.py",
+      "tests/speech/test_progress_speech.py",
+      "tests/ui/test_operation_progress.py",
+      "tests/ui/test_progress_media_quiet.py",
+      "tests/ui/test_studio_progress_isolation.py",
+      "tests/speech/test_registered_studio_voices.py",
+      "tests/audio/test_model_voices.py",
+      "tests/storage/test_reader_synthesis_backup.py",
+      "tests/speech/test_session.py",
+      "tests/speech/test_reading_tabs.py",
+      "tests/ui/test_reader_tabs.py",
+      "tests/storage/test_reading_tabs_backup.py",
+      "tests/ui/test_save_all_access.py",
+      "tests/speech/test_source.py",
+      "tests/speech/test_voice_preferences.py",
+      "tests/ui/test_voice_preferences_dialog.py",
+      "tests/storage/test_voice_preferences_backup.py"
+    ],
+    "passed": 746,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "evidence": "Actual pytest final summary plus strict INSTALLED_CASES_PASS 746 after checking every JUnit testcase for no failure/error/skipped child.",
+    "module_verdicts": null,
+    "actual_installed_summary": [
+      "746 passed in 16.15s"
+    ],
+    "affected_test_blob": {
+      "path": "carr-library/tests/speech/test_progress_speech.py",
+      "sha": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157"
+    }
+  },
+  "native": {
+    "status": "NOT_APPLICABLE",
+    "checks": null,
+    "reason": "Windows-only widget phase is intentionally excluded on Linux."
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:34:11Z",
+      "completed_at": "2026-11-28T03:34:12Z"
+    },
+    {
+      "number": 2,
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:34:12Z",
+      "completed_at": "2026-11-28T03:34:18Z"
+    },
+    {
+      "number": 3,
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:34:18Z",
+      "completed_at": "2026-11-28T03:34:24Z"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:34:24Z",
+      "completed_at": "2026-11-28T03:34:24Z"
+    },
+    {
+      "number": 5,
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:34:24Z",
+      "completed_at": "2026-11-28T03:34:46Z"
+    },
+    {
+      "number": 6,
+      "name": "Prepare actual portable speech for registered Studio voice contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:34:46Z",
+      "completed_at": "2026-11-28T03:35:22Z"
+    },
+    {
+      "number": 7,
+      "name": "Prepare the existing pinned Windows speech runtime",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T03:35:22Z",
+      "completed_at": "2026-11-28T03:35:22Z"
+    },
+    {
+      "number": 8,
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:35:22Z",
+      "completed_at": "2026-11-28T03:35:22Z"
+    },
+    {
+      "number": 9,
+      "name": "Require source reader synthesis state and backup contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T03:35:22Z",
+      "completed_at": "2026-11-28T03:35:22Z"
+    },
+    {
+      "number": 10,
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:35:22Z",
+      "completed_at": "2026-11-28T03:35:40Z"
+    },
+    {
+      "number": 11,
+      "name": "Require actual Windows voice option widgets in this mode",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T03:35:40Z",
+      "completed_at": "2026-11-28T03:35:40Z"
+    },
+    {
+      "number": 12,
+      "name": "Preserve public synthetic receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:35:40Z",
+      "completed_at": "2026-11-28T03:35:41Z"
+    },
+    {
+      "number": 23,
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:35:41Z",
+      "completed_at": "2026-11-28T03:35:41Z"
+    },
+    {
+      "number": 24,
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:35:41Z",
+      "completed_at": "2026-11-28T03:35:41Z"
+    },
+    {
+      "number": 25,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:35:41Z",
+      "completed_at": "2026-11-28T03:35:41Z"
+    }
+  ],
+  "artifact": {
+    "id": 15246263982,
+    "name": "carr-reader-voice-controls-ubuntu-24.04-installed-10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b-1",
+    "bytes": 35876,
+    "digest": "sha256:78186559c3aaf3d8d7ce2dac83dd33065ba9564fa9b55f0cc73acce6820d7939",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246263982/zip"
+  },
+  "decoded_job_log": {
+    "file": "linux-installed-job.log",
+    "encoding": "UTF-8 representation of the exact decoded GitHub job-log tool content",
+    "sha256": "8d046038b27f4c485563009c879429eb7086787524f833e4175438d2cf836f53",
+    "bytes": 317748
+  },
+  "scope_limits": [
+    "Observed results apply only to this exact immutable head and recorded selection; previous results are not substituted.",
+    "Native percentage Seek uses a separate endpoint probe and is not established by this voice-options native phase.",
+    "No human NVDA, audible listening, private-model quality, broad language or full-platform qualification.",
+    "The separate UTF-8 fixture successor843542a6 is not part of this tested head."
+  ]
+}

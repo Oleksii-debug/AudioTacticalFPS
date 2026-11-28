@@ -1,0 +1,941 @@
+{
+  "schema": "carr-ci-mode-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "run": 46101828603,
+  "platform": "windows-2022",
+  "mode": "source",
+  "job": 140845774486,
+  "status": "failure",
+  "execution": "ACTUAL_CI",
+  "interpreter": {
+    "implementation": "CPython",
+    "version": "3.11.9"
+  },
+  "strict_module_count": 80,
+  "strict_case_totals": {
+    "passed": 2889,
+    "failed": 1,
+    "skipped": 0
+  },
+  "source_inventory": {
+    "status": "PASS",
+    "module_origin": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library",
+    "python_modules": 380,
+    "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+  },
+  "module_verdicts": [
+    {
+      "status": "PASS",
+      "path": "tests/assistant/test_local_planning.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1041
+    },
+    {
+      "status": "PASS",
+      "path": "tests/assistant/test_state_io.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1052
+    },
+    {
+      "status": "PASS",
+      "path": "tests/catalog/test_archive_portability.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1064
+    },
+    {
+      "status": "PASS",
+      "path": "tests/catalog/test_intake_portability.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1075
+    },
+    {
+      "status": "PASS",
+      "path": "tests/catalog/test_epub_metadata.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1086
+    },
+    {
+      "status": "PASS",
+      "path": "tests/catalog/test_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1097
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_page_ocr.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1108
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_ocr_language_regions.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1119
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_ocr_evidence_fidelity.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1130
+    },
+    {
+      "status": "PASS",
+      "path": "tests/extract/test_automatic_ocr_native.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1141
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1153
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_production.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1164
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_production_hardening.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1175
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_clip_dialog.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1187
+    },
+    {
+      "status": "PASS",
+      "path": "tests/academic_integration/test_formatting.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1199
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_production_operation_backup.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1211
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_studio_output_settings.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1223
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_book_audio.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1234
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_scan_bounds.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1245
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1257
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_studio_draft_backup.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1268
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_v3_state_backup.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1280
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_sidecars.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1291
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_canonical_backup_compat.py",
+      "passed": 68,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1304
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_runtime_inventory.py",
+      "passed": 172,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1317
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_runtime_admission.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1322
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_service.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1339
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_asr_additional_profile.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1350
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_admission_boundaries.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1361
+    },
+    {
+      "status": "PASS",
+      "path": "tests/packaging/test_windows_bundle.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1372
+    },
+    {
+      "status": "PASS",
+      "path": "tests/packaging/test_standard_installer.py",
+      "passed": 149,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1385
+    },
+    {
+      "status": "PASS",
+      "path": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1397
+    },
+    {
+      "status": "PASS",
+      "path": "tests/operations/test_resources.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1409
+    },
+    {
+      "status": "PASS",
+      "path": "tests/operations/test_facade.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1420
+    },
+    {
+      "status": "PASS",
+      "path": "tests/operations/test_production_admission.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1431
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_operations_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1442
+    },
+    {
+      "status": "PASS",
+      "path": "tests/e2e/test_import_worker_publication.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1454
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_operations_policy.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1465
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_synthesis_admission.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1476
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_reader_playback.py",
+      "passed": 108,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1490
+    },
+    {
+      "status": "FAIL",
+      "path": "tests/speech/test_progress_speech.py",
+      "passed": 52,
+      "failed": 1,
+      "skipped": 0,
+      "exit": 1,
+      "line": 1572
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_operation_progress.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1584
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_media_quiet.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1595
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_studio_progress_isolation.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1606
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_transcription_backup.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1617
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_model_voices.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1628
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_backup_book_plan_bindings.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1639
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_book_audio_dialog.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1650
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_python_helper.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1661
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_registered_studio_voices.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1672
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_runtime_settings_restore.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1684
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_engine_settings_review.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1695
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_cleanup_contexts.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1706
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_audio_process.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1717
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_python_helper_backup.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1728
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_capture_access_diagnostic.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1740
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_recording_windows_process.py",
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1752
+    },
+    {
+      "status": "PASS",
+      "path": "tests/audio/test_process_deadline.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1763
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_ebook_dialog.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1774
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_ebook_audio_initialization.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1785
+    },
+    {
+      "status": "PASS",
+      "path": "tests/reader/test_ebook_audio_lifecycle.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1796
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_wave_output.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1808
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_player_controls.py",
+      "passed": 87,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1821
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_player_transport.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1832
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_output_devices.py",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1844
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_listening.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1855
+    },
+    {
+      "status": "PASS",
+      "path": "tests/speech/test_playlist.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1866
+    },
+    {
+      "status": "PASS",
+      "path": "tests/reader/test_ebook_audio.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1877
+    },
+    {
+      "status": "PASS",
+      "path": "tests/search/test_source_page_benchmark.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1888
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_federated_labels.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1900
+    },
+    {
+      "status": "PASS",
+      "path": "tests/packaging/test_windows_launcher_bundle.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1912
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_reader_synthesis.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1917
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1935
+    },
+    {
+      "status": "PASS",
+      "path": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1947
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_state_json_reader.py",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1959
+    },
+    {
+      "status": "PASS",
+      "path": "tests/transcription/test_control_reads.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1971
+    },
+    {
+      "status": "PASS",
+      "path": "tests/storage/test_reader_synthesis_backup.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1982
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_publishing.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1994
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_daisy_publishing.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 1999
+    },
+    {
+      "status": "PASS",
+      "path": "tests/studio/test_measured_audio.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0,
+      "line": 2010
+    }
+  ],
+  "failure": {
+    "test": "tests/speech/test_progress_speech.py::test_progress_model_reserves_actual_shared_resources_only_while_synthesizing",
+    "scope": "Fixture expected a removed temporary directory's short lexical path, while the broker recorded the same directory's canonical long Windows path. Seven other ResourceRequest fields matched.",
+    "prepared_correction": {
+      "tree": "174ee1292e9a93f63d9f78e233ef775fe5c318f6",
+      "test_blob": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157",
+      "status": "SOURCE_REVIEWED / NOT_RUN; not part of tested78 head"
+    },
+    "trace_file": "windows-source-progress-path-failure.txt"
+  },
+  "later_gates": {
+    "windows_venv_21_case_step": "SKIPPED following unit failure; ordinary source deadline21PASS is not this separate gate.",
+    "native_clip_step": "SKIPPED following unit failure; no native loop/output qualification."
+  },
+  "earlier_native_documents": [
+    {
+      "line": 892,
+      "value": {
+        "checks": 27,
+        "input_selection": "synthetic paths supplied to actual Import Center",
+        "native_file_picker_operation": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.extract.document_formats": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\extract\\document_formats.py",
+          "carr_library.ui.desktop_app": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+          "carr_library.ui.import_center": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\import_center.py"
+        },
+        "platform": "Windows",
+        "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    {
+      "line": 921,
+      "value": {
+        "checks": 28,
+        "input_selection": "synthetic paths supplied to actual Import Center",
+        "native_file_picker_operation": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.extract.document_formats": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats.py",
+          "carr_library.ui.desktop_app": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "carr_library.ui.import_center": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\import_center.py"
+        },
+        "platform": "Windows",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4
+    },
+    {
+      "name": "Require actual portable audio and OCR commands",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 5
+    },
+    {
+      "name": "Install exact application and component test prerequisites",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6
+    },
+    {
+      "name": "Prepare pinned audio for actual clip processing and native controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7
+    },
+    {
+      "name": "Prepare the existing verified OCR engine for automatic-language controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8
+    },
+    {
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9
+    },
+    {
+      "name": "Require installed module origin and exact complete Python source inventory",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10
+    },
+    {
+      "name": "Require source and installed native additional-document imports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11
+    },
+    {
+      "name": "Require source updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 12
+    },
+    {
+      "name": "Require installed updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 13
+    },
+    {
+      "name": "Require real Windows virtual-environment EOF and cleanup contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 14
+    },
+    {
+      "name": "Require installed native clip editing and explicit loop controls",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 15
+    },
+    {
+      "name": "Retain public synthetic source and installed evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 31
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33
+    }
+  ],
+  "artifact": {
+    "id": 15245937997,
+    "name": "carr-component-followup-windows-2022-source-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+    "size_in_bytes": 9437,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245937997",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15245937997/zip",
+    "expired": false,
+    "created_at": "2026-11-28T03:33:33Z",
+    "expires_at": "2026-12-05T03:33:32Z",
+    "updated_at": "2026-11-28T03:33:33Z",
+    "digest": "sha256:6abdbb7e0bad4f8db35e9dcef2ad03f6669ce5c4fbe87a4ec1f9d1ecf6d803c8",
+    "workflow_run": {
+      "id": 46101828603,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/component-followup-evaluation-20261127",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91"
+    }
+  },
+  "retrieval": {
+    "decoded_log_sha256": "2e1db9c02e31809dcb5233ce24376f7800843353e45072d26d7dbdd44e5fdd3a",
+    "kind": "Completed job log plus artifact metadata; ZIP not downloaded."
+  },
+  "scope": "Only this completed Windows source mode; no later fixture success or endpoint behavior inferred."
+}
