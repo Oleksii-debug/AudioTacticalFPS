@@ -1,0 +1,6 @@
+{
+  "status": "PASS",
+  "module_origin": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library",
+  "python_modules": 380,
+  "source_inventory_sha256": "8e30b1d9acd975067f03c4ec6a1cf446655c01656113af9e6918e9513fa9a58b"
+}

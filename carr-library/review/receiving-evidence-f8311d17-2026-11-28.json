@@ -45,6 +45,14 @@
       "sparse_tree": "0bc596e74bf8762b437ca794f045ee8feaa6e3e5",
       "kind": "terminal failed MAIN; all445 source modules completed",
       "qualification": "carr-library/review/receiving-5d19dde7-2026-11-28/main-terminal/qualification.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105051241,
+      "job": 140855815854,
+      "sparse_tree": "9020162f22f9ea63206c224095c771d039a33a87",
+      "kind": "terminal Linux installed component contracts",
+      "qualification": "carr-library/review/component-f8311d17-2026-11-28/linux-installed/receipt.json"
     }
   ],
   "application_changes": [],

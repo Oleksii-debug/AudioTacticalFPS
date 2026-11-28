@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "kind": "Terminal receiving evidence",
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105051241,
+  "job_id": 140855815854,
+  "scope": "Linux installed component job only",
+  "result": {
+    "passed": 2893,
+    "subtests_passed": 12,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "selected_modules": 81,
+    "python_modules": 380
+  },
+  "files": [
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/application-inventory-reference.json",
+      "git_blob": "85202eed4bc29c2c436fdb4ed57028a5b5cb936f",
+      "sha256": "3197218ec0a916b6e77e1eae1dfb0fb84330cd8ed67419b81cdef7a0c4b80679",
+      "bytes": 75788
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/linux-installed/job.log",
+      "git_blob": "47ae7aba19095a5b33afb6660d7148d71b6a23ed",
+      "sha256": "ddb5f499d1cddf767f8d4e661a9788a12ccb396aabecd01da9a5b46dfe542a58",
+      "bytes": 146854
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/linux-installed/application-source.json",
+      "git_blob": "8dbd7228dc193207a5a9c8a1e41f79984fe3bfea",
+      "sha256": "3a28dca782788cc3223c966fac8370b3851bf1655dc20ea32822745987ffe7cd",
+      "bytes": 249
+    },
+    {
+      "path": "carr-library/review/component-f8311d17-2026-11-28/linux-installed/receipt.json",
+      "git_blob": "8ca08205daa78bd1178b008eb05daf1efc080e22",
+      "sha256": "68391343fc04c852e0b614cb9aec73f359848943041c26d41246a872d6446329",
+      "bytes": 6666
+    }
+  ],
+  "limits": [
+    "Other seven final Reader/component jobs remain separately pending at this receipt snapshot; this tree conveys no result for them.",
+    "The complete source map is a clearly labelled reference with exact f831 Git identities, checked against this job's independently printed full-map digest.",
+    "Artifact identity is retained from Actions metadata; the artifact archive was not downloaded or re-executed.",
+    "No source edit, branch mutation, workflow dispatch, or inherited PASS claim."
+  ]
+}
