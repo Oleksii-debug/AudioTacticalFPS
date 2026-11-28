@@ -27,6 +27,14 @@ contract. Legacy formats are decoded explicitly. Their presence never grants
 permission to execute restored engines, change user shortcut profiles or
 accept source/receipt identities inferred from matching text.
 
+Complete-scope reads use the existing current-edition and page keys without
+changing catalog V5, source ordering or current-source authorization. Within one
+public search-page call, streamed original proofs may be shared for the selected
+segments. Complete original hashes, current path identities and the catalog
+epoch are checked before publishing that page or its cursors. Later calls and
+quotation copy obtain fresh authority. The bulk ASCII path retains the same
+Unicode normalization, source offsets and bounded cancellation checks.
+
 ## Completed public implementation additions
 
 The current source retains these completed implementation groups:
@@ -113,7 +121,7 @@ attempt and the real-device requirement visible.
 | Public trust client | Versioned Ed25519 entitlement verification, signed-file renewal, configurable idle refresh, protected credential references, replay anchors and local TUF update verification | Public clients and synthetic policy fixtures are integrated; production authority, endpoints, trust roots, account/billing service and signing material remain separate owner configuration. Managed installations continue to use their approved installer path; an update is not activated merely by checking status |
 
 | Reader appearance and spelling | Explicit font, colors, high contrast, 50–400% zoom/reset and bounded saved preferences; code-only spelling engine with explicit local dictionaries, suggestion preview and undo | Current source regressions passed at96294e; native lifetime/installed composition still needs exact-candidate acceptance. Dictionaries are not downloaded or bundled implicitly |
-| Audio metadata and cover | Native review and bounded metadata/cover editing through the existing audio tools and destination publication authority | New common and installed/native probes are part of the candidate; source review is complete, integrated execution pending |
+| Audio metadata and cover | Native review and bounded metadata/cover editing through the existing audio tools and destination publication authority | Common and installed/native probes are required in the current feature integration and full Windows bundle gates |
 
 ## Current required gate inventory
 
@@ -172,6 +180,9 @@ inventory and corpus artifacts remain the integration authority.
 | bc195d800d9ffc5846cef37fac81e94e3e0a69b0 | Import, catalog and retrieval contracts: Windows 641 source + 641 installed cases; Linux 648 + 648, zero failures/errors/skips/xfails. [Run 46094685065](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094685065). | Actual receipt-aware publication, fresh session accounting, POSIX directory changes and Windows scratch disappearance regressions; 393 package files and 36 module origins remain exact before and after each context. |
 | Same bc195 revision | Actual 1,000 books × 40 segments completed on both OS, including real first-commit process interruption, explicit resume, every catalog/source row, complete literal traversal, exact Unicode copies, 21-library navigation and first/reopened BM25. [Run 46094685110](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094685110). | Measured import/search seconds: Linux 92.936/102.586; Windows 193.363/178.964. These unprofiled measurements qualify this component and size only; projections are not larger-tier results. |
 | 1d85bae4c35bd7fedf385b3eeafc9519d770b0c5 | Full-backup scale adapter: each OS passed 17 source + 17 installed actual cases, zero failures/errors/skips/xfails. [Run 46095579146](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095579146). | Real public import, common4 create/verify/fresh restore and full catalog/raw/original equality, plus resource refusal, tamper, cancellation and extra-restored-data controls. Exact 405-file inventory, 45 module origins and three scripts; actual 50k/2GiB runs remain separate. |
+| 734962a62f4efa329f04d8c2f69ae20057ca6114 | Explicit search-memory admission and backup benchmark contracts: 62 source + 62 isolated installed cases on each OS, zero failures/errors/skips/xfails. [Run 46099085535](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46099085535). | The saved, admitted and reported working allowance is bound to the actual profile. It is separate from process RSS and does not establish a large-corpus throughput result. |
+| 25518b4c49c8fa55c3ad4f45a178403e733609dd | All six uninstrumented component scenarios completed: 1,000 books × 40 segments and exact 65 MiB / 129 MiB text sources on Linux and Windows. Real interruption/resume, every catalog row, full source traversal, 50 scoped queries, quotations, 21-library navigation and first/reopened complete ranking passed. [Run 46101042884](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101042884). | These exact component texts precede the scoped-SQL changes and differ from the final matrix's non-round byte lengths. Their PASS does not qualify the later composition, 50k books or 2 GiB. Large-source working allowance was 1 GiB; actual individual-process peaks are recorded separately. |
+| 3bd0453809dbade69dbc6131079bdb5e79dc733a | Actual public 100-book and 1,000-book corpora passed read-only old/new SQL row and order comparisons, foreign-scope refusal, exact replacement-query plans and bounded SQLite VM observations. [Run 46101997783](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101997783). | This diagnoses the existing scans and the proposed keyed queries. The patched production source still receives its own functional, installed and full-capacity verdicts; diagnostic timings are not release throughput measurements. |
 
 The earlier integrated 96cf8a1435187844393b5389001d07a587c417a8
 runs remain failed: Windows source exposed refresh, firewall-recovery and job
