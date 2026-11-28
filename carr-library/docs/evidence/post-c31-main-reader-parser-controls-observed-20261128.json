@@ -1,0 +1,249 @@
+{
+  "schema": "carr-post-c31-main-reader-controls-observed/1",
+  "status": "PASS",
+  "scope": "Observed execution of the inert reader's in-memory parser and finite source-map controls only.",
+  "application_qualification": "NOT_RUN",
+  "artifact_inspection": "NOT_RUN",
+  "evidence_component_parent": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "tested_tooling": {
+    "source_commit": "1099392b6ad00e2402962551280db41634f66b33",
+    "source_tree": "839aa66d0bae0b03cdbf104e9700fa04802c4f86",
+    "sole_parent": "40a4379a55fafa2269eae2719216931e825e97f1",
+    "branch": "carr/main-reader-self-check-r38-e9-d3a-20261128"
+  },
+  "workflow_run": {
+    "id": 46107509544,
+    "attempt": 1,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-28T04:25:59Z",
+    "updated_at": "2026-11-28T04:29:55Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107509544"
+  },
+  "job": {
+    "id": 140863455133,
+    "name": "parser-controls-only",
+    "status": "completed",
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Parser controls only; no application or artifact qualification",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Preserve the parser-only receipt",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11
+      }
+    ],
+    "first_log_timestamp": "2026-11-28T04:29:47.6318136Z",
+    "last_log_timestamp": "2026-11-28T04:29:53.3092862Z",
+    "receipt_timestamp": "2026-11-28T04:29:51.9323477Z"
+  },
+  "source_bindings": [
+    {
+      "path": "carr-library/scripts/main_artifact_reader.py",
+      "git_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
+      "sha256": "bad4a97d0a9143ec189fdaa67e47cbe96fd2c100f52f6509e1819c57d008fbb2",
+      "utf8_bytes": 151195
+    },
+    {
+      "path": ".github/workflows/carr-main-reader-self-check.yml",
+      "git_blob": "cc21d54e5fe9ce8f7aef9c3c3a41d63f45f53ab6",
+      "sha256": "58d0ba8f47e3bdb6f4e9fd654dabbb0cdab4fde4e6c64086fa9f7339bc8e0356",
+      "utf8_bytes": 1590
+    }
+  ],
+  "runtime": {
+    "python": "3.11.18",
+    "implementation": "CPython",
+    "runner_os": "Ubuntu 24.04.5",
+    "architecture": "x64",
+    "invocation": "python -I -B -X utf8 carr-library/scripts/main_artifact_reader.py --self-check",
+    "shell_pipefail": true
+  },
+  "independently_reconciled_controls": {
+    "expected_negative": [
+      "missing-required-member",
+      "duplicate-normalized-member",
+      "wrong-function-multiplicity",
+      "wrong-source-identity",
+      "source-map-wrong-target",
+      "source-map-unreviewed-path",
+      "source-map-changed-prior",
+      "source-map-changed-after",
+      "source-map-dropped-unchanged-binding",
+      "post014-source-map-wrong-target",
+      "post014-source-map-unreviewed-pin",
+      "post014-source-map-dropped-pin",
+      "post014-source-map-rebound-history",
+      "post014-source-map-wrong-population",
+      "post014-oracle-dropped-old-case",
+      "post014-oracle-wrong-added-multiplicity",
+      "post014-oracle-changed-old-multiplicity",
+      "post014-oracle-unrelated-module-change",
+      "post014-oracle-nonpopulation-change",
+      "post-c31-source-map-wrong-target",
+      "post-c31-source-map-unreviewed-runner-pin",
+      "post-c31-source-map-dropped-pin",
+      "post-c31-source-map-rebound-history",
+      "post-c31-source-map-wrong-population",
+      "post-c31-source-map-ambiguous-locator",
+      "post-c31-oracle-dropped-old-case:tests.audio.test_local_voice_helper",
+      "post-c31-oracle-wrong-added-multiplicity:tests.audio.test_local_voice_helper",
+      "post-c31-oracle-dropped-old-case:tests.audio.test_production_integrity",
+      "post-c31-oracle-wrong-added-multiplicity:tests.audio.test_production_integrity",
+      "post-c31-oracle-dropped-old-case:tests.e2e.test_audio_cli_resources",
+      "post-c31-oracle-wrong-added-multiplicity:tests.e2e.test_audio_cli_resources",
+      "post-c31-oracle-dropped-old-case:tests.ui.test_audio_studio",
+      "post-c31-oracle-wrong-added-multiplicity:tests.ui.test_audio_studio",
+      "post-c31-oracle-changed-old-multiplicity",
+      "post-c31-oracle-unrelated-module-change",
+      "post-c31-oracle-nonpopulation-change",
+      "post-c31-oracle-unreviewed-new-name"
+    ],
+    "expected_positive": [
+      "appended-verdict-and-universal-newlines",
+      "exact-reviewed-successor-source-map",
+      "exact-reviewed-post014-source-map",
+      "exact-additive-resource-populations",
+      "exact-reviewed-post-c31-source-map",
+      "exact-additive-silence-qc-populations"
+    ],
+    "negative_count": 37,
+    "positive_count": 6,
+    "complete_ordered_receipt_matches_source_declarations": true,
+    "duplicate_negative_labels": 0,
+    "duplicate_positive_labels": 0,
+    "extra_labels": 0,
+    "missing_labels": 0,
+    "source_derivation": "Literal refuses() labels plus the exact two per-module labels for the four ordered POST_C31_QC_ADDITIONS modules; six literal positive labels. No repository code was executed by this reconciliation."
+  },
+  "observed_receipt": {
+    "actual_application_execution": "NOT_RUN",
+    "negative_controls": [
+      "missing-required-member",
+      "duplicate-normalized-member",
+      "wrong-function-multiplicity",
+      "wrong-source-identity",
+      "source-map-wrong-target",
+      "source-map-unreviewed-path",
+      "source-map-changed-prior",
+      "source-map-changed-after",
+      "source-map-dropped-unchanged-binding",
+      "post014-source-map-wrong-target",
+      "post014-source-map-unreviewed-pin",
+      "post014-source-map-dropped-pin",
+      "post014-source-map-rebound-history",
+      "post014-source-map-wrong-population",
+      "post014-oracle-dropped-old-case",
+      "post014-oracle-wrong-added-multiplicity",
+      "post014-oracle-changed-old-multiplicity",
+      "post014-oracle-unrelated-module-change",
+      "post014-oracle-nonpopulation-change",
+      "post-c31-source-map-wrong-target",
+      "post-c31-source-map-unreviewed-runner-pin",
+      "post-c31-source-map-dropped-pin",
+      "post-c31-source-map-rebound-history",
+      "post-c31-source-map-wrong-population",
+      "post-c31-source-map-ambiguous-locator",
+      "post-c31-oracle-dropped-old-case:tests.audio.test_local_voice_helper",
+      "post-c31-oracle-wrong-added-multiplicity:tests.audio.test_local_voice_helper",
+      "post-c31-oracle-dropped-old-case:tests.audio.test_production_integrity",
+      "post-c31-oracle-wrong-added-multiplicity:tests.audio.test_production_integrity",
+      "post-c31-oracle-dropped-old-case:tests.e2e.test_audio_cli_resources",
+      "post-c31-oracle-wrong-added-multiplicity:tests.e2e.test_audio_cli_resources",
+      "post-c31-oracle-dropped-old-case:tests.ui.test_audio_studio",
+      "post-c31-oracle-wrong-added-multiplicity:tests.ui.test_audio_studio",
+      "post-c31-oracle-changed-old-multiplicity",
+      "post-c31-oracle-unrelated-module-change",
+      "post-c31-oracle-nonpopulation-change",
+      "post-c31-oracle-unreviewed-new-name"
+    ],
+    "positive_controls": [
+      "appended-verdict-and-universal-newlines",
+      "exact-reviewed-successor-source-map",
+      "exact-reviewed-post014-source-map",
+      "exact-additive-resource-populations",
+      "exact-reviewed-post-c31-source-map",
+      "exact-additive-silence-qc-populations"
+    ],
+    "schema": "carr-full-main-reader-self-check/1",
+    "status": "PASS"
+  },
+  "raw_job_log": {
+    "transport": "GitHub workflow job decoded-log API",
+    "utf8_bytes": 23029,
+    "sha256": "538423d40c71cd1302f42fc8471e6a5718df07af6af7164b57db1db9d314a2b1",
+    "retained_bom_and_line_endings": true,
+    "complete_log_read": true
+  },
+  "artifact_metadata": {
+    "id": 15248347045,
+    "name": "carr-main-reader-controls-1099392b6ad00e2402962551280db41634f66b33-1",
+    "size_in_bytes": 723,
+    "sha256": "663e9017dcd0604f638ba01c998052e249e2f3564d1400c7fe55f24332990122",
+    "workflow_run": {
+      "id": 46107509544,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/main-reader-self-check-r38-e9-d3a-20261128",
+      "head_sha": "1099392b6ad00e2402962551280db41634f66b33"
+    },
+    "expired": false,
+    "created_at": "2026-11-28T04:29:52Z",
+    "uploader_and_api_identity_match": true,
+    "reported_uploaded_file": "main-reader-parser-controls.json",
+    "reported_file_count": 1,
+    "archive_downloaded": false,
+    "archive_decoded": false
+  },
+  "boundaries": [
+    "The self-check returns before reading the actual archive-input configuration or invoking artifact inspection.",
+    "The parser step has no GH_TOKEN and performs no application, installer, audio, native UI, model or archive-payload execution.",
+    "Checkout and Python setup are ordinary workflow preparation; the no-network statement applies only to the in-memory parser controls.",
+    "The actual control receipt was read from complete job stdout; the uploaded ZIP content was not downloaded or independently decoded.",
+    "This result does not qualify e9bba260fd66cfe5217f8081778fcdfc9dfd202c or any full-main artifact.",
+    "Earlier application failures and prior parser receipts are retained; this component changes only evidence documentation."
+  ]
+}
