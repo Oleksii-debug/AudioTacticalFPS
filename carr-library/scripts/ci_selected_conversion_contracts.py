@@ -41,7 +41,7 @@ PINS = {
     "tests/conversion/test_selected_conversion.py": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
     "tests/conversion/test_calibre_admission.py": "bdea0804017e54a38d6036ca137feb778fea2e97",
     "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
-    "tests/ui/test_document_conversion.py": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd",
+    "tests/ui/test_document_conversion.py": "e1430ee06f64fd55e472c9cda884bb433e2d570d",
     "tests/conversion/test_conversion.py": "db3884363c51654c7d16ef2c5d2e82d0e714b411",
     "src/carr_library/extract/document_formats_xml.py": "f2f712af05cdf154bd4633ba818661b926a954a7",
     "tests/extract/test_document_formats_xml.py": "fbf155467e7217eb1870167849241756690d01cb",

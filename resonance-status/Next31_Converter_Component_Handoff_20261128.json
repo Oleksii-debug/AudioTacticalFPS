@@ -1,0 +1,36 @@
+{
+  "schema": "carr-component-handoff/1",
+  "created_utc": "2026-11-28 01:01:43 UTC",
+  "base_head": "2c75b8305c7f9bedcf89c3c998137a5f07a3324e",
+  "classification": "STATIC_NOT_RUN",
+  "evidence": "eda88c623afc750c6b691321745241fe40698b0d",
+  "files": [
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "before": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd",
+      "after": "e1430ee06f64fd55e472c9cda884bb433e2d570d"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "1af25e62f74c7e7aed8415b693efeb072be1b985",
+      "after": "dc9bb968e9e5153bef8fef6f7859a684f28ef6f5"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "a77117519744b111f57e9235e1793b0093afb337",
+      "after": "43f181e01867305b728b4439ef3fe152d4b6605e"
+    }
+  ],
+  "reason": "Source-only fresh-library actual-worker test lacked checkout import roots in its isolated child. The new launcher is restricted to the exact current checkout worker path and verifies origin and SHA; installed -m argv remains unchanged. Product source unchanged.",
+  "review": "Canonical bounded peer accepts exact fixture insertion reversal; unchanged20 cases/10 functions and actual process/publication assertions. Helper changes exactly one test pin, workflow exactly two helper pins.",
+  "contracts": {
+    "whole_suites": 8,
+    "source_cases": 276,
+    "installed_cases": 276,
+    "source_pins": 29,
+    "origin_modules": 19,
+    "native": "Unchanged six required source/installed phases:14 formats, whole34, GUI30/30origins;50s/180s unchanged.",
+    "child_policy": "INSTALLED_CHILD and all600 limits unchanged.",
+    "retention": "Eight installed XML/text/origin triples and existing closed native maps unchanged."
+  }
+}

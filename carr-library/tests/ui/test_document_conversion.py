@@ -177,6 +177,32 @@ def test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion(own
     source = case.tmp_path / 'fresh.txt'
     original = 'Fresh library — exact Україна.\n'.encode('utf-8')
     source.write_bytes(original)
+    from carr_library.conversion import service as service_module, worker as worker_module
+    worker_path = Path(worker_module.__file__).resolve(strict=True)
+    checkout_source = Path(__file__).resolve().parents[2] / 'src'
+    source_mode = worker_path == checkout_source / 'carr_library' / 'conversion' / 'worker.py'
+    actual_run, commands = service_module.run_process, []
+    def real_worker(command, **kwargs):
+        assert command[1:5] == ['-I', '-B', '-m', 'carr_library.conversion.worker']
+        assert len(command) == 6
+        commands.append(tuple(command))
+        if source_mode:
+            # Source-only pytest has no installed application in its isolated child.
+            # Activate only these exact current roots; the installed route stays -m.
+            assert (checkout_source.parent / 'bootstrap' / '__init__.py').is_file()
+            launcher = ("import sys,runpy,pathlib,hashlib,importlib.util; "
+                "root,expected,digest,request=sys.argv[1:]; "
+                "assert sys.flags.isolated and sys.flags.dont_write_bytecode and __debug__; "
+                "sys.path[:0]=[root,str(pathlib.Path(root).parent)]; "
+                "origin=pathlib.Path(importlib.util.find_spec('carr_library.conversion.worker').origin).resolve(strict=True); "
+                "assert origin==pathlib.Path(expected); "
+                "assert hashlib.sha256(origin.read_bytes()).hexdigest()==digest; "
+                "sys.argv=['carr_library.conversion.worker',request]; "
+                "runpy.run_module('carr_library.conversion.worker',run_name='__main__')")
+            command = [*command[:3], '-c', launcher, str(checkout_source),
+                       str(worker_path), sha256(worker_path.read_bytes()).hexdigest(), command[-1]]
+        return actual_run(command, **kwargs)
+    monkeypatch.setattr(service_module, 'run_process', real_worker)
     monkeypatch.setattr(sys.modules['wx'].FileDialog, 'GetPaths',
                         lambda self: [str(source)])
     module.convert_selected_documents(case.frame)
@@ -184,6 +210,7 @@ def test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion(own
     assert [picker.stage for picker in case.dialogs] == ['input', 'output']
     with ThreadPoolExecutor(max_workers=1) as worker:
         result, = worker.submit(case.jobs[0][1]).result(timeout=60)
+    assert len(commands) == 1
     assert result.path.read_bytes() == original == source.read_bytes()
     assert result.report['source_sha256'] == sha256(original).hexdigest()
     assert result.report['original_modified'] is False
