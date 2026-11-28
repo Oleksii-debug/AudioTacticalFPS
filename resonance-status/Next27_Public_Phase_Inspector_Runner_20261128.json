@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "kind": "read-only-public-phase-inspector-runner",
+  "created_utc": "2026-11-28 00:31:48 UTC",
+  "parent": "e98c2944a9cf2597b35c2ea5b22a69799b358e71",
+  "reason": "The exact public phase inspector has remained queued on Ubuntu while the focused Windows capacity job completed. Use an available Windows runner for the unchanged pure-Python inspector.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-owner-phase-evidence.yml",
+      "before": "98773d7b651a64f5abe593d88366c2cfc7fdaa72",
+      "after": "c83e9792d935f7fcb6c898a05d9dff22b8b9929e"
+    }
+  ],
+  "change": "Only runs-on changes from ubuntu-24.04 to windows-latest.",
+  "unchanged": {
+    "script": true,
+    "artifact_id": 15239201929,
+    "artifact_sha256": "e79359b315b68739e63e8384b2d579523c1f2e23d237e2a320e82f2057b11505",
+    "source_run": 46079552451,
+    "source_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "timeout_minutes": 5,
+    "read_only": true,
+    "no_application_execution": true,
+    "no_source_checkout": true,
+    "no_archive_extraction": true,
+    "bounded_output": true
+  },
+  "status": "NOT_RUN",
+  "existing_run": "46087138693 is untouched; no cancellation or acceptance transfer."
+}
