@@ -1,0 +1,214 @@
+{
+  "schema": "carr-terminal-standard-installation/1",
+  "status": "PASS_WITH_RECORDED_SCOPE",
+  "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "run_id": 46111573953,
+  "run_attempt": 1,
+  "job_id": 140876058662,
+  "event": "push",
+  "branch": "carr/standard-installation-evaluation-20261128",
+  "platform": "ubuntu-24.04 / CPython3.11",
+  "job_status": "completed",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:26:42Z",
+  "completed_at": "2026-11-28T05:27:43Z",
+  "source": {
+    "modules": 11,
+    "passed": 351,
+    "failed": 0,
+    "skipped": 0,
+    "all_selected_modules_executed": true,
+    "selection": [
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/packaging/test_native_checks.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/packaging/test_install_bytecode.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/packaging/test_native_runtime.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/test_delivery_cli.py"
+    ],
+    "verdicts": [
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_standard_installer.py",
+        "passed": 149,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_native_checks.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_windows_bundle.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_windows_launcher_bundle.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_worker_bytecode.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_source_wheel.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_native_runtime.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/audio/test_local_runtime_cli.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/test_delivery_cli.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "module": "tests/packaging/test_install_bytecode.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "completion_order": "ci_check --jobs2 may interleave verdicts; exact declared selection compared as unique module set"
+  },
+  "installed": {
+    "modules": 11,
+    "passed": 351,
+    "failed": 0,
+    "skipped": 0,
+    "subtests_passed": 22,
+    "actual_pytest_summary": "351 passed, 22 subtests passed in 15.03s",
+    "strict_marker": "INSTALLED_CASES_PASS 351",
+    "independent_from_source_mode": true
+  },
+  "newly_executed_scope": {
+    "module": "tests/audio/test_local_runtime_cli.py",
+    "total_cases": 15,
+    "new_inspection_cases": 6,
+    "source_passed": 15,
+    "installed_selected_and_aggregate_passed": true,
+    "note": "These are CLI/lifetime contract cases. They do not qualify the distinct actual PCM scanner or native Windows GUI."
+  },
+  "source_wheel_installed_identity": {
+    "unchanged": 371,
+    "changed_or_new": 12,
+    "total": 383,
+    "all_path_hash_byte_size_matches": true,
+    "row_encoding": "JSON.stringify(python_files), no trailing newline; sorted paths, object fields bytes,path,sha256",
+    "rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "inventory": "inventory.json",
+    "new_modules": [
+      "carr_library/audio/silence.py",
+      "carr_library/studio/silence_inspection.py",
+      "carr_library/ui/studio_silence_inspection.py"
+    ],
+    "basis": "The job independently compares every installed Python path/byte to checkout. Root additionally reconciles371 unchanged Git blobs to the prior source reference and12 final reviewed hashes to the current emitted inventory; no historical execution verdict is transferred."
+  },
+  "wheel": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "wheel_sha256": "c2882be643bf21ce0c6bafa5af3496a6cc4724ce970434f1ca9771a0cdbbf642"
+  },
+  "native_standard": {
+    "status": "NOT_APPLICABLE",
+    "reason": "Actual Windows Install / Repair / Uninstall runs only in the separate Windows job."
+  },
+  "current_run_boundary": "Only this terminal Linux job is qualified. The Windows standard-installation job was queued when this receipt was captured.",
+  "scope_limitations": {
+    "authenticode": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "unprivileged_windows_account": "NOT_RUN",
+    "native_network_trace": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "actual_pcm_inspection": "NOT_QUALIFIED_BY_THIS_SELECTION",
+    "release_qualification": false,
+    "qualification_transfer_to_successors": false
+  },
+  "decoded_job_log": {
+    "sha256": "af187a375e7b74a12797c2352085bf0bedd37e3a0cc1877a4edd988757a3b6e9",
+    "bytes": 280071,
+    "representation": "Exact unchanged connector-decoded complete terminal GitHub job log; original ZIP/member bytes were not downloaded."
+  },
+  "artifact": {
+    "id": 15249124930,
+    "name": "carr-standard-installation-ubuntu-24.04-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_in_bytes": 29699,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15249124930",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15249124930/zip",
+    "expired": false,
+    "created_at": "2026-11-28T05:27:41Z",
+    "expires_at": "2026-12-05T05:27:40Z",
+    "updated_at": "2026-11-28T05:27:41Z",
+    "digest": "sha256:abbd9e60938ae722222d971c066f5a27ebaf1f2ff6d8bf284a66e39aa56b9eac",
+    "workflow_run": {
+      "id": 46111573953,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    },
+    "original_zip_downloaded": false,
+    "metadata_corroborated_by_upload_log": true
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "git_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1"
+  }
+}

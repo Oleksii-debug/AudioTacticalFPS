@@ -1,0 +1,2032 @@
+[
+  {
+    "value": {
+      "build_support": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "zstandard": "0.25.0"
+      },
+      "effective_requirements_sha256": "278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0",
+      "excluded": [
+        "comtypes",
+        "wxpython"
+      ],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0"
+      },
+      "platform": "linux",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": false
+    },
+    "text": "{\"build_support\": {\"setuptools\": \"84.2.1\", \"wheel\": \"0.48.0\", \"zstandard\": \"0.25.0\"}, \"effective_requirements_sha256\": \"278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0\", \"excluded\": [\"comtypes\", \"wxpython\"], \"pins\": {\"bibtexparser\": \"2.1.0\", \"cffi\": \"2.1.1\", \"cryptography\": \"50.0.2\", \"defusedxml\": \"0.7.1\", \"filelock\": \"3.29.0\", \"lxml\": \"6.1.3\", \"numpy\": \"2.4.6\", \"pillow\": \"13.0.0\", \"platformdirs\": \"4.10.0\", \"py3langid\": \"0.4.0\", \"pycparser\": \"3.12\", \"pylatexenc\": \"2.11\", \"pypdf\": \"7.1.1\", \"pypdfium2\": \"5.13.0\", \"python-docx\": \"1.2.0\", \"quickjs-ng\": \"0.18.0.2\", \"typing-extensions\": \"4.16.0\"}, \"platform\": \"linux\", \"pytest\": \"9.0.2\", \"repository_lock_sha256\": \"c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798\", \"verification_support\": \"packaging==26.4\", \"windows_dependency_hashes_required\": false}"
+  },
+  {
+    "value": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+      "wheel_sha256": "c2882be643bf21ce0c6bafa5af3496a6cc4724ce970434f1ca9771a0cdbbf642"
+    },
+    "text": "{\"payload_files\": 493, \"project_name\": \"universal-research-library\", \"project_version\": \"0.2.0.dev2\", \"required_runtime_files\": 398, \"source_commit\": \"2dfc5d32558c722ba05068dfff9ebb19eeae52f7\", \"source_tree\": \"14a6dc1ce55f5c9d885fbb88b7a50701187acb80\", \"wheel_sha256\": \"c2882be643bf21ce0c6bafa5af3496a6cc4724ce970434f1ca9771a0cdbbf642\"}"
+  },
+  {
+    "value": {
+      "dependency_selection": {
+        "build_support": {
+          "setuptools": "84.2.1",
+          "wheel": "0.48.0",
+          "zstandard": "0.25.0"
+        },
+        "effective_requirements_sha256": "278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0",
+        "excluded": [
+          "comtypes",
+          "wxpython"
+        ],
+        "pins": {
+          "bibtexparser": "2.1.0",
+          "cffi": "2.1.1",
+          "cryptography": "50.0.2",
+          "defusedxml": "0.7.1",
+          "filelock": "3.29.0",
+          "lxml": "6.1.3",
+          "numpy": "2.4.6",
+          "pillow": "13.0.0",
+          "platformdirs": "4.10.0",
+          "py3langid": "0.4.0",
+          "pycparser": "3.12",
+          "pylatexenc": "2.11",
+          "pypdf": "7.1.1",
+          "pypdfium2": "5.13.0",
+          "python-docx": "1.2.0",
+          "quickjs-ng": "0.18.0.2",
+          "typing-extensions": "4.16.0"
+        },
+        "platform": "linux",
+        "pytest": "9.0.2",
+        "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+        "verification_support": "packaging==26.4",
+        "windows_dependency_hashes_required": false
+      },
+      "executable": "/home/runner/work/_temp/carr-standard-installation-python/bin/python",
+      "installed_package": "/home/runner/work/_temp/carr-standard-installation-python/lib/python3.11/site-packages/carr_library",
+      "mode": "source-and-installed",
+      "prefix": "/home/runner/work/_temp/carr-standard-installation-python",
+      "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+      "python_files": [
+        {
+          "bytes": 181,
+          "path": "carr_library/__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        },
+        {
+          "bytes": 19108,
+          "path": "carr_library/__main__.py",
+          "sha256": "0ee9f946e6188eac0ec4efd5c1d5dcbef09706a06e1fa60d5a5fe7fb4e166a0a"
+        },
+        {
+          "bytes": 966,
+          "path": "carr_library/academic_integration/__init__.py",
+          "sha256": "1870db3ddccce8d90471b175868647ea0ac1493769aadd5944841cbd410a6a3a"
+        },
+        {
+          "bytes": 13837,
+          "path": "carr_library/academic_integration/documents.py",
+          "sha256": "f125365fdd7fb6d9c1b0e40ba392390e70eca80b262910307015d536cf3ef512"
+        },
+        {
+          "bytes": 49613,
+          "path": "carr_library/academic_integration/doi.py",
+          "sha256": "ee31124c37e2ff3bb9ba2a6c4bd5713ae53b3bbcbae7e2561d64d19b150c1dba"
+        },
+        {
+          "bytes": 36900,
+          "path": "carr_library/academic_integration/formatting.py",
+          "sha256": "344f1b31286a23cbb6379dbbaf51cbe7e6883fe9588b4341ae9e76435f64cb90"
+        },
+        {
+          "bytes": 29984,
+          "path": "carr_library/academic_integration/word_com.py",
+          "sha256": "ce1a57361fdd2143ee361cbc8b3dc4b645159b457b1199e39d6db29238a205c6"
+        },
+        {
+          "bytes": 22385,
+          "path": "carr_library/academic_integration/word_fields.py",
+          "sha256": "b827f19e5e13787a6fdd7a613f82fe236a662530bba35a832145be6807eeb5bc"
+        },
+        {
+          "bytes": 162,
+          "path": "carr_library/acquisition/__init__.py",
+          "sha256": "6211778fc935c4b982162b70550f3c5db0907b8b65245d62f61ea784680ac564"
+        },
+        {
+          "bytes": 6745,
+          "path": "carr_library/acquisition/cli.py",
+          "sha256": "174a8eb9682739644d73c44035a2a7d7bba22a07e076d258a8cc0853947db162"
+        },
+        {
+          "bytes": 11975,
+          "path": "carr_library/acquisition/models.py",
+          "sha256": "e17bbaa04650b0f07c4e00b5c257333c140f22ee47b4171d757053f7a728fe5b"
+        },
+        {
+          "bytes": 2998,
+          "path": "carr_library/acquisition/network_worker.py",
+          "sha256": "80e0c8c4dd5b3c3afa375cea68fc7abeeee2f31be63bbda3f4dd4477c099cac4"
+        },
+        {
+          "bytes": 32136,
+          "path": "carr_library/acquisition/providers.py",
+          "sha256": "842e2dd7b1c8813d65f77c74f99155a842708a75a5f07fe581de567dcd7f595a"
+        },
+        {
+          "bytes": 26700,
+          "path": "carr_library/acquisition/service.py",
+          "sha256": "37c11f8069f735552b2312875c4e7bf201c0e72bea07fafdaf77aec7fe69a7d9"
+        },
+        {
+          "bytes": 21141,
+          "path": "carr_library/acquisition/transport.py",
+          "sha256": "d860097ad5cf8bc7371ae402cd9f6bace506a67bde48f7cd8a032cf1cd7d604b"
+        },
+        {
+          "bytes": 86592,
+          "path": "carr_library/application.py",
+          "sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e"
+        },
+        {
+          "bytes": 601,
+          "path": "carr_library/assistant/__init__.py",
+          "sha256": "030e762743da4f1cddfc90cd5f43ef8c8db437cb1d85a1dfa0a6f33e5bcf856d"
+        },
+        {
+          "bytes": 16656,
+          "path": "carr_library/assistant/book_tools.py",
+          "sha256": "6332da8e1e6fae1ea871f9253fec3075e1022358a78e72501e89a582be9b8b8c"
+        },
+        {
+          "bytes": 35475,
+          "path": "carr_library/assistant/canonical_gateway.py",
+          "sha256": "6b7cf094db89182d0c8b11adf531ed91598b09eabd96ac89ce044ad8db963d18"
+        },
+        {
+          "bytes": 10255,
+          "path": "carr_library/assistant/credentials.py",
+          "sha256": "b51bdbabc2919e426f40cee6147f682b7057dc2fe5662c3238548d1ff501a6f3"
+        },
+        {
+          "bytes": 11676,
+          "path": "carr_library/assistant/library_translation.py",
+          "sha256": "a33d5aab1687acdae891c46f377d590f3825c5cc927039d08f16b9c0a3fdc293"
+        },
+        {
+          "bytes": 4531,
+          "path": "carr_library/assistant/llm.py",
+          "sha256": "da80fedc5ff3e713e8b0e7108747a26c8e86a4ed5171eb678a5bd57990169e93"
+        },
+        {
+          "bytes": 24670,
+          "path": "carr_library/assistant/local_tools.py",
+          "sha256": "0aaac4130175cc383c994df7752c8689d4cb71adb033e378f182f9aeb8d0aa2d"
+        },
+        {
+          "bytes": 9426,
+          "path": "carr_library/assistant/models.py",
+          "sha256": "0cf3d981e6a7df9ba215bf57aca829c522fa4a62caf38d8f574965fc8cdeba57"
+        },
+        {
+          "bytes": 15946,
+          "path": "carr_library/assistant/planner.py",
+          "sha256": "e282d79b4953d7d74160ed8b7e2bb13446dcea00e5cc0b42e71cd04387822319"
+        },
+        {
+          "bytes": 6283,
+          "path": "carr_library/assistant/player_tools.py",
+          "sha256": "9e5e5b4ca8dfe48e323a6bc0b5275812703952366242862529ebef041d561336"
+        },
+        {
+          "bytes": 11783,
+          "path": "carr_library/assistant/profiles.py",
+          "sha256": "472556a8d8bcafccb4f21231c55dab5675dc8ca04b8a84113431750dc49b3b22"
+        },
+        {
+          "bytes": 39027,
+          "path": "carr_library/assistant/providers.py",
+          "sha256": "fd85634dc95d949dee6296d311a57ec9b8ded12175846602bdbd90034c7bcb26"
+        },
+        {
+          "bytes": 34873,
+          "path": "carr_library/assistant/service.py",
+          "sha256": "6751142146254fafa1f855b9900bccc164364c9c866d4f9f9ff0aaca0b0b5d30"
+        },
+        {
+          "bytes": 5483,
+          "path": "carr_library/assistant/state.py",
+          "sha256": "5fc2fe93d1f4d338a100e803ec538f1e99ece4ae78bdcc1ac4922e500b124b55"
+        },
+        {
+          "bytes": 18316,
+          "path": "carr_library/assistant/transcription.py",
+          "sha256": "0448dabcfdf67f4c2ea1c2379b130cc53010c22c9e03bf8ee845a6a69438e741"
+        },
+        {
+          "bytes": 38341,
+          "path": "carr_library/assistant/translation.py",
+          "sha256": "364b16be39de9ce401186a0f0937cad610af00e4d696d6daff0913efbdf7000e"
+        },
+        {
+          "bytes": 355,
+          "path": "carr_library/assistant/translation_cli.py",
+          "sha256": "9684228ed451e39416e03ccdc77fede24a1821b52fb4ff3325dff585afba2a2d"
+        },
+        {
+          "bytes": 2800,
+          "path": "carr_library/assistant/workflow_access.py",
+          "sha256": "21635fe336ada5177df7a23c4f8d1c23caac8afd1403715dfd8c7416c60e10f0"
+        },
+        {
+          "bytes": 20654,
+          "path": "carr_library/assistant/workflows.py",
+          "sha256": "4d9c7a0b6c70561238fa1bbb87c141bcd56560db0a0a637c7fb0ef57cf502869"
+        },
+        {
+          "bytes": 551,
+          "path": "carr_library/audio/__init__.py",
+          "sha256": "858789c14be10401b55b75c1919ab06e4db3b95177beccf1ba8722097588e8e6"
+        },
+        {
+          "bytes": 15393,
+          "path": "carr_library/audio/audiobook.py",
+          "sha256": "d906882d229530994206c22ca41384e9df4f4235c9fc0edc60e57aafe4850a14"
+        },
+        {
+          "bytes": 6390,
+          "path": "carr_library/audio/cleanup.py",
+          "sha256": "ce26559c9f460d347f2e67f792adaa0da53080513723432f5dab6a3c32fee588"
+        },
+        {
+          "bytes": 9031,
+          "path": "carr_library/audio/cli.py",
+          "sha256": "c3dc84cf4684aea06419ece5d813d172ef6f73068eb75f4d1f5a661653c3c35e"
+        },
+        {
+          "bytes": 36096,
+          "path": "carr_library/audio/conversion_batch.py",
+          "sha256": "f5f163ed5f2e16d149528c3521b2f1da6ae377d9b01659c04a27f24e1129749c"
+        },
+        {
+          "bytes": 43734,
+          "path": "carr_library/audio/director.py",
+          "sha256": "bc0dadb2dc784982000f709cf4aa2ce8de9dd19a1d2f7e50f8f8dbde551efe86"
+        },
+        {
+          "bytes": 43870,
+          "path": "carr_library/audio/dsp.py",
+          "sha256": "9290b14d73dee6f09b0d982120052c2622945df1b4ccd96ffa54e0c363ca6fe7"
+        },
+        {
+          "bytes": 4537,
+          "path": "carr_library/audio/effect_controls.py",
+          "sha256": "a1edb32dfaf12dc26fe24ae7ec230f6c952d2a5906f66cc85c20eb32e68d77ef"
+        },
+        {
+          "bytes": 9890,
+          "path": "carr_library/audio/effect_presets.py",
+          "sha256": "669501501c0ddb5433e43fc0cbc4cd5d78f2b481d1959d452d3c334901f94b30"
+        },
+        {
+          "bytes": 8062,
+          "path": "carr_library/audio/effects.py",
+          "sha256": "81cfc8641d350d258b1e9294a0c8029e0177dd76c34cc9c9c26373299323562c"
+        },
+        {
+          "bytes": 13497,
+          "path": "carr_library/audio/local_runtime.py",
+          "sha256": "c007261d7632c2863496b54113d4309054d029e9b1964506a1c53a4fb8ff2c7a"
+        },
+        {
+          "bytes": 32775,
+          "path": "carr_library/audio/metadata.py",
+          "sha256": "64726620bb5c80f411f1866feeaebc7b70d4a7571e1fbe8e5e5f6346bac80ba2"
+        },
+        {
+          "bytes": 7377,
+          "path": "carr_library/audio/metadata_review.py",
+          "sha256": "9c866ffa07c24f1e8d3c3c3393931e17adf46a85c747e4d039d7dcb2eeb3d9ea"
+        },
+        {
+          "bytes": 31180,
+          "path": "carr_library/audio/model_voices.py",
+          "sha256": "b3feecba08d652469b6ebc3c02c23387e5e0655f0a19e1d04af188c48edfbb0b"
+        },
+        {
+          "bytes": 9155,
+          "path": "carr_library/audio/models.py",
+          "sha256": "a22ba261813330f2e4ce1dc6d44fb02c8988ea1a849cb43b2951a175293945dc"
+        },
+        {
+          "bytes": 31071,
+          "path": "carr_library/audio/music.py",
+          "sha256": "1ec56edd569a74ba0e48487b0005ef6b3fdfa1e4bf70e064ad68441d490d0ca8"
+        },
+        {
+          "bytes": 29919,
+          "path": "carr_library/audio/music_runtime.py",
+          "sha256": "6b7f86ae8f7252c8cfadb6f2780863874cd64f915bd53b796f998c78ca48534e"
+        },
+        {
+          "bytes": 9437,
+          "path": "carr_library/audio/music_settings.py",
+          "sha256": "be09bf4a27a9c04a09c3711d053fc3da4afcb6d5d73af190da2adc874a6788f9"
+        },
+        {
+          "bytes": 25485,
+          "path": "carr_library/audio/musicgen_worker.py",
+          "sha256": "61767fa6f05677fdf24dec97100a09b508204bd29af4e82a3652e72087be95f3"
+        },
+        {
+          "bytes": 4384,
+          "path": "carr_library/audio/narration.py",
+          "sha256": "086fa6ee4d033b59347ae9df329f071b6b8f1afe9e8f5a3e3be8f95bf84fe938"
+        },
+        {
+          "bytes": 8861,
+          "path": "carr_library/audio/package_publication.py",
+          "sha256": "bda4769c6992ecbf455e375a501146fe5af15d31ea8829dad5a5390de3bdd594"
+        },
+        {
+          "bytes": 8564,
+          "path": "carr_library/audio/playback.py",
+          "sha256": "d1cc9102d9dcce28ee88977b558632629532674dd5d6fb95da4b3ee4622665da"
+        },
+        {
+          "bytes": 29448,
+          "path": "carr_library/audio/process.py",
+          "sha256": "b507c118d3aa93152169df7965dad2cb6dcf1fe824b5bdd9c5f627e243be5dd1"
+        },
+        {
+          "bytes": 36285,
+          "path": "carr_library/audio/projects.py",
+          "sha256": "a738b67570b8374618e4b71016c9719998cc24e3b5bfcaac757158fb0115ca8e"
+        },
+        {
+          "bytes": 16980,
+          "path": "carr_library/audio/pronunciation.py",
+          "sha256": "77d93b0e591f3fbb2e3c52542d648fab5d65fa4557885ef913637ea9d145a5fb"
+        },
+        {
+          "bytes": 56112,
+          "path": "carr_library/audio/recording.py",
+          "sha256": "6429a61fe256f274305b98c69e6dfe17e14600e69e9b461cf272fa1dbdc1c341"
+        },
+        {
+          "bytes": 15615,
+          "path": "carr_library/audio/recording_monitor.py",
+          "sha256": "14f8274f6fed8ad0ac2923717aa17f482b399ebcf3291f8746b8772013364ac7"
+        },
+        {
+          "bytes": 39467,
+          "path": "carr_library/audio/render.py",
+          "sha256": "3e96f9628d6a0f5137da226f15767cde6696ae4cac43b3e8751a58818b783353"
+        },
+        {
+          "bytes": 18343,
+          "path": "carr_library/audio/runtime.py",
+          "sha256": "312f69ce19e30d0ebc3eb8dec2baf850dadc021cfbd3c74a24a5ad183bfc27d6"
+        },
+        {
+          "bytes": 12143,
+          "path": "carr_library/audio/silence.py",
+          "sha256": "b6afdeb4fd0dcb3e5575c60fbe333af1c88d7c4d556ca18dc0e582313459c280"
+        },
+        {
+          "bytes": 27810,
+          "path": "carr_library/audio/voice_lifecycle.py",
+          "sha256": "0d134b48606d127bdd6179ce938d48da100a356da78ebc0a73b1abaebf091af9"
+        },
+        {
+          "bytes": 10539,
+          "path": "carr_library/audio/voice_manifest.py",
+          "sha256": "8353d58898c6c34441c058c1ea9232b999201d926dbde493d3040863dc2d19ce"
+        },
+        {
+          "bytes": 38205,
+          "path": "carr_library/audio/voice_packages.py",
+          "sha256": "5742183f44368fd1ab9f699dfc6da324ad0fbb1c39774ce76879c1d2676f5275"
+        },
+        {
+          "bytes": 25812,
+          "path": "carr_library/audio/voice_reference.py",
+          "sha256": "2d6d287e2169f2934a2a9c51186983932a79f40d2211f909c11006297f88afad"
+        },
+        {
+          "bytes": 8783,
+          "path": "carr_library/audio/voice_settings.py",
+          "sha256": "60cd9fa521929c85c5e189bf486a93a6f14e11371cb08d809dedd2360681bdd2"
+        },
+        {
+          "bytes": 33587,
+          "path": "carr_library/audio/voices.py",
+          "sha256": "68f0b5f68394f50c92db610e898469aa73f59c8231affb44c788989d15c59ce3"
+        },
+        {
+          "bytes": 23275,
+          "path": "carr_library/audio/windows_process.py",
+          "sha256": "6907f4bf2253cc2459b3d0369947dc319a4a084ebbd8500f92fd1360177d5fa6"
+        },
+        {
+          "bytes": 13923,
+          "path": "carr_library/audio/windows_setup.py",
+          "sha256": "06049a81e9445654a099a18baf8c61d3e4d33d9ee132721b389d8a7149a750f0"
+        },
+        {
+          "bytes": 38816,
+          "path": "carr_library/backup_compat.py",
+          "sha256": "b8d6729976b5ffb5a9151a4032e14bbe73792a3985f7a91d920873d81b0c7f93"
+        },
+        {
+          "bytes": 4373,
+          "path": "carr_library/backup_generated.py",
+          "sha256": "86312a5b7a0f2e5657912455c9a07eac77f3fd805ead7af7b8f11dde48420b00"
+        },
+        {
+          "bytes": 25803,
+          "path": "carr_library/backup_incremental.py",
+          "sha256": "14fa454fd81308d3e5ed72fdccb5ca6427219070c574724fbdb51ace2ca7d267"
+        },
+        {
+          "bytes": 3406,
+          "path": "carr_library/backup_incremental_cli.py",
+          "sha256": "6b775407f23c05098c47d2f47b1c0945140328097e4e8fd590411c9d3ceaebd6"
+        },
+        {
+          "bytes": 9604,
+          "path": "carr_library/backup_legacy_preferences.py",
+          "sha256": "6e7ff9c8164f7d1de91c530ea079a94b0c0b203d1be0bc0a99e4d0ed63fd3248"
+        },
+        {
+          "bytes": 29624,
+          "path": "carr_library/backup_producers.py",
+          "sha256": "28c95b9d8b57894ef49bedd4397edc077a42a6ffd1e6541cfd5daf836b534d32"
+        },
+        {
+          "bytes": 31634,
+          "path": "carr_library/backup_sidecars.py",
+          "sha256": "3fb229ef73f887de84a0002ea774cc9e11206403b24df0d0d4c5ff20b6641af7"
+        },
+        {
+          "bytes": 34869,
+          "path": "carr_library/backup_transcription.py",
+          "sha256": "f1cd82f6ffdcce3bbcc686f39c5715b7cc5f682319a63b77665372ebfd4794b0"
+        },
+        {
+          "bytes": 6263,
+          "path": "carr_library/bibliography_cli.py",
+          "sha256": "f74a329a990709189afd715078856d6712e6df0ef27157ab09bc7153c46203c6"
+        },
+        {
+          "bytes": 2223,
+          "path": "carr_library/catalog/_filetype/archive.py",
+          "sha256": "2be41e49c62fb03c9e615c77f6f4ba32b545f850a65cdc884e347e2e8f65e0b3"
+        },
+        {
+          "bytes": 647,
+          "path": "carr_library/catalog/_filetype/base.py",
+          "sha256": "76fbea563b92ab0b5b876ab23fb42799e594594b1fac7c09feb384809983419f"
+        },
+        {
+          "bytes": 11668,
+          "path": "carr_library/catalog/_rispy_parser.py",
+          "sha256": "3d4f950a14c6830ff9eda9dbafc7cad91bb1814703b07dc4d0251e623bdd551d"
+        },
+        {
+          "bytes": 9142,
+          "path": "carr_library/catalog/bibliography.py",
+          "sha256": "00117c0ef176a139cd2021b4c20aa3969b4232d55ae685903f968a6ed49f149b"
+        },
+        {
+          "bytes": 19319,
+          "path": "carr_library/catalog/catalog_reports.py",
+          "sha256": "bbfcbdde5e0d57ca3f8ec1bd1cdbad877c92ad8f8f7fbfc827db1219b27ec719"
+        },
+        {
+          "bytes": 3315,
+          "path": "carr_library/catalog/epub_metadata.py",
+          "sha256": "7a319e15e7f6419a8d3739408318c95075bdb65d3286fcd3fa673e756cc099c3"
+        },
+        {
+          "bytes": 20041,
+          "path": "carr_library/catalog/insights.py",
+          "sha256": "a03f1a122319b479ccb0287963652fe120b4e811d8a80de5883cb377a049ff66"
+        },
+        {
+          "bytes": 4426,
+          "path": "carr_library/catalog/intake.py",
+          "sha256": "99ca2908b7206f4220749322ceb323ec0d20195bd80577c01af4a7514e98a01c"
+        },
+        {
+          "bytes": 7018,
+          "path": "carr_library/catalog/membership.py",
+          "sha256": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937"
+        },
+        {
+          "bytes": 2494,
+          "path": "carr_library/catalog/metadata_preview.py",
+          "sha256": "9f5cecb398dad739dc2f48f214915ff0dc053a1df1e065fbfae09758fe3987ad"
+        },
+        {
+          "bytes": 6354,
+          "path": "carr_library/catalog/office_archive.py",
+          "sha256": "b8b0ad9e6be648c385cc17f1aa00357f47dc49607095b25b382cd27eee89076b"
+        },
+        {
+          "bytes": 7893,
+          "path": "carr_library/catalog/quality.py",
+          "sha256": "eee36c1875f7fd915def602e7dd59c2debaf8758c8dab43ebfb7c1ff8bde9e3b"
+        },
+        {
+          "bytes": 5155,
+          "path": "carr_library/catalog/read_views.py",
+          "sha256": "5a4a44c65b4536211cd74348da6e2b2a8bff4aff44987d1ff050380fcfc90746"
+        },
+        {
+          "bytes": 11691,
+          "path": "carr_library/catalog/reference_exchange.py",
+          "sha256": "864d6bce6928a8a217a019ea64f863ff588c6f553279deb2f6e71f015aef10c0"
+        },
+        {
+          "bytes": 3568,
+          "path": "carr_library/catalog/registration.py",
+          "sha256": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef"
+        },
+        {
+          "bytes": 3567,
+          "path": "carr_library/catalog/ris_preview.py",
+          "sha256": "b9ba89dc5674d9fa015ccb879f42e442a9f4634262820a8f1b3d7d7c4139d05a"
+        },
+        {
+          "bytes": 7075,
+          "path": "carr_library/citations/anchors.py",
+          "sha256": "ed1bdc2e64d8fa4574cde60baf2a38cea0669d6f229ef8caed202f587332f14a"
+        },
+        {
+          "bytes": 2517,
+          "path": "carr_library/citations/authorized_action.py",
+          "sha256": "0edec0ad6cb9c550b088af4e400e8d6300789350e4cb77f6df78dcbe332c18e3"
+        },
+        {
+          "bytes": 15250,
+          "path": "carr_library/citations/bibliography_workbench.py",
+          "sha256": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a"
+        },
+        {
+          "bytes": 46588,
+          "path": "carr_library/citations/csl.py",
+          "sha256": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6"
+        },
+        {
+          "bytes": 2751,
+          "path": "carr_library/citations/historical.py",
+          "sha256": "a4421f05e5c80c614219c4b4b00456d7f1ac6b66e2cd769045a0b9c711613d9e"
+        },
+        {
+          "bytes": 3852,
+          "path": "carr_library/citations/pdf_review_attestation.py",
+          "sha256": "9c45c73f73ae2a6b5669d141bf5e74e15e5fd2f235bf878b21cfc8348d43cc5d"
+        },
+        {
+          "bytes": 1453,
+          "path": "carr_library/citations/printed_label_attestation.py",
+          "sha256": "8d7f6343c1e6f74e1737869975a8d59bf9f84c067ba39b87e02073303d98eae2"
+        },
+        {
+          "bytes": 3236,
+          "path": "carr_library/citations/streamed_text_attestation.py",
+          "sha256": "9c4af9f174f89090045e7988dea43d645d2959ed441fbd224c247b9de74da2da"
+        },
+        {
+          "bytes": 2678,
+          "path": "carr_library/citations/text_attestation.py",
+          "sha256": "2f112b3dc33fc5394b1c4ca6d8bb130af1b5ad7d69a83bce87393182f92e880f"
+        },
+        {
+          "bytes": 332,
+          "path": "carr_library/conversion/__init__.py",
+          "sha256": "6d748ecc5baa54c845aa650e3b6b3b31a63161b76ed63a186d25ee26105764c2"
+        },
+        {
+          "bytes": 23662,
+          "path": "carr_library/conversion/formats.py",
+          "sha256": "bcfd2203c20aebd8fc3d7085785b55f8ca9e8156d222ff2ffab439916e51652d"
+        },
+        {
+          "bytes": 1469,
+          "path": "carr_library/conversion/models.py",
+          "sha256": "172384f9f1a2a6603d41eccef5a6bda8cdf2d4b2df651fd3b7575caf58182ee0"
+        },
+        {
+          "bytes": 19768,
+          "path": "carr_library/conversion/service.py",
+          "sha256": "32bf840ff7673252fc176db1f85b5752bd251c3463210faab84f4e2e3655d278"
+        },
+        {
+          "bytes": 4047,
+          "path": "carr_library/conversion/worker.py",
+          "sha256": "be4df022e7f1c92e542df146ebc010f8f9f070c630b484cbb6f4d1c428a1e178"
+        },
+        {
+          "bytes": 2419,
+          "path": "carr_library/data_paths.py",
+          "sha256": "e7136a7538df7b3549c87ab1b2a260dee9677c9e4073f3d0d399dea0ced285c1"
+        },
+        {
+          "bytes": 4941,
+          "path": "carr_library/delivery_cli.py",
+          "sha256": "411a1b1f08e41715a33ffcf18069d26e9ccf2565811d16d79c966cf556fc4575"
+        },
+        {
+          "bytes": 9191,
+          "path": "carr_library/delivery_contract.py",
+          "sha256": "fc4546cc957b5ea206c9c37bc223b688882041595037665453cd9356524844d0"
+        },
+        {
+          "bytes": 18683,
+          "path": "carr_library/delivery_service.py",
+          "sha256": "5c737e18cb79f9cdc377c4dfc609500161e56a6df30d1bfdb1e2a6cc6924c732"
+        },
+        {
+          "bytes": 5136,
+          "path": "carr_library/desktop_preferences.py",
+          "sha256": "d48b5ff5dbcbd7d8676d64cbafcf7c9ebbe5780bb0b6d8fe5c357d09fff06c31"
+        },
+        {
+          "bytes": 4413,
+          "path": "carr_library/diagnostics.py",
+          "sha256": "e6a6bb07045a9282ab1c123c4209ae2106662c2847c90cfb7d29a256141f576f"
+        },
+        {
+          "bytes": 9529,
+          "path": "carr_library/durable_state.py",
+          "sha256": "7dc850a916ca74b28557f273ef69a6f24b27883f8bd0b494c976d7552266ddd1"
+        },
+        {
+          "bytes": 11322,
+          "path": "carr_library/evidence_drafts.py",
+          "sha256": "0e3e7dc501ae97b69bba7092f874458f9db4d784a831723e1cc276273c61361d"
+        },
+        {
+          "bytes": 14372,
+          "path": "carr_library/extract/document_formats.py",
+          "sha256": "21d743af2e2e563c9fc06061e878f63f5143f21c47ec9ef98a6d00764b21efa8"
+        },
+        {
+          "bytes": 27862,
+          "path": "carr_library/extract/document_formats_text.py",
+          "sha256": "33cfda5944cb44e1f6ee5ce030a5acddf3773f64639c08164f24e98d35dd4a59"
+        },
+        {
+          "bytes": 38033,
+          "path": "carr_library/extract/document_formats_xml.py",
+          "sha256": "96f710c902646b1c0c298cee776c349ffd5be88afa5309082c73ddb42094417a"
+        },
+        {
+          "bytes": 4780,
+          "path": "carr_library/extract/docx_ordered.py",
+          "sha256": "734deaec7bde042c756c2468924ab67b32ecd3b49a8aa2a699db851d3b9845f8"
+        },
+        {
+          "bytes": 34931,
+          "path": "carr_library/extract/epub_ordered.py",
+          "sha256": "b02d6c487bdd8267c6808cf2f8c57a564e1739faf8975e466fada5373f290990"
+        },
+        {
+          "bytes": 10921,
+          "path": "carr_library/extract/language_detection.py",
+          "sha256": "58d9b7bf3c1c63612cb84e7de0e7adc713ca2331c5d2e7adddefcb8da50cbaa0"
+        },
+        {
+          "bytes": 9053,
+          "path": "carr_library/extract/language_manager.py",
+          "sha256": "edb3d9cebc5814b748512e64a2abb9feb3319593d2165cbc50e990109227b987"
+        },
+        {
+          "bytes": 4486,
+          "path": "carr_library/extract/managed_ocr.py",
+          "sha256": "ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477"
+        },
+        {
+          "bytes": 5301,
+          "path": "carr_library/extract/model_catalog.py",
+          "sha256": "7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12"
+        },
+        {
+          "bytes": 17979,
+          "path": "carr_library/extract/ocr_languages.py",
+          "sha256": "94a0f8ddd553951735aeb73ad8151cb77f66b990d5c0415abf4e84b492528e69"
+        },
+        {
+          "bytes": 15426,
+          "path": "carr_library/extract/ocr_model_catalog.py",
+          "sha256": "72733887aa0af5ca7ac078010a0f86465ce924b8085053c3f79139286c877cdb"
+        },
+        {
+          "bytes": 18072,
+          "path": "carr_library/extract/ocr_model_store.py",
+          "sha256": "b08197865eb30d50124d8c23a9513af5892b91ac6e1134897e9af07f6f8919ba"
+        },
+        {
+          "bytes": 4929,
+          "path": "carr_library/extract/ocr_orientation_bridge.py",
+          "sha256": "75bd4e0e66acb7bb2fece1e4cac93db2dd63212b3aee7cecc70f83f403af324e"
+        },
+        {
+          "bytes": 13492,
+          "path": "carr_library/extract/ocr_process.py",
+          "sha256": "9089c9e75945b5f720c81229881fb998c4d12c9a1302fde78c33da11a2cbbea2"
+        },
+        {
+          "bytes": 9619,
+          "path": "carr_library/extract/ocr_regions.py",
+          "sha256": "05d5709f9ac75c032b43b845ea8fabad85ce63d31760b9839e0e0d7e210484e6"
+        },
+        {
+          "bytes": 17189,
+          "path": "carr_library/extract/ocr_runtime.py",
+          "sha256": "01a1ed0aae6d0a906b63f2901510435df9c0fa6b5c2afebbe70b8284fcae3c1b"
+        },
+        {
+          "bytes": 3639,
+          "path": "carr_library/extract/orientation.py",
+          "sha256": "37b06cc1f887d2086eb16a8463e50be8f178bac8effc75b0d8c49d8c4530a155"
+        },
+        {
+          "bytes": 20681,
+          "path": "carr_library/extract/page_ocr.py",
+          "sha256": "519381355ab587ef8acddb84920d860e34e5554fc9a15a330fcf4d4a543217ce"
+        },
+        {
+          "bytes": 2862,
+          "path": "carr_library/extract/pinned_tessdata.py",
+          "sha256": "02bbfccd560d26c42acfeaf6f0f7798c4a0ec025cf0bc70d2964b9894f2a1735"
+        },
+        {
+          "bytes": 5369,
+          "path": "carr_library/extract/runtime_identity.py",
+          "sha256": "16e1229ae1d4cebdc7c35330b8a072e62c4ac7d98873d579a3524707fa08fc70"
+        },
+        {
+          "bytes": 2169,
+          "path": "carr_library/file_publication.py",
+          "sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+        },
+        {
+          "bytes": 3600,
+          "path": "carr_library/ingest/asset_copy.py",
+          "sha256": "db1c5d742fa265feea81177f731c504b3e5eaba6c7c786c5e882ead7011daf96"
+        },
+        {
+          "bytes": 12043,
+          "path": "carr_library/ingest/batch_scan.py",
+          "sha256": "d5c30d19a03dd5db01bfb75285f25d248225b581abcc5e43b72872f6ee80cf9f"
+        },
+        {
+          "bytes": 20364,
+          "path": "carr_library/ingest/batches.py",
+          "sha256": "ebff6a1f97f2df941aa38dbae2fed9bc804aadc93060428a969fc2d998181b3a"
+        },
+        {
+          "bytes": 4585,
+          "path": "carr_library/ingest/bundle.py",
+          "sha256": "e1c60c67722ca9f2e36913faa8b8fa6e5c923315cdda2bfc407b3a12a0f8f6c5"
+        },
+        {
+          "bytes": 5562,
+          "path": "carr_library/ingest/catalog_asset_copy.py",
+          "sha256": "ada58b978ac96971bd2c75ca306667cdc3c64e9ba70efdc5509650f404e06ac2"
+        },
+        {
+          "bytes": 12902,
+          "path": "carr_library/ingest/pipeline.py",
+          "sha256": "afe306f6cb6b79bc4129f258c013fe5f3b6b5683b74f625072e32fbaec298a62"
+        },
+        {
+          "bytes": 4942,
+          "path": "carr_library/ingest/restore.py",
+          "sha256": "597f6dd758df252004084ad3cdadcb028ee68a5796bf2c2919098a6dfbf33859"
+        },
+        {
+          "bytes": 16212,
+          "path": "carr_library/ingest/retained_assets.py",
+          "sha256": "5c1616f5f813958d681cfd22d04ac3833176a77a7bbbb0842fb68818571d73ea"
+        },
+        {
+          "bytes": 10534,
+          "path": "carr_library/ingest/streamed_ingest.py",
+          "sha256": "ffc6ca21cc2548b3ae4ff3e00c1614c627713a1dda30cb158a527adfc6e21662"
+        },
+        {
+          "bytes": 13584,
+          "path": "carr_library/ingest/streamed_text.py",
+          "sha256": "4bfa147ab3a0392959925c5894b61c35efe692c213b9a6592be9b070184001e9"
+        },
+        {
+          "bytes": 63892,
+          "path": "carr_library/ingest/worker.py",
+          "sha256": "1d2a3bbdea25f1c0f562bac7516e9530548817d4c927fb7ddc8723509cedf89e"
+        },
+        {
+          "bytes": 4226,
+          "path": "carr_library/ingest/writer_guard.py",
+          "sha256": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c"
+        },
+        {
+          "bytes": 16263,
+          "path": "carr_library/installation_lease.py",
+          "sha256": "63068eeb4ab1aa734719df0d2b6156bda5907b8ee74dd690da958bcfb8a72562"
+        },
+        {
+          "bytes": 9557,
+          "path": "carr_library/keybindings.py",
+          "sha256": "deff0fe8fdc77973c025839f599049707ae0fc62f00910d8e1db47cddba28217"
+        },
+        {
+          "bytes": 698,
+          "path": "carr_library/language_qualification/__init__.py",
+          "sha256": "1678bea4e6ee176d6aca9774cfe6bdc517ac7245dd8707858679701a76cebd14"
+        },
+        {
+          "bytes": 23220,
+          "path": "carr_library/language_qualification/catalog.py",
+          "sha256": "2d0584f47ba013295e8ab58ecd6a737c752da771a589742029b09d290f75f440"
+        },
+        {
+          "bytes": 26767,
+          "path": "carr_library/library_backup.py",
+          "sha256": "fced0aece33e72c751e8cf3c421a2b312e3f356bbf2a978449ae23997da0357e"
+        },
+        {
+          "bytes": 4223,
+          "path": "carr_library/managed_installation.py",
+          "sha256": "9b70d31705ad4ee7a600649018d3d7c1e07bbe922814fbd70a337f8e9f2d86fe"
+        },
+        {
+          "bytes": 8305,
+          "path": "carr_library/native_checks.py",
+          "sha256": "769e3e3573c2a88b52ca4416d9fe86b3126af995ccc7a7ac94bd35587488d653"
+        },
+        {
+          "bytes": 1919,
+          "path": "carr_library/native_file_metadata.py",
+          "sha256": "cabb32f0f8b5a6eb717fba829ffe1e4ab060be59cf12ca911208cf78a79fb4c9"
+        },
+        {
+          "bytes": 11662,
+          "path": "carr_library/native_runtime.py",
+          "sha256": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+        },
+        {
+          "bytes": 1534,
+          "path": "carr_library/offline_policy.py",
+          "sha256": "0c6dc28dae77999b6edf12a27a758c9b5c2ac0383b34faa908d15340a0a71fa0"
+        },
+        {
+          "bytes": 630,
+          "path": "carr_library/operations/__init__.py",
+          "sha256": "084aa014a1ecd4f012129aaf6a6fde1fd5b26b8a49e7a47d68b10505656ea4f6"
+        },
+        {
+          "bytes": 5032,
+          "path": "carr_library/operations/_locks.py",
+          "sha256": "2cdc217947d86148697647d753d324b24df9c59eacdc53b458964344f1ea5fd2"
+        },
+        {
+          "bytes": 20107,
+          "path": "carr_library/operations/broker.py",
+          "sha256": "604b7dbe1876047c3f2be5315a46995744ef90e3ef619f80e80e000fb3f80504"
+        },
+        {
+          "bytes": 18156,
+          "path": "carr_library/operations/facade.py",
+          "sha256": "8106b530a13262e87cb6f733f322ae2bcb4f74a441dcb0c3061fcb3c43902285"
+        },
+        {
+          "bytes": 7463,
+          "path": "carr_library/operations/models.py",
+          "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"
+        },
+        {
+          "bytes": 1926,
+          "path": "carr_library/operations_cli.py",
+          "sha256": "bde1b2ffe66d0902a1a33646eacf635e4b87f9eecf224112cbddae74f969ff02"
+        },
+        {
+          "bytes": 68325,
+          "path": "carr_library/pending_backup.py",
+          "sha256": "5a1c55b87879b67e8ac697198da51dea899f760b93f85e75d0f42d1edf01a50b"
+        },
+        {
+          "bytes": 2278,
+          "path": "carr_library/preferences.py",
+          "sha256": "751ba9b4e8e052bb7cfe5e8786e4fc95d93f8869e1e18bb740dfe630b0829d66"
+        },
+        {
+          "bytes": 1971,
+          "path": "carr_library/reader/context.py",
+          "sha256": "08839acab4d592c2cdd4e0f7a67e8b1dc8e6d874ad9e8652b21a0eae70dab60d"
+        },
+        {
+          "bytes": 10428,
+          "path": "carr_library/reader/ebook.py",
+          "sha256": "84ee6c0a1cbf28124e87740b696baf37abe50740a0782bbc5ec9cceb5a5262a1"
+        },
+        {
+          "bytes": 26856,
+          "path": "carr_library/reader/ebook_audio.py",
+          "sha256": "3ba46eb440e6f7a8e7761d1927f940705a4eaed86e5d2c239f873092f290277f"
+        },
+        {
+          "bytes": 18336,
+          "path": "carr_library/reader/ebook_contents.py",
+          "sha256": "464206446d97327efced609a0509f56199b16764f0210b2975ef13c22149acfe"
+        },
+        {
+          "bytes": 13697,
+          "path": "carr_library/reader/media_overlay.py",
+          "sha256": "bff75b25cbc2b4741ebfc13de7bf34081df8d2163cdcbf10733739023c545df1"
+        },
+        {
+          "bytes": 10999,
+          "path": "carr_library/reader/reading_desk.py",
+          "sha256": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706"
+        },
+        {
+          "bytes": 18125,
+          "path": "carr_library/reader/reading_state.py",
+          "sha256": "0da032519ad785874cb6a33dcfee86c1f73d7bad7700ad3395040b4ef3e9d332"
+        },
+        {
+          "bytes": 21239,
+          "path": "carr_library/reader/source_file.py",
+          "sha256": "a40f7fa2d26d8a47cee2e1f1bd9f1460a2f7b1f4dbe779cbd5f69d58d01a7b47"
+        },
+        {
+          "bytes": 7986,
+          "path": "carr_library/recording_backup.py",
+          "sha256": "4a5681bfb157c40ea5bbac64c65bd9f550a510f4af55962d4ab2fbfcce863109"
+        },
+        {
+          "bytes": 5780,
+          "path": "carr_library/research/_vendor_rispy/config.py",
+          "sha256": "ea3484cac636d44c03f7f9e5177bc90565b237c156166adecbaeca3eb6a79f73"
+        },
+        {
+          "bytes": 1610,
+          "path": "carr_library/research/_vendor_rispy/utils.py",
+          "sha256": "230d4c707d18e514fbc804111aff51101ad75ace6b8337d6151225bc7e088300"
+        },
+        {
+          "bytes": 8465,
+          "path": "carr_library/research/_vendor_rispy/writer.py",
+          "sha256": "e54aa7d5a048d8cc542e1835f4b54ddccaba1b56f4a90c3d0962d58225c30ee6"
+        },
+        {
+          "bytes": 15152,
+          "path": "carr_library/research/academic_documents.py",
+          "sha256": "8660a0cb12bf5534c44b7c0c9105beef181f2fb9abc737c76c138601029e5059"
+        },
+        {
+          "bytes": 49240,
+          "path": "carr_library/research/academic_library.py",
+          "sha256": "2e2b6c667fa0e12e9db9cebc97682ff48c7fccb50ff2fa812eaef944fb2314ea"
+        },
+        {
+          "bytes": 2962,
+          "path": "carr_library/research/anchored_export.py",
+          "sha256": "8f12653c5fca112bcbe57f97b3e0c7fd08b69871d49f7dd294528130724aba2c"
+        },
+        {
+          "bytes": 25781,
+          "path": "carr_library/research/bibtex_import.py",
+          "sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a"
+        },
+        {
+          "bytes": 14007,
+          "path": "carr_library/research/evidence_export.py",
+          "sha256": "c31c606f4c89d2682d3a159682fc4d75138fbaeed19f6e78df427e9adad32505"
+        },
+        {
+          "bytes": 19612,
+          "path": "carr_library/research/export_file.py",
+          "sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391"
+        },
+        {
+          "bytes": 12046,
+          "path": "carr_library/research/literature_matrix.py",
+          "sha256": "a8a4686129ebfd9a023f8d3709e17586053d3cff5bd55a706548f480bff035d2"
+        },
+        {
+          "bytes": 10749,
+          "path": "carr_library/research/notebook_search.py",
+          "sha256": "2ace48797ac06c78c7970ed53aff840f718b0dd04e5be8e2cbcb9eca9ed60371"
+        },
+        {
+          "bytes": 8104,
+          "path": "carr_library/research/outline_export.py",
+          "sha256": "e21a626a9fa65496577847a8c9842661ab75dadc7bda1a07bc0b6f3d80c6ba5d"
+        },
+        {
+          "bytes": 6555,
+          "path": "carr_library/research/query_manager.py",
+          "sha256": "8f384eb1b0df69ac01ac524d5f4eb3921998c0370b731dcf75435310855b0d35"
+        },
+        {
+          "bytes": 6722,
+          "path": "carr_library/research/review_matrix.py",
+          "sha256": "6e2468d20e63186f95820451ac009f20bc9d0785cff0c01f9f28e160efe7de1b"
+        },
+        {
+          "bytes": 6968,
+          "path": "carr_library/research/saved_evidence.py",
+          "sha256": "325f7ca48570c58d68b66a3a6018f6e02554e8d2298f01ca9fc12872452cb7c9"
+        },
+        {
+          "bytes": 4238,
+          "path": "carr_library/research/saved_topic_query.py",
+          "sha256": "ae63ccaa49e19c1579b3b17350668f098e9cff7142d858f86df5799bc311e178"
+        },
+        {
+          "bytes": 4420,
+          "path": "carr_library/research/span_snapshot.py",
+          "sha256": "cf6ea9b497b4c3ff5ed2481c658bd1d61a4068f4b57f8c6ad9e443095dacab5b"
+        },
+        {
+          "bytes": 15448,
+          "path": "carr_library/research/topic_literature_matrix.py",
+          "sha256": "8ad3ff066d967d6e7df6dce5cd6a9e9c6d692fdb3caa849b078352226d14ed3c"
+        },
+        {
+          "bytes": 5726,
+          "path": "carr_library/research/topic_search.py",
+          "sha256": "08d0e3cc72f8cc1606a4bd68d172d61ea4639b210cd2e8df0b9802b97ccd72cb"
+        },
+        {
+          "bytes": 4397,
+          "path": "carr_library/research/topic_tree.py",
+          "sha256": "7c39de4820f769f1452e3b039ec3e9c138452d3c2cb78aaa49f6c1e4cea97e86"
+        },
+        {
+          "bytes": 29142,
+          "path": "carr_library/runtime_settings.py",
+          "sha256": "15776282bf8f1aba5d5d66bcfb0bc5a63e83ba8511e814a2f6d8f58b33f10e53"
+        },
+        {
+          "bytes": 407,
+          "path": "carr_library/search/_vendor/rifflux/rrf.py",
+          "sha256": "abb7dd0b3c2448e2efe27d8c55798011723aae540a68e4f5629b78e7140fb4c5"
+        },
+        {
+          "bytes": 14307,
+          "path": "carr_library/search/advanced.py",
+          "sha256": "58d8133499b7dd95bcdb408f4109bb7d0c6bc9430a6fd317f5556055c353225a"
+        },
+        {
+          "bytes": 14338,
+          "path": "carr_library/search/federated.py",
+          "sha256": "9b63b2893bd3efab1f1e86e029140e4e2e281057d49d9ac978ffb329daff4be8"
+        },
+        {
+          "bytes": 10373,
+          "path": "carr_library/search/federated_pages.py",
+          "sha256": "37cdaff1921a8cd110702330d1a84d674b2e9d106eef2fb6bfb3d9d60a5f9888"
+        },
+        {
+          "bytes": 19621,
+          "path": "carr_library/search/literal.py",
+          "sha256": "41be0ca03cff077a5d886cd6911dee88f0ee8206093059b4e4dea96931c173fd"
+        },
+        {
+          "bytes": 5454,
+          "path": "carr_library/search/pagination.py",
+          "sha256": "718beb4a7bbf10a0917e0468ee7d9f79c70f34a0fb88b6e79acf7817c0e2994b"
+        },
+        {
+          "bytes": 9713,
+          "path": "carr_library/search/presentation.py",
+          "sha256": "d326d134d98fd54cc936c35a81580791b355bff6587521619b2b82a488ea0546"
+        },
+        {
+          "bytes": 10423,
+          "path": "carr_library/search/semantic_windows.py",
+          "sha256": "8e69187f714b41ffd923bc3fb594d5bfef6648b7e1af4b5159fdc89f104e0b38"
+        },
+        {
+          "bytes": 16508,
+          "path": "carr_library/search/source_windows.py",
+          "sha256": "19cf4a19bd4b0f6e72e452de6f07c09203de22e898444ca48d7bfd01849b116c"
+        },
+        {
+          "bytes": 23903,
+          "path": "carr_library/search/thematic.py",
+          "sha256": "dd1aa58ff4b429e08f1d3e4742c4a1e4169f6b175a3792c0a1f3d5a6935688e5"
+        },
+        {
+          "bytes": 16033,
+          "path": "carr_library/semantic.py",
+          "sha256": "5ce31f0b4cc53cad499038721d9a8421b0d4a8fb0669a6d9b4ae0d61d1a5750e"
+        },
+        {
+          "bytes": 13067,
+          "path": "carr_library/semantic_cache.py",
+          "sha256": "e0aea7a586ec2c9a05a867a3beaa177dd7bb6306a530c38647f40230890181c0"
+        },
+        {
+          "bytes": 944,
+          "path": "carr_library/speech/__init__.py",
+          "sha256": "39f6c788a0c427de2528bcd5670566424dcc76b81d1098526e37e518315b3f77"
+        },
+        {
+          "bytes": 10846,
+          "path": "carr_library/speech/_io.py",
+          "sha256": "338ba24fd644d911ec59327f560394f4f309b55dec9ea4261011e1474c6ddf5a"
+        },
+        {
+          "bytes": 14102,
+          "path": "carr_library/speech/_wave_output.py",
+          "sha256": "190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664"
+        },
+        {
+          "bytes": 4254,
+          "path": "carr_library/speech/clipboard_reader.py",
+          "sha256": "876061af38a20a6ed73e6761a3232e38e1e8a5dfac72726f16ca4149ef20059d"
+        },
+        {
+          "bytes": 6918,
+          "path": "carr_library/speech/focus.py",
+          "sha256": "bd46903b701068194b012f246b6d8801d27a4c1241ad64db6b986c9b7d61a115"
+        },
+        {
+          "bytes": 15801,
+          "path": "carr_library/speech/listening.py",
+          "sha256": "aad6fbeaf6385cd7f1bb2e10f18c0d40cf9dc1c5c866162836d924a8da49b6e9"
+        },
+        {
+          "bytes": 4859,
+          "path": "carr_library/speech/navigation.py",
+          "sha256": "6797cf5f4872af3be0646dedb38105b8afea9c45524e02b2d8ccd073f2c062e3"
+        },
+        {
+          "bytes": 7356,
+          "path": "carr_library/speech/output_devices.py",
+          "sha256": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5"
+        },
+        {
+          "bytes": 37054,
+          "path": "carr_library/speech/player.py",
+          "sha256": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4"
+        },
+        {
+          "bytes": 19665,
+          "path": "carr_library/speech/playlist.py",
+          "sha256": "e1131ebaa7c05b6e2e89e14c5af1cb66819b90b7b751ca682e8e76a86c1c2885"
+        },
+        {
+          "bytes": 10562,
+          "path": "carr_library/speech/preparation.py",
+          "sha256": "849a8b310441fd929fd271c14f8c59883bf234936509ef1885b25278b5dd954e"
+        },
+        {
+          "bytes": 4495,
+          "path": "carr_library/speech/presentation.py",
+          "sha256": "3fde5febfd8c375a9756dcce7dfdd3040ec04fa69fa58617c15f0aef8030e176"
+        },
+        {
+          "bytes": 15728,
+          "path": "carr_library/speech/progress_speech.py",
+          "sha256": "20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393"
+        },
+        {
+          "bytes": 22695,
+          "path": "carr_library/speech/reading.py",
+          "sha256": "9214370ce4f1aeca970a3dec937e0b3cbd672949e243fca2bf78a44d94f46da2"
+        },
+        {
+          "bytes": 10927,
+          "path": "carr_library/speech/reading_tools.py",
+          "sha256": "0ec33986f54a584f3284123cac9839ac80d0dd3a19ee9044042c14568e47cf17"
+        },
+        {
+          "bytes": 886,
+          "path": "carr_library/speech/regex_worker.py",
+          "sha256": "4c811cd824979cac6d2a504b98fb655165b821b416caf379734f780e06c855f5"
+        },
+        {
+          "bytes": 34240,
+          "path": "carr_library/speech/runtime.py",
+          "sha256": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd"
+        },
+        {
+          "bytes": 8339,
+          "path": "carr_library/speech/sapi_native_worker.py",
+          "sha256": "6512d23dc1e1f6ad46fe34df593535db5279f2be54123c8861e10e87d1b6e7ed"
+        },
+        {
+          "bytes": 5007,
+          "path": "carr_library/speech/session.py",
+          "sha256": "86c58a86b6d906bfa5a31c94d0589a34f25b9746aeeeee5f77a507dae6b11591"
+        },
+        {
+          "bytes": 2859,
+          "path": "carr_library/speech/source.py",
+          "sha256": "019a9fc6b130e6c5f73fccf25a5084a4a3b91766ca9abb70f642e2828631faa1"
+        },
+        {
+          "bytes": 10252,
+          "path": "carr_library/speech/spelling.py",
+          "sha256": "b110ce0571113a741570f6b665709adf92a77d52f9aac6328b6e23259286ef09"
+        },
+        {
+          "bytes": 13115,
+          "path": "carr_library/speech/spelling_worker.py",
+          "sha256": "698f563221238a71fb86f33989e6d3650acf518e62b7b47fc271d28ba2be6c14"
+        },
+        {
+          "bytes": 6865,
+          "path": "carr_library/speech/studio_voice_adapter.py",
+          "sha256": "8fafd0749a5661cb284c92b9d8c9cb30a9fa5219971abac9a24ab579431904c6"
+        },
+        {
+          "bytes": 12794,
+          "path": "carr_library/speech/synthesis_admission.py",
+          "sha256": "a66bc1659bf3d1d8e2cf71693f166bfb87fddf57cc75be342e3b4fc727778af5"
+        },
+        {
+          "bytes": 10807,
+          "path": "carr_library/speech/tabs.py",
+          "sha256": "c808f0c7caa537e4b2d9843f316138777daf896467c56b61e8147547cf7f32f4"
+        },
+        {
+          "bytes": 14599,
+          "path": "carr_library/state_backup.py",
+          "sha256": "d4749b69674722af5838613288f5194015a5332f5dd264dead8d5dcbdf5c59f6"
+        },
+        {
+          "bytes": 20106,
+          "path": "carr_library/state_recovery.py",
+          "sha256": "fcc232458c37f200e360b3ebc406e1f1cff7a0463c5bd1eaade690f1dabc8eb1"
+        },
+        {
+          "bytes": 2997,
+          "path": "carr_library/storage/academic_schema.py",
+          "sha256": "5778ff82886c7346c1a17581e31cba59329fd0e38891d815d6e4287df03475b2"
+        },
+        {
+          "bytes": 6179,
+          "path": "carr_library/storage/research_schema.py",
+          "sha256": "6aa83f731b3b85fa5da69b3edf4df410cea74ed1970d3d993e09dd9361567e90"
+        },
+        {
+          "bytes": 30467,
+          "path": "carr_library/storage/revisions.py",
+          "sha256": "8d71d481be5f4f0e01753d18cfc925c1a49cc802806c1aec7228ff557a9fef64"
+        },
+        {
+          "bytes": 1294,
+          "path": "carr_library/storage/schema_identity.py",
+          "sha256": "1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0"
+        },
+        {
+          "bytes": 3527,
+          "path": "carr_library/streamed_import_cli.py",
+          "sha256": "cdde703038a9806b2776d0b41dcd89498c6fbe79bd70956ba3fb095efc44abd1"
+        },
+        {
+          "bytes": 272,
+          "path": "carr_library/studio/__init__.py",
+          "sha256": "b9329f58ba231485cff3c0303e3e75fdc701858c5b7d1dcd477bceb79089c8a0"
+        },
+        {
+          "bytes": 23830,
+          "path": "carr_library/studio/backup_inputs.py",
+          "sha256": "acef13b130e56936353c509a11d1683eef3b5343c84dcf894c7e2ab2b193fddf"
+        },
+        {
+          "bytes": 39035,
+          "path": "carr_library/studio/book_audio.py",
+          "sha256": "e3ed45add96c68062afc65b117200245465b57af2162839435403dd27b1c59b3"
+        },
+        {
+          "bytes": 14188,
+          "path": "carr_library/studio/book_backup.py",
+          "sha256": "a9e3186054506d88c9e8e1c89547bb3d2297853b15762ed9f31e0a66631f1768"
+        },
+        {
+          "bytes": 19552,
+          "path": "carr_library/studio/book_batch.py",
+          "sha256": "5579bfed4980cebd67cf669602d79e93dbc15189e27bdbea3e8b8185b928ae73"
+        },
+        {
+          "bytes": 16205,
+          "path": "carr_library/studio/book_cli.py",
+          "sha256": "4b03751f98648c2bdd3fe6074ea346deb5caeca4f198c962591fa632cd74f46c"
+        },
+        {
+          "bytes": 9072,
+          "path": "carr_library/studio/book_landmarks.py",
+          "sha256": "7aaf0057397c642b8ab3205f4d76460fb63a2a4aae7a9e38dcf25f1a546b4109"
+        },
+        {
+          "bytes": 7241,
+          "path": "carr_library/studio/book_source.py",
+          "sha256": "35ef50af743c07be5314fdc4227469984f61e18338c22f2d9405d61eae8ea6fc"
+        },
+        {
+          "bytes": 1644,
+          "path": "carr_library/studio/book_voice.py",
+          "sha256": "5b708a16b9f688ccfc5079cb7e9283ce300843a95f2816227c3343a9b4ed9598"
+        },
+        {
+          "bytes": 19364,
+          "path": "carr_library/studio/cli.py",
+          "sha256": "8235f8dfdfd4304465b621f7b625b6a02028f6cc4443c9bc44ab25a0109c95d3"
+        },
+        {
+          "bytes": 35099,
+          "path": "carr_library/studio/clips.py",
+          "sha256": "21814cbe3bb6c5b54c5df1a2491c30339c3595dc44ef66a9c8551b5f723cd85e"
+        },
+        {
+          "bytes": 22167,
+          "path": "carr_library/studio/daisy.py",
+          "sha256": "74fcd3064f7eb3f0faa1952d264e1cb9b52fd74d62cfbbffef836f6c97057e34"
+        },
+        {
+          "bytes": 21620,
+          "path": "carr_library/studio/measured_audio.py",
+          "sha256": "5faa008d90e9991fb59260e5597aa2d7cd2b06eb475e5abfaa47a87921194afc"
+        },
+        {
+          "bytes": 20083,
+          "path": "carr_library/studio/project.py",
+          "sha256": "84cc2b36ce869f4ca8e6fe868a13edd702bdfefad0cfd0f88ba6a3a707b51280"
+        },
+        {
+          "bytes": 67562,
+          "path": "carr_library/studio/publishing.py",
+          "sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b"
+        },
+        {
+          "bytes": 25632,
+          "path": "carr_library/studio/publishing_source.py",
+          "sha256": "c818fb409e5ad3755b1518283ee6a121cb97c67cea2b1eadf1c06bcfb38b6111"
+        },
+        {
+          "bytes": 73347,
+          "path": "carr_library/studio/render.py",
+          "sha256": "66bbe35025a68ab780860bd5d4831d1b28e9dd40173f5fed7b5dd640abd50075"
+        },
+        {
+          "bytes": 8585,
+          "path": "carr_library/studio/silence_inspection.py",
+          "sha256": "1c56da9de5c2c1349b01cde13cbfabc378a948f4d1738ffb653adf8119e210d8"
+        },
+        {
+          "bytes": 87,
+          "path": "carr_library/sync/__init__.py",
+          "sha256": "c07c744635107ad836290ea07ac9817383cf8c1f70e4548aff678299679ec7c9"
+        },
+        {
+          "bytes": 4443,
+          "path": "carr_library/sync/admission.py",
+          "sha256": "ea9d3151af8665291791947ec73eeaec1ba7d79d0724ff5bcd5350a51c293c75"
+        },
+        {
+          "bytes": 16908,
+          "path": "carr_library/sync/archive.py",
+          "sha256": "ca446a6b77ff6e608d7ac86601212f0f4efae0be28d9d8a275f84d9a593ea143"
+        },
+        {
+          "bytes": 5600,
+          "path": "carr_library/sync/cli.py",
+          "sha256": "36b3ec44447b552ccedc0720417a520ceb689dad4e25ebcf0a89d0bf512f0a7d"
+        },
+        {
+          "bytes": 22908,
+          "path": "carr_library/sync/crypto.py",
+          "sha256": "7a2be71b6ab9879bfcd2924170c02e2b834b996072706d417c63a195cfada8f4"
+        },
+        {
+          "bytes": 29774,
+          "path": "carr_library/sync/service.py",
+          "sha256": "5137ca22b504c1b9a14fcf8e558fc3e17b4f426d065096a6cdd2ed176ce4e478"
+        },
+        {
+          "bytes": 2132,
+          "path": "carr_library/sync/state.py",
+          "sha256": "1528ca25974c5308bca2ce5153e534e3b549b2677e7775860ec511889561f969"
+        },
+        {
+          "bytes": 33846,
+          "path": "carr_library/sync/vault.py",
+          "sha256": "73e88ae882eac51cf1f50f3f49827369fc0dd4686dab393c97cd7ef45bae3529"
+        },
+        {
+          "bytes": 55159,
+          "path": "carr_library/transcription/__init__.py",
+          "sha256": "4eeed849a4057871429135576fd964cf93bbe8eb568a3a1c6262ea6ff2f2db5f"
+        },
+        {
+          "bytes": 7562,
+          "path": "carr_library/transcription/models.py",
+          "sha256": "8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93"
+        },
+        {
+          "bytes": 1801,
+          "path": "carr_library/transcription/ownership.py",
+          "sha256": "8f48c8db4b79dbb4ddb7fd988df81ef21c60c3b96162185b6e7d43ae4b448d64"
+        },
+        {
+          "bytes": 23994,
+          "path": "carr_library/transcription/runtime.py",
+          "sha256": "7ac62f7a7774e49d06f350d9ddc7b93418ec2d83a5d80e442c16d1f8e8481cf8"
+        },
+        {
+          "bytes": 53841,
+          "path": "carr_library/transcription/service.py",
+          "sha256": "ed8dbb1142b751a07e66ab764a412325cf4bd5f8c1b2070864fb8a3e85e31234"
+        },
+        {
+          "bytes": 15371,
+          "path": "carr_library/transcription_cli.py",
+          "sha256": "bcb2e1ca6985beb8219b6834d6ddcfcd2f1565f3a20cc8c2d9330cb2f9f90375"
+        },
+        {
+          "bytes": 12563,
+          "path": "carr_library/transcription_contract.py",
+          "sha256": "294fa142799ed245ed06252758983ec0caae00aad1c9642c614537110fa5fdc9"
+        },
+        {
+          "bytes": 13030,
+          "path": "carr_library/translation_cli.py",
+          "sha256": "1ab9e303d1cb6d79c352e9bd9dcc37efeeccced109a7a2d63b7e18dc8bb7221e"
+        },
+        {
+          "bytes": 0,
+          "path": "carr_library/ui/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 0,
+          "path": "carr_library/ui/_vendor/wx_grid/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 8211,
+          "path": "carr_library/ui/_vendor/wx_grid/grid.py",
+          "sha256": "a882fbd283b30b20b139fe2e6ce7ef42f67dbabad57f9fa2f53109f4b04756ff"
+        },
+        {
+          "bytes": 3383,
+          "path": "carr_library/ui/_vendor/wx_grid/model.py",
+          "sha256": "4641a35dcaf106cf5b4b14ca5be0fe6091a57e79c98c1d2f138c052f42911ace"
+        },
+        {
+          "bytes": 17584,
+          "path": "carr_library/ui/academic_actions.py",
+          "sha256": "f1bdcc94c52549112a909b4bc13f53235f00c292c49f0c1703a4759a049d87c9"
+        },
+        {
+          "bytes": 57769,
+          "path": "carr_library/ui/academic_library_dialog.py",
+          "sha256": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b"
+        },
+        {
+          "bytes": 9742,
+          "path": "carr_library/ui/academic_tools.py",
+          "sha256": "94c014d37e3ebbbe48280b9b87061ce386816c1a6145eacfd04ba9cda7c60654"
+        },
+        {
+          "bytes": 37438,
+          "path": "carr_library/ui/acquisition_dialog.py",
+          "sha256": "60097063b5deb5e3e952859bd91df31fc4584884bb9bbeeadabf12ecf161e827"
+        },
+        {
+          "bytes": 11296,
+          "path": "carr_library/ui/advanced_search.py",
+          "sha256": "ada882820cd043b4a05027e1835f722afdff283700c4110380d3339a21144894"
+        },
+        {
+          "bytes": 34773,
+          "path": "carr_library/ui/assistant_dialog.py",
+          "sha256": "d9b066b500032182e7ba045220611842fd653d6402384c17aeef9fede321d10c"
+        },
+        {
+          "bytes": 7499,
+          "path": "carr_library/ui/audio_conversion_dialog.py",
+          "sha256": "3813832be459b11d32b9e60082a305bfdb461532d8dae8ffaeeca8abca7b2412"
+        },
+        {
+          "bytes": 27529,
+          "path": "carr_library/ui/audio_effects.py",
+          "sha256": "9a34b3c7fce47f40e02b329de6b3a6838d5c1b0a05ae1a15ef61e2042536e09b"
+        },
+        {
+          "bytes": 25523,
+          "path": "carr_library/ui/audio_metadata_dialog.py",
+          "sha256": "d82ab79a02eadeedbfc0afc84f13f47d6759d36ade8e9e843e2eea9899ed440a"
+        },
+        {
+          "bytes": 23712,
+          "path": "carr_library/ui/audio_playback.py",
+          "sha256": "8975228c2294daa9cbb0ec76ecf78f08427807704e4d37c6e89b4e426ac29db4"
+        },
+        {
+          "bytes": 13920,
+          "path": "carr_library/ui/audio_runtime_setup.py",
+          "sha256": "16c524ce9a82a0842b776ce3b942675bd2687829e101ca5e8b5f8b1989b59b4e"
+        },
+        {
+          "bytes": 38397,
+          "path": "carr_library/ui/audio_studio.py",
+          "sha256": "939f17d71d223a167ac7006b65c1b46d081cb82d65249efc4a5b75821453688c"
+        },
+        {
+          "bytes": 9437,
+          "path": "carr_library/ui/backup_incremental_dialog.py",
+          "sha256": "e10d576edb950a93649cf5f2b55bcdceb5f7721457e78f88d16551bee0448361"
+        },
+        {
+          "bytes": 38012,
+          "path": "carr_library/ui/book_audio_dialog.py",
+          "sha256": "917e6658d71619dd2ad9386febfa305fdacf91d91ceaa415111f496f7bbbb355"
+        },
+        {
+          "bytes": 22360,
+          "path": "carr_library/ui/book_batch_dialog.py",
+          "sha256": "b6f9491b61310233d7cbf66ab09f8b6af91582a69e14244b793863f29fd6ca06"
+        },
+        {
+          "bytes": 12355,
+          "path": "carr_library/ui/book_duration_dialog.py",
+          "sha256": "91ae776eba3f32a75f84673b730b432c1517c49f67149340aa7fb28b66688c56"
+        },
+        {
+          "bytes": 13311,
+          "path": "carr_library/ui/catalog_insights_actions.py",
+          "sha256": "ab538c83ddf92c79357fb2b5e7ada23be0b2bb250796dffd8847647b368b912f"
+        },
+        {
+          "bytes": 7057,
+          "path": "carr_library/ui/catalog_metadata_dialog.py",
+          "sha256": "98a97dabbd2a975f99962f0adef407b63a4a0be71a50af40601f3cb9b8f00f4f"
+        },
+        {
+          "bytes": 12308,
+          "path": "carr_library/ui/catalog_panel.py",
+          "sha256": "d3400e37e02bfa2be96d55dd49feff13f39a49812b3d127bb1b743ce754b5901"
+        },
+        {
+          "bytes": 11813,
+          "path": "carr_library/ui/catalog_quality.py",
+          "sha256": "cc2c39c0c166eb8cd89c540108ae0fd1b8cc7ad5d8385059edb5e1cdfeded40d"
+        },
+        {
+          "bytes": 18502,
+          "path": "carr_library/ui/catalog_tools_dialog.py",
+          "sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e"
+        },
+        {
+          "bytes": 45287,
+          "path": "carr_library/ui/citation_formatting.py",
+          "sha256": "98ae40bc06d93f48966f2135f64bad1caacb300a0c6547083f2288f70a7524e3"
+        },
+        {
+          "bytes": 17643,
+          "path": "carr_library/ui/citation_styles_dialog.py",
+          "sha256": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"
+        },
+        {
+          "bytes": 2405,
+          "path": "carr_library/ui/clipboard_reader.py",
+          "sha256": "41fab62bb55b7d72e642518b86c306838048dbfc41641fdb5f09acfde973017a"
+        },
+        {
+          "bytes": 12233,
+          "path": "carr_library/ui/command_palette.py",
+          "sha256": "bbe5c8d042ac4ab24336c8367067a2712e17a0e4de789376c48b27d26826d4b0"
+        },
+        {
+          "bytes": 14533,
+          "path": "carr_library/ui/delivery_dialog.py",
+          "sha256": "990173356b7f3c5fd70e366ec7200f630bffb7024c68ac340f26a036b87f31d3"
+        },
+        {
+          "bytes": 79396,
+          "path": "carr_library/ui/desktop_app.py",
+          "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+        },
+        {
+          "bytes": 20177,
+          "path": "carr_library/ui/desktop_evidence_panel.py",
+          "sha256": "d40dd5f3c937188a912764cbb3c918892afb5ea8905f40bcd7804c96cec2e1e0"
+        },
+        {
+          "bytes": 33947,
+          "path": "carr_library/ui/desktop_integration.py",
+          "sha256": "d5e4e7f030c09a0d0220fb967ba98526ba7d8a7440de3bc3b08c02f5d8f3c872"
+        },
+        {
+          "bytes": 7615,
+          "path": "carr_library/ui/desktop_settings.py",
+          "sha256": "cb85eb0ec31e6b249518b96efd08525e4afcb2c02ea1dd516d40e42aa799c361"
+        },
+        {
+          "bytes": 6178,
+          "path": "carr_library/ui/diagnostics_dialog.py",
+          "sha256": "fefa24d94fe49cdc508169b58f9517fc84c78424f20604727df021f234062259"
+        },
+        {
+          "bytes": 4181,
+          "path": "carr_library/ui/document_conversion.py",
+          "sha256": "d7497b370191c7d586ee35e07919fb1954cab16760b39588e51cad736a202204"
+        },
+        {
+          "bytes": 5697,
+          "path": "carr_library/ui/ebook_actions.py",
+          "sha256": "296790427dfb6bb13dc4bc0cfcf625a27c07c91eb54e1fe95c95716f3fe1a4d3"
+        },
+        {
+          "bytes": 20139,
+          "path": "carr_library/ui/ebook_audio_dialog.py",
+          "sha256": "4af499c08dbaf56fc7ffccad54c02426e9562e8972e288ec67fecfed04f930fb"
+        },
+        {
+          "bytes": 9956,
+          "path": "carr_library/ui/ebook_dialog.py",
+          "sha256": "be3bd51b6b3396c5885e81f09c4b7ea898ad5dae04ee7363e884fc4edfa57550"
+        },
+        {
+          "bytes": 16511,
+          "path": "carr_library/ui/ebook_model.py",
+          "sha256": "8e971a9b42434ca229fcf052957bb0bb6f31be329ef605128db7a5c258264938"
+        },
+        {
+          "bytes": 10103,
+          "path": "carr_library/ui/ebook_reader.py",
+          "sha256": "73cddc9098dd49cee15ba14ed18fd2b64880ffa4423722afa4081141f6c21836"
+        },
+        {
+          "bytes": 9979,
+          "path": "carr_library/ui/effects_dialog.py",
+          "sha256": "25b0dcc11f4b420e4f82be3b14b2db27d41a98fceedbc3e422a5f8daaa7a2317"
+        },
+        {
+          "bytes": 11685,
+          "path": "carr_library/ui/engine_settings.py",
+          "sha256": "75baf8b98883f5a995f28ff79d0f38f32c8fc319de1add5a7b665e63f98eaa2e"
+        },
+        {
+          "bytes": 9352,
+          "path": "carr_library/ui/evidence_panel.py",
+          "sha256": "fd4896a3cfec1555129a85a76e4f64a854bc3c4ed33c1a467b42fd899b1c1b28"
+        },
+        {
+          "bytes": 3658,
+          "path": "carr_library/ui/export_destination.py",
+          "sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73"
+        },
+        {
+          "bytes": 35895,
+          "path": "carr_library/ui/federated_search.py",
+          "sha256": "068337af08e6f86edc589de08144734dc64451bc8b3ee6d5ab65f457a0175fd4"
+        },
+        {
+          "bytes": 28537,
+          "path": "carr_library/ui/import_center.py",
+          "sha256": "81f64160b9b566061d25f0e0194e72dd4b089e680a69111e0cc5f12c25d0e7ef"
+        },
+        {
+          "bytes": 36079,
+          "path": "carr_library/ui/keyboard_settings.py",
+          "sha256": "351564c56e36484444c1b789da8133b0145879e0a221ebda83f270dd694b419e"
+        },
+        {
+          "bytes": 18845,
+          "path": "carr_library/ui/language_matrix.py",
+          "sha256": "28598fb591a5f20755176e5e7b00facba932a9e25ee2c64674bf53e2fb789006"
+        },
+        {
+          "bytes": 10653,
+          "path": "carr_library/ui/literature_matrix.py",
+          "sha256": "f5196aa082a4ddea152306620f5091806ba13688524c7b5e0fe51e98ae1f7ba8"
+        },
+        {
+          "bytes": 15330,
+          "path": "carr_library/ui/local_assistant.py",
+          "sha256": "95e11636a8026f17ecff771a6b909f1914d1f9648cc375ab5611350268f06c59"
+        },
+        {
+          "bytes": 18545,
+          "path": "carr_library/ui/media_overlay_dialog.py",
+          "sha256": "03861327d2146485f426fc0df272b2edb22a6bdf49e968c1c5cd0daefd32387f"
+        },
+        {
+          "bytes": 14853,
+          "path": "carr_library/ui/music_settings.py",
+          "sha256": "6472c27f1e191fe666b36f497f433b8a2390ddd8f13d8b4d135c8d32b74da59a"
+        },
+        {
+          "bytes": 22747,
+          "path": "carr_library/ui/narration_editor.py",
+          "sha256": "38922b73f4ba920ce7e4ae933498f693d48ef1dd5d8950e4b4d5a2148878f928"
+        },
+        {
+          "bytes": 19873,
+          "path": "carr_library/ui/notebook_search.py",
+          "sha256": "9e512ccff6b03f3ec72d8617c0f33807b423aac415d3af81cb568079289be0b1"
+        },
+        {
+          "bytes": 21900,
+          "path": "carr_library/ui/ocr_language_dialog.py",
+          "sha256": "2823995deab4f6d03a86458001df17ccade80d98342b83cf19fe86c3080ba3ae"
+        },
+        {
+          "bytes": 21673,
+          "path": "carr_library/ui/ocr_model_manager.py",
+          "sha256": "8e8b7f04f85ad3fa03fda546782a09882801525562c698b6e643fab70f13a4c1"
+        },
+        {
+          "bytes": 1963,
+          "path": "carr_library/ui/ocr_options.py",
+          "sha256": "5ef9c80128e3c5004d2676a9cdc8dcad5fbcfac8483f8a7bfb44148d660d7c0e"
+        },
+        {
+          "bytes": 18056,
+          "path": "carr_library/ui/ocr_selection.py",
+          "sha256": "06318ffd62f1f6d493a4853f8b7669df648a6cfefb72101377ee90a9dda8969e"
+        },
+        {
+          "bytes": 43670,
+          "path": "carr_library/ui/operation_progress.py",
+          "sha256": "72dac9bbabdc345689d785c8eba640894298e78597170320d146d4bc767dc0ce"
+        },
+        {
+          "bytes": 13531,
+          "path": "carr_library/ui/operations_dialog.py",
+          "sha256": "99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b"
+        },
+        {
+          "bytes": 5466,
+          "path": "carr_library/ui/page_context_dialog.py",
+          "sha256": "0323e7dd51907d18af376b15fb98e6007dc2e36dbdd357bf300d855c3a8bb5fa"
+        },
+        {
+          "bytes": 2498,
+          "path": "carr_library/ui/paged_search_panel.py",
+          "sha256": "b6edd6417e0f91400703b8e8f4dfd9604ea7fcf4c0a72ea4c0467452bcb5bd9d"
+        },
+        {
+          "bytes": 40273,
+          "path": "carr_library/ui/portable_sync.py",
+          "sha256": "63de387f35275851a293ef26315e003793ef6ca2ad6f2c1492133fe4001674e8"
+        },
+        {
+          "bytes": 20758,
+          "path": "carr_library/ui/productivity.py",
+          "sha256": "8657d2e3da3f01ca05efd45b08215a1bc50ef49974f186d9b773210f050b4abb"
+        },
+        {
+          "bytes": 23797,
+          "path": "carr_library/ui/provider_settings.py",
+          "sha256": "b74464213800303641b63aa5579161c17e1ff7aae485d4b95284272671d5bf2f"
+        },
+        {
+          "bytes": 20300,
+          "path": "carr_library/ui/publishing_dialog.py",
+          "sha256": "7f25d526282ae48a4221ebb7a42d781b101e811d68c3de57cca2ef291dd534d3"
+        },
+        {
+          "bytes": 9909,
+          "path": "carr_library/ui/query_manager.py",
+          "sha256": "d794b330547511666b69e51c3ff65591181325476163f269bee3d49af1c8dac3"
+        },
+        {
+          "bytes": 3557,
+          "path": "carr_library/ui/reader_navigation.py",
+          "sha256": "fd9d293a2a518e5d585799bfda8db6869a48e746d9e5c1323694c85faa625ce6"
+        },
+        {
+          "bytes": 7964,
+          "path": "carr_library/ui/reader_output.py",
+          "sha256": "d0a367a0a9e8da1a46598583adbc7cd320887a6fd4e4693c4d3f90924d185513"
+        },
+        {
+          "bytes": 45039,
+          "path": "carr_library/ui/reader_playback.py",
+          "sha256": "bf2e2ecee13795eff76e34d4c19bc3f25787efc5e1af6dd65a42283792f7c650"
+        },
+        {
+          "bytes": 8954,
+          "path": "carr_library/ui/reader_preparation.py",
+          "sha256": "05bccfceed7d4785b3fb666599a77de35db35ba9796495ea5ae93894ba053c37"
+        },
+        {
+          "bytes": 12431,
+          "path": "carr_library/ui/reader_presentation.py",
+          "sha256": "b9e800e13a47ee0240b2a37b8172b5c549d00c6971b0187e1969918d3f1cd9db"
+        },
+        {
+          "bytes": 14902,
+          "path": "carr_library/ui/reader_spelling.py",
+          "sha256": "e578bd4ddfda7846a19385cfcde0dc2204a3764bdb7a0f9a725c3f71cec1fa39"
+        },
+        {
+          "bytes": 10228,
+          "path": "carr_library/ui/reader_synthesis.py",
+          "sha256": "7527c0f8655ca97390f69831f387e4bffb236def7a701626894968d92b8b40c5"
+        },
+        {
+          "bytes": 14258,
+          "path": "carr_library/ui/reader_tabs.py",
+          "sha256": "a5b611053393aa55d738f33ee8f4a5a416b8e7054c35e493ef16c0cb2a693475"
+        },
+        {
+          "bytes": 7435,
+          "path": "carr_library/ui/reader_transport.py",
+          "sha256": "045ba64d7bc5e0f84d2c3f3a734e630f11cbcf3b6108a067d662930cb14dd763"
+        },
+        {
+          "bytes": 33142,
+          "path": "carr_library/ui/reading_desk.py",
+          "sha256": "cab8326758d31094416dc29b30da88f18df40129a8f7ccb4d7fc3079926c40ce"
+        },
+        {
+          "bytes": 11978,
+          "path": "carr_library/ui/reading_focus.py",
+          "sha256": "a5391ff19353c86948b9ce7030484872fe96c1f34554225b35a50ca3a2e12c27"
+        },
+        {
+          "bytes": 23426,
+          "path": "carr_library/ui/reading_tools.py",
+          "sha256": "3e285dcfbe8215639aaffc203f660bb44a9927558150a3c7e94ed4da7946e67f"
+        },
+        {
+          "bytes": 31857,
+          "path": "carr_library/ui/recording_dialog.py",
+          "sha256": "0f3507663a881aa7f41bc2f062aba558782c5d2463c0e1c19cbacde73a00c74c"
+        },
+        {
+          "bytes": 21095,
+          "path": "carr_library/ui/research_actions.py",
+          "sha256": "0ad0ca89ede28ea12501173caafdcf2136c11849065e6a7dcfaddaea1edc36de"
+        },
+        {
+          "bytes": 9712,
+          "path": "carr_library/ui/save_actions.py",
+          "sha256": "566ba56dffd3602450384bcf45da1216c69c926e7ce3af5caef604f9fc41a747"
+        },
+        {
+          "bytes": 7525,
+          "path": "carr_library/ui/save_all.py",
+          "sha256": "f91c479b5c595621527e2ca11b9dfb32d045fe6104cdac24e51bf5621b2b3b45"
+        },
+        {
+          "bytes": 5690,
+          "path": "carr_library/ui/scope_bindings.py",
+          "sha256": "01d131256be5660b355f73b61d3839a199a80af1d3bc76289edff5cae82eb57e"
+        },
+        {
+          "bytes": 827,
+          "path": "carr_library/ui/scope_labels.py",
+          "sha256": "ed7e531a39e6888517d8b87b8d0b031af64b9d20a8165e560297200204ba4bc9"
+        },
+        {
+          "bytes": 1752,
+          "path": "carr_library/ui/search_model.py",
+          "sha256": "d1f319d205a367f78133a2d91a0f166f1433ff638be3e4e6ab50d4daa267ed35"
+        },
+        {
+          "bytes": 8095,
+          "path": "carr_library/ui/search_panel.py",
+          "sha256": "15ec892fa199ea36e12734a29e84f2e8237271424f8dfa91cf55c4f3037f4803"
+        },
+        {
+          "bytes": 4299,
+          "path": "carr_library/ui/source_launch.py",
+          "sha256": "8c2e87eee3a0e0437ac8518f98f1219affd4cbfea8412a6fc954bd59939dc92d"
+        },
+        {
+          "bytes": 20091,
+          "path": "carr_library/ui/source_review.py",
+          "sha256": "f383f47ce12a8cd2caab657f33494322d9242ec7ef10a0b9d0cda0384b664185"
+        },
+        {
+          "bytes": 74479,
+          "path": "carr_library/ui/speech_dialog.py",
+          "sha256": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59"
+        },
+        {
+          "bytes": 44042,
+          "path": "carr_library/ui/studio_clips.py",
+          "sha256": "8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e"
+        },
+        {
+          "bytes": 57344,
+          "path": "carr_library/ui/studio_dialog.py",
+          "sha256": "c92254c17a6e43dd4391ce7e0db2bc2fc6c30e6344782c9d179c99692d54de4e"
+        },
+        {
+          "bytes": 7447,
+          "path": "carr_library/ui/studio_silence_inspection.py",
+          "sha256": "1aacc15b7b81a8bcf6da66359f371f3b3af269d6af7aa9d2010378f196151934"
+        },
+        {
+          "bytes": 8602,
+          "path": "carr_library/ui/topic_panel.py",
+          "sha256": "babc00b200f0ac56d5fb14102f6fcdbf24fd931fa02fd96410a628a2ea98c9b9"
+        },
+        {
+          "bytes": 67093,
+          "path": "carr_library/ui/transcription_dialog.py",
+          "sha256": "73846cb764d3cb61e73e726f823e13751de342f72962b71ecbfa532ddfdc69a1"
+        },
+        {
+          "bytes": 28736,
+          "path": "carr_library/ui/translation_dialog.py",
+          "sha256": "b7130076e9c8a1ac247c70ab8c07c4a0e02688a08fc43855b06507d51db88c92"
+        },
+        {
+          "bytes": 30916,
+          "path": "carr_library/ui/voice_packages.py",
+          "sha256": "b17a78ae596b195f9b902947086022f5e31dd5b0cfe3e2fd55a5e6b0b9e9c7b6"
+        },
+        {
+          "bytes": 13864,
+          "path": "carr_library/ui/voice_preferences.py",
+          "sha256": "5bf6479b0e5e7bdc8f39636f8525959a7803b527c499087015047f058d54a715"
+        },
+        {
+          "bytes": 21018,
+          "path": "carr_library/ui/voice_reference.py",
+          "sha256": "5b86c770c22f5fac72977cfb1271e9cc189a871e40750993e8904c7f99907507"
+        },
+        {
+          "bytes": 12267,
+          "path": "carr_library/ui/voice_settings.py",
+          "sha256": "ac5638ef0149671ad3ffcca91f1248e7daa42dd06f0ac1d831ee7a1a7f8948b3"
+        },
+        {
+          "bytes": 19493,
+          "path": "carr_library/ui/word_citations.py",
+          "sha256": "1cb624aa0a7225b123b981dc51e66af09efeba8e8221c20dd4af4eaa53695b25"
+        },
+        {
+          "bytes": 4412,
+          "path": "carr_library/ui/worker_lifetime.py",
+          "sha256": "d5ec361af65cb62149eaa5577d31c703abd0879a8a4cd02a8cc364c80014fbc6"
+        },
+        {
+          "bytes": 8871,
+          "path": "carr_library/ui/workspace_shell.py",
+          "sha256": "139425432665ef162fb9e3cd0734cc327994997a3a753cc523364c62f4bdd5bf"
+        }
+      ],
+      "required_suites": [
+        "tests/packaging/test_standard_installer.py",
+        "tests/packaging/test_managed_launch_boundary.py",
+        "tests/packaging/test_native_checks.py",
+        "tests/packaging/test_windows_bundle.py",
+        "tests/packaging/test_windows_launcher_bundle.py",
+        "tests/packaging/test_install_bytecode.py",
+        "tests/packaging/test_worker_bytecode.py",
+        "tests/packaging/test_source_wheel.py",
+        "tests/packaging/test_native_runtime.py",
+        "tests/audio/test_local_runtime_cli.py",
+        "tests/test_delivery_cli.py"
+      ],
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "source_package": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library",
+      "status": "PASS"
+    },
+    "text": "{\"dependency_selection\": {\"build_support\": {\"setuptools\": \"84.2.1\", \"wheel\": \"0.48.0\", \"zstandard\": \"0.25.0\"}, \"effective_requirements_sha256\": \"278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0\", \"excluded\": [\"comtypes\", \"wxpython\"], \"pins\": {\"bibtexparser\": \"2.1.0\", \"cffi\": \"2.1.1\", \"cryptography\": \"50.0.2\", \"defusedxml\": \"0.7.1\", \"filelock\": \"3.29.0\", \"lxml\": \"6.1.3\", \"numpy\": \"2.4.6\", \"pillow\": \"13.0.0\", \"platformdirs\": \"4.10.0\", \"py3langid\": \"0.4.0\", \"pycparser\": \"3.12\", \"pylatexenc\": \"2.11\", \"pypdf\": \"7.1.1\", \"pypdfium2\": \"5.13.0\", \"python-docx\": \"1.2.0\", \"quickjs-ng\": \"0.18.0.2\", \"typing-extensions\": \"4.16.0\"}, \"platform\": \"linux\", \"pytest\": \"9.0.2\", \"repository_lock_sha256\": \"c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798\", \"verification_support\": \"packaging==26.4\", \"windows_dependency_hashes_required\": false}, \"executable\": \"/home/runner/work/_temp/carr-standard-installation-python/bin/python\", \"installed_package\": \"/home/runner/work/_temp/carr-standard-installation-python/lib/python3.11/site-packages/carr_library\", \"mode\": \"source-and-installed\", \"prefix\": \"/home/runner/work/_temp/carr-standard-installation-python\", \"python\": \"3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]\", \"python_files\": [{\"bytes\": 181, \"path\": \"carr_library/__init__.py\", \"sha256\": \"93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a\"}, {\"bytes\": 19108, \"path\": \"carr_library/__main__.py\", \"sha256\": \"0ee9f946e6188eac0ec4efd5c1d5dcbef09706a06e1fa60d5a5fe7fb4e166a0a\"}, {\"bytes\": 966, \"path\": \"carr_library/academic_integration/__init__.py\", \"sha256\": \"1870db3ddccce8d90471b175868647ea0ac1493769aadd5944841cbd410a6a3a\"}, {\"bytes\": 13837, \"path\": \"carr_library/academic_integration/documents.py\", \"sha256\": \"f125365fdd7fb6d9c1b0e40ba392390e70eca80b262910307015d536cf3ef512\"}, {\"bytes\": 49613, \"path\": \"carr_library/academic_integration/doi.py\", \"sha256\": \"ee31124c37e2ff3bb9ba2a6c4bd5713ae53b3bbcbae7e2561d64d19b150c1dba\"}, {\"bytes\": 36900, \"path\": \"carr_library/academic_integration/formatting.py\", \"sha256\": \"344f1b31286a23cbb6379dbbaf51cbe7e6883fe9588b4341ae9e76435f64cb90\"}, {\"bytes\": 29984, \"path\": \"carr_library/academic_integration/word_com.py\", \"sha256\": \"ce1a57361fdd2143ee361cbc8b3dc4b645159b457b1199e39d6db29238a205c6\"}, {\"bytes\": 22385, \"path\": \"carr_library/academic_integration/word_fields.py\", \"sha256\": \"b827f19e5e13787a6fdd7a613f82fe236a662530bba35a832145be6807eeb5bc\"}, {\"bytes\": 162, \"path\": \"carr_library/acquisition/__init__.py\", \"sha256\": \"6211778fc935c4b982162b70550f3c5db0907b8b65245d62f61ea784680ac564\"}, {\"bytes\": 6745, \"path\": \"carr_library/acquisition/cli.py\", \"sha256\": \"174a8eb9682739644d73c44035a2a7d7bba22a07e076d258a8cc0853947db162\"}, {\"bytes\": 11975, \"path\": \"carr_library/acquisition/models.py\", \"sha256\": \"e17bbaa04650b0f07c4e00b5c257333c140f22ee47b4171d757053f7a728fe5b\"}, {\"bytes\": 2998, \"path\": \"carr_library/acquisition/network_worker.py\", \"sha256\": \"80e0c8c4dd5b3c3afa375cea68fc7abeeee2f31be63bbda3f4dd4477c099cac4\"}, {\"bytes\": 32136, \"path\": \"carr_library/acquisition/providers.py\", \"sha256\": \"842e2dd7b1c8813d65f77c74f99155a842708a75a5f07fe581de567dcd7f595a\"}, {\"bytes\": 26700, \"path\": \"carr_library/acquisition/service.py\", \"sha256\": \"37c11f8069f735552b2312875c4e7bf201c0e72bea07fafdaf77aec7fe69a7d9\"}, {\"bytes\": 21141, \"path\": \"carr_library/acquisition/transport.py\", \"sha256\": \"d860097ad5cf8bc7371ae402cd9f6bace506a67bde48f7cd8a032cf1cd7d604b\"}, {\"bytes\": 86592, \"path\": \"carr_library/application.py\", \"sha256\": \"964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e\"}, {\"bytes\": 601, \"path\": \"carr_library/assistant/__init__.py\", \"sha256\": \"030e762743da4f1cddfc90cd5f43ef8c8db437cb1d85a1dfa0a6f33e5bcf856d\"}, {\"bytes\": 16656, \"path\": \"carr_library/assistant/book_tools.py\", \"sha256\": \"6332da8e1e6fae1ea871f9253fec3075e1022358a78e72501e89a582be9b8b8c\"}, {\"bytes\": 35475, \"path\": \"carr_library/assistant/canonical_gateway.py\", \"sha256\": \"6b7cf094db89182d0c8b11adf531ed91598b09eabd96ac89ce044ad8db963d18\"}, {\"bytes\": 10255, \"path\": \"carr_library/assistant/credentials.py\", \"sha256\": \"b51bdbabc2919e426f40cee6147f682b7057dc2fe5662c3238548d1ff501a6f3\"}, {\"bytes\": 11676, \"path\": \"carr_library/assistant/library_translation.py\", \"sha256\": \"a33d5aab1687acdae891c46f377d590f3825c5cc927039d08f16b9c0a3fdc293\"}, {\"bytes\": 4531, \"path\": \"carr_library/assistant/llm.py\", \"sha256\": \"da80fedc5ff3e713e8b0e7108747a26c8e86a4ed5171eb678a5bd57990169e93\"}, {\"bytes\": 24670, \"path\": \"carr_library/assistant/local_tools.py\", \"sha256\": \"0aaac4130175cc383c994df7752c8689d4cb71adb033e378f182f9aeb8d0aa2d\"}, {\"bytes\": 9426, \"path\": \"carr_library/assistant/models.py\", \"sha256\": \"0cf3d981e6a7df9ba215bf57aca829c522fa4a62caf38d8f574965fc8cdeba57\"}, {\"bytes\": 15946, \"path\": \"carr_library/assistant/planner.py\", \"sha256\": \"e282d79b4953d7d74160ed8b7e2bb13446dcea00e5cc0b42e71cd04387822319\"}, {\"bytes\": 6283, \"path\": \"carr_library/assistant/player_tools.py\", \"sha256\": \"9e5e5b4ca8dfe48e323a6bc0b5275812703952366242862529ebef041d561336\"}, {\"bytes\": 11783, \"path\": \"carr_library/assistant/profiles.py\", \"sha256\": \"472556a8d8bcafccb4f21231c55dab5675dc8ca04b8a84113431750dc49b3b22\"}, {\"bytes\": 39027, \"path\": \"carr_library/assistant/providers.py\", \"sha256\": \"fd85634dc95d949dee6296d311a57ec9b8ded12175846602bdbd90034c7bcb26\"}, {\"bytes\": 34873, \"path\": \"carr_library/assistant/service.py\", \"sha256\": \"6751142146254fafa1f855b9900bccc164364c9c866d4f9f9ff0aaca0b0b5d30\"}, {\"bytes\": 5483, \"path\": \"carr_library/assistant/state.py\", \"sha256\": \"5fc2fe93d1f4d338a100e803ec538f1e99ece4ae78bdcc1ac4922e500b124b55\"}, {\"bytes\": 18316, \"path\": \"carr_library/assistant/transcription.py\", \"sha256\": \"0448dabcfdf67f4c2ea1c2379b130cc53010c22c9e03bf8ee845a6a69438e741\"}, {\"bytes\": 38341, \"path\": \"carr_library/assistant/translation.py\", \"sha256\": \"364b16be39de9ce401186a0f0937cad610af00e4d696d6daff0913efbdf7000e\"}, {\"bytes\": 355, \"path\": \"carr_library/assistant/translation_cli.py\", \"sha256\": \"9684228ed451e39416e03ccdc77fede24a1821b52fb4ff3325dff585afba2a2d\"}, {\"bytes\": 2800, \"path\": \"carr_library/assistant/workflow_access.py\", \"sha256\": \"21635fe336ada5177df7a23c4f8d1c23caac8afd1403715dfd8c7416c60e10f0\"}, {\"bytes\": 20654, \"path\": \"carr_library/assistant/workflows.py\", \"sha256\": \"4d9c7a0b6c70561238fa1bbb87c141bcd56560db0a0a637c7fb0ef57cf502869\"}, {\"bytes\": 551, \"path\": \"carr_library/audio/__init__.py\", \"sha256\": \"858789c14be10401b55b75c1919ab06e4db3b95177beccf1ba8722097588e8e6\"}, {\"bytes\": 15393, \"path\": \"carr_library/audio/audiobook.py\", \"sha256\": \"d906882d229530994206c22ca41384e9df4f4235c9fc0edc60e57aafe4850a14\"}, {\"bytes\": 6390, \"path\": \"carr_library/audio/cleanup.py\", \"sha256\": \"ce26559c9f460d347f2e67f792adaa0da53080513723432f5dab6a3c32fee588\"}, {\"bytes\": 9031, \"path\": \"carr_library/audio/cli.py\", \"sha256\": \"c3dc84cf4684aea06419ece5d813d172ef6f73068eb75f4d1f5a661653c3c35e\"}, {\"bytes\": 36096, \"path\": \"carr_library/audio/conversion_batch.py\", \"sha256\": \"f5f163ed5f2e16d149528c3521b2f1da6ae377d9b01659c04a27f24e1129749c\"}, {\"bytes\": 43734, \"path\": \"carr_library/audio/director.py\", \"sha256\": \"bc0dadb2dc784982000f709cf4aa2ce8de9dd19a1d2f7e50f8f8dbde551efe86\"}, {\"bytes\": 43870, \"path\": \"carr_library/audio/dsp.py\", \"sha256\": \"9290b14d73dee6f09b0d982120052c2622945df1b4ccd96ffa54e0c363ca6fe7\"}, {\"bytes\": 4537, \"path\": \"carr_library/audio/effect_controls.py\", \"sha256\": \"a1edb32dfaf12dc26fe24ae7ec230f6c952d2a5906f66cc85c20eb32e68d77ef\"}, {\"bytes\": 9890, \"path\": \"carr_library/audio/effect_presets.py\", \"sha256\": \"669501501c0ddb5433e43fc0cbc4cd5d78f2b481d1959d452d3c334901f94b30\"}, {\"bytes\": 8062, \"path\": \"carr_library/audio/effects.py\", \"sha256\": \"81cfc8641d350d258b1e9294a0c8029e0177dd76c34cc9c9c26373299323562c\"}, {\"bytes\": 13497, \"path\": \"carr_library/audio/local_runtime.py\", \"sha256\": \"c007261d7632c2863496b54113d4309054d029e9b1964506a1c53a4fb8ff2c7a\"}, {\"bytes\": 32775, \"path\": \"carr_library/audio/metadata.py\", \"sha256\": \"64726620bb5c80f411f1866feeaebc7b70d4a7571e1fbe8e5e5f6346bac80ba2\"}, {\"bytes\": 7377, \"path\": \"carr_library/audio/metadata_review.py\", \"sha256\": \"9c866ffa07c24f1e8d3c3c3393931e17adf46a85c747e4d039d7dcb2eeb3d9ea\"}, {\"bytes\": 31180, \"path\": \"carr_library/audio/model_voices.py\", \"sha256\": \"b3feecba08d652469b6ebc3c02c23387e5e0655f0a19e1d04af188c48edfbb0b\"}, {\"bytes\": 9155, \"path\": \"carr_library/audio/models.py\", \"sha256\": \"a22ba261813330f2e4ce1dc6d44fb02c8988ea1a849cb43b2951a175293945dc\"}, {\"bytes\": 31071, \"path\": \"carr_library/audio/music.py\", \"sha256\": \"1ec56edd569a74ba0e48487b0005ef6b3fdfa1e4bf70e064ad68441d490d0ca8\"}, {\"bytes\": 29919, \"path\": \"carr_library/audio/music_runtime.py\", \"sha256\": \"6b7f86ae8f7252c8cfadb6f2780863874cd64f915bd53b796f998c78ca48534e\"}, {\"bytes\": 9437, \"path\": \"carr_library/audio/music_settings.py\", \"sha256\": \"be09bf4a27a9c04a09c3711d053fc3da4afcb6d5d73af190da2adc874a6788f9\"}, {\"bytes\": 25485, \"path\": \"carr_library/audio/musicgen_worker.py\", \"sha256\": \"61767fa6f05677fdf24dec97100a09b508204bd29af4e82a3652e72087be95f3\"}, {\"bytes\": 4384, \"path\": \"carr_library/audio/narration.py\", \"sha256\": \"086fa6ee4d033b59347ae9df329f071b6b8f1afe9e8f5a3e3be8f95bf84fe938\"}, {\"bytes\": 8861, \"path\": \"carr_library/audio/package_publication.py\", \"sha256\": \"bda4769c6992ecbf455e375a501146fe5af15d31ea8829dad5a5390de3bdd594\"}, {\"bytes\": 8564, \"path\": \"carr_library/audio/playback.py\", \"sha256\": \"d1cc9102d9dcce28ee88977b558632629532674dd5d6fb95da4b3ee4622665da\"}, {\"bytes\": 29448, \"path\": \"carr_library/audio/process.py\", \"sha256\": \"b507c118d3aa93152169df7965dad2cb6dcf1fe824b5bdd9c5f627e243be5dd1\"}, {\"bytes\": 36285, \"path\": \"carr_library/audio/projects.py\", \"sha256\": \"a738b67570b8374618e4b71016c9719998cc24e3b5bfcaac757158fb0115ca8e\"}, {\"bytes\": 16980, \"path\": \"carr_library/audio/pronunciation.py\", \"sha256\": \"77d93b0e591f3fbb2e3c52542d648fab5d65fa4557885ef913637ea9d145a5fb\"}, {\"bytes\": 56112, \"path\": \"carr_library/audio/recording.py\", \"sha256\": \"6429a61fe256f274305b98c69e6dfe17e14600e69e9b461cf272fa1dbdc1c341\"}, {\"bytes\": 15615, \"path\": \"carr_library/audio/recording_monitor.py\", \"sha256\": \"14f8274f6fed8ad0ac2923717aa17f482b399ebcf3291f8746b8772013364ac7\"}, {\"bytes\": 39467, \"path\": \"carr_library/audio/render.py\", \"sha256\": \"3e96f9628d6a0f5137da226f15767cde6696ae4cac43b3e8751a58818b783353\"}, {\"bytes\": 18343, \"path\": \"carr_library/audio/runtime.py\", \"sha256\": \"312f69ce19e30d0ebc3eb8dec2baf850dadc021cfbd3c74a24a5ad183bfc27d6\"}, {\"bytes\": 12143, \"path\": \"carr_library/audio/silence.py\", \"sha256\": \"b6afdeb4fd0dcb3e5575c60fbe333af1c88d7c4d556ca18dc0e582313459c280\"}, {\"bytes\": 27810, \"path\": \"carr_library/audio/voice_lifecycle.py\", \"sha256\": \"0d134b48606d127bdd6179ce938d48da100a356da78ebc0a73b1abaebf091af9\"}, {\"bytes\": 10539, \"path\": \"carr_library/audio/voice_manifest.py\", \"sha256\": \"8353d58898c6c34441c058c1ea9232b999201d926dbde493d3040863dc2d19ce\"}, {\"bytes\": 38205, \"path\": \"carr_library/audio/voice_packages.py\", \"sha256\": \"5742183f44368fd1ab9f699dfc6da324ad0fbb1c39774ce76879c1d2676f5275\"}, {\"bytes\": 25812, \"path\": \"carr_library/audio/voice_reference.py\", \"sha256\": \"2d6d287e2169f2934a2a9c51186983932a79f40d2211f909c11006297f88afad\"}, {\"bytes\": 8783, \"path\": \"carr_library/audio/voice_settings.py\", \"sha256\": \"60cd9fa521929c85c5e189bf486a93a6f14e11371cb08d809dedd2360681bdd2\"}, {\"bytes\": 33587, \"path\": \"carr_library/audio/voices.py\", \"sha256\": \"68f0b5f68394f50c92db610e898469aa73f59c8231affb44c788989d15c59ce3\"}, {\"bytes\": 23275, \"path\": \"carr_library/audio/windows_process.py\", \"sha256\": \"6907f4bf2253cc2459b3d0369947dc319a4a084ebbd8500f92fd1360177d5fa6\"}, {\"bytes\": 13923, \"path\": \"carr_library/audio/windows_setup.py\", \"sha256\": \"06049a81e9445654a099a18baf8c61d3e4d33d9ee132721b389d8a7149a750f0\"}, {\"bytes\": 38816, \"path\": \"carr_library/backup_compat.py\", \"sha256\": \"b8d6729976b5ffb5a9151a4032e14bbe73792a3985f7a91d920873d81b0c7f93\"}, {\"bytes\": 4373, \"path\": \"carr_library/backup_generated.py\", \"sha256\": \"86312a5b7a0f2e5657912455c9a07eac77f3fd805ead7af7b8f11dde48420b00\"}, {\"bytes\": 25803, \"path\": \"carr_library/backup_incremental.py\", \"sha256\": \"14fa454fd81308d3e5ed72fdccb5ca6427219070c574724fbdb51ace2ca7d267\"}, {\"bytes\": 3406, \"path\": \"carr_library/backup_incremental_cli.py\", \"sha256\": \"6b775407f23c05098c47d2f47b1c0945140328097e4e8fd590411c9d3ceaebd6\"}, {\"bytes\": 9604, \"path\": \"carr_library/backup_legacy_preferences.py\", \"sha256\": \"6e7ff9c8164f7d1de91c530ea079a94b0c0b203d1be0bc0a99e4d0ed63fd3248\"}, {\"bytes\": 29624, \"path\": \"carr_library/backup_producers.py\", \"sha256\": \"28c95b9d8b57894ef49bedd4397edc077a42a6ffd1e6541cfd5daf836b534d32\"}, {\"bytes\": 31634, \"path\": \"carr_library/backup_sidecars.py\", \"sha256\": \"3fb229ef73f887de84a0002ea774cc9e11206403b24df0d0d4c5ff20b6641af7\"}, {\"bytes\": 34869, \"path\": \"carr_library/backup_transcription.py\", \"sha256\": \"f1cd82f6ffdcce3bbcc686f39c5715b7cc5f682319a63b77665372ebfd4794b0\"}, {\"bytes\": 6263, \"path\": \"carr_library/bibliography_cli.py\", \"sha256\": \"f74a329a990709189afd715078856d6712e6df0ef27157ab09bc7153c46203c6\"}, {\"bytes\": 2223, \"path\": \"carr_library/catalog/_filetype/archive.py\", \"sha256\": \"2be41e49c62fb03c9e615c77f6f4ba32b545f850a65cdc884e347e2e8f65e0b3\"}, {\"bytes\": 647, \"path\": \"carr_library/catalog/_filetype/base.py\", \"sha256\": \"76fbea563b92ab0b5b876ab23fb42799e594594b1fac7c09feb384809983419f\"}, {\"bytes\": 11668, \"path\": \"carr_library/catalog/_rispy_parser.py\", \"sha256\": \"3d4f950a14c6830ff9eda9dbafc7cad91bb1814703b07dc4d0251e623bdd551d\"}, {\"bytes\": 9142, \"path\": \"carr_library/catalog/bibliography.py\", \"sha256\": \"00117c0ef176a139cd2021b4c20aa3969b4232d55ae685903f968a6ed49f149b\"}, {\"bytes\": 19319, \"path\": \"carr_library/catalog/catalog_reports.py\", \"sha256\": \"bbfcbdde5e0d57ca3f8ec1bd1cdbad877c92ad8f8f7fbfc827db1219b27ec719\"}, {\"bytes\": 3315, \"path\": \"carr_library/catalog/epub_metadata.py\", \"sha256\": \"7a319e15e7f6419a8d3739408318c95075bdb65d3286fcd3fa673e756cc099c3\"}, {\"bytes\": 20041, \"path\": \"carr_library/catalog/insights.py\", \"sha256\": \"a03f1a122319b479ccb0287963652fe120b4e811d8a80de5883cb377a049ff66\"}, {\"bytes\": 4426, \"path\": \"carr_library/catalog/intake.py\", \"sha256\": \"99ca2908b7206f4220749322ceb323ec0d20195bd80577c01af4a7514e98a01c\"}, {\"bytes\": 7018, \"path\": \"carr_library/catalog/membership.py\", \"sha256\": \"1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937\"}, {\"bytes\": 2494, \"path\": \"carr_library/catalog/metadata_preview.py\", \"sha256\": \"9f5cecb398dad739dc2f48f214915ff0dc053a1df1e065fbfae09758fe3987ad\"}, {\"bytes\": 6354, \"path\": \"carr_library/catalog/office_archive.py\", \"sha256\": \"b8b0ad9e6be648c385cc17f1aa00357f47dc49607095b25b382cd27eee89076b\"}, {\"bytes\": 7893, \"path\": \"carr_library/catalog/quality.py\", \"sha256\": \"eee36c1875f7fd915def602e7dd59c2debaf8758c8dab43ebfb7c1ff8bde9e3b\"}, {\"bytes\": 5155, \"path\": \"carr_library/catalog/read_views.py\", \"sha256\": \"5a4a44c65b4536211cd74348da6e2b2a8bff4aff44987d1ff050380fcfc90746\"}, {\"bytes\": 11691, \"path\": \"carr_library/catalog/reference_exchange.py\", \"sha256\": \"864d6bce6928a8a217a019ea64f863ff588c6f553279deb2f6e71f015aef10c0\"}, {\"bytes\": 3568, \"path\": \"carr_library/catalog/registration.py\", \"sha256\": \"602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef\"}, {\"bytes\": 3567, \"path\": \"carr_library/catalog/ris_preview.py\", \"sha256\": \"b9ba89dc5674d9fa015ccb879f42e442a9f4634262820a8f1b3d7d7c4139d05a\"}, {\"bytes\": 7075, \"path\": \"carr_library/citations/anchors.py\", \"sha256\": \"ed1bdc2e64d8fa4574cde60baf2a38cea0669d6f229ef8caed202f587332f14a\"}, {\"bytes\": 2517, \"path\": \"carr_library/citations/authorized_action.py\", \"sha256\": \"0edec0ad6cb9c550b088af4e400e8d6300789350e4cb77f6df78dcbe332c18e3\"}, {\"bytes\": 15250, \"path\": \"carr_library/citations/bibliography_workbench.py\", \"sha256\": \"e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a\"}, {\"bytes\": 46588, \"path\": \"carr_library/citations/csl.py\", \"sha256\": \"4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6\"}, {\"bytes\": 2751, \"path\": \"carr_library/citations/historical.py\", \"sha256\": \"a4421f05e5c80c614219c4b4b00456d7f1ac6b66e2cd769045a0b9c711613d9e\"}, {\"bytes\": 3852, \"path\": \"carr_library/citations/pdf_review_attestation.py\", \"sha256\": \"9c45c73f73ae2a6b5669d141bf5e74e15e5fd2f235bf878b21cfc8348d43cc5d\"}, {\"bytes\": 1453, \"path\": \"carr_library/citations/printed_label_attestation.py\", \"sha256\": \"8d7f6343c1e6f74e1737869975a8d59bf9f84c067ba39b87e02073303d98eae2\"}, {\"bytes\": 3236, \"path\": \"carr_library/citations/streamed_text_attestation.py\", \"sha256\": \"9c4af9f174f89090045e7988dea43d645d2959ed441fbd224c247b9de74da2da\"}, {\"bytes\": 2678, \"path\": \"carr_library/citations/text_attestation.py\", \"sha256\": \"2f112b3dc33fc5394b1c4ca6d8bb130af1b5ad7d69a83bce87393182f92e880f\"}, {\"bytes\": 332, \"path\": \"carr_library/conversion/__init__.py\", \"sha256\": \"6d748ecc5baa54c845aa650e3b6b3b31a63161b76ed63a186d25ee26105764c2\"}, {\"bytes\": 23662, \"path\": \"carr_library/conversion/formats.py\", \"sha256\": \"bcfd2203c20aebd8fc3d7085785b55f8ca9e8156d222ff2ffab439916e51652d\"}, {\"bytes\": 1469, \"path\": \"carr_library/conversion/models.py\", \"sha256\": \"172384f9f1a2a6603d41eccef5a6bda8cdf2d4b2df651fd3b7575caf58182ee0\"}, {\"bytes\": 19768, \"path\": \"carr_library/conversion/service.py\", \"sha256\": \"32bf840ff7673252fc176db1f85b5752bd251c3463210faab84f4e2e3655d278\"}, {\"bytes\": 4047, \"path\": \"carr_library/conversion/worker.py\", \"sha256\": \"be4df022e7f1c92e542df146ebc010f8f9f070c630b484cbb6f4d1c428a1e178\"}, {\"bytes\": 2419, \"path\": \"carr_library/data_paths.py\", \"sha256\": \"e7136a7538df7b3549c87ab1b2a260dee9677c9e4073f3d0d399dea0ced285c1\"}, {\"bytes\": 4941, \"path\": \"carr_library/delivery_cli.py\", \"sha256\": \"411a1b1f08e41715a33ffcf18069d26e9ccf2565811d16d79c966cf556fc4575\"}, {\"bytes\": 9191, \"path\": \"carr_library/delivery_contract.py\", \"sha256\": \"fc4546cc957b5ea206c9c37bc223b688882041595037665453cd9356524844d0\"}, {\"bytes\": 18683, \"path\": \"carr_library/delivery_service.py\", \"sha256\": \"5c737e18cb79f9cdc377c4dfc609500161e56a6df30d1bfdb1e2a6cc6924c732\"}, {\"bytes\": 5136, \"path\": \"carr_library/desktop_preferences.py\", \"sha256\": \"d48b5ff5dbcbd7d8676d64cbafcf7c9ebbe5780bb0b6d8fe5c357d09fff06c31\"}, {\"bytes\": 4413, \"path\": \"carr_library/diagnostics.py\", \"sha256\": \"e6a6bb07045a9282ab1c123c4209ae2106662c2847c90cfb7d29a256141f576f\"}, {\"bytes\": 9529, \"path\": \"carr_library/durable_state.py\", \"sha256\": \"7dc850a916ca74b28557f273ef69a6f24b27883f8bd0b494c976d7552266ddd1\"}, {\"bytes\": 11322, \"path\": \"carr_library/evidence_drafts.py\", \"sha256\": \"0e3e7dc501ae97b69bba7092f874458f9db4d784a831723e1cc276273c61361d\"}, {\"bytes\": 14372, \"path\": \"carr_library/extract/document_formats.py\", \"sha256\": \"21d743af2e2e563c9fc06061e878f63f5143f21c47ec9ef98a6d00764b21efa8\"}, {\"bytes\": 27862, \"path\": \"carr_library/extract/document_formats_text.py\", \"sha256\": \"33cfda5944cb44e1f6ee5ce030a5acddf3773f64639c08164f24e98d35dd4a59\"}, {\"bytes\": 38033, \"path\": \"carr_library/extract/document_formats_xml.py\", \"sha256\": \"96f710c902646b1c0c298cee776c349ffd5be88afa5309082c73ddb42094417a\"}, {\"bytes\": 4780, \"path\": \"carr_library/extract/docx_ordered.py\", \"sha256\": \"734deaec7bde042c756c2468924ab67b32ecd3b49a8aa2a699db851d3b9845f8\"}, {\"bytes\": 34931, \"path\": \"carr_library/extract/epub_ordered.py\", \"sha256\": \"b02d6c487bdd8267c6808cf2f8c57a564e1739faf8975e466fada5373f290990\"}, {\"bytes\": 10921, \"path\": \"carr_library/extract/language_detection.py\", \"sha256\": \"58d9b7bf3c1c63612cb84e7de0e7adc713ca2331c5d2e7adddefcb8da50cbaa0\"}, {\"bytes\": 9053, \"path\": \"carr_library/extract/language_manager.py\", \"sha256\": \"edb3d9cebc5814b748512e64a2abb9feb3319593d2165cbc50e990109227b987\"}, {\"bytes\": 4486, \"path\": \"carr_library/extract/managed_ocr.py\", \"sha256\": \"ec19f288b36551a9e33808e1677b6e7533d5b8625a9ed605738d8260c63cb477\"}, {\"bytes\": 5301, \"path\": \"carr_library/extract/model_catalog.py\", \"sha256\": \"7e22c785eb0517d80e22d00f1342f2531e160b1c0fe9639b32e4a3782158fb12\"}, {\"bytes\": 17979, \"path\": \"carr_library/extract/ocr_languages.py\", \"sha256\": \"94a0f8ddd553951735aeb73ad8151cb77f66b990d5c0415abf4e84b492528e69\"}, {\"bytes\": 15426, \"path\": \"carr_library/extract/ocr_model_catalog.py\", \"sha256\": \"72733887aa0af5ca7ac078010a0f86465ce924b8085053c3f79139286c877cdb\"}, {\"bytes\": 18072, \"path\": \"carr_library/extract/ocr_model_store.py\", \"sha256\": \"b08197865eb30d50124d8c23a9513af5892b91ac6e1134897e9af07f6f8919ba\"}, {\"bytes\": 4929, \"path\": \"carr_library/extract/ocr_orientation_bridge.py\", \"sha256\": \"75bd4e0e66acb7bb2fece1e4cac93db2dd63212b3aee7cecc70f83f403af324e\"}, {\"bytes\": 13492, \"path\": \"carr_library/extract/ocr_process.py\", \"sha256\": \"9089c9e75945b5f720c81229881fb998c4d12c9a1302fde78c33da11a2cbbea2\"}, {\"bytes\": 9619, \"path\": \"carr_library/extract/ocr_regions.py\", \"sha256\": \"05d5709f9ac75c032b43b845ea8fabad85ce63d31760b9839e0e0d7e210484e6\"}, {\"bytes\": 17189, \"path\": \"carr_library/extract/ocr_runtime.py\", \"sha256\": \"01a1ed0aae6d0a906b63f2901510435df9c0fa6b5c2afebbe70b8284fcae3c1b\"}, {\"bytes\": 3639, \"path\": \"carr_library/extract/orientation.py\", \"sha256\": \"37b06cc1f887d2086eb16a8463e50be8f178bac8effc75b0d8c49d8c4530a155\"}, {\"bytes\": 20681, \"path\": \"carr_library/extract/page_ocr.py\", \"sha256\": \"519381355ab587ef8acddb84920d860e34e5554fc9a15a330fcf4d4a543217ce\"}, {\"bytes\": 2862, \"path\": \"carr_library/extract/pinned_tessdata.py\", \"sha256\": \"02bbfccd560d26c42acfeaf6f0f7798c4a0ec025cf0bc70d2964b9894f2a1735\"}, {\"bytes\": 5369, \"path\": \"carr_library/extract/runtime_identity.py\", \"sha256\": \"16e1229ae1d4cebdc7c35330b8a072e62c4ac7d98873d579a3524707fa08fc70\"}, {\"bytes\": 2169, \"path\": \"carr_library/file_publication.py\", \"sha256\": \"84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0\"}, {\"bytes\": 3600, \"path\": \"carr_library/ingest/asset_copy.py\", \"sha256\": \"db1c5d742fa265feea81177f731c504b3e5eaba6c7c786c5e882ead7011daf96\"}, {\"bytes\": 12043, \"path\": \"carr_library/ingest/batch_scan.py\", \"sha256\": \"d5c30d19a03dd5db01bfb75285f25d248225b581abcc5e43b72872f6ee80cf9f\"}, {\"bytes\": 20364, \"path\": \"carr_library/ingest/batches.py\", \"sha256\": \"ebff6a1f97f2df941aa38dbae2fed9bc804aadc93060428a969fc2d998181b3a\"}, {\"bytes\": 4585, \"path\": \"carr_library/ingest/bundle.py\", \"sha256\": \"e1c60c67722ca9f2e36913faa8b8fa6e5c923315cdda2bfc407b3a12a0f8f6c5\"}, {\"bytes\": 5562, \"path\": \"carr_library/ingest/catalog_asset_copy.py\", \"sha256\": \"ada58b978ac96971bd2c75ca306667cdc3c64e9ba70efdc5509650f404e06ac2\"}, {\"bytes\": 12902, \"path\": \"carr_library/ingest/pipeline.py\", \"sha256\": \"afe306f6cb6b79bc4129f258c013fe5f3b6b5683b74f625072e32fbaec298a62\"}, {\"bytes\": 4942, \"path\": \"carr_library/ingest/restore.py\", \"sha256\": \"597f6dd758df252004084ad3cdadcb028ee68a5796bf2c2919098a6dfbf33859\"}, {\"bytes\": 16212, \"path\": \"carr_library/ingest/retained_assets.py\", \"sha256\": \"5c1616f5f813958d681cfd22d04ac3833176a77a7bbbb0842fb68818571d73ea\"}, {\"bytes\": 10534, \"path\": \"carr_library/ingest/streamed_ingest.py\", \"sha256\": \"ffc6ca21cc2548b3ae4ff3e00c1614c627713a1dda30cb158a527adfc6e21662\"}, {\"bytes\": 13584, \"path\": \"carr_library/ingest/streamed_text.py\", \"sha256\": \"4bfa147ab3a0392959925c5894b61c35efe692c213b9a6592be9b070184001e9\"}, {\"bytes\": 63892, \"path\": \"carr_library/ingest/worker.py\", \"sha256\": \"1d2a3bbdea25f1c0f562bac7516e9530548817d4c927fb7ddc8723509cedf89e\"}, {\"bytes\": 4226, \"path\": \"carr_library/ingest/writer_guard.py\", \"sha256\": \"4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c\"}, {\"bytes\": 16263, \"path\": \"carr_library/installation_lease.py\", \"sha256\": \"63068eeb4ab1aa734719df0d2b6156bda5907b8ee74dd690da958bcfb8a72562\"}, {\"bytes\": 9557, \"path\": \"carr_library/keybindings.py\", \"sha256\": \"deff0fe8fdc77973c025839f599049707ae0fc62f00910d8e1db47cddba28217\"}, {\"bytes\": 698, \"path\": \"carr_library/language_qualification/__init__.py\", \"sha256\": \"1678bea4e6ee176d6aca9774cfe6bdc517ac7245dd8707858679701a76cebd14\"}, {\"bytes\": 23220, \"path\": \"carr_library/language_qualification/catalog.py\", \"sha256\": \"2d0584f47ba013295e8ab58ecd6a737c752da771a589742029b09d290f75f440\"}, {\"bytes\": 26767, \"path\": \"carr_library/library_backup.py\", \"sha256\": \"fced0aece33e72c751e8cf3c421a2b312e3f356bbf2a978449ae23997da0357e\"}, {\"bytes\": 4223, \"path\": \"carr_library/managed_installation.py\", \"sha256\": \"9b70d31705ad4ee7a600649018d3d7c1e07bbe922814fbd70a337f8e9f2d86fe\"}, {\"bytes\": 8305, \"path\": \"carr_library/native_checks.py\", \"sha256\": \"769e3e3573c2a88b52ca4416d9fe86b3126af995ccc7a7ac94bd35587488d653\"}, {\"bytes\": 1919, \"path\": \"carr_library/native_file_metadata.py\", \"sha256\": \"cabb32f0f8b5a6eb717fba829ffe1e4ab060be59cf12ca911208cf78a79fb4c9\"}, {\"bytes\": 11662, \"path\": \"carr_library/native_runtime.py\", \"sha256\": \"5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf\"}, {\"bytes\": 1534, \"path\": \"carr_library/offline_policy.py\", \"sha256\": \"0c6dc28dae77999b6edf12a27a758c9b5c2ac0383b34faa908d15340a0a71fa0\"}, {\"bytes\": 630, \"path\": \"carr_library/operations/__init__.py\", \"sha256\": \"084aa014a1ecd4f012129aaf6a6fde1fd5b26b8a49e7a47d68b10505656ea4f6\"}, {\"bytes\": 5032, \"path\": \"carr_library/operations/_locks.py\", \"sha256\": \"2cdc217947d86148697647d753d324b24df9c59eacdc53b458964344f1ea5fd2\"}, {\"bytes\": 20107, \"path\": \"carr_library/operations/broker.py\", \"sha256\": \"604b7dbe1876047c3f2be5315a46995744ef90e3ef619f80e80e000fb3f80504\"}, {\"bytes\": 18156, \"path\": \"carr_library/operations/facade.py\", \"sha256\": \"8106b530a13262e87cb6f733f322ae2bcb4f74a441dcb0c3061fcb3c43902285\"}, {\"bytes\": 7463, \"path\": \"carr_library/operations/models.py\", \"sha256\": \"cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545\"}, {\"bytes\": 1926, \"path\": \"carr_library/operations_cli.py\", \"sha256\": \"bde1b2ffe66d0902a1a33646eacf635e4b87f9eecf224112cbddae74f969ff02\"}, {\"bytes\": 68325, \"path\": \"carr_library/pending_backup.py\", \"sha256\": \"5a1c55b87879b67e8ac697198da51dea899f760b93f85e75d0f42d1edf01a50b\"}, {\"bytes\": 2278, \"path\": \"carr_library/preferences.py\", \"sha256\": \"751ba9b4e8e052bb7cfe5e8786e4fc95d93f8869e1e18bb740dfe630b0829d66\"}, {\"bytes\": 1971, \"path\": \"carr_library/reader/context.py\", \"sha256\": \"08839acab4d592c2cdd4e0f7a67e8b1dc8e6d874ad9e8652b21a0eae70dab60d\"}, {\"bytes\": 10428, \"path\": \"carr_library/reader/ebook.py\", \"sha256\": \"84ee6c0a1cbf28124e87740b696baf37abe50740a0782bbc5ec9cceb5a5262a1\"}, {\"bytes\": 26856, \"path\": \"carr_library/reader/ebook_audio.py\", \"sha256\": \"3ba46eb440e6f7a8e7761d1927f940705a4eaed86e5d2c239f873092f290277f\"}, {\"bytes\": 18336, \"path\": \"carr_library/reader/ebook_contents.py\", \"sha256\": \"464206446d97327efced609a0509f56199b16764f0210b2975ef13c22149acfe\"}, {\"bytes\": 13697, \"path\": \"carr_library/reader/media_overlay.py\", \"sha256\": \"bff75b25cbc2b4741ebfc13de7bf34081df8d2163cdcbf10733739023c545df1\"}, {\"bytes\": 10999, \"path\": \"carr_library/reader/reading_desk.py\", \"sha256\": \"43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706\"}, {\"bytes\": 18125, \"path\": \"carr_library/reader/reading_state.py\", \"sha256\": \"0da032519ad785874cb6a33dcfee86c1f73d7bad7700ad3395040b4ef3e9d332\"}, {\"bytes\": 21239, \"path\": \"carr_library/reader/source_file.py\", \"sha256\": \"a40f7fa2d26d8a47cee2e1f1bd9f1460a2f7b1f4dbe779cbd5f69d58d01a7b47\"}, {\"bytes\": 7986, \"path\": \"carr_library/recording_backup.py\", \"sha256\": \"4a5681bfb157c40ea5bbac64c65bd9f550a510f4af55962d4ab2fbfcce863109\"}, {\"bytes\": 5780, \"path\": \"carr_library/research/_vendor_rispy/config.py\", \"sha256\": \"ea3484cac636d44c03f7f9e5177bc90565b237c156166adecbaeca3eb6a79f73\"}, {\"bytes\": 1610, \"path\": \"carr_library/research/_vendor_rispy/utils.py\", \"sha256\": \"230d4c707d18e514fbc804111aff51101ad75ace6b8337d6151225bc7e088300\"}, {\"bytes\": 8465, \"path\": \"carr_library/research/_vendor_rispy/writer.py\", \"sha256\": \"e54aa7d5a048d8cc542e1835f4b54ddccaba1b56f4a90c3d0962d58225c30ee6\"}, {\"bytes\": 15152, \"path\": \"carr_library/research/academic_documents.py\", \"sha256\": \"8660a0cb12bf5534c44b7c0c9105beef181f2fb9abc737c76c138601029e5059\"}, {\"bytes\": 49240, \"path\": \"carr_library/research/academic_library.py\", \"sha256\": \"2e2b6c667fa0e12e9db9cebc97682ff48c7fccb50ff2fa812eaef944fb2314ea\"}, {\"bytes\": 2962, \"path\": \"carr_library/research/anchored_export.py\", \"sha256\": \"8f12653c5fca112bcbe57f97b3e0c7fd08b69871d49f7dd294528130724aba2c\"}, {\"bytes\": 25781, \"path\": \"carr_library/research/bibtex_import.py\", \"sha256\": \"6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a\"}, {\"bytes\": 14007, \"path\": \"carr_library/research/evidence_export.py\", \"sha256\": \"c31c606f4c89d2682d3a159682fc4d75138fbaeed19f6e78df427e9adad32505\"}, {\"bytes\": 19612, \"path\": \"carr_library/research/export_file.py\", \"sha256\": \"7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391\"}, {\"bytes\": 12046, \"path\": \"carr_library/research/literature_matrix.py\", \"sha256\": \"a8a4686129ebfd9a023f8d3709e17586053d3cff5bd55a706548f480bff035d2\"}, {\"bytes\": 10749, \"path\": \"carr_library/research/notebook_search.py\", \"sha256\": \"2ace48797ac06c78c7970ed53aff840f718b0dd04e5be8e2cbcb9eca9ed60371\"}, {\"bytes\": 8104, \"path\": \"carr_library/research/outline_export.py\", \"sha256\": \"e21a626a9fa65496577847a8c9842661ab75dadc7bda1a07bc0b6f3d80c6ba5d\"}, {\"bytes\": 6555, \"path\": \"carr_library/research/query_manager.py\", \"sha256\": \"8f384eb1b0df69ac01ac524d5f4eb3921998c0370b731dcf75435310855b0d35\"}, {\"bytes\": 6722, \"path\": \"carr_library/research/review_matrix.py\", \"sha256\": \"6e2468d20e63186f95820451ac009f20bc9d0785cff0c01f9f28e160efe7de1b\"}, {\"bytes\": 6968, \"path\": \"carr_library/research/saved_evidence.py\", \"sha256\": \"325f7ca48570c58d68b66a3a6018f6e02554e8d2298f01ca9fc12872452cb7c9\"}, {\"bytes\": 4238, \"path\": \"carr_library/research/saved_topic_query.py\", \"sha256\": \"ae63ccaa49e19c1579b3b17350668f098e9cff7142d858f86df5799bc311e178\"}, {\"bytes\": 4420, \"path\": \"carr_library/research/span_snapshot.py\", \"sha256\": \"cf6ea9b497b4c3ff5ed2481c658bd1d61a4068f4b57f8c6ad9e443095dacab5b\"}, {\"bytes\": 15448, \"path\": \"carr_library/research/topic_literature_matrix.py\", \"sha256\": \"8ad3ff066d967d6e7df6dce5cd6a9e9c6d692fdb3caa849b078352226d14ed3c\"}, {\"bytes\": 5726, \"path\": \"carr_library/research/topic_search.py\", \"sha256\": \"08d0e3cc72f8cc1606a4bd68d172d61ea4639b210cd2e8df0b9802b97ccd72cb\"}, {\"bytes\": 4397, \"path\": \"carr_library/research/topic_tree.py\", \"sha256\": \"7c39de4820f769f1452e3b039ec3e9c138452d3c2cb78aaa49f6c1e4cea97e86\"}, {\"bytes\": 29142, \"path\": \"carr_library/runtime_settings.py\", \"sha256\": \"15776282bf8f1aba5d5d66bcfb0bc5a63e83ba8511e814a2f6d8f58b33f10e53\"}, {\"bytes\": 407, \"path\": \"carr_library/search/_vendor/rifflux/rrf.py\", \"sha256\": \"abb7dd0b3c2448e2efe27d8c55798011723aae540a68e4f5629b78e7140fb4c5\"}, {\"bytes\": 14307, \"path\": \"carr_library/search/advanced.py\", \"sha256\": \"58d8133499b7dd95bcdb408f4109bb7d0c6bc9430a6fd317f5556055c353225a\"}, {\"bytes\": 14338, \"path\": \"carr_library/search/federated.py\", \"sha256\": \"9b63b2893bd3efab1f1e86e029140e4e2e281057d49d9ac978ffb329daff4be8\"}, {\"bytes\": 10373, \"path\": \"carr_library/search/federated_pages.py\", \"sha256\": \"37cdaff1921a8cd110702330d1a84d674b2e9d106eef2fb6bfb3d9d60a5f9888\"}, {\"bytes\": 19621, \"path\": \"carr_library/search/literal.py\", \"sha256\": \"41be0ca03cff077a5d886cd6911dee88f0ee8206093059b4e4dea96931c173fd\"}, {\"bytes\": 5454, \"path\": \"carr_library/search/pagination.py\", \"sha256\": \"718beb4a7bbf10a0917e0468ee7d9f79c70f34a0fb88b6e79acf7817c0e2994b\"}, {\"bytes\": 9713, \"path\": \"carr_library/search/presentation.py\", \"sha256\": \"d326d134d98fd54cc936c35a81580791b355bff6587521619b2b82a488ea0546\"}, {\"bytes\": 10423, \"path\": \"carr_library/search/semantic_windows.py\", \"sha256\": \"8e69187f714b41ffd923bc3fb594d5bfef6648b7e1af4b5159fdc89f104e0b38\"}, {\"bytes\": 16508, \"path\": \"carr_library/search/source_windows.py\", \"sha256\": \"19cf4a19bd4b0f6e72e452de6f07c09203de22e898444ca48d7bfd01849b116c\"}, {\"bytes\": 23903, \"path\": \"carr_library/search/thematic.py\", \"sha256\": \"dd1aa58ff4b429e08f1d3e4742c4a1e4169f6b175a3792c0a1f3d5a6935688e5\"}, {\"bytes\": 16033, \"path\": \"carr_library/semantic.py\", \"sha256\": \"5ce31f0b4cc53cad499038721d9a8421b0d4a8fb0669a6d9b4ae0d61d1a5750e\"}, {\"bytes\": 13067, \"path\": \"carr_library/semantic_cache.py\", \"sha256\": \"e0aea7a586ec2c9a05a867a3beaa177dd7bb6306a530c38647f40230890181c0\"}, {\"bytes\": 944, \"path\": \"carr_library/speech/__init__.py\", \"sha256\": \"39f6c788a0c427de2528bcd5670566424dcc76b81d1098526e37e518315b3f77\"}, {\"bytes\": 10846, \"path\": \"carr_library/speech/_io.py\", \"sha256\": \"338ba24fd644d911ec59327f560394f4f309b55dec9ea4261011e1474c6ddf5a\"}, {\"bytes\": 14102, \"path\": \"carr_library/speech/_wave_output.py\", \"sha256\": \"190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664\"}, {\"bytes\": 4254, \"path\": \"carr_library/speech/clipboard_reader.py\", \"sha256\": \"876061af38a20a6ed73e6761a3232e38e1e8a5dfac72726f16ca4149ef20059d\"}, {\"bytes\": 6918, \"path\": \"carr_library/speech/focus.py\", \"sha256\": \"bd46903b701068194b012f246b6d8801d27a4c1241ad64db6b986c9b7d61a115\"}, {\"bytes\": 15801, \"path\": \"carr_library/speech/listening.py\", \"sha256\": \"aad6fbeaf6385cd7f1bb2e10f18c0d40cf9dc1c5c866162836d924a8da49b6e9\"}, {\"bytes\": 4859, \"path\": \"carr_library/speech/navigation.py\", \"sha256\": \"6797cf5f4872af3be0646dedb38105b8afea9c45524e02b2d8ccd073f2c062e3\"}, {\"bytes\": 7356, \"path\": \"carr_library/speech/output_devices.py\", \"sha256\": \"ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5\"}, {\"bytes\": 37054, \"path\": \"carr_library/speech/player.py\", \"sha256\": \"2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4\"}, {\"bytes\": 19665, \"path\": \"carr_library/speech/playlist.py\", \"sha256\": \"e1131ebaa7c05b6e2e89e14c5af1cb66819b90b7b751ca682e8e76a86c1c2885\"}, {\"bytes\": 10562, \"path\": \"carr_library/speech/preparation.py\", \"sha256\": \"849a8b310441fd929fd271c14f8c59883bf234936509ef1885b25278b5dd954e\"}, {\"bytes\": 4495, \"path\": \"carr_library/speech/presentation.py\", \"sha256\": \"3fde5febfd8c375a9756dcce7dfdd3040ec04fa69fa58617c15f0aef8030e176\"}, {\"bytes\": 15728, \"path\": \"carr_library/speech/progress_speech.py\", \"sha256\": \"20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393\"}, {\"bytes\": 22695, \"path\": \"carr_library/speech/reading.py\", \"sha256\": \"9214370ce4f1aeca970a3dec937e0b3cbd672949e243fca2bf78a44d94f46da2\"}, {\"bytes\": 10927, \"path\": \"carr_library/speech/reading_tools.py\", \"sha256\": \"0ec33986f54a584f3284123cac9839ac80d0dd3a19ee9044042c14568e47cf17\"}, {\"bytes\": 886, \"path\": \"carr_library/speech/regex_worker.py\", \"sha256\": \"4c811cd824979cac6d2a504b98fb655165b821b416caf379734f780e06c855f5\"}, {\"bytes\": 34240, \"path\": \"carr_library/speech/runtime.py\", \"sha256\": \"4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd\"}, {\"bytes\": 8339, \"path\": \"carr_library/speech/sapi_native_worker.py\", \"sha256\": \"6512d23dc1e1f6ad46fe34df593535db5279f2be54123c8861e10e87d1b6e7ed\"}, {\"bytes\": 5007, \"path\": \"carr_library/speech/session.py\", \"sha256\": \"86c58a86b6d906bfa5a31c94d0589a34f25b9746aeeeee5f77a507dae6b11591\"}, {\"bytes\": 2859, \"path\": \"carr_library/speech/source.py\", \"sha256\": \"019a9fc6b130e6c5f73fccf25a5084a4a3b91766ca9abb70f642e2828631faa1\"}, {\"bytes\": 10252, \"path\": \"carr_library/speech/spelling.py\", \"sha256\": \"b110ce0571113a741570f6b665709adf92a77d52f9aac6328b6e23259286ef09\"}, {\"bytes\": 13115, \"path\": \"carr_library/speech/spelling_worker.py\", \"sha256\": \"698f563221238a71fb86f33989e6d3650acf518e62b7b47fc271d28ba2be6c14\"}, {\"bytes\": 6865, \"path\": \"carr_library/speech/studio_voice_adapter.py\", \"sha256\": \"8fafd0749a5661cb284c92b9d8c9cb30a9fa5219971abac9a24ab579431904c6\"}, {\"bytes\": 12794, \"path\": \"carr_library/speech/synthesis_admission.py\", \"sha256\": \"a66bc1659bf3d1d8e2cf71693f166bfb87fddf57cc75be342e3b4fc727778af5\"}, {\"bytes\": 10807, \"path\": \"carr_library/speech/tabs.py\", \"sha256\": \"c808f0c7caa537e4b2d9843f316138777daf896467c56b61e8147547cf7f32f4\"}, {\"bytes\": 14599, \"path\": \"carr_library/state_backup.py\", \"sha256\": \"d4749b69674722af5838613288f5194015a5332f5dd264dead8d5dcbdf5c59f6\"}, {\"bytes\": 20106, \"path\": \"carr_library/state_recovery.py\", \"sha256\": \"fcc232458c37f200e360b3ebc406e1f1cff7a0463c5bd1eaade690f1dabc8eb1\"}, {\"bytes\": 2997, \"path\": \"carr_library/storage/academic_schema.py\", \"sha256\": \"5778ff82886c7346c1a17581e31cba59329fd0e38891d815d6e4287df03475b2\"}, {\"bytes\": 6179, \"path\": \"carr_library/storage/research_schema.py\", \"sha256\": \"6aa83f731b3b85fa5da69b3edf4df410cea74ed1970d3d993e09dd9361567e90\"}, {\"bytes\": 30467, \"path\": \"carr_library/storage/revisions.py\", \"sha256\": \"8d71d481be5f4f0e01753d18cfc925c1a49cc802806c1aec7228ff557a9fef64\"}, {\"bytes\": 1294, \"path\": \"carr_library/storage/schema_identity.py\", \"sha256\": \"1b695fe4e8601897d40d50b451854f0963913976b20d90726a7c7a6e161abbf0\"}, {\"bytes\": 3527, \"path\": \"carr_library/streamed_import_cli.py\", \"sha256\": \"cdde703038a9806b2776d0b41dcd89498c6fbe79bd70956ba3fb095efc44abd1\"}, {\"bytes\": 272, \"path\": \"carr_library/studio/__init__.py\", \"sha256\": \"b9329f58ba231485cff3c0303e3e75fdc701858c5b7d1dcd477bceb79089c8a0\"}, {\"bytes\": 23830, \"path\": \"carr_library/studio/backup_inputs.py\", \"sha256\": \"acef13b130e56936353c509a11d1683eef3b5343c84dcf894c7e2ab2b193fddf\"}, {\"bytes\": 39035, \"path\": \"carr_library/studio/book_audio.py\", \"sha256\": \"e3ed45add96c68062afc65b117200245465b57af2162839435403dd27b1c59b3\"}, {\"bytes\": 14188, \"path\": \"carr_library/studio/book_backup.py\", \"sha256\": \"a9e3186054506d88c9e8e1c89547bb3d2297853b15762ed9f31e0a66631f1768\"}, {\"bytes\": 19552, \"path\": \"carr_library/studio/book_batch.py\", \"sha256\": \"5579bfed4980cebd67cf669602d79e93dbc15189e27bdbea3e8b8185b928ae73\"}, {\"bytes\": 16205, \"path\": \"carr_library/studio/book_cli.py\", \"sha256\": \"4b03751f98648c2bdd3fe6074ea346deb5caeca4f198c962591fa632cd74f46c\"}, {\"bytes\": 9072, \"path\": \"carr_library/studio/book_landmarks.py\", \"sha256\": \"7aaf0057397c642b8ab3205f4d76460fb63a2a4aae7a9e38dcf25f1a546b4109\"}, {\"bytes\": 7241, \"path\": \"carr_library/studio/book_source.py\", \"sha256\": \"35ef50af743c07be5314fdc4227469984f61e18338c22f2d9405d61eae8ea6fc\"}, {\"bytes\": 1644, \"path\": \"carr_library/studio/book_voice.py\", \"sha256\": \"5b708a16b9f688ccfc5079cb7e9283ce300843a95f2816227c3343a9b4ed9598\"}, {\"bytes\": 19364, \"path\": \"carr_library/studio/cli.py\", \"sha256\": \"8235f8dfdfd4304465b621f7b625b6a02028f6cc4443c9bc44ab25a0109c95d3\"}, {\"bytes\": 35099, \"path\": \"carr_library/studio/clips.py\", \"sha256\": \"21814cbe3bb6c5b54c5df1a2491c30339c3595dc44ef66a9c8551b5f723cd85e\"}, {\"bytes\": 22167, \"path\": \"carr_library/studio/daisy.py\", \"sha256\": \"74fcd3064f7eb3f0faa1952d264e1cb9b52fd74d62cfbbffef836f6c97057e34\"}, {\"bytes\": 21620, \"path\": \"carr_library/studio/measured_audio.py\", \"sha256\": \"5faa008d90e9991fb59260e5597aa2d7cd2b06eb475e5abfaa47a87921194afc\"}, {\"bytes\": 20083, \"path\": \"carr_library/studio/project.py\", \"sha256\": \"84cc2b36ce869f4ca8e6fe868a13edd702bdfefad0cfd0f88ba6a3a707b51280\"}, {\"bytes\": 67562, \"path\": \"carr_library/studio/publishing.py\", \"sha256\": \"1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b\"}, {\"bytes\": 25632, \"path\": \"carr_library/studio/publishing_source.py\", \"sha256\": \"c818fb409e5ad3755b1518283ee6a121cb97c67cea2b1eadf1c06bcfb38b6111\"}, {\"bytes\": 73347, \"path\": \"carr_library/studio/render.py\", \"sha256\": \"66bbe35025a68ab780860bd5d4831d1b28e9dd40173f5fed7b5dd640abd50075\"}, {\"bytes\": 8585, \"path\": \"carr_library/studio/silence_inspection.py\", \"sha256\": \"1c56da9de5c2c1349b01cde13cbfabc378a948f4d1738ffb653adf8119e210d8\"}, {\"bytes\": 87, \"path\": \"carr_library/sync/__init__.py\", \"sha256\": \"c07c744635107ad836290ea07ac9817383cf8c1f70e4548aff678299679ec7c9\"}, {\"bytes\": 4443, \"path\": \"carr_library/sync/admission.py\", \"sha256\": \"ea9d3151af8665291791947ec73eeaec1ba7d79d0724ff5bcd5350a51c293c75\"}, {\"bytes\": 16908, \"path\": \"carr_library/sync/archive.py\", \"sha256\": \"ca446a6b77ff6e608d7ac86601212f0f4efae0be28d9d8a275f84d9a593ea143\"}, {\"bytes\": 5600, \"path\": \"carr_library/sync/cli.py\", \"sha256\": \"36b3ec44447b552ccedc0720417a520ceb689dad4e25ebcf0a89d0bf512f0a7d\"}, {\"bytes\": 22908, \"path\": \"carr_library/sync/crypto.py\", \"sha256\": \"7a2be71b6ab9879bfcd2924170c02e2b834b996072706d417c63a195cfada8f4\"}, {\"bytes\": 29774, \"path\": \"carr_library/sync/service.py\", \"sha256\": \"5137ca22b504c1b9a14fcf8e558fc3e17b4f426d065096a6cdd2ed176ce4e478\"}, {\"bytes\": 2132, \"path\": \"carr_library/sync/state.py\", \"sha256\": \"1528ca25974c5308bca2ce5153e534e3b549b2677e7775860ec511889561f969\"}, {\"bytes\": 33846, \"path\": \"carr_library/sync/vault.py\", \"sha256\": \"73e88ae882eac51cf1f50f3f49827369fc0dd4686dab393c97cd7ef45bae3529\"}, {\"bytes\": 55159, \"path\": \"carr_library/transcription/__init__.py\", \"sha256\": \"4eeed849a4057871429135576fd964cf93bbe8eb568a3a1c6262ea6ff2f2db5f\"}, {\"bytes\": 7562, \"path\": \"carr_library/transcription/models.py\", \"sha256\": \"8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93\"}, {\"bytes\": 1801, \"path\": \"carr_library/transcription/ownership.py\", \"sha256\": \"8f48c8db4b79dbb4ddb7fd988df81ef21c60c3b96162185b6e7d43ae4b448d64\"}, {\"bytes\": 23994, \"path\": \"carr_library/transcription/runtime.py\", \"sha256\": \"7ac62f7a7774e49d06f350d9ddc7b93418ec2d83a5d80e442c16d1f8e8481cf8\"}, {\"bytes\": 53841, \"path\": \"carr_library/transcription/service.py\", \"sha256\": \"ed8dbb1142b751a07e66ab764a412325cf4bd5f8c1b2070864fb8a3e85e31234\"}, {\"bytes\": 15371, \"path\": \"carr_library/transcription_cli.py\", \"sha256\": \"bcb2e1ca6985beb8219b6834d6ddcfcd2f1565f3a20cc8c2d9330cb2f9f90375\"}, {\"bytes\": 12563, \"path\": \"carr_library/transcription_contract.py\", \"sha256\": \"294fa142799ed245ed06252758983ec0caae00aad1c9642c614537110fa5fdc9\"}, {\"bytes\": 13030, \"path\": \"carr_library/translation_cli.py\", \"sha256\": \"1ab9e303d1cb6d79c352e9bd9dcc37efeeccced109a7a2d63b7e18dc8bb7221e\"}, {\"bytes\": 0, \"path\": \"carr_library/ui/__init__.py\", \"sha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}, {\"bytes\": 0, \"path\": \"carr_library/ui/_vendor/wx_grid/__init__.py\", \"sha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}, {\"bytes\": 8211, \"path\": \"carr_library/ui/_vendor/wx_grid/grid.py\", \"sha256\": \"a882fbd283b30b20b139fe2e6ce7ef42f67dbabad57f9fa2f53109f4b04756ff\"}, {\"bytes\": 3383, \"path\": \"carr_library/ui/_vendor/wx_grid/model.py\", \"sha256\": \"4641a35dcaf106cf5b4b14ca5be0fe6091a57e79c98c1d2f138c052f42911ace\"}, {\"bytes\": 17584, \"path\": \"carr_library/ui/academic_actions.py\", \"sha256\": \"f1bdcc94c52549112a909b4bc13f53235f00c292c49f0c1703a4759a049d87c9\"}, {\"bytes\": 57769, \"path\": \"carr_library/ui/academic_library_dialog.py\", \"sha256\": \"763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b\"}, {\"bytes\": 9742, \"path\": \"carr_library/ui/academic_tools.py\", \"sha256\": \"94c014d37e3ebbbe48280b9b87061ce386816c1a6145eacfd04ba9cda7c60654\"}, {\"bytes\": 37438, \"path\": \"carr_library/ui/acquisition_dialog.py\", \"sha256\": \"60097063b5deb5e3e952859bd91df31fc4584884bb9bbeeadabf12ecf161e827\"}, {\"bytes\": 11296, \"path\": \"carr_library/ui/advanced_search.py\", \"sha256\": \"ada882820cd043b4a05027e1835f722afdff283700c4110380d3339a21144894\"}, {\"bytes\": 34773, \"path\": \"carr_library/ui/assistant_dialog.py\", \"sha256\": \"d9b066b500032182e7ba045220611842fd653d6402384c17aeef9fede321d10c\"}, {\"bytes\": 7499, \"path\": \"carr_library/ui/audio_conversion_dialog.py\", \"sha256\": \"3813832be459b11d32b9e60082a305bfdb461532d8dae8ffaeeca8abca7b2412\"}, {\"bytes\": 27529, \"path\": \"carr_library/ui/audio_effects.py\", \"sha256\": \"9a34b3c7fce47f40e02b329de6b3a6838d5c1b0a05ae1a15ef61e2042536e09b\"}, {\"bytes\": 25523, \"path\": \"carr_library/ui/audio_metadata_dialog.py\", \"sha256\": \"d82ab79a02eadeedbfc0afc84f13f47d6759d36ade8e9e843e2eea9899ed440a\"}, {\"bytes\": 23712, \"path\": \"carr_library/ui/audio_playback.py\", \"sha256\": \"8975228c2294daa9cbb0ec76ecf78f08427807704e4d37c6e89b4e426ac29db4\"}, {\"bytes\": 13920, \"path\": \"carr_library/ui/audio_runtime_setup.py\", \"sha256\": \"16c524ce9a82a0842b776ce3b942675bd2687829e101ca5e8b5f8b1989b59b4e\"}, {\"bytes\": 38397, \"path\": \"carr_library/ui/audio_studio.py\", \"sha256\": \"939f17d71d223a167ac7006b65c1b46d081cb82d65249efc4a5b75821453688c\"}, {\"bytes\": 9437, \"path\": \"carr_library/ui/backup_incremental_dialog.py\", \"sha256\": \"e10d576edb950a93649cf5f2b55bcdceb5f7721457e78f88d16551bee0448361\"}, {\"bytes\": 38012, \"path\": \"carr_library/ui/book_audio_dialog.py\", \"sha256\": \"917e6658d71619dd2ad9386febfa305fdacf91d91ceaa415111f496f7bbbb355\"}, {\"bytes\": 22360, \"path\": \"carr_library/ui/book_batch_dialog.py\", \"sha256\": \"b6f9491b61310233d7cbf66ab09f8b6af91582a69e14244b793863f29fd6ca06\"}, {\"bytes\": 12355, \"path\": \"carr_library/ui/book_duration_dialog.py\", \"sha256\": \"91ae776eba3f32a75f84673b730b432c1517c49f67149340aa7fb28b66688c56\"}, {\"bytes\": 13311, \"path\": \"carr_library/ui/catalog_insights_actions.py\", \"sha256\": \"ab538c83ddf92c79357fb2b5e7ada23be0b2bb250796dffd8847647b368b912f\"}, {\"bytes\": 7057, \"path\": \"carr_library/ui/catalog_metadata_dialog.py\", \"sha256\": \"98a97dabbd2a975f99962f0adef407b63a4a0be71a50af40601f3cb9b8f00f4f\"}, {\"bytes\": 12308, \"path\": \"carr_library/ui/catalog_panel.py\", \"sha256\": \"d3400e37e02bfa2be96d55dd49feff13f39a49812b3d127bb1b743ce754b5901\"}, {\"bytes\": 11813, \"path\": \"carr_library/ui/catalog_quality.py\", \"sha256\": \"cc2c39c0c166eb8cd89c540108ae0fd1b8cc7ad5d8385059edb5e1cdfeded40d\"}, {\"bytes\": 18502, \"path\": \"carr_library/ui/catalog_tools_dialog.py\", \"sha256\": \"fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e\"}, {\"bytes\": 45287, \"path\": \"carr_library/ui/citation_formatting.py\", \"sha256\": \"98ae40bc06d93f48966f2135f64bad1caacb300a0c6547083f2288f70a7524e3\"}, {\"bytes\": 17643, \"path\": \"carr_library/ui/citation_styles_dialog.py\", \"sha256\": \"6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c\"}, {\"bytes\": 2405, \"path\": \"carr_library/ui/clipboard_reader.py\", \"sha256\": \"41fab62bb55b7d72e642518b86c306838048dbfc41641fdb5f09acfde973017a\"}, {\"bytes\": 12233, \"path\": \"carr_library/ui/command_palette.py\", \"sha256\": \"bbe5c8d042ac4ab24336c8367067a2712e17a0e4de789376c48b27d26826d4b0\"}, {\"bytes\": 14533, \"path\": \"carr_library/ui/delivery_dialog.py\", \"sha256\": \"990173356b7f3c5fd70e366ec7200f630bffb7024c68ac340f26a036b87f31d3\"}, {\"bytes\": 79396, \"path\": \"carr_library/ui/desktop_app.py\", \"sha256\": \"039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10\"}, {\"bytes\": 20177, \"path\": \"carr_library/ui/desktop_evidence_panel.py\", \"sha256\": \"d40dd5f3c937188a912764cbb3c918892afb5ea8905f40bcd7804c96cec2e1e0\"}, {\"bytes\": 33947, \"path\": \"carr_library/ui/desktop_integration.py\", \"sha256\": \"d5e4e7f030c09a0d0220fb967ba98526ba7d8a7440de3bc3b08c02f5d8f3c872\"}, {\"bytes\": 7615, \"path\": \"carr_library/ui/desktop_settings.py\", \"sha256\": \"cb85eb0ec31e6b249518b96efd08525e4afcb2c02ea1dd516d40e42aa799c361\"}, {\"bytes\": 6178, \"path\": \"carr_library/ui/diagnostics_dialog.py\", \"sha256\": \"fefa24d94fe49cdc508169b58f9517fc84c78424f20604727df021f234062259\"}, {\"bytes\": 4181, \"path\": \"carr_library/ui/document_conversion.py\", \"sha256\": \"d7497b370191c7d586ee35e07919fb1954cab16760b39588e51cad736a202204\"}, {\"bytes\": 5697, \"path\": \"carr_library/ui/ebook_actions.py\", \"sha256\": \"296790427dfb6bb13dc4bc0cfcf625a27c07c91eb54e1fe95c95716f3fe1a4d3\"}, {\"bytes\": 20139, \"path\": \"carr_library/ui/ebook_audio_dialog.py\", \"sha256\": \"4af499c08dbaf56fc7ffccad54c02426e9562e8972e288ec67fecfed04f930fb\"}, {\"bytes\": 9956, \"path\": \"carr_library/ui/ebook_dialog.py\", \"sha256\": \"be3bd51b6b3396c5885e81f09c4b7ea898ad5dae04ee7363e884fc4edfa57550\"}, {\"bytes\": 16511, \"path\": \"carr_library/ui/ebook_model.py\", \"sha256\": \"8e971a9b42434ca229fcf052957bb0bb6f31be329ef605128db7a5c258264938\"}, {\"bytes\": 10103, \"path\": \"carr_library/ui/ebook_reader.py\", \"sha256\": \"73cddc9098dd49cee15ba14ed18fd2b64880ffa4423722afa4081141f6c21836\"}, {\"bytes\": 9979, \"path\": \"carr_library/ui/effects_dialog.py\", \"sha256\": \"25b0dcc11f4b420e4f82be3b14b2db27d41a98fceedbc3e422a5f8daaa7a2317\"}, {\"bytes\": 11685, \"path\": \"carr_library/ui/engine_settings.py\", \"sha256\": \"75baf8b98883f5a995f28ff79d0f38f32c8fc319de1add5a7b665e63f98eaa2e\"}, {\"bytes\": 9352, \"path\": \"carr_library/ui/evidence_panel.py\", \"sha256\": \"fd4896a3cfec1555129a85a76e4f64a854bc3c4ed33c1a467b42fd899b1c1b28\"}, {\"bytes\": 3658, \"path\": \"carr_library/ui/export_destination.py\", \"sha256\": \"4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73\"}, {\"bytes\": 35895, \"path\": \"carr_library/ui/federated_search.py\", \"sha256\": \"068337af08e6f86edc589de08144734dc64451bc8b3ee6d5ab65f457a0175fd4\"}, {\"bytes\": 28537, \"path\": \"carr_library/ui/import_center.py\", \"sha256\": \"81f64160b9b566061d25f0e0194e72dd4b089e680a69111e0cc5f12c25d0e7ef\"}, {\"bytes\": 36079, \"path\": \"carr_library/ui/keyboard_settings.py\", \"sha256\": \"351564c56e36484444c1b789da8133b0145879e0a221ebda83f270dd694b419e\"}, {\"bytes\": 18845, \"path\": \"carr_library/ui/language_matrix.py\", \"sha256\": \"28598fb591a5f20755176e5e7b00facba932a9e25ee2c64674bf53e2fb789006\"}, {\"bytes\": 10653, \"path\": \"carr_library/ui/literature_matrix.py\", \"sha256\": \"f5196aa082a4ddea152306620f5091806ba13688524c7b5e0fe51e98ae1f7ba8\"}, {\"bytes\": 15330, \"path\": \"carr_library/ui/local_assistant.py\", \"sha256\": \"95e11636a8026f17ecff771a6b909f1914d1f9648cc375ab5611350268f06c59\"}, {\"bytes\": 18545, \"path\": \"carr_library/ui/media_overlay_dialog.py\", \"sha256\": \"03861327d2146485f426fc0df272b2edb22a6bdf49e968c1c5cd0daefd32387f\"}, {\"bytes\": 14853, \"path\": \"carr_library/ui/music_settings.py\", \"sha256\": \"6472c27f1e191fe666b36f497f433b8a2390ddd8f13d8b4d135c8d32b74da59a\"}, {\"bytes\": 22747, \"path\": \"carr_library/ui/narration_editor.py\", \"sha256\": \"38922b73f4ba920ce7e4ae933498f693d48ef1dd5d8950e4b4d5a2148878f928\"}, {\"bytes\": 19873, \"path\": \"carr_library/ui/notebook_search.py\", \"sha256\": \"9e512ccff6b03f3ec72d8617c0f33807b423aac415d3af81cb568079289be0b1\"}, {\"bytes\": 21900, \"path\": \"carr_library/ui/ocr_language_dialog.py\", \"sha256\": \"2823995deab4f6d03a86458001df17ccade80d98342b83cf19fe86c3080ba3ae\"}, {\"bytes\": 21673, \"path\": \"carr_library/ui/ocr_model_manager.py\", \"sha256\": \"8e8b7f04f85ad3fa03fda546782a09882801525562c698b6e643fab70f13a4c1\"}, {\"bytes\": 1963, \"path\": \"carr_library/ui/ocr_options.py\", \"sha256\": \"5ef9c80128e3c5004d2676a9cdc8dcad5fbcfac8483f8a7bfb44148d660d7c0e\"}, {\"bytes\": 18056, \"path\": \"carr_library/ui/ocr_selection.py\", \"sha256\": \"06318ffd62f1f6d493a4853f8b7669df648a6cfefb72101377ee90a9dda8969e\"}, {\"bytes\": 43670, \"path\": \"carr_library/ui/operation_progress.py\", \"sha256\": \"72dac9bbabdc345689d785c8eba640894298e78597170320d146d4bc767dc0ce\"}, {\"bytes\": 13531, \"path\": \"carr_library/ui/operations_dialog.py\", \"sha256\": \"99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b\"}, {\"bytes\": 5466, \"path\": \"carr_library/ui/page_context_dialog.py\", \"sha256\": \"0323e7dd51907d18af376b15fb98e6007dc2e36dbdd357bf300d855c3a8bb5fa\"}, {\"bytes\": 2498, \"path\": \"carr_library/ui/paged_search_panel.py\", \"sha256\": \"b6edd6417e0f91400703b8e8f4dfd9604ea7fcf4c0a72ea4c0467452bcb5bd9d\"}, {\"bytes\": 40273, \"path\": \"carr_library/ui/portable_sync.py\", \"sha256\": \"63de387f35275851a293ef26315e003793ef6ca2ad6f2c1492133fe4001674e8\"}, {\"bytes\": 20758, \"path\": \"carr_library/ui/productivity.py\", \"sha256\": \"8657d2e3da3f01ca05efd45b08215a1bc50ef49974f186d9b773210f050b4abb\"}, {\"bytes\": 23797, \"path\": \"carr_library/ui/provider_settings.py\", \"sha256\": \"b74464213800303641b63aa5579161c17e1ff7aae485d4b95284272671d5bf2f\"}, {\"bytes\": 20300, \"path\": \"carr_library/ui/publishing_dialog.py\", \"sha256\": \"7f25d526282ae48a4221ebb7a42d781b101e811d68c3de57cca2ef291dd534d3\"}, {\"bytes\": 9909, \"path\": \"carr_library/ui/query_manager.py\", \"sha256\": \"d794b330547511666b69e51c3ff65591181325476163f269bee3d49af1c8dac3\"}, {\"bytes\": 3557, \"path\": \"carr_library/ui/reader_navigation.py\", \"sha256\": \"fd9d293a2a518e5d585799bfda8db6869a48e746d9e5c1323694c85faa625ce6\"}, {\"bytes\": 7964, \"path\": \"carr_library/ui/reader_output.py\", \"sha256\": \"d0a367a0a9e8da1a46598583adbc7cd320887a6fd4e4693c4d3f90924d185513\"}, {\"bytes\": 45039, \"path\": \"carr_library/ui/reader_playback.py\", \"sha256\": \"bf2e2ecee13795eff76e34d4c19bc3f25787efc5e1af6dd65a42283792f7c650\"}, {\"bytes\": 8954, \"path\": \"carr_library/ui/reader_preparation.py\", \"sha256\": \"05bccfceed7d4785b3fb666599a77de35db35ba9796495ea5ae93894ba053c37\"}, {\"bytes\": 12431, \"path\": \"carr_library/ui/reader_presentation.py\", \"sha256\": \"b9e800e13a47ee0240b2a37b8172b5c549d00c6971b0187e1969918d3f1cd9db\"}, {\"bytes\": 14902, \"path\": \"carr_library/ui/reader_spelling.py\", \"sha256\": \"e578bd4ddfda7846a19385cfcde0dc2204a3764bdb7a0f9a725c3f71cec1fa39\"}, {\"bytes\": 10228, \"path\": \"carr_library/ui/reader_synthesis.py\", \"sha256\": \"7527c0f8655ca97390f69831f387e4bffb236def7a701626894968d92b8b40c5\"}, {\"bytes\": 14258, \"path\": \"carr_library/ui/reader_tabs.py\", \"sha256\": \"a5b611053393aa55d738f33ee8f4a5a416b8e7054c35e493ef16c0cb2a693475\"}, {\"bytes\": 7435, \"path\": \"carr_library/ui/reader_transport.py\", \"sha256\": \"045ba64d7bc5e0f84d2c3f3a734e630f11cbcf3b6108a067d662930cb14dd763\"}, {\"bytes\": 33142, \"path\": \"carr_library/ui/reading_desk.py\", \"sha256\": \"cab8326758d31094416dc29b30da88f18df40129a8f7ccb4d7fc3079926c40ce\"}, {\"bytes\": 11978, \"path\": \"carr_library/ui/reading_focus.py\", \"sha256\": \"a5391ff19353c86948b9ce7030484872fe96c1f34554225b35a50ca3a2e12c27\"}, {\"bytes\": 23426, \"path\": \"carr_library/ui/reading_tools.py\", \"sha256\": \"3e285dcfbe8215639aaffc203f660bb44a9927558150a3c7e94ed4da7946e67f\"}, {\"bytes\": 31857, \"path\": \"carr_library/ui/recording_dialog.py\", \"sha256\": \"0f3507663a881aa7f41bc2f062aba558782c5d2463c0e1c19cbacde73a00c74c\"}, {\"bytes\": 21095, \"path\": \"carr_library/ui/research_actions.py\", \"sha256\": \"0ad0ca89ede28ea12501173caafdcf2136c11849065e6a7dcfaddaea1edc36de\"}, {\"bytes\": 9712, \"path\": \"carr_library/ui/save_actions.py\", \"sha256\": \"566ba56dffd3602450384bcf45da1216c69c926e7ce3af5caef604f9fc41a747\"}, {\"bytes\": 7525, \"path\": \"carr_library/ui/save_all.py\", \"sha256\": \"f91c479b5c595621527e2ca11b9dfb32d045fe6104cdac24e51bf5621b2b3b45\"}, {\"bytes\": 5690, \"path\": \"carr_library/ui/scope_bindings.py\", \"sha256\": \"01d131256be5660b355f73b61d3839a199a80af1d3bc76289edff5cae82eb57e\"}, {\"bytes\": 827, \"path\": \"carr_library/ui/scope_labels.py\", \"sha256\": \"ed7e531a39e6888517d8b87b8d0b031af64b9d20a8165e560297200204ba4bc9\"}, {\"bytes\": 1752, \"path\": \"carr_library/ui/search_model.py\", \"sha256\": \"d1f319d205a367f78133a2d91a0f166f1433ff638be3e4e6ab50d4daa267ed35\"}, {\"bytes\": 8095, \"path\": \"carr_library/ui/search_panel.py\", \"sha256\": \"15ec892fa199ea36e12734a29e84f2e8237271424f8dfa91cf55c4f3037f4803\"}, {\"bytes\": 4299, \"path\": \"carr_library/ui/source_launch.py\", \"sha256\": \"8c2e87eee3a0e0437ac8518f98f1219affd4cbfea8412a6fc954bd59939dc92d\"}, {\"bytes\": 20091, \"path\": \"carr_library/ui/source_review.py\", \"sha256\": \"f383f47ce12a8cd2caab657f33494322d9242ec7ef10a0b9d0cda0384b664185\"}, {\"bytes\": 74479, \"path\": \"carr_library/ui/speech_dialog.py\", \"sha256\": \"6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59\"}, {\"bytes\": 44042, \"path\": \"carr_library/ui/studio_clips.py\", \"sha256\": \"8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e\"}, {\"bytes\": 57344, \"path\": \"carr_library/ui/studio_dialog.py\", \"sha256\": \"c92254c17a6e43dd4391ce7e0db2bc2fc6c30e6344782c9d179c99692d54de4e\"}, {\"bytes\": 7447, \"path\": \"carr_library/ui/studio_silence_inspection.py\", \"sha256\": \"1aacc15b7b81a8bcf6da66359f371f3b3af269d6af7aa9d2010378f196151934\"}, {\"bytes\": 8602, \"path\": \"carr_library/ui/topic_panel.py\", \"sha256\": \"babc00b200f0ac56d5fb14102f6fcdbf24fd931fa02fd96410a628a2ea98c9b9\"}, {\"bytes\": 67093, \"path\": \"carr_library/ui/transcription_dialog.py\", \"sha256\": \"73846cb764d3cb61e73e726f823e13751de342f72962b71ecbfa532ddfdc69a1\"}, {\"bytes\": 28736, \"path\": \"carr_library/ui/translation_dialog.py\", \"sha256\": \"b7130076e9c8a1ac247c70ab8c07c4a0e02688a08fc43855b06507d51db88c92\"}, {\"bytes\": 30916, \"path\": \"carr_library/ui/voice_packages.py\", \"sha256\": \"b17a78ae596b195f9b902947086022f5e31dd5b0cfe3e2fd55a5e6b0b9e9c7b6\"}, {\"bytes\": 13864, \"path\": \"carr_library/ui/voice_preferences.py\", \"sha256\": \"5bf6479b0e5e7bdc8f39636f8525959a7803b527c499087015047f058d54a715\"}, {\"bytes\": 21018, \"path\": \"carr_library/ui/voice_reference.py\", \"sha256\": \"5b86c770c22f5fac72977cfb1271e9cc189a871e40750993e8904c7f99907507\"}, {\"bytes\": 12267, \"path\": \"carr_library/ui/voice_settings.py\", \"sha256\": \"ac5638ef0149671ad3ffcca91f1248e7daa42dd06f0ac1d831ee7a1a7f8948b3\"}, {\"bytes\": 19493, \"path\": \"carr_library/ui/word_citations.py\", \"sha256\": \"1cb624aa0a7225b123b981dc51e66af09efeba8e8221c20dd4af4eaa53695b25\"}, {\"bytes\": 4412, \"path\": \"carr_library/ui/worker_lifetime.py\", \"sha256\": \"d5ec361af65cb62149eaa5577d31c703abd0879a8a4cd02a8cc364c80014fbc6\"}, {\"bytes\": 8871, \"path\": \"carr_library/ui/workspace_shell.py\", \"sha256\": \"139425432665ef162fb9e3cd0734cc327994997a3a753cc523364c62f4bdd5bf\"}], \"required_suites\": [\"tests/packaging/test_standard_installer.py\", \"tests/packaging/test_managed_launch_boundary.py\", \"tests/packaging/test_native_checks.py\", \"tests/packaging/test_windows_bundle.py\", \"tests/packaging/test_windows_launcher_bundle.py\", \"tests/packaging/test_install_bytecode.py\", \"tests/packaging/test_worker_bytecode.py\", \"tests/packaging/test_source_wheel.py\", \"tests/packaging/test_native_runtime.py\", \"tests/audio/test_local_runtime_cli.py\", \"tests/test_delivery_cli.py\"], \"source_commit\": \"2dfc5d32558c722ba05068dfff9ebb19eeae52f7\", \"source_package\": \"/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library\", \"status\": \"PASS\"}"
+  }
+]
