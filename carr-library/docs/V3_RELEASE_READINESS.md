@@ -13,6 +13,11 @@ bound to the stated source identities.
 
 | Recent exact checkpoint | Actual result | Evidence and scope |
 | --- | --- | --- |
+| f186 terminal ordinary gates | **20 successful and 2 failed jobs; all 22 are terminal** | [Exact ordinary and native follow-through](acceptance/20261128-f186-and-native-ci-follow-through.json). All 139 canonical V3 suites passed 3015 cases. All 20 broad selectors completed with 3116 passes, zero failures and 18 actual saved-JUnit skips, all classified as unavailable optional Flite filter/voices. The required full Windows source selection completed 296 of 405 reports with 7603 passes and 109 missing reports. Actual EPUB playback returned MCI 326; no whole-head PASS. |
+| 9909 isolated original paging suite | **27 passed, zero failures/skips, 204.55 seconds** | [Exact unchanged-suite evidence](acceptance/20261128-f186-and-native-ci-follow-through.json). The real 501-import fixture, page continuations and 600-second per-suite limit are retained. This establishes isolated completion; it does not relabel the previous timeout or qualify a larger production corpus. |
+| 1d71 and 535f native follow-through | **Seven corrected independent native components have passing component results** | [Exact source, logs and artifact identities](acceptance/20261128-f186-and-native-ci-follow-through.json). 1d71 passed reader pronunciation, Studio pronunciation, reading appearance, voice preferences, academic comparison and the reviewed Library workflow. 535f passed all 147 effects/batch-resume checks, with exact Unicode source paths, original hashes and resumed output bytes/mtimes. Their earlier failed states remain recorded. |
+| 5b5e complete Tasks follow-through | **229 source cases and all 28 distinct required native checks passed** | [Exact current-source component proof](acceptance/20261128-f186-and-native-ci-follow-through.json). The native report records 42 successful check calls: both original search-Return rounds, real Tab/results Return, loaded policy/job identity, Save, held-lock cancellation, child/owner destruction and late-callback refusal. All original deadlines remain. |
+| Reviewed Windows source and installed follow-through | **Source controls pass; complete ordinary successor execution remains required at this checkpoint** | [Exact reviewed composition](acceptance/20261128-f186-and-native-ci-follow-through.json). The original 404 ordered occurrences plus their guard are retained. Six independent required VMs run the 401 bulk occurrences in partitions of 67/67/67/67/67/66 with unchanged suite/phase deadlines. A verified bundle now completes all 20 native and eight independent checks before its strict verdict; transfer and actual Inno lifecycle have independent required outcomes. |
 | Focused 6b67 and 6daa source recovery | **All thirteen previously failing source files now have a passing corrected focused result** | [Exact component follow-through](acceptance/20261128-6b67-source-recovery-follow-through.json). The 19-suite run completed 441 passes, two legacy-fixture failures and zero skips; its unfinished-suite job passed all 70 cases. The two-line historical-fixture correction then passed all 32 Studio cases in 16.54 seconds. Composed recovery passed all six cases, including two complete restores. These are separately bound runs, not a complete ordinary successor or a unique combined count. |
 | 7a terminal ordinary gates | **17 successful and 5 failed jobs; all 22 are terminal** | [Exact terminal and native-output checkpoint](acceptance/20261128-7a445c-terminal-and-native-output.json). All 139 canonical V3 source suites passed 3008 cases; the 20 broad selectors completed with 3114 passes, two known replay-fixture failures and 18 skips. The full Windows source phase completed 402 of 404 selected occurrences: 9865 passed, 61 failed, zero skipped; federated advanced search and portable handoff have no final report. No whole-head PASS. |
 | 2ed native-output diagnosis | **346 completed strict source cases and 28 native document checks passed; actual playback failed** | [Exact diagnosis](acceptance/20261128-7a445c-terminal-and-native-output.json). Both Windows audio services started successfully, but the canonical and WinMM output inventories remained empty. Six PCM format queries returned BADDEVICEID; both EPUB and standalone MCI returned 326. The owner now displays the start error and clears pending playback before cleanup. A real available render endpoint is required; no playback gate is waived. |
@@ -46,7 +51,7 @@ bound to the stated source identities.
 | b418 compiled native launchers | **The same nine checks passed with Zig and MSVC** | [Record](acceptance/20261127-b418ba-native-launchers.json). Real compiled launchers with synthetic children; actual Python installation, signing and human NVDA are unqualified. |
 
 The four reviewed corrections composing09c retain publication owner equality,
-legacy job paths, exact fresh preview/prepare names, all227 original ASR protocol
+legacy job paths, exact fresh preview/prepare names, all 227 original ASR protocol
 assertion lines and existing suite/job deadlines. The subsequent full-name
 preview correction changes presentation and its actual-service regression;
 it does not rename a reviewed destination or create work during preview.
@@ -121,7 +126,7 @@ Earlier failures remain in [962fd8](acceptance/20261127-962fd8-expanded-reader.j
 [dc477 reconciliation](acceptance/20261127-dc477-reconciled.json)
 and [55a](acceptance/20261127-55a-expanded-reader.json).
 All12 failures in962/c8 passed after correction in b024; the f249 transport
-fixture and all28 reconciliation fixtures subsequently pass on391.
+fixture and all 28 reconciliation fixtures subsequently pass on391.
 
 The historical [dc477 Windows lifetime record](acceptance/20261127-dc477-windows-lifetime.json)
 contains262 filesystem,26 native-source and26 installed passing cases.
