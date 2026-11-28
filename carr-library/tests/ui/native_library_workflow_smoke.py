@@ -27,6 +27,29 @@ def not_run(reason, **extra):
     return 77
 
 
+def _workflow_host_ready(frame, library, root, scope, notebook):
+    """Wait for the real initial evidence job without changing host ownership."""
+    assert frame.library is library and frame.library.root == root, 'The selected library root changed.'
+    assert frame.active == scope and frame.book is notebook, 'The selected scope or notebook changed.'
+    assert not frame._closing, 'The library host is closing.'
+    return (not frame.working and not frame.busy and frame.evidence is not None
+            and frame.evidence.displayed is not None)
+
+
+def _workflow_launch_observation(frame, state):
+    return dict(phase=state['phase'], active=frame.active,
+        working=bool(frame.working), busy=bool(frame.busy), closing=bool(frame._closing),
+        host_status=frame.status.GetValue()[:4096],
+        constructor_entered=state.get('constructor_entered', False),
+        constructor_error=state.get('constructor_error', '')[:4096])
+
+
+def _require_new_workflow(frame, state, previous_view):
+    assert state['view'] is not None and state['view'] is not previous_view, (
+        'Native menu returned without a fresh library workflow owner: '
+        + json.dumps(_workflow_launch_observation(frame, state), ensure_ascii=True, sort_keys=True))
+
+
 def run_native():
     if sys.platform != 'win32':
         return not_run('This acceptance probe requires native Windows wx controls.')
@@ -87,7 +110,8 @@ def run_native():
 
     def wait_for(predicate, callback):
         if monotonic() >= deadline:
-            raise AssertionError('Native workflow state did not arrive before its deadline.')
+            raise AssertionError('Native workflow state did not arrive before its deadline. '
+                + json.dumps(_workflow_launch_observation(state['frame'], state), ensure_ascii=True, sort_keys=True))
         if predicate():
             callback()
         else:
@@ -104,7 +128,12 @@ def run_native():
     class ObservedNativeWorkflow(original_view):
         """Observe actual control threads and a deterministic cancellation boundary."""
         def __init__(self, frame):
-            super().__init__(frame)
+            state['constructor_entered'] = True
+            try:
+                super().__init__(frame)
+            except Exception:
+                state['constructor_error'] = traceback.format_exc()
+                raise
             state['view'] = self
             later(prepare_new if state['phase'] == 'new' else prepare_resume)
 
@@ -163,6 +192,7 @@ def run_native():
             gui.SetTopWindow(frame)
             original_handles = dict(library._selections)
             original_book = frame.book
+            original_root = library.root
 
             def unchanged_sources():
                 assert source.read_bytes() == source_bytes
@@ -308,7 +338,14 @@ def run_native():
                 state['complete'] = True
                 click(view.close_button)
 
+            def open_when_ready():
+                wait_for(lambda: _workflow_host_ready(frame, library, original_root,
+                    (workspace, existing_topic), original_book), open_from_menu)
+
             def open_from_menu():
+                previous_view = state['view']
+                state['constructor_entered'] = False
+                state['constructor_error'] = ''
                 item = frame.library_assistant_menu_item
                 assert ui_module.install_library_assistant_actions(frame) is item
                 tools = [frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
@@ -321,11 +358,12 @@ def run_native():
                 assert frame.GetEventHandler().ProcessEvent(event), 'Native menu event was not handled.'
                 if failures:
                     return
+                _require_new_workflow(frame, state, previous_view)
                 assert not state['view'].controller.alive
                 if state['phase'] == 'new':
                     assert state.get('job_id') and state['pause_observed']
                     state['phase'] = 'resume'
-                    later(open_from_menu)
+                    later(open_when_ready)
                 else:
                     assert state.get('complete'), 'Dialog closed before real workflow completion.'
                     report.update(status='PASS', native_platform=platform.system(), wx_version=wx.version(),
@@ -336,7 +374,7 @@ def run_native():
                     gui.ExitMainLoop()
 
             timers.append(wx.CallLater(40000, lambda: abort('Native workflow smoke exceeded 40 seconds.')))
-            later(open_from_menu)
+            later(open_when_ready)
             try:
                 gui.MainLoop()
             finally:

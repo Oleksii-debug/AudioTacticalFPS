@@ -101,6 +101,10 @@ def main():
                      if item and isinstance(item, wx.Dialog) and item.GetParent() is frame
                      and item.GetTitle() == title and item.IsShown()), None)
 
+    def named(window, name):
+        control, = [child for child in window.GetChildren() if child.GetName() == name]
+        return control
+
     def abort(detail):
         errors.append(detail)
         print('FAIL:', detail, flush=True)
@@ -137,21 +141,29 @@ def main():
             if name == 'start':
                 if frame.working:
                     return
-                command, = [item for item in frame.keyboard_settings.commands
-                            if item.action == 'tools/tasks and resources']
+                manager = frame.keyboard_commands
+                command = manager.registry.get('operations.open')
+                binding = manager.bindings[command.command_id]
                 check('Tasks action belongs to the existing native command inventory',
-                      command.item.GetItemLabel().replace('&', '') == 'Tasks and resources...')
+                      command.context == 'main' and command.label == 'Tasks and resources'
+                      and binding.item.GetItemLabel().replace('&', '') == 'Tasks and resources...')
                 check('actual wx main event loop is active', application.GetMainLoop() is not None)
                 advance('open')
             elif name in ('open', 'open_blocked'):
                 open_palette('palette' if name == 'open' else 'palette_blocked')
             elif name in ('palette', 'palette_blocked') and palette is not None:
-                palette.filter.SetValue('tasks resources')
+                named(palette, 'Search commands by name').SetValue('Tasks and resources')
                 advance('select' if name == 'palette' else 'select_blocked')
             elif name in ('select', 'select_blocked') and palette is not None:
+                search = named(palette, 'Search commands by name')
+                results = named(palette, 'Matching commands and shortcuts')
+                commands = [command for command in frame.keyboard_commands.registry.commands('main')
+                            if search.GetValue().strip().casefold() in command.label.casefold()]
                 check('native palette resolves only the existing Tasks action',
-                      len(palette.rows) == 1 and palette.rows[0].command.action == 'tools/tasks and resources')
-                key(palette.filter, wx.WXK_RETURN, 'loaded' if name == 'select' else 'blocked')
+                      [command.command_id for command in commands] == ['operations.open']
+                      and results.GetCount() == 1 and results.GetSelection() == 0
+                      and results.GetString(0).split(' — ', 1)[0] == commands[0].label)
+                key(search, wx.WXK_RETURN, 'loaded' if name == 'select' else 'blocked')
             elif name == 'loaded' and dialog is not None:
                 if dialog.controller.busy:
                     return

@@ -146,3 +146,100 @@ def test_a_finished_navigation_does_not_wrap_or_start_full_document_speech(state
     navigate(direction=1, read_aloud=True)
     assert state.editor.selection == before and not state.spoken
     assert 'No further word' in state.messages[-1]
+
+
+def _native_pronunciation_navigation(state, tmp_path, original):
+    """Execute the probe's actual completion observer against durable recovery."""
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_pronunciation_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    method, = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+               and node.name == 'navigation_complete']
+    module = ast.fix_missing_locations(ast.Module(body=[method], type_ignores=[]))
+    source = tmp_path / 'original-source.txt'
+    source.write_bytes(original.encode('utf-8'))
+    observed = {'editor': state.editor, 'navigation_initial': original}
+    calls, finished, checks = [], [], []
+
+    def check(label, value):
+        assert value, label
+        checks.append(label)
+
+    def until(predicate, complete, *, timeout):
+        calls.append((predicate, complete, timeout))
+
+    namespace = dict(observed=observed, check=check, original_asset=source,
+        asset_bytes=source.read_bytes(), ReaderDraftStore=ReaderDraftStore,
+        library=SimpleNamespace(root=tmp_path), until=until,
+        finish_after_cursor_saved=lambda: finished.append(True))
+    exec(compile(module, str(script), 'exec'), namespace)
+    return namespace['navigation_complete'], observed, source, calls, finished, checks
+
+
+@pytest.mark.parametrize('saved', ['start', 'end', 'missing'])
+def test_native_pronunciation_cursor_observer_requires_actual_windows_insertion_start(
+        state, tmp_path, saved):
+    original = '😀 Retained source.\r\nDr. First speaks. Dr. Second listens.'
+
+    class WindowsEditor(NativeEditor):
+        def SetSelection(self, start, end):
+            # Pinned wx MSW GetInsertionPoint returns the selection's start.
+            self.selection, self.cursor = (start, end), start
+
+    state.document = ReadingDocument(original)
+    state.editor = WindowsEditor(original)
+    state.store = ReaderDraftStore(tmp_path, slot='pronunciation-native')
+    state.editor.place(original.rindex('Second'))
+    navigate, _, save = callbacks(state)
+    navigate()
+    assert state.editor.GetStringSelection() == 'Second'
+    start, end = state.editor.GetSelection()
+    assert start != original.rindex('Second')  # Native UTF-16 is not a Python offset.
+    if saved != 'missing':
+        state.editor.cursor = start if saved == 'start' else end
+        assert save(force=True)
+    state.editor.cursor = start
+    complete, observed, source, calls, finished, checks = _native_pronunciation_navigation(
+        state, tmp_path, original)
+    complete()
+    assert observed['expected_cursor'] == original.rindex('Second')
+    assert len(calls) == 1 and calls[0][2] == 10
+    assert calls[0][0]() is (saved == 'start')
+    assert not finished and len(checks) == 2
+    if saved == 'start':
+        calls[0][1]()
+        assert finished == [True]
+        recovered = state.store.load()
+        assert recovered.cursor == original.rindex('Second')
+        assert recovered.document.source_text == original
+    assert source.read_bytes() == original.encode('utf-8')
+    assert state.editor.GetValue() == original and not state.spoken
+
+
+@pytest.mark.parametrize('changed', ['insertion-end', 'prefix', 'source'])
+def test_native_pronunciation_cursor_observer_refuses_unproved_native_or_source_state(
+        state, tmp_path, changed):
+    original = '😀 Retained source.\r\nDr. Second listens.'
+
+    class WindowsEditor(NativeEditor):
+        def SetSelection(self, start, end):
+            self.selection, self.cursor = (start, end), start
+
+    state.document = ReadingDocument(original)
+    state.editor = WindowsEditor(original)
+    state.editor.place(original.rindex('Second'))
+    navigate, _, _ = callbacks(state)
+    navigate()
+    complete, _, source, calls, finished, _ = _native_pronunciation_navigation(
+        state, tmp_path, original)
+    start, end = state.editor.GetSelection()
+    if changed == 'insertion-end':
+        state.editor.cursor = end
+    elif changed == 'prefix':
+        actual_range = state.editor.GetRange
+        state.editor.GetRange = lambda first, last: (
+            'Changed prefix' if (first, last) == (0, start) else actual_range(first, last))
+    else:
+        source.write_bytes(b'Changed retained source')
+    with pytest.raises(AssertionError):
+        complete()
+    assert not calls and not finished and not state.spoken

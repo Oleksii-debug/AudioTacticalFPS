@@ -139,7 +139,8 @@ def main():
     frame = None
     try:
         with TemporaryDirectory(prefix='resonance-native-effects-') as temporary:
-            root = Path(temporary)
+            # Windows TEMP may use an 8.3 alias; production reviews resolved paths.
+            root = Path(temporary).resolve(strict=True)
             source = root / 'Synthetic original — Україна.wav'
             output = root / 'Reviewed output.wav'
             data = array('h', (round(7000 * math.sin(2 * math.pi * 440 * index / 24000))
@@ -254,6 +255,9 @@ def main():
             def review_batch(popup, *, resume):
                 review = find(popup, 'Selected audio batch review')
                 text = review.GetValue()
+                print(json.dumps({'event': 'native-audio-batch-review',
+                    'temporary_root': temporary, 'selected_sources': [str(source), str(second_source)],
+                    'review': text}, ensure_ascii=False), flush=True)
                 check('native batch review is read-only', isinstance(review, wx.TextCtrl) and not review.IsEditable())
                 check('review names both originals and exact output settings',
                       json.dumps(str(source), ensure_ascii=False) in text
