@@ -1,4 +1,4 @@
-name: Read exact saved CARR endpoint evaluation receipts
+name: Read exact current-source endpoint and native phase evidence
 
 on:
   push:
@@ -30,16 +30,75 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15246751161
-          SOURCE_RUN = 46103182988
-          SOURCE_HEAD = "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b"
-          ZIP_BYTES = 3945
-          ZIP_SHA256 = "85e25f2103a6b6c55999933f8861da2c02fa1628cf9b6f3978cd677d020e78d8"
+          ARTIFACT_ID = 15251736247
+          SOURCE_RUN = 46111830309
+          SOURCE_HEAD = "4e85ee4bfe63bc6f51de11f5cacd75c1040090ef"
+          ZIP_BYTES = 97226
+          ZIP_SHA256 = "c3b397f078eacca07e58dd2db674ebe7cf9d08bc00ac0d3195974c8b86fac60c"
           MAX_MEMBERS = 128
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
-          REQUIRED_FILES = {"endpoint-evaluation.json", "audio-endpoint.json", "tested-commit.txt"}
+          REQUIRED_FILES = {"endpoint-evaluation.json", "endpoint-receipt-readback.txt", "endpoint-installed-source.json", "tested-commit.txt"}
+          SELECTED_FILES = {
+              "endpoint-evaluation.json",
+              "endpoint-receipt-readback.txt",
+              "endpoint-installed-source.json",
+              "tested-commit.txt",
+              "endpoint-evaluation.txt",
+              "endpoint-installed-source.txt",
+              "endpoint-source-controls.txt",
+              "audio-services-evaluation.json",
+              "signature-json-ps51.json",
+              "signature-json-ps7.json",
+              "native-windows_clip_editor_smoke.py.txt",
+              "native-windows_recording_smoke.py.txt",
+              "native-windows_publishing_smoke.py.txt",
+              "native-windows_local_planning_smoke.py.txt",
+              "native-windows_translation_v3_smoke.py.txt",
+              "native-windows_translation_local_smoke.py.txt",
+              "native-windows_epub_reading_smoke.py.txt",
+              "native-windows_pronunciation_smoke.py.txt",
+              "native-windows_studio_pronunciation_smoke.py.txt",
+              "native-windows_operations_smoke.py.txt",
+              "native-windows_reader_player_smoke.py.txt",
+              "native-windows_audio_player_smoke.py.txt",
+              "native-windows_effect_chain_smoke.py.txt",
+              "native-windows_reading_presentation_smoke.py.txt",
+              "native-windows_reading_tabs_smoke.py.txt",
+              "native-windows_incremental_backup_smoke.py.txt",
+              "native-windows_import_scan_smoke.py.txt",
+              "full-bundle-windows_clip_editor_smoke.py.txt",
+              "full-bundle-windows_recording_smoke.py.txt",
+              "full-bundle-windows_publishing_smoke.py.txt",
+              "full-bundle-windows_local_planning_smoke.py.txt",
+              "full-bundle-windows_translation_v3_smoke.py.txt",
+              "full-bundle-windows_translation_local_smoke.py.txt",
+              "full-bundle-windows_epub_reading_smoke.py.txt",
+              "full-bundle-windows_pronunciation_smoke.py.txt",
+              "full-bundle-windows_studio_pronunciation_smoke.py.txt",
+              "full-bundle-windows_operations_smoke.py.txt",
+              "full-bundle-windows_reader_player_smoke.py.txt",
+              "full-bundle-windows_audio_player_smoke.py.txt",
+              "full-bundle-windows_effect_chain_smoke.py.txt",
+              "full-bundle-windows_reading_presentation_smoke.py.txt",
+              "full-bundle-windows_reading_tabs_smoke.py.txt",
+              "full-bundle-windows_incremental_backup_smoke.py.txt",
+              "installed-native-v3.txt",
+              "full-bundle-audio-native.txt",
+              "full-bundle-assistant.log",
+              "full-bundle-assistant.json",
+              "full-bundle-automatic-ocr.txt",
+              "full-bundle-audio-metadata.txt",
+              "full-bundle-workflow-templates.txt",
+              "full-bundle-verified.json",
+              "full-bundle-required-exits.json",
+              "full-bundle-required-verdict.json",
+              "core-bundle-install.txt",
+              "core-bundle-self-test.json",
+              "installed-launchers.json",
+              "source-wheel-proof.json",
+          }
 
           def fixed_get(endpoint, limit):
               result = subprocess.run(
@@ -68,6 +127,7 @@ jobs:
               raise ValueError("Saved phase archive bytes do not match the fixed review.")
 
           decoded = []
+          available, selected_names = [], set()
           with zipfile.ZipFile(io.BytesIO(raw), "r") as archive:
               entries = archive.infolist()
               if not entries or len(entries) > MAX_MEMBERS:
@@ -103,7 +163,12 @@ jobs:
                   if len(content) != entry.file_size:
                       raise ValueError("Saved phase member length changed during its bounded read.")
                   text = content.decode("utf-8")
-                  decoded.append((name, content, text))
+                  available.append(name)
+                  if path.name in SELECTED_FILES:
+                      if path.name in selected_names:
+                          raise ValueError("An explicitly selected phase member is ambiguous.")
+                      selected_names.add(path.name)
+                      decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
                   raise ValueError("The required endpoint evaluation receipts are absent or ambiguous.")
 
@@ -111,7 +176,11 @@ jobs:
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
               "source_run": SOURCE_RUN, "source_head": SOURCE_HEAD,
               "archive_bytes": ZIP_BYTES, "archive_sha256": ZIP_SHA256,
-              "text_members": len(decoded), "text_bytes": total,
+              "text_members": len(decoded),
+              "text_bytes": sum(len(content) for _, content, _ in decoded),
+              "archive_text_members": len(available), "archive_text_bytes": total,
+              "available_files": sorted(available),
+              "missing_selected_files": sorted(SELECTED_FILES - selected_names),
               "scope": "readback of saved public diagnostics; no application execution"
           }, ensure_ascii=True), flush=True)
           for name, content, text in sorted(decoded, key=lambda item: item[0]):
