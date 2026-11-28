@@ -37,10 +37,12 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install exact source and declared tests
+        id: queue_install
         run: |
           python -m pip install ".[test]"
           python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
       - name: Install actual Windows desktop
+        id: queue_desktop
         if: runner.os == 'Windows'
         run: python -m pip install ".[desktop]"
       - name: Prepare actual Linux audio tools
@@ -52,6 +54,7 @@ jobs:
           ffmpeg -version > ci-playback-queue/ffmpeg-version.txt
           ffprobe -version > ci-playback-queue/ffprobe-version.txt
       - name: Prepare pinned Windows audio tools
+        id: queue_audio
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -87,11 +90,11 @@ jobs:
           assert source != installed and not installed.is_relative_to(root / "src")
           selected = source if mode == "source" else installed
           artifacts = root / "ci-playback-queue"
-          suites = ["tests/speech/test_playlist.py","tests/speech/test_playlist_recovery.py","tests/ui/test_playback_queue.py","tests/ui/test_playback_navigation.py","tests/ui/test_studio_playback_actions.py","tests/ui/test_playback_settings.py","tests/speech/test_listening.py","tests/speech/test_wave_output.py","tests/speech/test_output_device_playback.py","tests/studio/test_clip_editing.py","tests/studio/test_clip_timeline.py","tests/studio/test_clip_dialog.py","tests/studio/test_clip_timeline_dialog.py","tests/ui/test_studio_progress_isolation.py","tests/ui/test_studio_progress_results.py","tests/storage/test_studio_input_backup.py","tests/storage/test_backup_studio_media.py","tests/audio/test_cleanup_ownership.py","tests/audio/test_output_devices.py","tests/audio/test_dsp.py","tests/reader/test_live_listening.py"]
+          suites = ["tests/speech/test_playlist.py","tests/speech/test_playlist_recovery.py","tests/ui/test_playback_queue.py","tests/ui/test_playback_navigation.py","tests/ui/test_studio_playback_actions.py","tests/ui/test_playback_settings.py","tests/speech/test_listening.py","tests/speech/test_wave_output.py","tests/speech/test_output_device_playback.py","tests/studio/test_clip_editing.py","tests/studio/test_clip_timeline.py","tests/studio/test_clip_dialog.py","tests/studio/test_clip_timeline_dialog.py","tests/ui/test_studio_progress_isolation.py","tests/ui/test_studio_progress_results.py","tests/storage/test_playback_queue_backup.py","tests/storage/test_studio_input_backup.py","tests/storage/test_backup_studio_media.py","tests/audio/test_cleanup_ownership.py","tests/audio/test_output_devices.py","tests/audio/test_dsp.py","tests/reader/test_live_listening.py"]
           if os.name == "posix":
               suites.extend(["tests/speech/test_playlist_boundary_posix.py", "tests/speech/test_listening_posix.py"])
 
-          names = ["carr_library.speech.playlist","carr_library.speech.player","carr_library.speech.listening","carr_library.speech._wave_output","carr_library.ui.playback_queue","carr_library.ui.playback_navigation","carr_library.ui.playback_settings","carr_library.ui.studio_dialog","carr_library.studio.clips","carr_library.studio.backup_inputs","carr_library.studio.render","carr_library.studio.project","carr_library.audio.output_devices","carr_library.audio.cleanup","carr_library.audio.process","carr_library.audio.windows_job","carr_library.durable_state","carr_library.application"]
+          names = ["carr_library.speech.playlist","carr_library.speech.player","carr_library.speech.listening","carr_library.speech._wave_output","carr_library.ui.playback_queue","carr_library.ui.playback_navigation","carr_library.ui.playback_settings","carr_library.ui.studio_dialog","carr_library.studio.clips","carr_library.studio.backup_inputs","carr_library.studio.render","carr_library.studio.project","carr_library.audio.output_devices","carr_library.audio.cleanup","carr_library.audio.process","carr_library.audio.windows_job","carr_library.durable_state","carr_library.application","carr_library.backup_current","carr_library.library_backup"]
           # Compile selected real source and test bytes without importing UI/native code.
           for name in names:
               path = source.joinpath(*name.split(".")[1:]).with_suffix(".py")
@@ -201,6 +204,60 @@ jobs:
         run: |
           unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
           python -I -B -X utf8 ci-playback-queue/check.py installed 2>&1 | tee ci-playback-queue/installed.txt
+      - name: Require actual native queue controls with runtime egress blocked
+        if: "!cancelled() && runner.os == 'Windows' && steps.queue_install.outcome == 'success' && steps.queue_desktop.outcome == 'success' && steps.queue_audio.outcome == 'success'"
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          python -I -B -c "from pathlib import Path; p=Path('scripts/windows_playback_queue_smoke.py'); compile(p.read_bytes(), str(p), 'exec')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = (Get-Command python.exe).Source
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testFfmpeg = Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffmpeg.exe'
+          $testFfprobe = Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffprobe.exe'
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$env:CARR_PLAYBACK_QUEUE_AUDIO;
+             ffmpeg=@{ path=$testFfmpeg; sha256=(Get-FileHash -LiteralPath $testFfmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
+             ffprobe=@{ path=$testFfprobe; sha256=(Get-FileHash -LiteralPath $testFfprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-playback-queue/external-test-audio-binding.json'
+          $programs = @($python, $basePython,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Get-Process -Id $PID).Path,
+            (Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $rulePrefix = 'CARR-playback-queue-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-playback-queue/runtime-firewall.json'
+            $probes = @(
+              @{ name='native-playback-queue'; script='scripts/windows_playback_queue_smoke.py'; arguments=@('--audio-evidence', 'ci-playback-queue/external-test-audio-binding.json') }
+            )
+            $failures = @()
+            foreach ($probe in $probes) {
+              $scriptPath = $probe.script
+              $probeArgs = @($probe.arguments)
+              & $python -I -B -X utf8 -X faulthandler $scriptPath @probeArgs 2>&1 | Tee-Object ('ci-playback-queue/' + $probe.name + '.txt')
+              if ($LASTEXITCODE -ne 0) { $failures += $probe.name }
+            }
+            if ($failures.Count -ne 0) { throw ('Required native workflows failed: ' + ($failures -join ', ')) }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
       - name: Preserve exact identity
         if: always()
         run: |

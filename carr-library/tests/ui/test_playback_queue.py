@@ -70,6 +70,11 @@ class Control:
         self._deleted = True
 
 
+class CheckBox(Control):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, value=False, **kwargs)
+
+
 class Sizer:
     def __init__(self, *args, **kwargs): pass
     def Add(self, *args, **kwargs): pass
@@ -87,7 +92,7 @@ class Timer:
 @pytest.fixture
 def wx():
     return SimpleNamespace(Dialog=Control, ScrolledWindow=Control, StaticText=Control,
-        TextCtrl=Control, Button=Control, CheckBox=Control, ListBox=Control,
+        TextCtrl=Control, Button=Control, CheckBox=CheckBox, ListBox=Control,
         Timer=Timer, BoxSizer=Sizer, FlexGridSizer=Sizer,
         CallLater=lambda delay, callback: callback(),
         DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8,
@@ -158,6 +163,7 @@ def test_open_and_explicit_saved_review_never_create_playback_or_new_owner(owned
     assert t.session.pending_saved == t.saved and t.mci.starts == []
     assert all(button.GetName() for button in t.view.buttons.values())
     assert t.view.buttons['review'].enabled and not t.view.buttons['play'].enabled
+    assert t.view.restore_controls.GetValue() is False
     t.view.buttons['review'].bindings['button'](None)
     assert t.session.pending_saved is None and t.player.position_seconds == .375
     assert t.mci.starts == [] and t.host.controller.audio is None
