@@ -522,6 +522,7 @@ def test_native_tasks_probe_uses_current_semantic_registry_and_real_launcher_reb
     ('search', 370, 'allowed'), ('results', 370, 'allowed'),
     ('search', 13, 'initially-disabled'), ('results', 13, 'initially-disabled'),
     ('search', 13, 'revoked-on-close'), ('results', 13, 'revoked-on-close'),
+    ('results', 370, 'initially-disabled'), ('results', 370, 'revoked-on-close'),
     ('search', 9, 'allowed'), ('results', 27, 'allowed'),
 ])
 def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availability(
@@ -532,6 +533,7 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
     from carr_library.ui.command_registry import CommandRegistry, CommandSpec
 
     controls, order, events, skipped = [], [], [], []
+    activations, invoked, default_calls = [], [], []
     enabled = [permission != 'initially-disabled']
     frame = SimpleNamespace(_closing=False, IsEnabled=lambda: True,
         GetMenuBar=lambda: SimpleNamespace(IsEnabledTop=lambda index: True))
@@ -550,10 +552,16 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
         events.append(event.identifier)
         return True
     frame.GetEventHandler = lambda: SimpleNamespace(ProcessEvent=dispatched)
+    original_invoke = manager.invoke
+    def observed_invoke(identity):
+        invoked.append(identity)
+        return original_invoke(identity)
+    monkeypatch.setattr(manager, 'invoke', observed_invoke)
 
     class Control:
         def __init__(self, parent=None, identifier=None, label='', **options):
             self.parent, self.name, self.value = parent, '', ''
+            self.identifier = identifier
             self.style = options.get('style', 0)
             self.bindings, self.values, self.selection = {}, [], -1
             controls.append(self)
@@ -570,6 +578,9 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
         def GetSelection(self): return self.selection
         def Enable(self, enabled): self.enabled = enabled
         def SetFocus(self): pass
+        def SetDefault(self):
+            default_calls.append(self)
+            self.parent.default_button = self
 
     class Dialog(Control):
         def SetSizer(self, sizer): pass
@@ -589,12 +600,22 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
             event = SimpleNamespace(GetKeyCode=lambda: code, Skip=lambda: skipped.append(code))
             assert search.style == wx.TE_PROCESS_ENTER and 'key-down' not in search.bindings
             assert 'text-enter' not in results.bindings
+            default = getattr(self, 'default_button', None)
+            assert default is not None and default.identifier == wx.ID_OK
+            assert default_calls == [default]
             if target == 'search':
-                # MSW's single-line native edit emits TEXT_ENTER only with this style.
+                # WANTMESSAGE keeps native TextCtrl Return on the TEXT_ENTER path.
                 if code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+                    activations.append('text-enter')
                     search.bindings['text-enter'](event)
                 else:
                     event.Skip()
+            elif code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+                # MSW preprocesses ListBox Return before KEY_DOWN and consumes a
+                # successful enabled default-button click; it does not emit both.
+                if default.enabled:
+                    activations.append('default-button')
+                    default.bindings['button'](event)
             else:
                 results.bindings['key-down'](event)
             return getattr(self, 'result', 5101)
@@ -622,6 +643,11 @@ def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availa
     assert events == ([711] if expected else [])
     assert skipped == ([code] if code not in (13, 370) else [])
     assert order[-2:] == ['destroyed', 'focus-restored']
+    chosen = code in (13, 370) and permission != 'initially-disabled'
+    assert invoked == (['operations.open'] if chosen else [])
+    assert order.count('accepted') == (1 if chosen else 0)
+    assert activations == (['text-enter'] if target == 'search' and code in (13, 370)
+                           else ['default-button'] if chosen else [])
     if code in (13, 370) and permission != 'initially-disabled':
         assert order[0] == 'accepted'
     else:
