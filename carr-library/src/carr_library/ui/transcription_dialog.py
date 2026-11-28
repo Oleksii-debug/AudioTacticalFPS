@@ -59,6 +59,7 @@ def show_transcription(frame, *, selected_job=None):
                         ('run', 'Запустити / &продовжити'), ('stop', 'З&упинити'),
                         ('save', 'Зберегти &правки'), ('export', '&Експорт'),
                         ('refresh', '&Оновити'), ('review', 'Перевірений runtime та &відновлення'),
+                        ('remote', 'Віддалене розпізнавання з &дозволом'),
                         ('close', '&Закрити')]:
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
@@ -200,6 +201,18 @@ def show_transcription(frame, *, selected_job=None):
         show_runtime_transcription_dialog(frame)
         if alive and scope_current():
             refresh(current)
+
+    def remote_transcription(event):
+        if busy or not can_replace() or not scope_current() or getattr(frame, 'working', False):
+            return
+        try:
+            from .transcription_remote_dialog import show_remote_transcription
+            show_remote_transcription(frame, service, window_parent=dialog,
+                is_current=lambda: alive and scope_current(), on_job=lambda identity: refresh(identity))
+            if alive and scope_current():
+                refresh(current)
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
 
     def configure(event):
         try:
@@ -375,7 +388,8 @@ def show_transcription(frame, *, selected_job=None):
         dialog.EndModal(wx.ID_CLOSE)
     for name, handler in [('configure', configure), ('create', create), ('folder', create_folder),
                           ('run', run), ('save', save),
-                          ('export', export), ('refresh', update_jobs), ('review', review_runtime), ('close', close)]:
+                          ('export', export), ('refresh', update_jobs), ('review', review_runtime),
+                          ('remote', remote_transcription), ('close', close)]:
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     buttons['stop'].Bind(wx.EVT_BUTTON, lambda event: cancel.set())
     jobs.Bind(wx.EVT_CHOICE, select_job)

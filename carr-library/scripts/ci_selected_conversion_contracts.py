@@ -50,7 +50,7 @@ PINS = {
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "scripts/selected_conversion_fixture_support.py": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7",
     "scripts/selected_conversion_acceptance.py": "4f3fd0b4edbce854c03b69ffd9c4bdbf45fc5679",
-    "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
+    "scripts/translation_loopback_check.py": "360a669baaa8d60b41acc265111d2fa0f68108ee",
     "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
     "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
     "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",

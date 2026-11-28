@@ -54,7 +54,7 @@ PINS = {
     "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
     "src/carr_library/backup_book_audio.py": "4fd92f122d2907c0530fee912c18b45457748682",
     "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
-    "src/carr_library/backup_producers.py": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",
+    "src/carr_library/backup_producers.py": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
     "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
     "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
     "src/carr_library/studio/render.py": "11925e2f60742a3193d2ae50238ab56ae8889534",

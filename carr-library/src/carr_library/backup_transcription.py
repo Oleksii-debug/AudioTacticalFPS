@@ -123,6 +123,15 @@ def _engine(value):
 
 
 def _job(db, value, workspace_key, identity):
+    from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+    if type(value) is dict and value.get('protocol') == REMOTE_PROTOCOL:
+        from .integrations.transcription_remote_values import job
+        job(value, identity=identity)
+        if (sha256(value['workspace'].encode('utf-8')).hexdigest() != workspace_key
+                or db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?',
+                              (value['workspace'],)).fetchone() is None):
+            raise ValueError('Remote transcription belongs to a missing or different copied workspace.')
+        return
     from .transcription import settings, _protocol, RECEIPTS_PROTOCOL, MAX_FILES, MAX_SOURCE_BYTES, MAX_BATCH_BYTES
     fields(value, {'version', 'id', 'workspace', 'title', 'created', 'updated', 'status',
                    'sources', 'settings', 'done', 'failed', 'receipts', 'artifacts',
@@ -270,6 +279,12 @@ def validate_collection(root, entries, records, *, cancelled):
             raise ValueError('Retained transcription files have no owning job declaration.')
         job = dict(job, protocol=job.get('protocol', RECEIPTS_PROTOCOL))
         directory = root / prefix
+        from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+        if job['protocol'] == REMOTE_PROTOCOL:
+            from .integrations.transcription_remote_values import verify_files
+            verify_files(directory, job, cancelled=cancelled,
+                         names=[name[len(prefix):] for name in names])
+            continue
         TranscriptionService._sources(validator, directory, job, cancelled)
         sources = {row['filename']: row for row in job['sources']}
         for name in names:
@@ -366,6 +381,17 @@ def prepare_restored_inventory(stage, destination, entries, *, cancelled):
         else:
             from .backup_sidecars import _json
             value = _json(raw)
+            from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+            if (member(name) and member(name)[3] == 'job.json'
+                    and value.get('protocol') == REMOTE_PROTOCOL):
+                from .integrations.transcription_remote_values import job
+                job(value)
+                value['remote'] = dict(value['remote'], restored=True)
+                if value['status'] == 'running':
+                    value.update(status='stopped', last_error=
+                        'Restored remote work has no active consent. Verify any saved result; review charge state before a new explicit call.')
+                atomic_json(target, value, replace=True)
+                raw = backup_sidecars.read_regular(target, limit(name))
             if name == PREFIX + 'engine.json':
                 _engine(value)
         if value is not None:

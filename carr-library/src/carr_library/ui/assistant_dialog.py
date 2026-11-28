@@ -463,7 +463,7 @@ def show_provider_settings(frame):
         endpoint = field('Official endpoint or explicitly chosen loopback service', current.endpoint if current else 'http://127.0.0.1:8080/v1')
         model = field('Model ID', current.model if current else 'local-model')
         voice = field('Voice ID; blank for language models', current.voice or '' if current else '')
-        capability = field('Capabilities: llm.chat, speech.synthesize, music.compose, sfx.generate, translation.text, translation.languages',
+        capability = field('Capabilities: llm.chat, speech.synthesize, speech.transcribe, music.compose, sfx.generate, translation.text, translation.languages',
                            ','.join(current.capabilities) if current else 'llm.chat')
         secret = field('New credential; API key for Basic v2, OAuth access token for Advanced v3; blank keeps it', password=True)
         token_expiry = field('Advanced v3 token expiry with UTC offset; for example 2026-11-27T15:30:00Z')

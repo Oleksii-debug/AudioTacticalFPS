@@ -1,0 +1,212 @@
+name: CARR explicit remote transcription acceptance
+
+on:
+  push:
+    branches: ['carr/ci-remote-stt-*']
+    paths: ['carr-library/**', '.github/workflows/carr-remote-stt.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transcription-contracts:
+    name: Remote STT 85 source and installed on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    concurrency:
+      group: carr-remote-stt-${{ github.sha }}-${{ matrix.os }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify exact sources before acquiring the existing hashed closure
+        timeout-minutes: 15
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact transcription source differs.' }
+          $verify = @'
+          from hashlib import sha1
+          import importlib.util, pathlib, sys
+          path = pathlib.Path('scripts/ci_transcription_remote_contracts.py').resolve()
+          assert path.is_file() and not path.is_symlink()
+          raw = path.read_bytes()
+          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == 'c0f0f2a2abac8fb5d50f63020da136acc0868d1f'
+          compile(raw, str(path), 'exec')
+          spec = importlib.util.spec_from_file_location('stt_ci_preflight', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = module
+          spec.loader.exec_module(module)
+          assert len(module.sources()) == 47
+          for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):
+              compile(getattr(module, name), '<stt-'+name+'>', 'exec')
+          assert len(module.SUITES) == 3 and sum(module.SUITES.values()) == 85
+          assert len(module.BASE_MODULES) == 30 and len(module.WINDOWS_MODULES) == 32
+          contract = module.NATIVE_CONTRACT
+          assert len(set(contract['required_checks'])) == contract['unique_required_checks'] == 73
+          assert len(contract['origin_modules']) == contract['origin_count'] == 23
+          print('Exact selected-audio source and existing installed-child policies verified.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Transcription source or policy preflight failed.' }
+          New-Item -ItemType Directory -Path 'ci-remote-stt' -ErrorAction Stop | Out-Null
+          if ($env:RUNNER_OS -eq 'Windows') {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned transcription dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'The installed dependency closure is inconsistent.' }
+      - name: Require 85 source and 85 isolated installed cases on Linux
+        if: ${{ runner.os != 'Windows' }}
+        timeout-minutes: 100
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & python -I -B -X utf8 scripts/ci_transcription_remote_contracts.py --evidence ci-remote-stt/contracts --expected-head $env:EXPECTED_SOURCE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Required source or installed transcription acceptance failed.' }
+      - name: Require 85 source, 85 installed, two real loopback modes and native 73 controls
+        if: ${{ runner.os == 'Windows' }}
+        timeout-minutes: 100
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $python = (Get-Command python.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+          $inventory = @(& $python -I -B -c "import pathlib,sys; p=pathlib.Path(sys.executable).resolve(); b=pathlib.Path(getattr(sys,'_base_executable',sys.executable)).resolve(); print(p); print(b); print(p.with_name('pythonw.exe')); print(b.with_name('pythonw.exe'))")
+          if ($LASTEXITCODE -ne 0) { throw 'Exact interpreter inventory failed.' }
+          $programs = @($inventory | ForEach-Object { [IO.Path]::GetFullPath($_) } | Sort-Object -Unique)
+          foreach ($program in $programs) {
+            if (-not (Test-Path -LiteralPath $program -PathType Leaf)) { throw ('Required interpreter is missing: ' + $program) }
+            if (((Get-Item -LiteralPath $program -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw ('Interpreter is a reparse point: ' + $program) }
+          }
+          $remoteRanges = @('0.0.0.1-126.255.255.255', '128.0.0.0-255.255.255.255',
+            '::2-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff')
+          function Normalize-RemoteRanges($Ranges) {
+            @($Ranges | ForEach-Object {
+              $ends = $_ -split '-', 2
+              if ($ends.Count -ne 2) { throw 'Unexpected firewall remote-address representation.' }
+              ([System.Net.IPAddress]::Parse($ends[0])).ToString() + '-' + ([System.Net.IPAddress]::Parse($ends[1])).ToString()
+            } | Sort-Object)
+          }
+          $expectedRanges = @(Normalize-RemoteRanges $remoteRanges)
+          $rules = [System.Collections.Generic.List[string]]::new()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3) { throw 'All three original firewall states are required.' }
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $name = 'CARR-remote-stt-' + [guid]::NewGuid().ToString('N')
+              $rules.Add($name)
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -RemoteAddress $remoteRanges -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if ($profiles.Count -ne 3 -or @($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'All actual firewall profiles must be active.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules.ToArray() -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Transcription external-address rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Rules do not cover both selected/base Python and pythonw.' }
+            foreach ($rule in $active) {
+              $actualRanges = @(Normalize-RemoteRanges @(($rule | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress))
+              if (@(Compare-Object $expectedRanges $actualRanges).Count -ne 0) { throw 'The loopback boundary differs from the reviewed external-address ranges.' }
+            }
+            @{ status='PASS'; blocked_programs=$filters; blocked_remote_ranges=$expectedRanges; allowed_test_peer='127.0.0.1'; scope='selected and base interpreters; external egress blocked; only synthetic local HTTP is used'; profiles=$profilesBefore } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-remote-stt/firewall.json'
+            & $python -I -B -X utf8 scripts/ci_transcription_remote_contracts.py --evidence ci-remote-stt/contracts --expected-head $env:EXPECTED_SOURCE_SHA --firewall-receipt ci-remote-stt/firewall.json
+            if ($LASTEXITCODE -ne 0) { throw 'Required source, installed, loopback or native transcription acceptance failed.' }
+          } finally {
+            $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+            foreach ($name in $rules) {
+              try {
+                Remove-NetFirewallRule -Name $name -ErrorAction Stop
+                if (@(Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue).Count -ne 0) { throw ('Owned rule survived removal: ' + $name) }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $restored = Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop
+                if ($restored.Enabled -ne $profile.Enabled) { throw ('Profile state was not restored: ' + $profile.Name) }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            @{ status=$(if ($cleanupFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); original_profiles=$profilesBefore; removed_rules=$rules.ToArray(); errors=$cleanupFailures.ToArray() } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-remote-stt/firewall-cleanup.json'
+            if ($cleanupFailures.Count -ne 0) { throw ('Owned transcription firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          }
+      - name: Admit only bounded transcription diagnostic evidence
+        id: evidence_contract
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $validate = @'
+          import json, pathlib, stat, xml.etree.ElementTree as ET
+          root = pathlib.Path('ci-remote-stt')
+          assert root.is_dir() and not root.is_symlink(), 'No actual transcription evidence exists.'
+          allowed = {'firewall.json', 'firewall-cleanup.json'}
+          contract = {
+              'identity-before.json','source-contracts.txt','source-summary.json',
+              'wheel-build.txt','source-wheel-proof.json','wheel-install.txt','installed-pip-check.txt',
+              'native-origins-before.json','native-origins-before.txt',
+              'native-origins-after.json','native-origins-after.txt',
+              'native-remote-stt.txt','native-remote-stt.json','contracts-summary.json'}
+          contract.update(f'installed-{number}{suffix}' for number in range(1,4)
+                          for suffix in ('.xml','-origins.json','.txt'))
+          contract.update(f'transcription-loopback-{mode}{suffix}'
+                          for mode in ('source','installed') for suffix in ('.json','.xml','.txt'))
+          allowed.update('contracts/'+name for name in contract)
+          files = list(root.rglob('*'))
+          assert files and len(files) <= len(allowed)+1
+          total = 0
+          for path in files:
+              info = path.lstat()
+              assert not path.is_symlink() and not getattr(info,'st_file_attributes',0) & 1024
+              if stat.S_ISDIR(info.st_mode):
+                  assert path.relative_to(root).as_posix() == 'contracts'
+                  continue
+              name = path.relative_to(root).as_posix()
+              assert name in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink == 1, name
+              assert info.st_size <= 8*1024*1024, name
+              total += info.st_size
+              assert total <= 64*1024*1024, 'Evidence exceeds its aggregate bound.'
+              raw = path.read_bytes()
+              assert b'\0' not in raw, name
+              if path.suffix == '.json':
+                  json.loads(raw.decode('utf-8-sig'))
+              elif path.suffix == '.xml':
+                  ET.fromstring(raw)
+          print('Closed bounded text/JSON/XML evidence; no originals, credentials, model or application/runtime archives.')
+          '@
+          $validate | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Transcription evidence inventory is invalid.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() && steps.evidence_contract.outcome == 'success' }}
+        with:
+          name: remote-stt-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-remote-stt/
+          if-no-files-found: error

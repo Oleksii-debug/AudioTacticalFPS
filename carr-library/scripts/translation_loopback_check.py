@@ -84,6 +84,28 @@ PROVIDER_REQUIRED = (
 )
 
 
+
+TRANSCRIPTION_MODULES = (
+    'carr_library.application', 'carr_library.transcription',
+    'carr_library.assistant.models', 'carr_library.assistant.profiles',
+    'carr_library.assistant.providers', 'carr_library.assistant.credentials',
+    'carr_library.assistant.transcription_provider',
+    'carr_library.integrations.transcription_remote_values',
+    'carr_library.integrations.transcription_values',
+    'carr_library.catalog.intake', 'carr_library.durable_state',
+)
+TRANSCRIPTION_TEST = 'tests/assistant/test_transcription_loopback.py'
+TRANSCRIPTION_COMPANION = 'tests/transcription/remote_fixture.py'
+TRANSCRIPTION_REQUIRED = (
+    'test_actual_stt_loopback_uploads_only_reviewed_bytes_and_returns_bound_usage',
+    'test_actual_stt_local_only_never_reaches_loopback_or_credentials',
+    'test_actual_stt_http_refusal_never_redirects_or_retries[302]',
+    'test_actual_stt_http_refusal_never_redirects_or_retries[401]',
+    'test_actual_stt_http_refusal_never_redirects_or_retries[503]',
+    'test_actual_stt_loopback_rejects_unrequested_response_shape_without_resending',
+)
+
+
 def firewall_receipt(path):
     value = json.loads(path.read_text(encoding='utf-8-sig'))
     if value.get('status') != 'PASS' or value.get('allowed_test_peer') != '127.0.0.1':
@@ -119,7 +141,7 @@ def firewall_receipt(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', choices=('source', 'installed'), required=True)
-    parser.add_argument('--suite', choices=('translation', 'providers'), default='translation')
+    parser.add_argument('--suite', choices=('translation', 'providers', 'transcription'), default='translation')
     parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--firewall-receipt', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
@@ -128,6 +150,10 @@ def main():
     module_names = PROVIDER_MODULES if provider_suite else MODULES
     test_relative = PROVIDER_TEST if provider_suite else TEST
     required = PROVIDER_REQUIRED if provider_suite else REQUIRED
+    transcription_suite = args.suite == 'transcription'
+    if transcription_suite:
+        module_names, test_relative, required = (
+            TRANSCRIPTION_MODULES, TRANSCRIPTION_TEST, TRANSCRIPTION_REQUIRED)
     case_count = len(required)
     test_module = Path(test_relative).stem
     report_prefix = 'provider-loopback-' if provider_suite else 'translation-loopback-'
@@ -135,6 +161,10 @@ def main():
     transport = ('127.0.0.1 synthetic HTTP provider fixtures' if provider_suite
                  else '127.0.0.1 synthetic HTTP and isolated CLI subprocesses')
     case_label = 'local provider HTTP cases' if provider_suite else 'local translation HTTP/CLI cases'
+    if transcription_suite:
+        report_prefix, acceptance = 'transcription-loopback-', 'exact six STT'
+        transport = '127.0.0.1 synthetic HTTP; documented remote HTTPS constructor replaced only in fixture'
+        case_label = 'explicit selected-audio HTTP cases; no paid call or acoustic inference'
     if os.name != 'nt':
         parser.error('This required gate uses the calling Windows process-level firewall.')
     source_root = args.source_root.resolve(strict=True)
@@ -187,6 +217,9 @@ def main():
     receipt_path = output / (report_prefix + args.mode + '.json')
     test_source = checkout / test_relative
     test_sha = sha256(test_source.read_bytes()).hexdigest()
+    companion_sources = ([checkout / TRANSCRIPTION_COMPANION] if transcription_suite else [])
+    companion_hashes = {str(path.relative_to(checkout)).replace('\\', '/'): sha256(path.read_bytes()).hexdigest()
+                        for path in companion_sources}
     with TemporaryDirectory(prefix='carr-translation-loopback-') as temporary:
         root = Path(temporary)
         selected_test = root / test_relative
@@ -194,6 +227,13 @@ def main():
         shutil.copyfile(test_source, selected_test)
         if sha256(selected_test.read_bytes()).hexdigest() != test_sha:
             raise AssertionError('The staged loopback tests changed.')
+        for source in companion_sources:
+            relative = source.relative_to(checkout)
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+            if sha256(target.read_bytes()).hexdigest() != companion_hashes[relative.as_posix()]:
+                raise AssertionError('The staged STT companion changed.')
         # Reuse the exact reviewed timed diagnostic without executing its child policy.
         from hashlib import sha1 as _ci_diagnostic_sha1
         import stat as _ci_diagnostic_stat
@@ -217,7 +257,14 @@ def main():
         assert (_ci_diagnostic_after.st_dev, _ci_diagnostic_after.st_ino, _ci_diagnostic_after.st_size, _ci_diagnostic_after.st_mtime_ns) == (_ci_diagnostic_info.st_dev, _ci_diagnostic_info.st_ino, _ci_diagnostic_info.st_size, _ci_diagnostic_info.st_mtime_ns), 'Reviewed pytest diagnostic identity changed during tests'
         assert _ci_diagnostic_after.st_nlink == 1 and not getattr(_ci_diagnostic_after, 'st_file_attributes', 0) & 0x400
         print(json.dumps({'direct_pytest_diagnostic_source': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473', 'selected_plugins': len(_ci_diagnostic_plugins)}, sort_keys=True), flush=True)
+        for source in companion_sources:
+            relative = source.relative_to(checkout)
+            if sha256((root / relative).read_bytes()).hexdigest() != companion_hashes[relative.as_posix()]:
+                raise AssertionError('The staged STT companion changed during execution.')
     after_origins = origins()
+    for source in companion_sources:
+        if sha256(source.read_bytes()).hexdigest() != companion_hashes[source.relative_to(checkout).as_posix()]:
+            raise AssertionError('The checked-out STT companion changed during execution.')
     if before_origins != after_origins:
         raise AssertionError('The package origins changed during actual HTTP/CLI execution.')
     if sha256(test_source.read_bytes()).hexdigest() != test_sha:
@@ -236,6 +283,9 @@ def main():
         'test_sha256': test_sha, 'junit_sha256': sha256(xml.read_bytes()).hexdigest() if xml.is_file() else None,
         'firewall': boundary, 'actual_transport': transport,
         'actual_local_model_inference': 'NOT_RUN', 'quality_or_135_language_qualification': 'NOT_RUN'}
+    if transcription_suite:
+        receipt['companion_sha256'] = companion_hashes
+        receipt['actual_paid_provider_call'] = 'NOT_RUN'
     receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, ensure_ascii=False), flush=True)
     if not valid:

@@ -525,6 +525,8 @@ def _usage(value):
                 if (key in {'translation_sha256', 'decoded_translation_sha256'}
                         and row['operation'] == 'translation.text'):
                     digest(count)
+                elif key == 'transcript_sha256' and row['operation'] == 'speech.transcribe':
+                    digest(count)
                 else:
                     number(count, integer=True)
 

@@ -80,7 +80,7 @@ class Authorization:
             endpoint(address, local=type(self) is LocalTranslationAuthorization)
         if not self.operations or any(o not in CAPABILITIES for o in self.operations):
             raise ValueError('Invalid authorized operation.')
-        if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'synthetic-test') for x in self.data_classes):
+        if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'selected-audio', 'synthetic-test') for x in self.data_classes):
             raise ValueError('Approve a bounded selected data class; whole-library uploads are unavailable.')
         if any(not re.fullmatch('[0-9a-f]{64}', h) for h in self.request_hashes):
             raise ValueError('Invalid authorized request checksum.')
@@ -228,6 +228,9 @@ def _request(profile, operation, payload):
         return '/chat/completions', body, 'application/json'
     if profile.adapter != 'elevenlabs':
         raise ValueError('Unsupported provider adapter.')
+    if operation == 'speech.transcribe':
+        from .transcription_provider import request
+        return request(profile, payload)
     if operation == 'speech.synthesize':
         if set(payload) != {'text'} or not profile.voice:
             raise ValueError('Speech synthesis requires text and a configured voice ID.')
@@ -291,7 +294,7 @@ class Gateway:
 
     def request(self, profile, operation, payload, *, task_id, data_class,
                 authorization=None, max_cost=None, operation_id=None, output=None,
-                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024):
+                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024, upload=None):
         if not isinstance(profile, ProviderProfile) or not profile.enabled:
             raise PermissionError('Enable and explicitly select this provider profile first.')
         if self.mode not in MODES:
@@ -301,6 +304,16 @@ class Gateway:
         if type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 1024 * 1024 * 1024:
             raise ValueError('Invalid response byte budget.')
         route, body, expected_type = _request(profile, operation, payload)
+        transcription = operation == 'speech.transcribe'
+        if transcription:
+            from .transcription_provider import AudioUpload, MAX_RESPONSE_BYTES
+            if not isinstance(upload, AudioUpload) or data_class != 'selected-audio':
+                raise ValueError('Remote transcription requires one explicitly selected, checksum-bound audio upload.')
+            if timeout > 120:
+                raise ValueError('One remote transcription request is bounded to 120 seconds.')
+            max_response_bytes = min(max_response_bytes, MAX_RESPONSE_BYTES)
+        elif upload is not None:
+            raise ValueError('This provider operation does not accept an audio upload.')
         raw = canonical(body).encode('utf-8')
         if len(raw) > 2 * 1024 * 1024:
             raise ValueError('Provider request exceeds the selected-data limit.')
@@ -320,6 +333,9 @@ class Gateway:
                     or operation not in authorization.operations or data_class not in authorization.data_classes
                     or (authorization.request_hashes and request_hash not in authorization.request_hashes)):
                 raise PermissionError('This task, destination, operation or selected data is outside the approved envelope.')
+            if transcription and (tuple(authorization.request_hashes) != (request_hash,)
+                    or authorization.max_calls != 1):
+                raise PermissionError('Approve this exact recording and request for one remote transcription call.')
             if max_cost is None:
                 raise PermissionError('The cost is unknown; approve an explicit maximum before calling this provider.')
             bound = money(max_cost)
@@ -336,6 +352,13 @@ class Gateway:
                    'User-Agent': 'UniversalResearchLibrary/0.2'}
         secret_bytes = None
         started = monotonic()
+        def transcription_guard():
+            if cancelled() or monotonic() - started >= timeout:
+                raise InterruptedError('Remote transcription was cancelled or exceeded its time allowance before transmission.')
+            if self.mode == 'LOCAL_ONLY' or self.mode not in MODES:
+                raise PermissionError('LOCAL ONLY blocks external transcription before credentials or transmission.')
+            if authorization.expires_at <= time():
+                raise PermissionError('Remote transcription approval expired before transmission.')
         try:
             if output is not None:
                 if expected_type == 'application/json':
@@ -348,6 +371,10 @@ class Gateway:
                 raise ValueError('Choose a new output file for generated audio.')
             if cancelled():
                 raise InterruptedError('Provider operation cancelled before transmission.')
+            if transcription:
+                from .transcription_provider import multipart
+                raw, headers['Content-Type'] = multipart(body, upload, cancelled=cancelled)
+                transcription_guard()
             if profile.credential_ref:
                 secret = self.vault.get(profile.id, profile.credential_ref)
                 if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
@@ -378,6 +405,8 @@ class Gateway:
                 raise ProviderError('Reconnect this remote provider account before generation.')
             if cancelled():
                 raise InterruptedError('Provider operation cancelled before transmission.')
+            if transcription:
+                transcription_guard()
             cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
             options = {'timeout': min(timeout, 30.0)}
             if target.scheme == 'https':
@@ -387,6 +416,8 @@ class Gateway:
             prefix = target.path.rstrip('/')
             if profile.adapter == 'elevenlabs' and not prefix:
                 prefix = '/v1'
+            if transcription:
+                transcription_guard()
             sent = True
             method = 'GET' if operation == 'translation.languages' else 'POST'
             connection.request(method, prefix + route, body=None if method == 'GET' else raw, headers=headers)
@@ -443,7 +474,15 @@ class Gateway:
                       'local': profile.local, 'actual_cost': None, 'artifacts': []}
             if expected_type == 'application/json':
                 parsed = json.loads(b''.join(chunks))
-                if local_translation:
+                if transcription:
+                    from .transcription_provider import response as transcription_response
+                    _reject_decoded_credential(parsed, secret_bytes)
+                    result.update(transcription_response(parsed))
+                    usage = {'submitted_audio_bytes': body['audio']['size_bytes'],
+                             'transcript_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                             'provider_timestamp_count': sum(len(segment['words'])
+                                 for segment in result['transcript']['segments'])}
+                elif local_translation:
                     from .translation_local import response as local_response
                     decoded = local_response(b''.join(chunks), operation, body, maximum=max_response_bytes)
                     result.update(decoded)

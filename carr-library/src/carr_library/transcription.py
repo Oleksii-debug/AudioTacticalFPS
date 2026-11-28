@@ -377,6 +377,7 @@ class TranscriptionService:
         self._broker = broker
         self._runtime_budget, self._runtime_stop_grace = budget, stop_grace
         self._local_protocol_cache = None
+        self._remote_transcription_cache = None
         self._authorize()
         self.root = local_path(app.root / 'state' / 'transcription')
         self.jobs_root = self.root / sha256(workspace.encode('utf-8')).hexdigest() / 'jobs'
@@ -431,6 +432,15 @@ class TranscriptionService:
             raise PermissionError('The transcription service belongs to the original library object and data folder.')
         with self.app.read(self.workspace):
             pass
+
+    def remote_transcription(self):
+        """Explicit optional provider path; never used by local worker configuration."""
+        self._authorize()
+        if self._remote_transcription_cache is None:
+            from .integrations.transcription_remote import RemoteTranscription
+            self._remote_transcription_cache = RemoteTranscription(self)
+        self._remote_transcription_cache.guard()
+        return self._remote_transcription_cache
 
     def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL,
                   runtime_profile_id=None, cancelled=lambda: False):
@@ -637,6 +647,12 @@ class TranscriptionService:
         if self._is_local_job(identity):
             return self._local_protocol().get_job(identity)
         value = read_json(self._path(identity) / 'job.json')
+        if type(value) is not dict:
+            raise ValueError('Invalid retained transcription job document.')
+        from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+        if value.get('protocol') == REMOTE_PROTOCOL:
+            from .integrations.transcription_remote_values import job
+            return job(value, identity=identity, workspace=self.workspace)
         if (value.get('version') != 1 or value.get('id') != identity
                 or value.get('workspace') != self.workspace):
             raise ValueError('Transcription job belongs to another library or schema.')
@@ -1061,6 +1077,11 @@ class TranscriptionService:
         if self._is_local_job(identity):
             return self._local_protocol().run(identity, progress=progress, cancel=cancelled,
                                               timeout=timeout)
+        from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+        if self.get(identity).get('protocol') == REMOTE_PROTOCOL:
+            # This button can only reconcile already saved results. A network
+            # call requires a fresh explicit approval in the provider workflow.
+            return self.remote_transcription().reconcile(identity, cancelled=cancelled)
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -1237,6 +1258,14 @@ class TranscriptionService:
         if self._is_local_job(identity):
             return self._local_protocol().verify(identity, cancel=cancelled)
         path, job = self._path(identity), self.get(identity)
+        from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+        if job['protocol'] == REMOTE_PROTOCOL:
+            self.remote_transcription().guard(cancelled)
+            from .integrations.transcription_remote_values import verify_files
+            recovered = verify_files(path, job, cancelled=cancelled)
+            if recovered['status'] != 'completed':
+                raise ValueError('This remote job has no completed result; a new transfer needs explicit approval.')
+            return recovered
         status = read_json(path / ('host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'))
         if status.get('run_id') != job.get('worker_run_id'):
             raise ValueError('The recognized transcript no longer belongs to the saved run.')
@@ -1265,6 +1294,9 @@ class TranscriptionService:
             return self._local_protocol().save_edit(identity, source, text, cancel=cancelled)
         if not isinstance(text, str) or len(text.encode('utf-8')) > MAX_TEXT_BYTES or '\0' in text:
             raise ValueError('Edited transcript exceeds its text allowance.')
+        from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+        if self.get(identity).get('protocol') == REMOTE_PROTOCOL:
+            self.remote_transcription().guard(cancelled)
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -1319,6 +1351,9 @@ class TranscriptionService:
                                                 include_edits=include_edits, cancel=cancelled)
         if formats is not None or include_edits is not True:
             raise ValueError('Legacy library exports retain all requested base formats and labelled edits together.')
+        from .assistant.transcription_provider import PROTOCOL as REMOTE_PROTOCOL
+        if self.get(identity).get('protocol') == REMOTE_PROTOCOL:
+            self.remote_transcription().guard(cancelled)
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):

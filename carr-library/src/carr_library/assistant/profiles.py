@@ -14,7 +14,7 @@ from .models import text, local_path
 from .state import atomic_json, read_json, regular
 
 
-CAPABILITIES = ('llm.chat', 'speech.synthesize', 'music.compose', 'sfx.generate',
+CAPABILITIES = ('llm.chat', 'speech.synthesize', 'speech.transcribe', 'music.compose', 'sfx.generate',
                 'translation.text', 'translation.languages')
 ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2', 'google-translation-v3', 'libretranslate-local')
 
@@ -155,8 +155,11 @@ class ProviderProfile:
         if self.adapter == 'elevenlabs':
             if self.local or target.hostname != 'api.elevenlabs.io' or target.port not in (None, 443) or target.path not in ('', '/v1'):
                 raise ValueError('ElevenLabs credentials may only be sent to its official HTTPS API host.')
-            if any(c not in ('speech.synthesize', 'music.compose', 'sfx.generate') for c in self.capabilities):
+            if any(c not in ('speech.synthesize', 'speech.transcribe', 'music.compose', 'sfx.generate') for c in self.capabilities):
                 raise ValueError('The ElevenLabs adapter does not provide chat completion or translation.')
+            if ('speech.transcribe' in self.capabilities and
+                    (self.capabilities != ('speech.transcribe',) or self.model != 'scribe_v2' or self.voice is not None)):
+                raise ValueError('Remote transcription requires its own ElevenLabs scribe_v2 profile, speech.transcribe only, and no voice ID.')
         if self.adapter == 'google-translation-v2':
             if (self.local or target.hostname != 'translation.googleapis.com'
                     or target.port not in (None, 443) or target.path != '/language/translate/v2'):
