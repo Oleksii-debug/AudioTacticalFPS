@@ -574,7 +574,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc))
 
-    def pronunciations(event=None):
+    def pronunciations(event=None, *, preparation=False):
         if not alive:
             return
         try:
@@ -583,6 +583,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             from ..durable_state import local_path
             from .pronunciation_dialog import (ReadingSnapshot, apply_pronunciation_preview,
                                                create_pronunciation_dialog)
+            if preparation:
+                from .speech_preparation import capture_speech, apply_speech, create_speech_preparation
             selected_library = parent.library
             selected_root = local_path(selected_library.root, exists=True)
 
@@ -604,7 +606,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     start, end = reading_range(editor, document.text, 'selection')
                 index = live.voice.GetSelection()
                 voice = live._voices[index] if 0 <= index < len(live._voices) else None
-                return ReadingSnapshot.capture(document, (start, end),
+                capture_current = capture_speech if preparation else ReadingSnapshot.capture
+                return capture_current(document, (start, end),
                     language=voice.language if voice else '', voice_id=voice.id if voice else '')
 
             def synchronize():
@@ -618,7 +621,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             def apply(preview):
                 guard(); current = capture()
                 live.stop()
-                apply_pronunciation_preview(document, preview, current)
+                if preparation:
+                    apply_speech(document, preview, current)
+                else:
+                    apply_pronunciation_preview(document, preview, current)
                 warning = synchronize()
                 return capture(), warning
 
@@ -631,10 +637,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     raise ValueError('The pronunciation change is no longer available to undo.')
                 return synchronize()
 
-            review = create_pronunciation_dialog(dialog, library_root=selected_root, capture=capture,
-                apply=apply, undo=undo_pronunciation, guard=guard, run=run, cancel=cancel)
+            if preparation:
+                review = create_speech_preparation(dialog, capture=capture, apply=apply,
+                    undo=undo_pronunciation, guard=guard, run=run, cancel=cancel)
+            else:
+                review = create_pronunciation_dialog(dialog, library_root=selected_root, capture=capture,
+                    apply=apply, undo=undo_pronunciation, guard=guard, run=run, cancel=cancel)
             try:
-                review.on_load()
+                if not preparation:
+                    review.on_load()
                 review.ShowModal()
             finally:
                 if review.alive:
@@ -939,6 +950,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     button('&Find and replace', find_replace, 'find_replace')
     button('Review &spelling', spelling, 'spelling')
     button('Reader appearance...', appearance.show, 'appearance')
+    button('Prepare speech text...', lambda event: pronunciations(event, preparation=True), 'prepare_speech')
     button('Pronunciatio&n rules', pronunciations, 'pronunciations')
     button('Save &WAV', save_audio, 'export_audio')
     button('Voice preferences by language...', choose_voice_preferences, 'voice_preferences')
