@@ -192,12 +192,15 @@ def _valid_locator(value):
 
 
 def extract_document(data, suffix, *, max_bytes=64 * 1024 * 1024,
-                     max_chars=10_000_000, cancelled=None, deadline=None):
+                     max_chars=10_000_000, cancelled=None, deadline=None,
+                     allow_inactive_page_decorations=False):
     """Dispatch to a bounded parser and validate its unverified preview contract."""
     format = FORMAT_BY_SUFFIX.get(suffix.casefold() if isinstance(suffix, str) else '')
     if (format is None or type(data) is not bytes
             or type(max_bytes) is not int or not 0 < len(data) <= max_bytes
             or type(max_chars) is not int or max_chars < 1
+            or type(allow_inactive_page_decorations) is not bool
+            or allow_inactive_page_decorations and suffix.casefold() != '.ods'
             or (cancelled is not None and not callable(cancelled))
             or (deadline is not None and (type(deadline) not in (int, float) or not math.isfinite(deadline)))):
         raise ValueError('Invalid document extraction request.')
@@ -215,8 +218,10 @@ def extract_document(data, suffix, *, max_bytes=64 * 1024 * 1024,
     else:
         from .document_formats_xml import extract_xml_document
         extractor = extract_xml_document
+    selected_options = ({'allow_inactive_page_decorations': True}
+                        if allow_inactive_page_decorations else {})
     result = extractor(data, suffix.casefold(), max_bytes=max_bytes, max_chars=max_chars,
-                       cancelled=cancelled, deadline=deadline)
+                       cancelled=cancelled, deadline=deadline, **selected_options)
     check()
     if (not isinstance(result, dict) or result.get('status') != 'review_required'
             or not isinstance(result.get('records'), list) or not 0 < len(result['records']) <= 10_000

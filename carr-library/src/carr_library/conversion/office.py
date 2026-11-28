@@ -368,8 +368,12 @@ def office_records(source, data, suffix, budget, deadline, selection):
     with verified_reader(output, expected_identity=file_identity(info)) as stream:
         converted = stream.read(budget.max_source_bytes + 1)
     _admit(selection, suffix, deadline)
+    # Only the fixed XLS-to-ODS reading-copy route opts into omitted inactive
+    # page templates.  Native ODF import and every other converter stay strict.
+    selected_options = ({'allow_inactive_page_decorations': True} if suffix == '.xls' else {})
     result = extract_document(converted, '.' + output_suffix, max_bytes=budget.max_source_bytes,
-                              max_chars=min(budget.max_text_bytes, 10_000_000), deadline=deadline)
+                              max_chars=min(budget.max_text_bytes, 10_000_000), deadline=deadline,
+                              **selected_options)
     identity = sha256(json.dumps(selection, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     for record in result['records']:
         record['status'] = 'review_required'

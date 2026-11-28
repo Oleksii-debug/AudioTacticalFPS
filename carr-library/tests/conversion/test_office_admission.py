@@ -153,3 +153,94 @@ def test_profile_is_per_operation_and_disables_active_content_and_external_updat
     assert values[scripting, 'MacroSecurityLevel'] == '3'
     assert not values[scripting, 'SecureURL']
     assert values['/org.openoffice.Office.Calc/Content/Update', 'Link'] == '1'
+
+
+@pytest.mark.parametrize('suffix', ['.doc', '.ppt', '.xls', '.wpd', '.pdb'])
+def test_fixed_xls_route_alone_selects_inactive_page_omission_with_real_intermediate_parser(
+        tmp_path, monkeypatch, suffix):
+    # Stub only the external native program. Inventory, held component readers,
+    # actual intermediate ZIP parsing and notice propagation remain production.
+    from io import BytesIO
+    from zipfile import ZipFile, ZIP_STORED
+    selected = installed(tmp_path)
+    selection = office.OfficeSelection.capture(selected).snapshot()
+    component_bytes = {row['name']: (selected.parent.parent / row['name']).read_bytes()
+                       for row in selection['files']}
+    stage = tmp_path / 'owned-parser-stage'
+    stage.mkdir()
+    source = stage / ('source' + suffix)
+    if suffix in ('.doc', '.ppt', '.xls'):
+        raw = bytes.fromhex('d0cf11e0a1b11ae1') + b'Synthetic parser-boundary fixture.'
+    elif suffix == '.wpd':
+        raw = b'\xffWPC' + b'Synthetic parser-boundary fixture.'
+    else:
+        raw = b'\0' * 60 + b'TEXtREAd' + b'\0' * 10
+    source.write_bytes(raw)
+    target = office.FILTERS[suffix][2]
+    namespace = 'urn:oasis:names:tc:opendocument:xmlns:'
+    kind = {'odt': 'text', 'ods': 'spreadsheet', 'odp': 'presentation'}[target]
+    expected = 'Книга kôň e\u0301'
+    paragraph = '<text:p>' + expected + '</text:p>'
+    if target == 'ods':
+        body = '<table:table><table:table-row><table:table-cell>' + paragraph + '</table:table-cell></table:table-row></table:table>'
+    elif target == 'odp':
+        body = '<draw:page><draw:frame><draw:text-box>' + paragraph + '</draw:text-box></draw:frame></draw:page>'
+    else:
+        body = paragraph
+    mime = 'application/vnd.oasis.opendocument.' + kind
+    content = (f'<office:document-content xmlns:office="{namespace}office:1.0" '
+               f'xmlns:text="{namespace}text:1.0" xmlns:table="{namespace}table:1.0" '
+               f'xmlns:draw="{namespace}drawing:1.0"><office:body><office:{kind}>'
+               + body + f'</office:{kind}></office:body></office:document-content>')
+    manifest = (f'<manifest:manifest xmlns:manifest="{namespace}manifest:1.0">'
+                f'<manifest:file-entry manifest:full-path="/" manifest:media-type="{mime}"/>'
+                '</manifest:manifest>')
+    stream = BytesIO()
+    with ZipFile(stream, 'w') as archive:
+        archive.writestr('mimetype', mime, compress_type=ZIP_STORED)
+        archive.writestr('content.xml', content)
+        archive.writestr('META-INF/manifest.xml', manifest)
+        if suffix == '.xls':
+            archive.writestr('styles.xml',
+                f'<office:document-styles xmlns:office="{namespace}office:1.0" '
+                f'xmlns:style="{namespace}style:1.0" xmlns:text="{namespace}text:1.0">'
+                '<office:master-styles><style:master-page><style:header-left style:display="false">'
+                '<text:p><text:span text:style-name="T18"><text:sheet-name>PRIVATE_TEMPLATE</text:sheet-name>'
+                '</text:span></text:p></style:header-left></style:master-page>'
+                '</office:master-styles></office:document-styles>')
+    intermediate = stream.getvalue()
+    original_parser = office.extract_document
+    calls, parser_calls = [], []
+    def external_program(args, root, deadline, **options):
+        calls.append(tuple(str(value) for value in args))
+        if '--version' in args:
+            return b'LibreOffice 26.8.3.1\n', False
+        assert '--infilter=' + office.FILTERS[suffix][0] in args
+        assert args[-1] == source
+        options['output'].write_bytes(intermediate)
+        return b'', False
+    def parser(data, declared, **options):
+        parser_calls.append((data, declared, dict(options)))
+        return original_parser(data, declared, **options)
+    monkeypatch.setattr(office, '_run', external_program)
+    monkeypatch.setattr(office, 'extract_document', parser)
+    engine, separator, records, warnings = office.office_records(
+        source, raw, suffix, ConversionBudget(), time.monotonic() + 30, selection)
+    assert len(calls) == 2 and len(parser_calls) == 1
+    assert parser_calls[0][0] == intermediate and parser_calls[0][1] == '.' + target
+    if suffix == '.xls':
+        assert parser_calls[0][2]['allow_inactive_page_decorations'] is True
+        assert 'inactive_page_decorations_not_read' in warnings
+        with pytest.raises(ValueError, match='Hidden'):
+            original_parser(intermediate, '.ods')
+    else:
+        assert 'allow_inactive_page_decorations' not in parser_calls[0][2]
+        assert 'inactive_page_decorations_not_read' not in warnings
+    assert [row['raw_text'] for row in records] == [expected]
+    assert all(row['status'] == 'review_required' and row['physical_index'] is None
+               and row['printed_label'] is None and row['printed_label_verified'] is False
+               and row['logical_locator']['intermediate_sha256'] == sha256(intermediate).hexdigest()
+               for row in records)
+    assert engine == 'selected-libreoffice-' + suffix[1:] and separator == '\n\n'
+    assert 'headers_footers_styles_not_rendered' in warnings and source.read_bytes() == raw
+    assert all((selected.parent.parent / name).read_bytes() == value for name, value in component_bytes.items())

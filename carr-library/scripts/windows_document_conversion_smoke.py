@@ -450,14 +450,14 @@ def main(argv=None):
             status = control(reader, 'Original and reading-copy status')
             if not state['seen']:
                 actual_text = editor.GetValue()
-                if actual_text != expected:
+                if not reader_copy_matches(expected, actual_text):
                     try:
                         observe_native(event='reader-value-mismatch', expected=text_shape(expected),
                             actual=text_shape(actual_text), handoffs=reader_handoffs[-2:])
                     except Exception:
                         pass  # Preserve the exact comparison if diagnostics fail.
                 check('real existing reader receives the exact verified UTF-8 copy',
-                      actual_text == expected)
+                      reader_copy_matches(expected, actual_text))
                 state['seen'] = True
             if not state['save']:
                 # Real Ctrl+S is needed before the existing reader's close guard.
@@ -478,7 +478,8 @@ def main(argv=None):
                 later(80, visit)
                 return
             resume = ReaderDraftStore(frame.library.root, slot='converted-reading-copy').load()
-            if resume is None or resume.document.text != expected or frame.working:
+            if (resume is None or resume.document.text != expected.replace('\r\n', '\n')
+                    or frame.working):
                 later(25, visit)
                 return
             if not state['close']:
@@ -486,7 +487,7 @@ def main(argv=None):
                       resume.document.source_anchor is None
                       and 'No retained-library source locator.' in status.GetValue())
                 check('real reader Save preserves the verified copy and its original',
-                      resume.document.text == resume.document.source_text == expected)
+                      reader_copy_matches(expected, editor.GetValue(), resume.document))
                 state['close'] = True
                 press(editor, wx.WXK_ESCAPE)
             later(25, visit)
@@ -569,6 +570,19 @@ def main(argv=None):
                 'crlf': value.count('\r\n'),
                 'leading_codepoints': [ord(char) for char in value[:16]],
                 'trailing_codepoints': [ord(char) for char in value[-16:]]}
+
+    def reader_copy_matches(expected, actual_text, document=None):
+        # wx.TextCtrl.GetValue uses LF for multiline values on every platform.
+        # Only the displayed/edited copy follows that contract: the verified
+        # handoff and immutable reading source retain the original UTF-8 bytes.
+        if (not reader_handoffs or reader_handoffs[-1] != {
+                'parent_is_host': True, 'text': text_shape(expected)}):
+            return False
+        if actual_text != expected.replace('\r\n', '\n'):
+            return False
+        return document is None or (
+            document.text == actual_text and document.source_text == expected
+            and document.source_sha256 == sha256(expected.encode('utf-8')).hexdigest())
 
     def observed_reader(*values, **options):
         try:

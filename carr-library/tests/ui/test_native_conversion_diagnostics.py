@@ -22,7 +22,7 @@ def helpers(**overrides):
     tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
     main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
     names = ('observe_native', 'error_text', 'observed_host_job', 'cleanup_check', 'observed_extract',
-             'text_shape', 'observed_reader')
+             'text_shape', 'observed_reader', 'reader_copy_matches')
     functions = []
     for name in names:
         node, = [item for item in main.body if isinstance(item, ast.FunctionDef) and item.name == name]
@@ -216,3 +216,69 @@ def test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_
                for field in ('leading_codepoints', 'trailing_codepoints'))
     assert len(json.dumps(first, ensure_ascii=True)) < 1000
     assert stderr.getvalue() == ''  # A shape query alone emits no report or result.
+
+
+@pytest.mark.parametrize('raw', [
+    'Verified \u03a9\r\nFirst line  \r\nLast\r\n',
+    'Verified \u03a9\nFirst line  \nLast\n',
+    'Verified \u03a9\r\nA lone\rmarker\nLast  \r\n',
+])
+def test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft(tmp_path, raw):
+    from carr_library.speech.reading import ReadingDocument
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
+
+    original = tmp_path / 'verified-copy.txt'
+    original.write_bytes(raw.encode('utf-8'))
+    native = raw.replace('\r\n', '\n')
+    env, _ = helpers()
+    env['reader_handoffs'].append({'parent_is_host': True, 'text': env['text_shape'](raw)})
+    assert env['reader_copy_matches'](raw, native)
+
+    # The real reader synchronizes the native TextCtrl value before Ctrl+S.
+    # Persist through the actual draft API; no source field is rewritten.
+    document = ReadingDocument(raw, title='Verified copy')
+    document.set_text(native)
+    store = ReaderDraftStore(tmp_path / 'library', slot='converted-reading-copy')
+    store.save(ReaderResume(document))
+    resume = store.load()
+    assert resume is not None
+    assert env['reader_copy_matches'](raw, native, resume.document)
+    assert resume.document.source_text == raw
+    assert resume.document.source_sha256 == sha256(original.read_bytes()).hexdigest()
+    assert resume.document.text == native and resume.document.source_anchor is None
+    assert original.read_bytes() == raw.encode('utf-8')
+
+
+@pytest.mark.parametrize('changed', [
+    'word', 'space', 'lone-cr', 'raw-widget', 'normalized-handoff', 'foreign-parent',
+    'normalized-source',
+])
+def test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change(changed):
+    from carr_library.speech.reading import ReadingDocument
+
+    raw = 'Exact \u03a9\r\nTwo  spaces\rlone\r\n'
+    native = raw.replace('\r\n', '\n')
+    document = ReadingDocument(raw, title='Verified copy')
+    document.set_text(native)
+    env, _ = helpers()
+    handoff = {'parent_is_host': True, 'text': env['text_shape'](raw)}
+    env['reader_handoffs'].append(handoff)
+    assert env['reader_copy_matches'](raw, native, document)
+
+    if changed == 'word':
+        native = native.replace('Exact', 'Other')
+    elif changed == 'space':
+        native = native.replace('Two  spaces', 'Two spaces')
+    elif changed == 'lone-cr':
+        native = native.replace('\r', '')
+    elif changed == 'raw-widget':
+        native = raw
+    elif changed == 'normalized-handoff':
+        handoff['text'] = env['text_shape'](native)
+    elif changed == 'foreign-parent':
+        handoff['parent_is_host'] = False
+    elif changed == 'normalized-source':
+        document = ReadingDocument(native, title='Verified copy')
+    else:
+        raise AssertionError(changed)
+    assert not env['reader_copy_matches'](raw, native, document)

@@ -20,17 +20,17 @@ ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
     "tests/conversion/test_selected_conversion.py": 39,
     "tests/conversion/test_calibre_admission.py": 49,
-    "tests/conversion/test_office_admission.py": 19,
+    "tests/conversion/test_office_admission.py": 24,
     "tests/ui/test_document_conversion.py": 20,
-    "tests/extract/test_document_formats_xml.py": 114,
+    "tests/extract/test_document_formats_xml.py": 151,
     "tests/audio/test_audio_process.py": 23,
     "tests/audio/test_live_metadata_retry.py": 12,
-    "tests/ui/test_native_conversion_diagnostics.py": 13,
+    "tests/ui/test_native_conversion_diagnostics.py": 23,
 }
 PINS = {
     "src/carr_library/conversion/_selected_files.py": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4",
     "src/carr_library/conversion/calibre.py": "917146418b06b28ac927c9a5cccbe90e9e86426c",
-    "src/carr_library/conversion/office.py": "e3d6f71b063b0640dc248304e74e0480a9f56090",
+    "src/carr_library/conversion/office.py": "fab629a5d4d14fe847fcc6ff0ebbda0041c0ada2",
     "src/carr_library/conversion/selected_adapters.py": "51ed8d7076ab9a5f4168aeaba8f2365e18ce588a",
     "src/carr_library/conversion/selected_worker.py": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673",
     "src/carr_library/conversion/selected.py": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6",
@@ -40,23 +40,24 @@ PINS = {
     "src/carr_library/ui/document_conversion.py": "83a48872bd07a0e4611ee68b1a59155fe4468239",
     "tests/conversion/test_selected_conversion.py": "16b19effb90f86ebc7b2b595de9441b69e28d767",
     "tests/conversion/test_calibre_admission.py": "bdea0804017e54a38d6036ca137feb778fea2e97",
-    "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
+    "tests/conversion/test_office_admission.py": "62266cf4ef3fd2acd22b3f5fa8984dcf3a6e8fa0",
     "tests/ui/test_document_conversion.py": "e1430ee06f64fd55e472c9cda884bb433e2d570d",
     "tests/conversion/test_conversion.py": "db3884363c51654c7d16ef2c5d2e82d0e714b411",
-    "src/carr_library/extract/document_formats_xml.py": "f2f712af05cdf154bd4633ba818661b926a954a7",
-    "tests/extract/test_document_formats_xml.py": "fbf155467e7217eb1870167849241756690d01cb",
+    "src/carr_library/extract/document_formats.py": "557798e324a126ee12bb439c6fea25237eece59d",
+    "src/carr_library/extract/document_formats_xml.py": "f48fd1e9cface87762dac8226d83176c5cdc6864",
+    "tests/extract/test_document_formats_xml.py": "879d73e197c4b77f7fed9d536e7fcd2bcd7a4b33",
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "scripts/selected_conversion_fixture_support.py": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7",
-    "scripts/selected_conversion_acceptance.py": "12ad3b13bbd452890961110b5852b05a7ef010aa",
+    "scripts/selected_conversion_acceptance.py": "1bebafab9730ded278d0a477892963f18a38749d",
     "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
     "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
     "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
     "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
     "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
     "tests/audio/test_live_metadata_retry.py": "9d97fca2633815e61a55c16f51a06484944f6fbc",
-    "tests/ui/test_native_conversion_diagnostics.py": "77bd5b3d02e0f1070b8798c2b944d89cd24c2d70",
-    "scripts/windows_document_conversion_smoke.py": "2c3a928d748e337d48d2a2b9e8345a6105360fa2",
+    "tests/ui/test_native_conversion_diagnostics.py": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+    "scripts/windows_document_conversion_smoke.py": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd",
 }
 COMPANIONS = ("scripts/windows_document_conversion_smoke.py",
               "scripts/selected_conversion_fixture_support.py")
@@ -71,6 +72,7 @@ MODULES = (
     "carr_library.conversion.worker",
     "carr_library.conversion.service",
     "carr_library.ui.document_conversion",
+    "carr_library.extract.document_formats",
     "carr_library.extract.document_formats_xml",
     "carr_library.catalog.intake",
     "carr_library.operations.broker",
@@ -269,8 +271,8 @@ def main():
         wrapper.write_text(INSTALLED_CHILD, encoding='utf-8')
         contract = work / 'child-contract.json'
         modules = list(MODULES)
-        require(len(modules) == len(set(modules)) == 19,
-                'All 18 selected-conversion origins and the shared bootstrap are required.')
+        require(len(modules) == len(set(modules)) == 20,
+                'All 19 selected-conversion origins and the shared bootstrap are required.')
         write(contract, dict(pytest_child=ci.PYTEST_CHILD, modules=modules))
         installed = []
         for number, (suite, expected_count) in enumerate(SUITES.items(), 1):

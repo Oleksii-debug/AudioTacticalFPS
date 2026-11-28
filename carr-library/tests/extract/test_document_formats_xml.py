@@ -574,3 +574,199 @@ def test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_
     with pytest.raises(ValueError, match='Hidden'):
         module._check_odf_visibility(root, module._Budget(max_chars=100))
     assert hidden.get(module.TEXT + 'display') == 'none'
+
+
+def _selected_page_template(name='header-left'):
+    field = 'sheet-name' if name.startswith('header') else 'page-number'
+    label = '' if name.startswith('header') else '<text:span text:style-name="T17">Page </text:span>'
+    return (f'<style:{name} style:display="false"><text:p>' + label
+            + f'<text:span text:style-name="T18"><text:{field}>PRIVATE_TEMPLATE</text:{field}>'
+            + f'</text:span></text:p></style:{name}>')
+
+
+def test_selected_xls_twelve_observed_disabled_templates_preserve_exact_cells_and_warning():
+    # Reproduce the actual structural observation: two masters have four empty
+    # decorations each; the third has sheet/page fields in the same four names.
+    names = ('header-left', 'header-first', 'footer-left', 'footer-first')
+    masters = []
+    for ordinal in range(3):
+        content = ''.join(
+            f'<style:{name} style:display="false"/>' if ordinal < 2
+            else _selected_page_template(name) for name in names)
+        masters.append('<style:master-page>' + content + '</style:master-page>')
+    styles = (f'<office:document-styles xmlns:office="{O}" xmlns:style="{ODF}style:1.0" '
+              f'xmlns:text="{T}"><office:master-styles>' + ''.join(masters)
+              + '</office:master-styles></office:document-styles>')
+    body = ('<table:table table:name="Exact"><table:table-row>'
+            '<table:table-cell><text:p>  Книга kôň e\u0301  </text:p></table:table-cell>'
+            '<table:table-cell><text:p>Second</text:p></table:table-cell>'
+            '</table:table-row></table:table>')
+    plain, selected = odf('.ods', body), odf('.ods', body, styles=styles)
+    original = sha256(selected).hexdigest()
+    expected = extract_xml_document(plain, '.ods')
+    with pytest.raises(ValueError, match='Hidden document text'):
+        extract_xml_document(selected, '.ods')
+    actual = extract_xml_document(selected, '.ods', allow_inactive_page_decorations=True)
+    assert actual['records'] == expected['records']
+    assert texts(actual) == ['  Книга kôň e\u0301  ', 'Second']
+    assert actual['warnings'] == sorted([*expected['warnings'], 'inactive_page_decorations_not_read'])
+    assert actual['provenance']['asset_sha256'] == original == sha256(selected).hexdigest()
+    assert 'PRIVATE_TEMPLATE' not in ''.join(texts(actual))
+    for record in actual['records']:
+        assert record['physical_index'] is None and record['printed_label'] is None
+        assert record['printed_label_verified'] is False
+        assert record['text_sha256'] == sha256(record['raw_text'].encode('utf-8')).hexdigest()
+
+
+@pytest.mark.parametrize('name', [
+    'header', 'header-first', 'header-left', 'footer', 'footer-first', 'footer-left',
+])
+def test_selected_xls_option_admits_only_inactive_master_page_decoration_names(name):
+    from carr_library.extract.document_formats import extract_document
+    raw = odf('.ods', styles=_disabled_header_styles(_selected_page_template(name)))
+    expected = extract_xml_document(odf('.ods'), '.ods')['records']
+    for parser in (extract_xml_document, extract_document):
+        with pytest.raises(ValueError, match='Hidden'):
+            parser(raw, '.ods')
+        result = parser(raw, '.ods', allow_inactive_page_decorations=True)
+        assert result['records'] == expected
+        assert 'inactive_page_decorations_not_read' in result['warnings']
+
+
+@pytest.mark.parametrize('case', [
+    'paragraph-attribute', 'span-attribute', 'field-attribute', 'unknown-child',
+    'nested-span', 'nested-field', 'extra-root-attribute', 'root-text', 'root-tail',
+    'text-display', 'fo-visibility', 'master-styles', 'named-style',
+    'content-body', 'ambiguous-display',
+])
+def test_selected_xls_inactive_template_option_keeps_closed_structure_and_placement(case):
+    markup, placement = _selected_page_template(), 'master-page'
+    if case == 'paragraph-attribute':
+        markup = markup.replace('<text:p>', '<text:p text:style-name="PRIVATE_VALUE">')
+    elif case == 'span-attribute':
+        markup = markup.replace('text:style-name="T18"', 'foreign="PRIVATE_VALUE"')
+    elif case == 'field-attribute':
+        markup = markup.replace('<text:sheet-name>', '<text:sheet-name text:select-page="PRIVATE_VALUE">')
+    elif case == 'unknown-child':
+        markup = markup.replace('text:sheet-name', 'text:a')
+    elif case == 'nested-span':
+        markup = markup.replace('<text:sheet-name>', '<text:span><text:sheet-name>').replace(
+            '</text:sheet-name>', '</text:sheet-name></text:span>')
+    elif case == 'nested-field':
+        markup = markup.replace('PRIVATE_TEMPLATE', '<text:span>PRIVATE_TEMPLATE</text:span>')
+    elif case == 'extra-root-attribute':
+        markup = markup.replace('style:display="false"', 'style:display="false" style:name="PRIVATE_VALUE"')
+    elif case == 'root-text':
+        markup = markup.replace('<text:p>', 'PRIVATE_TEMPLATE<text:p>')
+    elif case == 'root-tail':
+        markup += 'PRIVATE_TEMPLATE'
+    elif case == 'text-display':
+        markup = markup.replace('text:style-name="T18"', 'text:style-name="T18" text:display="none"')
+    elif case == 'fo-visibility':
+        markup = markup.replace('text:style-name="T18"', 'text:style-name="T18" fo:visibility="hidden"')
+    elif case in ('master-styles', 'named-style'):
+        placement = case
+    elif case == 'ambiguous-display':
+        markup = markup.replace('style:display="false"', 'style:display="0"')
+    if case == 'content-body':
+        markup = markup.replace('<style:header-left ', f'<style:header-left xmlns:style="{ODF}style:1.0" ')
+        source = odf('.ods', markup + '<table:table><table:table-row><table:table-cell>'
+                     '<text:p>Visible</text:p></table:table-cell></table:table-row></table:table>')
+    else:
+        source = odf('.ods', styles=_disabled_header_styles(markup, placement=placement))
+    before = sha256(source).hexdigest()
+    with pytest.raises(ValueError, match='review') as failure:
+        extract_xml_document(source, '.ods', allow_inactive_page_decorations=True)
+    assert 'PRIVATE_TEMPLATE' not in str(failure.value) and 'PRIVATE_VALUE' not in str(failure.value)
+    assert sha256(source).hexdigest() == before
+
+
+@pytest.mark.parametrize('case', [
+    'active-content', 'hidden-body', 'hidden-style', 'inherited-sheet',
+    'inherited-row', 'content-automatic',
+])
+def test_selected_xls_omission_keeps_global_active_hidden_and_inherited_visibility_checks(case):
+    styles = _disabled_header_styles(_selected_page_template())
+    source = odf('.ods', styles=styles)
+    assert texts(extract_xml_document(source, '.ods', allow_inactive_page_decorations=True)) == ['First', 'Second']
+    if case == 'active-content':
+        extra = '<office:scripts><text:p>PRIVATE_TEMPLATE</text:p></office:scripts>'
+    elif case == 'hidden-style':
+        extra = '<office:styles><style:style><style:text-properties fo:visibility="hidden"/></style:style></office:styles>'
+    elif case in ('inherited-sheet', 'inherited-row'):
+        prop = 'table-properties' if case == 'inherited-sheet' else 'table-row-properties'
+        attr = 'table:display="false"' if case == 'inherited-sheet' else 'table:visibility="collapse"'
+        extra = (f'<office:styles><style:style><style:{prop} xmlns:table="{TB}" {attr}/>'
+                 '</style:style></office:styles>')
+    else:
+        extra = ''
+    if extra:
+        source = odf('.ods', styles=styles.replace('</office:document-styles>', extra + '</office:document-styles>'))
+    else:
+        with ZipFile(BytesIO(source)) as archive:
+            entries = [(info.filename, archive.read(info)) for info in archive.infolist()]
+        changed = []
+        for name, value in entries:
+            if name == 'content.xml':
+                text = value.decode('utf-8')
+                if case == 'hidden-body':
+                    text = text.replace('<text:p>', '<text:p text:display="none">', 1)
+                else:
+                    text = text.replace('<office:body>',
+                        f'<office:automatic-styles xmlns:style="{ODF}style:1.0"><style:style>'
+                        '<style:table-row-properties table:visibility="collapse"/>'
+                        '</style:style></office:automatic-styles><office:body>')
+                value = text.encode('utf-8')
+            changed.append((name, value))
+        source = zipped(changed)
+    with pytest.raises(ValueError, match='review') as failure:
+        extract_xml_document(source, '.ods', allow_inactive_page_decorations=True)
+    assert 'PRIVATE_TEMPLATE' not in str(failure.value)
+
+
+def test_selected_xls_inactive_template_has_an_independent_finite_node_bound():
+    pair = '<text:span text:style-name="T18"><text:page-number>1</text:page-number></text:span>'
+    # 1 paragraph + 127 two-node spans + 1 field = exactly 256 descendants.
+    content = '<text:p>' + pair * 127 + '<text:page-number>1</text:page-number></text:p>'
+    def source(value):
+        return odf('.ods', styles=_disabled_header_styles(
+            '<style:footer-left style:display="false">' + value + '</style:footer-left>'))
+    assert texts(extract_xml_document(source(content), '.ods',
+        allow_inactive_page_decorations=True)) == ['First', 'Second']
+    too_many = content.replace('</text:p>', '<text:page-number>1</text:page-number></text:p>')
+    with pytest.raises(ValueError, match='Hidden'):
+        extract_xml_document(source(too_many), '.ods', allow_inactive_page_decorations=True)
+
+
+@pytest.mark.parametrize('when', ['inside-template', 'after-template'])
+def test_selected_xls_template_admission_and_following_global_scan_remain_cancellable(monkeypatch, when):
+    source = odf('.ods', styles=_disabled_header_styles(_selected_page_template()))
+    original = module._inactive_page_decoration
+    state = {'inside': False, 'complete': False}
+    def observed(element, budget):
+        state['inside'] = True
+        try:
+            return original(element, budget)
+        finally:
+            state['inside'] = False
+            state['complete'] = True
+    monkeypatch.setattr(module, '_inactive_page_decoration', observed)
+    def cancelled():
+        return state['inside'] if when == 'inside-template' else state['complete']
+    with pytest.raises(InterruptedError):
+        extract_xml_document(source, '.ods', cancelled=cancelled,
+                             allow_inactive_page_decorations=True)
+    assert state['complete']
+    assert texts(extract_xml_document(source, '.ods', allow_inactive_page_decorations=True)) == ['First', 'Second']
+
+
+@pytest.mark.parametrize('option,suffix', [
+    (None, '.ods'), (0, '.ods'), (1, '.ods'), ('true', '.ods'),
+    (True, '.odt'), (True, '.xlsx'),
+])
+def test_selected_xls_option_is_strictly_typed_and_never_enables_another_format(option, suffix):
+    from carr_library.extract.document_formats import extract_document
+    source = office(suffix) if suffix == '.xlsx' else odf(suffix)
+    for parser in (extract_xml_document, extract_document):
+        with pytest.raises(ValueError, match='Invalid'):
+            parser(source, suffix, allow_inactive_page_decorations=option)

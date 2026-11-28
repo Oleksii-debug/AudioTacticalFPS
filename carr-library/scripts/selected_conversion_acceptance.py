@@ -71,6 +71,9 @@ def formats(args, fixture, report, children):
                     or result.report['verified_for_quotation'] is not False
                     or result.report['printed_pages_reconstructed'] is not False):
                 raise AssertionError('Actual native conversion did not preserve exact original/receipt identity.')
+            if (source.suffix == '.xls'
+                    and 'inactive_page_decorations_not_read' not in result.report['warnings']):
+                raise AssertionError('The selected XLS reading-copy receipt omitted its inactive-page warning.')
             if {path.name for path in result.path.parent.iterdir()} != {
                     'reading.txt', 'original' + source.suffix, 'provenance.json'}:
                 raise AssertionError('The committed reading folder is not the exact three-file result.')
@@ -94,7 +97,8 @@ def formats(args, fixture, report, children):
                 'reading_sha256': sha256(result.path.read_bytes()).hexdigest(),
                 'report_sha256': sha256(result.report_path.read_bytes()).hexdigest(),
                 'conversion_seconds': time.monotonic() - started,
-                'engine': result.report['engine'], 'verified_copy_read': 'PASS',
+                'engine': result.report['engine'], 'warnings': result.report['warnings'],
+                'verified_copy_read': 'PASS',
                 'canonical_text_import': 'PASS', 'no_clobber': 'PASS'})
             observed.add(source.suffix)
             print('PASS actual selected format ' + source.suffix, flush=True)

@@ -1,0 +1,85 @@
+{
+  "schema": "carr-native-converter-reader-line-ending-correction/1",
+  "status": "STATIC_NOT_RUN",
+  "actual_evidence": {
+    "blob": "b45aa906123bd3a5654cd9175fbf5cfc93886ccf",
+    "run": 46093750313,
+    "job": 140820330663,
+    "source_and_installed_modes": {
+      "handoff": {
+        "characters": 97,
+        "cr": 3,
+        "lf": 3,
+        "crlf": 3,
+        "utf8_sha256": "664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368",
+        "parent_is_host": true
+      },
+      "native_control": {
+        "characters": 94,
+        "cr": 0,
+        "lf": 3,
+        "crlf": 0,
+        "utf8_sha256": "be8b57316cf8ef6689474dabe379ff47fa6920c433bb522b072752c906e6b756"
+      }
+    },
+    "diagnosis": "The actual verified text and reader handoff are exact. wx's multiline TextCtrl GetValue contract exposes LF rather than source CRLF; the old native assertion incorrectly equated those representations. Product normalization is not changed."
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "preimage": "2c3a928d748e337d48d2a2b9e8345a6105360fa2",
+      "blob": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "preimage": "77bd5b3d02e0f1070b8798c2b944d89cd24c2d70",
+      "blob": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+      "old_cases": 13,
+      "expected_cases": 23,
+      "functions": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks",
+        "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+        "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings",
+        "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+        "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change"
+      ],
+      "companions": [
+        "scripts/windows_document_conversion_smoke.py"
+      ]
+    }
+  ],
+  "contract": {
+    "native_required_checks": 30,
+    "native_origins": 30,
+    "conversion_wait_seconds": 50,
+    "cleanup_watchdog_seconds": 180,
+    "new_functions": [
+      "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+      "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change"
+    ],
+    "original_test_bodies": "All 13 original cases retained byte-for-byte; only AST helper-name inventory appended.",
+    "source_preservation": "Exact original handoff parent/digest, immutable saved source_text/source_sha256, actual editable LF value, original copied file bytes and absent quotation authority are required.",
+    "normalization": "Only expected.replace('\\r\\n', '\\n') for the native view. No strip, general whitespace, lone-CR or source normalization."
+  },
+  "references": [
+    "https://docs.wxpython.org/wx.TextCtrl.html"
+  ],
+  "peer": {
+    "reviewer": "/root/progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact native diff and real ReadingDocument/ReaderDraftStore tests; all old labels and API/lifetime preserved."
+  },
+  "verification": {
+    "readback_exact": true,
+    "inverse_native_reconstruction": true,
+    "old_test_body_reconstruction": true,
+    "runtime": "NOT_RUN",
+    "refs_moved": false
+  }
+}
