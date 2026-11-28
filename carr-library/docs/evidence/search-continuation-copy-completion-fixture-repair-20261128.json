@@ -1,0 +1,113 @@
+{
+  "schema": "carr-native-search-copy-completion-fixture-repair/1",
+  "status": "SOURCE_REVIEW_ONLY_NOT_EXECUTED",
+  "parent_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+  "parent_tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+  "observed_failure": {
+    "run_id": 46121064501,
+    "job_id": 140905458267,
+    "attempt": 1,
+    "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "step_number": 26,
+    "step_name": "Exercise installed search continuation with actual native keys and retained sources",
+    "started_at": "2026-11-28T08:34:47Z",
+    "completed_at": "2026-11-28T08:34:55Z",
+    "conclusion": "failure",
+    "raw_log": {
+      "chars": 4957939,
+      "utf8_bytes": 4957945,
+      "sha256": "837355a4ab0da5067ebc51884b747990209feb5f2638d4e5327b2c9855ca1d79"
+    },
+    "artifact": {
+      "id": 15255044546,
+      "name": "carr-windows-7c991dac1581faa63cb32eaaa5e21cf548287b38-1",
+      "size_in_bytes": 312985,
+      "digest": "sha256:b334b774494c82ea59dc7f8bf3097fb76bbcbd17384d1e6526067672eb403786"
+    },
+    "receipt": {
+      "result": "FAIL",
+      "checks": [
+        "desktop-navigation-accessible-and-initially-disabled",
+        "desktop-first-page-bounded-100",
+        "desktop-first-page-accessible-counts",
+        "desktop-next-native-key-reaches-final-21",
+        "desktop-forward-results-have-no-overlap",
+        "desktop-old-page-source-handle-withdrawn",
+        "desktop-previous-native-key-reruns-first-page",
+        "desktop-previous-allocates-fresh-source-handles"
+      ],
+      "failures": [
+        "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\probe_search_continuation_native.py\", line 104, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\probe_search_continuation_native.py\", line 214, in desktop_copied\n    check(EXPECTED_CHECKS[8], clipboard() == panel.selected().quote)\n                              ^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\probe_search_continuation_native.py\", line 129, in clipboard\n    assert wx.TheClipboard.GetData(value)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      ],
+      "nvda": "NOT_RUN"
+    },
+    "interpretation": "The real clipboard opened, but GetData(TextDataObject) returned false. The probe emitted FAIL after eight checks and exited with code 1; this was not a modal-unwind timeout.",
+    "unobserved": "The failed receipt does not record frame.working, the exact worker/callback phase, or a clipboard owner. It does not establish measured scheduling timing, external clipboard interference or an application defect.",
+    "later_steps": "All actual main steps 27 through 53 were skipped. No complete-bundle, protected-installed, later native, installed-loopback, translation cohort or standard-update PASS is transferred."
+  },
+  "source_diagnosis": {
+    "probe": {
+      "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+      "blob": "a71a2f0e553a222817d485c8602f1bd85abba6ad",
+      "sha256": "d3a32334721fbfacc7d7d0b192c8406d52813bf731d909343234be80c7b1d11a"
+    },
+    "owner": {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+      "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17"
+    },
+    "established_defect": "desktop_back pressed the actual Copy quote button and read clipboard data after one fixed 40 ms timer. DesktopSearchPanel.copy performs retained-source verification through frame.run_job and writes the clipboard only in the later GUI completion callback.",
+    "existing_pattern": "center_back in the same unchanged probe already waits for the current controller to stop running and report successful copy before its real clipboard equality assertion.",
+    "correction": "Use the existing await_page state machine for the desktop path. Require not frame.working and the existing Copied quote status before calling the unchanged desktop_copied function. The existing optional paste-before-closing suffix remains accepted.",
+    "exact_before": "            press(button)\n            later(desktop_copied)\n",
+    "exact_after": "            press(button)\n            later(lambda: await_page(\n                lambda: not frame.working\n                and panel.status.GetValue().startswith('Copied quote'),\n                desktop_copied))\n",
+    "updated_probe_sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8"
+  },
+  "preserved": {
+    "expected_check_count": 21,
+    "expected_label_counter": {
+      "desktop-navigation-accessible-and-initially-disabled": 1,
+      "desktop-first-page-bounded-100": 1,
+      "desktop-first-page-accessible-counts": 1,
+      "desktop-next-native-key-reaches-final-21": 1,
+      "desktop-forward-results-have-no-overlap": 1,
+      "desktop-old-page-source-handle-withdrawn": 1,
+      "desktop-previous-native-key-reruns-first-page": 1,
+      "desktop-previous-allocates-fresh-source-handles": 1,
+      "desktop-native-copy-rechecks-exact-source": 1,
+      "center-native-space-selects-explicit-second-library": 1,
+      "center-navigation-accessible": 1,
+      "center-first-page-bounded-10": 1,
+      "center-accessible-counts-and-batch-order": 1,
+      "center-next-native-key-reaches-page-two": 1,
+      "center-next-results-have-no-overlap": 1,
+      "center-previous-native-key-reruns-first-page": 1,
+      "center-old-page-source-handle-withdrawn": 1,
+      "center-native-copy-rechecks-exact-source": 1,
+      "center-query-change-withdraws-results-and-navigation": 1,
+      "center-escape-preserves-host-library": 1,
+      "synthetic-original-bytes-unchanged": 1
+    },
+    "existing_assertion_lines_byte_identical": true,
+    "inverse_patch_reconstructs_entire_old_probe": true,
+    "actual_native_key_and_clipboard": true,
+    "source_owner_and_stale_handle_guards": true,
+    "source_digests": true,
+    "probe_deadline_seconds": 150,
+    "workflow_timeout_minutes": 4,
+    "existing_await_poll_ms": 40,
+    "application_source_changed": false,
+    "workflow_changed": false,
+    "oracle_changed": false,
+    "test_population_changed": false,
+    "historical_reader_21_source_pin_map_changed": false,
+    "native_nvda": "NOT_RUN",
+    "real_corpus_benchmark": "NOT_RUN"
+  },
+  "validation": {
+    "source_comparison": "PASS",
+    "execution": "NOT_RUN",
+    "artifact_zip_read": "NOT_RUN",
+    "successor_runtime_claim": "NONE"
+  }
+}

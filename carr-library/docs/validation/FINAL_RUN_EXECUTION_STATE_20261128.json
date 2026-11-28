@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28T08:08:44Z",
+  "updated_utc": "2026-11-28T09:06:55Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -106,7 +106,7 @@
     "peer_review": "durable_native_composition FINAL_COMPOSITION_SOURCE_GO_NOT_EXECUTED"
   },
   "reader": {
-    "status": "UNREADY_SOURCE_REVIEWED_ARTIFACT_NULL",
+    "status": "UNREADY_HISTORICAL_FAILED_7C_MAIN_DO_NOT_BIND",
     "materialization": "d89009aac70edb7892bbbdc69bb3ddbb4a9f5a75",
     "source_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
     "pins": 21,
@@ -140,8 +140,11 @@
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
     "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
     "auxiliary_root_review_path": "carr-library/docs/evidence/pr210-7c991-auxiliary-independent-review-20261128.json",
-    "head_observed_before_this_checkpoint": "2e639d6f1e140befe3f58630f335118ddeb85b8c",
-    "tree_observed_before_this_checkpoint": "86cfc525bb958ca7fd9da25ed3217d45f7c1ff9b"
+    "files": 1813,
+    "current_source_composition": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "current_independent_review_path": "carr-library/docs/evidence/search-native-final-independent-review-20261128.json",
+    "head_observed_before_this_checkpoint": "c32b5a1be7673d57c3522f8948e96f06508f72cc",
+    "tree_observed_before_this_checkpoint": "922fc150658ac44865e0f11d88804e9a4f24b742"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -154,17 +157,25 @@
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
-    "status": "IMPLEMENTED_AND_FOCUSED_PASS_MAIN_PENDING",
-    "scope": "Basic native fixture only; preserve14 assertions,45-second timer,4-minute workflow and13-field PASS receipt.",
-    "observed": "Silent Basic process reached workflow timeout; actual blocked phase remains UNKNOWN.",
-    "source_inference": "Basic posts app.ExitMainLoop from inside its modal callback. Existing Advanced/local probes wait until show_translation returns before posting outer-loop exit.",
-    "planned": "Reuse the existing owned-modal final exit plus bounded phase/worker/cleanup diagnostics and a single35-second all-thread trace. Require actual new-source execution."
+    "status": "COMPOSED_AND_FOCUSED_LAUNCHED",
+    "component": "53a7bbb40c593cd282e79b78803839d3006297d1",
+    "focused_workflow_component": "847759802d11f916686269ca1a9ed19f12d72968",
+    "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
+    "files": 1816,
+    "root_review": "SOURCE_GO_NOT_EXECUTED",
+    "peer_review": "NATIVE_SOURCE_GO_NOT_EXECUTED",
+    "planned_focused_branches": {
+      "native": "carr/native-main-final-2701-20261128-d3a",
+      "basic": "carr/local-translation-final-2701-20261128-d3a",
+      "inspection": "carr/silence-inspection-final-2701-20261128-d3a"
+    }
   },
   "next_candidate": {
     "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
     "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
     "files": 1810,
-    "status": "FOCUSED_AND_FIVE_AUXILIARY_PASS_MAIN_PENDING",
+    "status": "MAIN_FAILED_SEARCH_CONTINUATION_NATIVE_COPY",
     "component": "d12884890335518721e109459819c2352e2ab38f",
     "root_review": "COMPOSED_SOURCE_GO_AND_ACTUAL_FOCUSED_PASS",
     "peer_review": "COMPOSED_SOURCE_GO_AND_ACTUAL_FOCUSED_PASS",
@@ -230,26 +241,100 @@
       "run": 46121064501,
       "job": 140905458267,
       "attempt": 1,
-      "status": "in_progress",
-      "conclusion": null,
+      "status": "completed",
+      "conclusion": "failure",
       "started_at": "2026-11-28T07:37:58Z",
       "last_observed_step": {
-        "name": "Run required integrated source workflows",
+        "name": "Exercise installed search continuation with actual native keys and retained sources",
         "status": "in_progress",
         "conclusion": null,
-        "number": 21,
-        "started_at": "2026-11-28T07:43:29Z",
+        "number": 26,
+        "started_at": "2026-11-28T08:34:47Z",
         "completed_at": null
       },
       "source_step": {
         "name": "Run required integrated source workflows",
-        "status": "in_progress",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "success",
         "number": 21,
         "started_at": "2026-11-28T07:43:29Z",
-        "completed_at": null
+        "completed_at": "2026-11-28T08:34:36Z"
       },
-      "last_observed_at": "2026-11-28T08:07:08Z"
+      "last_observed_at": "2026-11-28T08:34:52Z",
+      "protected_source_step": {
+        "name": "Require exact protected source regression inventory",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-11-28T08:34:36Z",
+        "completed_at": "2026-11-28T08:34:37Z"
+      },
+      "raw_log_reconciliation": "ROOT_AND_CAPACITY_SOURCE_PASS_NATIVE26_FAILURE_VERIFIED_FULL_PROOF_PENDING",
+      "native_steps_observed_pass": [
+        {
+          "name": "Exercise actual native citations and destination confirmation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-28T08:34:37Z",
+          "completed_at": "2026-11-28T08:34:44Z"
+        },
+        {
+          "name": "Exercise installed native translation approval and immutable derivatives",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-28T08:34:44Z",
+          "completed_at": "2026-11-28T08:34:46Z"
+        },
+        {
+          "name": "Exercise installed Advanced translation with real native controls and synthetic provider",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-28T08:34:46Z",
+          "completed_at": "2026-11-28T08:34:47Z"
+        }
+      ],
+      "source_elapsed_seconds": 3067,
+      "completed_at": "2026-11-28T08:35:03Z",
+      "failure_step": {
+        "name": "Exercise installed search continuation with actual native keys and retained sources",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 26,
+        "started_at": "2026-11-28T08:34:47Z",
+        "completed_at": "2026-11-28T08:34:55Z"
+      },
+      "source_result": {
+        "suites": 451,
+        "passed": 11589,
+        "failed": 0,
+        "skipped": 0,
+        "functions": 5270,
+        "counter_sha256": "f7a5f4cceff7fde13ddb4276b3747e2fa40528452c024d57cef9541fd4f7a574",
+        "root_and_capacity_verified": true
+      },
+      "failure": {
+        "actual": "Clipboard GetData returned false after8native checks; emitted FAIL andexit1.",
+        "trace": "probe_search_continuation_native.py:214 desktop_copied ->129 clipboard -> wx.TheClipboard.GetData(value)",
+        "not_a_timeout": true,
+        "worker_state_at_failure": "NOT_RECORDED",
+        "source_defect": "Missing asynchronous copy-completion wait after native key action; fixed40ms callback does not await verified-copy worker."
+      },
+      "artifact": {
+        "id": 15255044546,
+        "bytes": 312985,
+        "sha256": "b334b774494c82ea59dc7f8bf3097fb76bbcbd17384d1e6526067672eb403786",
+        "qualification": "FAILED_MAIN_HISTORY_ONLY"
+      },
+      "raw_log": {
+        "chars": 4957939,
+        "bytes": 4957945,
+        "sha256": "837355a4ab0da5067ebc51884b747990209feb5f2638d4e5327b2c9855ca1d79"
+      },
+      "proof": "01b57abe7be28ebda30c100e9cad43465f388c8d",
+      "independent_review": "ROOT_CAPACITY_AND_NATIVE_OBSERVED_FAILURE_GO"
     },
     "auxiliary": {
       "keyboard": {
@@ -357,10 +442,61 @@
     "new_release_gate": false,
     "root_review": "22 source hashes,20 workflow mappings/bounds,19 skipped actual steps and all baseline blobs verified"
   },
-  "canonical_observed_at": "2026-11-28T08:05:40Z",
+  "canonical_observed_at": "2026-11-28T09:02:47Z",
   "delivery_template": {
     "path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_TEMPLATE_20261128_UK.md",
     "status": "DRAFT_PLACEHOLDERS_REQUIRE_ACTUAL_FINAL_OUTCOME",
-    "final_path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_20261128_UK.md"
+    "final_path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_20261128_UK.md",
+    "cli": "Uses direct .venv executable from the same project directory; no activation prerequisite."
+  },
+  "main_provenance_note": {
+    "status": "SOURCE_REVIEWED_AWAIT_ACTUAL_MAIN_LOG",
+    "source_native_steps": [
+      30,
+      35,
+      39,
+      40
+    ],
+    "reason": "These four producer probes explicitly import current checkout source despite isolated Python; distinguish them from installed-origin native probes in the final result.",
+    "installed_protected_gate": "Separate exact installed239modules/5619cases remains required; no transfer.",
+    "reader_compatibility": "SOURCE_REVIEW_GO: the four source-native transcripts are selected and fully hashed, without a false installed-origin predicate; their exact labels/origins require separate completed-log review.",
+    "no_added_gate": true
+  },
+  "active_candidate": {
+    "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
+    "files": 1816,
+    "status": "THREE_FOCUSED_GATES_QUEUED",
+    "root_review": "SOURCE_GO_NOT_EXECUTED",
+    "peer_review": "NATIVE_SOURCE_GO_NOT_EXECUTED",
+    "focused": {
+      "native": {
+        "run": 46128793730,
+        "job": 140929198970,
+        "attempt": 1,
+        "branch": "carr/native-main-final-2701-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      },
+      "basic": {
+        "run": 46128793566,
+        "job": 140929198153,
+        "attempt": 1,
+        "branch": "carr/local-translation-final-2701-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      },
+      "inspection": {
+        "run": 46128795407,
+        "job": 140929203423,
+        "attempt": 1,
+        "branch": "carr/silence-inspection-final-2701-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      }
+    },
+    "main": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "auxiliary": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "no_historical_pass_transfer": true
   }
 }
