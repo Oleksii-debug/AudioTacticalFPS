@@ -10,6 +10,7 @@ from pathlib import Path
 import runpy
 import shutil
 import sys
+import venv
 from uuid import uuid4
 import wave
 
@@ -38,7 +39,12 @@ def synthetic_engine(folder):
     worker.write_text(source.replace('__MODE__', repr('complete')), encoding='utf-8')
     models = folder / 'synthetic-models'
     models.mkdir()
-    return Path(sys.executable), worker, models
+    # This supplied protocol uses only stdlib. Inspect its real selected peer,
+    # without coupling repeated receipt checks to the application's packages.
+    runtime = folder / 'worker-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False).create(runtime)
+    python = runtime / ('Scripts/python.exe' if sys.platform == 'win32' else 'bin/python')
+    return python.absolute(), worker, models
 
 
 def remove_library_fixture(root):
