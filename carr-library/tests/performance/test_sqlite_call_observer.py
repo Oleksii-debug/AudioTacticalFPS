@@ -428,3 +428,41 @@ def test_returned_operation_with_invalid_observation_cannot_be_reported_as_profi
     assert record["native_sqlite"]["errors"] == ["no-observed-native-calls"]
     assert record["native_sqlite"]["rows"] == [] and digest
     assert sys.getprofile() is None
+
+
+@pytest.mark.parametrize("failure", [KeyboardInterrupt("exact interruption"), SystemExit(17)],
+                         ids=["keyboard-interrupt", "system-exit"])
+def test_base_exception_during_real_native_profile_callback_propagates_and_releases_hook(monkeypatch, failure):
+    value = observe(echo_twice)
+    timestamps = []
+    def interrupted_timestamp():
+        timestamps.append(True)
+        raise failure
+    monkeypatch.setattr(observer_module, "perf_counter_ns", interrupted_timestamp)
+    with closing(sqlite3.connect(":memory:")) as connection:
+        with pytest.raises(type(failure)) as caught:
+            value.run(echo_twice, connection, "not returned")
+        assert caught.value is failure
+        assert timestamps == [True] and sys.getprofile() is None
+        assert connection.execute("SELECT 23").fetchone() == (23,)
+    record = value.record()
+    assert record["status"] == "INVALID"
+    assert record["errors"] == ["observer-callback-" + type(failure).__name__]
+    assert sys.getprofile() is None
+
+
+def test_ordinary_diagnostic_exception_remains_invalid_without_changing_real_sqlite_result(monkeypatch):
+    value = observe(echo_twice)
+    failure = RuntimeError("observer timestamp failed")
+    timestamps = []
+    def failed_timestamp():
+        timestamps.append(True)
+        raise failure
+    monkeypatch.setattr(observer_module, "perf_counter_ns", failed_timestamp)
+    with closing(sqlite3.connect(":memory:")) as connection:
+        assert value.run(echo_twice, connection, "returned") == ("returned", [(7,)])
+        assert connection.execute("SELECT 29").fetchone() == (29,)
+    record = value.record()
+    assert timestamps == [True] and sys.getprofile() is None
+    assert record["status"] == "INVALID"
+    assert record["errors"] == ["observer-callback-RuntimeError"]

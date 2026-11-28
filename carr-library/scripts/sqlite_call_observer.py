@@ -63,9 +63,10 @@ def _native_operation(argument):
 class NativeSQLiteObserver:
     """Finite observer of supplied source-bound functions; no query execution.
 
-    Source hashes are explicit inputs, never inferred expectations. A callback
-    defect records INVALID and lets the actual operation finish or raise.
-    Calling code must refuse INVALID evidence even when the operation returns.
+    Source hashes are explicit inputs, never inferred expectations. Ordinary
+    diagnostic exceptions record INVALID without replacing the operation;
+    process/user interruptions propagate. Calling code must refuse INVALID
+    evidence even when the operation returns.
     """
 
     def __init__(self, functions, expected_sources, *, context_functions=(),
@@ -258,9 +259,13 @@ class NativeSQLiteObserver:
                 row["maximum_ns"] = max(row["maximum_ns"], elapsed)
                 row["end_offsets"].add(frame.f_lasti)
         except BaseException as error:
-            # Never replace a production exception or interrupt a validation
-            # because the diagnostic failed. The caller must refuse this record.
+            # Ordinary diagnostic failures do not replace production failures.
+            # Process/user interruptions must still propagate after invalidation.
             self._invalidate("observer-callback-" + type(error).__name__)
+            if not isinstance(error, Exception):
+                # Preserve process/user interruption; CPython clears a failed
+                # profile hook and the normal owner finally still runs.
+                raise
 
     def start(self):
         _require(not self._started and not self._stopped, "Observer cannot be reused.")
