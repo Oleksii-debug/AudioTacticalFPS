@@ -1,0 +1,42 @@
+name: CARR exact incoming merge assessment
+
+on:
+  push:
+    branches: ['carr/merge-audit-7e8-87d1-20261128-d3a']
+    paths:
+      - .github/workflows/carr-incoming-merge-audit.yml
+      - carr-library/scripts/incoming_merge_audit.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-incoming-merge-audit-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  merge-assessment:
+    name: Exact Git merge assessment; no application execution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Preserve exact source bytes
+        run: git config --global core.autocrlf false
+      - name: Read complete repository history without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assess the exact frozen source pair
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python3 carr-library/scripts/incoming_merge_audit.py
+      - name: Preserve the complete merge assessment
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: exact-incoming-merge-${{ github.sha }}-${{ github.run_attempt }}
+          path: merge-audit-output/exact-merge-audit.jsonl
+          if-no-files-found: error
+          retention-days: 7
