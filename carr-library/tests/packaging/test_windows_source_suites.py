@@ -26,7 +26,7 @@ def workflow_inventory():
     lines = body.splitlines()
     result = []
     for line in lines:
-        match = re.fullmatch(r"            '([^']+)'[,]?", line)
+        match = re.fullmatch(r" {12,}'([^']+)'[,]?", line)
         assert match is not None, line
         result.append(match.group(1))
     return value, result
