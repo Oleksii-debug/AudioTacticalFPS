@@ -292,7 +292,7 @@ def test_real_child_cannot_change_and_restore_segment_after_genuine_hash(capture
     def verified_then_changed(path, cancelled=lambda: False):
         digest = actual_digest(path, cancelled)
         if boundary['assembling'] and Path(path).name.startswith('segment-') and boundary['result'] is None:
-            result = subprocess.run([sys.executable, '-I', '-c', (
+            result = subprocess.run([sys.executable, '-I', '-B', '-c', (
                 "import os,sys; from pathlib import Path\n"
                 "p=Path(sys.argv[1]); before=p.stat(); data=p.read_bytes()\n"
                 "try:\n"

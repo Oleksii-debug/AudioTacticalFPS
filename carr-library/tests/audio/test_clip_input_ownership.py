@@ -48,7 +48,7 @@ def test_actual_child_cannot_hide_same_size_restored_write_during_clip_dsp(tmp_p
     before = {path: path.read_bytes() for path in paths}
     native = clip_audio.audio.run_ffmpeg
     observed = []
-    command = [sys.executable, '-I', '-c',
+    command = [sys.executable, '-I', '-B', '-c',
         'from pathlib import Path\nimport os, sys\n'
         'p=Path(sys.argv[1]); stamp=p.stat(); raw=p.read_bytes()\n'
         'try:\n'

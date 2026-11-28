@@ -175,7 +175,7 @@ def test_first_managed_save_survives_process_exit_without_link_alias(tmp_path):
     ''')
     environment = os.environ.copy()
     environment['PYTHONPATH'] = str(Path(module.__file__).resolve().parents[2])
-    child = subprocess.run([sys.executable, '-c', script, str(root)], env=environment,
+    child = subprocess.run([sys.executable, '-B', '-c', script, str(root)], env=environment,
                            capture_output=True, text=True, timeout=20)
     assert child.returncode == 73, child.stderr
     saved = root / 'audio-projects' / ('a' * 32) / 'studio' / 'project.json'

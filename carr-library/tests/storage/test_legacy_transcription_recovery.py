@@ -302,7 +302,7 @@ def test_actual_other_process_canonical_lock_refuses_backup_without_copying(tmp_
     ready = tmp_path / 'ready'
     script = ("from filelock import FileLock;from pathlib import Path;import sys,time;"
               "lock=FileLock(sys.argv[1]);lock.acquire();Path(sys.argv[2]).write_bytes(b'ready');time.sleep(20)")
-    child = subprocess.Popen([sys.executable, '-c', script, str(saved.job_root / '.run.lock'), str(ready)],
+    child = subprocess.Popen([sys.executable, '-B', '-c', script, str(saved.job_root / '.run.lock'), str(ready)],
                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     try:
         deadline = time.monotonic() + 8
