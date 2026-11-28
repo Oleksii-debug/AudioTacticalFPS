@@ -1,0 +1,439 @@
+name: Actual Windows public import cost diagnosis
+on:
+  push:
+    branches: [carr/library-growth-profile-review-20261128]
+    paths: ['.github/workflows/carr-library-import-cost-review.yml', '.github/diagnostics/profile_library_import.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: actual-windows-import-cost-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  diagnostic:
+    name: Actual parent and existing owned worker costs / windows-2022
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_SCALE_TIER: books-1000
+      CARR_SCALE_BOOKS: '1000'
+      CARR_SCALE_BYTES: '0'
+      CARR_SCALE_SEGMENTS: '40'
+      CARR_SCALE_SPOOL_MIB: '4096'
+      CARR_SCALE_HEAD: ${{ github.sha }}
+      CARR_SCALE_RUN: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Select this runner's fresh measured profile path
+        run: |
+          python -I -B -X utf8 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import stat
+          import tempfile
+
+          def directory(path):
+              info = path.lstat()
+              assert stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode), path
+              assert not int(getattr(info, "st_file_attributes", 0)) & 0x400, path
+              return [info.st_dev, info.st_ino, info.st_mode, int(getattr(info, "st_file_attributes", 0))]
+
+          observations = []
+          for label, raw in (("RUNNER_TEMP", os.environ["RUNNER_TEMP"]),
+                             ("python_tempfile", tempfile.gettempdir())):
+              spelling = Path(raw).absolute()
+              for parent in reversed(spelling.parents):
+                  directory(parent)
+              before = directory(spelling)
+              selected = spelling.resolve(strict=True)
+              assert directory(selected) == before
+              usage = shutil.disk_usage(selected)
+              assert directory(spelling) == directory(selected) == before
+              observations.append({"name": label, "supplied_path": str(spelling),
+                  "canonical_path": str(selected), "identity": before,
+                  "free_bytes": usage.free, "total_bytes": usage.total})
+          chosen = max(observations, key=lambda item: item["free_bytes"])
+          selected = Path(chosen["canonical_path"])
+          assert directory(selected) == chosen["identity"]
+          tier = os.environ["CARR_SCALE_TIER"]
+          assert tier in {"books-1000", "books-10000", "books-50000",
+                          "text-65m", "text-129m", "text-2g"}
+          # Exclusive new parent; the generator still creates a nonexisting child.
+          private = Path(tempfile.mkdtemp(prefix="carr-scale-" + tier + "-", dir=selected))
+          private_identity = directory(private)
+          assert directory(selected) == chosen["identity"]
+          path = private / "fixture"
+          assert not os.path.lexists(path) and "\n" not in str(path) and "\r" not in str(path)
+          report = {"observed_roots": observations, "selected_root": chosen,
+              "private_parent": str(private), "private_parent_identity": private_identity,
+              "fixture": str(path),
+              "selection": "larger measured free space among two known runner temporary roots",
+              "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight"}
+          out = Path("ci-library-corpus")
+          out.mkdir(exist_ok=True)
+          with (out / "runner-capacity.json").open("x", encoding="utf-8", newline="\n") as stream:
+              json.dump(report, stream, ensure_ascii=False, sort_keys=True)
+              stream.write("\n")
+          print("CARR_RUNNER_TEMP_CAPACITY " + json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
+              stream.write("CARR_SCALE_DIR=" + str(path) + "\n")
+          PY
+      - name: Install the unchanged composed application
+        run: python -m pip install ".[test,sync]"
+      - name: Bind all installed package bytes and the actual measurement scripts
+        run: |
+          mkdir -p ci-library-corpus
+          cat > ci-library-corpus/check.py <<'PY'
+          """Exact installed-byte binding and collection for real synthetic corpus tiers."""
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import stat
+          import subprocess
+          import sys
+          import sysconfig
+          
+          assert sys.flags.isolated and not os.environ.get("PYTHONPATH")
+          ROOT = Path.cwd().resolve()
+          OUT = ROOT / "ci-library-corpus"
+          FIXTURE = Path(os.environ["CARR_SCALE_DIR"]).resolve()
+          EXPECTED_BOOKS = int(os.environ["CARR_SCALE_BOOKS"]) or 1
+          EXPECTED_SEGMENTS = EXPECTED_BOOKS * int(os.environ["CARR_SCALE_SEGMENTS"])
+          MODULES = ["carr_library.storage.publication","carr_library.storage.revisions","carr_library.application","carr_library.catalog.membership","carr_library.catalog.registration","carr_library.ingest.pipeline","carr_library.ingest.worker","carr_library.ingest.publication_identity","carr_library.ingest.retained_assets","carr_library.catalog.intake","carr_library.ingest.resource_budget","carr_library.durable_state","carr_library.citations.text_attestation","carr_library.citations.historical","carr_library.ingest.session","carr_library.ingest.slices","carr_library.ingest.reconciliation","carr_library.ingest.batch_pages","carr_library.ingest.batches","carr_library.ingest.batch_scan","carr_library.citations.pdf_review_attestation","carr_library.extract.raster_pages","carr_library.extract.page_ocr","carr_library.extract.runtime_identity","carr_library.search.paging","carr_library.search.ranked_scope","carr_library.search.federated","carr_library.search.literal","carr_library.search.thematic","carr_library.search.semantic_windows","carr_library.semantic","carr_library.audio.process","carr_library.audio.cleanup","carr_library.catalog.read_views","carr_library.operations.broker","carr_library.operations.models"]
+          SCRIPTS = ("benchmark_library_scale.py", "benchmark_library_catalog.py")
+          
+          
+          def inventory(root):
+              rows = []
+              for path in sorted(root.rglob("*.py")):
+                  observed = path.lstat()
+                  assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1 and not path.is_symlink(), path
+                  assert path.resolve().is_relative_to(root), path
+                  assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path
+                  assert observed.st_size <= 32 * 1024**2, path
+                  rows.append([path.relative_to(root).as_posix(), sha256(path.read_bytes()).hexdigest()])
+              assert len(rows) >= 380 and len(rows) == len({row[0] for row in rows}), len(rows)
+              return rows
+          
+          
+          def identity():
+              observed_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                  check=True, capture_output=True, text=True, timeout=10).stdout.strip()
+              assert observed_head == os.environ["CARR_SCALE_HEAD"] and len(observed_head) == 40
+              source = (ROOT / "src" / "carr_library").resolve()
+              installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+              assert source != installed and not installed.is_relative_to(ROOT / "src")
+              first, second = inventory(source), inventory(installed)
+              assert first == second, "Installed package differs from the exact selected source."
+              origins = {}
+              for name in MODULES:
+                  module = importlib.import_module(name)
+                  path = Path(module.__file__).resolve()
+                  assert path.is_relative_to(installed) and not path.is_relative_to(ROOT / "src"), (name, path)
+                  relative = path.relative_to(installed)
+                  digest = sha256(path.read_bytes()).hexdigest()
+                  assert digest == sha256((source / relative).read_bytes()).hexdigest()
+                  origins[name] = {"path": str(path), "sha256": digest}
+              scripts = {}
+              for name in SCRIPTS:
+                  path = ROOT / "scripts" / name
+                  raw = path.read_bytes()
+                  compile(raw, str(path), "exec")
+                  scripts[name] = sha256(raw).hexdigest()
+              diagnostic = ROOT.parent / ".github" / "diagnostics" / "profile_library_import.py"
+              diagnostic_bytes = diagnostic.read_bytes()
+              compile(diagnostic_bytes, str(diagnostic), "exec")
+              scripts["profile_library_import.py"] = sha256(diagnostic_bytes).hexdigest()
+              return {"package_files": len(first), "inventory": first,
+                      "package_sha256": sha256(json.dumps(first, separators=(",", ":")).encode()).hexdigest(),
+                      "origins": origins, "scripts": scripts,
+                      "python": sys.version, "executable": str(Path(sys.executable).resolve()),
+                      "sqlite": __import__("sqlite3").sqlite_version,
+                      "platform": __import__("platform").platform(),
+                      "commit": observed_head, "run": os.environ["CARR_SCALE_RUN"],
+                      "tier": os.environ["CARR_SCALE_TIER"]}
+          
+          
+          _foundation = None
+          
+          
+          def foundation():
+              global _foundation
+              if _foundation is None:
+                  path = ROOT / "scripts" / "benchmark_library_scale.py"
+                  spec = importlib.util.spec_from_file_location("_carr_actual_scale_evidence", path)
+                  module = importlib.util.module_from_spec(spec)
+                  sys.modules[spec.name] = module
+                  spec.loader.exec_module(module)
+                  _foundation = module
+              return _foundation
+          
+          
+          def read(path):
+              chunks, size = [], 0
+              with foundation()._opened(path) as (stream, before):
+                  assert before.st_size <= 64 * 1024**2, path
+                  while chunk := stream.read(min(64 * 1024, 64 * 1024**2 + 1 - size)):
+                      size += len(chunk)
+                      assert size <= 64 * 1024**2, path
+                      chunks.append(chunk)
+              return json.loads(b"".join(chunks))
+          
+          
+          def read_phase(path):
+              """Validate every bounded JSON-lines record before accepting its final value."""
+              last, size = None, 0
+              maximum, line_maximum = 128 * 1024**2, 1024**2
+              with foundation()._opened(path) as (stream, before):
+                  assert before.st_size <= maximum, path
+                  while raw := stream.readline(line_maximum + 1):
+                      size += len(raw)
+                      assert len(raw) <= line_maximum and size <= maximum, path
+                      if not raw.strip():
+                          continue
+                      last = json.loads(raw)
+                      assert type(last) is dict, path
+              assert last is not None, ("The actual phase produced no JSON result.", path)
+              return last
+          
+          
+          def write(name, value):
+              path = OUT / name
+              with path.open("x", encoding="utf-8", newline="\n") as stream:
+                  json.dump(value, stream, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False)
+                  stream.write("\n")
+          
+          
+          def collect():
+              destination = OUT / "fixture-evidence"
+              destination.mkdir(exist_ok=True)
+              captured, total_bytes = [], 0
+              paths = [FIXTURE / name for name in ("owner.json", "preflight.json", "generation.json", "verified-generation.json", "sources.jsonl")]
+              benchmark = FIXTURE / "benchmark"
+              if benchmark.is_dir():
+                  paths += sorted(benchmark.glob("*.json"))
+                  for name in ("events", "worker-peaks"):
+                      folder = benchmark / name
+                      if folder.is_dir():
+                          paths += sorted(folder.glob("*.json"))
+              assert len(paths) <= 200_010, "The bounded benchmark evidence count was exceeded."
+              for path in paths:
+                  if not path.exists():
+                      continue
+                  observed = path.lstat()
+                  assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1 and not path.is_symlink(), path
+                  assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path
+                  relative = path.relative_to(FIXTURE)
+                  target = destination / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  checksum, size = sha256(), 0
+                  with foundation()._opened(path) as (source, captured_stat), target.open("xb") as output:
+                      assert foundation()._stamp(captured_stat) == foundation()._stamp(observed), path
+                      while chunk := source.read(64 * 1024):
+                          size += len(chunk)
+                          total_bytes += len(chunk)
+                          assert size <= 1024**3 and total_bytes <= 2 * 1024**3, path
+                          output.write(chunk)
+                          checksum.update(chunk)
+                  assert size == observed.st_size, path
+                  captured.append({"path": relative.as_posix(), "bytes": size, "sha256": checksum.hexdigest()})
+              write("collected-evidence.json", captured)
+          
+          
+          def finish():
+              before, after = read(OUT / "installed-before.json"), identity()
+              for key in ("inventory", "package_sha256", "origins", "scripts", "executable", "commit"):
+                  assert before[key] == after[key], ("Implementation changed during the actual tier.", key)
+              write("installed-after.json", after)
+              generated = read(FIXTURE / "generation.json")
+              if generated.get("status") == "NOT_RUN":
+                  write("outcome.json", {"status": "NOT_RUN", "reason": "Measured source-generation capacity refused.",
+                                        "generation": generated, "physical_or_human_quality": "NOT_ASSESSED"})
+                  raise SystemExit(2)
+              initialization = OUT / "initialize.jsonl"
+              if initialization.exists():
+                  admitted = read_phase(initialization)
+                  if admitted.get("status") == "NOT_RUN":
+                      write("outcome.json", {"status": "NOT_RUN", "reason": "Measured application capacity refused.",
+                                            "application_admission": admitted,
+                                            "physical_or_human_quality": "NOT_ASSESSED"})
+                      raise SystemExit(2)
+              phases = json.loads(os.environ["CARR_SCALE_PHASE_OUTCOMES"])
+              assert set(phases) == {"generate", "initialize", "interruption", "resume", "catalog", "search", "collect"}
+              incomplete = {name: value for name, value in phases.items() if value != "success"}
+              if incomplete:
+                  write("outcome.json", {"status": "FAILED" if "failure" in incomplete.values() else "INCOMPLETE",
+                                        "actual_phase_outcomes": phases,
+                                        "physical_or_human_quality": "NOT_ASSESSED"})
+                  raise AssertionError("An actual measured command did not finish successfully: " + str(incomplete))
+              required = {"resume": OUT / "resume.jsonl",
+                          "crash": FIXTURE / "benchmark" / "authored-crash.json",
+                          "catalog": FIXTURE / "benchmark" / "catalog-verification.json",
+                          "search": FIXTURE / "benchmark" / "search-measurements.json"}
+              missing = [name for name, path in required.items() if not path.exists()]
+              if missing:
+                  write("outcome.json", {"status": "INCOMPLETE", "missing_actual_phases": missing,
+                                        "physical_or_human_quality": "NOT_ASSESSED"})
+                  raise AssertionError("The actual product tier did not complete: " + ", ".join(missing))
+              result = {name: (read_phase(path) if name == "resume" else read(path))
+                        for name, path in required.items()}
+              assert result["resume"]["status"] == "IMPORT_COMPLETE"
+              assert result["crash"]["committed"] == 1
+              assert result["crash"]["boundary"] == "durable batch save after actual owned worker return"
+              assert result["catalog"]["status"] == "CATALOG_VERIFIED"
+              assert result["search"]["status"] == "MEASURED_SYNTHETIC_CORPUS"
+              for name in ("catalog", "search"):
+                  item = result[name]
+                  assert item["source_books"] == EXPECTED_BOOKS and item["source_segments"] == EXPECTED_SEGMENTS
+                  assert item["separate_process"] is True and item["implementation_unchanged"] is True
+                  assert item["worker_peaks"]["measured_worker_exits"] > 0
+              measured = result["search"]
+              assert measured["federated_cleanup_confirmed"] is True
+              assert measured["explicit_library_navigation"]["selected"] == 21
+              assert measured["bounded_title_anchor_latency"]["samples"] == 50
+              assert len(measured["complete_scope_ranking"]) == 2
+              assert measured["complete_scope_ranking"][1]["updated_index_rows"] == 0
+              assert measured["semantic_model"] == "NOT_RUN"
+              assert measured["simultaneous_family_peak"] == "NOT_MEASURED"
+              write("outcome.json", {"status": "MEASURED_SYNTHETIC_CORPUS", "tier": os.environ["CARR_SCALE_TIER"],
+                    "actual_books": EXPECTED_BOOKS, "actual_original_segments": EXPECTED_SEGMENTS,
+                    "installed_package_sha256": after["package_sha256"], "commit": after["commit"],
+                    "run": after["run"], "manifest_sha256": generated["manifest_sha256"],
+                    "generation": generated, "catalog": result["catalog"], "search": measured,
+                    "real_first_commit_process_exit": 73, "resume_same_saved_queue": True,
+                    "semantic_model": "NOT_RUN", "simultaneous_family_peak": "NOT_MEASURED",
+                    "physical_or_human_quality": "NOT_ASSESSED"})
+              print(json.dumps({"status": "MEASURED_SYNTHETIC_CORPUS", "tier": os.environ["CARR_SCALE_TIER"],
+                                "actual_books": EXPECTED_BOOKS, "actual_original_segments": EXPECTED_SEGMENTS,
+                                "manifest_sha256": generated["manifest_sha256"]}), flush=True)
+          
+          
+          mode = sys.argv[1]
+          if mode == "before":
+              write("installed-before.json", identity())
+          elif mode == "diagnostic-after":
+              before, after = read(OUT / "installed-before.json"), identity()
+              write("installed-after.json", after)
+              for key in ("inventory", "package_sha256", "origins", "scripts", "executable", "commit"):
+                  assert before[key] == after[key], ("Implementation changed during diagnosis.", key)
+              print(json.dumps({"status": "DIAGNOSTIC_ONLY", "package_files": after["package_files"],
+                                "package_sha256": after["package_sha256"], "origins": after["origins"],
+                                "scripts": after["scripts"], "corpus_tier_qualification": "NOT_RUN"}))
+          elif mode == "collect":
+              collect()
+          elif mode == "finish":
+              finish()
+          else:
+              raise ValueError(mode)
+          PY
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-library-corpus/check.py before
+      - name: Generate 1000 genuine original books with 40 segments each
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --books 1000 --segments 40 --search-spool-bytes 4294967296 --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-corpus/generate.json
+      - name: Admit the same public profile with four bounded actual slices
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib 4096 --reserve-mib 1024 --page-files 1000 --slice-items 250 --slice-seconds 600 --steps 1001 --foreign-libraries 21 > ci-library-corpus/initialize.jsonl
+      - name: Profile the actual parent and existing isolated owned workers
+        timeout-minutes: 32
+        run: |
+          python -I -B -X utf8 ../.github/diagnostics/profile_library_import.py "$CARR_SCALE_DIR" --output ci-library-corpus/import-profile 2>&1 | tee ci-library-corpus/import-cost.txt
+      - name: Reopen and independently verify every resulting original and raw segment
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl
+      - name: Read the immutable prior 1k artifact without repeating its work
+        if: always()
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh --version
+          gh api repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15239970684/zip > ci-library-corpus/prior-1k.zip
+          python -I -B -X utf8 - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import zipfile
+          archive = Path("ci-library-corpus/prior-1k.zip")
+          assert archive.stat().st_size == 1742372, "The original artifact size changed."
+          assert sha256(archive.read_bytes()).hexdigest() == "b888dcff845bfa301fd783e255876fabfb2ffa364f7f186792854657e6c071e5"
+          summary = {}
+          with zipfile.ZipFile(archive) as source:
+              all_entries = source.infolist()
+              assert len(all_entries) <= 64
+              entries = [entry for entry in all_entries if not entry.is_dir()]
+              assert len(entries) == 26 and len({entry.filename for entry in entries}) == 26
+              for entry in entries:
+                  name = Path(entry.filename).name
+                  if name not in {"resume.jsonl", "verify.jsonl", "search.jsonl", "installed-before.json"}:
+                      continue
+                  assert 0 <= entry.file_size <= 2 * 1024**2
+                  data = source.read(entry)
+                  if name.endswith(".jsonl"):
+                      values = []
+                      for row in data.splitlines():
+                          assert len(row) <= 1024**2
+                          value = json.loads(row)
+                          assert isinstance(value, dict)
+                          values.append(value)
+                      assert values
+                      if name == "resume.jsonl":
+                          summary[name] = values
+                      else:
+                          final = values[-1]
+                          summary[name] = {key: final[key] for key in (
+                              "status", "source_books", "source_segments", "source_windows",
+                              "elapsed_seconds", "startup_seconds", "literal_page_latency",
+                              "bounded_title_anchor_latency", "complete_scope_ranking",
+                              "explicit_library_navigation", "federated_cleanup_confirmed",
+                              "worker_peaks", "operations", "memory", "disk",
+                              "implementation_unchanged") if key in final}
+                  else:
+                      final = json.loads(data)
+                      summary[name] = {key: final[key] for key in ("package_files", "package_sha256", "scripts")}
+          assert set(summary) == {"resume.jsonl", "verify.jsonl", "search.jsonl", "installed-before.json"}
+          text = json.dumps(summary, sort_keys=True)
+          assert len(text.encode()) <= 256 * 1024
+          Path("ci-library-corpus/prior-1k-summary.json").write_text(text + "\n", encoding="utf-8")
+          print("CARR_PRIOR_ACTUAL_1K " + text, flush=True)
+          PY
+      - name: Preserve actual diagnostic state and immutable original manifest
+        if: always()
+        run: python -I -B -X utf8 ci-library-corpus/check.py collect
+      - name: Require unchanged source, installed bytes and observer
+        if: always()
+        run: python -I -B -X utf8 ci-library-corpus/check.py diagnostic-after
+      - name: Preserve selected dependency identity
+        if: always()
+        run: python -I -m pip freeze > ci-library-corpus/dependencies.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: actual-windows-import-cost-${{ github.sha }}
+          path: carr-library/ci-library-corpus/
+          if-no-files-found: error
+          retention-days: 14
