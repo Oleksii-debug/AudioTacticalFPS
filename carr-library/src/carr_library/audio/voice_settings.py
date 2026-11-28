@@ -108,11 +108,20 @@ class VoiceSettingsStore:
 
     def check(self):
         self.scope_guard()
-        if (_identity(self.root) != self._root_identity
-                or _identity(self.state_root) != self._state_identity):
+        # One fresh lexical walk covers these nested captured directories.
+        # Their identities are still read separately on every invocation.
+        leaf = self.path.parent if self._audio_identity is not None else self.state_root
+        if local_path(leaf, exists=True) != leaf:
             raise ValueError('The selected library changed; reopen local voice management.')
-        if self._audio_identity is not None and _identity(self.path.parent) != self._audio_identity:
-            raise ValueError('The selected engine settings directory changed.')
+        for path, expected in ((self.root, self._root_identity),
+                               (self.state_root, self._state_identity)):
+            info = regular(path, directory=True)
+            if (info.st_dev, info.st_ino) != expected:
+                raise ValueError('The selected library changed; reopen local voice management.')
+        if self._audio_identity is not None:
+            info = regular(self.path.parent, directory=True)
+            if (info.st_dev, info.st_ino) != self._audio_identity:
+                raise ValueError('The selected engine settings directory changed.')
         return self.root
 
     def _configuration(self):

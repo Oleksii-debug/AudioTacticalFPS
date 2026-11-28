@@ -235,9 +235,22 @@ class ResourceBroker:
                    _application_policy=True, require_existing_policy=require_existing_policy)
 
     def _check_scope(self):
+        # Resolve each maximal captured branch once in this check.  local_path
+        # still rejects linked ancestors; every captured identity stays fresh.
+        for path, _expected in self._scope_directories:
+            if any(other != path and other.is_relative_to(path)
+                   for other, _identity in self._scope_directories):
+                continue
+            try:
+                if local_path(path, exists=True) != path:
+                    raise ValueError('The resource directory path changed.')
+            except (OSError, ValueError) as error:
+                raise ResourceStateError(
+                    'The selected resource directory changed; reopen the selected library before retrying.') from error
         for path, expected in self._scope_directories:
             try:
-                current = _directory_identity(path)
+                value = regular(path, directory=True)
+                current = value.st_dev, value.st_ino
             except (OSError, ValueError) as error:
                 raise ResourceStateError(
                     'The selected resource directory changed; reopen the selected library before retrying.') from error

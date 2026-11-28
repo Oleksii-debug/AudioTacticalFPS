@@ -127,8 +127,13 @@ class DordiaiAuthority:
             raise ValueError('A voice authority cannot be used by another process.')
         if self._invalid:
             raise ValueError('Voice authority changed; close this provider and review it again.')
+        # Recheck the deepest captured path, then every original directory
+        # identity.  This is local to this invocation, never cached authority.
+        if local_path(self.references, exists=True) != self.references:
+            self._reject('The selected voice runtime directory changed.')
         for path, identity in self._directories:
-            if _directory(path) != (path, identity):
+            info = regular(path, directory=True)
+            if (info.st_dev, info.st_ino) != identity:
                 self._reject('The selected voice runtime directory changed.')
         try:
             _directory(self.packages)
@@ -147,8 +152,13 @@ class DordiaiAuthority:
                 self._reject('The current voice configuration changed; reload after explicit review.')
 
     def _check_settings_scope(self):
+        if self._state_directories:
+            leaf = self._state_directories[-1][0]
+            if local_path(leaf, exists=True) != leaf:
+                self._reject('The selected voice settings directory changed.')
         for path, identity in self._state_directories:
-            if _directory(path) != (path, identity):
+            info = regular(path, directory=True)
+            if (info.st_dev, info.st_ino) != identity:
                 self._reject('The selected voice settings directory changed.')
         if self._store is not None:
             self._store.check()

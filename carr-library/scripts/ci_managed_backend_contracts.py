@@ -1,6 +1,7 @@
 """Focused actual child protocols for managed reference backends.
 
-Four whole modules: new OmniVoice/OpenVoice40+6 and unchanged legacy40+10.
+Five whole modules: OmniVoice/OpenVoice40+6, unchanged legacy40+10,
+and fresh current-scope42 regressions.
 Both source and isolated installed execution are required. This separate gate
 never replaces the complete voice-manager, actual-owner or native UI gates.
 """
@@ -22,12 +23,13 @@ SUITES = {
     "tests/integrations/test_dordiai_reference_backends.py": 40,
     "tests/integrations/test_dordiai_managed_backends.py": 6,
     "tests/integrations/test_dordiai_voices.py": 40,
-    "tests/integrations/test_dordiai_speech.py": 10
+    "tests/integrations/test_dordiai_speech.py": 10,
+    "tests/audio/test_voice_scope_checks.py": 42
 }
 PINS = {
     "src/carr_library/audio/voice_manifest.py": "2b5cc075286d2892d1262cddb15bcb84a737d007",
     "src/carr_library/audio/voice_transport.py": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",
-    "src/carr_library/audio/voice_settings.py": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+    "src/carr_library/audio/voice_settings.py": "64e745302ea2bffb84dc0d713be9d1e0f70eff1e",
     "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
     "src/carr_library/audio/voice_packages.py": "824275dcace7617ce65123d469537593877d51d3",
     "src/carr_library/audio/package_publication.py": "702cb573482265bb7e63d9483ecf2178649a63a4",
@@ -39,7 +41,7 @@ PINS = {
     "src/carr_library/ui/voice_packages.py": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da",
     "src/carr_library/ui/voice_reference.py": "53578efe02f434c72ebd3b3acae95eb729671659",
     "src/carr_library/ui/engine_settings.py": "e2ca712b9df71d7808b0fdb620978772c1f4dd65",
-    "src/carr_library/integrations/_dordiai_authority.py": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c",
+    "src/carr_library/integrations/_dordiai_authority.py": "df687d0d557fbc57af8c44ab029b7dd080084721",
     "src/carr_library/integrations/dordiai_voices.py": "b402a6cb86ee150dc67d5654a3495289269f10aa",
     "src/carr_library/integrations/dordiai_speech.py": "85c9248923b6332da9ea30d7b0dc644f90dc77ba",
     "src/carr_library/audio/voice_ownership.py": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d",
@@ -47,7 +49,7 @@ PINS = {
     "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
     "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
     "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
-    "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
     "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
     "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
     "src/carr_library/file_publication.py": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f",
@@ -94,7 +96,8 @@ PINS = {
     "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
     "tests/integrations/test_dordiai_reference_backends.py": "de40ac027c6706886d248edaea14dec7bea36608",
     "tests/integrations/test_dordiai_managed_backends.py": "1f03119d76dbf72b839c004aacc70baea0bb8657",
-    "src/carr_library/integrations/_dordiai_probe.py": "44fd0e0a169dc15c759a2d8a020341168b33defc"
+    "src/carr_library/integrations/_dordiai_probe.py": "44fd0e0a169dc15c759a2d8a020341168b33defc",
+    "tests/audio/test_voice_scope_checks.py": "1397674e847d3128ac7a38f2463103ad0b3c06de",
 }
 COMPANIONS = ["tests/audio/voice_management_fixtures.py","tests/integrations/__init__.py"]
 BASE_MODULES = ["carr_library.audio.voice_manifest","carr_library.audio.voice_transport","carr_library.audio.voice_settings","carr_library.runtime_settings","carr_library.audio.voice_packages","carr_library.audio.package_publication","carr_library.audio.voice_lifecycle","carr_library.audio.voice_reference","carr_library.audio.voice_restore","carr_library.state_backup","carr_library.library_backup","carr_library.ui.voice_packages","carr_library.ui.voice_reference","carr_library.ui.engine_settings","carr_library.integrations._dordiai_authority","carr_library.integrations.dordiai_voices","carr_library.integrations.dordiai_speech","carr_library.audio.voice_ownership","carr_library.audio.models","carr_library.audio.dsp","carr_library.audio.cleanup","carr_library.audio.process","carr_library.operations.broker","carr_library.operations._locks","carr_library.durable_state","carr_library.file_publication","carr_library.research.export_file","carr_library.studio.publishing","carr_library.sync.crypto","carr_library.speech","carr_library.application","carr_library.native_runtime","bootstrap","carr_library.catalog.intake","carr_library.audio.windows_job"]
@@ -273,7 +276,7 @@ def main():
     ci = load('voice_existing_ci_check', ROOT / 'scripts/ci_check.py')
     proof_module = load('voice_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
-    # Four whole suites use two waves with unchanged 600-second child bounds.
+    # Five whole suites use two waves with unchanged 600-second child bounds.
     # The 1500-second parent allowance includes owned cleanup and report handling.
     code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
                   '--jobs', '3', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=1500)

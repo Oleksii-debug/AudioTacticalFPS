@@ -11,9 +11,9 @@ permissions:
 
 jobs:
   managed-backends-linux:
-    name: Managed backends96 source and96 installed on Linux
+    name: Managed backends and current scopes138 source and138 installed on Linux
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 135
     concurrency:
       group: carr-managed-backends-linux-${{ github.sha }}
       cancel-in-progress: false
@@ -53,7 +53,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_managed_backend_contracts.py":"1442905f45334a2dc129132d955b19341def20f0","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_managed_backend_contracts.py":"2eb9cef013609b8b26339bf4c4d7f2843d53f5d5","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -69,8 +69,8 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD',):
               compile(getattr(module, name), '<managed-backends-'+name+'>', 'exec')
-          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 96
-          assert len(module.PINS) == 70
+          assert len(module.SUITES) == 5 and sum(module.SUITES.values()) == 138
+          assert len(module.PINS) == 71
           assert len(module.MODULES) == len(set(module.MODULES)) == (38 if os.name == 'nt' else 35)
           print('Exact voice management source and embedded Python compile checks passed.')
           '@
@@ -88,15 +88,15 @@ jobs:
           $audio = (& python -I -B -c "import pathlib,shutil; a=pathlib.Path(shutil.which('ffmpeg')).resolve(strict=True); b=pathlib.Path(shutil.which('ffprobe')).resolve(strict=True); assert a.parent==b.parent and a.parent.name=='bin'; print(a.parent.parent)").Trim()
           if ($LASTEXITCODE -ne 0) { throw 'Actual system codec selection is invalid.' }
           "CARR_BACKEND_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Require96 source and96 isolated installed whole cases
+      - name: Require138 source and138 isolated installed whole cases
         # Reserve 40 minutes for acquisition, setup and retained cleanup evidence.
         # Individual whole-suite deadlines remain unchanged.
-        timeout-minutes: 80
+        timeout-minutes: 95
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_managed_backend_contracts.py --evidence ci-managed-backend-acceptance/contracts --expected-head $env:EXPECTED_SOURCE_SHA --audio-directory $env:CARR_BACKEND_AUDIO_DIR
-          if ($LASTEXITCODE -ne 0) { throw 'All96 source and96 isolated installed whole cases are required.' }
+          if ($LASTEXITCODE -ne 0) { throw 'All138 source and138 isolated installed whole cases are required.' }
       - name: Admit only bounded diagnostic text and JSON evidence
         id: evidence_contract
         if: ${{ always() }}
@@ -109,7 +109,7 @@ jobs:
           assert root.is_dir() and not root.is_symlink(), 'No actual voice management evidence exists.'
           allowed = {'audio-preparation.txt','audio-manifest.json','firewall.json','firewall-cleanup.json'}
           contract = set(["identity-before.json","source-contracts.txt","source-summary.json","wheel-build.txt","source-wheel-proof.json","wheel-install.txt","installed-pip-check.txt","contracts-summary.json"])
-          contract.update(f'installed-{number}{suffix}' for number in range(1,5)
+          contract.update(f'installed-{number}{suffix}' for number in range(1,6)
                           for suffix in ('.xml','-origins.json','.txt'))
           allowed.update('contracts/'+name for name in contract)
           files = list(root.rglob('*'))
@@ -145,9 +145,9 @@ jobs:
           if-no-files-found: error
 
   managed-backends-windows:
-    name: Managed backends96 source and96 installed on Windows
+    name: Managed backends and current scopes138 source and138 installed on Windows
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 135
     concurrency:
       group: carr-managed-backends-contracts-${{ github.sha }}
       cancel-in-progress: false
@@ -187,7 +187,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_managed_backend_contracts.py":"1442905f45334a2dc129132d955b19341def20f0","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_managed_backend_contracts.py":"2eb9cef013609b8b26339bf4c4d7f2843d53f5d5","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -203,8 +203,8 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD',):
               compile(getattr(module, name), '<managed-backends-'+name+'>', 'exec')
-          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 96
-          assert len(module.PINS) == 70
+          assert len(module.SUITES) == 5 and sum(module.SUITES.values()) == 138
+          assert len(module.PINS) == 71
           assert len(module.MODULES) == len(set(module.MODULES)) == (38 if os.name == 'nt' else 35)
           print('Exact voice management source and embedded Python compile checks passed.')
           '@
@@ -222,10 +222,10 @@ jobs:
           Copy-Item -LiteralPath (Join-Path $audio 'runtime-manifest.json') -Destination 'ci-managed-backend-acceptance/audio-manifest.json' -ErrorAction Stop
           "CARR_BACKEND_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Require96 source and96 isolated installed whole cases
+      - name: Require138 source and138 isolated installed whole cases
         # Reserve 40 minutes for acquisition, setup and retained cleanup evidence.
         # Individual whole-suite deadlines remain unchanged.
-        timeout-minutes: 80
+        timeout-minutes: 95
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
@@ -282,7 +282,7 @@ jobs:
           assert root.is_dir() and not root.is_symlink(), 'No actual voice management evidence exists.'
           allowed = {'audio-preparation.txt','audio-manifest.json','firewall.json','firewall-cleanup.json'}
           contract = set(["identity-before.json","source-contracts.txt","source-summary.json","wheel-build.txt","source-wheel-proof.json","wheel-install.txt","installed-pip-check.txt","contracts-summary.json"])
-          contract.update(f'installed-{number}{suffix}' for number in range(1,5)
+          contract.update(f'installed-{number}{suffix}' for number in range(1,6)
                           for suffix in ('.xml','-origins.json','.txt'))
           allowed.update('contracts/'+name for name in contract)
           files = list(root.rglob('*'))

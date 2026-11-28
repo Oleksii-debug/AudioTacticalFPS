@@ -57,7 +57,7 @@ PINS = {
     "src/carr_library/integrations/transcription_values.py": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab",
     "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
     "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
-    "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
     "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
     "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
     "src/carr_library/audio/voice_transport.py": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",

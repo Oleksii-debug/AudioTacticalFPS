@@ -62,7 +62,7 @@ PINS = {
     "src/carr_library/reader/reading_desk.py": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a",
     "src/carr_library/speech/source.py": "cef32840ecbb5b07c0313e206d9bf622ee20db87",
     "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
-    "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
     "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
     "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
     "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
