@@ -847,13 +847,33 @@ jobs:
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $manifest = Join-Path $bundle 'bundle-manifest.json'
-          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
+          # The selected spelling wheel extends the unchanged 53-pin source SBOM.
+          $baseSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
+          $deriveSbom = @'
+          import hashlib, importlib.util, json, pathlib, sys
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('bundle_sbom_source', project / 'packaging/build_windows_bundle.py')
+          builder = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(builder)
+          base = json.loads((project / 'packaging/windows-semantic-sbom.cdx.json').read_bytes())
+          pins = builder.read_lock(project / 'packaging/windows-semantic-cp311.lock')
+          actual = {(builder.canonicalize_name(row['name']), row['version']) for row in base['components']}
+          assert base['bomFormat'] == 'CycloneDX' and base['specVersion'] == '1.5'
+          assert len(pins) == len(base['components']) == len(actual) == 53
+          assert actual == {(name, version) for name, (version, _hashes) in pins.items()}
+          spelling = builder.spellcheck_snapshot(pathlib.Path(sys.argv[1]))
+          expected = builder.spellcheck_sbom_bytes(base, spelling)
+          print(hashlib.sha256(expected).hexdigest())
+          '@
+          $expectedSbom = $deriveSbom | & $env:CARR_PYTHON -I -B - $env:CARR_SPELLCHECK_WHEEL
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($expectedSbom -isnot [string] -or $expectedSbom -notmatch '^[0-9a-f]{64}$') { throw 'Invalid derived SBOM checksum.' }
           $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
           if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
           $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
           $sbomManifest = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json
           if ($actualSbom -ne $expectedSbom -or $sbomManifest.files.'runtime-sbom.cdx.json' -ne $expectedSbom) { throw 'SBOM seal mismatch' }
-          @{ status='PASS'; sha256=$actualSbom } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
+          @{ status='PASS'; sha256=$actualSbom; base_sha256=$baseSbom; base_components=53; optional_component='spylls==0.1.7+carr.1'; sealed_components=54 } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
           $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
           $bundledPython = Join-Path $bundle 'runtime/python.exe'
           $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
@@ -971,7 +991,7 @@ jobs:
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',audio_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import hashlib,importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert hashlib.sha256((root/'runtime-sbom.cdx.json').read_bytes()).hexdigest()==manifest['files']['runtime-sbom.cdx.json']==sys.argv[2]; print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',audio_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle $expectedSbom | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
