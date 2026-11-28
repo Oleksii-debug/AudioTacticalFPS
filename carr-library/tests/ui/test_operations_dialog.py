@@ -479,7 +479,7 @@ def test_native_tasks_probe_uses_current_semantic_registry_and_real_launcher_reb
     native_module = ast.fix_missing_locations(ast.Module(
         body=[node for node in methods if node is not tick] + [factory], type_ignores=[]))
     native = dict(monotonic=lambda: 0.0, deadline=120.0, phase=phase, held=[None],
-        frame=frame, application=SimpleNamespace(GetMainLoop=lambda: object()),
+        frame=frame, owner_loop=[None], application=SimpleNamespace(GetMainLoop=lambda: object()),
         wx=SimpleNamespace(WXK_RETURN=13, MOD_CONTROL=2, MOD_SHIFT=4),
         window=lambda title: palette if title == 'Find a command' else None,
         check=check, advance=advance, key=key, abort=errors.append, traceback=traceback)
@@ -514,3 +514,299 @@ def test_native_tasks_probe_uses_current_semantic_registry_and_real_launcher_reb
         assert phase[0] == ('blocked' if blocked else 'loaded')
     assert not hasattr(frame, 'keyboard_settings')
     assert not hasattr(palette, 'filter') and not hasattr(palette, 'rows')
+
+
+@pytest.mark.parametrize('target, code, permission', [
+    ('search', 13, 'allowed'), ('results', 13, 'allowed'),
+    ('search', 370, 'allowed'), ('results', 370, 'allowed'),
+    ('search', 13, 'initially-disabled'), ('results', 13, 'initially-disabled'),
+    ('search', 13, 'revoked-on-close'), ('results', 13, 'revoked-on-close'),
+    ('search', 9, 'allowed'), ('results', 27, 'allowed'),
+])
+def test_real_command_launcher_enter_routes_existing_handler_and_rechecks_availability(
+        monkeypatch, target, code, permission):
+    import sys
+    from types import SimpleNamespace
+    from carr_library.ui import keyboard_settings as keyboard
+    from carr_library.ui.command_registry import CommandRegistry, CommandSpec
+
+    controls, order, events, skipped = [], [], [], []
+    enabled = [permission != 'initially-disabled']
+    frame = SimpleNamespace(_closing=False, IsEnabled=lambda: True,
+        GetMenuBar=lambda: SimpleNamespace(IsEnabledTop=lambda index: True))
+    item = SimpleNamespace(IsEnabled=lambda: enabled[0], GetId=lambda: 711)
+    manager = keyboard.KeyboardManager(frame, registry=CommandRegistry((
+        CommandSpec('operations.open', 'Tasks and resources'),
+        CommandSpec('unrelated.open', 'Unrelated command'),
+    )))
+    manager.bindings['operations.open'] = keyboard._MenuBinding(item, 'Tasks and resources', 0)
+    manager.bindings['unrelated.open'] = keyboard._MenuBinding(
+        SimpleNamespace(IsEnabled=lambda: True, GetId=lambda: 712), 'Unrelated command', 0)
+
+    def dispatched(event):
+        assert order[-2:] == ['destroyed', 'focus-restored']
+        assert event.owner is frame
+        events.append(event.identifier)
+        return True
+    frame.GetEventHandler = lambda: SimpleNamespace(ProcessEvent=dispatched)
+
+    class Control:
+        def __init__(self, parent=None, identifier=None, label='', **options):
+            self.parent, self.name, self.value = parent, '', ''
+            self.bindings, self.values, self.selection = {}, [], -1
+            controls.append(self)
+        def SetName(self, name): self.name = name
+        def GetName(self): return self.name
+        def Bind(self, event, callback): self.bindings[event] = callback
+        def GetValue(self): return self.value
+        def ChangeValue(self, value): self.value = value
+        def SetValue(self, value):
+            self.value = value
+            self.bindings['text'](None)
+        def Set(self, values): self.values = list(values)
+        def SetSelection(self, selected): self.selection = selected
+        def GetSelection(self): return self.selection
+        def Enable(self, enabled): self.enabled = enabled
+        def SetFocus(self): pass
+
+    class Dialog(Control):
+        def SetSizer(self, sizer): pass
+        def SetEscapeId(self, identifier): pass
+        def EndModal(self, value):
+            order.append('accepted')
+            self.result = value
+        def Destroy(self):
+            order.append('destroyed')
+            if permission == 'revoked-on-close':
+                enabled[0] = False
+        def ShowModal(self):
+            search, = [value for value in controls if value.name == 'Search commands by name']
+            results, = [value for value in controls if value.name == 'Matching commands and shortcuts']
+            search.SetValue('Tasks and resources')
+            assert results.values and len(results.values) == 1
+            selected = search if target == 'search' else results
+            event = SimpleNamespace(GetKeyCode=lambda: code, Skip=lambda: skipped.append(code))
+            selected.bindings['key-down'](event)
+            return getattr(self, 'result', 5101)
+
+    class CommandEvent:
+        def __init__(self, event_type, identifier):
+            assert event_type == 1001
+            self.identifier = identifier
+        def SetEventObject(self, owner): self.owner = owner
+
+    origin = SimpleNamespace(SetFocus=lambda: order.append('focus-restored'))
+    wx = SimpleNamespace(Dialog=Dialog, TextCtrl=Control, StaticText=Control,
+        ListBox=Control, Button=Control, BoxSizer=lambda *args: SimpleNamespace(Add=lambda *args: None),
+        Window=SimpleNamespace(FindFocus=lambda: origin), CommandEvent=CommandEvent,
+        EVT_MENU=SimpleNamespace(typeId=1001), EVT_TEXT='text', EVT_KEY_DOWN='key-down',
+        EVT_LISTBOX='listbox', EVT_LISTBOX_DCLICK='double-click', EVT_BUTTON='button',
+        ID_OK=5100, ID_CANCEL=5101, WXK_RETURN=13, WXK_NUMPAD_ENTER=370,
+        VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8, ALIGN_RIGHT=16, TE_READONLY=32)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    accepted = keyboard.show_command_launcher(frame, manager)
+    expected = code in (13, 370) and permission == 'allowed'
+    assert accepted is expected
+    assert events == ([711] if expected else [])
+    assert skipped == ([code] if code not in (13, 370) else [])
+    assert order[-2:] == ['destroyed', 'focus-restored']
+    if code in (13, 370) and permission != 'initially-disabled':
+        assert order[0] == 'accepted'
+    else:
+        assert 'accepted' not in order
+
+
+def native_tasks_methods(names, environment):
+    import ast
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[2] / 'scripts/windows_operations_smoke.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    methods = [node for node in main.body
+               if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in methods} == set(names)
+    exec(compile(ast.fix_missing_locations(ast.Module(body=methods, type_ignores=[])),
+                 str(path), 'exec'), environment)
+    return environment
+
+
+@pytest.mark.parametrize('change', [
+    None, 'wrong-id', 'wrong-handle', 'hidden', 'not-modal', 'deleting', 'duplicate',
+])
+def test_native_tasks_selector_uses_exact_live_native_parent_not_python_identity(change):
+    from types import SimpleNamespace
+    frame = object()
+
+    class Dialog:
+        def GetParent(self):
+            # wx may provide a distinct Python proxy for the same native parent.
+            return SimpleNamespace(GetId=lambda: 72 if change == 'wrong-id' else 71,
+                GetHandle=lambda: 902 if change == 'wrong-handle' else 901)
+        def GetTitle(self): return 'Tasks and resources'
+        def IsShown(self): return change != 'hidden'
+        def IsModal(self): return change != 'not-modal'
+        def IsBeingDeleted(self): return change == 'deleting'
+
+    dialog = Dialog()
+    assert dialog.GetParent() is not frame
+    environment = native_tasks_methods({'owned_dialogs', 'window'}, dict(
+        wx=SimpleNamespace(Dialog=Dialog,
+            GetTopLevelWindows=lambda: [dialog, Dialog()] if change == 'duplicate' else [dialog]),
+        frame=frame, frame_identity=dict(id=71, handle=901)))
+    if change == 'duplicate':
+        with pytest.raises(AssertionError, match='More than one'):
+            environment['window']('Tasks and resources')
+    else:
+        assert environment['window']('Tasks and resources') is (dialog if change is None else None)
+
+
+@pytest.mark.parametrize('failure', [None, 'snapshot', 'timer', 'key', 'controller', 'modal', 'lock'])
+def test_native_tasks_failure_unwinds_owned_modal_and_schedules_captured_outer_loop(
+        tmp_path, failure, capsys):
+    import json
+    import traceback
+    from types import SimpleNamespace
+
+    calls, errors, queued = [], [], []
+    frame = QueuedFrame(LibraryApp(tmp_path / 'failure-controls'))
+    actual = OperationsController(frame)
+    unrelated = OperationsController(frame)
+    lock = NativeLock(tmp_path / 'actual-cleanup.lock')
+    assert lock.acquire()
+
+    def fail_if(selected):
+        if failure == selected:
+            raise RuntimeError('controlled ' + selected + ' failure')
+
+    class Gate:
+        @property
+        def held(self): return lock.held
+        def release(self):
+            calls.append('lock-release')
+            fail_if('lock')
+            lock.release()
+
+    class Controller:
+        def dispose(self):
+            calls.append('dispose')
+            fail_if('controller')
+            actual.dispose()
+
+    parent = SimpleNamespace(GetId=lambda: 71, GetHandle=lambda: 901)
+    other_parent = SimpleNamespace(GetId=lambda: 72, GetHandle=lambda: 902)
+
+    class Dialog:
+        def __init__(self, parent, title, controller=None, shown=True):
+            self.parent, self.title, self.controller = parent, title, controller
+            self.shown, self.modal, self.result = shown, True, 5100 if not shown else None
+        def GetParent(self): return self.parent
+        def GetTitle(self): return self.title
+        def GetId(self): return 90
+        def GetHandle(self): return 903
+        def IsShown(self): return self.shown
+        def IsModal(self): return self.modal
+        def EndModal(self, value):
+            calls.append(('end-modal', self.title))
+            fail_if('modal')
+            self.result, self.shown, self.modal = value, False, False
+
+    owned = Dialog(parent, 'Tasks and resources', Controller())
+    closing_palette = Dialog(parent, 'Find a command', shown=False)
+    active_palette = Dialog(parent, 'Find a command')
+    outside = Dialog(other_parent, 'Tasks and resources', unrelated)
+
+    class Loop:
+        def IsRunning(self): return False
+        def ScheduleExit(self, value): calls.append(('outer-exit', value))
+    owner = Loop()
+    active = SimpleNamespace(IsRunning=lambda: True)
+
+    def snapshot():
+        calls.append('snapshot')
+        fail_if('snapshot')
+    def stop():
+        calls.append('timer-stop')
+        fail_if('timer')
+    def release():
+        calls.append('key-release')
+        fail_if('key')
+
+    environment = native_tasks_methods({'owned_dialogs', 'abort'}, dict(
+        errors=errors, aborting=[False], traceback=traceback, failure_state=snapshot,
+        frame_identity=dict(id=71, handle=901), timer=SimpleNamespace(Stop=stop),
+        release=release, gate=Gate(), owner_loop=[owner],
+        application=SimpleNamespace(
+            GetMainLoop=lambda: pytest.fail('Captured outer loop must remain the exit target.'),
+            ExitMainLoop=lambda: pytest.fail('The active modal loop is not the owned main loop.')),
+        wx=SimpleNamespace(Dialog=Dialog, ID_CANCEL=5101, GetTopLevelWindows=lambda: [
+            closing_palette, active_palette, owned, outside], CallAfter=queued.append)))
+    try:
+        environment['abort']('original loaded-stage failure')
+        assert errors[0] == 'original loaded-stage failure'
+        assert calls[0] == 'snapshot' and 'dispose' not in calls
+        assert len(queued) == 1
+        queued.pop()()
+        assert calls[-1] == ('outer-exit', 1)
+        assert calls.count('dispose') == calls.count('lock-release') == 1
+        assert ('end-modal', 'Tasks and resources') in calls
+        assert ('end-modal', 'Find a command') in calls
+        assert active_palette.modal is (failure == 'modal')
+        assert closing_palette.result == 5100 and closing_palette.modal
+        assert outside.result is None and outside.modal and not unrelated.closed
+        assert actual.closed is (failure != 'controller')
+        assert lock.held is (failure == 'lock')
+        if failure:
+            assert any('controlled ' + failure + ' failure' in value for value in errors[1:])
+        else:
+            assert len(errors) == 1
+        assert owned.modal is (failure == 'modal')
+        before = list(calls)
+        environment['abort']('second failure remains visible')
+        assert errors[-1] == 'second failure remains visible'
+        assert calls == before and not queued
+        assert 'original loaded-stage failure' in capsys.readouterr().out
+    finally:
+        actual.dispose()
+        unrelated.dispose()
+        if lock.held:
+            lock.release()
+
+
+def test_native_tasks_precleanup_snapshot_reports_actual_windows_and_active_loop(capsys):
+    import json
+    from types import SimpleNamespace
+    parent = SimpleNamespace(GetId=lambda: 71, GetHandle=lambda: 901)
+    controller = SimpleNamespace(busy=True, closed=False, policy=None, status='Loading exact owner')
+    class Dialog:
+        def GetParent(self): return parent
+        def GetId(self): return 90
+        def GetHandle(self): return 903
+        def GetTitle(self): return 'Tasks and resources'
+        def IsShown(self): return True
+        def IsModal(self): return True
+    dialog = Dialog()
+    dialog.controller = controller
+    active = SimpleNamespace(IsRunning=lambda: True)
+    owner = SimpleNamespace(IsRunning=lambda: False)
+    environment = native_tasks_methods({'failure_state'}, dict(
+        json=json, monotonic=lambda: 16.0, phase=['loaded', 1.0],
+        frame=SimpleNamespace(working=True, _closing=False), owner_loop=[owner],
+        frame_identity=dict(id=71, handle=901),
+        wx=SimpleNamespace(Dialog=Dialog, EventLoopBase=SimpleNamespace(GetActive=lambda: active),
+            Window=SimpleNamespace(FindFocus=lambda: SimpleNamespace(
+                GetId=lambda: 91, GetName=lambda: 'Search commands by name')),
+            GetTopLevelWindows=lambda: [dialog])))
+    environment['failure_state']()
+    prefix, raw = capsys.readouterr().out.split(': ', 1)
+    assert prefix == 'TASKS_FAILURE_STATE'
+    value = json.loads(raw)
+    assert value['stage'] == 'loaded' and value['stage_seconds'] == 15.0
+    assert value['frame_working'] and not value['frame_closing']
+    assert value['active_loop_running'] and not value['owner_loop_running']
+    assert value['focus_id'] == 91 and value['focus_name'] == 'Search commands by name'
+    selected, = value['windows']
+    assert selected['title'] == 'Tasks and resources' and selected['modal'] and selected['shown']
+    assert selected['parent_id'] == 71 and selected['parent_handle'] == 901
+    assert selected['busy'] and not selected['closed'] and not selected['policy_loaded']
+    assert selected['status'] == 'Loading exact owner'
+    assert controller.busy and not controller.closed and dialog.IsModal()
