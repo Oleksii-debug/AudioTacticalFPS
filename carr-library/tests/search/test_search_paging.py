@@ -283,31 +283,48 @@ def test_existing_source_indexes_preserve_exact_window_and_cursor_rows(
     assert app.database.read_bytes() == before
 
 
-def test_genuine_active_revision_replacement_refuses_old_cursor_but_keeps_history(tmp_path):
-    from dataclasses import replace
+def test_published_active_revision_replacement_refuses_old_cursor_but_keeps_history(tmp_path):
+    from contextlib import closing
+    from hashlib import sha256
 
-    from carr_library.extract.page_ocr import Config
+    from carr_library.application import _CatalogPublisher
+    from carr_library.catalog.intake import source_snapshot
+    from carr_library.catalog.registration import Registration
+    from carr_library.ingest.writer_guard import exclusive_writer
+    from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Page, Storage
 
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Fresh active source, retained history')
     original = '\f'.join(f'Needle original {number:03d}.' for number in range(102))
-    config = Config()
-    first = app.add_text(workspace, 'Source', original, work_id='work', edition_id='edition',
-                         config=config)
+    first = app.add_text(workspace, 'Source', original, work_id='work', edition_id='edition')
     page = app.search_page(workspace, 'Needle', mode='terms')
     assert first['state'] == 'complete' and page.next_source_cursor is not None
     before = dict(app._selections)
-    later = app.add_text(workspace, 'Source', original, work_id='work', edition_id='edition',
-                         config=replace(config, dpi=config.dpi + 1))
-    assert later['state'] == 'complete' and later['id'] != first['id']
+    retained = app.assets.resolve(first['asset'])
+    snapshot = source_snapshot(retained.parent, retained.name)
+    assert snapshot.digest == first['asset']
+    later = sha256(('new-publication:' + first['id']).encode('utf-8')).hexdigest()
+    # Exercise the real catalog/storage publication boundary. TXT extraction has
+    # a fixed configuration, so changing OCR options cannot create this history.
+    with exclusive_writer(app.root), closing(Storage(
+            app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
+        config = storage.db.execute('SELECT config FROM revision WHERE id=?',
+                                    (first['id'],)).fetchone()[0]
+        publisher = _CatalogPublisher(
+            storage, Registration('work', 'edition', snapshot.manifest(), title='Source'))
+        publisher.publish_revision(workspace, 'edition', later, snapshot.digest, config,
+                                   tuple(Page(text) for text in original.split('\f')))
+        publisher.check()
+    assert later != first['id']
     with pytest.raises(ValueError, match='active source changed'):
         app.search_page(workspace, 'Needle', mode='terms', cursor=page.next_source_cursor)
     assert app._selections == before
     assert app.copy(workspace, page.results[0].ref, page.results[0].revision, 'quote') == 'Needle'
     with app.read(workspace) as db:
         assert db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
-                          (workspace, 'edition')).fetchone()[0] == later['id']
+                          (workspace, 'edition')).fetchone()[0] == later
         assert db.execute('SELECT count(*) FROM sealed WHERE revision IN (?,?)',
-                          (first['id'], later['id'])).fetchone()[0] == 2
-    assert first['asset'] == later['asset']
+                          (first['id'], later)).fetchone()[0] == 2
+    current = app.search_page(workspace, 'Needle', mode='terms')
+    assert current.results and all(row.revision == later and row.verified for row in current.results)
     assert app.assets.resolve(first['asset']).read_bytes() == original.encode('utf-8')
