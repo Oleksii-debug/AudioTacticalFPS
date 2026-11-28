@@ -1,10 +1,12 @@
 """Typed script-to-audio orchestration with durable, independently cached steps."""
 from __future__ import annotations
 
+from contextlib import ExitStack
 from dataclasses import asdict, replace
 import hashlib
 import inspect
 import json
+import math
 import os
 from pathlib import Path
 import shlex
@@ -502,6 +504,290 @@ def _public_result(result, directory):
             'manifest': str(directory / 'complete.json'),
             'subtitles': str(directory / 'subtitles.srt'),
             'stems': [str(directory / name) for name in result['stem_names']]}
+
+
+
+_SILENCE_REPORT_SCHEMA = 'carr-completed-silence-inspection/1'
+_SILENCE_CONTEXT_RECORDS = 100000
+_SILENCE_ANNOTATIONS = ('authored_pause_overlap_frames', 'spoken_line_overlap_frames',
+                        'declared_music_clip_overlap_frames')
+
+
+def _silence_hash(value):
+    if type(value) is not str or len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
+        raise ValueError('Silence inspection requires an exact lowercase SHA256 binding.')
+    return value
+
+
+def _silence_context(timeline, completion, rate, frames, cancelled):
+    """Bounded recorded context; absence never means music or intent is known."""
+    if (type(timeline) is not dict
+            or type(timeline.get('schema_version')) is not int
+            or timeline['schema_version'] not in (1, 2, 3)
+            or type(timeline.get('sample_rate')) is not int or timeline['sample_rate'] != rate
+            or timeline.get('source_sha256') != completion['source_sha256']
+            or timeline.get('chapters') != completion.get('chapters')):
+        raise ValueError('The completed timeline does not match this production.')
+    chapters, scenes = timeline.get('chapters'), timeline.get('scenes')
+    if (type(chapters) is not list or type(scenes) is not list or not chapters
+            or len(chapters) != len(scenes) or len(chapters) > _SILENCE_CONTEXT_RECORDS):
+        raise ValueError('The completed timeline has invalid chapter context.')
+    ranges = {name: [] for name in _SILENCE_ANNOTATIONS}
+    records, position, identities = 0, 0, set()
+
+    def record():
+        nonlocal records
+        records += 1
+        if records > _SILENCE_CONTEXT_RECORDS:
+            raise ValueError('The completed timeline exceeds the inspection context budget.')
+        check_cancelled(cancelled)
+
+    def count(value, *, positive=False):
+        if type(value) is not int or value < (1 if positive else 0) or value > frames:
+            raise ValueError('The completed timeline has invalid frame context.')
+        return value
+
+    for chapter, scene in zip(chapters, scenes):
+        record()
+        if type(chapter) is not dict or type(scene) is not dict:
+            raise ValueError('The completed timeline has invalid scene context.')
+        identity = chapter.get('id')
+        if (type(identity) is not str or not 1 <= len(identity) <= 256
+                or identity in identities or scene.get('scene_id') != identity
+                or type(chapter.get('sample_rate')) is not int or chapter['sample_rate'] != rate):
+            raise ValueError('The completed timeline has inconsistent scene identities.')
+        identities.add(identity)
+        start, end = count(chapter.get('start_frame')), count(chapter.get('end_frame'), positive=True)
+        if start != position or end <= start:
+            raise ValueError('The completed timeline is not a consecutive frame partition.')
+        local_frames, local_end = end - start, 0
+        events, clips = scene.get('events'), scene.get('clips', [])
+        if type(events) is not list or type(clips) is not list:
+            raise ValueError('The completed timeline has invalid event context.')
+        for event in events:
+            record()
+            if type(event) is not dict or event.get('kind') not in ('line', 'pause', 'sound'):
+                raise ValueError('The completed timeline has unknown event context.')
+            at, length = count(event.get('start_frame')), count(event.get('frames'), positive=True)
+            if at != local_end or at + length > local_frames:
+                raise ValueError('The completed timeline event exceeds its chapter.')
+            if event['kind'] in ('pause', 'line'):
+                key = _SILENCE_ANNOTATIONS[0 if event['kind'] == 'pause' else 1]
+                ranges[key].append((start + at, start + at + length))
+            local_end = at + length
+        for clip in clips:
+            record()
+            if type(clip) is not dict or clip.get('track') not in ('sfx', 'ambience', 'music', 'microphone'):
+                raise ValueError('The completed timeline has unknown clip context.')
+            at, length = count(clip.get('start_frame')), count(clip.get('frames'), positive=True)
+            if at + length > local_frames:
+                raise ValueError('The completed timeline clip exceeds its chapter.')
+            if clip['track'] == 'music':
+                ranges[_SILENCE_ANNOTATIONS[2]].append((start + at, start + at + length))
+        position = end
+    if position != frames:
+        raise ValueError('The completed timeline does not cover the retained master.')
+
+    # Merge once, then sweep each disjoint finding in order. Neither a long
+    # interval nor many events can expand its fixed-size numeric annotations.
+    for name, values in ranges.items():
+        merged = []
+        for start, end in sorted(values):
+            check_cancelled(cancelled)
+            if merged and start <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+            else:
+                merged.append((start, end))
+        ranges[name] = merged
+    return ranges
+
+
+def _annotate_silence(intervals, ranges, rate, cancelled):
+    cursors = {key: 0 for key in ranges}
+    for interval in intervals:
+        check_cancelled(cancelled)
+        start, end = interval['start_frame'], interval['end_frame']
+        annotations = {}
+        for key, values in ranges.items():
+            cursor = cursors[key]
+            while cursor < len(values) and values[cursor][1] <= start:
+                cursor += 1
+            cursors[key] = cursor
+            overlap = 0
+            while cursor < len(values) and values[cursor][0] < end:
+                check_cancelled(cancelled)
+                at, to = values[cursor]
+                overlap += max(0, min(end, to) - max(start, at))
+                cursor += 1
+            annotations[key] = overlap
+        interval.update(start_seconds=start / rate, end_seconds=end / rate,
+                        duration_seconds=(end - start) / rate, annotations=annotations)
+
+
+def inspect_completed_silence(manifest_path, *, threshold_dbfs, minimum_seconds,
+                              expected_run_key=None, cancelled=lambda: False,
+                              on_status=lambda message: None, max_intervals=1000):
+    """Read an existing completion and return bounded, warning-only PCM findings.
+
+    Never render, repair, acquire a voice/model, alter a receipt, or change cache
+    identity. Source/plan hashes are recorded provenance, not new authority to
+    read an original. All selected file owners settle before a result is returned.
+    """
+    audio._silence_criteria(threshold_dbfs, minimum_seconds, max_intervals)
+    if expected_run_key is not None:
+        _silence_hash(expected_run_key)
+    check_cancelled(cancelled)
+    selected = Path(manifest_path)
+    if selected.name != 'complete.json':
+        raise ValueError('Select the existing production complete.json manifest.')
+    directory = checked_directory(selected.parent)
+    directory_info = directory.stat()
+    directory_identity = (directory_info.st_dev, directory_info.st_ino)
+    manifest = directory / 'complete.json'
+    with ExitStack() as owners:
+        identities = {}
+        for name in ('complete.json', 'master.wav', 'timeline.json'):
+            path = directory / name
+            info = regular_file(path)
+            if name.endswith('.json') and (info.st_nlink != 1 or info.st_size > 16 * 1024 ** 2):
+                raise ValueError('Inspection JSON must fit the existing 16 MiB unaliased reader budget.')
+            identities[name] = file_identity(info)
+            owners.enter_context(verified_reader(path, expected_identity=identities[name]))
+        completion_sha256 = sha256_file(manifest, cancelled=cancelled,
+                                        expected_identity=identities['complete.json'])
+        completion = _read_json(manifest)
+        if type(completion) is not dict:
+            raise ValueError('Select a current completed production manifest.')
+        run_key = _silence_hash(completion.get('run_key'))
+        _silence_hash(completion.get('source_sha256'))
+        _silence_hash(completion.get('plan_sha256'))
+        if expected_run_key is not None and run_key != expected_run_key:
+            raise ValueError('The selected completed production run changed.')
+        on_status('Verifying the retained completed production before inspection.')
+        verified = _verified_output(directory, run_key, cancelled)
+        if verified is None or verified != completion:
+            raise ValueError('The selected completed production no longer verifies.')
+        records = {row['name']: row for row in completion['files']}
+        if 'master.wav' not in records or 'timeline.json' not in records:
+            raise ValueError('The completed production has no retained PCM/timeline pair.')
+        master_sha256 = _silence_hash(records['master.wav'].get('sha256'))
+        timeline_sha256 = _silence_hash(records['timeline.json'].get('sha256'))
+        timeline_path = directory / 'timeline.json'
+        if sha256_file(timeline_path, cancelled=cancelled,
+                       expected_identity=identities['timeline.json']) != timeline_sha256:
+            raise RuntimeError('The retained timeline changed before silence inspection.')
+        timeline = _read_json(timeline_path)
+        context = _silence_context(timeline, completion, completion['sample_rate'],
+                                   completion['frames'], cancelled)
+        measured = audio.measure_silence(directory / 'master.wav',
+            threshold_dbfs=threshold_dbfs, minimum_seconds=minimum_seconds,
+            max_intervals=max_intervals, cancelled=cancelled, on_status=on_status,
+            expected_sha256=master_sha256, expected_identity=identities['master.wav'])
+        _annotate_silence(measured['intervals'], context, measured['sample_rate'], cancelled)
+        report = {
+            'schema': _SILENCE_REPORT_SCHEMA, 'status': 'complete',
+            'review_status': 'warnings' if measured['interval_count'] else 'no-matching-intervals',
+            'run_key': run_key, 'source_sha256': completion['source_sha256'],
+            'plan_sha256': completion['plan_sha256'], 'completion_sha256': completion_sha256,
+            'master_sha256': measured.pop('sha256'), 'timeline_sha256': timeline_sha256,
+            **measured,
+            'context': {
+                'annotation_mode': 'aggregate-overlap-frames',
+                'background_music': 'not-recorded-in-timeline',
+                'merged_range_counts': {key: len(value) for key, value in context.items()},
+            },
+            'limitations': [
+                'Amplitude/duration criteria are user-selected inspection settings, not quality targets.',
+                'Findings require listening review; they never invalidate or modify this production.',
+                'Recorded pause/line/music-clip overlaps do not prove acoustic content or intended silence.',
+                'Background scene music is not recorded in this timeline and is not inferred.',
+                'Recorded source and plan hashes do not revalidate external originals or speech accuracy.',
+            ],
+        }
+        # The master was rehashed by the complete streaming scan. Its original
+        # verified handle stays held through these final metadata checks and
+        # report construction; native change-time/identity checks run on exit.
+        for name, checksum in (('complete.json', completion_sha256), ('timeline.json', timeline_sha256)):
+            if sha256_file(directory / name, cancelled=cancelled,
+                           expected_identity=identities[name]) != checksum:
+                raise RuntimeError('The completed inspection source changed while it was read.')
+        check_cancelled(cancelled)
+    checked = checked_directory(directory)
+    directory_info = checked.stat()
+    if (directory_info.st_dev, directory_info.st_ino) != directory_identity:
+        raise RuntimeError('The completed production directory changed during inspection.')
+    check_cancelled(cancelled)
+    return report
+
+
+def completed_silence_report_text(report):
+    """Format bounded numeric findings without copying source text or paths."""
+    if type(report) is not dict or report.get('schema') != _SILENCE_REPORT_SCHEMA or report.get('status') != 'complete':
+        raise ValueError('Expected a completed silence inspection report.')
+    for key in ('run_key', 'source_sha256', 'plan_sha256', 'completion_sha256', 'master_sha256', 'timeline_sha256'):
+        _silence_hash(report.get(key))
+    criteria, intervals = report.get('criteria'), report.get('intervals')
+    if type(criteria) is not dict or type(intervals) is not list:
+        raise ValueError('Invalid silence inspection criteria or intervals.')
+    threshold, seconds, maximum = audio._silence_criteria(
+        criteria.get('threshold_dbfs'), criteria.get('minimum_seconds'), report.get('max_intervals'))
+    rate, frames = report.get('sample_rate'), report.get('frames')
+    if (type(rate) is not int or not 8000 <= rate <= 192000
+            or type(frames) is not int or not 1 <= frames < 2 ** 63
+            or type(report.get('channels')) is not int or report['channels'] not in (1, 2)
+            or len(intervals) > maximum):
+        raise ValueError('Invalid silence inspection PCM bounds.')
+    counts = [report.get(key) for key in ('interval_count', 'retained_interval_count',
+                                         'omitted_interval_count', 'qualifying_frames')]
+    if (any(type(value) is not int or value < 0 for value in counts)
+            or counts[1] != len(intervals) or counts[0] != counts[1] + counts[2]
+            or counts[3] > frames or counts[0] > frames):
+        raise ValueError('Invalid silence inspection counts.')
+    minimum_frames = audio._silence_minimum_frames(seconds, rate)
+    if (type(criteria.get('minimum_frames')) is not int or criteria['minimum_frames'] != minimum_frames
+            or type(criteria.get('threshold_pcm16')) is not int
+            or criteria.get('threshold_pcm16') != math.floor(32768 * 10 ** (threshold / 20))
+            or criteria.get('channel_rule') != 'every-channel-at-or-below'
+            or criteria.get('frame_bounds') != 'start-inclusive-end-exclusive'):
+        raise ValueError('The silence inspection criteria do not match its numeric bounds.')
+    lines = [
+        'Completed audio: silence inspection',
+        'Review warnings only. These findings do not fail or change the completed production.',
+        f'Criteria: every channel at or below {threshold:g} dBFS '
+        f'({criteria["threshold_pcm16"]} PCM16 magnitude), for at least {seconds:g} seconds '
+        f'({minimum_frames} frames).',
+        f'PCM: {frames} frames at {rate} Hz; {report["channels"]} channels.',
+        f'Matching intervals: {counts[0]}; shown: {counts[1]}; omitted: {counts[2]}. '
+        f'Qualifying frames, including omitted intervals: {counts[3]}.',
+        'Ranges use inclusive start and exclusive end frames.',
+        'Recorded context is overlap only, not proof of intended silence. Background scene music is unknown.',
+        'Run: ' + report['run_key'],
+        'Recorded source SHA256: ' + report['source_sha256'],
+        'Recorded plan SHA256: ' + report['plan_sha256'],
+        'Completion SHA256: ' + report['completion_sha256'],
+        'Master SHA256: ' + report['master_sha256'],
+        'Timeline SHA256: ' + report['timeline_sha256'],
+    ]
+    previous, retained_frames = 0, 0
+    for index, interval in enumerate(intervals, 1):
+        if type(interval) is not dict:
+            raise ValueError('Invalid silence inspection interval.')
+        start, end, length = (interval.get(key) for key in ('start_frame', 'end_frame', 'frames'))
+        annotations = interval.get('annotations')
+        if (any(type(value) is not int for value in (start, end, length))
+                or start < previous or not start < end <= frames or length != end - start
+                or length < minimum_frames or type(annotations) is not dict
+                or set(annotations) != set(_SILENCE_ANNOTATIONS)
+                or any(type(value) is not int or not 0 <= value <= length for value in annotations.values())):
+            raise ValueError('Invalid silence inspection interval context.')
+        lines.append(f'{index}. Frames [{start}, {end}); {start / rate:.6f}–{end / rate:.6f} seconds; '
+                     f'{length} frames. Recorded overlaps: pause {annotations[_SILENCE_ANNOTATIONS[0]]}, '
+                     f'spoken line {annotations[_SILENCE_ANNOTATIONS[1]]}, '
+                     f'music clip {annotations[_SILENCE_ANNOTATIONS[2]]} frames.')
+        previous, retained_frames = end, retained_frames + length
+    if retained_frames > counts[3] or (counts[2] == 0 and retained_frames != counts[3]):
+        raise ValueError('The retained silence intervals do not match their frame count.')
+    return '\n'.join(lines) + '\n'
 
 
 def _production_music_manifest(root, reference, engine_name, *, resolver, cancelled):

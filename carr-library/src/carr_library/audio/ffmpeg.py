@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from array import array
 from dataclasses import dataclass
+import hashlib
 import json
 import math
 import os
@@ -486,6 +487,143 @@ def measure_peak(path, *, cancelled=lambda: False):
     return {'peak': peak / 32768, 'clipped': peak >= 32767,
             'frames': info.frames, 'sample_rate': info.rate, 'channels': info.channels,
             'duration_seconds': info.seconds}
+
+
+
+_SILENCE_BLOCK_BYTES = 1024 * 1024
+_SILENCE_MAX_INTERVALS = 1000
+
+
+def _silence_criteria(threshold_dbfs, minimum_seconds, max_intervals):
+    """Explicit inspection criteria, not acoustic or broadcast quality targets."""
+    values = []
+    for value, low, high, name in (
+            (threshold_dbfs, -120, 0, 'Silence threshold in dBFS'),
+            (minimum_seconds, 0, 86400, 'Minimum silence duration')):
+        if type(value) not in (int, float):
+            raise ValueError(name + ' must be a finite number.')
+        try:
+            value = float(value)
+        except (OverflowError, ValueError) as error:
+            raise ValueError(name + ' must be a finite number.') from error
+        if not math.isfinite(value) or not low <= value <= high:
+            raise ValueError(name + ' is outside the inspection range.')
+        values.append(value)
+    if values[1] <= 0:
+        raise ValueError('Minimum silence duration must be positive.')
+    if type(max_intervals) is not int or not 1 <= max_intervals <= _SILENCE_MAX_INTERVALS:
+        raise ValueError('Retain between 1 and 1000 silence intervals.')
+    return values[0], values[1], max_intervals
+
+
+def _silence_minimum_frames(seconds, rate):
+    # Interpret the displayed decimal criterion without binary-float rounding
+    # turning exactly 0.1 seconds at 8 kHz into an 801-frame minimum.
+    from fractions import Fraction
+    duration = Fraction(str(seconds)) * rate
+    return (duration.numerator + duration.denominator - 1) // duration.denominator
+
+
+def measure_silence(path, *, threshold_dbfs, minimum_seconds,
+                    cancelled=lambda: False, on_status=lambda message: None,
+                    max_intervals=1000, expected_sha256=None, expected_identity=None):
+    """Stream PCM16; every channel must meet the caller's amplitude criterion.
+
+    Intervals are maximal, half-open frame ranges. The cap limits only retained
+    rows: the complete file is scanned and all qualifying spans are counted.
+    No decoder, audio device, engine or mutation is involved.
+    """
+    threshold_dbfs, minimum_seconds, max_intervals = _silence_criteria(
+        threshold_dbfs, minimum_seconds, max_intervals)
+    if expected_sha256 is not None and (
+            type(expected_sha256) is not str or re.fullmatch(r'[0-9a-f]{64}', expected_sha256) is None):
+        raise ValueError('Expected PCM checksum must be a lowercase SHA256.')
+    check_cancelled(cancelled)
+    identity = file_identity(regular_file(path))
+    if expected_identity is not None and identity != expected_identity:
+        raise RuntimeError('The selected PCM changed before silence inspection.')
+    info = wav_info(path)
+    minimum_frames = _silence_minimum_frames(minimum_seconds, info.rate)
+    threshold_pcm16 = math.floor(32768 * 10 ** (threshold_dbfs / 20))
+    intervals, count, qualifying_frames = [], 0, 0
+    start, position = None, 0
+    checksum = hashlib.sha256()
+
+    def finish(end):
+        nonlocal start, count, qualifying_frames
+        if start is not None and end - start >= minimum_frames:
+            count += 1
+            qualifying_frames += end - start
+            if len(intervals) < max_intervals:
+                intervals.append({'start_frame': start, 'end_frame': end, 'frames': end - start})
+        start = None
+
+    with verified_reader(path, expected_identity=identity) as stream:
+        total = os.fstat(stream.fileno()).st_size
+
+        def hash_bytes(amount):
+            while amount:
+                check_cancelled(cancelled)
+                block = stream.read(min(_SILENCE_BLOCK_BYTES, amount))
+                if not block:
+                    raise RuntimeError('The PCM was truncated during silence inspection.')
+                checksum.update(block)
+                amount -= len(block)
+
+        hash_bytes(info.data_offset)
+        remaining = info.data_size
+        frame_bytes = info.channels * 2
+        block_bytes = max(frame_bytes, _SILENCE_BLOCK_BYTES // frame_bytes * frame_bytes)
+        on_status('Inspecting retained PCM with the selected silence criteria.')
+        last_report = time.monotonic()
+        while remaining:
+            check_cancelled(cancelled)
+            block = stream.read(min(block_bytes, remaining))
+            if not block or len(block) % frame_bytes:
+                raise RuntimeError('The PCM was truncated during silence inspection.')
+            checksum.update(block)
+            samples = array('h')
+            samples.frombytes(block)
+            if sys.byteorder != 'little':
+                samples.byteswap()
+            values = iter(samples)
+            for first in values:
+                quiet = abs(first) <= threshold_pcm16
+                if info.channels == 2:
+                    quiet = abs(next(values)) <= threshold_pcm16 and quiet
+                if quiet:
+                    if start is None:
+                        start = position
+                else:
+                    finish(position)
+                position += 1
+            remaining -= len(block)
+            now = time.monotonic()
+            if now - last_report >= 0.5 or not remaining:
+                on_status(f'Inspected {position} of {info.frames} PCM frames.')
+                last_report = now
+        finish(position)
+        if position != info.frames:
+            raise RuntimeError('The inspected PCM frame count changed.')
+        hash_bytes(total - info.data_offset - info.data_size)
+        check_cancelled(cancelled)
+        actual_sha256 = checksum.hexdigest()
+        if expected_sha256 is not None and actual_sha256 != expected_sha256:
+            raise RuntimeError('The retained PCM checksum changed during silence inspection.')
+    check_cancelled(cancelled)
+    return {
+        'sha256': actual_sha256, 'sample_rate': info.rate, 'channels': info.channels,
+        'frames': info.frames, 'duration_seconds': info.seconds,
+        'criteria': {
+            'threshold_dbfs': threshold_dbfs, 'threshold_pcm16': threshold_pcm16,
+            'minimum_seconds': minimum_seconds, 'minimum_frames': minimum_frames,
+            'channel_rule': 'every-channel-at-or-below',
+            'frame_bounds': 'start-inclusive-end-exclusive',
+        },
+        'interval_count': count, 'retained_interval_count': len(intervals),
+        'omitted_interval_count': count - len(intervals), 'qualifying_frames': qualifying_frames,
+        'max_intervals': max_intervals, 'intervals': intervals,
+    }
 
 
 def measure_loudness(path, *, ffmpeg, cancelled=lambda: False):
