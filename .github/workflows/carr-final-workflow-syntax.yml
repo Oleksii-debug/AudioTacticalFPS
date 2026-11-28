@@ -1,0 +1,129 @@
+name: Final maintained workflow syntax acceptance
+on:
+  push:
+    branches: [carr/final-workflow-syntax-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-final-workflow-syntax-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install pinned YAML parser
+        run: python -m pip install PyYAML==6.0.2
+      - name: Compile current Python and embedded workflow Python, validate YAML and source paths
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          import ast, json, re, subprocess, warnings
+          import yaml
+          
+          class UniqueLoader(yaml.BaseLoader):
+              pass
+          def mapping(loader, node):
+              result = {}
+              for key_node, value_node in node.value:
+                  key = loader.construct_object(key_node, deep=True)
+                  if key in result:
+                      raise ValueError('Duplicate YAML key: ' + str(key))
+                  result[key] = loader.construct_object(value_node, deep=True)
+              return result
+          UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)
+          root = Path.cwd()
+          out = root / 'ci-syntax'
+          out.mkdir()
+          warnings.simplefilter('error', SyntaxWarning)
+          python_files, python_blocks, workflows, powershell, identities = [], [], [], [], {}
+          for relative in subprocess.run(['git', 'ls-files', '-z'], check=True, capture_output=True).stdout.decode().split('\0'):
+              if not relative:
+                  continue
+              path = root / relative
+              if relative.startswith('carr-library/') and relative.endswith('.py'):
+                  raw = path.read_bytes()
+                  compile(raw, relative, 'exec', dont_inherit=True)
+                  python_files.append(relative)
+                  identities[relative] = sha256(raw).hexdigest()
+          import tomllib
+          project = tomllib.loads((root / 'carr-library/pyproject.toml').read_text(encoding='utf-8'))
+          entrypoints = project['project'].get('scripts', {})
+          assert entrypoints
+          for name, target in entrypoints.items():
+              module, attribute = target.split(':', 1)
+              assert module and attribute, name
+              source = root / 'carr-library/src' / Path(*module.split('.'))
+              assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (name, target)
+          for path in sorted((root / '.github/workflows').glob('*.yml')):
+              data = yaml.load(path.read_text(encoding='utf-8'), Loader=UniqueLoader)
+              assert isinstance(data, dict) and 'on' in data and isinstance(data.get('jobs'), dict), str(path)
+              workflows.append(str(path.relative_to(root)))
+              if path.name not in {'carr-windows.yml', 'carr-v3.yml'}:
+                  continue
+              for job_id, job in data['jobs'].items():
+                  default_shell = job.get('defaults', {}).get('run', {}).get('shell', '')
+                  for index, step in enumerate(job.get('steps', [])):
+                      run = step.get('run')
+                      if not isinstance(run, str):
+                          continue
+                      shell = step.get('shell', default_shell)
+                      label = path.name + ':' + job_id + ':' + str(index + 1)
+                      if 'pwsh' in shell or 'powershell' in shell:
+                          powershell.append({'label': label, 'script': re.sub(r'\$\{\{.*?\}\}', 'CI_EXPRESSION', run, flags=re.S)})
+                      blocks = re.findall(r"(?ms)^\s*\$\w+\s*=\s*@'\s*\n(.*?)^\s*'@\s*$", run)
+                      for number, block in enumerate(blocks):
+                          first = block.lstrip().splitlines()[0] if block.strip() else ''
+                          if first.startswith(('import ', 'from ')):
+                              compile(block, label + ':python:' + str(number), 'exec', dont_inherit=True)
+                              python_blocks.append(label + ':' + str(number))
+                      for module in set(re.findall(r"""['"](carr_library(?:\.[A-Za-z_]\w*)*)['"]""", run)):
+                          source = root / 'carr-library/src' / Path(*module.split('.'))
+                          assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (label, module)
+                      for native in set(re.findall(r'(scripts/windows_[A-Za-z0-9_]+\.py)', run)):
+                          assert (root / 'carr-library' / native).is_file(), (label, native)
+          assert python_files and python_blocks and powershell
+          (out / 'powershell.json').write_text(json.dumps(powershell), encoding='utf-8')
+          proof = {'status': 'PASS', 'scope': 'Python compile, duplicate-free YAML, current workflow module/native paths',
+                   'head': subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip(),
+                   'python_files': len(python_files), 'python_blocks': len(python_blocks), 'entrypoints': len(entrypoints),
+                   'workflows': workflows, 'powershell_blocks_pending': len(powershell), 'source_sha256': identities}
+          (out / 'python-yaml.json').write_text(json.dumps(proof, indent=2, sort_keys=True), encoding='utf-8')
+          print(json.dumps({k: v for k, v in proof.items() if k != 'source_sha256'}, sort_keys=True))
+          PY
+      - name: Parse every integrated PowerShell block
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $blocks = Get-Content -LiteralPath 'ci-syntax/powershell.json' -Raw | ConvertFrom-Json
+          $failures = @()
+          foreach ($block in $blocks) {
+            $tokens = $null
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseInput([string]$block.script, [ref]$tokens, [ref]$errors)
+            foreach ($problem in $errors) {
+              $failures += @{ block = $block.label; line = $problem.Extent.StartLineNumber; message = $problem.Message }
+            }
+          }
+          $result = @{ status = $(if ($failures.Count -eq 0) { 'PASS' } else { 'FAIL' }); blocks = $blocks.Count; errors = $failures }
+          $result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath 'ci-syntax/powershell-result.json' -Encoding utf8
+          $result | ConvertTo-Json -Depth 5
+          if ($failures.Count -ne 0) { throw 'Current workflow PowerShell syntax did not pass.' }
+      - name: Preserve exact source syntax proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: final-composition-syntax-${{ github.sha }}
+          path: ci-syntax/
+          if-no-files-found: error
+
