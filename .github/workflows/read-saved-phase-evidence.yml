@@ -1,4 +1,4 @@
-name: Read exact bd06 Book and complete-bundle phase evidence
+name: Read exact bd06 complete evidence and native installer shortcuts
 
 on:
   push:
@@ -30,12 +30,12 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15254036768
+          ARTIFACT_ID = 15254122075
           SOURCE_RUN = 46114989728
           SOURCE_HEAD = "bd06d0cac5f128f4bd8b492326e85640c1e8487e"
-          ZIP_BYTES = 167856
-          ZIP_SHA256 = "c6f72417e7eed48437f3c78a85c04acfd96dc65e2a88fd876ec44bc17eee9350"
-          MAX_MEMBERS = 128
+          ZIP_BYTES = 2609119
+          ZIP_SHA256 = "0efee215ae8c720f20a856f9bbb33e95b29eba3f5ff58394aac58da213fda986"
+          MAX_MEMBERS = 192
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
@@ -107,6 +107,27 @@ jobs:
               "union-production-controls.txt",
           }
 
+          SELECTED_NESTED_FILES = {
+              "standard-installer/shortcuts.json",
+              "standard-installer/inspect-shortcuts.ps1",
+              "standard-installer/shortcuts-process.log",
+              "standard-installer/install.log",
+              "standard-installer/install-process.log",
+              "standard-installer/foreign-shortcut.log",
+              "standard-installer/foreign-shortcut-process.log",
+          }
+          REQUIRED_NESTED_FILES = {
+              "standard-installer/shortcuts.json",
+              "standard-installer/inspect-shortcuts.ps1",
+              "standard-installer/shortcuts-process.log",
+              "standard-installer/install.log",
+              "standard-installer/install-process.log",
+          }
+          INSPECTION_SCRIPT = "standard-installer/inspect-shortcuts.ps1"
+          BINARY_NAME = "application-wheel/universal_research_library-0.2.0.dev2-py3-none-any.whl"
+          BINARY_BYTES = 2003783
+          BINARY_SHA256 = "ca08d993c8614d62bd8b89d4aeaecf722c7aa9661bab0ee7e881b5dc00153d64"
+
           def fixed_get(endpoint, limit):
               result = subprocess.run(
                   ["gh", "api", "--method", "GET",
@@ -135,6 +156,7 @@ jobs:
 
           decoded = []
           available, selected_names = [], set()
+          selected_nested, binary_receipts = set(), []
           with zipfile.ZipFile(io.BytesIO(raw), "r") as archive:
               entries = archive.infolist()
               if not entries or len(entries) > MAX_MEMBERS:
@@ -156,7 +178,9 @@ jobs:
                       if entry.file_size != 0 or kind not in (0, stat.S_IFDIR):
                           raise ValueError("Invalid saved phase directory entry.")
                       continue
-                  if kind not in (0, stat.S_IFREG) or path.suffix.lower() not in (".txt", ".log", ".json", ".xml"):
+                  if (kind not in (0, stat.S_IFREG)
+                          or (path.suffix.lower() not in (".txt", ".log", ".json", ".xml")
+                              and name not in (INSPECTION_SCRIPT, BINARY_NAME))):
                       raise ValueError("Saved phase artifact contains an unsupported member.")
                   if not 0 <= entry.file_size <= MAX_MEMBER_BYTES:
                       raise ValueError("Saved phase member exceeds its byte limit.")
@@ -169,15 +193,28 @@ jobs:
                       content = stream.read(entry.file_size + 1)
                   if len(content) != entry.file_size:
                       raise ValueError("Saved phase member length changed during its bounded read.")
+                  if name == BINARY_NAME:
+                      if len(content) != BINARY_BYTES or hashlib.sha256(content).hexdigest() != BINARY_SHA256:
+                          raise ValueError("The saved source wheel differs from its actual build receipt.")
+                      binary_receipts.append({"name": name, "bytes": len(content),
+                                              "sha256": BINARY_SHA256, "scope": "hash-only; not extracted or executed"})
+                      continue
                   text = content.decode("utf-8")
                   available.append(name)
-                  if path.name in SELECTED_FILES:
+                  if name in SELECTED_NESTED_FILES:
+                      selected_nested.add(name)
+                      decoded.append((name, content, text))
+                  elif path.name in SELECTED_FILES:
                       if path.name in selected_names:
                           raise ValueError("An explicitly selected phase member is ambiguous.")
                       selected_names.add(path.name)
                       decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
                   raise ValueError("The required endpoint evaluation receipts are absent or ambiguous.")
+              if not REQUIRED_NESTED_FILES <= selected_nested:
+                  raise ValueError("The required exact native installer receipts are absent.")
+              if len(binary_receipts) != 1:
+                  raise ValueError("The exact saved source wheel is absent.")
 
           print(json.dumps({
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
@@ -185,10 +222,13 @@ jobs:
               "archive_bytes": ZIP_BYTES, "archive_sha256": ZIP_SHA256,
               "text_members": len(decoded),
               "text_bytes": sum(len(content) for _, content, _ in decoded),
-              "archive_text_members": len(available), "archive_text_bytes": total,
+              "archive_text_members": len(available),
+              "archive_text_bytes": total - sum(item["bytes"] for item in binary_receipts),
+              "archive_member_bytes": total, "verified_binary_members": binary_receipts,
               "available_files": sorted(available),
               "missing_selected_files": sorted(SELECTED_FILES - selected_names),
-              "missing_optional_status": {name: "NOT_RUN" for name in sorted(SELECTED_FILES - selected_names)},
+              "missing_optional_status": {name: "NO_SAVED_EVIDENCE" for name in sorted(SELECTED_FILES - selected_names)},
+              "missing_nested_status": {name: "NO_SAVED_EVIDENCE" for name in sorted(SELECTED_NESTED_FILES - selected_nested)},
               "scope": "readback of saved public diagnostics; no application execution"
           }, ensure_ascii=True), flush=True)
           for name, content, text in sorted(decoded, key=lambda item: item[0]):
