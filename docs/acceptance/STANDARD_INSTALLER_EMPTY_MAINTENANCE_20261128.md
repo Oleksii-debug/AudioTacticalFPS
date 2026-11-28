@@ -93,8 +93,8 @@ The generated-template test runs the actual builder, requires exactly that
 one empty-only directory entry, and retains the existing prohibition on
 UninstallDelete and filesandordirs. All existing 96 standard-installer cases
 and their assertions are preserved. Two additional metadata-diagnostic
-cases use real temporary files, enforce the 32-name/128-character limits,
-forbid content reads, and exercise a reparse-root refusal.
+cases use real temporary files, enforce the 32-entry scan result and bounded
+JSON output, forbid content reads, and exercise a reparse-root refusal.
 
 After the original native failure condition, diagnostics now record the
 observed registration presence, app/maintenance path kinds and at most 32
