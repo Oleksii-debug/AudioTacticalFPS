@@ -134,25 +134,50 @@ def test_native_saved_queue_unwind_closes_only_one_recorded_running_modal_per_tu
     calls, pending = [], []
     parent_running, child_running = [False], [True]
     main = SimpleNamespace(IsMain=lambda: True, IsRunning=lambda: False)
-    def window(name, handle, running, resumed=None):
+    def window(name, handle):
+        # Native EndModal requests exit, but its modal/running observations
+        # stay true until ShowModal can return after this event batch.
         def end(result):
             calls.append((name, result))
-            running[0] = False
-            if resumed is not None:
-                resumed[0] = True
         return SimpleNamespace(GetHandle=lambda: handle, IsModal=lambda: True, EndModal=end)
-    parent = window('parent', 1, parent_running)
-    child = window('child', 2, child_running, parent_running)
+    parent, child = window('parent', 1), window('child', 2)
     parent_loop = SimpleNamespace(IsMain=lambda: False, IsRunning=lambda: parent_running[0])
     child_loop = SimpleNamespace(IsMain=lambda: False, IsRunning=lambda: child_running[0])
+    def immediate(_callback):
+        raise AssertionError('An immediate pending event can starve the requested native loop exit.')
+    def schedule(delay, callback):
+        assert delay > 0, 'The native event batch must get a chance to return.'
+        pending.append(callback)
     env = helpers(user32=SimpleNamespace(IsWindow=lambda handle: handle in (1, 2)),
-                  wx=SimpleNamespace(ID_CANCEL=5101, CallAfter=pending.append),
+                  wx=SimpleNamespace(ID_CANCEL=5101, CallAfter=immediate), schedule=schedule,
                   owned_modals=[(parent, 1, parent_loop), (child, 2, child_loop)])
     env['unwind']()
     assert calls == [('child', 5101)] and len(pending) == 1
-    assert parent_running[0] and not main.IsRunning()
+    assert child_running[0] and not parent_running[0] and not main.IsRunning()
+    env['unwind']()
+    assert calls == [('child', 5101)] and len(pending) == 1
+    # A delayed observation before exit must neither repeat EndModal nor
+    # terminate the still-suspended recorded parent.
+    pending.pop(0)()
+    assert calls == [('child', 5101)] and len(pending) == 1
+    child_running[0], parent_running[0] = False, True
     pending.pop(0)()
     assert calls == [('child', 5101), ('parent', 5101)] and len(pending) == 1
+    env['unwind']()
+    assert calls == [('child', 5101), ('parent', 5101)] and len(pending) == 1
+    parent_running[0] = False
+    pending.pop(0)()
+    assert pending == [] and env['errors'] == []
+    # A later owned dialog can reuse a Windows HWND after the first closes.
+    # Its distinct recorded window/loop must receive its own EndModal request.
+    reopened = window('reopened', 2)
+    reopened_running = [True]
+    reopened_loop = SimpleNamespace(IsMain=lambda: False, IsRunning=lambda: reopened_running[0])
+    env['owned_modals'].append((reopened, 2, reopened_loop))
+    env['unwind']()
+    assert calls == [('child', 5101), ('parent', 5101), ('reopened', 5101)]
+    assert len(pending) == 1
+    reopened_running[0] = False
     pending.pop(0)()
     assert pending == [] and env['errors'] == []
 

@@ -71,8 +71,8 @@ PINS = {
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
-    "scripts/windows_audio_player_smoke.py": "a8cdfc88f4e0cce65d8683e738bad4f6821f2304",
-    "tests/ui/test_native_saved_audio_cleanup.py": "95b059d406086fb52f847fee51247b506220466e"
+    "scripts/windows_audio_player_smoke.py": "88c41833b0fc30f1f46b6bb8312f1f26de03cddc",
+    "tests/ui/test_native_saved_audio_cleanup.py": "206b5f026ff2d185e62c64b324f354ec30ced0dd"
 }
 NATIVE_CONTRACT = {
     "origins": [

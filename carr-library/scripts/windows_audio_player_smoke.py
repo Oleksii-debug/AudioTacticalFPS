@@ -104,8 +104,21 @@ def main():
             except RuntimeError:
                 continue  # A recorded native dialog has already been destroyed.
             if eligible:
-                if cleanup_step('owned playback modal', lambda: window.EndModal(wx.ID_CANCEL)):
-                    wx.CallAfter(unwind)
+                # EndModal requests loop exit; IsModal/IsRunning may remain
+                # true until the current pending-event batch returns. Reposting
+                # CallAfter here can keep that same batch alive indefinitely.
+                requested = cleanup_state.setdefault('requested_modal_ends', set())
+                ticket = (id(window), handle, id(loop))
+                if ticket not in requested:
+                    requested.add(ticket)
+                    if not cleanup_step('owned playback modal', lambda: window.EndModal(wx.ID_CANCEL)):
+                        return
+                if not cleanup_state.get('modal_unwind_pending', False):
+                    cleanup_state['modal_unwind_pending'] = True
+                    def next_native_turn():
+                        cleanup_state['modal_unwind_pending'] = False
+                        unwind()
+                    schedule(25, next_native_turn)
                 return
 
     def fail():
