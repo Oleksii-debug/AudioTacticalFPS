@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "ac0c38196c9cad7120c6d8b36a972654d26f3b6a",
+  "source_tree": "e95b042fe1629166003545e11037e665cdd45bd7",
+  "run": 46101221980,
+  "actual_jobs": [
+    {
+      "job": 140843867781,
+      "platform": "Windows",
+      "receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 96,
+        "source_commit": "ac0c38196c9cad7120c6d8b36a972654d26f3b6a",
+        "source_passed": 96,
+        "source_tree": "e95b042fe1629166003545e11037e665cdd45bd7",
+        "status": "PASS"
+      },
+      "whole_test_modules": 4,
+      "source_cases": 96,
+      "isolated_installed_cases": 96
+    },
+    {
+      "job": 140843867965,
+      "platform": "Linux",
+      "receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 96,
+        "source_commit": "ac0c38196c9cad7120c6d8b36a972654d26f3b6a",
+        "source_passed": 96,
+        "source_tree": "e95b042fe1629166003545e11037e665cdd45bd7",
+        "status": "PASS"
+      },
+      "whole_test_modules": 4,
+      "source_cases": 96,
+      "isolated_installed_cases": 96
+    }
+  ],
+  "artifact_metadata": [
+    {
+      "id": 15245705788,
+      "name": "managed-backends-linux-ac0c38196c9cad7120c6d8b36a972654d26f3b6a-1",
+      "size_in_bytes": 36052,
+      "digest": "sha256:6d596b0747fc522f6a4d57de4cc9ec5a2230b097a9469bc97be9461eef6be125"
+    },
+    {
+      "id": 15245567911,
+      "name": "managed-backends-windows-ac0c38196c9cad7120c6d8b36a972654d26f3b6a-1",
+      "size_in_bytes": 40015,
+      "digest": "sha256:dece5d62c47676256e01153292eb3d5e741b67f3700295c4b371984fd6fc3149"
+    }
+  ],
+  "qualification": {
+    "actual_private_models": "NOT_RUN",
+    "audible_listening": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "full_voice495": "SEPARATE_GATE",
+    "release": "NOT_QUALIFIED"
+  },
+  "boundary": "Actual synthetic protocol children and retained managed-package dispatch, full installed module origins and wheel payload checks; no private engine/model/reference bytes were downloaded or published."
+}

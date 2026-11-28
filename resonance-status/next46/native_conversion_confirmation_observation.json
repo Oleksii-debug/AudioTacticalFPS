@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "df8c68870f58596616ee50167f536697f261498e",
+  "actual_previous": {
+    "commit": "9fca8982a16af3c33fc675fde2c1839cfd3592a5",
+    "run": 46100219387,
+    "windows_job": 140840728096,
+    "source": 351,
+    "installed": 351,
+    "native_reader": "actual verified copy handoff, Ctrl+S save, immutable original, and return to result dialog PASS",
+    "native_gui": "FAIL: following import confirmation timed out before default-No observation"
+  },
+  "correction": "Bounded observations of actual native question handles, focus, foreground, buttons, pressed keys, host and result window state. Product code, native input, deadline, ownership, default-No, explicit-Yes and all success predicates remain unchanged.",
+  "changes": [
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "sha": "72cfa1dff72e3b46cf1f4c6de7159eb8bd15bac3",
+      "before": "ec96de70f8f4681b8c89801d5369529d20608924"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "sha": "0547c2f6bd07d785fe5cab5019f93b3697d21bb6",
+      "before": "9514979e51b948d15b9ddb8619f49767e7ca82c6"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "sha": "51242fe57a5a1f5700749589b6e890854d60c4cf",
+      "before": "b108101ac858d4ba8244c792c104fa9a93a5dd38"
+    }
+  ]
+}

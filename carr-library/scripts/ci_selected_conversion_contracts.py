@@ -57,7 +57,7 @@ PINS = {
     "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
     "tests/audio/test_live_metadata_retry.py": "8534a05cf4e7c89a49f42fdcbb611f6f141fe969",
     "tests/ui/test_native_conversion_diagnostics.py": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
-    "scripts/windows_document_conversion_smoke.py": "ec96de70f8f4681b8c89801d5369529d20608924",
+    "scripts/windows_document_conversion_smoke.py": "72cfa1dff72e3b46cf1f4c6de7159eb8bd15bac3",
 }
 COMPANIONS = ("scripts/windows_document_conversion_smoke.py",
               "scripts/selected_conversion_fixture_support.py")

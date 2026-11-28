@@ -530,11 +530,35 @@ def main(argv=None):
 
     def confirm_import(button, *, yes):
         state = {'observed': False, 'answered': False, 'returned': False}
+        seen_question = set()
         until = monotonic() + 15
+        def observation(event, question):
+            try:
+                result = frame.conversion_results_dialog
+                observe_native(event=event, explicit_yes=bool(yes), state=dict(state),
+                    question=int(question) if question else None,
+                    foreground=int(user32.GetForegroundWindow() or 0),
+                    focus=int(user32.GetFocus() or 0),
+                    no_button=int(native_question_button(question, 'No') or 0) if question else None,
+                    yes_button=int(native_question_button(question, 'Yes') or 0) if question else None,
+                    import_enabled=bool(button.IsEnabled()), pressed=sorted(pressed),
+                    host_working=bool(frame.working),
+                    result_visible=bool(result and result.IsShown()),
+                    action_status=control(result, 'Reading copy action status').GetValue()[:1024]
+                        if result else None)
+            except Exception:
+                pass  # Observation must preserve the actual confirmation failure.
         def visit():
             if monotonic() >= until:
+                try:
+                    observation('import-confirmation-timeout', owned_question())
+                except Exception:
+                    pass
                 raise TimeoutError('Native reading-copy confirmation did not finish.')
             question = owned_question()
+            if question and question not in seen_question:
+                seen_question.add(question)
+                observation('import-confirmation-first-observed', question)
             if question and not state['answered']:
                 no_button = native_question_button(question, 'No')
                 yes_button = native_question_button(question, 'Yes')
