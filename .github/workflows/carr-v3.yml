@@ -93,6 +93,121 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -I -B -X utf8 -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/installed-shared-services.xml').iter('testcase')); required=['test_recording_probe','test_recording','test_recording_process','test_recording_windows_process','test_recording_dialog','test_playback','test_audio_process','test_membership_fence','test_process_deadline','test_capture_access_diagnostic','test_publication_fsync','test_local_runtime_cli','test_local_runtime_setup','test_audio_runtime_setup','test_translation_runtime_recovery','test_standard_installer','test_managed_launch_boundary','test_delivery_contract','test_delivery_service','test_delivery_cli','test_player_controls','test_voice_packages','test_reference_voice_controls','test_library_translation','test_translation_selection','test_library_translation_dialog','test_state_json_reader','test_save_actions','test_evidence_drafts','test_save_all','test_assistant_voice_preview','test_primary_publication_budget','test_transcription_workflow','test_runtime_settings_restore','test_conversion','test_conversion_ownership','test_document_conversion_admission','test_voice_preferences','test_voice_preferences_dialog','test_reader_synthesis','test_reader_playback','test_synthesis_admission','test_progress_speech','test_reader_synthesis_backup','test_control_reads','test_voice_preferences_backup','test_export_confirmation','test_export_approval_budget','test_save_all_access','test_reader_keymap_context','test_scope_labels','test_inventory_cleanup','test_evidence_draft_recovery']; assert cases and all(any(name in c.get('classname','').split('.') for c in cases) for name in required); inspection_required=('audio.test_silence_inspection','studio.test_silence_inspection','ui.test_studio_silence_inspection','studio.test_book_silence','studio.test_director_silence','ui.test_book_audio_dialog','studio.test_publishing_handlers'); assert all(any(c.get('classname','').endswith(name) for c in cases) for name in inspection_required); assert not any(c.find(t) is not None for c in cases for t in ('error','failure','skipped')); print(json.dumps(dict(status='PASS',passed=len(cases),failed=0,skipped=0,nvda='NOT_RUN')))" | Tee-Object 'ci-v3-results/installed-shared-services.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify isolated installed effect, interchange and translation feature contracts
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 10
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          PYTEST_ADDOPTS: ''
+        run: |
+          Remove-Item Env:PYTHONPATH,Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue
+          $featureSuites = @(
+            'tests/audio/test_director_effects.py',
+            'tests/storage/test_director_effects_backup.py',
+            'tests/studio/test_interchange.py',
+            'tests/storage/test_cue_interchange_backup.py',
+            'tests/assistant/test_translation_partition.py',
+            'tests/assistant/test_translation_layout.py',
+            'tests/assistant/test_translation_epub_layout.py',
+            'tests/ui/test_translation_layout.py',
+            'tests/storage/test_translation_layout_backup.py',
+            'tests/audio/test_effects.py',
+            'tests/audio/test_dsp.py',
+            'tests/audio/test_effect_presets.py',
+            'tests/audio/test_render.py',
+            'tests/ui/test_audio_effects.py',
+            'tests/ui/test_audio_studio.py',
+            'tests/audio/test_cleanup_contexts.py',
+            'tests/packaging/test_managed_launch_boundary.py'
+          )
+          $featureContracts = @'
+          import hashlib, importlib, importlib.metadata, importlib.util, json, pathlib, runpy, sys, xml.etree.ElementTree as ET
+          checkout = pathlib.Path.cwd().resolve()
+          source = checkout / 'src' / 'carr_library'
+          import carr_library
+          installed = pathlib.Path(carr_library.__file__).resolve().parent
+          assert sys.flags.isolated and installed != source and not installed.is_relative_to(checkout)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          suites = sys.argv[1:]
+          assert len(suites) == 17 and len(set(suites)) == 17
+          test_bytes = {name: hashlib.sha256((checkout / name).read_bytes()).hexdigest() for name in suites}
+          def inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink()
+              files = {}
+              for path in sorted(directory.rglob('*.py')):
+                  assert path.is_file() and not path.is_symlink()
+                  files[path.relative_to(directory).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert files and '__init__.py' in files
+              return files
+          expected = inventory(source)
+          assert inventory(installed) == expected
+          owners = [dist for dist in importlib.metadata.distributions()
+                    if (dist.metadata.get('Name') or '').lower().replace('_', '-') == 'universal-research-library']
+          assert len(owners) == 1
+          owner = owners[0]
+          records = [row for row in owner.files or ()
+                     if row.parts and row.parts[0] == 'carr_library' and row.suffix == '.py']
+          record_names = [pathlib.Path(*row.parts[1:]).as_posix() for row in records]
+          assert len(record_names) == len(set(record_names)) and set(record_names) == set(expected)
+          assert all(pathlib.Path(owner.locate_file(row)).resolve() == installed / name
+                     for row, name in zip(records, record_names))
+          names = ('carr_library.audio.director', 'carr_library.audio.projects', 'carr_library.audio.dsp',
+                   'carr_library.audio.effects', 'carr_library.audio.effect_presets',
+                   'carr_library.studio.interchange', 'carr_library.studio.render',
+                   'carr_library.assistant.translation_partition', 'carr_library.assistant.translation_layout',
+                   'carr_library.assistant.translation_layout_worker', 'carr_library.assistant.translation_epub_layout_worker',
+                   'carr_library.ui.audio_studio', 'carr_library.ui.audio_effects', 'carr_library.ui.effects_dialog',
+                   'carr_library.ui.translation_dialog', 'carr_library.backup_producers', 'carr_library.state_recovery',
+                   'carr_library.audio.cleanup', 'carr_library.translation_cli', 'carr_library.installation_lease')
+          def origins():
+              values = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin
+                  relative = pathlib.Path(*name.split('.')[1:]).with_suffix('.py')
+                  path = pathlib.Path(spec.origin).resolve()
+                  assert path == installed / relative
+                  assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[relative.as_posix()]
+                  if name in sys.modules:
+                      assert pathlib.Path(sys.modules[name].__file__).resolve() == path
+                  values[name] = {'path': str(path), 'sha256': expected[relative.as_posix()]}
+              return values
+          before = origins()
+          harness = checkout / 'scripts' / 'ci_check.py'
+          harness_hash = hashlib.sha256(harness.read_bytes()).hexdigest()
+          policy = runpy.run_path(str(harness))['PYTEST_CHILD']
+          report = checkout / 'ci-v3-results' / 'installed-feature-contracts.xml'
+          sys.argv = ['-c', '-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+                      '--import-mode=importlib', '--junitxml', str(report), *suites]
+          namespace = {'__name__': '__main__'}
+          try:
+              exec(compile(policy, '<existing-offline-pytest-policy>', 'exec'), namespace)
+          except SystemExit as exc:
+              status = exc.code
+          else:
+              raise AssertionError('The existing strict child policy did not return its verdict.')
+          cases = list(ET.parse(report).iter('testcase'))
+          assert status == 0 and cases and not namespace['policy'].seen
+          assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in cases)
+          counts = {}
+          for suite in suites:
+              module = suite[len('tests/'):-3].replace('/', '.')
+              counts[suite] = sum(('.' + module + '.') in ('.' + case.get('classname', '') + '.') for case in cases)
+          assert all(counts.values()) and sum(counts.values()) == len(cases), counts
+          assert origins() == before and inventory(source) == inventory(installed) == expected
+          assert hashlib.sha256(harness.read_bytes()).hexdigest() == harness_hash
+          assert {name: hashlib.sha256((checkout / name).read_bytes()).hexdigest() for name in suites} == test_bytes
+          result = {'status': 'PASS', 'passed': len(cases), 'failed': 0, 'skipped': 0,
+                    'selected_suites': counts, 'test_files': test_bytes, 'installed_origins': before,
+                    'python_files': len(expected),
+                    'package_inventory_sha256': hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+                    'policy_source_sha256': harness_hash, 'nvda': 'NOT_RUN', 'acoustic_quality': 'NOT_RUN'}
+          (checkout / 'ci-v3-results' / 'installed-feature-contracts.json').write_text(
+              json.dumps(result, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(result, sort_keys=True))
+          '@
+          python -I -B -X utf8 -c $featureContracts @featureSuites 2>&1 | Tee-Object 'ci-v3-results/installed-feature-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify installed backup and import publication integrity
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.ocr-runtime.outcome == 'success' }}
         timeout-minutes: 10
@@ -425,7 +540,7 @@ jobs:
                       print(str(report.longrepr), flush=True)
           raise SystemExit(pytest.main(sys.argv[1:], plugins=[ImmediateFailures()]))
           '@
-          python -c $strictTests -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/audio_acceptance/test_primary_publication_budget.py tests/academic_integration tests/conversion tests/ui/test_document_conversion_admission.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/ui/test_reader_playback.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/ui/test_studio_silence_inspection.py tests/ui/test_book_audio_dialog.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/language_qualification tests/ui/test_ebook_audio_initialization.py tests/ui/test_ebook_dialog.py tests/reader/test_ebook_audio.py tests/reader/test_ebook_audio_lifecycle.py tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_state_json_reader.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/storage/test_canonical_backup_compat.py tests/extract/test_language_manager.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_worker_interpreter_ownership.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_direct_import_pending_backup.py tests/storage/test_state_recovery_case_aliases.py tests/storage/test_import_registration_migration.py tests/ui/test_recording_dialog.py tests/storage/test_recording_backup.py tests/operations tests/transcription tests/transcription_windows tests/operations_windows tests/ui/test_operations_policy.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_transcription_dialog.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_atomic_state_publication.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/ui/test_worker_lifetime.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/ui/test_reading_tools.py tests/ui/test_reader_output.py tests/ui/test_reader_spelling.py tests/ui/test_reader_presentation.py tests/reader/test_export_reconciliation.py tests/storage/test_import_publication_backup.py tests/storage/test_transcription_composite_backup.py tests/reader/test_export_change_time.py tests/ui/test_voice_reference.py tests/ui/test_word_citations.py tests/ui/test_assistant_domain_routes.py tests/sync tests/ui/test_portable_sync.py tests/citations/test_streamed_text_attestation.py tests/e2e/test_source_file.py tests/e2e/test_streamed_import_cli.py tests/e2e/test_streamed_source_import.py tests/ingest/test_streamed_admission.py tests/ingest/test_streamed_ingest.py tests/ingest/test_streamed_text.py tests/reader/test_streamed_source_view.py tests/storage/test_streamed_source_backup.py tests/ui/test_source_launch.py tests/ui/test_source_open_handler.py tests/ui/test_streamed_import.py tests/ui/test_protected_voice_packages.py tests/search/test_source_pagination.py tests/search/test_source_page_benchmark.py tests/search/test_federated_pagination.py tests/e2e/test_search_pagination.py tests/ui/test_search_pagination.py tests/ui/test_federated_search.py tests/audio_windows/test_membership_fence.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -c $strictTests -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/audio_acceptance/test_primary_publication_budget.py tests/academic_integration tests/conversion tests/ui/test_document_conversion_admission.py tests/ui/test_voice_preferences_dialog.py tests/ui/test_reader_synthesis.py tests/ui/test_reader_playback.py tests/storage/test_reader_synthesis_backup.py tests/storage/test_voice_preferences_backup.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/storage/test_production_operation_backup.py tests/ui/test_studio_output_settings.py tests/ui/test_studio_silence_inspection.py tests/ui/test_book_audio_dialog.py tests/storage/test_studio_draft_backup.py tests/storage/test_backup_scan_bounds.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/speech/test_python_helper.py tests/storage/test_python_helper_backup.py tests/language_qualification tests/ui/test_ebook_audio_initialization.py tests/ui/test_ebook_dialog.py tests/reader/test_ebook_audio.py tests/reader/test_ebook_audio_lifecycle.py tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_state_json_reader.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/storage/test_canonical_backup_compat.py tests/extract/test_language_manager.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_worker_interpreter_ownership.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_direct_import_pending_backup.py tests/storage/test_state_recovery_case_aliases.py tests/storage/test_import_registration_migration.py tests/ui/test_recording_dialog.py tests/storage/test_recording_backup.py tests/operations tests/transcription tests/transcription_windows tests/operations_windows tests/ui/test_operations_policy.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_transcription_dialog.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_atomic_state_publication.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/ui/test_worker_lifetime.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/ui/test_reading_tools.py tests/ui/test_reader_output.py tests/ui/test_reader_spelling.py tests/ui/test_reader_presentation.py tests/reader/test_export_reconciliation.py tests/storage/test_import_publication_backup.py tests/storage/test_transcription_composite_backup.py tests/reader/test_export_change_time.py tests/ui/test_voice_reference.py tests/ui/test_word_citations.py tests/ui/test_assistant_domain_routes.py tests/sync tests/ui/test_portable_sync.py tests/citations/test_streamed_text_attestation.py tests/e2e/test_source_file.py tests/e2e/test_streamed_import_cli.py tests/e2e/test_streamed_source_import.py tests/ingest/test_streamed_admission.py tests/ingest/test_streamed_ingest.py tests/ingest/test_streamed_text.py tests/reader/test_streamed_source_view.py tests/storage/test_streamed_source_backup.py tests/ui/test_source_launch.py tests/ui/test_source_open_handler.py tests/ui/test_streamed_import.py tests/ui/test_protected_voice_packages.py tests/search/test_source_pagination.py tests/search/test_source_page_benchmark.py tests/search/test_federated_pagination.py tests/e2e/test_search_pagination.py tests/ui/test_search_pagination.py tests/ui/test_federated_search.py tests/audio_windows/test_membership_fence.py tests/storage/test_director_effects_backup.py tests/storage/test_cue_interchange_backup.py tests/ui/test_translation_layout.py tests/storage/test_translation_layout_backup.py tests/ui/test_audio_effects.py tests/ui/test_audio_studio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/v3-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped)))" | Tee-Object 'ci-v3-results/v3-strict-summary.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

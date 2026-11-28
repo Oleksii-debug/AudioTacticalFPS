@@ -7,6 +7,9 @@ from dataclasses import dataclass
 import math
 from typing import Mapping
 
+from .dsp import effect_controls as _studio_controls, effect_filter as _studio_filter
+from .models import Effect as _StudioEffect
+
 
 def number(value, name, minimum, maximum):
     if (type(value) not in (int, float) or not minimum <= value <= maximum
@@ -71,6 +74,17 @@ EFFECTS = {
 }
 
 
+# Reuse the reviewed Studio DSP vocabulary for these additional converter
+# controls. Existing kinds keep their exact defaults and compiled graphs.
+_SHARED_EFFECT_KINDS = ('lowshelf', 'highshelf', 'notch', 'chorus', 'graphic_equalizer')
+for _kind in _SHARED_EFFECT_KINDS:
+    EFFECTS[_kind] = {
+        ('frequency_hz' if name == 'frequency' else name):
+            (definition['default'], definition['minimum'], definition['maximum'])
+        for name, definition in _studio_controls()[_kind].items()
+    }
+
+
 def _validated(effect):
     supplied = dict(effect.parameters)
     allowed = EFFECTS[effect.kind]
@@ -90,6 +104,14 @@ def compile_effects(effects, *, sample_rate=24000):
         if not isinstance(effect, Effect):
             raise ValueError('Expected typed Effect values, not filter text.')
         p = _validated(effect)
+        if effect.kind in _SHARED_EFFECT_KINDS:
+            controls = {('frequency' if name == 'frequency_hz' else name): value
+                        for name, value in p.items()}
+            compiled = _studio_filter(_StudioEffect(effect.kind, controls, enabled=effect.enabled),
+                                      sample_rate)
+            if compiled:
+                parts.append(compiled)
+            continue
         if not effect.enabled:
             continue
         kind = effect.kind
@@ -152,6 +174,9 @@ def effected_duration(duration, effects):
             value /= p['factor']
         elif effect.kind in ('delay', 'room_echo') and p['wet']:
             value += 4 * (p.get('delay_ms', p.get('room_ms', 0))) / 1000
+        elif effect.kind == 'chorus':
+            # FFmpeg drains at most delay+depth after its input reaches EOF.
+            value += (p['delay_ms'] + p['depth_ms']) / 1000
     return value
 
 

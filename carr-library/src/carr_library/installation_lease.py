@@ -285,12 +285,13 @@ def _release_after_cleanup(context, exception_info, managed_root):
             with cleanup._RETAINED_LOCK:
                 owners.update((id(owner), owner) for owner in cleanup._RETAINED)
             waiting = tuple(owner for owner in owners.values()
-                            if not owner.quiescent_event.is_set())
+                            if not owner.quiescent_event.is_set()
+                            or not owner.notifications_complete_event.is_set())
             if not waiting:
                 break
             for owner in waiting:
                 owner.close()
-            waiting[0].quiescent_event.wait(.25)
+            waiting[0].notifications_complete_event.wait(.25)
         except (KeyboardInterrupt, SystemExit) as signal:
             # A signal changes neither native quiescence nor the ownership of
             # an executing program tree. Deliver it after every owner settles.

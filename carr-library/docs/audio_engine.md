@@ -373,3 +373,61 @@ must first receive a new explicitly reviewed output. A source-bound Book job
 requires its original source authority; the general Scene inspection entry
 does not recreate that authority from a historical receipt. Corrupt or changed
 artifacts are refused rather than reported as inspected audio.
+
+
+## Director: effects for a role, scene or master
+
+In **Audio Studio — local production**, save the project, then choose
+**Role, scene and master effects**. Select one saved role, one scene or
+**Master output**. The existing **Ordered audio effects** window lets you add
+typed effects, edit their numeric controls, change their order, bypass them,
+undo/redo chain edits, or load a saved preset. **Apply effect chain** commits a
+new project revision. Cancel keeps the existing chain. A concurrent project or
+library change requires reopening the review.
+
+The same controls used by Scene projects supply EQ, shelves, notch, dynamics,
+the four-reflection room effect, delay, chorus and other supported DSP. The room
+effect is not a convolution room simulation or a measured RT60. Frequencies
+must fit the selected output sample rate, including bypassed settings. Timeline
+chains do not enable tempo changes; use the existing Convert operation for an
+explicit change of duration.
+
+Choose **Generate audio** and a new output folder to hear the saved settings.
+Editing an effect does not synthesize speech, process an existing output, start
+playback or change the original script. The plan lists each saved chain in its
+processing order. A reading project retains its exact imported source text and
+source reference.
+
+Role effects are applied to each accepted speech chunk before the role's gain
+and stereo placement. The scene chain processes the mixed scene; the master
+chain processes the complete assembled programme. These already mixed buses
+use the declared effects without another implicit routing gain or safety
+limiter. Positive gain can consume headroom or clip the PCM output; choose
+suitable gain and explicit dynamics controls, then review the measured result.
+All three preserve the measured sample timeline. Effect tails end at the existing chunk, scene or
+programme boundary. With master effects enabled, exported chapters copy exact
+frame intervals from the accepted processed master so a stateful effect is not
+restarted for every chapter. Voice stems include role effects; they do not
+include scene or master bus effects.
+
+Each processing stage uses the existing verified cache and shared resource
+admission. A later role or scene edit reuses unchanged speech and unaffected
+processing nodes. Master processing depends on the complete assembled
+programme. The first move from a legacy project to effect-specific per-role
+stem keys can rebuild mix stems once; it does not require fresh synthesis of
+unchanged accepted speech. The result and progress report state that distinction.
+Pause, restart and Resume retain accepted chunks. A changed or damaged cached
+file must pass the existing integrity checks before reuse.
+
+Empty effect chains keep the previous project JSON and fingerprint shape.
+Exported project JSON and native or compatible flat backups retain ordered
+numeric settings and bypass states. Restore remains passive and revokes old
+output authority: choose a new output before rendering again. When editing a
+script, a scene's reviewed chain follows a unique unchanged chapter title.
+Renaming, deleting or making that title ambiguous requires explicitly clearing
+or reassigning the chain first; effects are never silently attached to a new
+scene with the old ordinal.
+
+The synthetic PCM and native-control checks for this bridge are separate from
+listening, voice pronunciation and manual NVDA acceptance. Those judgments
+require their own recorded review.

@@ -10,7 +10,82 @@ Chapter ranges use actual source reading-order positions. They do not infer prin
 
 Preview reports selected documents, positions, unverified positions, characters and request count, together with the exact source-binding fingerprint and source/target languages. The optional price is the user's current contract rate; it is not a current provider quote. A required total reservation budget bounds this application's requests, not the provider's external billing system. Translate asks for explicit consent for the exact displayed provider, selected text/source identities, language pair, selected glossary and budget.
 
-Google's supported-language list requires a separate explicit request. Basic v2 uses the exact official HTTPS endpoint, model nmt and a credential reference; it does not use a shared embedded API key. Advanced v3 retains separate source and target language capabilities for its explicit project, location and general/nmt model. Missing direction flags never imply support. Provider-declared language support is distinct from independently tested quality. Local translation models and preservation of original document layout remain unavailable.
+Google's supported-language list requires a separate explicit request. Basic v2 uses the exact official HTTPS endpoint, model nmt and a credential reference; it does not use a shared embedded API key. Advanced v3 retains separate source and target language capabilities for its explicit project, location and general/nmt model. Missing direction flags never imply support. Provider-declared language support is distinct from independently tested quality. Local translation models remain unavailable. Reviewed DOCX and EPUB structure preservation is described below; original visual page layout and per-word emphasis are not reconstructed.
+
+## Reviewed DOCX and EPUB structure preservation
+
+For an eligible retained original, choose **DOCX with reviewed structure preservation**
+or **EPUB with reviewed structure preservation** in **Translation input scope**, then
+**Choose library sources** and select exactly one whole edition. The existing
+chapter/range and batch modes continue to produce linked text derivatives.
+Capturing a formatted original does not contact a translation provider.
+
+The capture verifies the original bytes, current source revision, reading positions
+and an explicit mapping from the original text to document blocks. Preview shows
+the supported profile and its limitations. The exact mapping, source, account,
+language pair, glossary and approved budget are bound to the same existing job.
+A changed source or changed visible settings requires a new review. **Translate /
+resume** retains accepted chunks and the existing usage ledger; it does not start
+a second document-specific translation service.
+
+For DOCX, eligible body paragraphs and simple table cells retain their paragraph,
+table and style definitions. A single link covering a whole paragraph is supported.
+The translated text uses the first textual run's formatting, so original per-word
+bold/italic placement and line/page breaks are not reconstructed. Headers, footers
+and other unselected package parts keep their original bytes and are not translated.
+The canonical DOCX reader's refusals remain in force, including ambiguous fields,
+notes, drawings, tracked changes and unsupported table or link structures.
+
+For EPUB, eligible text blocks follow the retained spine and retain block/table
+structure, links, identifiers, styles and eligible media. Text uses the first
+textual style and the canonical reader's whitespace normalization. Mixed links,
+inline images/breaks, executable content, explicit hidden attributes, repeated
+spine resources and synchronized media overlays are refused. CSS-dependent
+visibility is not computed. Head titles, navigation outside the selected spine,
+image alternatives and original metadata are not translated; the target language
+is added to the package metadata. Unchanged ZIP member payloads remain byte-identical.
+
+After completion, choose **Export DOCX / EPUB** and a **new** file with the matching
+extension outside private application storage. Export uses the accepted saved
+receipts, verifies the current original and mapping again, and validates the rebuilt
+package before publishing. It makes no new provider request, never overwrites the
+original or an existing destination, and does not create quotation authority.
+A stop received after successful publication still reports the committed file.
+Closing the window or changing the library revokes queued work and stale results;
+pending native cleanup retains its private stage and resource reservation until
+the owned processes are quiet.
+
+The existing input limits still apply: at most 64 MiB for the original archive,
+1000 selected reading positions and 2,000,000 captured characters. Local capture
+and rebuild use the shared resource admission and cancellation path. Restoring
+a backup preserves the optional mapping and accepted receipt history passively;
+it does not activate an account or grant permission to send text. Current source
+authority is still required for a new export.
+
+CLI review uses the same optional mode:
+
+    python -m carr_library translate --data-dir PRIVATE --workspace WORKSPACE preview --profile PROFILE --edition EDITION --source en --target uk --budget 1 --preserve-format docx
+
+Use `epub` for an eligible EPUB. Review the returned `approval_sha256`, then
+replace `preview` with `submit` and add `--allow-remote --approve-preview DIGEST`
+with otherwise identical arguments. The mode accepts one whole edition, without
+`--text-file`, `--first`, `--last` or an additional edition.
+
+A completed format-bound job exports offline through the same CLI:
+
+    python -m carr_library translate --data-dir PRIVATE --workspace WORKSPACE export-format --job JOB --output NEW_TRANSLATED.docx
+
+The returned receipt identifies the original source/revision, mapping, accepted
+chunk indices, changed ZIP members and exact new-file digest. Plain-text jobs
+and their existing JSON, bilingual reading and byte-export routes remain readable.
+
+The structural mapping and worker boundary adapt the existing implementation in
+[PR #173](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/173), source
+`26beb805aab1e9e202d134008441927523cdcb94`, through this application's canonical
+readers, `translation/1` jobs, source permissions, provider approvals and retained
+process ownership. New portable and native scenarios require receiving on their
+final integrated head. This addition makes no live-provider, translation-quality,
+visual-layout or NVDA qualification claim.
 
 ## Advanced v3 setup and existing glossaries
 

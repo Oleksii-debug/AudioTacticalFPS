@@ -624,3 +624,58 @@ def test_ready_native_diagnostic_holds_the_ordinary_shared_application_lease(man
     assert calls == [root / "app"]
     with leases.installation_lease(root, exclusive=True):
         pass
+
+
+@pytest.mark.parametrize('kind', ['caught', 'propagated'])
+def test_managed_entry_retains_actual_lease_until_retained_stage_notification_finishes(
+        managed, tmp_path, monkeypatch, kind):
+    from tempfile import TemporaryDirectory
+    root, environment = managed
+    monkeypatch.setattr(sys, 'prefix', str(environment))
+    allow, prepared, entered, release = (threading.Event() for _ in range(4))
+    pending, stages, errors, result = [], [], [], object()
+    @contextmanager
+    def stage_context():
+        with TemporaryDirectory(prefix='.managed-callback-', dir=tmp_path) as temporary:
+            stage = Path(temporary)
+            (stage / 'original').write_bytes(b'exact retained original')
+            stages.append(stage)
+            yield stage
+            entered.set()
+            if not release.wait(10):
+                errors.append('The retained-stage callback was not released.')
+    @leases.installed_entrypoint
+    def command(arguments=None):
+        error = cleanup.pending_cleanup(allow.is_set, message='Existing managed native owner')
+        pending.append(error)
+        try:
+            with cleanup.retained_context(stage_context()):
+                raise error
+        except cleanup.AudioCleanupPending:
+            prepared.set()
+            if kind == 'caught':
+                return result
+            raise
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(command, [])
+        try:
+            assert prepared.wait(10)
+            allow.set()
+            assert entered.wait(10)
+            owner = pending[0].cleanup_owner
+            assert owner.quiescent and not owner.notifications_complete_event.is_set()
+            assert stages[0].is_dir() and not future.done()
+            _exclusive_refused(root)
+        finally:
+            allow.set()
+            release.set()
+        if kind == 'caught':
+            assert future.result(10) is result
+        else:
+            with pytest.raises(cleanup.AudioCleanupPending) as raised:
+                future.result(10)
+            assert raised.value is pending[0]
+    assert pending[0].cleanup_owner.notifications_complete_event.is_set()
+    assert not stages[0].exists() and not errors
+    with leases.installation_lease(root, exclusive=True):
+        pass

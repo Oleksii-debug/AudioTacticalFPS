@@ -285,6 +285,10 @@ class ProductionService:
         music = int(any(scene.music is not None for scene in project.scenes))
         cache_bytes = pcm * (6 + 2 * roles + 2 * clip_roles + 2 * music) + runtime.budget.reserve_disk_bytes
         export_bytes = pcm * (2 + roles + clip_roles + music * int(state['stems']) + int(state['format'] != 'wav')) + 1024 ** 2
+        from .interchange import storage_allowance
+        interchange = storage_allowance(project)
+        cache_bytes += interchange['private_bytes']
+        export_bytes += interchange['export_bytes']
         request = ResourceRequest(cpu_slots=runtime.budget.threads, memory_bytes=memory,
             gpu_device=device, gpu_memory_bytes=capacity, disk_bytes=cache_bytes, disk_path=self.cache,
             additional_disks=((Path(state['destination']).parent, export_bytes),))
@@ -294,7 +298,8 @@ class ProductionService:
             'memory_basis': ('exclusive configured RAM/GPU pool; model peak is not measured' if neural else
                              'declared estimate: at least 512 MiB and twice the FFmpeg per-allocation budget'),
             'disk_basis': 'declared estimate from 0.5 seconds per source character, explicit pauses/durations, '
-                          'measured cue source duration with trim/placement, PCM bytes and intermediate/stem/export copies; '
+                          'measured cue source duration with trim/placement, PCM bytes and intermediate/stem/export copies, '
+                          'bounded CUE files and declarations; '
                           'not a measured speech duration or hard output cap',
             'enforcement': 'cooperative admission; existing bounded worker checks still apply'}
 
@@ -1044,6 +1049,16 @@ class ProductionService:
                 verify_sources(tuple(cue for scene in project.scenes for cue in scene.cues))
                 if source_provenance is not None:
                     metadata['book_source_sha256'] = sha256(source_provenance).hexdigest()
+                from .interchange import chapter_cues
+                cue_files, metadata['editor_interchange'] = chapter_cues(
+                    project, metadata, cancelled=stopping)
+                for name, raw in cue_files:
+                    # Existing backup policy excludes this reserved pending
+                    # namespace. The public artifact still uses its exact name.
+                    source = job_root / ('.pending-' + name)
+                    atomic_bytes(source, raw, replace=source.exists())
+                    publish(source, name)
+                    source.unlink()
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
                                   ('script.lrc', lrc),
@@ -1085,6 +1100,7 @@ class ProductionService:
         root = local_path(state['destination'], exists=True)
         required = set()
         lrc_digest = None
+        cue_receipts = {}
         if state['status'] == 'complete':
             # A receipt with a shortened (or empty) artifact list must not
             # turn a damaged production into a successful committed replay.
@@ -1092,6 +1108,11 @@ class ProductionService:
             if read_json(root / 'production-owner.json') != _owner_receipt(state):
                 raise ValueError('The production output owner receipt changed.')
             required = {'master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json'}
+            if 'editor_interchange' in state.get('result', {}):
+                from .interchange import validated_cues
+                for name, raw in validated_cues(project, state['result'], cancelled=cancelled):
+                    required.add(name)
+                    cue_receipts[name] = (len(raw), sha256(raw).hexdigest())
             if 'lrc_sha256' in state.get('result', {}):
                 lrc_digest = state['result']['lrc_sha256']
                 if not isinstance(lrc_digest, str) or not re.fullmatch(r'[0-9a-f]{64}', lrc_digest):
@@ -1123,6 +1144,8 @@ class ProductionService:
             if name in seen:
                 raise ValueError('Duplicate production artifact receipt.')
             seen.add(name)
+            if name in cue_receipts and (artifact['size'], artifact['sha256']) != cue_receipts[name]:
+                raise ValueError('The completed chapter interchange receipt changed.')
             if name == 'script.lrc' and lrc_digest is not None and artifact['sha256'] != lrc_digest:
                 raise ValueError('The completed LRC receipt changed.')
             if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:

@@ -589,7 +589,7 @@ def mix_tracks(tracks, output, *, duration_seconds=None, sample_rate=24000, chan
     else:
         final = f'anullsrc=r={sample_rate}:cl=stereo,atrim=end_sample={frames}'
     master = compile_effects(master_effects, sample_rate=sample_rate)
-    if any(e.enabled and e.kind in ('tempo', 'delay', 'room_echo') for e in master_effects):
+    if any(e.enabled and e.kind in ('tempo', 'delay', 'room_echo', 'chorus') for e in master_effects):
         raise ValueError('Time-changing effects belong to a track, before timeline alignment.')
     if master:
         final += ',' + master

@@ -143,6 +143,34 @@ class StudioController:
         self.base_revision,self.base_fingerprint=self.project.revision,self.project.fingerprint
         return self.project
 
+    def set_effects(self, scope, target, effects, *, expected_fingerprint):
+        """Commit an explicitly reviewed typed chain through the current CAS."""
+        if self.project is None:
+            raise ValueError('Save the script before assigning effects.')
+        if (self.project.fingerprint != expected_fingerprint
+                or self.base_fingerprint != expected_fingerprint
+                or self.base_revision != self.project.revision):
+            raise ValueError('The project changed after effect review. Reopen the current chain.')
+        from ..audio.projects import timeline_effects
+        effects = timeline_effects(effects, self.project.settings.sample_rate)
+        if scope == 'master' and target is None:
+            updated = replace(self.project, effects=effects)
+        elif scope == 'role' and target in {role.id for role in self.project.roles}:
+            updated = replace(self.project, roles=tuple(replace(role, effects=effects)
+                if role.id == target else role for role in self.project.roles))
+        elif scope == 'scene' and target in {scene.id for scene in self.project.scenes}:
+            updated = replace(self.project, scenes=tuple(replace(scene, effects=effects)
+                if scene.id == target else scene for scene in self.project.scenes))
+        else:
+            raise ValueError('Choose a role, scene or master in the current project.')
+        if updated == self.project:
+            return self.project
+        updated = replace(updated, revision=self.project.revision + 1)
+        saved = self.store.save(updated, expected_fingerprint=expected_fingerprint)
+        self.project = saved
+        self.base_revision, self.base_fingerprint = saved.revision, saved.fingerprint
+        return saved
+
     def plan_text(self):
         if self.project is None:
             return 'Save the script to preview its local production plan.'
@@ -163,6 +191,16 @@ class StudioController:
                     rows.append(f'Pause: {cue.seconds:g} seconds.')
                 else:
                     rows.append('Imported local sound effect: ' + cue.asset[:12])
+        chains = [('Master', project.effects)]
+        chains.extend(('Role ' + role.name, role.effects) for role in project.roles)
+        chains.extend(('Chapter ' + scene.title, scene.effects) for scene in project.scenes)
+        if any(chain for _, chain in chains):
+            from ..audio.projects import EFFECTS_STEMS_NOTICE
+            from .effects_dialog import effect_label
+            for label, chain in chains:
+                if chain:
+                    rows.append(label + ' effects, in order: ' + ' → '.join(effect_label(effect) for effect in chain))
+            rows.append(EFFECTS_STEMS_NOTICE)
         rows.append('Generate runs synthesis, local music when requested, mixing, chapters, subtitles and voice stems. Original script is preserved.')
         return '\n'.join(rows)
 
@@ -236,6 +274,7 @@ class StudioDialog:
         for label, handler in [('&Save project',self.save),('Save project &as JSON',self.export),
                 ('Save all open drafts',self.save_all),('Cancel Save All',self.cancel_save_all),
                 ('Pronunciation and reading copy',self.edit_narration),
+                ('Role, scene and master effects',self.edit_effects),
                 ('&Generate audio',self.generate),('&Resume a saved job',self.resume),
                 ('&Preview completed audio',self.preview),('Pause playback',self.pause_playback),
                 ('Resume playback',self.resume_playback),('Stop playback',self.stop_playback)]:
@@ -441,6 +480,55 @@ class StudioDialog:
                 self.say('Reading copy saved. Generate uses these pronunciation edits; original text stays unchanged.',True)
         except Exception as exc:
             self.say('Reading copy not saved: '+str(exc),True)
+
+    def edit_effects(self, event=None):
+        if self.closed or self.busy or ((self.dirty or not self.controller.project) and not self.save()):
+            return
+        reviewed = self.controller.project
+        signature = self.editor_signature()
+        library, root = self._save_library, self._save_root
+
+        def current():
+            if (self.closed or self.busy or self.controller.project is not reviewed
+                    or self.editor_signature() != signature
+                    or (library is not None and (getattr(self.parent, 'library', None) is not library
+                        or getattr(library, 'root', None) != root))):
+                raise ValueError('The editor or selected library changed during effect review.')
+
+        try:
+            from ..audio.dsp import effect_controls
+            from .effects_dialog import show_effect_chain
+            choices = [('Master output', 'master', None, reviewed.effects)]
+            choices.extend(('Role: ' + role.name, 'role', role.id, role.effects) for role in reviewed.roles)
+            choices.extend((f'Scene {index}: {scene.title}', 'scene', scene.id, scene.effects)
+                           for index, scene in enumerate(reviewed.scenes, 1))
+            picker = self.wx.SingleChoiceDialog(self.dialog,
+                'Choose the saved chain. Effects preserve the measured timeline; Generate writes a new output.',
+                'Role, scene and master effects', [row[0] for row in choices])
+            try:
+                if picker.ShowModal() != self.wx.ID_OK:
+                    return
+                index = picker.GetSelection()
+                if not 0 <= index < len(choices):
+                    raise ValueError('Choose a current project effect chain.')
+                _, scope, target, existing = choices[index]
+            finally:
+                picker.Destroy()
+            current()
+            effects = show_effect_chain(self.dialog, self.controller.store.root, existing,
+                sample_rate=reviewed.settings.sample_rate, available=set(effect_controls()) - {'tempo'})
+            if effects is None:
+                return
+            current()
+            saved = self.controller.set_effects(scope, target, effects,
+                expected_fingerprint=reviewed.fingerprint)
+            if saved is not reviewed:
+                self.result = None
+            self.refresh()
+            self.say('Effects saved. Generate applies them to a new output; accepted audio and original text stay unchanged.', True)
+        except Exception as exc:
+            if not self.closed:
+                self.say('Effects not saved: ' + str(exc), True)
 
     def export(self,event=None):
         wx = self.wx

@@ -309,3 +309,153 @@ def test_actual_installed_codecs(runtime, tmp_path, extension, rate):
     assert result.sample_rate == rate and result.channels == 2
     assert abs(result.duration - 2) < .15
     assert result.size > 1000
+
+
+
+@pytest.mark.parametrize('kind,frequency,selected,other', [
+    ('lowshelf', 500, 100, 8000), ('highshelf', 2000, 8000, 100),
+])
+@pytest.mark.parametrize('gain', [-6, 6])
+def test_actual_shelves_change_the_selected_end_of_the_spectrum(
+        runtime, tmp_path, kind, frequency, selected, other, gain):
+    source = write_wave(tmp_path / 'shelf-source.wav',
+        (.05 * math.sin(2 * math.pi * 100 * n / RATE) +
+         .05 * math.sin(2 * math.pi * 8000 * n / RATE) for n in range(2 * RATE)))
+    original_bytes = source.read_bytes()
+    rendered = runtime.convert(source, 'shelf.wav', channels=1,
+        effects=(Effect(kind, frequency=frequency, gain_db=gain, q=.707),))
+    original, _ = samples(source)
+    changed, rate = samples(rendered.path)
+    selected_gain = 20 * math.log10(
+        amplitude(changed[0][RATE:], selected) / amplitude(original[0][RATE:], selected))
+    other_gain = 20 * math.log10(
+        amplitude(changed[0][RATE:], other) / amplitude(original[0][RATE:], other))
+    assert selected_gain == pytest.approx(gain, abs=.35)
+    assert abs(other_gain) < .2
+    assert rendered.frames == 2 * RATE and rate == RATE
+    assert source.read_bytes() == original_bytes
+    assert rendered.sha256 == hashlib.sha256(rendered.path.read_bytes()).hexdigest()
+
+
+def test_actual_notch_removes_one_tone_without_removing_the_other(runtime, tmp_path):
+    # Adapted from the existing donor's real 500/2000 Hz notch measurement.
+    source = write_wave(tmp_path / 'notch-source.wav',
+        (.08 * math.sin(2 * math.pi * 500 * n / RATE) +
+         .08 * math.sin(2 * math.pi * 2000 * n / RATE) for n in range(2 * RATE)))
+    before = hashlib.sha256(source.read_bytes()).hexdigest()
+    rendered = runtime.convert(source, 'notch.wav', channels=1,
+        effects=(Effect('notch', frequency=500, q=5),))
+    original, _ = samples(source)
+    changed, rate = samples(rendered.path)
+    assert amplitude(changed[0][RATE:], 500) < amplitude(original[0][RATE:], 500) * .03
+    assert amplitude(changed[0][RATE:], 2000) > amplitude(original[0][RATE:], 2000) * .95
+    assert rendered.frames == 2 * RATE and rate == RATE
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.parametrize('gain', [-6, 6])
+def test_actual_graphic_equalizer_measures_selected_band_gain(runtime, tmp_path, gain):
+    source = write_wave(tmp_path / 'graphic-source.wav',
+        (.05 * math.sin(2 * math.pi * 1000 * n / RATE) +
+         .05 * math.sin(2 * math.pi * 8000 * n / RATE) for n in range(2 * RATE)))
+    original_bytes = source.read_bytes()
+    rendered = runtime.convert(source, 'graphic.wav', channels=1,
+        effects=(Effect('graphic_equalizer', band_1000_db=gain),))
+    original, _ = samples(source)
+    changed, rate = samples(rendered.path)
+    measured = 20 * math.log10(
+        amplitude(changed[0][RATE:], 1000) / amplitude(original[0][RATE:], 1000))
+    other = 20 * math.log10(
+        amplitude(changed[0][RATE:], 8000) / amplitude(original[0][RATE:], 8000))
+    assert measured == pytest.approx(gain, abs=.2)
+    assert abs(other) < .2
+    assert rate == RATE and rendered.frames == 2 * RATE
+    assert source.read_bytes() == original_bytes
+
+
+def test_actual_graphic_equalizer_first_and_last_bands_keep_selected_sample_rate(runtime, tmp_path):
+    rate = 48000
+    source = write_wave(tmp_path / 'wide-spectrum.wav',
+        (sum(.03 * math.sin(2 * math.pi * frequency * n / rate)
+             for frequency in (31.5, 1000, 16000)) for n in range(4 * rate)), rate=rate)
+    before = source.read_bytes()
+    rendered = runtime.convert(source, 'wide-graphic.wav', sample_rate=rate, channels=1,
+        effects=(Effect('graphic_equalizer', band_31_5_db=6, band_16000_db=-6),))
+    original, _ = samples(source)
+    changed, actual_rate = samples(rendered.path)
+    for frequency, expected in ((31.5, 6), (1000, 0), (16000, -6)):
+        gain = 20 * math.log10(amplitude(changed[0][2 * rate:], frequency, rate) /
+                              amplitude(original[0][2 * rate:], frequency, rate))
+        assert gain == pytest.approx(expected, abs=.25), (frequency, gain)
+    assert actual_rate == rate and rendered.frames == 4 * rate
+    assert source.read_bytes() == before
+
+
+def test_flat_and_bypassed_graphic_equalizer_preserve_exact_pcm(runtime, tmp_path):
+    source = tone(tmp_path / 'flat-source.wav')
+    original, _ = samples(source)
+    for name, effect in (
+        ('flat.wav', Effect('graphic_equalizer')),
+        ('bypassed.wav', Effect('graphic_equalizer', band_1000_db=24, enabled=False)),
+    ):
+        rendered = runtime.convert(source, name, channels=1, effects=(effect,))
+        changed, rate = samples(rendered.path)
+        assert changed == original and rate == RATE and rendered.frames == RATE
+    assert all(value['default'] == 0 for value in effect_controls()['graphic_equalizer'].values())
+
+
+def test_actual_chorus_has_time_varying_modulation_and_keeps_scene_duration(runtime, tmp_path):
+    source = tone(tmp_path / 'chorus-source.wav', frequency=1000, duration=3, amplitude=.12)
+    before = source.read_bytes()
+    controls = dict(delay_ms=25, depth_ms=4, speed_hz=1, mix=.4)
+    wet = runtime.convert(source, 'chorus.wav', channels=1, effects=(Effect('chorus', **controls),))
+    bypass = runtime.convert(source, 'chorus-bypass.wav', channels=1,
+        effects=(Effect('chorus', enabled=False, **controls),))
+    wet_values, rate = samples(wet.path)
+    dry_values, _ = samples(bypass.path)
+    original, _ = samples(source)
+
+    def residual(values):
+        # A time-invariant response to one steady sine remains at that one
+        # frequency. The existing chorus's moving delay must leave sidebands.
+        data = values[RATE:2 * RATE]
+        cosine = [math.cos(2 * math.pi * 1000 * n / RATE) for n in range(len(data))]
+        sine = [math.sin(2 * math.pi * 1000 * n / RATE) for n in range(len(data))]
+        a = 2 * math.fsum(value * c for value, c in zip(data, cosine)) / len(data)
+        b = 2 * math.fsum(value * s for value, s in zip(data, sine)) / len(data)
+        return rms([value - a * c - b * s for value, c, s in zip(data, cosine, sine)])
+
+    assert residual(original[0]) < .00005
+    assert residual(wet_values[0]) > .008
+    assert dry_values == original
+    assert rate == RATE and wet.frames == bypass.frames == 3 * RATE
+    assert source.read_bytes() == before
+
+
+def test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation(tmp_path):
+    from carr_library.audio.effects import Effect as ConverterEffect
+    from carr_library.audio.render import Track as ConverterTrack, convert_audio, mix_tracks
+
+    frames = RATE // 2
+    values = [0.] * frames
+    values[-100] = .5
+    source = write_wave(tmp_path / 'tail-source.wav', values)
+    original_bytes = source.read_bytes()
+    effect = ConverterEffect('chorus', {'delay_ms': 40, 'depth_ms': 2, 'speed_hz': 1, 'mix': .5})
+    result = convert_audio(source, tmp_path / 'tail.wav', sample_rate=RATE, channels=1,
+                           effects=(effect,))
+    changed, rate = samples(result.path)
+    tail_frames = math.floor((40 + 2) * RATE / 1000)
+    assert len(changed[0]) == frames + tail_frames
+    assert result.frames == frames + tail_frames and rate == RATE
+    assert any(abs(value) > .01 for value in changed[0][frames:])
+    with pytest.raises(ValueError, match='truncate'):
+        mix_tracks((ConverterTrack(source, effects=(effect,)),), tmp_path / 'truncated.wav',
+                   duration_seconds=frames / RATE, sample_rate=RATE)
+    with pytest.raises(ValueError, match='Time-changing'):
+        mix_tracks((ConverterTrack(source),), tmp_path / 'master-tail.wav',
+                   sample_rate=RATE, master_effects=(effect,))
+    assert source.read_bytes() == original_bytes
+    assert not (tmp_path / 'truncated.wav').exists()
+    assert not (tmp_path / 'master-tail.wav').exists()
+    assert not list(tmp_path.glob('.carr-audio-*'))

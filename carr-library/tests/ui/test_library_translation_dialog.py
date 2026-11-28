@@ -36,6 +36,7 @@ def form(tmp_path):
         def ChangeValue(self, value): self.native(); self.value = value
         def SetValue(self, value): self.ChangeValue(value)
         def SetName(self, name): self.native(); self.name = name
+        def GetId(self): self.native(); return id(self)
         def SetSelection(self, index): self.native(); self.selection = index
         def GetSelection(self): self.native(); return self.selection
         def GetSelections(self): self.native(); return [0]
@@ -49,7 +50,12 @@ def form(tmp_path):
         def IsModal(self): self.native(); return False
         def EndModal(self, result): self.native()
         def Hide(self): self.native(); self.hidden = True
-        def Destroy(self): self.native(); self.destroyed = True
+        def Destroy(self):
+            self.native()
+            self.destroyed = True
+            callback = self.handlers.get('destroy')
+            if callback is not None:
+                callback(N(GetId=lambda: id(self), Skip=lambda: None))
     class Picker(Control):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -68,7 +74,7 @@ def form(tmp_path):
         BoxSizer=Control, SingleChoiceDialog=Picker, MultiChoiceDialog=Picker,
         TextEntryDialog=Entry, DirDialog=Picker, MessageBox=message,
         ID_OK=1, YES=2, ID_CLOSE=3, EVT_BUTTON='button', EVT_TEXT='text', EVT_CHOICE='choice',
-        EVT_CLOSE='close', CallAfter=lambda callback, *args: None)
+        EVT_CLOSE='close', EVT_WINDOW_DESTROY='destroy', CallAfter=lambda callback, *args: None)
     for name in ('ALL', 'EXPAND', 'VERTICAL', 'HORIZONTAL', 'DEFAULT_DIALOG_STYLE',
                  'RESIZE_BORDER', 'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT'):
         setattr(wx, name, 0)

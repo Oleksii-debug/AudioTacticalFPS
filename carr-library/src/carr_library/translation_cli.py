@@ -14,6 +14,7 @@ from .assistant.models import canonical
 from .assistant.profiles import ProfileStore
 from .assistant.providers import Authorization, Gateway, money
 from .assistant.translation import TranslationService, translation_approval
+from .assistant.translation_layout import capture_layout, review_layout, prepare_layout, export_layout
 from .assistant.library_translation import LibrarySelection, capture_library_sources, source_summary
 from .speech._io import local_file
 
@@ -51,6 +52,14 @@ def _source(app, args):
     return captured.text, captured.binding
 
 
+def _layout_source(app, args):
+    if (args.text_file is not None or not args.workspace or len(args.edition or ()) != 1
+            or args.first is not None or args.last is not None):
+        raise ValueError('Structure preservation requires one whole current library DOCX/EPUB edition.')
+    return capture_layout(app, args.workspace, args.edition[0], kind=args.preserve_format,
+                          topic=args.topic, collection=args.collection)
+
+
 def _preview(service, profile, value, binding, args):
     result = service.preview(profile, value, args.source, args.target,
         rate_per_million=args.rate_per_million, source_binding=binding, glossary=args.glossary)
@@ -70,6 +79,8 @@ def job_summary(job):
     immutable = {key: job.get(key) for key in (
         'id', 'profile', 'source_sha256', 'source_binding', 'source_language', 'target_language',
         'authorization', 'per_call_cost', 'restore_requires_review', 'glossary')}
+    if 'source_partition' in job:
+        immutable['source_partition'] = job['source_partition']
     return {'id': job['id'], 'title': job['title'], 'status': job['status'],
         'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
         'target_language': job['target_language'], 'characters': len(job['source_text']),
@@ -80,7 +91,8 @@ def job_summary(job):
         'budget': job['authorization']['budget'], 'currency': job['authorization']['currency'],
         'source': source_summary(job['source_binding']) if job.get('source_binding') is not None else None,
         'restore_requires_review': job.get('restore_requires_review', False),
-        'resume_approval_sha256': _fingerprint(immutable)}
+        'resume_approval_sha256': _fingerprint(immutable),
+        **({'source_partition': job['source_partition']} if 'source_partition' in job else {})}
 
 
 def parser():
@@ -103,6 +115,8 @@ def parser():
         inputs.add_argument('--edition', action='append', help='Selected edition; repeat for at most16 explicit documents')
         command.add_argument('--first', type=int, help='First reading-order position for one chapter/range')
         command.add_argument('--last', type=int, help='Last reading-order position for one chapter/range')
+        command.add_argument('--preserve-format', choices=('docx', 'epub'),
+            help='Review supported structure for one whole library edition; unsupported constructs are refused')
         command.add_argument('--source', default='auto')
         command.add_argument('--target', required=True)
         command.add_argument('--glossary', help='Existing Advanced v3 glossary in the exact project and non-global region')
@@ -122,6 +136,9 @@ def parser():
     export = commands.add_parser('export', help='Publish a new original/translation/bilingual derivative bundle offline')
     export.add_argument('--job', required=True)
     export.add_argument('--output', type=Path, required=True)
+    formatted = commands.add_parser('export-format', help='Publish a NEW reviewed DOCX/EPUB derivative offline')
+    formatted.add_argument('--job', required=True)
+    formatted.add_argument('--output', type=Path, required=True)
     reading = commands.add_parser('reading', help='Save a linked reading project for the existing voice reader')
     reading.add_argument('--job', required=True)
     reading.add_argument('--view', choices=('original', 'translation', 'bilingual'), default='bilingual')
@@ -156,6 +173,20 @@ def execute(args):
                 'qualification': 'provider-declared language support; quality is not independently qualified'}
     if args.command in ('preview', 'submit'):
         profile = profiles.get(args.profile)
+        if args.preserve_format is not None:
+            layout = _layout_source(app, args)
+            review = review_layout(service, profile, layout, args.source, args.target, args.budget,
+                glossary=args.glossary, rate_per_million=args.rate_per_million)
+            if args.command == 'preview':
+                return {**review, 'approval_sha256': review['review_sha256'],
+                    'transmission': 'No request sent by preview. Submit requires this exact digest and --allow-remote.'}
+            if not args.allow_remote or args.approve_preview != review['review_sha256']:
+                raise PermissionError('Approve the exact current layout preview digest and --allow-remote before external transfer.')
+            service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            identity = prepare_layout(service, profile, layout, args.source, args.target, args.budget,
+                approved_review=review['review_sha256'], title=args.title, glossary=args.glossary,
+                rate_per_million=args.rate_per_million)
+            return service.resume(identity)
         value, binding = _source(app, args)
         review = _preview(service, profile, value, binding, args)
         if args.command == 'preview':
@@ -170,6 +201,8 @@ def execute(args):
         return service.resume(identity)
     if args.command == 'jobs':
         return {'jobs': [job_summary(job) for job in service.list()]}
+    if args.command == 'export-format':
+        return export_layout(service, args.job, args.output)
     job = service.get(args.job)
     if args.command == 'inspect':
         return job_summary(job)
@@ -189,24 +222,45 @@ def execute(args):
     raise ValueError('Unsupported translation command.')
 
 
+
+def _finish_native_runtime(native_handle, operation_error):
+    # A caught AudioCleanupPending may otherwise let a portable CLI exit while
+    # its daemon still owns a parser, the original snapshot and its broker lease.
+    from .audio.cleanup import drain_pending_cleanup
+    interrupted = drain_pending_cleanup(operation_error)
+    close_error = None
+    if native_handle is not None:
+        try:
+            native_handle.close()
+        except BaseException as error:
+            close_error = error
+    later_interrupt = drain_pending_cleanup(close_error)
+    if close_error is not None:
+        raise close_error
+    if interrupted is not None or later_interrupt is not None:
+        raise interrupted if interrupted is not None else later_interrupt
+
+
 @installed_entrypoint
 def main(argv=None):
     args = parser().parse_args(argv)
-    native_handle = None
+    native_handle, operation_error = None, None
     try:
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
         result = execute(args)
-    except (InterruptedError, KeyboardInterrupt):
+    except (InterruptedError, KeyboardInterrupt) as error:
+        operation_error = error
         print(json.dumps({'status': 'paused', 'message': 'Translation interrupted. Inspect the saved job before resuming.'}),
               file=sys.stderr)
         return 130
     except (OSError, ValueError, PermissionError, RuntimeError) as exc:
+        operation_error = exc
         print(json.dumps({'status': 'failed', 'message': str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 1
     finally:
-        if native_handle is not None:
-            native_handle.close()
+        _finish_native_runtime(native_handle,
+            operation_error if operation_error is not None else sys.exc_info()[1])
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

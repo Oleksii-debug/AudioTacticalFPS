@@ -28,11 +28,11 @@ def _translation(value):
     # structural check deliberately creates no Gateway, vault or HTTP client.
     from .assistant.profiles import ProviderProfile
     from .assistant.providers import Authorization, money
-    from .assistant.translation import split_text, validate_translation_source_record
+    from .assistant.translation import job_chunks, validate_translation_source_record
     from .assistant.models import canonical
     source = value.get('source_text')
     if (not isinstance(source, str) or value.get('source_sha256') != _hash(source)
-            or value.get('chunks') != list(split_text(source))
+            or value.get('chunks') != list(job_chunks(value))
             or not isinstance(value.get('receipts'), list)
             or len(value['receipts']) > len(value['chunks'])):
         raise ValueError('Invalid restored translation checkpoint.')
@@ -210,6 +210,9 @@ def _prepared(relative, value):
                     or type(value.get('stems')) is not bool
                     or value['operation_sha256'] != _operation_sha256(value)):
                 raise ValueError('Production operation options changed.')
+        if type(value.get('result')) is dict and 'editor_interchange' in value['result']:
+            from .studio.interchange import validated_cues
+            validated_cues(project, value['result'])
         return {**value, 'restore_requires_new_output': True}
     if schema == 'carr.reader-session.v1':
         from .speech.session import ReaderDraftStore
@@ -298,6 +301,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
     validated_tabs = _validate_reading_tabs(root, entries, cancelled=cancelled)
     from .studio import book_backup
     validated_books = book_backup.validate_state(root, entries, cancelled=cancelled)
+    from .studio.interchange import validate_backup_state
+    validate_backup_state(root, entries, cancelled=cancelled)
     if any(entry['filename'].casefold() == 'speech/playback-queue.json' for entry in entries):
         from .speech.playlist import validate_state_collection
         validate_state_collection(root, entries)

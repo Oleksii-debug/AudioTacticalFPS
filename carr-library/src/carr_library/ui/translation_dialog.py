@@ -10,18 +10,20 @@ from uuid import uuid4
 from ..assistant.profiles import ProfileStore
 from ..assistant.providers import Authorization, Gateway, money
 from ..assistant.translation import TranslationService, translation_approval
+from ..assistant.translation_layout import (capture_layout, review_layout, prepare_layout, export_layout)
 from ..assistant.library_translation import (
     LibrarySelection, capture_library_sources, source_summary, authorize_library_binding,
 )
 
 
 def _matches_saved_scope(job, account, value, source, target, budget, *, offline=False,
-                         source_binding=None, glossary=None):
+                         source_binding=None, source_partition=None, glossary=None):
     """PR162: bind execution/export to the exact displayed saved selection."""
     return ((account is None and offline or account is not None and account.to_dict() == job['profile'])
             and value == job['source_text'] and source == job['source_language']
             and target == job['target_language'] and money(budget) == money(job['authorization']['budget'])
-            and source_binding == job.get('source_binding') and glossary == job.get('glossary'))
+            and source_binding == job.get('source_binding')
+            and source_partition == job.get('source_partition') and glossary == job.get('glossary'))
 
 
 def create_translation_dialog(frame, *, wx_module=None, service=None):
@@ -36,8 +38,11 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
     dialog = wx.Dialog(frame, title='Translation — selected text and linked library sources', size=(900, 940),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     dialog.SetName('Translation workspace')
+    dialog_id = dialog.GetId()
+    dialog._translation_destroyed = False
     layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, current_job, reviewed, binding = True, False, None, None, None
+    format_capture, partition, reviewed_layout = None, None, None
     original_display_text, displayed_text = None, None
     generation = 0
     cancel = threading.Event()
@@ -64,7 +69,8 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         provider.SetSelection(0)
     input_scope = field('Translation input scope', wx.Choice, choices=[
         'Selected text', 'Library chapter or reading-position range',
-        'Whole library document', 'Explicit library batch (at most 16 documents)'])
+        'Whole library document', 'Explicit library batch (at most 16 documents)',
+        'DOCX with reviewed structure preservation', 'EPUB with reviewed structure preservation'])
     input_scope.SetSelection(0)
     title_filter = field('Source title filter for library selection', value='')
     source = field('&Source language code; auto detects', value='auto')
@@ -83,12 +89,15 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
               'Configure Basic v2 API-key or Advanced v3 NMT OAuth accounts under Tools / Translation and assistant service profiles. '
               'Advanced requires the exact numeric project and region and an unexpired IAM/ADC access token in Windows Credential Manager; '
               'tokens are never automatically refreshed. An existing glossary requires the same non-global region and an explicit source language. '
-              'Fetch directions for this exact account before preview. Document formatting and local translation models are unavailable.')
+              'Fetch directions for this exact account before preview. DOCX/EPUB structure preservation uses an explicit '
+               'profile review and writes a new file; visual page layout and per-word emphasis are not reconstructed. '
+               'Local translation models are unavailable.')
     buttons = {}
     for row_items in (
         [('sources', 'Choose library &sources'), ('languages', 'Fetch &languages'),
          ('preview', '&Preview'), ('run', '&Translate / resume'), ('pause', 'Pa&use')],
-        [('jobs', 'Saved &jobs'), ('export', '&Export'), ('read', 'Read / &narrate derivative'), ('close', '&Close')]):
+        [('jobs', 'Saved &jobs'), ('export', '&Export'), ('format_export', 'Export DOCX / EPUB'),
+         ('read', 'Read / &narrate derivative'), ('close', '&Close')]):
         row = wx.BoxSizer(wx.HORIZONTAL)
         for name, label in row_items:
             button = wx.Button(dialog, label=label)
@@ -121,7 +130,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         return (p.to_dict() if p is not None else None, exact,
                 source.GetValue().strip(), target.GetValue().strip(),
                 str(money(budget.GetValue())), deepcopy(binding), glossary.GetValue().strip() or None,
-                rate.GetValue().strip() or None)
+                rate.GetValue().strip() or None, deepcopy(partition), input_scope.GetSelection())
 
     def show_original(value):
         nonlocal original_display_text, displayed_text
@@ -143,6 +152,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             if name == 'close':
                 continue
             button.Enable(busy if name == 'pause' else not busy and (
+                current_job is not None and partition is not None if name == 'format_export' else
                 current_job is not None if name in ('export', 'read') else
                 input_scope.GetSelection() != 0 if name == 'sources' else True))
 
@@ -190,17 +200,17 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         return cancel.is_set() or frame.cancel_event.is_set() or not alive
 
     def edited(event=None):
-        nonlocal reviewed, generation
+        nonlocal reviewed, reviewed_layout, generation
         generation += 1
-        reviewed = None
+        reviewed, reviewed_layout = None, None
         if event is not None and hasattr(event, 'Skip'):
             event.Skip()
 
     def scope_changed(event=None):
-        nonlocal binding, current_job
+        nonlocal binding, current_job, format_capture, partition
         if busy:
             return
-        binding, current_job = None, None
+        binding, current_job, format_capture, partition = None, None, None, None
         edited(event)
         controls()
         report('Selected text mode permits a new independent text copy.' if input_scope.GetSelection() == 0 else
@@ -214,37 +224,59 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             if selected_scope is None:
                 raise ValueError('Open an explicit library or research topic before selecting original sources.')
             mode, query = input_scope.GetSelection(), title_filter.GetValue().strip()
-            if mode not in (1, 2, 3):
-                raise ValueError('Choose chapter, document or explicit batch input scope.')
+            if mode not in (1, 2, 3, 4, 5):
+                raise ValueError('Choose chapter, document, explicit batch or reviewed DOCX/EPUB input scope.')
             workspace, topic = selected_scope
             def unchanged():
                 guard()
                 if input_scope.GetSelection() != mode or title_filter.GetValue().strip() != query:
                     raise ValueError('The source chooser changed; choose the intended sources again.')
             def captured(result):
-                nonlocal binding, reviewed, current_job
+                nonlocal binding, reviewed, current_job, format_capture, partition, reviewed_layout
                 unchanged()
-                binding, reviewed, current_job = result.binding, None, None
-                show_original(result.text)
+                binding, reviewed, current_job, reviewed_layout = result.binding, None, None, None
+                format_capture = result if mode in (4, 5) else None
+                partition = result.source_partition if format_capture is not None else None
+                show_original(result.source_text if format_capture is not None else result.text)
                 controls()
-                report(json.dumps(source_summary(binding), ensure_ascii=False, indent=2) +
+                details = result.summary() if format_capture is not None else source_summary(binding)
+                report(json.dumps(details, ensure_ascii=False, indent=2) +
                        '\nOriginal text and positions captured. No external request was made. Preview the exact transfer next.')
             def capture(choices):
                 unchanged()
-                begin('Verifying selected original sources',
-                    lambda: capture_library_sources(library, workspace, choices, topic=topic,
-                        cancelled=stopped, guard=guard), captured)
+                if mode in (4, 5):
+                    if len(choices) != 1:
+                        raise ValueError('Choose exactly one whole original for DOCX/EPUB structure preservation.')
+                    begin('Verifying retained document structure',
+                        lambda: capture_layout(library, workspace, choices[0].edition,
+                            kind='docx' if mode == 4 else 'epub', topic=topic,
+                            cancelled=stopped, guard=guard), captured)
+                else:
+                    begin('Verifying selected original sources',
+                        lambda: capture_library_sources(library, workspace, choices, topic=topic,
+                            cancelled=stopped, guard=guard), captured)
             def ask_range(edition, total):
                 unchanged()
                 entry = wx.TextEntryDialog(dialog,
                     f'Choose positions from 1 to {total}, such as 2 or 2-4. These are source reading positions, '
                     'not inferred printed page labels.', 'Choose chapter or source range', f'1-{total}')
+                entry_alive, entry_id = True, entry.GetId()
+                def range_destroyed(event):
+                    nonlocal entry_alive
+                    if event.GetId() == entry_id:
+                        entry_alive = False
+                    event.Skip()
+                entry.Bind(wx.EVT_WINDOW_DESTROY, range_destroyed)
                 try:
                     if entry.ShowModal() != wx.ID_OK:
                         return
+                    unchanged()
+                    if stopped() or not entry_alive:
+                        raise InterruptedError('Source range selection cancelled.')
                     raw = entry.GetValue().strip()
                 finally:
-                    entry.Destroy()
+                    if entry_alive and not dialog._translation_destroyed:
+                        entry.Destroy()
                 unchanged()
                 matched = re.fullmatch(r'(\d+)(?:\s*-\s*(\d+))?', raw)
                 if not matched:
@@ -259,12 +291,23 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                 picker = factory(dialog,
                     'Explicitly choose source editions. The first 100 matching editions are listed; refine the title filter if needed.',
                     'Choose translation originals', labels)
+                picker_alive, picker_id = True, picker.GetId()
+                def source_picker_destroyed(event):
+                    nonlocal picker_alive
+                    if event.GetId() == picker_id:
+                        picker_alive = False
+                    event.Skip()
+                picker.Bind(wx.EVT_WINDOW_DESTROY, source_picker_destroyed)
                 try:
                     if picker.ShowModal() != wx.ID_OK:
                         return
+                    unchanged()
+                    if stopped() or not picker_alive:
+                        raise InterruptedError('Original source selection cancelled.')
                     indexes = tuple(picker.GetSelections()) if mode == 3 else (picker.GetSelection(),)
                 finally:
-                    picker.Destroy()
+                    if picker_alive and not dialog._translation_destroyed:
+                        picker.Destroy()
                 unchanged()
                 if not indexes or len(indexes) > 16 or any(not 0 <= index < len(rows) for index in indexes):
                     raise ValueError('Choose between 1 and 16 source editions.')
@@ -309,7 +352,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             report(str(exc), True)
 
     def preview(event=None):
-        nonlocal reviewed
+        nonlocal reviewed, reviewed_layout
         if busy:
             return
         try:
@@ -318,21 +361,31 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             if input_scope.GetSelection() != 0 and binding is None:
                 raise ValueError('Capture the selected library sources before preview.')
             captured_generation = generation
+            captured_format = format_capture
+            if snapshot[8] is not None and captured_format is None:
+                raise ValueError('Choose the original DOCX/EPUB again before approving a new formatted translation.')
             def complete(result):
-                nonlocal reviewed, current_job
+                nonlocal reviewed, current_job, reviewed_layout
                 check_visible(snapshot)
                 if generation != captured_generation or rate.GetValue().strip() != (price or ''):
                     raise ValueError('The preview options changed; preview the exact current selection again.')
-                if result['estimated_cost'] is not None and money(result['estimated_cost']) > money(snapshot[4]):
+                preview_result = result['translation'] if snapshot[8] is not None else result
+                if preview_result['estimated_cost'] is not None and money(preview_result['estimated_cost']) > money(snapshot[4]):
                     raise ValueError('The owner-entered price estimate exceeds this total budget.')
                 reviewed, current_job = snapshot, None
+                reviewed_layout = result['review_sha256'] if snapshot[8] is not None else None
                 controls()
                 report(json.dumps(result, ensure_ascii=False, indent=2) +
                        '\nNo request sent. Translate asks consent for these exact characters, source identities, '
                        'provider, languages and total budget. The reservation is not a provider-enforced charge guarantee.')
-            begin('Previewing exact translation transfer',
-                  lambda: service.preview(p, snapshot[1], snapshot[2], snapshot[3],
-                      rate_per_million=price, source_binding=snapshot[5], glossary=snapshot[6], cancelled=stopped), complete)
+            if snapshot[8] is not None:
+                begin('Reviewing exact DOCX/EPUB structure and translation transfer',
+                    lambda: review_layout(service, p, captured_format, snapshot[2], snapshot[3], snapshot[4],
+                        rate_per_million=price, glossary=snapshot[6], cancelled=stopped, guard=guard), complete)
+            else:
+                begin('Previewing exact translation transfer',
+                      lambda: service.preview(p, snapshot[1], snapshot[2], snapshot[3],
+                          rate_per_million=price, source_binding=snapshot[5], glossary=snapshot[6], cancelled=stopped), complete)
         except Exception as exc:
             reviewed = None
             report(str(exc), True)
@@ -342,7 +395,8 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         account = None if snapshot[0] is None else next(
             (p for p in profiles if p.to_dict() == snapshot[0]), None)
         if not _matches_saved_scope(job, account, snapshot[1], snapshot[2], snapshot[3], snapshot[4],
-                                    offline=offline, source_binding=snapshot[5], glossary=snapshot[6]):
+                                    offline=offline, source_binding=snapshot[5],
+                                    source_partition=snapshot[8], glossary=snapshot[6]):
             raise ValueError('Visible settings differ from saved job ' + identity +
                 '. Select Saved jobs to restore its exact scope, or Preview for a new approval. No operation was started.')
         return job
@@ -355,8 +409,9 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             guard()
             p, snapshot = profile(), visible()
             identity = current_job
+            captured_format, format_review = format_capture, reviewed_layout
             if identity is None:
-                if reviewed != snapshot:
+                if reviewed != snapshot or snapshot[8] is not None and (captured_format is None or format_review is None):
                     raise ValueError('Preview this exact text, source scope, provider, languages and budget first.')
                 details = (f"{len(snapshot[5]['sources'])} library sources; " if snapshot[5] else 'selected text; ')
                 if wx.MessageBox(f'Send exactly {len(snapshot[1])} characters ({details}) to Google Translation? '
@@ -377,7 +432,11 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                     raise ValueError('The selected provider account changed. Reopen and approve the current account.')
                 service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
                 job_id = identity
-                if job_id is None:
+                if job_id is None and snapshot[8] is not None:
+                    job_id = prepare_layout(service, p, captured_format, snapshot[2], snapshot[3], snapshot[4],
+                        approved_review=format_review, glossary=snapshot[6], rate_per_million=snapshot[7],
+                        cancelled=stopped, guard=guard)
+                elif job_id is None:
                     approval, cost = translation_approval(p, snapshot[1], snapshot[2], snapshot[3],
                                                          snapshot[4], source_binding=snapshot[5], glossary=snapshot[6])
                     job_id = service.submit(p, snapshot[1], snapshot[2], snapshot[3],
@@ -406,7 +465,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         if busy:
             return
         def restore(job):
-            nonlocal current_job, reviewed, binding
+            nonlocal current_job, reviewed, binding, format_capture, partition, reviewed_layout
             index = next((i for i, p in enumerate(profiles) if p.to_dict() == job['profile']), -1)
             provider.SetSelection(index)
             show_original(job['source_text'])
@@ -416,7 +475,10 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             budget.ChangeValue(str(job['authorization']['budget']))
             rate.ChangeValue('')
             binding = deepcopy(job.get('source_binding'))
-            input_scope.SetSelection(0 if binding is None else
+            partition = deepcopy(job.get('source_partition'))
+            format_capture, reviewed_layout = None, None
+            input_scope.SetSelection((4 if partition['profile'] == 'carr-docx-body-layout/1' else 5)
+                if partition is not None else 0 if binding is None else
                 3 if len(binding['sources']) > 1 else 2 if binding['sources'][0]['selection'] == 'document' else 1)
             current_job, reviewed = job['id'], None
             controls()
@@ -434,12 +496,26 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                     f"{j['title']}; {j['status']}; {len(j['receipts'])}/{len(j['chunks'])}; "
                     f"{j['source_language']} to {j['target_language']}; account {j['profile']['name']} "
                     f"({j['profile']['id']}); budget {j['authorization']['budget']} USD; job {j['id']}" for j in rows])
+            picker_alive, picker_id = True, picker.GetId()
+            def job_picker_destroyed(event):
+                nonlocal picker_alive
+                if event.GetId() == picker_id:
+                    picker_alive = False
+                event.Skip()
+            picker.Bind(wx.EVT_WINDOW_DESTROY, job_picker_destroyed)
             try:
-                if picker.ShowModal() != wx.ID_OK or not 0 <= picker.GetSelection() < len(rows):
+                if picker.ShowModal() != wx.ID_OK:
                     return
-                identity = rows[picker.GetSelection()]['id']
+                guard()
+                if stopped() or not picker_alive:
+                    raise InterruptedError('Saved translation selection cancelled.')
+                selected_job = picker.GetSelection()
+                if not 0 <= selected_job < len(rows):
+                    return
+                identity = rows[selected_job]['id']
             finally:
-                picker.Destroy()
+                if picker_alive and not dialog._translation_destroyed:
+                    picker.Destroy()
             guard()
             begin('Validating saved translation selection', lambda: service.get(identity, cancelled=stopped), restore)
         begin('Loading saved translation jobs', service.list, choose)
@@ -452,12 +528,23 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             def choose(job):
                 check_visible(snapshot, optional=True)
                 picker = wx.DirDialog(dialog, 'Choose parent folder for a NEW export of translation job ' + identity)
+                picker_alive, picker_id = True, picker.GetId()
+                def directory_destroyed(event):
+                    nonlocal picker_alive
+                    if event.GetId() == picker_id:
+                        picker_alive = False
+                    event.Skip()
+                picker.Bind(wx.EVT_WINDOW_DESTROY, directory_destroyed)
                 try:
                     if picker.ShowModal() != wx.ID_OK:
                         return
+                    check_visible(snapshot, optional=True)
+                    if stopped() or not picker_alive:
+                        raise InterruptedError('Translation export cancelled.')
                     destination = Path(picker.GetPath()) / ('Translation-' + identity[:8] + '-' + uuid4().hex[:8])
                 finally:
-                    picker.Destroy()
+                    if picker_alive and not dialog._translation_destroyed:
+                        picker.Destroy()
                 check_visible(snapshot, optional=True)
                 if stopped():
                     raise InterruptedError('Translation export cancelled.')
@@ -465,6 +552,55 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                     lambda: service.export(identity, destination, cancelled=stopped),
                     lambda result: report('Saved new files in: ' + result['path']))
             begin('Validating exact translation export scope',
+                  lambda: saved_job(snapshot, identity, offline=True), choose)
+        except Exception as exc:
+            report(str(exc), True)
+
+
+    def export_format(event=None):
+        if busy or current_job is None or partition is None:
+            return
+        try:
+            snapshot, identity = visible(optional=True), current_job
+            captured_generation = generation
+            def choose(job):
+                check_visible(snapshot, optional=True)
+                kind = 'docx' if job['source_partition']['profile'] == 'carr-docx-body-layout/1' else 'epub'
+                picker = wx.FileDialog(dialog, 'Save a NEW translated ' + kind.upper() + ' file',
+                    defaultFile='translated-' + identity[:8] + '.' + kind,
+                    wildcard=kind.upper() + ' files (*.' + kind + ')|*.' + kind,
+                    style=wx.FD_SAVE)
+                picker_alive, picker_id = True, picker.GetId()
+                def picker_destroyed(event):
+                    nonlocal picker_alive
+                    if event.GetId() == picker_id:
+                        picker_alive = False
+                    event.Skip()
+                picker.Bind(wx.EVT_WINDOW_DESTROY, picker_destroyed)
+                try:
+                    if picker.ShowModal() != wx.ID_OK:
+                        return
+                    check_visible(snapshot, optional=True)
+                    if stopped() or not picker_alive:
+                        raise InterruptedError('Formatted translation export cancelled.')
+                    destination = Path(picker.GetPath())
+                finally:
+                    if picker_alive and not dialog._translation_destroyed:
+                        picker.Destroy()
+                check_visible(snapshot, optional=True)
+                if stopped():
+                    raise InterruptedError('Formatted translation export cancelled.')
+                def publish():
+                    guard()
+                    if generation != captured_generation or current_job != identity:
+                        raise ValueError('The selected translation changed before formatted export.')
+                    return export_layout(service, identity, destination, cancelled=stopped, guard=guard)
+                begin('Exporting the reviewed DOCX/EPUB structure', publish,
+                    lambda result: report('Saved and verified new ' + result['format'].upper() + ': ' +
+                        result['path'] + '\n' + result['notice'] +
+                        ('\n' + result['cleanup_warning'] if result.get('cleanup_warning') else ''), True),
+                    allow_cancel_result=True)
+            begin('Validating the saved format-preservation scope',
                   lambda: saved_job(snapshot, identity, offline=True), choose)
         except Exception as exc:
             report(str(exc), True)
@@ -501,8 +637,18 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         else:
             dialog.Hide()
 
+    def destroyed(event):
+        nonlocal alive, generation
+        if event.GetId() == dialog_id:
+            alive = False
+            generation += 1
+            cancel.set()
+            dialog._translation_destroyed = True
+        event.Skip()
+
     handlers = {'sources': choose_sources, 'languages': languages, 'preview': preview, 'run': run,
-                'pause': lambda event=None: cancel.set(), 'jobs': jobs, 'export': export, 'read': read, 'close': close}
+                'pause': lambda event=None: cancel.set(), 'jobs': jobs, 'export': export,
+                'format_export': export_format, 'read': read, 'close': close}
     for name, handler in handlers.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)
         setattr(dialog, 'on_' + name, handler)
@@ -511,6 +657,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
     provider.Bind(wx.EVT_CHOICE, edited)
     input_scope.Bind(wx.EVT_CHOICE, scope_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     dialog.translation_service = service
     dialog.translation_controls = dict(provider=provider, input_scope=input_scope, title_filter=title_filter,
         source=source, target=target, glossary=glossary, selected=selected, rate=rate, budget=budget,
@@ -527,7 +674,8 @@ def show_translation(frame):
         dialog.ShowModal()
     finally:
         dialog.on_close()
-        dialog.Destroy()
+        if not dialog._translation_destroyed:
+            dialog.Destroy()
 
 
 def install_translation_actions(frame):

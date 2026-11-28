@@ -190,3 +190,204 @@ def test_cleanup_thread_constructor_failure_still_exposes_and_retains_original_o
     ready.set()
     assert cleanup.close() is True and released == [True]
     assert not stage.exists() and not busy(tmp_path, 'retained')
+
+
+@pytest.mark.parametrize('first', ['retained-context', 'ready-callback'])
+def test_notification_fence_tracks_ready_callback_racing_retained_stage_release(tmp_path, first):
+    from tempfile import TemporaryDirectory
+    cleanup, allow = owner()
+    entered, released = threading.Event(), threading.Event()
+    ready_entered, ready_released = threading.Event(), threading.Event()
+    failures, threads = [], []
+    @contextmanager
+    def existing_stage():
+        with TemporaryDirectory(prefix='.notification-', dir=tmp_path) as temporary:
+            yield Path(temporary)
+            entered.set()
+            if not released.wait(10):
+                failures.append('Retained context release was never allowed.')
+    with pytest.raises(AudioCleanupPending) as failure:
+        with retained_context(existing_stage()) as stage:
+            (stage / 'original').write_bytes(b'exact source bytes')
+            raise AudioCleanupPending('Current native owner', cleanup_owner=cleanup)
+    allow.set()
+    closing = threading.Thread(target=cleanup.close)
+    threads.append(closing)
+    closing.start()
+    try:
+        assert entered.wait(10)
+        assert cleanup.quiescent and not cleanup.notifications_complete_event.is_set()
+        assert stage.is_dir()
+        # A native observation remains nonblocking while notifications drain.
+        assert cleanup.close() is True
+        def ready_callback():
+            ready_entered.set()
+            if not ready_released.wait(10):
+                failures.append('Ready callback release was never allowed.')
+        adding = threading.Thread(target=lambda: cleanup.add_quiescent_callback(ready_callback))
+        threads.append(adding)
+        adding.start()
+        assert ready_entered.wait(10)
+        assert cleanup.quiescent and not cleanup.notifications_complete_event.is_set()
+        if first == 'retained-context':
+            released.set()
+            closing.join(10)
+            assert not closing.is_alive() and not stage.exists()
+            assert not cleanup.notifications_complete_event.is_set()
+            ready_released.set()
+        else:
+            ready_released.set()
+            adding.join(10)
+            assert not adding.is_alive() and stage.is_dir()
+            assert not cleanup.notifications_complete_event.is_set()
+            released.set()
+        for thread in threads:
+            thread.join(10)
+        assert all(not thread.is_alive() for thread in threads)
+        assert cleanup.notifications_complete_event.is_set() and cleanup.quiescent
+        assert not stage.exists() and not failures
+    finally:
+        released.set()
+        ready_released.set()
+        for thread in threads:
+            thread.join(10)
+
+
+def test_registered_owner_reenters_retention_during_late_ready_notification():
+    from carr_library.audio import cleanup as module
+    allow, entered, released = threading.Event(), threading.Event(), threading.Event()
+    failure = module.pending_cleanup(allow.is_set, message='Existing native owner')
+    cleanup, failures = failure.cleanup_owner, []
+    allow.set()
+    assert cleanup.notifications_complete_event.wait(10)
+    with module._RETAINED_LOCK:
+        assert cleanup not in module._RETAINED
+    def callback():
+        entered.set()
+        if not released.wait(10):
+            failures.append('Late notification was never released.')
+    worker = threading.Thread(target=lambda: cleanup.add_quiescent_callback(callback))
+    worker.start()
+    try:
+        assert entered.wait(10)
+        assert cleanup.quiescent and not cleanup.notifications_complete_event.is_set()
+        with module._RETAINED_LOCK:
+            assert cleanup in module._RETAINED
+        assert cleanup.close() is True
+        released.set()
+        worker.join(10)
+        assert not worker.is_alive() and not failures
+        assert cleanup.notifications_complete_event.is_set()
+        with module._RETAINED_LOCK:
+            assert cleanup not in module._RETAINED
+    finally:
+        released.set()
+        worker.join(10)
+
+
+@pytest.mark.parametrize('error_type', [ValueError, KeyboardInterrupt, SystemExit])
+def test_notification_failure_finishes_remaining_callbacks_before_original_signal(error_type):
+    cleanup, allow = owner()
+    error, observed = error_type('Original callback outcome'), []
+    def first():
+        observed.append('first')
+        raise error
+    cleanup.add_quiescent_callback(first)
+    cleanup.add_quiescent_callback(lambda: observed.append('second'))
+    allow.set()
+    if error_type is ValueError:
+        assert cleanup.close() is True
+    else:
+        with pytest.raises(error_type) as raised:
+            cleanup.close()
+        assert raised.value is error
+    assert observed == ['first', 'second']
+    assert cleanup.quiescent and cleanup.notifications_complete_event.is_set()
+    assert cleanup.close() is True and observed == ['first', 'second']
+
+
+def test_notification_fence_requires_native_quiescence_even_without_callbacks():
+    cleanup, allow = owner()
+    assert not cleanup.notifications_complete_event.is_set()
+    assert cleanup.close() is False
+    assert not cleanup.quiescent and not cleanup.notifications_complete_event.is_set()
+    allow.set()
+    assert cleanup.close() is True
+    assert cleanup.quiescent and cleanup.notifications_complete_event.is_set()
+    assert cleanup.close() is True
+
+
+def test_ready_callback_can_register_nested_callback_outside_owner_locks():
+    cleanup, allow = owner()
+    observed = []
+    def nested():
+        assert cleanup._callback_lock.acquire(blocking=False)
+        cleanup._callback_lock.release()
+        observed.append('nested')
+        assert not cleanup.notifications_complete_event.is_set()
+    def first():
+        assert cleanup._callback_lock.acquire(blocking=False)
+        cleanup._callback_lock.release()
+        observed.append('first')
+        cleanup.add_quiescent_callback(nested)
+        assert not cleanup.notifications_complete_event.is_set()
+        observed.append('last')
+    cleanup.add_quiescent_callback(first)
+    allow.set()
+    assert cleanup.close() is True
+    assert observed == ['first', 'nested', 'last']
+    assert cleanup.notifications_complete_event.is_set()
+
+
+def test_cli_drain_waits_for_actual_context_notification_after_native_quiescence(tmp_path, monkeypatch):
+    from tempfile import TemporaryDirectory
+    from carr_library import translation_cli
+    cleanup, allow = owner()
+    entered, released, waiting, returned = (threading.Event() for _ in range(4))
+    closed, errors = [], []
+    @contextmanager
+    def stage_context():
+        with TemporaryDirectory(prefix='.cli-notification-', dir=tmp_path) as temporary:
+            yield Path(temporary)
+            entered.set()
+            if not released.wait(10):
+                errors.append('Context was not released.')
+    with pytest.raises(AudioCleanupPending) as failure:
+        with retained_context(stage_context()) as stage:
+            (stage / 'original').write_bytes(b'exact retained original')
+            raise AudioCleanupPending('Current native family', cleanup_owner=cleanup)
+    allow.set()
+    closing = threading.Thread(target=cleanup.close)
+    closing.start()
+    assert entered.wait(10) and cleanup.quiescent
+    actual_wait = cleanup.notifications_complete_event.wait
+    def observed_wait(timeout=None):
+        waiting.set()
+        return actual_wait(timeout)
+    monkeypatch.setattr(cleanup.notifications_complete_event, 'wait', observed_wait)
+    class Handle:
+        def close(self):
+            assert cleanup.quiescent and cleanup.notifications_complete_event.is_set()
+            assert not stage.exists()
+            closed.append(True)
+    def drain():
+        try:
+            translation_cli._finish_native_runtime(Handle(), failure.value)
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            returned.set()
+    draining = threading.Thread(target=drain)
+    draining.start()
+    try:
+        assert waiting.wait(10)
+        assert not returned.is_set() and not closed and stage.exists()
+        released.set()
+        draining.join(10)
+        closing.join(10)
+        assert not draining.is_alive() and not closing.is_alive()
+        assert returned.is_set() and closed == [True] and not errors and not stage.exists()
+    finally:
+        released.set()
+        draining.join(10)
+        closing.join(10)

@@ -1,0 +1,204 @@
+{
+  "schema": 1,
+  "component": "Primary Director role, scene and master typed effects",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "date": "2026-11-28",
+  "source_tree": "d2cd1f8ebf48816f63daee79ba6931c94ea7479e",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/projects.py",
+      "before_blob": "2bcfe5b8b29a0ffd4902528cd0ea5d61af94e88c",
+      "after_blob": "8532acf3f4b5de9b01b33b91e7cc1c9ba9263da5",
+      "after_sha256": "8d146162dbf68e9e23dedc5dd13058792b81a660b6f87aaa91eae8dd4e94e4a6",
+      "utf8_bytes": 40210,
+      "new_file": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/director.py",
+      "before_blob": "fec61ba06b671bc6ca625fa7401ac58b66bfae63",
+      "after_blob": "44334d2c310b7892aa7ad3c17a38742262574b09",
+      "after_sha256": "21a1f8f9e83cb34308665f5ca2bb89340fdab3d869dd46cdc562b8c42ff990a5",
+      "utf8_bytes": 54050,
+      "new_file": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "before_blob": "6cbe125e3aecb978711740cffaa7df1d9d3c9174",
+      "after_blob": "30bbd816e36a17671e225a27eec113beb2bff96e",
+      "after_sha256": "32d477a1b6649d51e9d153b18bb4886b02d5fdc60aea84ef02319bf2f6718264",
+      "utf8_bytes": 43521,
+      "new_file": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "before_blob": "f50c6527d89638b37be249304d94583c3dc0b3c0",
+      "after_blob": "a60a9065d3052e2ad93b62989aca147eb9488d98",
+      "after_sha256": "84a68e4b608e0c463ed716e2a8a9ab8650f13a0c3650dfbcb9009730f3f3d4d2",
+      "utf8_bytes": 25634,
+      "new_file": false
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "before_blob": null,
+      "after_blob": "6191e8ffdf26230475f3eb86a7521167e1fad6a5",
+      "after_sha256": "ac53051a23a3b44b57c0e9e5d886e7850e12fd4a395800303cafb3c95f1b3bac",
+      "utf8_bytes": 26233,
+      "new_file": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_studio.py",
+      "before_blob": "e7996326d503f3a8b0efaa9f3c3984434f566466",
+      "after_blob": "5bf00a51825d8c97d740c908f4343392c271bf74",
+      "after_sha256": "1d55711841aaa53a4f154cecbeef7f95e44c9467ef26a5f2becd46cbd8aa8d9b",
+      "utf8_bytes": 12988,
+      "new_file": false
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "before_blob": null,
+      "after_blob": "09fba8273f0c32458e5eaf41432ec16271d9c155",
+      "after_sha256": "a34d0515c16926088e02710fe6c570f4442086e7a11f03ce6c26e32e741e1f19",
+      "utf8_bytes": 5605,
+      "new_file": true
+    },
+    {
+      "path": "carr-library/tests/ui/native_audio_studio_smoke.py",
+      "before_blob": "e971c5bbdea9a03cacb55eee543d3e23e014b93a",
+      "after_blob": "34d586748855b6ff316314bd3ef9131ce154119e",
+      "after_sha256": "9381af5542d303272d006cbfda0f1fe4429c42ee7c02622bae07758316b3d4cf",
+      "utf8_bytes": 16007,
+      "new_file": false
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "before_blob": "0f2f3583e643e0f3bcb6c8a6fb4aec95944ab795",
+      "after_blob": "3ee8d449dc32519d68ef761691dd2b06c27bc25e",
+      "after_sha256": "e256604cf696786f555d2a6a8e97591da54ae3d1cc216d849d15a81931898f96",
+      "utf8_bytes": 26367,
+      "new_file": false
+    }
+  ],
+  "readback": {
+    "complete": true,
+    "all_nine_files_byte_exact": true,
+    "inverse_all_existing_files_exact": true,
+    "full_old_ui_test_prefix_exact": true,
+    "old_ui_assertions": 24,
+    "old_native_assertions": 26
+  },
+  "requirements": {
+    "audio_agent_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "scope": "V3-13 role/scene/master EQ, dynamics and explicit room effects, with ordered numeric controls and recovery."
+  },
+  "decisions": {
+    "schema": "No version bump: optional ordered effects omitted when empty at every legacy serialization level. Existing empty-chain JSON/fingerprints remain byte-compatible.",
+    "typed_effects": "Use the existing audio.models.Effect, effect_presets decoder/checked_chain and canonical AudioRuntime/DSP; no raw filtergraph or new DSP implementation.",
+    "timeline": "Enabled tempo is refused. Accepted role, scene and master processing preserves the exact sample grid; tails are bounded at that level's existing end. Whole master effects execute once; exported chapters are exact frame slices of that accepted processed master.",
+    "gain": "Role processing applies canonical effects and the selected gain/pan once. Already mixed scene/master buses use canonical convert without a second routing gain or implicit safety limiter. Positive gain consumes headroom and may clip; docs require explicit controls and measurement.",
+    "cache": "Raw speech keys remain unchanged. Processed nodes bind exact ordered/bypass numeric chains, source digest/frame format and canonical processing code identity. Accepted-input stamps are checked inside existing cache admission/publication and full digests are rechecked afterward.",
+    "stems": "Role stems contain role effects only; scene/master buses are not represented by those stems. The first transition to effect-specific role-stem keys may rebuild mix stems once, with an explicit progress/result cache note; it does not synthesize unchanged accepted speech. Subsequent affected-scene/role work has bounded content-addressed reuse.",
+    "resource_plan": "Existing broker/lock/owner boundaries remain. Additional retained PCM factor is2 for any enabled role chain +2 for any enabled scene chain +4 for enabled master chain. cache_bytes=estimated_pcm_bytes*(6+2*stem_count+factor)+16MiB; output estimate unchanged. Empty/wholly-bypassed chains retain old admission estimate.",
+    "cleanup": "Existing native owned_process, retained temporary contexts, render lock, shared resource lease and pending cleanup callbacks are reused. The new actual-child tests require the exact stage/lock/lease to survive direct or masked pending cleanup.",
+    "source": "Script bytes/source provenance are unchanged. Role/master chains survive parsing; a scene chain follows only a unique unchanged chapter title. Renamed/deleted/ambiguous reviewed titles refuse before saving.",
+    "ui": "The existing shared ordered-effects modal is reached from one Director button. Scope/current project/editor/library checks bracket the modal, and saved expected-fingerprint CAS precedes in-memory replacement. Editing does not start generation or playback.",
+    "backup": "Existing dynamic Project.from_dict is the typed primary-project validator. Native5/flat4 recovery is passive and retains the existing new-output requirement. Primary publication voice metadata uses Role.to_dict, preserving empty-chain legacy shape.",
+    "docs": "Only an appended Director section in audio_engine.md; deliver its inverse hunk for composition with other independently reviewed append-only guide changes."
+  },
+  "planned_tests": [
+    {
+      "selector": "tests/audio/test_director_effects.py",
+      "planned_cases": 39,
+      "added_cases": 39,
+      "existing_cases": 0,
+      "kind": "new",
+      "scope": "Actual synthetic PCM/FFmpeg, exact frame/hash/order, selective cache/recovery, resource refusal and actual pending families."
+    },
+    {
+      "selector": "tests/ui/test_audio_studio.py",
+      "planned_cases": 20,
+      "added_cases": 16,
+      "existing_cases": 4,
+      "kind": "existing exact-prefix extension",
+      "scope": "Actual controller/store/CAS and same-handler modal boundaries; old 24 assertion lines retained."
+    },
+    {
+      "selector": "tests/storage/test_director_effects_backup.py",
+      "planned_cases": 14,
+      "added_cases": 14,
+      "existing_cases": 0,
+      "kind": "new",
+      "scope": "Actual native format5 and foreign-flat4, real typed keymap, passive restored output refusal, rehashed malformed effect rejection."
+    }
+  ],
+  "planned_total_cases": 73,
+  "planned_new_cases": 69,
+  "native": {
+    "path": "tests/ui/native_audio_studio_smoke.py",
+    "old_checks": 10,
+    "new_checks": 4,
+    "planned_checks": 14,
+    "uses": "Existing actual wx/Flite/FFmpeg production only; no additional speech job.",
+    "proof": "Real scope picker and typed numeric controls; accepted full-master PCM equals concatenated chapter PCM with exact file hashes and source fingerprint.",
+    "existing_timeouts_seconds": [
+      90,
+      20
+    ],
+    "old_assertions_retained": 26,
+    "acoustic_quality": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  },
+  "route_audit": {
+    "current_main_workflow": ".github/workflows/carr-windows.yml",
+    "calls": "Existing installed probe and full-bundle probe both propagate the actual script exit; no fixed ten-check count predicate was found in those two invocation blocks.",
+    "new_workflow_files": 0,
+    "selector_owner": "root"
+  },
+  "review_scopes": [
+    {
+      "reviewer": "root",
+      "scope": "Full Director producer/cache/resource/input identity/source preservation",
+      "verdict": "CLEAR",
+      "source_tree": "f427f1698bef9d0111c93a8b2c8440b1a9fb8527"
+    },
+    {
+      "reviewer": "voice_reading",
+      "scope": "Serialization/UI/persistence/typed backup plus callable fixture boundaries",
+      "verdict": "CLEAR",
+      "source_tree": "f427f1698bef9d0111c93a8b2c8440b1a9fb8527"
+    },
+    {
+      "reviewer": "voice_reading",
+      "scope": "Real native scope/control APIs and exact PCM assertions",
+      "verdict": "CLEAR",
+      "source_tree": "4b2c045b28091320b4b10b23bacd50b5eec03ef1"
+    },
+    {
+      "reviewer": "voice_reading",
+      "scope": "Exact Director pending-family observer isolation successor6191e8ff",
+      "verdict": "CLEAR",
+      "source_tree": "b15b29117e255b97f30f2f7ec230800a01f38c53"
+    }
+  ],
+  "qualifications": [
+    "All new implementation and tests are source reviewed only; execution awaits the integrated candidate.",
+    "No donor CI, older head PASS, listening or human NVDA qualification is transferred.",
+    "No private assets, account/consent changes, workflow/ref mutation or new production authority."
+  ],
+  "supersedes": {
+    "package_tree": "aca103e76266893a585ee1351af30498687545f7",
+    "source_tree": "a3ecbcfcd973346ae4ab77ce06a12c171a9c3093",
+    "only_changed_source_path": "carr-library/tests/audio/test_director_effects.py",
+    "old_test_blob": "71083f5a36ccb6b2b2c4debf4120f78b34b5603b"
+  },
+  "fixture_isolation": {
+    "status": "SOURCE_REVIEWED",
+    "peer": "voice_reading",
+    "verdict": "CLEAR",
+    "after_blob": "6191e8ffdf26230475f3eb86a7521167e1fad6a5",
+    "original_assertion_lines_retained": 89,
+    "planned_cases": 39,
+    "details": "The real DSP wrapper records only exact staged render.wav argv under this project. Every native child still delegates to actual_stop; only the recorded target gets fixture assertions and synthetic cleanup uncertainty. Foreign-thread DSP/pending factory calls delegate unchanged."
+  }
+}

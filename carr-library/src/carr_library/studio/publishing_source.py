@@ -196,7 +196,7 @@ class DirectorPublicationSource:
             'script_sha256': project.script_sha256, 'job_id': state['id'], 'mode': 'LOCAL_ONLY',
             'sample_rate': project.settings.sample_rate, 'channels': project.settings.channels}
         if (not isinstance(metadata, dict) or any(metadata.get(k) != v for k, v in expected_header.items())
-                or metadata.get('voices') != [asdict(role) for role in project.roles]
+                or metadata.get('voices') != [role.to_dict() for role in project.roles]
                 or metadata.get('outputs') != [row for row in artifacts if row['file'] not in ('production.json', 'narration.srt')]):
             raise ValueError('Primary Studio timeline does not belong to the original project and completed artifacts.')
         frames, rate = metadata.get('frames'), project.settings.sample_rate

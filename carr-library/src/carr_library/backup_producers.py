@@ -163,14 +163,20 @@ def _studio_job(value, identity):
         if (value['result']['project'] != project.id or value['result']['revision'] != project.revision
                 or value['result']['source_sha256'] != sha256(project.original_script.encode()).hexdigest()):
             raise ValueError('Production result belongs to another project.')
+        if 'editor_interchange' in value['result']:
+            from .studio.interchange import validated_cues
+            validated_cues(project, value['result'])
 
 
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256', 'editor_interchange'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
+    if 'editor_interchange' in value:
+        from .studio.interchange import validate_report_shape
+        validate_report_shape(value['editor_interchange'])
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
         raise ValueError('Invalid timeline project identity.')
     digest(value['source_sha256'])
@@ -440,12 +446,13 @@ def _translation_job(value, identity):
     from .assistant.models import canonical
     from .assistant.profiles import ProviderProfile
     from .assistant.providers import Authorization, translation_receipt_sha256
-    from .assistant.translation import (split_text, validate_translation_source_record,
+    from .assistant.translation import (job_chunks, validate_translation_source_record,
                                        _approved_requests, _advanced_receipt)
     fields(value, {'schema', 'kind', 'id', 'created', 'updated', 'status', 'profile', 'title',
         'source_text', 'source_sha256', 'source_language', 'target_language', 'chunks', 'receipts',
         'authorization', 'per_call_cost'},
-        {'glossary', 'source_binding', 'execution_origin', 'restore_requires_review', 'original_profile_sha256'})
+        {'glossary', 'source_binding', 'source_partition', 'execution_origin',
+         'restore_requires_review', 'original_profile_sha256'})
     if (value['schema'] != 'carr-assistant-job/1' or value['kind'] != 'translation/1'
             or value['id'] != identity or value['status'] not in ('queued', 'running', 'paused', 'attention', 'complete')):
         raise ValueError('Invalid translation checkpoint identity or status.')
@@ -455,7 +462,7 @@ def _translation_job(value, identity):
     text(value['source_text'], 2_000_000)
     if sha256(value['source_text'].encode()).hexdigest() != value['source_sha256']:
         raise ValueError('Translation original source changed.')
-    chunks = split_text(value['source_text'])
+    chunks = job_chunks(value)
     if type(value['chunks']) is not list or value['chunks'] != list(chunks):
         raise ValueError('Translation chunks no longer bind the original.')
     restored = value.get('restore_requires_review', False)
@@ -477,6 +484,7 @@ def _translation_job(value, identity):
     try:
         by_chunk, _ = _approved_requests(profile, chunks, value['source_language'],
             value['target_language'], approval, value['per_call_cost'], source_binding=binding,
+            source_partition=value.get('source_partition'),
             glossary=value.get('glossary'), allow_disabled=restored)
     except PermissionError as exc:
         raise ValueError('Translation checkpoint no longer matches its approved scope.') from exc

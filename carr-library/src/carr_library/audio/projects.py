@@ -6,7 +6,8 @@ Only explicitly authored scripts interpret directives. Imported book text must
 use ``directives=False`` so embedded instructions remain spoken data.
 """
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, field, replace
+from copy import deepcopy
+from dataclasses import dataclass, field, fields as dataclass_fields, is_dataclass, replace
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
@@ -20,6 +21,8 @@ from uuid import uuid4
 from filelock import FileLock, Timeout
 
 from ..data_paths import guard_data_directory
+from .effect_presets import checked_chain, read_effect
+from .models import Effect
 
 
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
@@ -171,6 +174,48 @@ def atomic_json(path, value, *, replace_existing=True):
         temporary.unlink(missing_ok=True)
 
 
+def timeline_effects(values, sample_rate=192000):
+    """Use the existing Scene DSP vocabulary without changing authored time."""
+    result = checked_chain(values, sample_rate)
+    if any(effect.enabled and effect.kind == 'tempo' for effect in result):
+        raise ValueError('Timeline effect chains preserve duration. Apply tempo with Convert before assembling a project.')
+    return result
+
+
+def _effect_fields(value):
+    if type(value) is not dict:
+        raise ValueError('Saved role and scene properties must be objects.')
+    result = dict(value)
+    if 'effects' in result:
+        effects = result['effects']
+        if not isinstance(effects, (tuple, list)) or len(effects) > 32:
+            raise ValueError('Saved effects must be an ordered list of at most 32 items.')
+        result['effects'] = tuple(read_effect(item) for item in effects)
+    return result
+
+
+def _serialized(value):
+    # Same typed Effect serialization as Scene projects, retaining asdict's
+    # detached dictionaries and tuple/list shape for every legacy field.
+    if isinstance(value, Effect):
+        return value.to_dict()
+    if is_dataclass(value):
+        return {item.name: _serialized(getattr(value, item.name)) for item in dataclass_fields(value)}
+    if isinstance(value, dict):
+        return {deepcopy(key): _serialized(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return tuple(_serialized(item) for item in value)
+    if isinstance(value, list):
+        return [_serialized(item) for item in value]
+    return deepcopy(value)
+
+
+EFFECTS_STEMS_NOTICE = (
+    'Role effects are included in voice stems. Scene and master effects belong '
+    'to the mixed output and its chapters; stems do not contain those bus effects. '
+    'Effect tails are bounded by the existing sample timeline.')
+
+
 @dataclass(frozen=True)
 class Role:
     id: str
@@ -180,6 +225,7 @@ class Role:
     rate: float = 1.0
     volume: float = 1.0
     pan: float = 0.0
+    effects: tuple[Effect, ...] = ()
 
     def __post_init__(self):
         identity(self.id, 'role identity')
@@ -190,6 +236,13 @@ class Role:
         number(self.rate, 'speech rate', 0.5, 2)
         number(self.volume, 'voice volume', 0, 1)
         number(self.pan, 'pan', -1, 1)
+        object.__setattr__(self, 'effects', timeline_effects(self.effects))
+
+    def to_dict(self):
+        value = _serialized(self)
+        if not self.effects:
+            value.pop('effects')
+        return value
 
 
 @dataclass(frozen=True)
@@ -255,6 +308,7 @@ class Scene:
     title: str
     cues: tuple[Cue, ...]
     music: Music | None = None
+    effects: tuple[Effect, ...] = ()
 
     def __post_init__(self):
         identity(self.id, 'scene identity')
@@ -265,6 +319,7 @@ class Scene:
             raise ValueError('A scene needs distinct validated cues.')
         if self.music is not None and type(self.music) is not Music:
             raise ValueError('Invalid scene music configuration.')
+        object.__setattr__(self, 'effects', timeline_effects(self.effects))
 
 
 @dataclass(frozen=True)
@@ -307,6 +362,7 @@ class Project:
     kind: str = 'research-audio-project'
     version: int = 1
     narration: dict = field(default_factory=dict)
+    effects: tuple[Effect, ...] = ()
 
     def __post_init__(self):
         identity(self.id, 'project identity')
@@ -328,6 +384,9 @@ class Project:
                 or len({scene.id for scene in self.scenes}) != len(self.scenes)
                 or sum(len(scene.cues) for scene in self.scenes) > MAX_CUES):
             raise ValueError('Invalid scene list or cue resource budget exceeded.')
+        object.__setattr__(self, 'effects', timeline_effects(self.effects, self.settings.sample_rate))
+        for chain in (*(role.effects for role in self.roles), *(scene.effects for scene in self.scenes)):
+            timeline_effects(chain, self.settings.sample_rate)
         roles = {role.id for role in self.roles}
         for scene in self.scenes:
             for cue in scene.cues:
@@ -358,7 +417,15 @@ class Project:
         return digest(self.to_dict())
 
     def to_dict(self):
-        value = asdict(self)
+        value = _serialized(self)
+        if not self.effects:
+            value.pop('effects')
+        for role, row in zip(self.roles, value['roles']):
+            if not role.effects:
+                row.pop('effects')
+        for scene, row in zip(self.scenes, value['scenes']):
+            if not scene.effects:
+                row.pop('effects')
         value['script_sha256'] = self.script_sha256
         return value
 
@@ -367,15 +434,16 @@ class Project:
         if type(value) is not dict:
             raise ValueError('Invalid audio project.')
         fields = {'id','title','script','roles','scenes','settings','revision','created_at','source','kind','version','script_sha256'}
-        if set(value) not in (fields, fields | {'narration'}):
+        if not fields <= set(value) or set(value) - fields - {'narration', 'effects'}:
             raise ValueError('Unsupported audio project properties.')
         try:
-            rows = dict(value)
+            rows = _effect_fields(value)
             expected = rows.pop('script_sha256')
-            rows['roles'] = tuple(Role(**row) for row in rows['roles'])
+            rows['roles'] = tuple(Role(**_effect_fields(row)) for row in rows['roles'])
             rows['scenes'] = tuple(Scene(row['id'], row['title'], tuple(Cue(**cue) for cue in row['cues']),
-                Music(**row['music']) if row['music'] is not None else None) for row in rows['scenes']
-                if set(row) == {'id','title','cues','music'})
+                Music(**row['music']) if row['music'] is not None else None,
+                _effect_fields(row).get('effects', ())) for row in rows['scenes']
+                if set(row) in ({'id','title','cues','music'}, {'id','title','cues','music','effects'}))
             if len(rows['scenes']) != len(value['scenes']):
                 raise ValueError('Invalid scene properties.')
             rows['settings'] = Settings(**rows['settings'])
@@ -483,10 +551,22 @@ def parse_script(script, voices, *, title='Audio project', language='en', projec
         role_for('Narrator')
     if not scenes:
         raise ValueError('The script has no speech, asset or pause cues to render.')
+    if previous:
+        # A changed script may move a chapter. Carry its reviewed bus by a
+        # unique title, never by a reused ordinal that now names another scene.
+        prior_effects = {}
+        for old in previous.scenes:
+            if old.effects:
+                if (sum(item.title == old.title for item in previous.scenes) != 1
+                        or sum(item.title == old.title for item in scenes) != 1):
+                    raise ValueError('A scene with saved effects was renamed, removed or became ambiguous. Clear or explicitly reassign its effects before editing the script.')
+                prior_effects[old.title] = old.effects
+        scenes = [replace(scene, effects=prior_effects.get(scene.title, ())) for scene in scenes]
     project = Project(project_id or (previous.id if previous else uuid4().hex), title, script,
         tuple(roles.values()), tuple(scenes), settings or (previous.settings if previous else Settings()),
         previous.revision + 1 if previous else 1,
-        previous.created_at if previous else now(), source or (previous.source if previous else {}))
+        previous.created_at if previous else now(), source or (previous.source if previous else {}),
+        effects=previous.effects if previous else ())
     if previous and previous.narration:
         from .narration import retained_narration
         keep=retained_narration(previous,(cue for scene in project.scenes for cue in scene.cues),project.id)

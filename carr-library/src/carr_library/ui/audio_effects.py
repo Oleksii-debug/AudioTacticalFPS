@@ -12,6 +12,7 @@ from pathlib import Path
 import threading
 
 from ..audio.effect_controls import EffectsBackend
+from ..audio.dsp import effect_parameter_label
 from ..audio.effects import Effect, PRESETS as SHARED_PRESETS, compile_effects
 from ..audio.render import RenderCancelled
 from ..audio.projects import atomic_json, local_path, plain, read_json
@@ -25,6 +26,9 @@ EFFECT_NAMES = {
     "highpass": "High-pass filter", "lowpass": "Low-pass filter", "gain": "Gain",
     "deesser": "De-esser", "declick": "De-click", "declip": "De-clip",
     "tempo": "Tempo", "pitch": "Pitch", "stereo_width": "Stereo width",
+    "lowshelf": "Low shelf (bass)", "highshelf": "High shelf (treble)",
+    "notch": "Notch / hum filter", "chorus": "Chorus",
+    "graphic_equalizer": "Graphic equalizer (10 bands)",
 }
 PRESETS = {
     "Narration": SHARED_PRESETS["narration"],
@@ -67,7 +71,7 @@ def _validated_entry(schema, name, parameters=None, enabled=True):
 
 
 def entry_label(number, row, schema):
-    parameters = "; ".join(f"{key.replace('_', ' ')} {value:g} {schema[row.effect.kind]['parameters'][key]['unit']}"
+    parameters = "; ".join(f"{effect_parameter_label(row.effect.kind, key)} {value:g} {schema[row.effect.kind]['parameters'][key]['unit']}"
                            for key, value in dict(row.effect.parameters).items())
     return f"{number}. {'Enabled' if row.enabled else 'Bypassed'}: " \
            f"{EFFECT_NAMES.get(row.effect.kind, row.effect.kind)}; {parameters}"
@@ -458,13 +462,23 @@ class NativeAudioEffects:
             dialog = wx.Dialog(self.window, title=EFFECT_NAMES.get(entry.effect.kind, entry.effect.kind) + " parameters",
                                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             root, fields = wx.BoxSizer(wx.VERTICAL), {}
+            form, numeric = dialog, root
+            if entry.effect.kind == "graphic_equalizer":
+                form = wx.ScrolledWindow(dialog, size=(560, 360))
+                form.SetScrollRate(0, 16)
+                numeric = wx.BoxSizer(wx.VERTICAL)
+                root.Add(form, 1, wx.EXPAND | wx.ALL, 6)
+            sample_rate = int(self.rate.GetStringSelection())
             for name, spec in self.controller.schema[entry.effect.kind]["parameters"].items():
-                label = f"{name.replace('_', ' ')} ({spec['unit']}; {spec['minimum']} to {spec['maximum']})"
-                root.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 6)
-                control = wx.TextCtrl(dialog, value=f"{dict(entry.effect.parameters)[name]:g}")
+                caption = effect_parameter_label(entry.effect.kind, name, sample_rate=sample_rate)
+                label = f"{caption} ({spec['unit']}; {spec['minimum']} to {spec['maximum']})"
+                numeric.Add(wx.StaticText(form, label=label), 0, wx.ALL, 6)
+                control = wx.TextCtrl(form, value=f"{dict(entry.effect.parameters)[name]:g}")
                 control.SetName(label)
                 fields[name] = control
-                root.Add(control, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+                numeric.Add(control, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+            if form is not dialog:
+                form.SetSizer(numeric)
             if not fields:
                 root.Add(wx.StaticText(dialog, label="This effect has no adjustable numeric parameters."), 0, wx.ALL, 6)
             message = wx.TextCtrl(dialog, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(500, 60))
@@ -479,6 +493,9 @@ class NativeAudioEffects:
             def apply(event):
                 try:
                     values = {name: float(control.GetValue()) for name, control in fields.items()}
+                    if entry.effect.kind == "graphic_equalizer":
+                        compile_effects((Effect(entry.effect.kind, values, entry.enabled),),
+                                        sample_rate=sample_rate)
                     self.controller.update(index, values)
                 except (ValueError, OverflowError) as exc:
                     message.ChangeValue(str(exc) or "Enter a finite number for every parameter.")

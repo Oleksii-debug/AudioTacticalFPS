@@ -40,6 +40,16 @@ _ENCODINGS = {
     '.wma': ('asf', 'wmav2', ('-b:a', '192k')),
 }
 
+# Ten fixed peaking bands reuse the existing equalizer, with fixed Q=sqrt(2).
+# A zero gain is an inactive band; it remains explicit in saved parameters.
+_GRAPHIC_EQ_BANDS = (
+    ('band_31_5_db', 31.5), ('band_63_db', 63), ('band_125_db', 125),
+    ('band_250_db', 250), ('band_500_db', 500), ('band_1000_db', 1000),
+    ('band_2000_db', 2000), ('band_4000_db', 4000),
+    ('band_8000_db', 8000), ('band_16000_db', 16000),
+)
+
+
 # name: parameter -> (default, lower bound, upper bound, unit)
 _CONTROLS = {
     'gain': {'gain_db': (0, -120, 24, 'dB')},
@@ -79,19 +89,32 @@ _CONTROLS = {
     'width': {'factor': (1, 0, 2, 'ratio')},
     'loudness': {'target_lufs': (-18, -40, -9, 'LUFS'), 'peak_db': (-1, -9, 0, 'dBTP'),
                  'range_lu': (7, 1, 20, 'LU')},
+    'graphic_equalizer': {name: (0, -24, 24, 'dB') for name, _ in _GRAPHIC_EQ_BANDS},
 }
 _FILTERS = {'gain': 'volume', 'equalizer': 'equalizer', 'highpass': 'highpass',
     'lowpass': 'lowpass', 'lowshelf': 'bass', 'highshelf': 'treble', 'notch': 'bandreject',
     'gate': 'agate', 'compressor': 'acompressor', 'limiter': 'alimiter', 'denoise': 'afftdn',
     'declick': 'adeclick', 'declip': 'adeclip', 'deesser': 'deesser', 'delay': 'aecho',
     'reverb': 'aecho', 'chorus': 'chorus', 'tempo': 'atempo', 'pitch': 'asetrate',
-    'width': 'extrastereo', 'loudness': 'loudnorm'}
+    'width': 'extrastereo', 'loudness': 'loudnorm', 'graphic_equalizer': 'equalizer'}
 
 
 def effect_controls():
     return {kind: {name: {'default': spec[0], 'minimum': spec[1], 'maximum': spec[2],
                          'unit': spec[3]} for name, spec in values.items()}
             for kind, values in _CONTROLS.items()}
+
+
+def effect_parameter_label(kind, name, *, sample_rate=None):
+    """Accessible labels for fixed bands; ordinary control labels stay stable."""
+    if kind == 'graphic_equalizer':
+        for key, frequency in _GRAPHIC_EQ_BANDS:
+            if key == name:
+                label = f'{frequency:g} Hz band gain'
+                if sample_rate is not None and frequency >= sample_rate / 2:
+                    label += '; inactive at this sample rate, keep 0 dB'
+                return label
+    return name.replace('_', ' ')
 
 
 def narration_preset():
@@ -132,9 +155,19 @@ def effect_filter(effect, sample_rate=24000):
     if 'frequency' in values and definitions['frequency'][3] == 'Hz':
         if values['frequency'] >= sample_rate / 2:
             raise ValueError('Filter frequency must be below half the selected sample rate.')
+    if effect.kind == 'graphic_equalizer':
+        for name, frequency in _GRAPHIC_EQ_BANDS:
+            if values[name] != 0 and frequency >= sample_rate / 2:
+                raise ValueError(f'The {frequency:g} Hz graphic equalizer band must remain at 0 dB '
+                                 'at or above half the selected sample rate.')
     if not effect.enabled:
         return ''
     v, kind = values, effect.kind
+    if kind == 'graphic_equalizer':
+        # At most ten fixed filters; no expressions, user frequencies or files.
+        return ','.join(effect_filter(Effect('equalizer', frequency=frequency,
+                           gain_db=v[name], q=math.sqrt(2)), sample_rate)
+                        for name, frequency in _GRAPHIC_EQ_BANDS if v[name] != 0)
     if kind == 'gain':
         return f'volume={_n(v["gain_db"])}dB'
     if kind == 'equalizer':

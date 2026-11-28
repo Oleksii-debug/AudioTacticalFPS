@@ -23,6 +23,7 @@ from ..ingest.writer_guard import exclusive_writer
 from ..speech._io import new_output, digest, check_cancelled
 from .library_translation import (validate_source_binding, verify_library_sources, source_summary,
                                   authorize_library_binding)
+from .translation_partition import partition_ranges, partition_chunks
 
 ENDPOINT = 'https://translation.googleapis.com/language/translate/v2'
 
@@ -45,6 +46,29 @@ def split_text(value, limit=4500):
     return tuple(parts)
 
 
+def translation_chunks(value, *, source_partition=None):
+    """Keep ordinary chunks unchanged; partition only an exact reviewed layout."""
+    return (split_text(value) if source_partition is None else
+            partition_chunks(value, source_partition))
+
+
+def job_chunks(job):
+    if 'source_partition' in job and job['source_partition'] is None:
+        raise ValueError('A saved layout partition cannot be null.')
+    return translation_chunks(job['source_text'], source_partition=job.get('source_partition'))
+
+
+def _captured_partition(value, source_binding, source_partition):
+    if source_partition is None:
+        return None
+    if source_binding is None:
+        raise ValueError('A layout partition requires an unchanged retained library source.')
+    # Freeze before any caller-owned guard or provider callback can mutate it.
+    captured = json.loads(canonical(source_partition))
+    partition_ranges(value, captured)
+    return captured
+
+
 def _hash(value):
     return sha256(value.encode('utf-8')).hexdigest()
 
@@ -55,17 +79,20 @@ def _source_job_id(job):
                     else _hash(canonical(job['profile'])))
     payload = canonical({**{key: job[key] for key in (
         'source_binding', 'source_sha256', 'authorization', 'execution_origin')},
-        'profile_sha256': profile_hash})
+        'profile_sha256': profile_hash,
+        **({'source_partition': job['source_partition']} if 'source_partition' in job else {})})
     return uuid5(NAMESPACE_URL, 'urn:carr-library:translation-source/1:' + payload).hex
 
 
 def validate_translation_source_record(job):
     """Pure source-job checks, also used before complete-backup recovery."""
     if 'source_binding' not in job:
-        if 'execution_origin' in job or UUID(job['id']).version == 5:
+        if 'execution_origin' in job or 'source_partition' in job or UUID(job['id']).version == 5:
             raise ValueError('A source-bound translation cannot use the legacy unbound job format.')
         return None
     binding = validate_source_binding(job['source_binding'], job['source_text'])
+    if 'source_partition' in job:
+        partition_ranges(job['source_text'], job['source_partition'])
     origin = job.get('execution_origin')
     if (type(origin) is not dict or set(origin) != {'root', 'identity'}
             or type(origin['root']) is not str or not 1 <= len(origin['root']) <= 32768
@@ -108,7 +135,7 @@ def _advanced_receipt(profile, glossary, row):
 
 
 def _approved_requests(profile, chunks, source, target, authorization, per_call_cost, *,
-                       source_binding=None, glossary=None, allow_disabled=False):
+                       source_binding=None, source_partition=None, glossary=None, allow_disabled=False):
     """Reconstruct the same approved requests for submission and later reads."""
     if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled and not allow_disabled:
         raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
@@ -123,6 +150,11 @@ def _approved_requests(profile, chunks, source, target, authorization, per_call_
     expected_task = (authorization.id + ':source:' + source_binding['sha256']
                      if isinstance(authorization, Authorization) and source_binding is not None
                      else getattr(authorization, 'id', None))
+    if source_partition is not None:
+        if source_binding is None:
+            raise PermissionError('Layout approval requires its original source binding.')
+        partition_ranges(''.join(chunks), source_partition)
+        expected_task += ':layout:' + _hash(canonical(source_partition))
     if (not isinstance(authorization, Authorization) or authorization.task_id != expected_task
             or tuple(authorization.operations) != ('translation.text',)
             or tuple(authorization.data_classes) != ('selected-excerpt',)
@@ -161,16 +193,20 @@ def _assemble_translation(chunks, receipts):
     return ''.join(parts)
 
 
-def translation_approval(profile, value, source, target, budget, *, source_binding=None, glossary=None):
+def translation_approval(profile, value, source, target, budget, *, source_binding=None,
+                         source_partition=None, glossary=None):
     """Create an exact selected-data envelope after the caller obtains consent."""
     binding = validate_source_binding(source_binding, value) if source_binding is not None else None
+    partition = _captured_partition(value, binding, source_partition)
     identity, hashes = uuid4().hex, []
-    for chunk in split_text(value):
+    for chunk in translation_chunks(value, source_partition=partition):
         if not chunk.strip():
             continue
         _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
         hashes.append(_hash(canonical(body)))
     task = identity + ':source:' + binding['sha256'] if binding is not None else identity
+    if partition is not None:
+        task += ':layout:' + _hash(canonical(partition))
     approval = Authorization(identity, task, ((profile.id, profile.endpoint),),
         ('translation.text',), ('selected-excerpt',), str(money(budget)), len(hashes),
         time() + 24 * 3600, tuple(hashes))
@@ -270,11 +306,12 @@ class TranslationService:
         return rows
 
     def preview(self, profile, value, source, target, *, rate_per_million=None, source_binding=None,
-                glossary=None, cancelled=lambda: False):
+                source_partition=None, glossary=None, cancelled=lambda: False):
         if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled:
             raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
+        partition = _captured_partition(value, source_binding, source_partition)
         self._check_source({'source_text': value, 'source_binding': source_binding}, cancelled=cancelled)
-        parts = split_text(value)
+        parts = translation_chunks(value, source_partition=partition)
         first = next(part for part in parts if part.strip())
         selected = translation_payload(first, source, target, glossary)
         _request(profile, 'translation.text', selected)
@@ -296,16 +333,20 @@ class TranslationService:
             'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
             'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
             'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
-            'preservation': 'plain text derivative; document formatting is not retained'}
+            'preservation': ('exact reviewed layout blocks; export retains only the declared format profile'
+                             if partition is not None else
+                             'plain text derivative; document formatting is not retained'),
+            **({'source_partition': partition} if partition is not None else {})}
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost,
-               source_binding=None, glossary=None, cancelled=lambda: False):
+               source_binding=None, source_partition=None, glossary=None, cancelled=lambda: False):
         binding = validate_source_binding(source_binding, value) if source_binding is not None else None
+        partition = _captured_partition(value, binding, source_partition)
         preview = self.preview(profile, value, source, target, source_binding=binding,
-                               glossary=glossary, cancelled=cancelled)
-        parts = split_text(value)
+                               source_partition=partition, glossary=glossary, cancelled=cancelled)
+        parts = translation_chunks(value, source_partition=partition)
         _, cost = _approved_requests(profile, parts, source, target, authorization, per_call_cost,
-                                     source_binding=binding, glossary=glossary)
+                                     source_binding=binding, source_partition=partition, glossary=glossary)
         text(title, 'translation title', maximum=512)
         identity = uuid4().hex
         job = {'schema': 'carr-assistant-job/1', 'kind': 'translation/1', 'id': identity,
@@ -313,6 +354,8 @@ class TranslationService:
             'source_text': value, 'source_sha256': preview['source_sha256'], 'source_language': source,
             'target_language': target, 'chunks': list(parts), 'receipts': [], 'glossary': glossary,
             'authorization': asdict(authorization), 'per_call_cost': str(cost)}
+        if partition is not None:
+            job['source_partition'] = partition
         if binding is not None:
             observed = self.library.root.stat()
             job['source_binding'] = binding
@@ -349,7 +392,7 @@ class TranslationService:
                  or not re.fullmatch('[0-9a-f]{64}', original_profile))):
             raise ValueError('The translation restore-review marker or provenance is invalid.')
         if (job.get('kind') != 'translation/1' or job.get('source_sha256') != _hash(job.get('source_text', ''))
-                or job.get('chunks') != list(split_text(job['source_text'])) or not isinstance(job.get('receipts'), list)
+                or job.get('chunks') != list(job_chunks(job)) or not isinstance(job.get('receipts'), list)
                 or len(job['receipts']) > len(job['chunks'])):
             raise ValueError('The translation checkpoint is invalid.')
         binding = validate_translation_source_record(job)
@@ -358,7 +401,8 @@ class TranslationService:
             authorization = Authorization(**job['authorization'])
             requests, cost = _approved_requests(profile, job['chunks'], job['source_language'],
                 job['target_language'], authorization, job['per_call_cost'],
-                source_binding=binding, glossary=job.get('glossary'), allow_disabled=restored)
+                source_binding=binding, source_partition=job.get('source_partition'),
+                glossary=job.get('glossary'), allow_disabled=restored)
         except (KeyError, TypeError, ValueError, PermissionError):
             raise ValueError('The saved translation authority is invalid.') from None
         operations = {}
@@ -593,6 +637,7 @@ class TranslationService:
                 'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
                 'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
                 'source_binding': job.get('source_binding'),
+                **({'source_partition': job['source_partition']} if 'source_partition' in job else {}),
                 'original_profile_sha256': job.get('original_profile_sha256'),
                 'automated_translation_quality': 'not independently qualified',
                 'chunks': [dict({key: value for key, value in row.items() if key != 'text'},

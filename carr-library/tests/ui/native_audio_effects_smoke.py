@@ -139,6 +139,100 @@ def main():
             assert wx.Window.FindFocus() is ui.cancel_button
             later(completed)
 
+        def graphic_parameters():
+            dialog = None
+            try:
+                dialog = next(window for window in wx.GetTopLevelWindows()
+                    if isinstance(window, wx.Dialog) and window.GetParent() is ui.window
+                    and window.GetTitle() == "Graphic equalizer (10 bands) parameters"
+                    and window.IsModal())
+                forms = [child for child in dialog.GetChildren() if isinstance(child, wx.ScrolledWindow)]
+                assert len(forms) == 1
+                controls = [child for child in forms[0].GetChildren() if isinstance(child, wx.TextCtrl)]
+                assert len(controls) == 10 and all(control.GetName().strip() for control in controls)
+                first = next(control for control in controls
+                             if control.GetName().startswith("31.5 Hz band gain"))
+                centre = next(control for control in controls
+                              if control.GetName().startswith("1000 Hz band gain"))
+                last = next(control for control in controls
+                            if control.GetName().startswith("16000 Hz band gain"))
+                assert first.GetValue() == last.GetValue() == "0"
+                assert "keep 0 dB" in last.GetName()
+                last.SetFocus()
+                assert wx.Window.FindFocus() is last and last.Navigate()
+                previous = ui.controller.rows
+                last.ChangeValue("1")
+                event(button("Apply parameters", dialog))
+                status = next(child for child in dialog.GetChildren()
+                    if isinstance(child, wx.TextCtrl)
+                    and child.GetName() == "Effect parameter validation status")
+                assert dialog.IsModal() and ui.controller.rows is previous
+                assert "half the selected sample rate" in status.GetValue()
+                assert wx.Window.FindFocus() is status
+                last.ChangeValue("0")
+                centre.ChangeValue("3")
+                event(button("Apply parameters", dialog))
+                checks.extend(("ten named scrollable graphic EQ numeric controls",
+                               "native access to the last fixed band",
+                               "Nyquist refusal preserves the reviewed chain"))
+            except BaseException:
+                if dialog is not None and dialog.IsModal():
+                    dialog.EndModal(wx.ID_CANCEL)
+                raise
+
+        def begin_extended(original_result):
+            ui.preset_choice.SetStringSelection("Dry conversion")
+            event(button("Replace chain with preset"))
+            assert not ui.controller.rows
+            kinds = ("lowshelf", "highshelf", "notch", "chorus", "graphic_equalizer")
+            for kind in kinds:
+                assert ui.controller.schema[kind]["available"]
+                ui.effect_choice.SetSelection(ui._effect_keys.index(kind))
+                event(button("Add effect"))
+            assert tuple(row.effect.kind for row in ui.controller.rows) == kinds
+            assert wx.Window.FindFocus() is ui.chain
+            armed = [True]
+            fill = wx.CallLater(40, lambda: guarded(graphic_parameters) if armed[0] else None)
+            try:
+                event(button("Edit parameters…"))
+            finally:
+                armed[0] = False
+                fill.Stop()
+            if failures:
+                return
+            assert ui.controller.rows[-1].effect.parameters == tuple(sorted(
+                (name, 3.0 if name == "band_1000_db" else 0.0)
+                for name in ui.controller.schema["graphic_equalizer"]["parameters"]))
+            assert wx.Window.FindFocus() is ui.chain
+            extra_output = Path(directory) / "extended-effects.wav"
+            ui.output.ChangeValue(str(extra_output))
+            ui.format.SetStringSelection("wav")
+            event(ui.convert_button)
+            assert ui.controller.busy and ui.cancel_button.IsEnabled() and not ui.source.IsEnabled()
+            later(lambda: completed_extended(original_result, extra_output))
+
+        def completed_extended(result, extra_output):
+            if ui.controller.busy:
+                later(lambda: completed_extended(result, extra_output))
+                return
+            assert ui.controller.state == "complete", ui.status.GetValue()
+            extra = ui.controller.result
+            assert Path(extra.path).samefile(extra_output)
+            assert extra.sample_rate == 24000 and extra.channels == 2
+            assert extra.frames == 24000 + round(.042 * 24000)
+            assert file_sha256(source) == original_audio and destination.is_file()
+            assert (note.GetValue(), note.IsModified()) == original_note
+            assert wx.Window.FindFocus() is ui.status and not ui.cancel_button.IsEnabled()
+            checks.extend(("native addition of shelves, notch, chorus and graphic EQ",
+                           "native numeric values and return focus retained",
+                           "actual converter chorus tail and unchanged source"))
+            report.update(extended_effects={"frames": extra.frames, "sample_rate": extra.sample_rate,
+                "channels": extra.channels, "live_playback": "NOT_RUN"})
+            report.update(status="PASS", platform=platform.system(), wx_version=wx.version(),
+                checks=checks, frames=result.frames, sample_rate=result.sample_rate,
+                source="synthetic local PCM", audio_engine="actual local FFmpeg", manual_nvda="NOT_RUN")
+            event(ui.close_button)
+
         def completed():
             if ui.controller.busy:
                 later(completed)
@@ -157,10 +251,7 @@ def main():
             assert (note.GetValue(), note.IsModified()) == original_note
             checks.extend(("asynchronous conversion and cancellable focus", "real verified local FLAC output",
                            "unchanged source bytes and unsaved parent note", "completed status focus"))
-            report.update(status="PASS", platform=platform.system(), wx_version=wx.version(),
-                checks=checks, frames=result.frames, sample_rate=result.sample_rate,
-                source="synthetic local PCM", audio_engine="actual local FFmpeg", manual_nvda="NOT_RUN")
-            event(ui.close_button)
+            begin_extended(result)
 
         timeout = wx.CallLater(60000, lambda: stop("Native effects smoke exceeded 60 seconds."))
         later(ready)

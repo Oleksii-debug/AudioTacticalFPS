@@ -1037,3 +1037,41 @@ original receipts, including the old clip fixture, temporary-path fixture,
 selected capture failure and interrupted full installed bundle. Human
 Windows 11/NVDA, acoustic/model/language quality, private signing and distribution
 rights remain separate acceptance dimensions.
+
+
+## 2026-11-28 — Updated-project feature composition (source reviewed; execution pending)
+
+This composition is based on d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb. Its existing
+focused Windows cleanup receipt independently confirms 232/232 source and
+232/232 installed cases. Those results describe d2bd only. The additional
+features and callback-completion changes below require their own exact-head run.
+
+| Updated requirement | Implemented route | Receiving status |
+| --- | --- | --- |
+| Converter effect parity | Existing DSP now supplies low/high shelves, notch and chorus to the converter; one numeric ten-band EQ chain is shared with Scene Studio. | SOURCE_REVIEWED; NOT_RUN on this composition |
+| Director effects | Primary roles, scenes and master use the canonical effect engine, retained native owners and content-bound cache identities; chapter frames retain the rendered master identity. | SOURCE_REVIEWED; NOT_RUN on this composition |
+| Structured translation | Explicit DOCX body / EPUB XHTML profiles retain unsupported-layout refusal, exact original identity, approved chunk partitions and unchanged ZIP members; offline export consumes completed translation receipts. | SOURCE_REVIEWED; NOT_RUN on this composition |
+| Audio-editor interchange | Segmented 75-frame CUE sheets reference the exact public master through the existing no-clobber publisher; completed replay and both current backup envelopes validate the same bytes. | SOURCE_REVIEWED; NOT_RUN on this composition |
+| CLI completion | Existing native cleanup owners now expose a separate notification-completion fence; portable translation and managed installed entrypoints retain stages and leases through callback release. | SOURCE_REVIEWED; NOT_RUN on this composition |
+
+The focused evaluation selects 37 unique source and isolated-installed suites,
+retains whole-package identity before and after execution, and checks every
+selected suite for collection and strict zero failures/skips/expected failures.
+Windows additionally runs existing native effect/Director probes and the source
+and installed structured-translation probe. Each translation probe retains its
+180-second watchdog. Linux uses pinned libcue as an independent actual CUE reader.
+Native predicates and libcue parsing do not establish manual NVDA acceptance,
+physical listening, live provider billing/translation quality, or universal editor compatibility.
+
+MAIN keeps all prior selectors and adds the nine new feature test modules to both
+explicit source/bundle arrays. V3 preserves both existing installed service and
+integrity steps byte for byte, adds a separate strict installed feature/lifetime
+step, and extends its existing source selection. Component evaluation retains
+all existing modules and appends the adjacent feature coverage.
+
+Large-library explicit TXT resources, durable paged folder import and backup
+resource integration are being developed separately against the same current
+producer APIs. They are not included or marked complete by this feature receipt.
+The final delivery still requires the resulting complete candidate's ordinary
+gates and full Windows run; old successes, unfinished jobs, and source review do
+not qualify a new head.

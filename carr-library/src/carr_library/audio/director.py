@@ -150,7 +150,13 @@ class ProductionDirector:
         seconds += max(0, len(project.scenes) - 1) * project.settings.chapter_gap_seconds
         pcm = math.ceil(max(1, seconds) * project.settings.sample_rate * project.settings.channels * 2)
         stems = len(project.roles) if project.settings.stems else 0
-        cache_bytes = pcm * (6 + 2 * stems) + 16 * 1024**2
+        # New processed nodes retain their raw inputs. Account for accepted
+        # role/scene PCM plus simultaneous staging, and a master with its exact
+        # chapter slices. Empty and wholly bypassed chains keep the old plan.
+        effect_pcm = (2 * any(any(effect.enabled for effect in role.effects) for role in project.roles)
+                      + 2 * any(any(effect.enabled for effect in scene.effects) for scene in project.scenes)
+                      + 4 * any(effect.enabled for effect in project.effects))
+        cache_bytes = pcm * (6 + 2 * stems + effect_pcm) + 16 * 1024**2
         output_bytes = pcm * (2 + stems + int(project.settings.format != 'wav')) + 1024**2
         if project.settings.disk_budget_bytes and cache_bytes + output_bytes > project.settings.disk_budget_bytes:
             raise ValueError('The chosen audio disk budget cannot admit the declared production estimate; completed chunks were saved.')
@@ -362,9 +368,11 @@ class ProductionDirector:
                 if used + estimated_bytes > settings.disk_budget_bytes:
                     raise ValueError('The chosen audio disk budget would be exceeded; completed chunks were saved.')
 
-        def cached(kind, inputs, producer):
+        def cached(kind, inputs, producer, *, verify_inputs=None):
             nonlocal cache_hits, generated
             check()
+            if verify_inputs is not None:
+                verify_inputs()
             key = digest({'director':DIRECTOR_VERSION, 'kind':kind, 'inputs':inputs,
                           'runtime':render_runtime if kind!='speech' else runtime})
             path, meta_path = cache / (key + '.wav'), cache / (key + '.json')
@@ -395,6 +403,8 @@ class ProductionDirector:
                         raise
                     valid = False
             if valid:
+                if verify_inputs is not None:
+                    verify_inputs()
                 cache_hits += 1
                 return path, metadata
             # Keep damaged evidence for diagnosis; never silently overwrite it.
@@ -423,6 +433,8 @@ class ProductionDirector:
                 metadata = {'key':key, 'sha256':checksum, 'sample_rate':measured.sample_rate,
                     'channels':measured.channels, 'frames':measured.frames,
                     'duration_seconds':measured.duration_seconds, 'kind':kind}
+                if verify_inputs is not None:
+                    verify_inputs()
                 with self.store.transaction():
                     # Hard-link publishes without overwriting another file.
                     os.link(temporary, path)
@@ -432,6 +444,99 @@ class ProductionDirector:
                 job['steps'][key] = {'state':'complete','sha256':checksum,'kind':kind}
                 self._write_job(job)
                 return path, metadata
+
+        effect_adapter = None
+        effect_code = None
+
+        def effect_runtime(frames):
+            nonlocal effect_adapter
+            from .dsp import AudioRuntime
+            from .models import AudioBudget
+            from .render import tool_path
+            # The real measured PCM bound is narrower than the cooperative
+            # admission estimate. Existing aggregate disk checks still apply.
+            maximum = frames * settings.channels * 2 + 65536
+            disk_check(maximum)
+            if effect_adapter is None:
+                effect_adapter = AudioRuntime(work, input_roots=(cache,),
+                    ffmpeg=tool_path('ffmpeg'), ffprobe=tool_path('ffprobe'),
+                    budget=AudioBudget(max_output_bytes=max(4096, maximum),
+                        reserve_disk_bytes=16 * 1024**2, threads=2))
+            else:
+                effect_adapter.budget = replace(effect_adapter.budget,
+                    max_output_bytes=max(4096, maximum))
+            return effect_adapter
+
+        def source_stamp(path):
+            current = plain(path)
+            return (current.st_dev, current.st_ino, current.st_nlink, current.st_size,
+                    current.st_mtime_ns, current.st_ctime_ns)
+
+        def processed(kind, source, info, effects, *, pan=None, gain_db=0):
+            nonlocal effect_code
+            if not any(effect.enabled for effect in effects):
+                return source, info
+            from . import dsp, effect_presets, models
+            from .models import Track as EffectTrack
+            original_stamp = source_stamp(source)
+            if file_sha256(source) != info['sha256'] or source_stamp(source) != original_stamp:
+                raise ValueError('An accepted effect input changed before processing.')
+
+            def verify_source():
+                check()
+                if source_stamp(source) != original_stamp:
+                    raise ValueError('An accepted effect input changed during processing.')
+
+            if effect_code is None:
+                effect_code = {name: file_sha256(Path(module.__file__))
+                               for name, module in (('dsp', dsp), ('models', models),
+                                                    ('effect_presets', effect_presets))}
+            frames = round(info['frames'] * settings.sample_rate / info['sample_rate'])
+            if frames < 1:
+                raise ValueError('Effect processing requires at least one output frame.')
+            inputs = {'source': info['sha256'], 'frames': frames,
+                'sample_rate': settings.sample_rate, 'channels': settings.channels,
+                'effects': [effect.to_dict() for effect in effects],
+                'code': effect_code, 'timeline': 'fixed-output-frames-v1'}
+            if pan is not None:
+                inputs.update(pan=pan, gain_db=gain_db)
+
+            def apply(destination):
+                adapter = effect_runtime(frames)
+                check()
+                if pan is None:
+                    # A bus is already mixed and routed. Convert applies the
+                    # canonical numeric chain without repeating pan or ducking.
+                    adapter.convert(source, destination, effects=effects,
+                        duration=info['frames'] / info['sample_rate'],
+                        sample_rate=settings.sample_rate, channels=settings.channels,
+                        cancelled=cancelled)
+                else:
+                    # Match the Scene role-placement route: typed effects,
+                    # then role gain/pan, bounded to the measured speech grid.
+                    adapter.mix((EffectTrack(source, gain_db=gain_db, pan=pan,
+                                             effects=effects),), destination,
+                        duration=frames / settings.sample_rate,
+                        sample_rate=settings.sample_rate, channels=settings.channels,
+                        cancelled=cancelled)
+                check()
+
+            path, measured = cached(kind, inputs, apply, verify_inputs=verify_source)
+            verify_source()
+            if file_sha256(source) != info['sha256']:
+                raise ValueError('Accepted effect input bytes changed during processing.')
+            verify_source()
+            if (measured['frames'] != frames or measured['sample_rate'] != settings.sample_rate
+                    or measured['channels'] != settings.channels):
+                raise ValueError('Effect processing changed the accepted sample timeline.')
+            return path, measured
+
+        stem_cache_note = (
+            'Effect projects use per-role stem cache keys. First adoption may rebuild '
+            'mix stems once; verified raw speech stays reusable. Later edits reuse '
+            'unchanged role placements, scenes and stems.')
+        has_effects = bool(project.effects or any(role.effects for role in project.roles)
+                           or any(scene.effects for scene in project.scenes))
 
         def track_identity(track):
             return {'path_hash':file_sha256(track.path),'start':track.start_seconds,
@@ -474,6 +579,8 @@ class ProductionDirector:
                 channels=settings.channels,cancelled=cancelled,duck_music=duck_music)
 
         try:
+            if has_effects and settings.stems:
+                report(stem_cache_note)
             for scene_index, scene in enumerate(project.scenes):
                 check()
                 tracks, timelines, cue_timings = [], {}, []
@@ -497,8 +604,14 @@ class ProductionDirector:
                                 lambda destination, words=words, role=role: self.registry.synthesize(
                                     words, destination, voice_id=role.voice_id, language=role.language,
                                     rate=role.rate, volume=role.volume, cancelled=cancelled))
-                            track = Track(voice_file, start_seconds=_seconds(cursor_frames, settings.sample_rate),
-                                          pan=role.pan, gain_db=cue.gain_db, kind='voice')
+                            if any(effect.enabled for effect in role.effects):
+                                voice_file, info = processed('role-effects', voice_file, info,
+                                    role.effects, pan=role.pan, gain_db=cue.gain_db)
+                                track = Track(voice_file, start_seconds=_seconds(cursor_frames, settings.sample_rate),
+                                              kind='voice', preserve_stereo=True)
+                            else:
+                                track = Track(voice_file, start_seconds=_seconds(cursor_frames, settings.sample_rate),
+                                              pan=role.pan, gain_db=cue.gain_db, kind='voice')
                             tracks.append(track)
                             timelines.setdefault(role.id, []).append(track)
                             # Align on output frames, not accumulated floats.
@@ -562,9 +675,12 @@ class ProductionDirector:
                     lambda destination: mix_timeline(tracks,destination,duration))
                 if abs(info['frames'] - cursor_frames) > 1 or info['sample_rate'] != settings.sample_rate:
                     raise ValueError('Scene render duration does not match its sample timeline.')
+                scene_file, scene_output = processed('scene-effects', scene_file, info, scene.effects)
+                if any(effect.enabled for effect in scene.effects) and scene_output['frames'] != cursor_frames:
+                    raise ValueError('A processed scene differs from its authored sample grid.')
                 scene_files.append(scene_file)
                 scene_info.append({'id':scene.id,'title':scene.title,'start_frame':cumulative_frames,
-                    'frames':cursor_frames,'sha256':info['sha256'],'music_engine':scene.music.engine if scene.music else None,
+                    'frames':cursor_frames,'sha256':scene_output['sha256'],'music_engine':scene.music.engine if scene.music else None,
                     'music_continuity':'independent generated chunks with short fades; listening review required' if scene.music else None})
                 for timing in cue_timings:
                     timing['start_seconds'] += _seconds(cumulative_frames, settings.sample_rate)
@@ -573,8 +689,14 @@ class ProductionDirector:
                     all_timings.append(timing)
                 for role_id in role_stems:
                     selected = timelines.get(role_id, [])
-                    stem, stem_info = cached('stem', {'scene':info['sha256'], 'role':role_id,
-                        'sample_rate':settings.sample_rate,'frames':cursor_frames},
+                    stem_inputs = {'scene':info['sha256'], 'role':role_id,
+                        'sample_rate':settings.sample_rate,'frames':cursor_frames}
+                    if has_effects:
+                        # A role stem contains its own placements, not another
+                        # role's changed audio or scene/master bus processing.
+                        stem_inputs = {'role':role_id, 'tracks':[track_identity(track) for track in selected],
+                            'sample_rate':settings.sample_rate,'channels':settings.channels,'frames':cursor_frames}
+                    stem, stem_info = cached('stem', stem_inputs,
                         lambda destination, selected=selected: mix_timeline(selected,destination,duration,duck_music=False))
                     role_stems[role_id].append(stem)
                 cumulative_frames += cursor_frames
@@ -588,6 +710,42 @@ class ProductionDirector:
                     sample_rate=settings.sample_rate, channels=settings.channels, cancelled=cancelled))
             if abs(master_info['frames'] - cumulative_frames) > len(scene_files):
                 raise ValueError('Master duration does not match the accepted scenes.')
+            master, master_info = processed('master-effects', master, master_info, project.effects)
+            if any(effect.enabled for effect in project.effects):
+                # Stateful master effects run once over the complete programme.
+                # Chapters are exact accepted-master slices, never fresh effects.
+                if master_info['frames'] != cumulative_frames:
+                    raise ValueError('Processed chapters must exactly cover the measured master frame grid.')
+                master_stamp = source_stamp(master)
+                if file_sha256(master) != master_info['sha256']:
+                    raise ValueError('The accepted master changed before chapter extraction.')
+
+                def verify_master():
+                    check()
+                    if source_stamp(master) != master_stamp:
+                        raise ValueError('The accepted master changed during chapter extraction.')
+
+                processed_chapters = []
+                for row in scene_info:
+                    first, last = row['start_frame'], row['start_frame'] + row['frames']
+                    chapter, chapter_info = cached('master-effect-chapter',
+                        {'master':master_info['sha256'], 'start_frame':first, 'end_frame':last,
+                         'sample_rate':settings.sample_rate,'channels':settings.channels,'code':effect_code},
+                        lambda destination, first=first, last=last:
+                            effect_runtime(last - first).extract_pcm_frames(master, destination,
+                                start_frame=first, end_frame=last, cancelled=cancelled),
+                        verify_inputs=verify_master)
+                    if (chapter_info['frames'] != row['frames']
+                            or chapter_info['sample_rate'] != settings.sample_rate
+                            or chapter_info['channels'] != settings.channels):
+                        raise ValueError('A processed chapter differs from its accepted master interval.')
+                    row['sha256'] = chapter_info['sha256']
+                    processed_chapters.append(chapter)
+                verify_master()
+                if file_sha256(master) != master_info['sha256']:
+                    raise ValueError('The accepted master bytes changed during chapter extraction.')
+                verify_master()
+                scene_files = processed_chapters
             result_outputs = []
 
             def publish(source, name):
@@ -638,10 +796,19 @@ class ProductionDirector:
                 'script_sha256':project.script_sha256,'job_id':job['id'],'mode':'LOCAL_ONLY',
                 'frames':master_info['frames'],'sample_rate':settings.sample_rate,'channels':settings.channels,
                 'duration_seconds':master_info['duration_seconds'],'chapters':scene_info,
-                'voices':[asdict(role) for role in project.roles], 'timings':all_timings,
+                'voices':[role.to_dict() for role in project.roles], 'timings':all_timings,
                 'outputs':list(result_outputs),
                 'limitations':['Utterance boundaries are measured; word timing is not inferred.',
                     'Voice pronunciation, music continuity and NVDA speech require independent listening.']}
+            if has_effects:
+                from .projects import EFFECTS_STEMS_NOTICE
+                metadata['effects'] = {
+                    'master': [effect.to_dict() for effect in project.effects],
+                    'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},
+                    'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes}}
+                metadata['limitations'].append(EFFECTS_STEMS_NOTICE)
+                if settings.stems:
+                    metadata['limitations'].append(stem_cache_note)
             # Text artifacts are staged, verified and published like audio.
             atomic_json(work / 'production.json', metadata)
             publish(work / 'production.json', 'production.json')
@@ -653,6 +820,8 @@ class ProductionDirector:
             result = {'job_id':job['id'],'project_id':project.id,'state':'complete','output_dir':str(output),
                       'master':str(output / 'master.wav'),'duration_seconds':master_info['duration_seconds'],
                       'generated_steps':generated,'reused_steps':cache_hits,'outputs':result_outputs}
+            if has_effects and settings.stems:
+                result['cache_notes'] = [stem_cache_note]
             job.update(state='complete',progress=100,message='Audio files completed and checksums verified.',
                        outputs=result_outputs,result=result)
             self._verify_outputs(job)

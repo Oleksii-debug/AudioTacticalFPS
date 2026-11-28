@@ -329,3 +329,85 @@ def test_filter_inventory_still_rejects_missing_verification_filter(monkeypatch,
                         lambda args, **kwargs: (inventories[args[-1]], ""))
     with pytest.raises(RuntimeError, match="volumedetect"):
         EffectsBackend().capabilities()
+
+
+
+@pytest.mark.parametrize('kind,filter_name', [
+    ('lowshelf', 'bass'), ('highshelf', 'treble'), ('notch', 'bandreject'),
+    ('chorus', 'chorus'), ('graphic_equalizer', 'equalizer'),
+])
+def test_each_new_control_requires_its_selected_native_filter(monkeypatch, kind, filter_name):
+    from carr_library.audio import render
+    monkeypatch.setattr(render, 'tool_path', lambda name, configured=None: name)
+    filters = {'aresample', 'alimiter', 'volumedetect', 'bass', 'treble', 'bandreject', 'chorus', 'equalizer'}
+    calls = []
+
+    def inventory(args, **kwargs):
+        calls.append(args[-1])
+        if args[-1] == '-filters':
+            return '\n'.join(f' ... {name} A->A native inventory' for name in sorted(filters)), ''
+        if args[-1] == '-encoders':
+            return ' A..... pcm_s16le PCM\n', ''
+        if args[-1] == '-muxers':
+            return '  E  wav WAV\n', ''
+        assert args[-1] == '-version'
+        return 'Selected local ffprobe\n', ''
+
+    monkeypatch.setattr(render, 'run_process', inventory)
+    assert EffectsBackend().effect_schema()[kind]['available']
+    filters.remove(filter_name)
+    schema = EffectsBackend().effect_schema()
+    assert not schema[kind]['available']
+    assert schema['limiter']['available']
+    assert calls == ['-filters', '-encoders', '-muxers', '-version'] * 2
+
+
+def test_added_converter_effects_roundtrip_and_render_through_the_existing_worker(controller, source, tmp_path):
+    original = file_sha256(source)
+    rows = (
+        ('lowshelf', {'frequency_hz': 120, 'gain_db': -3, 'q': .707}),
+        ('highshelf', {'frequency_hz': 5000, 'gain_db': 2, 'q': .707}),
+        ('notch', {'frequency_hz': 50, 'q': 10}),
+        ('chorus', {'delay_ms': 25, 'depth_ms': 4, 'speed_hz': 1, 'mix': .1}),
+        ('graphic_equalizer', {'band_1000_db': 3}),
+    )
+    for kind, values in rows:
+        assert controller.schema[kind]['available'], kind
+        controller.add(kind, values)
+    controller.toggle(1)
+    reviewed = controller.rows
+    preset = tmp_path / 'new-controls.json'
+    controller.save_preset(preset)
+    raw = preset.read_bytes()
+    wire = json.loads(raw)
+    assert wire['schema_version'] == 1 and wire['kind'] == 'carr-audio-effects'
+    assert len(wire['effects'][-1]['parameters']) == 10
+    assert wire['effects'][-1]['parameters']['band_16000_db'] == 0
+    controller.preset('Narration')
+    controller.load_preset(preset)
+    assert controller.rows == reviewed
+    assert '1000 Hz band gain 3 dB' in entry_label(5, controller.rows[-1], controller.schema)
+    output = tmp_path / 'new-controls.wav'
+    finish(controller.convert(source, output, format='wav', sample_rate=24000))
+    assert controller.state == 'complete', controller.message
+    assert controller.result.path.samefile(output)
+    assert controller.result.sample_rate == 24000 and controller.result.channels == 2
+    assert controller.result.frames == 24000 + round(.029 * 24000)
+    assert file_sha256(source) == original and preset.read_bytes() == raw
+    assert [event['state'] for event in controller.events][-2:] == ['running', 'complete']
+
+
+@pytest.mark.parametrize('rate,band', [
+    (8000, 'band_4000_db'), (16000, 'band_8000_db'), (32000, 'band_16000_db'),
+])
+def test_new_graphic_control_cannot_start_a_conversion_with_an_inactive_band(
+        controller, source, tmp_path, rate, band):
+    controller.add('graphic_equalizer', {band: 1})
+    previous = controller.state, controller.rows, controller._thread
+    original = file_sha256(source)
+    output = tmp_path / 'not-resampled.wav'
+    with pytest.raises(ValueError, match='half the selected sample rate'):
+        controller.convert(source, output, format='wav', sample_rate=rate)
+    assert (controller.state, controller.rows, controller._thread) == previous
+    assert not controller.busy and not output.exists()
+    assert file_sha256(source) == original

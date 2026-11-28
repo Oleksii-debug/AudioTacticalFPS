@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "component": "Primary Director role, scene and master typed effects",
+  "retained_existing": [
+    {
+      "path": "audio/models.py",
+      "blob": "085587e46381a5b2db17dd75fa8b7b793f4094d1",
+      "use": "Canonical immutable typed effect model."
+    },
+    {
+      "path": "audio/effect_presets.py",
+      "blob": "c3e2c4aec2dfbe47afb341a2e8ff886f76ad6c26",
+      "use": "Strict numeric/control decoding, chain serialization, bypass validation."
+    },
+    {
+      "path": "audio/dsp.py",
+      "blob": "d336957bbd017891a9686797077c953f52023e64",
+      "reviewed_successor": "8e6681b169bb1015454d9373140fad03008eb6d4",
+      "use": "Existing DSP/runtime/compiler; the independent graphic EQ successor preserves public APIs."
+    },
+    {
+      "path": "ui/effects_dialog.py",
+      "blob": "4b2352ef9cfa99a373b0b12bdcfc0fc052159a15",
+      "reviewed_successor": "56ade8bff971e167d40e936aa5b3585926e28b16",
+      "use": "Existing ordered numeric UI and preset editing; unchanged scope/control signatures."
+    },
+    {
+      "path": "studio/project.py",
+      "blob": "445fa047cbb92346c57b49118d695a0beae0eba6",
+      "use": "Existing Scene architecture inspected for conceptual reuse; no wholesale replacement of the distinct Primary Director."
+    }
+  ],
+  "donor_audit": [
+    {
+      "source": "PR210",
+      "head": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+      "fresh_head_unchanged": true,
+      "paths": {
+        "effect_editing": "2697282ccd4beb36414c52202d51c795af2fbdb4",
+        "legacy_project": "eb7d5a5858c63273e629461e40441a2f243d34d2",
+        "mastering": "b9fc49a299cb85616f255d7bd5fbbc30558a5fc5",
+        "production": "cb9b916cb1376a9f6a7f5c6e867c52744939e157",
+        "models": "7f9f9034ac8dbb985bd3e3eaa95a3e0133283c20"
+      },
+      "decision": "NO_DIRECT_ADOPTION",
+      "reason": "Different production/model/jobs architecture and authored-script directives; no audio/projects.py or audio/director.py compatible primary bridge. Existing current canonical DSP/model/modal are reused instead."
+    },
+    {
+      "source": "PR173",
+      "previous_review_head": "26beb805aab1e9e202d134008441927523cdcb94",
+      "fresh_head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "fresh_compare": {
+        "status": "behind",
+        "ahead_by": 0,
+        "behind_by": 5,
+        "merge_base": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+      },
+      "fresh_tree_untruncated": true,
+      "fresh_python_module_count": 399,
+      "scene_project_blob": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "scene_render_blob": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "decision": "NO_DIRECT_ADOPTION",
+      "reason": "Current tree still has no primary audio/projects.py/director.py seam; previously reviewed Scene FX/presets do not replace current primary project/source/owner contracts."
+    },
+    {
+      "source": "carr/project-effect-chains-2aa-20261127",
+      "head": "350028583209e2d7eac5c105a4933cd44b00a1a6",
+      "decision": "NO_DIRECT_ADOPTION",
+      "reason": "Scene-project changes, not the primary Director bridge."
+    },
+    {
+      "source": "carr/ordered-effects-2aa-20261127",
+      "head": "13ee332011a124bb6e52da7557d4663660e371a1",
+      "decision": "NO_DIRECT_ADOPTION",
+      "reason": "Existing canonical ordered effects already supply the shared implementation."
+    },
+    {
+      "source": "carr/cue-interchange-review-20261128",
+      "head": "de4fe0ea23c08bb7087170aba956365e62a1e91c",
+      "decision": "SEPARATE_ROOT_OWNED_ADAPTATION",
+      "reason": "CUE/Scene render/typed backup is a separate coordinated change; no competing edits in this package."
+    }
+  ],
+  "no_donor_execution_transfer": true
+}

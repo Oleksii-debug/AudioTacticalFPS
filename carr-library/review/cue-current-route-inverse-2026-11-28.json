@@ -1,0 +1,298 @@
+{
+  "schema": "carr-component-inverse/1",
+  "component": "current-scene-cue-interchange",
+  "base_head": "d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb",
+  "base_tree": "163adc6660ee7cdf02a2fad626c5dd1dcd89aab8",
+  "source_tree": "435e9d6f94faddbde6b66366d3b5740d30f4391d",
+  "entries": [
+    {
+      "path": "carr-library/src/carr_library/studio/interchange.py",
+      "before_blob": null,
+      "after_blob": "3eed2b43caffcb698f1aa41d0b7a131cd93b085f",
+      "new_path_absent": true,
+      "after_utf8": {
+        "sha256": "3ee760ef670cee642cd1618a8a0fbf81215bcf32a3aeffe3b9d042eb2e3113ca",
+        "bytes": 11074
+      }
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before_blob": "4a2b750195ffda21a688da19a0df6551549c46bc",
+      "after_blob": "6447bd9fbf21c2813f41451f1c1821738f93c37f",
+      "changes": [
+        {
+          "op": "+",
+          "n": 288,
+          "x": "        from .interchange import storage_allowance"
+        },
+        {
+          "op": "+",
+          "n": 289,
+          "x": "        interchange = storage_allowance(project)"
+        },
+        {
+          "op": "+",
+          "n": 290,
+          "x": "        cache_bytes += interchange['private_bytes']"
+        },
+        {
+          "op": "+",
+          "n": 291,
+          "x": "        export_bytes += interchange['export_bytes']"
+        },
+        {
+          "op": "+",
+          "n": 301,
+          "x": "                          'measured cue source duration with trim/placement, PCM bytes and intermediate/stem/export copies, '"
+        },
+        {
+          "op": "+",
+          "n": 302,
+          "x": "                          'bounded CUE files and declarations; '"
+        },
+        {
+          "op": "-",
+          "n": 297,
+          "x": "                          'measured cue source duration with trim/placement, PCM bytes and intermediate/stem/export copies; '"
+        },
+        {
+          "op": "+",
+          "n": 1052,
+          "x": "                from .interchange import chapter_cues"
+        },
+        {
+          "op": "+",
+          "n": 1053,
+          "x": "                cue_files, metadata['editor_interchange'] = chapter_cues("
+        },
+        {
+          "op": "+",
+          "n": 1054,
+          "x": "                    project, metadata, cancelled=stopping)"
+        },
+        {
+          "op": "+",
+          "n": 1055,
+          "x": "                for name, raw in cue_files:"
+        },
+        {
+          "op": "+",
+          "n": 1056,
+          "x": "                    # Existing backup policy excludes this reserved pending"
+        },
+        {
+          "op": "+",
+          "n": 1057,
+          "x": "                    # namespace. The public artifact still uses its exact name."
+        },
+        {
+          "op": "+",
+          "n": 1058,
+          "x": "                    source = job_root / ('.pending-' + name)"
+        },
+        {
+          "op": "+",
+          "n": 1059,
+          "x": "                    atomic_bytes(source, raw, replace=source.exists())"
+        },
+        {
+          "op": "+",
+          "n": 1060,
+          "x": "                    publish(source, name)"
+        },
+        {
+          "op": "+",
+          "n": 1061,
+          "x": "                    source.unlink()"
+        },
+        {
+          "op": "+",
+          "n": 1103,
+          "x": "        cue_receipts = {}"
+        },
+        {
+          "op": "+",
+          "n": 1111,
+          "x": "            if 'editor_interchange' in state.get('result', {}):"
+        },
+        {
+          "op": "+",
+          "n": 1112,
+          "x": "                from .interchange import validated_cues"
+        },
+        {
+          "op": "+",
+          "n": 1113,
+          "x": "                for name, raw in validated_cues(project, state['result'], cancelled=cancelled):"
+        },
+        {
+          "op": "+",
+          "n": 1114,
+          "x": "                    required.add(name)"
+        },
+        {
+          "op": "+",
+          "n": 1115,
+          "x": "                    cue_receipts[name] = (len(raw), sha256(raw).hexdigest())"
+        },
+        {
+          "op": "+",
+          "n": 1147,
+          "x": "            if name in cue_receipts and (artifact['size'], artifact['sha256']) != cue_receipts[name]:"
+        },
+        {
+          "op": "+",
+          "n": 1148,
+          "x": "                raise ValueError('The completed chapter interchange receipt changed.')"
+        }
+      ],
+      "before_utf8": {
+        "sha256": "66bbe35025a68ab780860bd5d4831d1b28e9dd40173f5fed7b5dd640abd50075",
+        "bytes": 73347
+      },
+      "after_utf8": {
+        "sha256": "8d17b49d56fb2e36050d73c02586cdd6d68667d03fc415e3d0b8547f20e84e25",
+        "bytes": 74760
+      },
+      "inverse_verified": true
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "before_blob": "ceb0b9f049782fa4b31628beade590fd96a16ce9",
+      "after_blob": "d60366cf89858f9e931c05262e2f6b47086935fc",
+      "changes": [
+        {
+          "op": "+",
+          "n": 166,
+          "x": "        if 'editor_interchange' in value['result']:"
+        },
+        {
+          "op": "+",
+          "n": 167,
+          "x": "            from .studio.interchange import validated_cues"
+        },
+        {
+          "op": "+",
+          "n": 168,
+          "x": "            validated_cues(project, value['result'])"
+        },
+        {
+          "op": "+",
+          "n": 174,
+          "x": "                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256', 'editor_interchange'})"
+        },
+        {
+          "op": "-",
+          "n": 171,
+          "x": "                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256'})"
+        },
+        {
+          "op": "+",
+          "n": 177,
+          "x": "    if 'editor_interchange' in value:"
+        },
+        {
+          "op": "+",
+          "n": 178,
+          "x": "        from .studio.interchange import validate_report_shape"
+        },
+        {
+          "op": "+",
+          "n": 179,
+          "x": "        validate_report_shape(value['editor_interchange'])"
+        }
+      ],
+      "before_utf8": {
+        "sha256": "28c95b9d8b57894ef49bedd4397edc077a42a6ffd1e6541cfd5daf836b534d32",
+        "bytes": 29624
+      },
+      "after_utf8": {
+        "sha256": "13d77caa98ef08bbc1c7a587b3fd1a3039a6c2615b35120a6d42d1b9375a6192",
+        "bytes": 29969
+      },
+      "inverse_verified": true
+    },
+    {
+      "path": "carr-library/src/carr_library/state_recovery.py",
+      "before_blob": "42eb946ef09b2b41328a223a0494012a1ba4021e",
+      "after_blob": "a3f6e361a9ab135c96ebe94e1725cf396d16a689",
+      "changes": [
+        {
+          "op": "+",
+          "n": 213,
+          "x": "        if type(value.get('result')) is dict and 'editor_interchange' in value['result']:"
+        },
+        {
+          "op": "+",
+          "n": 214,
+          "x": "            from .studio.interchange import validated_cues"
+        },
+        {
+          "op": "+",
+          "n": 215,
+          "x": "            validated_cues(project, value['result'])"
+        },
+        {
+          "op": "+",
+          "n": 304,
+          "x": "    from .studio.interchange import validate_backup_state"
+        },
+        {
+          "op": "+",
+          "n": 305,
+          "x": "    validate_backup_state(root, entries, cancelled=cancelled)"
+        }
+      ],
+      "before_utf8": {
+        "sha256": "fcc232458c37f200e360b3ebc406e1f1cff7a0463c5bd1eaade690f1dabc8eb1",
+        "bytes": 20106
+      },
+      "after_utf8": {
+        "sha256": "bea275f978714cc465403e948c4a6c55307fe5d38530a2797a010c4a2f1aa8b0",
+        "bytes": 20428
+      },
+      "inverse_verified": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_interchange.py",
+      "before_blob": null,
+      "after_blob": "769f74252bb71583f4dd49733e30793c674e49c5",
+      "new_path_absent": true,
+      "after_utf8": {
+        "sha256": "f5380b2a6ef2452c021ec168b036b4e571c33291541f3b829825989326f3fe9e",
+        "bytes": 13674
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_cue_interchange_backup.py",
+      "before_blob": null,
+      "after_blob": "e1f968edabda0e0de20d8d78d818b69603266bd1",
+      "new_path_absent": true,
+      "after_utf8": {
+        "sha256": "b28f270717eae49b4d6040a6396acf5764cdd7cb237c19856f51abdbb3f76845",
+        "bytes": 10779
+      }
+    },
+    {
+      "path": "carr-library/scripts/probe_cue_interchange.py",
+      "before_blob": null,
+      "after_blob": "fda74cbeec496df4eea90f6f623a67feef7a58c0",
+      "new_path_absent": true,
+      "after_utf8": {
+        "sha256": "ef294fee2bb07d2feeab786d040db8aa4104815d8ae10c5ea163f18afcbfcf32",
+        "bytes": 7266
+      }
+    },
+    {
+      "path": "carr-library/docs/AUDIO_EDITOR_INTERCHANGE.md",
+      "before_blob": null,
+      "after_blob": "72de60323bbf4ae68c4c0baedc7843b9178a1d67",
+      "new_path_absent": true,
+      "after_utf8": {
+        "sha256": "823651a20e52beac1cba031a8d46b105a063f475137cbfc0d221c2de1f1dba2f",
+        "bytes": 4843
+      }
+    }
+  ],
+  "status": "EXACT_SOURCE_COMPOSITION_NOT_RUNTIME_QUALIFICATION"
+}

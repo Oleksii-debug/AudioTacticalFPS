@@ -1,0 +1,248 @@
+{
+  "schema": "carr-required-effects-reuse-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "3eb0681239e3862393780351716c12206df563cb",
+  "base_tree": "adf3f4d3e3de9e8d2201dd4f4f84a31c4a5679b8",
+  "source_test_tree": "9892f1e03202806d1bf39b52904615c913702af7",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "preimage_blob": "d336957bbd017891a9686797077c953f52023e64",
+      "after_blob": "8e6681b169bb1015454d9373140fad03008eb6d4",
+      "before_utf8_bytes": 43870,
+      "after_utf8_bytes": 45634,
+      "after_sha256": "b4ad5fd7c5b15e1d7b02c69ca846d7982d59705297f76ffd0802b3247144107d",
+      "new_planned_cases": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/effects.py",
+      "preimage_blob": "d6b1eee314aa9592d49ad665d5708ce36df0e544",
+      "after_blob": "2455097b2ee3ed54bae2e478f985f45776f5991c",
+      "before_utf8_bytes": 8062,
+      "after_utf8_bytes": 9297,
+      "after_sha256": "9d62edd2b86cb0796daa99f54ec126626760e4e7a11a5b0354224164b2b4bc1b",
+      "new_planned_cases": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/effect_controls.py",
+      "preimage_blob": "41bbcb2a789db02cae6aec774089c64ab70a5dfb",
+      "after_blob": "988042d12c0f97ee6f3cea7d45494162f054e8cb",
+      "before_utf8_bytes": 4537,
+      "after_utf8_bytes": 4668,
+      "after_sha256": "79f1de97089bc360da2c25e839dfa7485a475a34c75dd47650396b41431535a4",
+      "new_planned_cases": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/render.py",
+      "preimage_blob": "72feebc4afa5baccd47134094ad25621fd9d0f37",
+      "after_blob": "b78a6a7e45c44821ce461ad000f1eec8fdccbb2d",
+      "before_utf8_bytes": 39467,
+      "after_utf8_bytes": 39477,
+      "after_sha256": "6fc6b84f27684618cd121ee27336e674b567ffafa567f85d6ea888a4af2e366b",
+      "new_planned_cases": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_effects.py",
+      "preimage_blob": "3b4197935c753b229c93c7e7f117c6880a50dce1",
+      "after_blob": "ec84a5d71623487c5876014636ab2fbeb166ee19",
+      "before_utf8_bytes": 27529,
+      "after_utf8_bytes": 28542,
+      "after_sha256": "011c5526b703bf86c5310a06c6d04dee732a70d5fb82b03743442c48699fe5b7",
+      "new_planned_cases": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/effects_dialog.py",
+      "preimage_blob": "4b2352ef9cfa99a373b0b12bdcfc0fc052159a15",
+      "after_blob": "56ade8bff971e167d40e936aa5b3585926e28b16",
+      "before_utf8_bytes": 9979,
+      "after_utf8_bytes": 10047,
+      "after_sha256": "05baeac6edc06c462adcc8177fd78e53cef79a9ddcea330b9a3d35c355920173",
+      "new_planned_cases": 0
+    },
+    {
+      "path": "carr-library/tests/audio/test_effects.py",
+      "preimage_blob": "62abbeaf71c47831713fbcb03f120f63135c5312",
+      "after_blob": "d3f73e29a0383d336d8f154e52b6a75502aa5c3d",
+      "before_utf8_bytes": 1679,
+      "after_utf8_bytes": 6601,
+      "after_sha256": "5ba77cd2ac2c45c550fd5d82357f94405226a943e7d127007d5c76b234175b82",
+      "new_planned_cases": 27,
+      "old_prefix_exact": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_dsp.py",
+      "preimage_blob": "8522fa552beba8910aa2e749c19369eb4f90e09a",
+      "after_blob": "6e81fa2376109187253472aa263855cdb7380574",
+      "before_utf8_bytes": 14277,
+      "after_utf8_bytes": 22211,
+      "after_sha256": "6a77e67b18db99d83f3d48d4f6c640f46024e446513cb205f366f6086427ad7f",
+      "new_planned_cases": 11,
+      "old_prefix_exact": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_effect_presets.py",
+      "preimage_blob": "8bcb2e6f855b5047b2b776b27c3cc1591d7abee9",
+      "after_blob": "45c454846f6fde5651aaf09c9ab2a4c8fdd91678",
+      "before_utf8_bytes": 9085,
+      "after_utf8_bytes": 12196,
+      "after_sha256": "01fbc5a4d87ca1ee9833bb2b90dddd68fa8a3eb4cf8f9b234bb4ca5e62f5c47a",
+      "new_planned_cases": 9,
+      "old_prefix_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_effects.py",
+      "preimage_blob": "b48a3b43dd4498de85e1b12c4ffc6fdfc65a809d",
+      "after_blob": "c3abef0f19c8f2c8bbd5333fd515d0761411f8d2",
+      "before_utf8_bytes": 14652,
+      "after_utf8_bytes": 18536,
+      "after_sha256": "0d3b332ab91e87630e70423495b5debf212cb65ef8bb639cc96d0801097f0020",
+      "new_planned_cases": 9,
+      "old_prefix_exact": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_effects.py",
+      "preimage_blob": "943b569c5c226f434dbddeb6ead8d22f4dab3d98",
+      "after_blob": "fcedb04313d7864eb56fe07fda03387bd44a079b",
+      "before_utf8_bytes": 15344,
+      "after_utf8_bytes": 17118,
+      "after_sha256": "08c116041bc24abba5fca24603126908aa69d93ae8a3dccdb82a5489541b422a",
+      "new_planned_cases": 4,
+      "old_prefix_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/native_audio_effects_smoke.py",
+      "preimage_blob": "7c3e9e56fd4b3e2f5a3e3c7035cbed9e3071fb9e",
+      "after_blob": "4b64e25e797d46b9a85bc4da26cd6917561c3d2d",
+      "before_utf8_bytes": 8508,
+      "after_utf8_bytes": 13799,
+      "after_sha256": "3cc470f2bb328eff75d59e5fc255031ae69bbed0452a3ad04b7c889f54555455",
+      "new_planned_cases": 0
+    }
+  ],
+  "requirement": {
+    "spec_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "scenario": "V3-05 professional Studio and numeric audio effects",
+    "finding": "The current Scene/clip DSP already implements shelves, notch and chorus. The converter lacked those routes, and both typed control surfaces lacked fixed-band graphic EQ."
+  },
+  "reuse": {
+    "existing_compiler": "carr-library/src/carr_library/audio/dsp.py@d336957bbd017891a9686797077c953f52023e64",
+    "approach": "Delegate only five added converter kinds to the current canonical typed compiler; preserve all old converter kinds, defaults, graphs, formats and native ownership.",
+    "inspected_donors": [
+      {
+        "commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "pr": 173,
+        "decision": "No graphic-EQ implementation or compatible converter bridge to adopt. Existing Scene DSP behavior is already present here."
+      },
+      {
+        "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+        "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+        "pr": 210,
+        "decision": "No graphic-EQ implementation or compatible converter bridge to adopt. Existing Scene DSP behavior is already present here."
+      },
+      {
+        "commit": "8415622a8f68c8c01f4f0e5f8ad426f8847d56f1",
+        "tree": "b8835418b56cf6730087d90f3c47363f7d679575",
+        "pr": 99,
+        "decision": "Adapt only the actual 500/2000 Hz notch signal-measurement case; no production engine transplant."
+      }
+    ],
+    "inspected_blobs": {
+      "pr173_dsp": "f7833b5f600e3a822a3fa2f2068661c922576230",
+      "pr173_effect_dialog": "d48b985ccb38b5a48123bc2a2c39afb2b2f452e4",
+      "pr210_ffmpeg": "d076e29af23e845fdeafd750be14f83af5ab79b3",
+      "pr210_models": "7f9f9034ac8dbb985bd3e3eaa95a3e0133283c20",
+      "pr210_effect_editing": "2697282ccd4beb36414c52202d51c795af2fbdb4",
+      "pr99_ffmpeg": "e865a7e69e562d4375211773cfd0ae648f7f2e54",
+      "pr99_extended_tests": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f"
+    },
+    "donor_test": "test_actual_notch_removes_one_frequency_and_preserves_the_other; adapted to current AudioRuntime, settled PCM windows and unchanged-source proof.",
+    "donor_execution_transfer": false
+  },
+  "controls": {
+    "kind": "graphic_equalizer",
+    "bands_hz": [
+      31.5,
+      63,
+      125,
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000
+    ],
+    "gain_db": {
+      "minimum": -24,
+      "maximum": 24,
+      "default": 0
+    },
+    "q": "sqrt(2), fixed",
+    "policy": "Only nonzero bands compile. Any nonzero band at or above selected Nyquist is refused, including bypassed values. Zero high bands remain explicit in saved settings. No automatic resampling, frequency substitution or silent dropping.",
+    "bounds": "Existing converter 24-stage and Scene 32-stage limits remain; each graphic stage expands to at most ten fixed biquads. Existing native process deadlines, quotas, source guards and publication controls are unchanged.",
+    "converter_additions": [
+      "lowshelf",
+      "highshelf",
+      "notch",
+      "chorus",
+      "graphic_equalizer"
+    ],
+    "compatibility": "Existing dictionary choice order is preserved. No project/preset schema bump, source mutation, engine/store/runner or dependency is introduced.",
+    "chorus": "Converter conservative duration includes the existing native delay+depth EOF drain; its time-preserving master path refuses enabled chorus like other time-changing effects. Existing Scene timeline behavior and old chorus graph remain exact.",
+    "accessible_ui": "Ten named numeric fields in a scrolled native form; units/ranges and inactive high-band instruction. Ordinary parameter-dialog hierarchy remains unchanged."
+  },
+  "validation": {
+    "execution": "NOT_RUN",
+    "planned_additive_portable_cases": 60,
+    "old_test_prefixes_exact": 5,
+    "native": {
+      "path": "carr-library/tests/ui/native_audio_effects_smoke.py",
+      "preimage_blob": "7c3e9e56fd4b3e2f5a3e3c7035cbed9e3071fb9e",
+      "after_blob": "4b64e25e797d46b9a85bc4da26cd6917561c3d2d",
+      "planned_dynamic_checks": 17,
+      "old_checks": 11,
+      "new_checks": 6,
+      "watchdog_seconds": 60,
+      "original_assertion_lines_retained": 25,
+      "scope": "Real wx controls and selected FFmpeg file conversion; playback, physical hardware, audible quality and NVDA NOT_RUN."
+    },
+    "selectors": [
+      "tests/audio/test_effects.py",
+      "tests/audio/test_dsp.py",
+      "tests/audio/test_effect_presets.py",
+      "tests/ui/test_audio_effects.py",
+      "tests/studio/test_project_effects.py"
+    ],
+    "prerequisites": "Existing FFmpeg and ffprobe; wx for the existing Windows native probe. No model, output endpoint, credential or private asset.",
+    "full_source_readbacks": 12,
+    "inverse_exact": true,
+    "peers": [
+      {
+        "agent": "audio_render",
+        "scope": "Shared DSP/compiler delegation and actual PCM measurements including chorus tail",
+        "verdict": "CLEAR_SOURCE_ONLY"
+      },
+      {
+        "agent": "voice_reading",
+        "scope": "Native UI/labels/modal lifetime and controller/probe API",
+        "verdict": "CLEAR_SOURCE_ONLY"
+      }
+    ]
+  },
+  "primary_sources": [
+    "https://ffmpeg.org/ffmpeg-filters.html#bass_002c-lowshelf",
+    "https://ffmpeg.org/ffmpeg-filters.html#treble_002c-highshelf",
+    "https://ffmpeg.org/ffmpeg-filters.html#bandreject",
+    "https://ffmpeg.org/ffmpeg-filters.html#chorus",
+    "https://ffmpeg.org/ffmpeg-filters.html#equalizer",
+    "https://github.com/FFmpeg/FFmpeg/blob/n7.1.1/libavfilter/af_chorus.c",
+    "https://github.com/FFmpeg/FFmpeg/blob/n7.1.1/libavfilter/af_biquads.c"
+  ],
+  "limits": [
+    "No test result at any earlier receiving head qualifies these unintegrated changes.",
+    "No claim of calibrated convolution reverb, arbitrary plug-ins, automatic mastering or physical listening quality.",
+    "Primary Director wiring is a separately reviewed component owned by the existing Director adapter."
+  ],
+  "product_ref_changes": false
+}

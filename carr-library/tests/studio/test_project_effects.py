@@ -296,3 +296,37 @@ def test_current_source_project_role_wire_stays_stable_with_typed_effects(tmp_pa
     assert reconstructed.scenes[0].lines == project.scenes[0].lines
     assert reconstructed.original_script == project.original_script == source_text
     assert LibraryApp(app.root).edition_metadata(workspace, 'original').title == 'Source'
+
+
+
+@pytest.mark.parametrize('scope', ['master', 'role', 'scene', 'clip'])
+def test_graphic_bands_keep_schema_three_source_and_project_identity_contract(scope):
+    from carr_library.audio.effect_presets import default_effect
+
+    original = enriched()
+    parameters = dict(default_effect('graphic_equalizer').parameters)
+    parameters.update(band_31_5_db=3, band_1000_db=-6)
+    chain = (Effect('graphic_equalizer', parameters, enabled=False),)
+    if scope == 'master':
+        changed = replace(original, effects=chain)
+    elif scope == 'role':
+        changed = replace(original, roles=(replace(original.roles[0], effects=chain),))
+    elif scope == 'scene':
+        changed = replace(original, scenes=(replace(original.scenes[0], effects=chain),))
+    else:
+        scene = original.scenes[0]
+        changed = replace(original, scenes=(replace(scene, cues=(
+            replace(scene.cues[0], effects=chain),)),))
+    raw = encode(changed.to_dict())
+    restored = Project.from_dict(json.loads(raw))
+    assert restored == changed and restored.fingerprint == changed.fingerprint
+    assert restored.fingerprint != original.fingerprint and restored.schema == 3
+    assert restored.original_script == original.original_script
+    assert restored.scenes[0].lines == original.scenes[0].lines
+    assert restored.scenes[0].cues[0].path == original.scenes[0].cues[0].path
+    assert encode(restored.to_dict()) == raw
+    selected = {'master': restored.effects, 'role': restored.roles[0].effects,
+                'scene': restored.scenes[0].effects,
+                'clip': restored.scenes[0].cues[0].effects}[scope]
+    assert selected == chain and len(selected[0].parameters) == 10
+    assert selected[0].parameters['band_16000_db'] == 0 and selected[0].enabled is False

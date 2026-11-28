@@ -1,0 +1,437 @@
+{
+  "base_commit": "d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb",
+  "inverse_tree_elements": [
+    {
+      "path": "carr-library/review/required-effects-inverse-2026-11-28.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/required-effects-reuse-2026-11-28.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d336957bbd017891a9686797077c953f52023e64"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/effect_controls.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41bbcb2a789db02cae6aec774089c64ab70a5dfb"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/effects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d6b1eee314aa9592d49ad665d5708ce36df0e544"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/render.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72feebc4afa5baccd47134094ad25621fd9d0f37"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_effects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b4197935c753b229c93c7e7f117c6880a50dce1"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/effects_dialog.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b2352ef9cfa99a373b0b12bdcfc0fc052159a15"
+    },
+    {
+      "path": "carr-library/tests/audio/test_dsp.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8522fa552beba8910aa2e749c19369eb4f90e09a"
+    },
+    {
+      "path": "carr-library/tests/audio/test_effect_presets.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8bcb2e6f855b5047b2b776b27c3cc1591d7abee9"
+    },
+    {
+      "path": "carr-library/tests/audio/test_effects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62abbeaf71c47831713fbcb03f120f63135c5312"
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_effects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "943b569c5c226f434dbddeb6ead8d22f4dab3d98"
+    },
+    {
+      "path": "carr-library/tests/ui/native_audio_effects_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c3e9e56fd4b3e2f5a3e3c7035cbed9e3071fb9e"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_effects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b48a3b43dd4498de85e1b12c4ffc6fdfc65a809d"
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3a23611bb5829ef212736562204cde830316af7f"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "73a4f3f1f3e9befeeeb6a88a2d5b7f96f0f65452"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6696ed7aa1fd1c4afc2b24d4b80ff0647fe61ce"
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f2f3583e643e0f3bcb6c8a6fb4aec95944ab795"
+    },
+    {
+      "path": "carr-library/review/director-role-scene-master-effects-2026-11-28/inverse.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/director-role-scene-master-effects-2026-11-28/reuse.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/director-role-scene-master-effects-2026-11-28/review.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/feature-aggregate-gates-2026-11-28/inverse.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/feature-aggregate-gates-2026-11-28/review.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/director.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fec61ba06b671bc6ca625fa7401ac58b66bfae63"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/projects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2bcfe5b8b29a0ffd4902528cd0ea5d61af94e88c"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f50c6527d89638b37be249304d94583c3dc0b3c0"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6cbe125e3aecb978711740cffaa7df1d9d3c9174"
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/ui/native_audio_studio_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e971c5bbdea9a03cacb55eee543d3e23e014b93a"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_studio.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e7996326d503f3a8b0efaa9f3c3984434f566466"
+    },
+    {
+      "path": ".github/workflows/carr-feature-completion-evaluation.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/docs/AUDIO_EDITOR_INTERCHANGE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/cue-current-route-inverse-2026-11-28.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/cue-current-route-review-2026-11-28.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/scripts/probe_cue_interchange.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ceb0b9f049782fa4b31628beade590fd96a16ce9"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_recovery.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "42eb946ef09b2b41328a223a0494012a1ba4021e"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/interchange.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a2b750195ffda21a688da19a0df6551549c46bc"
+    },
+    {
+      "path": "carr-library/tests/storage/test_cue_interchange_backup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_interchange.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/docs/translation_workstation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4bd3ea20d3599862b3ca6602758c9bcb13c53276"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41f7ff5fdc87a13397e583f354754a4650835346"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cee5ced3d070c3fbf2fc9d73edbe1b3d821e2ed7"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout_worker.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/cleanup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "139d382383083301b21f38da3301ed36e590fbb6"
+    },
+    {
+      "path": "carr-library/src/carr_library/installation_lease.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f85b72eaa0aea0ff9d3b741ef44377e08f653da8"
+    },
+    {
+      "path": "carr-library/src/carr_library/translation_cli.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "31d381adfcb9b59c7cbb841be8b33e3b5cb08a5d"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da5f6bd84fcf5d9750ab3d715aa726bfb49dbc62"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_layout.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/audio/test_cleanup_contexts.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4adef1d8e87db0bb7444395aed4bf3be86235e84"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_managed_launch_boundary.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "819e3fcec6c0ca3376a836a159ef3721c501dfcf"
+    },
+    {
+      "path": "carr-library/tests/storage/test_translation_layout_backup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_library_translation_dialog.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1f11df877eef70d71322679e12e845875434e499"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_layout.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66cef15698178d3b210f22790fd7dba633511d3f"
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/artifacts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/installed-verdict.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/jobs.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/native-membership-proofs.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/qualification.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/run.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/source-installed-python-identity.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/source-verdict.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/source-wheel.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    },
+    {
+      "path": "carr-library/review/native-cleanup-d2bda7e1-2026-11-28/windows-job.log",
+      "mode": "100644",
+      "type": "blob",
+      "sha": null
+    }
+  ]
+}

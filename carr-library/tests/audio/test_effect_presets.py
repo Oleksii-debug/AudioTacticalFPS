@@ -212,3 +212,65 @@ def test_actual_saved_order_changes_audio_and_bypassed_chain_preserves_source_pc
     assert pcm(bypass.path) == pcm(source)
     assert sha256(source.read_bytes()).hexdigest() == before
     assert not list(tmp_path.glob('.audio-*'))
+
+
+
+@pytest.mark.parametrize('rate', [8000, 16000, 24000, 48000])
+def test_graphic_defaults_keep_all_ten_bands_and_inactive_high_bands_at_low_rates(rate):
+    from carr_library.audio.dsp import effect_parameter_label
+
+    effect = default_effect('graphic_equalizer', rate)
+    assert len(effect.parameters) == 10 and set(effect.parameters.values()) == {0}
+    assert checked_chain((effect,), rate) == (effect,)
+    label = effect_parameter_label('graphic_equalizer', 'band_16000_db', sample_rate=rate)
+    assert label.startswith('16000 Hz band gain')
+    assert ('keep 0 dB' in label) is (rate <= 32000)
+    session = EffectChainSession(sample_rate=rate)
+    assert session.add('graphic_equalizer') == 0
+    assert session.effects == (effect,)
+
+
+@pytest.mark.parametrize('enabled', [True, False])
+def test_graphic_nyquist_edit_preserves_the_previous_session_and_undo_history(enabled):
+    session = EffectChainSession((default_effect('graphic_equalizer', 24000),))
+    previous = session.effects
+    with pytest.raises(ValueError, match='half the selected sample rate'):
+        session.edit(0, Effect('graphic_equalizer', band_16000_db=1, enabled=enabled))
+    assert session.effects is previous
+    with pytest.raises(ValueError, match='undo'):
+        session.history()
+
+
+def test_graphic_settings_roundtrip_through_native_backup_without_audio_authority(tmp_path):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import create_backup, restore_backup
+
+    app = LibraryApp(tmp_path / 'graphic-library')
+    store = EffectPresetStore(app.root)
+    parameters = dict(default_effect('graphic_equalizer', 48000).parameters)
+    parameters.update(band_31_5_db=3, band_1000_db=-6, band_16000_db=2)
+    effects = (Effect('graphic_equalizer', parameters, enabled=False),
+               Effect('notch', frequency=50, q=10))
+    saved = store.save('Графічний еквалайзер — огляд', effects, sample_rate=48000)
+    original = (store.root / (saved.id + '.json')).read_bytes()
+    assert json.loads(original)['schema'] == 1
+    backup = tmp_path / 'graphic-backup'
+    checksum = create_backup(app, backup)
+    destination = restore_backup(backup, tmp_path / 'graphic-restored', checksum)
+    restored = EffectPresetStore(destination)
+    assert restored.get(saved.id) == saved
+    assert (restored.root / (saved.id + '.json')).read_bytes() == original
+    assert restored.get(saved.id).effects[0].parameters == parameters
+    assert restored.get(saved.id).effects[0].enabled is False
+    assert not list(destination.rglob('*.wav'))
+
+
+@pytest.mark.parametrize('enabled', [True, False])
+def test_saved_graphic_settings_are_revalidated_when_output_rate_changes(enabled):
+    effect = Effect('graphic_equalizer', band_16000_db=2, enabled=enabled)
+    saved = EffectPreset('b' * 32, 'Reviewed rate', 48000, (effect,))
+    value = saved.to_dict()
+    value['sample_rate'] = 24000
+    with pytest.raises(ValueError, match='half the selected sample rate'):
+        EffectPreset.from_dict(value)
+    assert saved.sample_rate == 48000 and saved.effects == (effect,)

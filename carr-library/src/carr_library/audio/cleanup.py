@@ -32,7 +32,12 @@ class CleanupOwner:
         self._attempt_lock = threading.Lock()
         self._callback_lock = threading.Lock()
         self._callbacks = []
+        self._notifications_in_flight = 0
+        self._retained_notifications = False
         self.quiescent_event = threading.Event()
+        # Native quiescence is unchanged. This separate fence also waits for
+        # every already-registered retained-context notification to finish.
+        self.notifications_complete_event = threading.Event()
         self.last_error = None
 
     @property
@@ -54,8 +59,26 @@ class CleanupOwner:
             ready = self.quiescent
             if not ready:
                 self._callbacks.append(callback)
+            else:
+                self._notifications_in_flight += 1
+                self.notifications_complete_event.clear()
+                if self._retained_notifications:
+                    with _RETAINED_LOCK:
+                        _RETAINED.add(self)
         if ready:
-            self._notify(callback)
+            try:
+                self._notify(callback)
+            finally:
+                self._notification_finished()
+
+    def _notification_finished(self, count=1):
+        with self._callback_lock:
+            self._notifications_in_flight -= count
+            if self.quiescent and self._notifications_in_flight == 0:
+                self.notifications_complete_event.set()
+                if self._retained_notifications:
+                    with _RETAINED_LOCK:
+                        _RETAINED.discard(self)
 
     def close(self):
         """Attempt once, without overlapping native waits; return confirmed status."""
@@ -76,12 +99,24 @@ class CleanupOwner:
             with self._callback_lock:
                 self.quiescent_event.set()
                 callbacks, self._callbacks = tuple(self._callbacks), []
-            with _RETAINED_LOCK:
-                _RETAINED.discard(self)
+                self._notifications_in_flight += len(callbacks)
         finally:
             self._attempt_lock.release()
+        interrupted = None
+        if not callbacks:
+            self._notification_finished(0)
         for callback in callbacks:
-            self._notify(callback)
+            try:
+                self._notify(callback)
+            except BaseException as signal:
+                # One interrupted consumer cannot strand another retained
+                # stage. Deliver the same signal after all queued callbacks.
+                if interrupted is None:
+                    interrupted = signal
+            finally:
+                self._notification_finished()
+        if interrupted is not None:
+            raise interrupted
         return True
 
     def _retry(self):
@@ -95,6 +130,7 @@ def pending_cleanup(attempt, *, message, callbacks=()):
     for callback in callbacks:
         owner.add_quiescent_callback(callback)
     with _RETAINED_LOCK:
+        owner._retained_notifications = True
         _RETAINED.add(owner)
     try:
         worker = threading.Thread(target=owner._retry, name='audio-cleanup', daemon=True)
@@ -119,6 +155,33 @@ def _pending_owners(error):
             owners[id(current.cleanup_owner)] = current.cleanup_owner
         pending.extend((current.__cause__, current.__context__))
     return tuple(owners.values())
+
+
+def drain_pending_cleanup(error=None):
+    """Drain the same native owners and their notifications without new threads.
+
+    Return the first deferred KeyboardInterrupt/SystemExit only after both
+    proofs. An entrypoint can then close its native runtime handle, drain any
+    close-origin owners, and deliver its original outcome or deferred signal.
+    """
+
+    owners, interrupted = {}, None
+    while True:
+        try:
+            owners.update((id(owner), owner) for owner in _pending_owners(error))
+            with _RETAINED_LOCK:
+                owners.update((id(owner), owner) for owner in _RETAINED)
+            waiting = tuple(owner for owner in owners.values()
+                            if not owner.quiescent_event.is_set()
+                            or not owner.notifications_complete_event.is_set())
+            if not waiting:
+                return interrupted
+            for owner in waiting:
+                owner.close()
+            waiting[0].notifications_complete_event.wait(.25)
+        except (KeyboardInterrupt, SystemExit) as signal:
+            if interrupted is None:
+                interrupted = signal
 
 
 @contextmanager

@@ -1041,7 +1041,16 @@ jobs:
             'tests/storage/test_transcription_composite_backup.py',
             'tests/transcription/test_owned_admission.py',
             'tests/transcription/test_protocol_routing.py',
-            'tests/reader/test_export_change_time.py'
+            'tests/reader/test_export_change_time.py',
+            'tests/audio/test_director_effects.py',
+            'tests/storage/test_director_effects_backup.py',
+            'tests/studio/test_interchange.py',
+            'tests/storage/test_cue_interchange_backup.py',
+            'tests/assistant/test_translation_partition.py',
+            'tests/assistant/test_translation_layout.py',
+            'tests/assistant/test_translation_epub_layout.py',
+            'tests/ui/test_translation_layout.py',
+            'tests/storage/test_translation_layout_backup.py'
           )
           ConvertTo-Json -InputObject $suites | Set-Content 'ci-results/required-source-suites.json'
 
@@ -1989,7 +1998,16 @@ jobs:
                             'tests/storage/test_transcription_composite_backup.py',
                             'tests/transcription/test_owned_admission.py',
                             'tests/transcription/test_protocol_routing.py',
-                            'tests/reader/test_export_change_time.py']
+                            'tests/reader/test_export_change_time.py',
+              'tests/audio/test_director_effects.py',
+              'tests/storage/test_director_effects_backup.py',
+              'tests/studio/test_interchange.py',
+              'tests/storage/test_cue_interchange_backup.py',
+              'tests/assistant/test_translation_partition.py',
+              'tests/assistant/test_translation_layout.py',
+              'tests/assistant/test_translation_epub_layout.py',
+              'tests/ui/test_translation_layout.py',
+              'tests/storage/test_translation_layout_backup.py']
           class ImmediateFailures:
               def pytest_runtest_logreport(self, report):
                   if report.failed:

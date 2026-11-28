@@ -1,0 +1,170 @@
+{
+  "source": [
+    {
+      "before_total": 2,
+      "after_total": 6,
+      "requested_pids": [
+        2520,
+        2932
+      ],
+      "added_native_pids": [
+        2520,
+        2932,
+        5240,
+        5872
+      ],
+      "images": [
+        {
+          "pid": 2520,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 2932,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 5240,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        },
+        {
+          "pid": 5872,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        }
+      ],
+      "selected_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "caller_failure": false,
+      "independently_checked_handles": 4,
+      "signal_before_close": true,
+      "job_closed_after_members": true
+    },
+    {
+      "before_total": 2,
+      "after_total": 6,
+      "requested_pids": [
+        6128,
+        7860
+      ],
+      "added_native_pids": [
+        5684,
+        6128,
+        7828,
+        7860
+      ],
+      "images": [
+        {
+          "pid": 5684,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        },
+        {
+          "pid": 6128,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 7828,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        },
+        {
+          "pid": 7860,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        }
+      ],
+      "selected_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "caller_failure": true,
+      "independently_checked_handles": 4,
+      "signal_before_close": true,
+      "job_closed_after_members": true
+    }
+  ],
+  "installed": [
+    {
+      "before_total": 2,
+      "after_total": 6,
+      "requested_pids": [
+        3936,
+        3268
+      ],
+      "added_native_pids": [
+        2796,
+        3268,
+        3936,
+        5608
+      ],
+      "images": [
+        {
+          "pid": 2796,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        },
+        {
+          "pid": 3268,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 3936,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 5608,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        }
+      ],
+      "selected_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "caller_failure": false,
+      "independently_checked_handles": 4,
+      "signal_before_close": true,
+      "job_closed_after_members": true
+    },
+    {
+      "before_total": 2,
+      "after_total": 6,
+      "requested_pids": [
+        2908,
+        5340
+      ],
+      "added_native_pids": [
+        2908,
+        5088,
+        5340,
+        6920
+      ],
+      "images": [
+        {
+          "pid": 2908,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 5088,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        },
+        {
+          "pid": 5340,
+          "image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "requested_actor": true
+        },
+        {
+          "pid": 6920,
+          "image": "C:\\Windows\\System32\\conhost.exe",
+          "requested_actor": false
+        }
+      ],
+      "selected_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "caller_failure": true,
+      "independently_checked_handles": 4,
+      "signal_before_close": true,
+      "job_closed_after_members": true
+    }
+  ]
+}

@@ -1,0 +1,1679 @@
+{
+  "schema": 1,
+  "source_tree": "d2cd1f8ebf48816f63daee79ba6931c94ea7479e",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/projects.py",
+      "preimage": "2bcfe5b8b29a0ffd4902528cd0ea5d61af94e88c",
+      "new_file": false,
+      "before_sha256": "a738b67570b8374618e4b71016c9719998cc24e3b5bfcaac757158fb0115ca8e",
+      "after_sha256": "8d146162dbf68e9e23dedc5dd13058792b81a660b6f87aaa91eae8dd4e94e4a6",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 9,
+          "newLine": 9,
+          "contextBefore": [
+            "use ``directives=False`` so embedded instructions remain spoken data.",
+            "\"\"\"",
+            "from contextlib import contextmanager"
+          ],
+          "removed": [
+            "from dataclasses import asdict, dataclass, field, replace"
+          ],
+          "added": [
+            "from copy import deepcopy",
+            "from dataclasses import dataclass, field, fields as dataclass_fields, is_dataclass, replace"
+          ],
+          "contextAfter": [
+            "from datetime import datetime, timezone",
+            "from hashlib import sha256",
+            "import json"
+          ]
+        },
+        {
+          "oldLine": 23,
+          "newLine": 24,
+          "contextBefore": [
+            "from filelock import FileLock, Timeout",
+            "",
+            "from ..data_paths import guard_data_directory"
+          ],
+          "removed": [],
+          "added": [
+            "from .effect_presets import checked_chain, read_effect",
+            "from .models import Effect"
+          ],
+          "contextAfter": [
+            "",
+            "",
+            "MAX_PROJECT_BYTES = 32 * 1024 * 1024"
+          ]
+        },
+        {
+          "oldLine": 174,
+          "newLine": 177,
+          "contextBefore": [
+            "        temporary.unlink(missing_ok=True)",
+            "",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "def timeline_effects(values, sample_rate=192000):",
+            "    \"\"\"Use the existing Scene DSP vocabulary without changing authored time.\"\"\"",
+            "    result = checked_chain(values, sample_rate)",
+            "    if any(effect.enabled and effect.kind == 'tempo' for effect in result):",
+            "        raise ValueError('Timeline effect chains preserve duration. Apply tempo with Convert before assembling a project.')",
+            "    return result",
+            "",
+            "",
+            "def _effect_fields(value):",
+            "    if type(value) is not dict:",
+            "        raise ValueError('Saved role and scene properties must be objects.')",
+            "    result = dict(value)",
+            "    if 'effects' in result:",
+            "        effects = result['effects']",
+            "        if not isinstance(effects, (tuple, list)) or len(effects) > 32:",
+            "            raise ValueError('Saved effects must be an ordered list of at most 32 items.')",
+            "        result['effects'] = tuple(read_effect(item) for item in effects)",
+            "    return result",
+            "",
+            "",
+            "def _serialized(value):",
+            "    # Same typed Effect serialization as Scene projects, retaining asdict's",
+            "    # detached dictionaries and tuple/list shape for every legacy field.",
+            "    if isinstance(value, Effect):",
+            "        return value.to_dict()",
+            "    if is_dataclass(value):",
+            "        return {item.name: _serialized(getattr(value, item.name)) for item in dataclass_fields(value)}",
+            "    if isinstance(value, dict):",
+            "        return {deepcopy(key): _serialized(item) for key, item in value.items()}",
+            "    if isinstance(value, tuple):",
+            "        return tuple(_serialized(item) for item in value)",
+            "    if isinstance(value, list):",
+            "        return [_serialized(item) for item in value]",
+            "    return deepcopy(value)",
+            "",
+            "",
+            "EFFECTS_STEMS_NOTICE = (",
+            "    'Role effects are included in voice stems. Scene and master effects belong '",
+            "    'to the mixed output and its chapters; stems do not contain those bus effects. '",
+            "    'Effect tails are bounded by the existing sample timeline.')",
+            "",
+            ""
+          ],
+          "contextAfter": [
+            "@dataclass(frozen=True)",
+            "class Role:",
+            "    id: str"
+          ]
+        },
+        {
+          "oldLine": 183,
+          "newLine": 228,
+          "contextBefore": [
+            "    rate: float = 1.0",
+            "    volume: float = 1.0",
+            "    pan: float = 0.0"
+          ],
+          "removed": [],
+          "added": [
+            "    effects: tuple[Effect, ...] = ()"
+          ],
+          "contextAfter": [
+            "",
+            "    def __post_init__(self):",
+            "        identity(self.id, 'role identity')"
+          ]
+        },
+        {
+          "oldLine": 193,
+          "newLine": 239,
+          "contextBefore": [
+            "        number(self.rate, 'speech rate', 0.5, 2)",
+            "        number(self.volume, 'voice volume', 0, 1)",
+            "        number(self.pan, 'pan', -1, 1)"
+          ],
+          "removed": [],
+          "added": [
+            "        object.__setattr__(self, 'effects', timeline_effects(self.effects))"
+          ],
+          "contextAfter": [
+            "",
+            "",
+            "@dataclass(frozen=True)"
+          ]
+        },
+        {
+          "oldLine": 194,
+          "newLine": 241,
+          "contextBefore": [
+            "        number(self.volume, 'voice volume', 0, 1)",
+            "        number(self.pan, 'pan', -1, 1)",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "    def to_dict(self):",
+            "        value = _serialized(self)",
+            "        if not self.effects:",
+            "            value.pop('effects')",
+            "        return value"
+          ],
+          "contextAfter": [
+            "",
+            "@dataclass(frozen=True)",
+            "class Cue:"
+          ]
+        },
+        {
+          "oldLine": 195,
+          "newLine": 247,
+          "contextBefore": [
+            "        number(self.pan, 'pan', -1, 1)",
+            "",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            ""
+          ],
+          "contextAfter": [
+            "@dataclass(frozen=True)",
+            "class Cue:",
+            "    id: str"
+          ]
+        },
+        {
+          "oldLine": 258,
+          "newLine": 311,
+          "contextBefore": [
+            "    title: str",
+            "    cues: tuple[Cue, ...]",
+            "    music: Music | None = None"
+          ],
+          "removed": [],
+          "added": [
+            "    effects: tuple[Effect, ...] = ()"
+          ],
+          "contextAfter": [
+            "",
+            "    def __post_init__(self):",
+            "        identity(self.id, 'scene identity')"
+          ]
+        },
+        {
+          "oldLine": 268,
+          "newLine": 322,
+          "contextBefore": [
+            "            raise ValueError('A scene needs distinct validated cues.')",
+            "        if self.music is not None and type(self.music) is not Music:",
+            "            raise ValueError('Invalid scene music configuration.')"
+          ],
+          "removed": [],
+          "added": [
+            "        object.__setattr__(self, 'effects', timeline_effects(self.effects))"
+          ],
+          "contextAfter": [
+            "",
+            "",
+            "@dataclass(frozen=True)"
+          ]
+        },
+        {
+          "oldLine": 310,
+          "newLine": 365,
+          "contextBefore": [
+            "    kind: str = 'research-audio-project'",
+            "    version: int = 1",
+            "    narration: dict = field(default_factory=dict)"
+          ],
+          "removed": [],
+          "added": [
+            "    effects: tuple[Effect, ...] = ()"
+          ],
+          "contextAfter": [
+            "",
+            "    def __post_init__(self):",
+            "        identity(self.id, 'project identity')"
+          ]
+        },
+        {
+          "oldLine": 331,
+          "newLine": 387,
+          "contextBefore": [
+            "                or len({scene.id for scene in self.scenes}) != len(self.scenes)",
+            "                or sum(len(scene.cues) for scene in self.scenes) > MAX_CUES):",
+            "            raise ValueError('Invalid scene list or cue resource budget exceeded.')"
+          ],
+          "removed": [],
+          "added": [
+            "        object.__setattr__(self, 'effects', timeline_effects(self.effects, self.settings.sample_rate))",
+            "        for chain in (*(role.effects for role in self.roles), *(scene.effects for scene in self.scenes)):",
+            "            timeline_effects(chain, self.settings.sample_rate)"
+          ],
+          "contextAfter": [
+            "        roles = {role.id for role in self.roles}",
+            "        for scene in self.scenes:",
+            "            for cue in scene.cues:"
+          ]
+        },
+        {
+          "oldLine": 361,
+          "newLine": 420,
+          "contextBefore": [
+            "        return digest(self.to_dict())",
+            "",
+            "    def to_dict(self):"
+          ],
+          "removed": [
+            "        value = asdict(self)"
+          ],
+          "added": [
+            "        value = _serialized(self)",
+            "        if not self.effects:",
+            "            value.pop('effects')",
+            "        for role, row in zip(self.roles, value['roles']):",
+            "            if not role.effects:",
+            "                row.pop('effects')",
+            "        for scene, row in zip(self.scenes, value['scenes']):",
+            "            if not scene.effects:",
+            "                row.pop('effects')"
+          ],
+          "contextAfter": [
+            "        value['script_sha256'] = self.script_sha256",
+            "        return value",
+            ""
+          ]
+        },
+        {
+          "oldLine": 370,
+          "newLine": 437,
+          "contextBefore": [
+            "        if type(value) is not dict:",
+            "            raise ValueError('Invalid audio project.')",
+            "        fields = {'id','title','script','roles','scenes','settings','revision','created_at','source','kind','version','script_sha256'}"
+          ],
+          "removed": [
+            "        if set(value) not in (fields, fields | {'narration'}):"
+          ],
+          "added": [
+            "        if not fields <= set(value) or set(value) - fields - {'narration', 'effects'}:"
+          ],
+          "contextAfter": [
+            "            raise ValueError('Unsupported audio project properties.')",
+            "        try:",
+            "            rows = dict(value)"
+          ]
+        },
+        {
+          "oldLine": 373,
+          "newLine": 440,
+          "contextBefore": [
+            "        if set(value) not in (fields, fields | {'narration'}):",
+            "            raise ValueError('Unsupported audio project properties.')",
+            "        try:"
+          ],
+          "removed": [
+            "            rows = dict(value)"
+          ],
+          "added": [
+            "            rows = _effect_fields(value)"
+          ],
+          "contextAfter": [
+            "            expected = rows.pop('script_sha256')",
+            "            rows['roles'] = tuple(Role(**row) for row in rows['roles'])",
+            "            rows['scenes'] = tuple(Scene(row['id'], row['title'], tuple(Cue(**cue) for cue in row['cues']),"
+          ]
+        },
+        {
+          "oldLine": 375,
+          "newLine": 442,
+          "contextBefore": [
+            "        try:",
+            "            rows = dict(value)",
+            "            expected = rows.pop('script_sha256')"
+          ],
+          "removed": [
+            "            rows['roles'] = tuple(Role(**row) for row in rows['roles'])"
+          ],
+          "added": [
+            "            rows['roles'] = tuple(Role(**_effect_fields(row)) for row in rows['roles'])"
+          ],
+          "contextAfter": [
+            "            rows['scenes'] = tuple(Scene(row['id'], row['title'], tuple(Cue(**cue) for cue in row['cues']),",
+            "                Music(**row['music']) if row['music'] is not None else None) for row in rows['scenes']",
+            "                if set(row) == {'id','title','cues','music'})"
+          ]
+        },
+        {
+          "oldLine": 377,
+          "newLine": 444,
+          "contextBefore": [
+            "            expected = rows.pop('script_sha256')",
+            "            rows['roles'] = tuple(Role(**row) for row in rows['roles'])",
+            "            rows['scenes'] = tuple(Scene(row['id'], row['title'], tuple(Cue(**cue) for cue in row['cues']),"
+          ],
+          "removed": [
+            "                Music(**row['music']) if row['music'] is not None else None) for row in rows['scenes']",
+            "                if set(row) == {'id','title','cues','music'})"
+          ],
+          "added": [
+            "                Music(**row['music']) if row['music'] is not None else None,",
+            "                _effect_fields(row).get('effects', ())) for row in rows['scenes']",
+            "                if set(row) in ({'id','title','cues','music'}, {'id','title','cues','music','effects'}))"
+          ],
+          "contextAfter": [
+            "            if len(rows['scenes']) != len(value['scenes']):",
+            "                raise ValueError('Invalid scene properties.')",
+            "            rows['settings'] = Settings(**rows['settings'])"
+          ]
+        },
+        {
+          "oldLine": 486,
+          "newLine": 554,
+          "contextBefore": [
+            "        role_for('Narrator')",
+            "    if not scenes:",
+            "        raise ValueError('The script has no speech, asset or pause cues to render.')"
+          ],
+          "removed": [],
+          "added": [
+            "    if previous:",
+            "        # A changed script may move a chapter. Carry its reviewed bus by a",
+            "        # unique title, never by a reused ordinal that now names another scene.",
+            "        prior_effects = {}",
+            "        for old in previous.scenes:",
+            "            if old.effects:",
+            "                if (sum(item.title == old.title for item in previous.scenes) != 1",
+            "                        or sum(item.title == old.title for item in scenes) != 1):",
+            "                    raise ValueError('A scene with saved effects was renamed, removed or became ambiguous. Clear or explicitly reassign its effects before editing the script.')",
+            "                prior_effects[old.title] = old.effects",
+            "        scenes = [replace(scene, effects=prior_effects.get(scene.title, ())) for scene in scenes]"
+          ],
+          "contextAfter": [
+            "    project = Project(project_id or (previous.id if previous else uuid4().hex), title, script,",
+            "        tuple(roles.values()), tuple(scenes), settings or (previous.settings if previous else Settings()),",
+            "        previous.revision + 1 if previous else 1,"
+          ]
+        },
+        {
+          "oldLine": 489,
+          "newLine": 568,
+          "contextBefore": [
+            "    project = Project(project_id or (previous.id if previous else uuid4().hex), title, script,",
+            "        tuple(roles.values()), tuple(scenes), settings or (previous.settings if previous else Settings()),",
+            "        previous.revision + 1 if previous else 1,"
+          ],
+          "removed": [
+            "        previous.created_at if previous else now(), source or (previous.source if previous else {}))"
+          ],
+          "added": [
+            "        previous.created_at if previous else now(), source or (previous.source if previous else {}),",
+            "        effects=previous.effects if previous else ())"
+          ],
+          "contextAfter": [
+            "    if previous and previous.narration:",
+            "        from .narration import retained_narration",
+            "        keep=retained_narration(previous,(cue for scene in project.scenes for cue in scene.cues),project.id)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/director.py",
+      "preimage": "fec61ba06b671bc6ca625fa7401ac58b66bfae63",
+      "new_file": false,
+      "before_sha256": "bc0dadb2dc784982000f709cf4aa2ce8de9dd19a1d2f7e50f8f8dbde551efe86",
+      "after_sha256": "21a1f8f9e83cb34308665f5ca2bb89340fdab3d869dd46cdc562b8c42ff990a5",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 153,
+          "newLine": 153,
+          "contextBefore": [
+            "        seconds += max(0, len(project.scenes) - 1) * project.settings.chapter_gap_seconds",
+            "        pcm = math.ceil(max(1, seconds) * project.settings.sample_rate * project.settings.channels * 2)",
+            "        stems = len(project.roles) if project.settings.stems else 0"
+          ],
+          "removed": [
+            "        cache_bytes = pcm * (6 + 2 * stems) + 16 * 1024**2"
+          ],
+          "added": [
+            "        # New processed nodes retain their raw inputs. Account for accepted",
+            "        # role/scene PCM plus simultaneous staging, and a master with its exact",
+            "        # chapter slices. Empty and wholly bypassed chains keep the old plan.",
+            "        effect_pcm = (2 * any(any(effect.enabled for effect in role.effects) for role in project.roles)",
+            "                      + 2 * any(any(effect.enabled for effect in scene.effects) for scene in project.scenes)",
+            "                      + 4 * any(effect.enabled for effect in project.effects))",
+            "        cache_bytes = pcm * (6 + 2 * stems + effect_pcm) + 16 * 1024**2"
+          ],
+          "contextAfter": [
+            "        output_bytes = pcm * (2 + stems + int(project.settings.format != 'wav')) + 1024**2",
+            "        if project.settings.disk_budget_bytes and cache_bytes + output_bytes > project.settings.disk_budget_bytes:",
+            "            raise ValueError('The chosen audio disk budget cannot admit the declared production estimate; completed chunks were saved.')"
+          ]
+        },
+        {
+          "oldLine": 365,
+          "newLine": 371,
+          "contextBefore": [
+            "                if used + estimated_bytes > settings.disk_budget_bytes:",
+            "                    raise ValueError('The chosen audio disk budget would be exceeded; completed chunks were saved.')",
+            ""
+          ],
+          "removed": [
+            "        def cached(kind, inputs, producer):"
+          ],
+          "added": [
+            "        def cached(kind, inputs, producer, *, verify_inputs=None):"
+          ],
+          "contextAfter": [
+            "            nonlocal cache_hits, generated",
+            "            check()",
+            "            key = digest({'director':DIRECTOR_VERSION, 'kind':kind, 'inputs':inputs,"
+          ]
+        },
+        {
+          "oldLine": 368,
+          "newLine": 374,
+          "contextBefore": [
+            "        def cached(kind, inputs, producer):",
+            "            nonlocal cache_hits, generated",
+            "            check()"
+          ],
+          "removed": [],
+          "added": [
+            "            if verify_inputs is not None:",
+            "                verify_inputs()"
+          ],
+          "contextAfter": [
+            "            key = digest({'director':DIRECTOR_VERSION, 'kind':kind, 'inputs':inputs,",
+            "                          'runtime':render_runtime if kind!='speech' else runtime})",
+            "            path, meta_path = cache / (key + '.wav'), cache / (key + '.json')"
+          ]
+        },
+        {
+          "oldLine": 398,
+          "newLine": 406,
+          "contextBefore": [
+            "                        raise",
+            "                    valid = False",
+            "            if valid:"
+          ],
+          "removed": [],
+          "added": [
+            "                if verify_inputs is not None:",
+            "                    verify_inputs()"
+          ],
+          "contextAfter": [
+            "                cache_hits += 1",
+            "                return path, metadata",
+            "            # Keep damaged evidence for diagnosis; never silently overwrite it."
+          ]
+        },
+        {
+          "oldLine": 426,
+          "newLine": 436,
+          "contextBefore": [
+            "                metadata = {'key':key, 'sha256':checksum, 'sample_rate':measured.sample_rate,",
+            "                    'channels':measured.channels, 'frames':measured.frames,",
+            "                    'duration_seconds':measured.duration_seconds, 'kind':kind}"
+          ],
+          "removed": [],
+          "added": [
+            "                if verify_inputs is not None:",
+            "                    verify_inputs()"
+          ],
+          "contextAfter": [
+            "                with self.store.transaction():",
+            "                    # Hard-link publishes without overwriting another file.",
+            "                    os.link(temporary, path)"
+          ]
+        },
+        {
+          "oldLine": 436,
+          "newLine": 448,
+          "contextBefore": [
+            "                self._write_job(job)",
+            "                return path, metadata",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "        effect_adapter = None",
+            "        effect_code = None",
+            "",
+            "        def effect_runtime(frames):",
+            "            nonlocal effect_adapter",
+            "            from .dsp import AudioRuntime",
+            "            from .models import AudioBudget",
+            "            from .render import tool_path",
+            "            # The real measured PCM bound is narrower than the cooperative",
+            "            # admission estimate. Existing aggregate disk checks still apply.",
+            "            maximum = frames * settings.channels * 2 + 65536",
+            "            disk_check(maximum)",
+            "            if effect_adapter is None:",
+            "                effect_adapter = AudioRuntime(work, input_roots=(cache,),",
+            "                    ffmpeg=tool_path('ffmpeg'), ffprobe=tool_path('ffprobe'),",
+            "                    budget=AudioBudget(max_output_bytes=max(4096, maximum),",
+            "                        reserve_disk_bytes=16 * 1024**2, threads=2))",
+            "            else:",
+            "                effect_adapter.budget = replace(effect_adapter.budget,",
+            "                    max_output_bytes=max(4096, maximum))",
+            "            return effect_adapter",
+            "",
+            "        def source_stamp(path):",
+            "            current = plain(path)",
+            "            return (current.st_dev, current.st_ino, current.st_nlink, current.st_size,",
+            "                    current.st_mtime_ns, current.st_ctime_ns)",
+            "",
+            "        def processed(kind, source, info, effects, *, pan=None, gain_db=0):",
+            "            nonlocal effect_code",
+            "            if not any(effect.enabled for effect in effects):",
+            "                return source, info",
+            "            from . import dsp, effect_presets, models",
+            "            from .models import Track as EffectTrack",
+            "            original_stamp = source_stamp(source)",
+            "            if file_sha256(source) != info['sha256'] or source_stamp(source) != original_stamp:",
+            "                raise ValueError('An accepted effect input changed before processing.')",
+            "",
+            "            def verify_source():",
+            "                check()",
+            "                if source_stamp(source) != original_stamp:",
+            "                    raise ValueError('An accepted effect input changed during processing.')",
+            "",
+            "            if effect_code is None:",
+            "                effect_code = {name: file_sha256(Path(module.__file__))",
+            "                               for name, module in (('dsp', dsp), ('models', models),",
+            "                                                    ('effect_presets', effect_presets))}",
+            "            frames = round(info['frames'] * settings.sample_rate / info['sample_rate'])",
+            "            if frames < 1:",
+            "                raise ValueError('Effect processing requires at least one output frame.')",
+            "            inputs = {'source': info['sha256'], 'frames': frames,",
+            "                'sample_rate': settings.sample_rate, 'channels': settings.channels,",
+            "                'effects': [effect.to_dict() for effect in effects],",
+            "                'code': effect_code, 'timeline': 'fixed-output-frames-v1'}",
+            "            if pan is not None:",
+            "                inputs.update(pan=pan, gain_db=gain_db)",
+            "",
+            "            def apply(destination):",
+            "                adapter = effect_runtime(frames)",
+            "                check()",
+            "                if pan is None:",
+            "                    # A bus is already mixed and routed. Convert applies the",
+            "                    # canonical numeric chain without repeating pan or ducking.",
+            "                    adapter.convert(source, destination, effects=effects,",
+            "                        duration=info['frames'] / info['sample_rate'],",
+            "                        sample_rate=settings.sample_rate, channels=settings.channels,",
+            "                        cancelled=cancelled)",
+            "                else:",
+            "                    # Match the Scene role-placement route: typed effects,",
+            "                    # then role gain/pan, bounded to the measured speech grid.",
+            "                    adapter.mix((EffectTrack(source, gain_db=gain_db, pan=pan,",
+            "                                             effects=effects),), destination,",
+            "                        duration=frames / settings.sample_rate,",
+            "                        sample_rate=settings.sample_rate, channels=settings.channels,",
+            "                        cancelled=cancelled)",
+            "                check()",
+            "",
+            "            path, measured = cached(kind, inputs, apply, verify_inputs=verify_source)",
+            "            verify_source()",
+            "            if file_sha256(source) != info['sha256']:",
+            "                raise ValueError('Accepted effect input bytes changed during processing.')",
+            "            verify_source()",
+            "            if (measured['frames'] != frames or measured['sample_rate'] != settings.sample_rate",
+            "                    or measured['channels'] != settings.channels):",
+            "                raise ValueError('Effect processing changed the accepted sample timeline.')",
+            "            return path, measured",
+            "",
+            "        stem_cache_note = (",
+            "            'Effect projects use per-role stem cache keys. First adoption may rebuild '",
+            "            'mix stems once; verified raw speech stays reusable. Later edits reuse '",
+            "            'unchanged role placements, scenes and stems.')",
+            "        has_effects = bool(project.effects or any(role.effects for role in project.roles)",
+            "                           or any(scene.effects for scene in project.scenes))",
+            ""
+          ],
+          "contextAfter": [
+            "        def track_identity(track):",
+            "            return {'path_hash':file_sha256(track.path),'start':track.start_seconds,",
+            "                'gain':track.gain_db,'pan':track.pan,'kind':track.kind,"
+          ]
+        },
+        {
+          "oldLine": 477,
+          "newLine": 582,
+          "contextBefore": [
+            "                channels=settings.channels,cancelled=cancelled,duck_music=duck_music)",
+            "",
+            "        try:"
+          ],
+          "removed": [],
+          "added": [
+            "            if has_effects and settings.stems:",
+            "                report(stem_cache_note)"
+          ],
+          "contextAfter": [
+            "            for scene_index, scene in enumerate(project.scenes):",
+            "                check()",
+            "                tracks, timelines, cue_timings = [], {}, []"
+          ]
+        },
+        {
+          "oldLine": 500,
+          "newLine": 607,
+          "contextBefore": [
+            "                                lambda destination, words=words, role=role: self.registry.synthesize(",
+            "                                    words, destination, voice_id=role.voice_id, language=role.language,",
+            "                                    rate=role.rate, volume=role.volume, cancelled=cancelled))"
+          ],
+          "removed": [
+            "                            track = Track(voice_file, start_seconds=_seconds(cursor_frames, settings.sample_rate),",
+            "                                          pan=role.pan, gain_db=cue.gain_db, kind='voice')"
+          ],
+          "added": [
+            "                            if any(effect.enabled for effect in role.effects):",
+            "                                voice_file, info = processed('role-effects', voice_file, info,",
+            "                                    role.effects, pan=role.pan, gain_db=cue.gain_db)",
+            "                                track = Track(voice_file, start_seconds=_seconds(cursor_frames, settings.sample_rate),",
+            "                                              kind='voice', preserve_stereo=True)",
+            "                            else:",
+            "                                track = Track(voice_file, start_seconds=_seconds(cursor_frames, settings.sample_rate),",
+            "                                              pan=role.pan, gain_db=cue.gain_db, kind='voice')"
+          ],
+          "contextAfter": [
+            "                            tracks.append(track)",
+            "                            timelines.setdefault(role.id, []).append(track)",
+            "                            # Align on output frames, not accumulated floats."
+          ]
+        },
+        {
+          "oldLine": 565,
+          "newLine": 678,
+          "contextBefore": [
+            "                    lambda destination: mix_timeline(tracks,destination,duration))",
+            "                if abs(info['frames'] - cursor_frames) > 1 or info['sample_rate'] != settings.sample_rate:",
+            "                    raise ValueError('Scene render duration does not match its sample timeline.')"
+          ],
+          "removed": [],
+          "added": [
+            "                scene_file, scene_output = processed('scene-effects', scene_file, info, scene.effects)",
+            "                if any(effect.enabled for effect in scene.effects) and scene_output['frames'] != cursor_frames:",
+            "                    raise ValueError('A processed scene differs from its authored sample grid.')"
+          ],
+          "contextAfter": [
+            "                scene_files.append(scene_file)",
+            "                scene_info.append({'id':scene.id,'title':scene.title,'start_frame':cumulative_frames,",
+            "                    'frames':cursor_frames,'sha256':info['sha256'],'music_engine':scene.music.engine if scene.music else None,"
+          ]
+        },
+        {
+          "oldLine": 567,
+          "newLine": 683,
+          "contextBefore": [
+            "                    raise ValueError('Scene render duration does not match its sample timeline.')",
+            "                scene_files.append(scene_file)",
+            "                scene_info.append({'id':scene.id,'title':scene.title,'start_frame':cumulative_frames,"
+          ],
+          "removed": [
+            "                    'frames':cursor_frames,'sha256':info['sha256'],'music_engine':scene.music.engine if scene.music else None,"
+          ],
+          "added": [
+            "                    'frames':cursor_frames,'sha256':scene_output['sha256'],'music_engine':scene.music.engine if scene.music else None,"
+          ],
+          "contextAfter": [
+            "                    'music_continuity':'independent generated chunks with short fades; listening review required' if scene.music else None})",
+            "                for timing in cue_timings:",
+            "                    timing['start_seconds'] += _seconds(cumulative_frames, settings.sample_rate)"
+          ]
+        },
+        {
+          "oldLine": 576,
+          "newLine": 692,
+          "contextBefore": [
+            "                    all_timings.append(timing)",
+            "                for role_id in role_stems:",
+            "                    selected = timelines.get(role_id, [])"
+          ],
+          "removed": [
+            "                    stem, stem_info = cached('stem', {'scene':info['sha256'], 'role':role_id,",
+            "                        'sample_rate':settings.sample_rate,'frames':cursor_frames},"
+          ],
+          "added": [
+            "                    stem_inputs = {'scene':info['sha256'], 'role':role_id,",
+            "                        'sample_rate':settings.sample_rate,'frames':cursor_frames}",
+            "                    if has_effects:",
+            "                        # A role stem contains its own placements, not another",
+            "                        # role's changed audio or scene/master bus processing.",
+            "                        stem_inputs = {'role':role_id, 'tracks':[track_identity(track) for track in selected],",
+            "                            'sample_rate':settings.sample_rate,'channels':settings.channels,'frames':cursor_frames}",
+            "                    stem, stem_info = cached('stem', stem_inputs,"
+          ],
+          "contextAfter": [
+            "                        lambda destination, selected=selected: mix_timeline(selected,destination,duration,duck_music=False))",
+            "                    role_stems[role_id].append(stem)",
+            "                cumulative_frames += cursor_frames"
+          ]
+        },
+        {
+          "oldLine": 591,
+          "newLine": 713,
+          "contextBefore": [
+            "                    sample_rate=settings.sample_rate, channels=settings.channels, cancelled=cancelled))",
+            "            if abs(master_info['frames'] - cumulative_frames) > len(scene_files):",
+            "                raise ValueError('Master duration does not match the accepted scenes.')"
+          ],
+          "removed": [],
+          "added": [
+            "            master, master_info = processed('master-effects', master, master_info, project.effects)",
+            "            if any(effect.enabled for effect in project.effects):",
+            "                # Stateful master effects run once over the complete programme.",
+            "                # Chapters are exact accepted-master slices, never fresh effects.",
+            "                if master_info['frames'] != cumulative_frames:",
+            "                    raise ValueError('Processed chapters must exactly cover the measured master frame grid.')",
+            "                master_stamp = source_stamp(master)",
+            "                if file_sha256(master) != master_info['sha256']:",
+            "                    raise ValueError('The accepted master changed before chapter extraction.')",
+            "",
+            "                def verify_master():",
+            "                    check()",
+            "                    if source_stamp(master) != master_stamp:",
+            "                        raise ValueError('The accepted master changed during chapter extraction.')",
+            "",
+            "                processed_chapters = []",
+            "                for row in scene_info:",
+            "                    first, last = row['start_frame'], row['start_frame'] + row['frames']",
+            "                    chapter, chapter_info = cached('master-effect-chapter',",
+            "                        {'master':master_info['sha256'], 'start_frame':first, 'end_frame':last,",
+            "                         'sample_rate':settings.sample_rate,'channels':settings.channels,'code':effect_code},",
+            "                        lambda destination, first=first, last=last:",
+            "                            effect_runtime(last - first).extract_pcm_frames(master, destination,",
+            "                                start_frame=first, end_frame=last, cancelled=cancelled),",
+            "                        verify_inputs=verify_master)",
+            "                    if (chapter_info['frames'] != row['frames']",
+            "                            or chapter_info['sample_rate'] != settings.sample_rate",
+            "                            or chapter_info['channels'] != settings.channels):",
+            "                        raise ValueError('A processed chapter differs from its accepted master interval.')",
+            "                    row['sha256'] = chapter_info['sha256']",
+            "                    processed_chapters.append(chapter)",
+            "                verify_master()",
+            "                if file_sha256(master) != master_info['sha256']:",
+            "                    raise ValueError('The accepted master bytes changed during chapter extraction.')",
+            "                verify_master()",
+            "                scene_files = processed_chapters"
+          ],
+          "contextAfter": [
+            "            result_outputs = []",
+            "",
+            "            def publish(source, name):"
+          ]
+        },
+        {
+          "oldLine": 641,
+          "newLine": 799,
+          "contextBefore": [
+            "                'script_sha256':project.script_sha256,'job_id':job['id'],'mode':'LOCAL_ONLY',",
+            "                'frames':master_info['frames'],'sample_rate':settings.sample_rate,'channels':settings.channels,",
+            "                'duration_seconds':master_info['duration_seconds'],'chapters':scene_info,"
+          ],
+          "removed": [
+            "                'voices':[asdict(role) for role in project.roles], 'timings':all_timings,"
+          ],
+          "added": [
+            "                'voices':[role.to_dict() for role in project.roles], 'timings':all_timings,"
+          ],
+          "contextAfter": [
+            "                'outputs':list(result_outputs),",
+            "                'limitations':['Utterance boundaries are measured; word timing is not inferred.',",
+            "                    'Voice pronunciation, music continuity and NVDA speech require independent listening.']}"
+          ]
+        },
+        {
+          "oldLine": 645,
+          "newLine": 803,
+          "contextBefore": [
+            "                'outputs':list(result_outputs),",
+            "                'limitations':['Utterance boundaries are measured; word timing is not inferred.',",
+            "                    'Voice pronunciation, music continuity and NVDA speech require independent listening.']}"
+          ],
+          "removed": [],
+          "added": [
+            "            if has_effects:",
+            "                from .projects import EFFECTS_STEMS_NOTICE",
+            "                metadata['effects'] = {",
+            "                    'master': [effect.to_dict() for effect in project.effects],",
+            "                    'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},",
+            "                    'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes}}",
+            "                metadata['limitations'].append(EFFECTS_STEMS_NOTICE)",
+            "                if settings.stems:",
+            "                    metadata['limitations'].append(stem_cache_note)"
+          ],
+          "contextAfter": [
+            "            # Text artifacts are staged, verified and published like audio.",
+            "            atomic_json(work / 'production.json', metadata)",
+            "            publish(work / 'production.json', 'production.json')"
+          ]
+        },
+        {
+          "oldLine": 656,
+          "newLine": 823,
+          "contextBefore": [
+            "            result = {'job_id':job['id'],'project_id':project.id,'state':'complete','output_dir':str(output),",
+            "                      'master':str(output / 'master.wav'),'duration_seconds':master_info['duration_seconds'],",
+            "                      'generated_steps':generated,'reused_steps':cache_hits,'outputs':result_outputs}"
+          ],
+          "removed": [],
+          "added": [
+            "            if has_effects and settings.stems:",
+            "                result['cache_notes'] = [stem_cache_note]"
+          ],
+          "contextAfter": [
+            "            job.update(state='complete',progress=100,message='Audio files completed and checksums verified.',",
+            "                       outputs=result_outputs,result=result)",
+            "            self._verify_outputs(job)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "preimage": "6cbe125e3aecb978711740cffaa7df1d9d3c9174",
+      "new_file": false,
+      "before_sha256": "939f17d71d223a167ac7006b65c1b46d081cb82d65249efc4a5b75821453688c",
+      "after_sha256": "32d477a1b6649d51e9d153b18bb4886b02d5fdc60aea84ef02319bf2f6718264",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 146,
+          "newLine": 146,
+          "contextBefore": [
+            "        self.base_revision,self.base_fingerprint=self.project.revision,self.project.fingerprint",
+            "        return self.project",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "    def set_effects(self, scope, target, effects, *, expected_fingerprint):",
+            "        \"\"\"Commit an explicitly reviewed typed chain through the current CAS.\"\"\"",
+            "        if self.project is None:",
+            "            raise ValueError('Save the script before assigning effects.')",
+            "        if (self.project.fingerprint != expected_fingerprint",
+            "                or self.base_fingerprint != expected_fingerprint",
+            "                or self.base_revision != self.project.revision):",
+            "            raise ValueError('The project changed after effect review. Reopen the current chain.')",
+            "        from ..audio.projects import timeline_effects",
+            "        effects = timeline_effects(effects, self.project.settings.sample_rate)",
+            "        if scope == 'master' and target is None:",
+            "            updated = replace(self.project, effects=effects)",
+            "        elif scope == 'role' and target in {role.id for role in self.project.roles}:",
+            "            updated = replace(self.project, roles=tuple(replace(role, effects=effects)",
+            "                if role.id == target else role for role in self.project.roles))",
+            "        elif scope == 'scene' and target in {scene.id for scene in self.project.scenes}:",
+            "            updated = replace(self.project, scenes=tuple(replace(scene, effects=effects)",
+            "                if scene.id == target else scene for scene in self.project.scenes))",
+            "        else:",
+            "            raise ValueError('Choose a role, scene or master in the current project.')",
+            "        if updated == self.project:",
+            "            return self.project",
+            "        updated = replace(updated, revision=self.project.revision + 1)",
+            "        saved = self.store.save(updated, expected_fingerprint=expected_fingerprint)",
+            "        self.project = saved",
+            "        self.base_revision, self.base_fingerprint = saved.revision, saved.fingerprint",
+            "        return saved",
+            ""
+          ],
+          "contextAfter": [
+            "    def plan_text(self):",
+            "        if self.project is None:",
+            "            return 'Save the script to preview its local production plan.'"
+          ]
+        },
+        {
+          "oldLine": 166,
+          "newLine": 194,
+          "contextBefore": [
+            "                    rows.append(f'Pause: {cue.seconds:g} seconds.')",
+            "                else:",
+            "                    rows.append('Imported local sound effect: ' + cue.asset[:12])"
+          ],
+          "removed": [],
+          "added": [
+            "        chains = [('Master', project.effects)]",
+            "        chains.extend(('Role ' + role.name, role.effects) for role in project.roles)",
+            "        chains.extend(('Chapter ' + scene.title, scene.effects) for scene in project.scenes)",
+            "        if any(chain for _, chain in chains):",
+            "            from ..audio.projects import EFFECTS_STEMS_NOTICE",
+            "            from .effects_dialog import effect_label",
+            "            for label, chain in chains:",
+            "                if chain:",
+            "                    rows.append(label + ' effects, in order: ' + ' → '.join(effect_label(effect) for effect in chain))",
+            "            rows.append(EFFECTS_STEMS_NOTICE)"
+          ],
+          "contextAfter": [
+            "        rows.append('Generate runs synthesis, local music when requested, mixing, chapters, subtitles and voice stems. Original script is preserved.')",
+            "        return '\\n'.join(rows)",
+            ""
+          ]
+        },
+        {
+          "oldLine": 239,
+          "newLine": 277,
+          "contextBefore": [
+            "        for label, handler in [('&Save project',self.save),('Save project &as JSON',self.export),",
+            "                ('Save all open drafts',self.save_all),('Cancel Save All',self.cancel_save_all),",
+            "                ('Pronunciation and reading copy',self.edit_narration),"
+          ],
+          "removed": [],
+          "added": [
+            "                ('Role, scene and master effects',self.edit_effects),"
+          ],
+          "contextAfter": [
+            "                ('&Generate audio',self.generate),('&Resume a saved job',self.resume),",
+            "                ('&Preview completed audio',self.preview),('Pause playback',self.pause_playback),",
+            "                ('Resume playback',self.resume_playback),('Stop playback',self.stop_playback)]:"
+          ]
+        },
+        {
+          "oldLine": 445,
+          "newLine": 484,
+          "contextBefore": [
+            "        except Exception as exc:",
+            "            self.say('Reading copy not saved: '+str(exc),True)",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "    def edit_effects(self, event=None):",
+            "        if self.closed or self.busy or ((self.dirty or not self.controller.project) and not self.save()):",
+            "            return",
+            "        reviewed = self.controller.project",
+            "        signature = self.editor_signature()",
+            "        library, root = self._save_library, self._save_root",
+            "",
+            "        def current():",
+            "            if (self.closed or self.busy or self.controller.project is not reviewed",
+            "                    or self.editor_signature() != signature",
+            "                    or (library is not None and (getattr(self.parent, 'library', None) is not library",
+            "                        or getattr(library, 'root', None) != root))):",
+            "                raise ValueError('The editor or selected library changed during effect review.')",
+            "",
+            "        try:",
+            "            from ..audio.dsp import effect_controls",
+            "            from .effects_dialog import show_effect_chain",
+            "            choices = [('Master output', 'master', None, reviewed.effects)]",
+            "            choices.extend(('Role: ' + role.name, 'role', role.id, role.effects) for role in reviewed.roles)",
+            "            choices.extend((f'Scene {index}: {scene.title}', 'scene', scene.id, scene.effects)",
+            "                           for index, scene in enumerate(reviewed.scenes, 1))",
+            "            picker = self.wx.SingleChoiceDialog(self.dialog,",
+            "                'Choose the saved chain. Effects preserve the measured timeline; Generate writes a new output.',",
+            "                'Role, scene and master effects', [row[0] for row in choices])",
+            "            try:",
+            "                if picker.ShowModal() != self.wx.ID_OK:",
+            "                    return",
+            "                index = picker.GetSelection()",
+            "                if not 0 <= index < len(choices):",
+            "                    raise ValueError('Choose a current project effect chain.')",
+            "                _, scope, target, existing = choices[index]",
+            "            finally:",
+            "                picker.Destroy()",
+            "            current()",
+            "            effects = show_effect_chain(self.dialog, self.controller.store.root, existing,",
+            "                sample_rate=reviewed.settings.sample_rate, available=set(effect_controls()) - {'tempo'})",
+            "            if effects is None:",
+            "                return",
+            "            current()",
+            "            saved = self.controller.set_effects(scope, target, effects,",
+            "                expected_fingerprint=reviewed.fingerprint)",
+            "            if saved is not reviewed:",
+            "                self.result = None",
+            "            self.refresh()",
+            "            self.say('Effects saved. Generate applies them to a new output; accepted audio and original text stay unchanged.', True)",
+            "        except Exception as exc:",
+            "            if not self.closed:",
+            "                self.say('Effects not saved: ' + str(exc), True)",
+            ""
+          ],
+          "contextAfter": [
+            "    def export(self,event=None):",
+            "        wx = self.wx",
+            "        if (self.dirty or not self.controller.project) and not self.save():"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "preimage": "f50c6527d89638b37be249304d94583c3dc0b3c0",
+      "new_file": false,
+      "before_sha256": "c818fb409e5ad3755b1518283ee6a121cb97c67cea2b1eadf1c06bcfb38b6111",
+      "after_sha256": "84a68e4b608e0c463ed716e2a8a9ab8650f13a0c3650dfbcb9009730f3f3d4d2",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 199,
+          "newLine": 199,
+          "contextBefore": [
+            "            'script_sha256': project.script_sha256, 'job_id': state['id'], 'mode': 'LOCAL_ONLY',",
+            "            'sample_rate': project.settings.sample_rate, 'channels': project.settings.channels}",
+            "        if (not isinstance(metadata, dict) or any(metadata.get(k) != v for k, v in expected_header.items())"
+          ],
+          "removed": [
+            "                or metadata.get('voices') != [asdict(role) for role in project.roles]"
+          ],
+          "added": [
+            "                or metadata.get('voices') != [role.to_dict() for role in project.roles]"
+          ],
+          "contextAfter": [
+            "                or metadata.get('outputs') != [row for row in artifacts if row['file'] not in ('production.json', 'narration.srt')]):",
+            "            raise ValueError('Primary Studio timeline does not belong to the original project and completed artifacts.')",
+            "        frames, rate = metadata.get('frames'), project.settings.sample_rate"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_director_effects.py",
+      "after_sha256": "ac53051a23a3b44b57c0e9e5d886e7850e12fd4a395800303cafb3c95f1b3bac",
+      "action": "remove_new_file"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_studio.py",
+      "preimage": "e7996326d503f3a8b0efaa9f3c3984434f566466",
+      "new_file": false,
+      "before_sha256": "9c493e948da88d705b456914d91af64ea99446f66da90e61129efaa6c907706c",
+      "after_sha256": "1d55711841aaa53a4f154cecbeef7f95e44c9467ef26a5f2becd46cbd8aa8d9b",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 89,
+          "newLine": 89,
+          "contextBefore": [
+            "    saved=recovered.save('Recovered narration',recovered.recovery_draft,'en')",
+            "    assert saved.script==page.raw_text and saved.source==initial.source",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "@pytest.mark.parametrize('scope', ['role', 'scene', 'master'])",
+            "def test_director_effect_controller_commits_a_new_revision_and_reopens_exact_chain(tmp_path, registry, scope):",
+            "    from carr_library.audio.models import Effect",
+            "    controller = StudioController(tmp_path / 'data', registry)",
+            "    original = controller.save('Original', 'Narrator: Kept source.', 'en')",
+            "    target = None if scope == 'master' else getattr(original, 'roles' if scope == 'role' else 'scenes')[0].id",
+            "    chain = (Effect('equalizer', frequency=1000, gain_db=-3),",
+            "             Effect('reverb', enabled=False))",
+            "    saved = controller.set_effects(scope, target, chain, expected_fingerprint=original.fingerprint)",
+            "    assert saved.revision == original.revision + 1 and saved.script == original.script",
+            "    assert controller.base_fingerprint == saved.fingerprint and controller.base_revision == saved.revision",
+            "    reopened = StudioController(controller.store.root, registry, saved.id)",
+            "    actual = reopened.project.effects if scope == 'master' else getattr(",
+            "        reopened.project, 'roles' if scope == 'role' else 'scenes')[0].effects",
+            "    assert actual == chain and 'effects, in order:' in reopened.plan_text()",
+            "    assert reopened.project.script_sha256 == original.script_sha256",
+            "    with pytest.raises(ValueError, match='changed after effect review'):",
+            "        controller.set_effects(scope, target, (), expected_fingerprint=original.fingerprint)",
+            "    assert controller.store.load(saved.id) == saved",
+            "",
+            "",
+            "def test_director_effect_controller_rejects_a_foreign_scope_without_writing(tmp_path, registry):",
+            "    from carr_library.audio.models import Effect",
+            "    controller = StudioController(tmp_path / 'data', registry)",
+            "    project = controller.save('Original', 'Narrator: Kept source.', 'en')",
+            "    path = controller.store.path(project.id) / 'project.json'",
+            "    before = path.read_bytes()",
+            "    for scope, target in (('master', 'role-id'), ('role', 'missing'), ('scene', 'missing'), ('filter', None)):",
+            "        with pytest.raises(ValueError, match='Choose a role'):",
+            "            controller.set_effects(scope, target, (Effect('gain'),), expected_fingerprint=project.fingerprint)",
+            "    assert path.read_bytes() == before and controller.project is project",
+            "",
+            "",
+            "def _director_effect_form(tmp_path, registry, monkeypatch, *, selected=0, picker_result=1):",
+            "    from carr_library.ui.audio_studio import StudioDialog",
+            "    controller = StudioController(tmp_path / 'data', registry)",
+            "    controller.save('Original', 'Narrator: Kept source.', 'en')",
+            "    form = StudioDialog.__new__(StudioDialog)",
+            "    form.controller, form.dialog = controller, object()",
+            "    form.closed = form.busy = form.dirty = False",
+            "    form.result = {'state': 'complete', 'historical': True}",
+            "    form._save_library = SimpleNamespace(root=controller.store.root)",
+            "    form._save_root = controller.store.root",
+            "    form.parent = SimpleNamespace(library=form._save_library)",
+            "    signature = ('Original', 'Narrator: Kept source.', 'en', 'wav')",
+            "    form.editor_signature = lambda: signature",
+            "    form.messages, form.refreshed, form.pickers = [], [], []",
+            "    form.say = lambda message, focus=False: form.messages.append(message)",
+            "    form.refresh = lambda: form.refreshed.append(True)",
+            "    form.save = lambda: pytest.fail('An unchanged saved form must not trigger an unrelated save.')",
+            "    class Picker:",
+            "        def __init__(self, parent, prompt, title, choices):",
+            "            assert parent is form.dialog and title == 'Role, scene and master effects'",
+            "            assert choices == ['Master output', 'Role: Narrator', 'Scene 1: Original']",
+            "            self.destroyed = False",
+            "            form.pickers.append(self)",
+            "        def ShowModal(self):",
+            "            return picker_result",
+            "        def GetSelection(self):",
+            "            return selected",
+            "        def Destroy(self):",
+            "            self.destroyed = True",
+            "    form.wx = SimpleNamespace(ID_OK=1, SingleChoiceDialog=Picker)",
+            "    return form",
+            "",
+            "",
+            "@pytest.mark.parametrize('selected', [0, 1, 2], ids=['master', 'role', 'scene'])",
+            "def test_native_director_handler_reuses_typed_modal_then_commits_only_selected_scope(",
+            "        tmp_path, registry, monkeypatch, selected):",
+            "    from carr_library.audio.models import Effect",
+            "    from carr_library.ui import effects_dialog",
+            "    form = _director_effect_form(tmp_path, registry, monkeypatch, selected=selected)",
+            "    original = form.controller.project",
+            "    chain = (Effect('gain', gain_db=-6),)",
+            "    calls = []",
+            "    def edit(parent, root, current, **kwargs):",
+            "        calls.append((parent, root, current, kwargs))",
+            "        assert parent is form.dialog and root == form.controller.store.root and current == ()",
+            "        assert kwargs['sample_rate'] == 24000 and 'tempo' not in kwargs['available']",
+            "        return chain",
+            "    monkeypatch.setattr(effects_dialog, 'show_effect_chain', edit)",
+            "    form.edit_effects()",
+            "    saved = form.controller.store.load(original.id)",
+            "    assert len(calls) == 1 and all(picker.destroyed for picker in form.pickers)",
+            "    assert [saved.effects, saved.roles[0].effects, saved.scenes[0].effects][selected] == chain",
+            "    assert all(not value for index, value in enumerate(",
+            "        [saved.effects, saved.roles[0].effects, saved.scenes[0].effects]) if index != selected)",
+            "    assert form.result is None and form.refreshed == [True]",
+            "    assert saved.script == original.script and 'Generate applies them' in form.messages[-1]",
+            "",
+            "",
+            "@pytest.mark.parametrize('boundary', ['cancel-picker', 'cancel-chain', 'closed', 'busy',",
+            "                                      'editor-change', 'library-change', 'project-change'])",
+            "def test_director_effect_modal_lifetime_and_cancel_never_publish_stale_settings(",
+            "        tmp_path, registry, monkeypatch, boundary):",
+            "    from carr_library.audio.models import Effect",
+            "    from carr_library.ui import effects_dialog",
+            "    form = _director_effect_form(tmp_path, registry, monkeypatch,",
+            "                                 picker_result=0 if boundary == 'cancel-picker' else 1)",
+            "    original = form.controller.project",
+            "    path = form.controller.store.path(original.id) / 'project.json'",
+            "    before = path.read_bytes()",
+            "    prior_result = form.result",
+            "    calls = []",
+            "    def edit(*args, **kwargs):",
+            "        calls.append(True)",
+            "        if boundary == 'cancel-chain':",
+            "            return None",
+            "        if boundary == 'closed':",
+            "            form.closed = True",
+            "        elif boundary == 'busy':",
+            "            form.busy = True",
+            "        elif boundary == 'editor-change':",
+            "            form.editor_signature = lambda: ('newer unsaved source',)",
+            "        elif boundary == 'library-change':",
+            "            form.parent.library = SimpleNamespace(root=form._save_root)",
+            "        elif boundary == 'project-change':",
+            "            form.controller.project = replace(original, title='New in-memory revision')",
+            "        return (Effect('gain', gain_db=-9),)",
+            "    monkeypatch.setattr(effects_dialog, 'show_effect_chain', edit)",
+            "    form.edit_effects()",
+            "    assert path.read_bytes() == before and form.result is prior_result and not form.refreshed",
+            "    assert all(picker.destroyed for picker in form.pickers)",
+            "    assert len(calls) == (0 if boundary == 'cancel-picker' else 1)",
+            "    if boundary == 'closed':",
+            "        assert form.messages == []",
+            "",
+            "",
+            "def test_director_effect_disk_cas_failure_keeps_the_reviewed_form_and_newer_saved_project(tmp_path, registry):",
+            "    from carr_library.audio.models import Effect",
+            "    first = StudioController(tmp_path / 'data', registry)",
+            "    original = first.save('Original', 'Narrator: Kept source.', 'en')",
+            "    second = StudioController(first.store.root, registry, original.id)",
+            "    newer = second.set_effects('master', None, (Effect('gain', gain_db=-2),),",
+            "                               expected_fingerprint=original.fingerprint)",
+            "    with pytest.raises(ValueError, match='another window'):",
+            "        first.set_effects('master', None, (Effect('gain', gain_db=-10),),",
+            "                          expected_fingerprint=original.fingerprint)",
+            "    assert first.project is original and first.base_fingerprint == original.fingerprint",
+            "    assert first.store.load(original.id) == newer",
+            "",
+            "",
+            "def test_director_effect_editor_is_passive_while_production_is_busy_or_closed(tmp_path, registry, monkeypatch):",
+            "    form = _director_effect_form(tmp_path, registry, monkeypatch)",
+            "    form.busy = True",
+            "    form.edit_effects()",
+            "    form.busy, form.closed = False, True",
+            "    form.edit_effects()",
+            "    assert form.pickers == [] and form.messages == [] and not form.refreshed",
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_director_effects_backup.py",
+      "after_sha256": "a34d0515c16926088e02710fe6c570f4442086e7a11f03ce6c26e32e741e1f19",
+      "action": "remove_new_file"
+    },
+    {
+      "path": "carr-library/tests/ui/native_audio_studio_smoke.py",
+      "preimage": "e971c5bbdea9a03cacb55eee543d3e23e014b93a",
+      "new_file": false,
+      "before_sha256": "60a6a0ba4ac35545e2e09821825daaf4d5f5bc45271a94bcc0c224d44c36bb81",
+      "after_sha256": "9381af5542d303272d006cbfda0f1fe4429c42ee7c02622bae07758316b3d4cf",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 13,
+          "newLine": 13,
+          "contextBefore": [
+            "from tempfile import TemporaryDirectory",
+            "from time import monotonic,sleep",
+            "import traceback"
+          ],
+          "removed": [],
+          "added": [
+            "import wave"
+          ],
+          "contextAfter": [
+            "",
+            "",
+            "def main():"
+          ]
+        },
+        {
+          "oldLine": 32,
+          "newLine": 33,
+          "contextBefore": [
+            "    from carr_library.ui.desktop_app import DesktopFrame",
+            "    from carr_library.ui.local_assistant import AssistantDialog",
+            "    errors,checks=[],[]"
+          ],
+          "removed": [],
+          "added": [
+            "    effects_receipt={}"
+          ],
+          "contextAfter": [
+            "    gui=wx.App(False)",
+            "",
+            "    def pump(predicate,timeout=90):"
+          ]
+        },
+        {
+          "oldLine": 63,
+          "newLine": 65,
+          "contextBefore": [
+            "        if errors:",
+            "            raise AssertionError('\\n'.join(errors))",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "    def project_effect(form, selected, kind, controls):",
+            "        \"\"\"Drive the real scope picker and existing typed chain/number dialogs.\"\"\"",
+            "        timers=[]",
+            "        def dialog_named(title):",
+            "            matches=[window for window in wx.GetTopLevelWindows()",
+            "                     if isinstance(window,wx.Dialog) and window.IsModal() and window.GetTitle()==title]",
+            "            assert len(matches)==1,(title,len(matches))",
+            "            return matches[0]",
+            "        def click(dialog,name):",
+            "            button=wx.FindWindowByName(name,dialog)",
+            "            assert button and button.IsEnabled() and button.AcceptsFocusFromKeyboard(),name",
+            "            event=wx.CommandEvent(wx.EVT_BUTTON.typeId,button.GetId())",
+            "            assert button.GetEventHandler().ProcessEvent(event),name",
+            "        def schedule(action):",
+            "            def guarded():",
+            "                try:",
+            "                    action()",
+            "                except BaseException:",
+            "                    errors.append(traceback.format_exc())",
+            "                    for window in reversed(wx.GetTopLevelWindows()):",
+            "                        if isinstance(window,wx.Dialog) and window is not form.dialog and window.IsModal():",
+            "                            window.EndModal(wx.ID_CANCEL)",
+            "            timers.append(wx.CallLater(40,guarded))",
+            "        def accept_chain():",
+            "            dialog=dialog_named('Ordered audio effects')",
+            "            ordered=wx.FindWindowByName('Ordered audio effects',dialog)",
+            "            assert ordered and ordered.GetCount()==1",
+            "            assert kind in ordered.GetString(0)",
+            "            click(dialog,'Apply effect chain')",
+            "        def numbers():",
+            "            dialog=dialog_named('Edit '+kind+' effect')",
+            "            pending=list(dialog.GetChildren())",
+            "            fields=[]",
+            "            while pending:",
+            "                window=pending.pop()",
+            "                assert len(fields)+len(pending)<512",
+            "                if isinstance(window,wx.TextCtrl):",
+            "                    fields.append(window)",
+            "                pending.extend(window.GetChildren())",
+            "            for name,value in controls.items():",
+            "                candidates=[field for field in fields if field.GetName().startswith(name.replace('_',' ')+' (')]",
+            "                assert len(candidates)==1,(name,[field.GetName() for field in fields])",
+            "                assert candidates[0].AcceptsFocusFromKeyboard()",
+            "                candidates[0].ChangeValue(str(value))",
+            "            schedule(accept_chain)",
+            "            click(dialog,'Apply effect')",
+            "        def chain():",
+            "            dialog=dialog_named('Ordered audio effects')",
+            "            kinds=wx.FindWindowByName('Effect type to add',dialog)",
+            "            assert kinds and kinds.SetStringSelection(kind)",
+            "            assert 'tempo' not in [kinds.GetString(index) for index in range(kinds.GetCount())]",
+            "            click(dialog,'Add effect')",
+            "            schedule(numbers)",
+            "            click(dialog,'Edit selected effect')",
+            "        def scope():",
+            "            picker=dialog_named('Role, scene and master effects')",
+            "            picker.SetSelection(selected)",
+            "            assert picker.GetSelection()==selected",
+            "            schedule(chain)",
+            "            picker.EndModal(wx.ID_OK)",
+            "        schedule(scope)",
+            "        try:",
+            "            form.edit_effects()",
+            "        finally:",
+            "            for timer in timers:",
+            "                timer.Stop()",
+            "        if errors:",
+            "            raise AssertionError('\\n'.join(errors))",
+            ""
+          ],
+          "contextAfter": [
+            "    try:",
+            "        with TemporaryDirectory(prefix='carr-native-audio-') as temporary:",
+            "            root=Path(temporary)"
+          ]
+        },
+        {
+          "oldLine": 101,
+          "newLine": 172,
+          "contextBefore": [
+            "                        form.pan.SetSelection(index if index<2 else 2)",
+            "                        form.apply_voice()",
+            "                    assert len(controller.project.roles)==3"
+          ],
+          "removed": [],
+          "added": [
+            "                    effect_button=next(button for button in form.buttons",
+            "                                       if button.GetLabel()=='Role, scene and master effects')",
+            "                    assert effect_button.AcceptsFocusFromKeyboard() and effect_button.IsEnabled()",
+            "                    project_effect(form,1,'equalizer',{'frequency':800,'gain_db':-6,'q':1})",
+            "                    project_effect(form,1+len(controller.project.roles),'reverb',",
+            "                                   {'room_ms':30,'decay':.4,'mix':.2})",
+            "                    project_effect(form,0,'compressor',{'threshold_db':-20,'ratio':2})",
+            "                    saved=controller.store.load(controller.project.id)",
+            "                    assert saved==controller.project and saved.script==script and saved.script_sha256==expected",
+            "                    assert saved.roles[0].effects[0].kind=='equalizer'",
+            "                    assert saved.roles[0].effects[0].parameters['gain_db']==-6",
+            "                    assert saved.scenes[0].effects[0].kind=='reverb' and not saved.scenes[1].effects",
+            "                    assert saved.effects[0].kind=='compressor'",
+            "                    assert 'effects, in order:' in form.plan.GetValue()",
+            "                    checks.extend(['native Director role/scene/master scope picker',",
+            "                                   'typed EQ room and dynamics controls persist without changing source'])"
+          ],
+          "contextAfter": [
+            "                    director=ProductionDirector(library.root,registry=controller.registry)",
+            "                    def render_with_diagnostic():",
+            "                        try:"
+          ]
+        },
+        {
+          "oldLine": 119,
+          "newLine": 206,
+          "contextBefore": [
+            "                    assert probe_audio(form.result['master']).duration_seconds>1",
+            "                    assert form.script.GetValue()==script and controller.store.load(controller.project.id).script_sha256==expected",
+            "                    assert (Path(form.result['output_dir'])/'narration.srt').is_file()"
+          ],
+          "removed": [],
+          "added": [
+            "                    manifest=json.loads((Path(form.result['output_dir'])/'production.json').read_text(encoding='utf-8'))",
+            "                    with wave.open(form.result['master'],'rb') as master:",
+            "                        frame_bytes=master.getnchannels()*master.getsampwidth()",
+            "                        master_frames=master.getnframes()",
+            "                        accepted=master.readframes(master_frames)",
+            "                    chunks=[]",
+            "                    for index,row in enumerate(manifest['chapters'],1):",
+            "                        chapter=Path(form.result['output_dir'])/f'chapter-{index:04}.wav'",
+            "                        with wave.open(str(chapter),'rb') as audio_chapter:",
+            "                            assert audio_chapter.getnframes()==row['frames']",
+            "                            data=audio_chapter.readframes(row['frames'])",
+            "                        start=row['start_frame']*frame_bytes",
+            "                        assert data==accepted[start:start+row['frames']*frame_bytes]",
+            "                        assert sha256(chapter.read_bytes()).hexdigest()==row['sha256']",
+            "                        chunks.append(data)",
+            "                    assert b''.join(chunks)==accepted",
+            "                    assert sum(row['frames'] for row in manifest['chapters'])==master_frames",
+            "                    assert manifest['effects']['master']==[effect.to_dict() for effect in saved.effects]",
+            "                    effects_receipt.update(project_fingerprint=saved.fingerprint,",
+            "                        original_script_sha256=expected,master_sha256=sha256(Path(form.result['master']).read_bytes()).hexdigest(),",
+            "                        frames=master_frames,sample_rate=saved.settings.sample_rate,",
+            "                        effects=manifest['effects'],chapters=manifest['chapters'],",
+            "                        source_unchanged=True,master_chapters_exact_pcm=True,",
+            "                        acoustic_quality='NOT_RUN',manual_nvda='NOT_RUN')",
+            "                    checks.extend(['actual Director effect render retains exact master chapter samples',",
+            "                                   'processed manifest binds typed chains and immutable script'])"
+          ],
+          "contextAfter": [
+            "                    assert form.script.IsEnabled() and not form.stop.IsEnabled()",
+            "                    checks.extend(['named native studio controls','unsaved draft recovery','Ctrl+S handler saves a revision',",
+            "                                   'three native voice assignments','background speech and music production',"
+          ]
+        },
+        {
+          "oldLine": 159,
+          "newLine": 272,
+          "contextBefore": [
+            "            finally:",
+            "                frame.Close()",
+            "                gui.Yield()"
+          ],
+          "removed": [
+            "        print(json.dumps({'status':'PASS','checks':checks,'nvda':'NOT_RUN',"
+          ],
+          "added": [
+            "        print(json.dumps({'status':'PASS','checks':checks,'director_effects':effects_receipt,'nvda':'NOT_RUN',"
+          ],
+          "contextAfter": [
+            "                          'audible_playback':'NOT_CLAIMED','external_services':'NOT_USED'},ensure_ascii=False))",
+            "        return 0",
+            "    finally:"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "preimage": "0f2f3583e643e0f3bcb6c8a6fb4aec95944ab795",
+      "new_file": false,
+      "before_sha256": "924b0317643a0b87f459c208ddc9122c225268bb5c64e0f34d6de6d5b101199d",
+      "after_sha256": "e256604cf696786f555d2a6a8e97591da54ae3d1cc216d849d15a81931898f96",
+      "inverse_exact": true,
+      "hunks": [
+        {
+          "oldLine": 377,
+          "newLine": 377,
+          "contextBefore": [
+            "does not recreate that authority from a historical receipt. Corrupt or changed",
+            "artifacts are refused rather than reported as inspected audio.",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "## Director: effects for a role, scene or master",
+            "",
+            "In **Audio Studio — local production**, save the project, then choose",
+            "**Role, scene and master effects**. Select one saved role, one scene or",
+            "**Master output**. The existing **Ordered audio effects** window lets you add",
+            "typed effects, edit their numeric controls, change their order, bypass them,",
+            "undo/redo chain edits, or load a saved preset. **Apply effect chain** commits a",
+            "new project revision. Cancel keeps the existing chain. A concurrent project or",
+            "library change requires reopening the review.",
+            "",
+            "The same controls used by Scene projects supply EQ, shelves, notch, dynamics,",
+            "the four-reflection room effect, delay, chorus and other supported DSP. The room",
+            "effect is not a convolution room simulation or a measured RT60. Frequencies",
+            "must fit the selected output sample rate, including bypassed settings. Timeline",
+            "chains do not enable tempo changes; use the existing Convert operation for an",
+            "explicit change of duration.",
+            "",
+            "Choose **Generate audio** and a new output folder to hear the saved settings.",
+            "Editing an effect does not synthesize speech, process an existing output, start",
+            "playback or change the original script. The plan lists each saved chain in its",
+            "processing order. A reading project retains its exact imported source text and",
+            "source reference.",
+            "",
+            "Role effects are applied to each accepted speech chunk before the role's gain",
+            "and stereo placement. The scene chain processes the mixed scene; the master",
+            "chain processes the complete assembled programme. These already mixed buses",
+            "use the declared effects without another implicit routing gain or safety",
+            "limiter. Positive gain can consume headroom or clip the PCM output; choose",
+            "suitable gain and explicit dynamics controls, then review the measured result.",
+            "All three preserve the measured sample timeline. Effect tails end at the existing chunk, scene or",
+            "programme boundary. With master effects enabled, exported chapters copy exact",
+            "frame intervals from the accepted processed master so a stateful effect is not",
+            "restarted for every chapter. Voice stems include role effects; they do not",
+            "include scene or master bus effects.",
+            "",
+            "Each processing stage uses the existing verified cache and shared resource",
+            "admission. A later role or scene edit reuses unchanged speech and unaffected",
+            "processing nodes. Master processing depends on the complete assembled",
+            "programme. The first move from a legacy project to effect-specific per-role",
+            "stem keys can rebuild mix stems once; it does not require fresh synthesis of",
+            "unchanged accepted speech. The result and progress report state that distinction.",
+            "Pause, restart and Resume retain accepted chunks. A changed or damaged cached",
+            "file must pass the existing integrity checks before reuse.",
+            "",
+            "Empty effect chains keep the previous project JSON and fingerprint shape.",
+            "Exported project JSON and native or compatible flat backups retain ordered",
+            "numeric settings and bypass states. Restore remains passive and revokes old",
+            "output authority: choose a new output before rendering again. When editing a",
+            "script, a scene's reviewed chain follows a unique unchanged chapter title.",
+            "Renaming, deleting or making that title ambiguous requires explicitly clearing",
+            "or reassigning the chain first; effects are never silently attached to a new",
+            "scene with the old ordinal.",
+            "",
+            "The synthetic PCM and native-control checks for this bridge are separate from",
+            "listening, voice pronunciation and manual NVDA acceptance. Those judgments",
+            "require their own recorded review.",
+            ""
+          ]
+        }
+      ]
+    }
+  ],
+  "fixture_successor": {
+    "path": "carr-library/tests/audio/test_director_effects.py",
+    "before_blob": "71083f5a36ccb6b2b2c4debf4120f78b34b5603b",
+    "after_blob": "6191e8ffdf26230475f3eb86a7521167e1fad6a5",
+    "before_sha256": "d1946315040c417392c303807f50bb5721130530920b706a2e9615db65df9f37",
+    "after_sha256": "ac53051a23a3b44b57c0e9e5d886e7850e12fd4a395800303cafb3c95f1b3bac",
+    "inverse_exact": true,
+    "hunks": [
+      {
+        "oldLine": 353,
+        "newLine": 353,
+        "contextBefore": [
+          "    store, project, voices, broker, director = prepared(tmp_path)",
+          "    owners, release, selected = [], threading.Event(), []",
+          "    actual_stop, actual_run = process._stop_owned, dsp.run_process"
+        ],
+        "removed": [],
+        "added": [
+          "    actual_pending = cleanup.pending_cleanup",
+          "    observed_thread, staged_outputs = threading.get_ident(), set()"
+        ],
+        "contextAfter": [
+          "    def manual(attempt, *, message, callbacks=()):",
+          "        owner = cleanup.CleanupOwner(attempt)",
+          "        for callback in callbacks:"
+        ]
+      },
+      {
+        "oldLine": 354,
+        "newLine": 356,
+        "contextBefore": [
+          "    owners, release, selected = [], threading.Event(), []",
+          "    actual_stop, actual_run = process._stop_owned, dsp.run_process",
+          "    def manual(attempt, *, message, callbacks=()):"
+        ],
+        "removed": [],
+        "added": [
+          "        if threading.get_ident() != observed_thread:",
+          "            return actual_pending(attempt, message=message, callbacks=callbacks)"
+        ],
+        "contextAfter": [
+          "        owner = cleanup.CleanupOwner(attempt)",
+          "        for callback in callbacks:",
+          "            owner.add_quiescent_callback(callback)"
+        ]
+      },
+      {
+        "oldLine": 361,
+        "newLine": 365,
+        "contextBefore": [
+          "        return cleanup.AudioCleanupPending(message, cleanup_owner=owner)",
+          "    def stop(child):",
+          "        quiet = actual_stop(child)"
+        ],
+        "removed": [],
+        "added": [
+          "        if not any(str(arg) in staged_outputs for arg in child.args):",
+          "            return quiet"
+        ],
+        "contextAfter": [
+          "        assert quiet is True",
+          "        if any('.audio-' in str(arg) and str(arg).endswith('render.wav') for arg in child.args) and not release.is_set():",
+          "            selected.append(child)"
+        ]
+      },
+      {
+        "oldLine": 362,
+        "newLine": 368,
+        "contextBefore": [
+          "    def stop(child):",
+          "        quiet = actual_stop(child)",
+          "        assert quiet is True"
+        ],
+        "removed": [
+          "        if any('.audio-' in str(arg) and str(arg).endswith('render.wav') for arg in child.args) and not release.is_set():"
+        ],
+        "added": [
+          "        if not release.is_set():"
+        ],
+        "contextAfter": [
+          "            selected.append(child)",
+          "            raise TimeoutError('Declared uncertainty after actual selected FFmpeg exit.')",
+          "        return quiet"
+        ]
+      },
+      {
+        "oldLine": 367,
+        "newLine": 373,
+        "contextBefore": [
+          "            raise TimeoutError('Declared uncertainty after actual selected FFmpeg exit.')",
+          "        return quiet",
+          "    def run(*args, **kwargs):"
+        ],
+        "removed": [],
+        "added": [
+          "        if threading.get_ident() != observed_thread:",
+          "            return actual_run(*args, **kwargs)",
+          "        command = args[0]",
+          "        output = Path(command[-1])",
+          "        if (output.name == 'render.wav' and output.parent.name.startswith('.audio-')",
+          "                and output.is_relative_to(store.path(project.id))):",
+          "            staged_outputs.add(str(output))"
+        ],
+        "contextAfter": [
+          "        leases = broker.snapshot()['leases']",
+          "        assert len(leases) == 1 and leases[0]['request']['cpu_slots'] == 2",
+          "        try:"
+        ]
+      }
+    ]
+  }
+}

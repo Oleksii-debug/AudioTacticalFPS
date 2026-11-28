@@ -80,6 +80,8 @@ class EffectsBackend:
         for name, parameters in EFFECTS.items():
             compiled = compile_effects((Effect(name),), sample_rate=48000)
             required = set(re.findall(r'(?:^|,)([a-z0-9_]+)(?:=|$)', compiled))
+            if name == 'graphic_equalizer':
+                required.add('equalizer')  # Flat defaults compile to no active bands.
             result[name] = {
                 'available': required <= self._filters,
                 'parameters': {

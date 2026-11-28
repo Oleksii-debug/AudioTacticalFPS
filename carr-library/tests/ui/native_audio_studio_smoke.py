@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic,sleep
 import traceback
+import wave
 
 
 def main():
@@ -29,6 +30,7 @@ def main():
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui.local_assistant import AssistantDialog
     errors,checks=[],[]
+    effects_receipt={}
     gui=wx.App(False)
 
     def pump(predicate,timeout=90):
@@ -57,6 +59,75 @@ def main():
         timer=wx.CallLater(150,perform)
         form.show()
         timer.Stop()
+        if errors:
+            raise AssertionError('\n'.join(errors))
+
+    def project_effect(form, selected, kind, controls):
+        """Drive the real scope picker and existing typed chain/number dialogs."""
+        timers=[]
+        def dialog_named(title):
+            matches=[window for window in wx.GetTopLevelWindows()
+                     if isinstance(window,wx.Dialog) and window.IsModal() and window.GetTitle()==title]
+            assert len(matches)==1,(title,len(matches))
+            return matches[0]
+        def click(dialog,name):
+            button=wx.FindWindowByName(name,dialog)
+            assert button and button.IsEnabled() and button.AcceptsFocusFromKeyboard(),name
+            event=wx.CommandEvent(wx.EVT_BUTTON.typeId,button.GetId())
+            assert button.GetEventHandler().ProcessEvent(event),name
+        def schedule(action):
+            def guarded():
+                try:
+                    action()
+                except BaseException:
+                    errors.append(traceback.format_exc())
+                    for window in reversed(wx.GetTopLevelWindows()):
+                        if isinstance(window,wx.Dialog) and window is not form.dialog and window.IsModal():
+                            window.EndModal(wx.ID_CANCEL)
+            timers.append(wx.CallLater(40,guarded))
+        def accept_chain():
+            dialog=dialog_named('Ordered audio effects')
+            ordered=wx.FindWindowByName('Ordered audio effects',dialog)
+            assert ordered and ordered.GetCount()==1
+            assert kind in ordered.GetString(0)
+            click(dialog,'Apply effect chain')
+        def numbers():
+            dialog=dialog_named('Edit '+kind+' effect')
+            pending=list(dialog.GetChildren())
+            fields=[]
+            while pending:
+                window=pending.pop()
+                assert len(fields)+len(pending)<512
+                if isinstance(window,wx.TextCtrl):
+                    fields.append(window)
+                pending.extend(window.GetChildren())
+            for name,value in controls.items():
+                candidates=[field for field in fields if field.GetName().startswith(name.replace('_',' ')+' (')]
+                assert len(candidates)==1,(name,[field.GetName() for field in fields])
+                assert candidates[0].AcceptsFocusFromKeyboard()
+                candidates[0].ChangeValue(str(value))
+            schedule(accept_chain)
+            click(dialog,'Apply effect')
+        def chain():
+            dialog=dialog_named('Ordered audio effects')
+            kinds=wx.FindWindowByName('Effect type to add',dialog)
+            assert kinds and kinds.SetStringSelection(kind)
+            assert 'tempo' not in [kinds.GetString(index) for index in range(kinds.GetCount())]
+            click(dialog,'Add effect')
+            schedule(numbers)
+            click(dialog,'Edit selected effect')
+        def scope():
+            picker=dialog_named('Role, scene and master effects')
+            picker.SetSelection(selected)
+            assert picker.GetSelection()==selected
+            schedule(chain)
+            picker.EndModal(wx.ID_OK)
+        schedule(scope)
+        try:
+            form.edit_effects()
+        finally:
+            for timer in timers:
+                timer.Stop()
         if errors:
             raise AssertionError('\n'.join(errors))
 
@@ -98,6 +169,22 @@ def main():
                         form.pan.SetSelection(index if index<2 else 2)
                         form.apply_voice()
                     assert len(controller.project.roles)==3
+                    effect_button=next(button for button in form.buttons
+                                       if button.GetLabel()=='Role, scene and master effects')
+                    assert effect_button.AcceptsFocusFromKeyboard() and effect_button.IsEnabled()
+                    project_effect(form,1,'equalizer',{'frequency':800,'gain_db':-6,'q':1})
+                    project_effect(form,1+len(controller.project.roles),'reverb',
+                                   {'room_ms':30,'decay':.4,'mix':.2})
+                    project_effect(form,0,'compressor',{'threshold_db':-20,'ratio':2})
+                    saved=controller.store.load(controller.project.id)
+                    assert saved==controller.project and saved.script==script and saved.script_sha256==expected
+                    assert saved.roles[0].effects[0].kind=='equalizer'
+                    assert saved.roles[0].effects[0].parameters['gain_db']==-6
+                    assert saved.scenes[0].effects[0].kind=='reverb' and not saved.scenes[1].effects
+                    assert saved.effects[0].kind=='compressor'
+                    assert 'effects, in order:' in form.plan.GetValue()
+                    checks.extend(['native Director role/scene/master scope picker',
+                                   'typed EQ room and dynamics controls persist without changing source'])
                     director=ProductionDirector(library.root,registry=controller.registry)
                     def render_with_diagnostic():
                         try:
@@ -116,6 +203,32 @@ def main():
                     assert probe_audio(form.result['master']).duration_seconds>1
                     assert form.script.GetValue()==script and controller.store.load(controller.project.id).script_sha256==expected
                     assert (Path(form.result['output_dir'])/'narration.srt').is_file()
+                    manifest=json.loads((Path(form.result['output_dir'])/'production.json').read_text(encoding='utf-8'))
+                    with wave.open(form.result['master'],'rb') as master:
+                        frame_bytes=master.getnchannels()*master.getsampwidth()
+                        master_frames=master.getnframes()
+                        accepted=master.readframes(master_frames)
+                    chunks=[]
+                    for index,row in enumerate(manifest['chapters'],1):
+                        chapter=Path(form.result['output_dir'])/f'chapter-{index:04}.wav'
+                        with wave.open(str(chapter),'rb') as audio_chapter:
+                            assert audio_chapter.getnframes()==row['frames']
+                            data=audio_chapter.readframes(row['frames'])
+                        start=row['start_frame']*frame_bytes
+                        assert data==accepted[start:start+row['frames']*frame_bytes]
+                        assert sha256(chapter.read_bytes()).hexdigest()==row['sha256']
+                        chunks.append(data)
+                    assert b''.join(chunks)==accepted
+                    assert sum(row['frames'] for row in manifest['chapters'])==master_frames
+                    assert manifest['effects']['master']==[effect.to_dict() for effect in saved.effects]
+                    effects_receipt.update(project_fingerprint=saved.fingerprint,
+                        original_script_sha256=expected,master_sha256=sha256(Path(form.result['master']).read_bytes()).hexdigest(),
+                        frames=master_frames,sample_rate=saved.settings.sample_rate,
+                        effects=manifest['effects'],chapters=manifest['chapters'],
+                        source_unchanged=True,master_chapters_exact_pcm=True,
+                        acoustic_quality='NOT_RUN',manual_nvda='NOT_RUN')
+                    checks.extend(['actual Director effect render retains exact master chapter samples',
+                                   'processed manifest binds typed chains and immutable script'])
                     assert form.script.IsEnabled() and not form.stop.IsEnabled()
                     checks.extend(['named native studio controls','unsaved draft recovery','Ctrl+S handler saves a revision',
                                    'three native voice assignments','background speech and music production',
@@ -156,7 +269,7 @@ def main():
             finally:
                 frame.Close()
                 gui.Yield()
-        print(json.dumps({'status':'PASS','checks':checks,'nvda':'NOT_RUN',
+        print(json.dumps({'status':'PASS','checks':checks,'director_effects':effects_receipt,'nvda':'NOT_RUN',
                           'audible_playback':'NOT_CLAIMED','external_services':'NOT_USED'},ensure_ascii=False))
         return 0
     finally:

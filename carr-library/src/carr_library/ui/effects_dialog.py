@@ -1,5 +1,5 @@
 """Keyboard-first review of the existing typed offline audio effect chain."""
-from ..audio.dsp import effect_controls
+from ..audio.dsp import effect_controls, effect_parameter_label
 from ..audio.effect_presets import (EffectChainSession, EffectPresetStore,
                                    builtin_presets, default_effect)
 from ..audio.models import Effect
@@ -27,7 +27,7 @@ def edit_effect(parent, effect, *, sample_rate):
     controls = {}
     for name, definition in definitions.items():
         maximum = definition['maximum']
-        label = (f"{name.replace('_', ' ')} ({definition['unit']}); "
+        label = (f"{effect_parameter_label(effect.kind, name, sample_rate=sample_rate)} ({definition['unit']}); "
                  f"{_number(definition['minimum'])} to {_number(maximum)}")
         if name == 'frequency' and definition['unit'] == 'Hz':
             label += f'; below {sample_rate / 2:g} Hz'

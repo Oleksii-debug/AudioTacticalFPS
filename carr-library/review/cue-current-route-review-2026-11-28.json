@@ -1,0 +1,91 @@
+{
+  "scope": "CUE-compatible-port",
+  "base": "d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb",
+  "source_only_tree": "435e9d6f94faddbde6b66366d3b5740d30f4391d",
+  "root_readback": [
+    {
+      "path": "carr-library/docs/AUDIO_EDITOR_INTERCHANGE.md",
+      "sha": "72de60323bbf4ae68c4c0baedc7843b9178a1d67",
+      "exact": true
+    },
+    {
+      "path": "carr-library/scripts/probe_cue_interchange.py",
+      "sha": "fda74cbeec496df4eea90f6f623a67feef7a58c0",
+      "exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "d60366cf89858f9e931c05262e2f6b47086935fc",
+      "exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/state_recovery.py",
+      "sha": "a3f6e361a9ab135c96ebe94e1725cf396d16a689",
+      "exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/interchange.py",
+      "sha": "3eed2b43caffcb698f1aa41d0b7a131cd93b085f",
+      "exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "sha": "6447bd9fbf21c2813f41451f1c1821738f93c37f",
+      "exact": true
+    },
+    {
+      "path": "carr-library/tests/storage/test_cue_interchange_backup.py",
+      "sha": "e1f968edabda0e0de20d8d78d818b69603266bd1",
+      "exact": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_interchange.py",
+      "sha": "769f74252bb71583f4dd49733e30793c674e49c5",
+      "exact": true
+    }
+  ],
+  "peer": "voice_reading: CLEAR; 11 added Studio cases and19 new passive backup cases planned, runtimeNOT_RUN",
+  "donor": {
+    "head": "de4fe0ea23c08bb7087170aba956365e62a1e91c",
+    "serializer_blob": "c3b774f1aeaf31a55715762bf0ca2f7eef4c632d",
+    "test_blob": "c3887927476540b131ecd02dd577729e6f43f42a",
+    "actual_trial": {
+      "run": 46118821375,
+      "linux": {
+        "job": 140898550029,
+        "source": 198,
+        "installed": 198,
+        "result": "PASS"
+      },
+      "windows": {
+        "job": 140898550135,
+        "source": {
+          "passed": 197,
+          "failed": 1
+        },
+        "installed": {
+          "passed": 197,
+          "failed": 1
+        },
+        "result": "FAIL",
+        "node": "test_unknown_private_cue_files_remain_visible_backup_refusals[CHAPTERS-0001.cue]",
+        "note": "That fixture's case-only write aliases an existing lowercase file on Windows. This port uses the existing pending-staging namespace and does not adopt the donor's CUE exclusion changes; no donor runtimePASS is transferred."
+      }
+    }
+  },
+  "preserved": [
+    "The original pure serializer and donorStudio test prefix remain exact.",
+    "Current3ebScene project, runtime/broker/native owner, atomic artifact publisher and completed-job checks are extended without whole-file donor replacement.",
+    "Public receipts are required and rederived from exact source metadata.",
+    "Backup uses current native5/flat4 codecs, not donorcommon4 writer.",
+    "No new private CUE ignore rule, parser dependency, model, editor process or publication authority.",
+    "Existing test deadlines/assertions/caps preserved; bounded CUE storage added to admission."
+  ],
+  "not_run": [
+    "New compatibleport source/installedruntime",
+    "New independentlibcueprobe",
+    "Actual GUIeditor import",
+    "NVDA",
+    "Listening/physicaloutput"
+  ]
+}

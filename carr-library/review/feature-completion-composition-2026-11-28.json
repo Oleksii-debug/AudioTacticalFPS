@@ -1,0 +1,185 @@
+{
+  "schema": "carr-feature-composition-review/1",
+  "status": "SOURCE_REVIEWED_EXECUTION_NOT_RUN",
+  "base_commit": "d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb",
+  "canonical_requirements_head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "components": {
+    "effects": "af984107cf3fcd303dee73de8700f795ad2fae47",
+    "director_and_aggregate": "4feb9eb4e5f5565566528bedba101bc7c22d8079",
+    "cue": "77b3b7ae33946c034245918fc6fa12dd87dbeb4d",
+    "translation_and_lifetime": "045365738dff3ea846ebbc1e28759a1c7d685659",
+    "root_composition": "e0f69f0cd660748c47b4da3a89db0154353e100f"
+  },
+  "composition": [
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "base_blob": "ceb0b9f049782fa4b31628beade590fd96a16ce9",
+      "sha256": {
+        "sha256": "6f43fb2e5d4e6e0ab1a367b62530b4ae20c3bcc6f85a2c2e417831d03f9764bb",
+        "bytes": 30043
+      },
+      "changes": [
+        {
+          "start": 165,
+          "removed": [],
+          "added": [
+            "        if 'editor_interchange' in value['result']:",
+            "            from .studio.interchange import validated_cues",
+            "            validated_cues(project, value['result'])"
+          ],
+          "component": "cue"
+        },
+        {
+          "start": 170,
+          "removed": [
+            "                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256'})"
+          ],
+          "added": [
+            "                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256', 'editor_interchange'})"
+          ],
+          "component": "cue"
+        },
+        {
+          "start": 173,
+          "removed": [],
+          "added": [
+            "    if 'editor_interchange' in value:",
+            "        from .studio.interchange import validate_report_shape",
+            "        validate_report_shape(value['editor_interchange'])"
+          ],
+          "component": "cue"
+        },
+        {
+          "start": 442,
+          "removed": [
+            "    from .assistant.translation import (split_text, validate_translation_source_record,"
+          ],
+          "added": [
+            "    from .assistant.translation import (job_chunks, validate_translation_source_record,"
+          ],
+          "component": "translation"
+        },
+        {
+          "start": 447,
+          "removed": [
+            "        {'glossary', 'source_binding', 'execution_origin', 'restore_requires_review', 'original_profile_sha256'})"
+          ],
+          "added": [
+            "        {'glossary', 'source_binding', 'source_partition', 'execution_origin',",
+            "         'restore_requires_review', 'original_profile_sha256'})"
+          ],
+          "component": "translation"
+        },
+        {
+          "start": 457,
+          "removed": [
+            "    chunks = split_text(value['source_text'])"
+          ],
+          "added": [
+            "    chunks = job_chunks(value)"
+          ],
+          "component": "translation"
+        },
+        {
+          "start": 479,
+          "removed": [],
+          "added": [
+            "            source_partition=value.get('source_partition'),"
+          ],
+          "component": "translation"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/state_recovery.py",
+      "base_blob": "42eb946ef09b2b41328a223a0494012a1ba4021e",
+      "sha256": {
+        "sha256": "2da51c85c98fd8c8639fae5bae0d62f1cdbe4109ea7f850dc21db9306b0b3fb1",
+        "bytes": 20427
+      },
+      "changes": [
+        {
+          "start": 212,
+          "removed": [],
+          "added": [
+            "        if type(value.get('result')) is dict and 'editor_interchange' in value['result']:",
+            "            from .studio.interchange import validated_cues",
+            "            validated_cues(project, value['result'])"
+          ],
+          "component": "cue"
+        },
+        {
+          "start": 300,
+          "removed": [],
+          "added": [
+            "    from .studio.interchange import validate_backup_state",
+            "    validate_backup_state(root, entries, cancelled=cancelled)"
+          ],
+          "component": "cue"
+        },
+        {
+          "start": 30,
+          "removed": [
+            "    from .assistant.translation import split_text, validate_translation_source_record"
+          ],
+          "added": [
+            "    from .assistant.translation import job_chunks, validate_translation_source_record"
+          ],
+          "component": "translation"
+        },
+        {
+          "start": 34,
+          "removed": [
+            "            or value.get('chunks') != list(split_text(source))"
+          ],
+          "added": [
+            "            or value.get('chunks') != list(job_chunks(value))"
+          ],
+          "component": "translation"
+        }
+      ]
+    }
+  ],
+  "python_namespace": {
+    "files": 388,
+    "digests": {
+      "git_rows_sha256": "b03d41d07f4d027731c9eee04eceda259f75587f5d4bd9c9838dfe101901f73c",
+      "runtime_rows_sha256": "4cb01061e13f0b5818ca5c2abc4e99bfda4cf7c95487a05254aa3d7fce7bc07c",
+      "compact_mapping_sha256": "50e2a704e61875679b991a8c329f6fa665c8de7ff892dbbc6edd4b497276de5c"
+    }
+  },
+  "package_files": 481,
+  "focus": {
+    "suites": 37,
+    "source": true,
+    "isolated_installed": true,
+    "origin_modules": 24,
+    "strict_no_skip_xfail": true,
+    "new_native_translation_step_minutes": 7,
+    "each_native_translation_watchdog_seconds": 180
+  },
+  "aggregate": {
+    "old_ordered_selectors_retained": true,
+    "main_old_deadlines_unchanged": true,
+    "component_old_deadlines_unchanged": true,
+    "v3_old_installed_service_and_integrity_steps_byte_exact": true,
+    "separate_installed_feature_modules": 17
+  },
+  "d2bd_receiving": {
+    "source_commit": "d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb",
+    "python_files": 383,
+    "all_runtime_rows_exactly_match_reference": true,
+    "log": {
+      "git_blob": "d74d4126de1272c2eb2b54602b08fd79a8f6a3b7",
+      "sha256": "e47fc8f183b5bc829ebea89c23e7a66cc17d03c3f36450431224b0bf2331b1d0",
+      "bytes": 286844,
+      "expected_match": true
+    },
+    "status": "PASS_FOCUSED_ONLY"
+  },
+  "exclusions": [
+    "Large-library/import/backup capacity source work remains separate and incomplete.",
+    "No manual NVDA, acoustic, physical capture, real Google billing/quality or private engine weight qualification is transferred.",
+    "Prior failures remain recorded; exact-head focused/aggregate execution is required."
+  ]
+}

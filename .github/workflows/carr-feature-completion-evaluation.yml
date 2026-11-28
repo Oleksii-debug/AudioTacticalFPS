@@ -1,0 +1,309 @@
+name: Updated technical project feature acceptance
+on:
+  push:
+    branches: [carr/feature-completion-evaluation-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-feature-completion-evaluation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-feature-completion-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  review:
+    name: Director FX, numeric effects, formatted translation and CUE / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 65
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      CARR_CUE_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact application and declared feature prerequisites
+        shell: pwsh
+        run: |
+          $extras = if ($IsWindows) { '.[test,desktop,sync]' } else { '.[test,sync]' }
+          python -m pip install --only-binary=cryptography,cffi $extras 'lxml==6.1.3' 'cffi==2.1.1' 'pycparser==3.12'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the Linux test audio and independent C parser toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg flex bison cmake build-essential
+      - name: Prepare the already pinned Windows test audio runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-cue-interchange' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-cue-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-cue-audio-cache') --output $audio --download | Tee-Object 'ci-cue-interchange/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Prepare exact source and installed acceptance harness
+        run: |
+          mkdir -p ci-cue-interchange
+          cat > ci-cue-interchange/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import subprocess
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-cue-interchange"
+          suites = ["tests/studio/test_interchange.py","tests/storage/test_cue_interchange_backup.py","tests/audio/test_director_effects.py","tests/storage/test_director_effects_backup.py","tests/assistant/test_translation_partition.py","tests/assistant/test_translation_layout.py","tests/assistant/test_translation_epub_layout.py","tests/ui/test_translation_layout.py","tests/storage/test_translation_layout_backup.py","tests/audio/test_effects.py","tests/audio/test_dsp.py","tests/audio/test_effect_presets.py","tests/audio/test_render.py","tests/ui/test_audio_effects.py","tests/studio/test_project_effects.py","tests/audio/test_director.py","tests/audio/test_director_resources.py","tests/audio/test_director_path_identity.py","tests/audio/test_projects.py","tests/ui/test_audio_studio.py","tests/studio/test_publishing_primary.py","tests/studio/test_director_silence.py","tests/assistant/test_translation.py","tests/assistant/test_translation_v3.py","tests/assistant/test_library_translation.py","tests/ui/test_translation_selection.py","tests/ui/test_library_translation_dialog.py","tests/storage/test_translation_runtime_recovery.py","tests/studio/test_production.py","tests/studio/test_production_cancellation_outcomes.py","tests/studio/test_production_hardening.py","tests/studio/test_publishing.py","tests/storage/test_production_operation_backup.py","tests/storage/test_studio_timeline_backup.py","tests/storage/test_canonical_backup_compat.py","tests/audio/test_cleanup_contexts.py","tests/packaging/test_managed_launch_boundary.py"]
+
+          names = ["carr_library.studio.interchange","carr_library.studio.render","carr_library.studio.publishing","carr_library.studio.project","carr_library.audio.director","carr_library.audio.projects","carr_library.audio.dsp","carr_library.audio.effects","carr_library.audio.effect_controls","carr_library.ui.audio_studio","carr_library.ui.audio_effects","carr_library.ui.effects_dialog","carr_library.assistant.translation","carr_library.assistant.translation_layout","carr_library.assistant.translation_layout_worker","carr_library.assistant.translation_epub_layout_worker","carr_library.assistant.translation_partition","carr_library.ui.translation_dialog","carr_library.backup_producers","carr_library.state_recovery","carr_library.durable_state","carr_library.audio.cleanup","carr_library.translation_cli","carr_library.installation_lease"]
+          
+          def checkout_head():
+              value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()
+              assert value == os.environ["CARR_CUE_HEAD"], (value, os.environ["CARR_CUE_HEAD"])
+              return value
+
+          commit_before = checkout_head()
+          helper_before = sha256(Path(__file__).read_bytes()).hexdigest()
+          tests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}
+
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              return result
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      print("CARR_CUE_COLLECTION_FAILURE " + str(report.longrepr)[:12000], flush=True)
+
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "-s", "--durations=20", "--import-mode=importlib", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-cue-interchange-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              assert checkout_head() == commit_before, "The checked-out commit changed."
+              assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, "The executed proof helper changed."
+              assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, "Executed test bytes changed."
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "qualification": "UPDATED_TECHNICAL_PROJECT_FEATURES",
+                        "external_editor_gui_import": "NOT_RUN",
+                        "libcue_reader": "SEPARATE_LINUX_STEP",
+                        "commit": commit_before, "proof_helper_sha256": helper_before,
+                        "test_files": tests_before,
+                        "selected_suites": proof.collected, "package_python_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require actual source features and unchanged adjacent contracts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -B -X utf8 ci-cue-interchange/check.py source 2>&1 | tee ci-cue-interchange/source.txt
+      - name: Require isolated installed features and unchanged adjacent contracts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-cue-interchange/check.py installed 2>&1 | tee ci-cue-interchange/installed.txt
+      - name: Require real installed Windows effect controls and Director rendering
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        timeout-minutes: 6
+        shell: pwsh
+        run: |
+          $failures = @()
+          python -I -B -X utf8 tests/ui/native_audio_effects_smoke.py 2>&1 | Tee-Object ci-cue-interchange/native-effects.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'native-effects' }
+          python -I -B -X utf8 tests/ui/native_audio_studio_smoke.py 2>&1 | Tee-Object ci-cue-interchange/native-director.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'native-director' }
+          python -I -B -c "import json; from pathlib import Path; specs=[('native-effects.txt',17),('native-director.txt',14)]; reports=[(json.loads(Path('ci-cue-interchange',name).read_text(encoding='utf-8-sig').strip().splitlines()[-1]),minimum) for name,minimum in specs]; assert all(r.get('status')=='PASS' and len(r.get('checks',[]))==n for r,n in reports); print(json.dumps(dict(status='PASS',native_checks=[len(r['checks']) for r,n in reports],nvda='NOT_RUN',physical_output='NOT_RUN')))" | Tee-Object ci-cue-interchange/native-checks.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'native-check-counts' }
+          if ($failures.Count) { throw ('Required actual native feature checks failed: ' + ($failures -join ', ')) }
+      - name: Require source and installed formatted translation controls
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        timeout-minutes: 7
+        run: |
+          $probeBefore = (Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant()
+          $failures = @()
+          python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --source . --output ci-cue-interchange/translation-source.json 2>&1 | Tee-Object ci-cue-interchange/translation-source.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'translation-source' }
+          python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --expect-installed --output ci-cue-interchange/translation-installed.json 2>&1 | Tee-Object ci-cue-interchange/translation-installed.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'translation-installed' }
+          if ((Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant() -ne $probeBefore) { throw 'The native translation probe changed during acceptance.' }
+          $proof = @'
+          import hashlib, importlib.metadata, json, pathlib, re, sys
+          root = pathlib.Path.cwd().resolve()
+          source = root / 'src' / 'carr_library'
+          installed = pathlib.Path(importlib.metadata.distribution('universal-research-library').locate_file('carr_library')).resolve()
+          expected = json.loads((root / 'ci-cue-interchange' / 'source-package-inventory.json').read_text(encoding='utf-8'))['files']
+          def inventory(path):
+              return {p.relative_to(path).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                      for p in sorted(path.rglob('*.py'))}
+          assert source != installed and inventory(source) == inventory(installed) == expected
+          names = {'carr_library.assistant.profiles', 'carr_library.assistant.translation',
+                   'carr_library.assistant.providers', 'carr_library.ui.translation_dialog',
+                   'carr_library.assistant.translation_layout', 'carr_library.assistant.translation_partition',
+                   'carr_library.assistant.translation_layout_worker', 'carr_library.assistant.translation_epub_layout_worker'}
+          result = []
+          for mode, count, selected in (('source', 122, source), ('installed', 130, installed)):
+              report = json.loads((root / 'ci-cue-interchange' / ('translation-' + mode + '.json')).read_text(encoding='utf-8-sig'))
+              assert report['status'] == 'PASS' and report['phase'] == 'complete'
+              assert len(report['checks']) == count and report['synthetic_rest_calls'] == 9
+              assert report['native_keyboard'] == 'PASS' and report['source_override'] == (mode == 'source')
+              assert all(report[name] == 'NOT_RUN' for name in
+                         ('live_google_api', 'billing_and_quality', 'native_approval_and_file_pickers', 'manual_nvda'))
+              assert set(report['origins']) == set(report['module_sha256']) == names
+              for name in names:
+                  relative = pathlib.Path(*name.split('.')[1:]).with_suffix('.py')
+                  assert pathlib.Path(report['origins'][name]).resolve() == selected / relative
+                  assert report['module_sha256'][name] == expected[relative.as_posix()]
+              exports = report['structured_exports']
+              assert len(exports) == 2 and {entry['format'] for entry in exports} == {'docx', 'epub'}
+              for entry in exports:
+                  assert entry['provider_calls_during_export'] == 0 and entry['quotation_authority'] is False
+                  assert (entry['output_bytes'] > 0 and entry['source_partition']['profile'] in
+                      ('carr-docx-body-layout/1', 'carr-epub-xhtml-layout/1'))
+                  assert all(re.fullmatch(r'[0-9a-f]{64}', entry[name]) for name in ('source_sha256', 'output_sha256'))
+              result.append({'mode': mode, 'checks': count, 'structured_exports': exports, 'origins': report['origins']})
+          output = {'status': 'PASS', 'native_probe_sha256': sys.argv[1], 'modes': result,
+                    'manual_nvda': 'NOT_RUN', 'live_google_api': 'NOT_RUN'}
+          (root / 'ci-cue-interchange' / 'translation-native-qualification.json').write_text(
+              json.dumps(output, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'native_checks': [122, 130], 'formats': ['docx', 'epub']}))
+          '@
+          python -I -B -X utf8 -c $proof $probeBefore 2>&1 | Tee-Object ci-cue-interchange/translation-native-qualification.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'translation-proof' }
+          if ($failures.Count) { throw ('Required formatted translation checks failed: ' + ($failures -join ', ')) }
+
+      - name: Read the exact independent upstream CUE parser source
+        if: runner.os == 'Linux'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: lipnitsk/libcue
+          ref: cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea
+          path: .ci-libcue
+          persist-credentials: false
+      - name: Build and require the actual upstream reader
+        if: runner.os == 'Linux'
+        timeout-minutes: 12
+        run: |
+          test "$(git -C ../.ci-libcue rev-parse HEAD)" = cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea
+          cmake -S ../.ci-libcue -B ../.ci-libcue/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build ../.ci-libcue/build --parallel 2
+          ctest --test-dir ../.ci-libcue/build --output-on-failure
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 scripts/probe_cue_interchange.py --libcue ../.ci-libcue/build/libcue.so.2.3.0 --report ci-cue-interchange/libcue-reader.json 2>&1 | tee ci-cue-interchange/libcue-reader.txt
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-cue-interchange
+          git rev-parse HEAD > ci-cue-interchange/commit.txt
+          git rev-parse HEAD^{tree} > ci-cue-interchange/tree.txt
+          python -m pip freeze > ci-cue-interchange/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: feature-completion-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-cue-interchange
+          if-no-files-found: error
