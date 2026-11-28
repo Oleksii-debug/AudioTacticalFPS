@@ -351,9 +351,15 @@ def _written(entries, name, value):
     return sorted(result, key=lambda item: item['filename'])
 
 
-def snapshot_inputs(root, entries, *, source_state_root, cancelled=lambda: False):
+def snapshot_inputs(root, entries, *, source_state_root, cancelled=lambda: False,
+                    maximum_bytes=None):
     """Add an explicit binding receipt after the existing streaming snapshot."""
+    if maximum_bytes is not None and (type(maximum_bytes) is not int
+            or not 0 <= maximum_bytes <= 2**63 - 1):
+        raise ValueError('Choose a bounded retained-input snapshot byte allowance.')
     inventory = _inventory(entries, cancelled)
+    if maximum_bytes is not None and sum(item['size_bytes'] for item in entries) > maximum_bytes:
+        raise ValueError('Retained-input snapshot exceeds the selected byte allowance.')
     if SNAPSHOT in inventory:
         raise ValueError('The Studio input snapshot receipt is reserved for complete backups.')
     # The existing snapshot already streamed and rehashed its sources. The
@@ -363,6 +369,8 @@ def snapshot_inputs(root, entries, *, source_state_root, cancelled=lambda: False
     if not value['projects']:
         return entries
     updated = _written(entries, SNAPSHOT, value)
+    if maximum_bytes is not None and sum(item['size_bytes'] for item in updated) > maximum_bytes:
+        raise ValueError('Retained-input snapshot exceeds the selected byte allowance.')
     _check(cancelled)
     atomic_json(Path(root) / SNAPSHOT, value)
     return updated

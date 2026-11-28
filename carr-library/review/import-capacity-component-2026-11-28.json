@@ -1,0 +1,362 @@
+{
+  "schema": "carr-import-capacity-component-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "baseline": {
+    "commit": "3eb0681239e3862393780351716c12206df563cb",
+    "tree": "adf3f4d3e3de9e8d2201dd4f4f84a31c4a5679b8",
+    "native_fixture_only_successor": "d2bda7e18755ab5899ea5cd96ea5da7d6e3f6cdb"
+  },
+  "supersedes_source_test_tree": "694877445f073dd6ffe244ea1e35adb721a10950",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ingest/resource_budget.py",
+      "before_blob": null,
+      "after_blob": "fb6c7fcd52cf7aabeaeb8a55a1f7922dee6ea4d2",
+      "bytes": 4194,
+      "sha256": "7411460c84aabb5502937a8eae5b5521f90d32ae8b547ae2480e720c13d218a8",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "249b857af877c8f37585c11a415d500c2ab595db"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/streamed_text.py",
+      "before_blob": "12e36ccc43f3943a89ee97573e804a1d3109e75b",
+      "after_blob": "1d1ccc542ee3e75881570a62432ba0dd93686d2a",
+      "bytes": 15650,
+      "sha256": "51c2e3139248c26d15c0ab73ddf46380c28d237a4ee11199031c86c10b1e0059",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/session.py",
+      "before_blob": null,
+      "after_blob": "e61ef61b4c8a48d2aa9625b4b15856b20794d277",
+      "bytes": 12135,
+      "sha256": "1b1c342ed8319eb987ef70b8d4453d6ca37f08c69f3db6c8d57c8868504d27c9",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "943c084f546455c2d84fc0478033f254ad1e79e4"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/streamed_ingest.py",
+      "before_blob": "7510d7b61d715050c88218a18d5897abe7bf6541",
+      "after_blob": "7c5e798a2e7d25e502211a3473f2bad2ea681834",
+      "bytes": 10526,
+      "sha256": "8b004a6668a839bb65023ba104e09e2ed784cbdfc2a730126a4567a0394db6bd",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "before_blob": "84b03eb9348ab04321f59bf613f8b9709eede364",
+      "after_blob": "31b8132e2a37ac8175f17cea2530d9c72b254444",
+      "bytes": 90834,
+      "sha256": "186357f1936b2dc1e9c3953751f0615f34d04ce2d031e002802fe4907cb51999",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "0be1b1fc48f27b814a5c6bf5b2a17eb70461f33b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "before_blob": "8e8a5b4848ce48aea32f9bc1bfdb48c0db356266",
+      "after_blob": "c94d8828dd0adb595b943e77224d8adc596b6efe",
+      "bytes": 70233,
+      "sha256": "d4a33896f1ac11a189e27d417ef09feec771a061549de8bb0038839af89533a0",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "4b78e411e37c3b5e68fd6496cb72448e8fcb0b4f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "before_blob": "d8ebb0149a4838b0b02157f5eca1b016e98d01be",
+      "after_blob": "a29fe0ef613201aafd92070deafdaa8859169f93",
+      "bytes": 26823,
+      "sha256": "4412a304ecac7a492316cad6cbe0d8b0f00aa0bc45e263b1d6ac8af03bfd2471",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "48a57c403a3420b46908690dd900073c10a81653"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "before_blob": null,
+      "after_blob": "0a41bbb7f1a8bd492bbdd26c4392be5b04af1ed2",
+      "bytes": 19424,
+      "sha256": "bf926afbab53993cd02890fc46e0d5a5d3aad4651be3d67643bf6e6d006acd99",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "20a8f21aac8601945948a57799dea4973b69360c"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "before_blob": "1e8e54e2418e8317cc83a80444747c86dfc27b81",
+      "after_blob": "f9c73a33ff8a819dba086f7cd7dc8b776b670985",
+      "bytes": 21702,
+      "sha256": "1bfdb7d32d27bf64a55850d9ba6fe1113fe7156910a06825c97f1e1605ad8cc8",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "8e4e2f2bc20c9d426d9ed9c0fa8b119ba2297495"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "before_blob": "88072d6a4e777953d77ffa5810a44734856ef5a6",
+      "after_blob": "49734dcbb68f4357e854cff3ae3735a12d5c41c8",
+      "bytes": 71013,
+      "sha256": "1372f6e5d1794d21105a7f1c69f246a13cf3f34833b6892eb9bca898df92ce14",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "f909841a3f506c709f37054ccdf61462b63a2967"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_resources.py",
+      "before_blob": null,
+      "after_blob": "7100ff2447dce155dd8c1617c53d0ca6d056c102",
+      "bytes": 7107,
+      "sha256": "03abd0ea8fee6e43ad96c225fc0ff61631cdfc7a3303f7b9f02734a8f62b0a2f",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "0f887c3002f60ae95ebe999784e8d7a6b97cfbc1"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "before_blob": "964cb8002c2665011f71fab7f2886429fac43536",
+      "after_blob": "289d92eca377944d02674d726e798aeaf5300c0a",
+      "bytes": 37252,
+      "sha256": "50a9ec510ac77b733cf15f7d5f00e36b5dd6b73aa2fef11d16ab9491ce9ab7d3",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "8512fa6c00a7e2eb9b0ff5a3762528b12d4b9538"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_cli.py",
+      "before_blob": null,
+      "after_blob": "2780bc1e65b2da8bde415cafcd4174bf702c968e",
+      "bytes": 9256,
+      "sha256": "489821fc9559cf0a69c44554eb7ea7e0b126473cc5174ed01997c792ee9c165a",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "59d6c61c3a85b6d8096e516c9da8235623c0720b"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "before_blob": "ac572b69e3feceeeea5d2f26913f01ec6729275e",
+      "after_blob": "c3ddc6958e3726dcfb5347f5cc0b0f096f388edc",
+      "bytes": 19262,
+      "sha256": "6e6b3c8027e41fb1ba01bec36c848afcf44e7befa8d66a95628ada23fc5922ea",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "1dc27afd103b45c4764c8b7f1456000ac4fbbfd7"
+    },
+    {
+      "path": "carr-library/src/carr_library/streamed_import_cli.py",
+      "before_blob": "8d3853f8d5b6ebb31013dd2ceb7d9fc6383e0cab",
+      "after_blob": "1fd04eed266fcf19f50d9dfb49773ba939037f77",
+      "bytes": 5255,
+      "sha256": "b9d2e3d961c6b16d79ca1a8c6a00fda170053c2ee8a087923682d9776ad6e27f",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_budget.py",
+      "before_blob": null,
+      "after_blob": "2381bfd6084fa139d9a6b4714a85046cf173dde8",
+      "bytes": 5976,
+      "sha256": "04ce769d001bc974f8cd0f0df893666b264925484e8d95ba7c9f136c83fd6c0c",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "e12314b9454e87977593765b749d17361c460009"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_streaming_import_pages.py",
+      "before_blob": null,
+      "after_blob": "b41677ec26f7269c0311c9817042d81ed7cf35c8",
+      "bytes": 11288,
+      "sha256": "23403193293f2b2caf5261b70296fe9b690101d711c295cc3ac0683184d74b0a",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "bb5f2b33f5bf2832dab632c1537d45beafd3af60"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_scan_pages.py",
+      "before_blob": null,
+      "after_blob": "f2606939ce9cfb8b1ecffe4e167d41d30c7fd762",
+      "bytes": 8823,
+      "sha256": "26a9471d19bb315356b714ccb51d342f581ee6f0795ea1a455df2f9008d75458",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_session.py",
+      "before_blob": null,
+      "after_blob": "445eabdb6bc07e1d9d73b260eff1719a833b953f",
+      "bytes": 12503,
+      "sha256": "45290b1ff7335b5197c3fbd714061bf751aa0ba9b7d261eacfb686f99f99b725",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "01575cd23f1c8621bb21c6b1fac6d699da2d8f84"
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_center.py",
+      "before_blob": "2ad63f8f13084873195c50033a2325247693689f",
+      "after_blob": "b25e9de35d36bc06b123a12374ee3d7f704c2c77",
+      "bytes": 25694,
+      "sha256": "f60354fe8361d021cccc2568dff085a9b62c6cd3b704f7506ce483ad5c39c646",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "d432773d13281154e07e9fb9cf3746b65ced1278"
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_resources.py",
+      "before_blob": null,
+      "after_blob": "77d4c02ffbf935171aa6c7ae4ee29e20580ecf98",
+      "bytes": 8015,
+      "sha256": "f78667d9413003b5d1069ab1b69f048a2658a90d42fcf369d5728ad3be6be43b",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": "a5a0976077d9c22c3e9f490ad6fb31a76ebc674d"
+    },
+    {
+      "path": "carr-library/tests/storage/test_import_capacity_backup.py",
+      "before_blob": null,
+      "after_blob": "3c127366751a65f435520dcc9b3c83a7f249a1b8",
+      "bytes": 12651,
+      "sha256": "76f5232cd7ecb36b4b8a8aa677874670875d8f8bc1cc4acae0cd88095f19041f",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_budget_worker.py",
+      "before_blob": null,
+      "after_blob": "ebdce4010a2990eb9eba9581027f6a8243e3398f",
+      "bytes": 17198,
+      "sha256": "3939529ff7b89ac2c98af63f35f5ab000964e2101eea434edb8c405e102b38d2",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_batch_cli.py",
+      "before_blob": null,
+      "after_blob": "39b5e498ad48928d1c1dafbf32b2d11d78409869",
+      "bytes": 6912,
+      "sha256": "77521f0472f6dc61e02ffa1d04c7a3e4fe0caae22ed69aa5867f39f7b4adf173",
+      "kind": "added",
+      "inverse_exact": "remove newly added path",
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/tests/e2e/test_streamed_import_cli.py",
+      "before_blob": "e64c4610595fb347c490325d59037e6d83897dd4",
+      "after_blob": "284975ca766521b4e83038b37b7c370d69787d75",
+      "bytes": 6969,
+      "sha256": "4e8cf83aa023041b97171b5469ee8ee19d869f7c10ca9ad3f84553f6439daf5a",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": null
+    },
+    {
+      "path": "carr-library/docs/IMPORT_CENTER.md",
+      "before_blob": "5ae1ee32f3268d9cf119d5fba5f33144e251d687",
+      "after_blob": "fc89fc31450860698a6d21be6ea1a8dda3e886b9",
+      "bytes": 10259,
+      "sha256": "bf3df13effb5d97c4cd19aef958be56defe7742597e0c44f901005717a044ef9",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": "446f6e790d0ba3e32b99e7ac46035df8257cd4a8"
+    },
+    {
+      "path": "carr-library/docs/LARGE_SOURCE_PROFILES.md",
+      "before_blob": "c2cbd1ca7fe2ae406ea3aa361528f34f87d7e798",
+      "after_blob": "b806926db7c113579a5e6ea350c0c10e92d7674c",
+      "bytes": 8580,
+      "sha256": "bcf44fd4aff27cc674fa8a25586a0bac624cb3e26a61883400446e96bbc594b9",
+      "kind": "modified",
+      "inverse_exact": true,
+      "donor_blob": null
+    }
+  ],
+  "summary": {
+    "source": 15,
+    "tests": 10,
+    "docs": 2,
+    "total": 27,
+    "added": 13,
+    "modified": 14,
+    "deleted": 0,
+    "new_application_python": 5
+  },
+  "composition": {
+    "pending_backup": "Semantic-only file is a review carrier. Do not overwrite root's combined backup-budget file. The 17 exact inverse hunks here are equivalent to the prior 18 semantic groups and have already been reconciled into root combined blob 5e1c48533eaae23cca140825ae4c734aaa3ed558.",
+    "application": "Apply only listed ingest hunks; compose with root's independently owned backup method rather than replace its whole file.",
+    "main": "Apply only import-batch dispatch hunk; preserve root's independently owned backup arguments.",
+    "required_shared_cleanup_blob": "6ea79ccc3e1b87795ed7da19bc9476be1d1b2949",
+    "backup_api_tree": "6c8ca9b8e7d5801dfa7fc9203e91bcff02be252d",
+    "backup_api": "carr_library.backup_budget.BackupBudget; keyword backup_budget; no manifest-derived resource authority"
+  },
+  "reuse": {
+    "donor_commit": "1d85bae4c35bd7fedf385b3eeafc9519d770b0c5",
+    "donor_tree": "b26aa7134ff7ea78ba24b07aba58db5000d1d606",
+    "decision": "Adapt typed budgets, session accounting and durable scan-page concepts to current source-profile, request, seal, worker and publication APIs. No donor branch merge.",
+    "preserved": [
+      "Current request-v2 source_profile authority; donor request-v2 import_budget is not substituted.",
+      "One existing owned worker/request per selected row; no alternative batch supervisor or max_items API.",
+      "Legacy default limits, current source guards, canonical hashes, receipt checks and pre-COMMIT transaction boundaries.",
+      "Non-TXT 64 MiB boundary; larger TXT requires selected typed profile and sealed catalog verification.",
+      "Passive restore marks external scan cursors for fresh selection; pinned originals remain available for explicit resume.",
+      "Existing native cleanup owners retain request lock, reservation and private stage until native and notification completion."
+    ]
+  },
+  "tests": {
+    "planned_static_cases": 190,
+    "new_planned_cases": 145,
+    "preserved_cases": 45,
+    "counts_are": "Static source/parametrization inspection only; not pytest collection or execution.",
+    "selectors": {
+      "carr-library/tests/ingest/test_import_budget.py": 35,
+      "carr-library/tests/e2e/test_streaming_import_pages.py": 4,
+      "carr-library/tests/ingest/test_import_scan_pages.py": 14,
+      "carr-library/tests/ingest/test_import_session.py": 15,
+      "carr-library/tests/ui/test_import_center.py": 52,
+      "carr-library/tests/ui/test_import_resources.py": 27,
+      "carr-library/tests/storage/test_import_capacity_backup.py": 9,
+      "carr-library/tests/ingest/test_import_budget_worker.py": 12,
+      "carr-library/tests/e2e/test_import_batch_cli.py": 9,
+      "carr-library/tests/e2e/test_streamed_import_cli.py": 13
+    },
+    "actual_data_planned": [
+      "129 MiB-plus actual TXT written in 64 KiB blocks; old 64/128 MiB refusals and selected owned import with original/source quotation.",
+      "5,001 actual files over six bounded scan pages.",
+      "8,193 actual logical fragments, partial SQLite journal, restore and same-job resume.",
+      "Real owned child, request lock, broker conflict, retained protocol file/stage, commit/cancel reconciliation.",
+      "Actual SQLite allocation and final publication receipt denial inside the rollbackable transaction.",
+      "Actual full backup/restore/rebackup with profile2 and page bindings, source deletion, and six rehashed negative controls."
+    ]
+  },
+  "fixture_corrections_since_prior_hold": [
+    "Removed ten calls to nonexistent LibraryApp.close_search from four newly added test scopes only; current reads already close per call.",
+    "Backup external-root scandir observer is local to batch_scan.os so unrelated shutil descriptor scans keep the real OS module."
+  ],
+  "source_review": {
+    "audio_peer_tree": "9132a81d0db704b40a534c6a989422c3566d6f80",
+    "audio_peer_manifest": "eee4dc5869ceafd48048e66a99cb6593cdc897e7",
+    "audio_scope": "worker/session/application resource guard and actual-child/session fixtures CLEAR, source only",
+    "native_api_script": "ff46ae2b890e0ce0f81e8445a246496e3cb8d0d3",
+    "native_scope": "Current menu, field, result and saved-profile retained-asset API readback CLEAR; no native execution.",
+    "ui_cli_peer_status": "Separate final UI/CLI source pass not completed by Voice due priority actual failure triage; do not infer it from native API or audio ownership review."
+  },
+  "qualification": {
+    "runtime": "NOT_RUN",
+    "native": "NOT_RUN",
+    "performance": "NOT_ASSESSED",
+    "no_claims": [
+      "No private model or asset included.",
+      "No operating-system quota or physical memory enforcement inferred from cooperative accounting.",
+      "No multi-gigabyte throughput, million-fragment performance, NVDA or physical-device acceptance inferred from selected numeric allowances.",
+      "No historical receiving PASS transferred to this new source."
+    ]
+  }
+}

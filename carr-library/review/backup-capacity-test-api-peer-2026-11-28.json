@@ -1,0 +1,40 @@
+{
+  "schema": "carr-backup-capacity-test-peer/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "component_tree": "c801e9f9b09b750351326a9cdf5e670c17c01a38",
+  "composed_api_tree": "d4e8d78760ee460998cfa15eab6a34e09d3e02f7",
+  "reviewer": "locate_project",
+  "verdict": "CLEAR",
+  "bindings": {
+    "application": "7bf626ad0545b64313bf680b14caa3b40f4c67d2",
+    "main": "8dfd5313a9a9452c6ea799ebe37640d9a23ba8f6",
+    "tests": {
+      "ui": "cd05fbbb6858d61014e12a4acab53acc9e35ee2d",
+      "cli": "1b6d8fb20d80d133086116e8412fe0ef977f04ad",
+      "roundtrip": "97f111294a2afcc6be01fc5d4d5f2d36e6286366",
+      "budget": "4676aa9bb30061e4704a7a7a57bd38a657082eea"
+    },
+    "production": {
+      "backup_budget.py": "37997d492d6c2319d76c409d3c458a86700acdf8",
+      "backup_options.py": "155111c5de97a1f6947b8a06b2f0425b6ce20616",
+      "ui/backup_actions.py": "a2979d5d3afec64f4475ec2d0b898247b4c6d2bd",
+      "ui/backup_resources.py": "3e248e8b5c7f533c75f6d6d263b42a9efc28bf78",
+      "ui/backup_incremental_dialog.py": "843b99a68c277413fd3c0243f993f26b258188f9",
+      "backup_incremental_cli.py": "2b0e0daf2e8f5e571a500a9d1748b7e510a73174"
+    }
+  },
+  "scope": [
+    "Read all four requested complete test modules and exact current argument, callback, source and return-value seams.",
+    "UI fixtures use the real create/verify/restore work on a thread while native peers reject worker access; captured modal IDs model direct/parent destruction and changed-library return.",
+    "Omitted policy remains absent from keyword arguments; explicit budget preserves the typed object and is never serialized as manifest authority.",
+    "Full and nested incremental roundtrips, selected database/staging refusal, cancellation and rehashed archive-policy negatives retain current source and output guards.",
+    "Clock controls verify the existing first operation deadline and lower child staging budget; no product deadline changes.",
+    "The actual CLI child checks all imported package Python bytes against the current selected package before invoking its true entrypoint.",
+    "No use of removed LibraryApp.close_search remains in the reviewed modules; LibraryApp.read closes each connection in its own scope."
+  ],
+  "limitations": [
+    "No execution host used and no test count promoted to PASS.",
+    "This review covers fixture/API fidelity and declared negative controls, not a replacement for the completed receiving CI/native evidence.",
+    "No source, test, workflow, branch or reference was modified by this peer pass."
+  ]
+}

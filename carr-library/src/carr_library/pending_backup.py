@@ -25,12 +25,18 @@ from .durable_state import local_path, regular, sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
 from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS
+from .ingest.batch_pages import (batch_shape, row_profile, validate_scan_metadata,
+                                 validate_scan_relations, reference as scan_reference)
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS, request_profile
 from .ingest.streamed_text import (MAX_FRAGMENTS, profile_from_config, profile_from_value,
                                    inspect_text, file_digest, verified_reader)
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
+
+from .backup_budget import (limit as resource_limit, arguments as resource_arguments,
+                            bounded_cancel, checked_budget, check_metadata_memory)
+from .ingest.streamed_text import MAX_BYTES as STREAMED_TEXT_MAX_BYTES
 
 MAX_JOURNAL = 512 * 1024**2
 MAX_FILES = 25_000
@@ -200,9 +206,9 @@ def _config(value):
     Config(**value)
 
 
-def _catalog(path):
+def _catalog(path, *, backup_budget=None):
     path = local_path(path, exists=True)
-    if not 0 < regular(path).st_size <= MAX_JOURNAL:
+    if not 0 < regular(path).st_size <= resource_limit(backup_budget, 'database_bytes', MAX_JOURNAL):
         raise ValueError('Invalid catalog for pending import recovery.')
     db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, isolation_level=None)
     try:
@@ -303,8 +309,7 @@ def _request(record, request_id, data_dir, db):
 
 
 def _batch(record, batch_id, data_dir, db):
-    if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-            or type(record['version']) is not int or record['version'] != 1
+    if (not batch_shape(record, _BATCH_KEYS)
             or record['batch_id'] != batch_id or not _id(batch_id) or record['data_dir'] != data_dir
             or record['state'] not in ('queued', 'running', 'paused', 'attention', 'complete')
             or type(record['recursive']) is not bool
@@ -334,7 +339,7 @@ def _batch(record, batch_id, data_dir, db):
                 raise ValueError('A pending source is missing its planned identity.')
         else:
             _source(row['source'])
-            _manifest(row['manifest'])
+            _manifest(row['manifest'], row_profile(record, row))
             if row['source'] in sources and sources[row['source']] != row['manifest']:
                 raise ValueError('Conflicting pending source location in one batch.')
             sources[row['source']] = row['manifest']
@@ -353,6 +358,8 @@ def _batch(record, batch_id, data_dir, db):
                     'SELECT 1 FROM catalog_edition WHERE workspace=? AND asset=?',
                     (record['workspace'], row['manifest']['sha256'])).fetchone() is None:
                 raise ValueError('Pending duplicate belongs to another workspace.')
+        elif record['version'] in (2, 3) and scan_reference(duplicate) is not None:
+            pass  # _relations checks the exact earlier page, row and source policy.
         elif sources.get(duplicate) != row['manifest']:
             raise ValueError('Pending duplicate no longer identifies its planned source.')
     counts = dict.fromkeys(STATES, 0)
@@ -360,6 +367,7 @@ def _batch(record, batch_id, data_dir, db):
     if (type(record['total']) is not int or record['total'] != len(record['rows'])
             or record['counts'] != counts or any(type(v) is not int for v in record['counts'].values())):
         raise ValueError('Pending batch summary differs from its rows.')
+    validate_scan_metadata(record)
 
 
 def _journal_schema(db):
@@ -374,22 +382,25 @@ def _journal_schema(db):
         raise ValueError('Pending import journal integrity failed.')
 
 
-def _journal(path, catalog, cancelled):
+def _journal(path, catalog, cancelled, *, backup_budget=None):
     """Read-only validation; never CREATE tables in an imported database."""
     path = local_path(path, exists=True)
-    if not 0 < regular(path).st_size <= MAX_JOURNAL:
+    if not 0 < regular(path).st_size <= resource_limit(backup_budget, 'journal_bytes', MAX_JOURNAL):
         raise ValueError('Pending import journal exceeds its byte budget.')
     db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, isolation_level=None)
-    deadline = time.monotonic() + 60
+    deadline = time.monotonic() + resource_limit(backup_budget, 'seconds', 60)
     db.set_progress_handler(lambda: int(cancelled() or time.monotonic() > deadline), 10_000)
     try:
         db.execute('PRAGMA trusted_schema=OFF')
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
         _journal_schema(db)
-        if (db.execute('SELECT count(*) FROM job').fetchone()[0] > MAX_JOBS
-                or db.execute('SELECT count(*) FROM checkpoint').fetchone()[0] > MAX_CHECKPOINTS):
+        job_count = db.execute('SELECT count(*) FROM job').fetchone()[0]
+        checkpoint_count = db.execute('SELECT count(*) FROM checkpoint').fetchone()[0]
+        if (job_count > resource_limit(backup_budget, 'jobs', MAX_JOBS)
+                or checkpoint_count > resource_limit(backup_budget, 'checkpoints', MAX_CHECKPOINTS)):
             raise ValueError('Pending import journal exceeds its row budget.')
+        check_metadata_memory(regular(path).st_size, job_count + checkpoint_count, backup_budget)
         db.row_factory = sqlite3.Row
         jobs = {}
         for item in db.execute('SELECT * FROM job ORDER BY id'):
@@ -397,7 +408,7 @@ def _journal(path, catalog, cancelled):
             row = dict(item)
             if (not _hash(row['id']) or not _hash(row['asset']) or not _text(row['edition'], 200)
                     or not _text(row['config'], 128_000) or type(row['count']) is not int
-                    or not 1 <= row['count'] <= MAX_FRAGMENTS or row['state'] not in _JOB_STATES
+                    or not 1 <= row['count'] <= 2**31 - 1 or row['state'] not in _JOB_STATES
                     or (row['error'] is not None and not _text(row['error'], 4000, empty=True))):
                 raise ValueError('Invalid pending journal job.')
             _workspace(catalog, row['workspace'])
@@ -405,6 +416,8 @@ def _journal(path, catalog, cancelled):
             if not isinstance(settings, dict) or settings.get('kind') not in ('logical_segment', 'physical_page'):
                 raise ValueError('Invalid pending journal extraction identity.')
             profile = profile_from_config(settings)
+            if profile is not None and row['count'] > profile.maximum_fragments:
+                raise ValueError('Pending streamed text exceeds its exact source profile.')
             if settings['kind'] == 'logical_segment':
                 if profile is None and settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
                     raise ValueError('Unsupported pending text extraction identity.')
@@ -495,7 +508,7 @@ def pending_roots(root):
                  if _present(Path(root) / name))
 
 
-def _inventory(root):
+def _inventory(root, *, backup_budget=None):
     """Recognize canonical committed sidecars; ignore only known transient names."""
     found = {}
     for name in ('import-requests', 'import-batches'):
@@ -514,7 +527,7 @@ def _inventory(root):
                     if not re.fullmatch('[0-9a-f]{32}\\.json', review.name):
                         raise ValueError('Unrecognized pending review journal file.')
                     found[review.relative_to(root).as_posix()] = _stamp(info)
-                    if len(found) > MAX_FILES:
+                    if len(found) > resource_limit(backup_budget, 'pending_files', MAX_FILES):
                         raise ValueError('Too many pending import sidecars.')
                 continue
             info = regular(path)
@@ -523,7 +536,7 @@ def _inventory(root):
             if not re.fullmatch('[0-9a-f]{32}\\.json', path.name):
                 raise ValueError('Unrecognized pending import journal file.')
             found[path.relative_to(root).as_posix()] = _stamp(info)
-            if len(found) > MAX_FILES:
+            if len(found) > resource_limit(backup_budget, 'pending_files', MAX_FILES):
                 raise ValueError('Too many pending import sidecars.')
     return found
 
@@ -683,6 +696,7 @@ def _direct_job(request, catalog, asset, originals, cancelled):
 def _relations(requests, batches, reviews, jobs, journal):
     # Direct-publication jobs are resolved after the original bytes have been
     # retained/verified. Batch and journal/review relations are checked first.
+    validate_scan_relations(batches)
     direct_requests = []
     for request in requests.values():
         if 'job' in request:
@@ -704,6 +718,8 @@ def _relations(requests, batches, reviews, jobs, journal):
             expected = dict(workspace=batch['workspace'], source=row['source'], config=batch['config'],
                             expected_manifest=row['manifest'], metadata=dict(title=row['title'], authors=[], language=None,
                             edition=None, volume=None, collections=batch['collections'], work_id=row['work_id'], edition_id=row['edition_id']))
+            profile = row_profile(batch, row)
+            expected['source_profile'] = profile.to_dict() if profile is not None else None
             if any(request.get(key) != value for key, value in expected.items()):
                 raise ValueError('Pending request differs from its batch identity.')
     review_fields = {'request_id', 'workspace', 'job', 'edition', 'asset_sha256', 'physical',
@@ -743,7 +759,8 @@ def _references(requests, batches):
     for identity, batch in sorted(batches.items()):
         for row in batch['rows']:
             if row['manifest'] is not None:
-                yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None, None
+                yield ('import-batches/' + identity + '.json', row['row_id'], row['source'],
+                       row['manifest'], None, row_profile(batch, row))
 
 
 def _source_checkpoints(asset, original, jobs, journal, cancelled):
@@ -786,17 +803,45 @@ def _remember_profile(profiles, asset, profile):
     if profile is None:
         return
     previous = profiles.get(asset)
-    if previous is None or profile.maximum_bytes > previous.maximum_bytes:
+    key = lambda chosen: (chosen.maximum_bytes, chosen.maximum_fragments, canonical(chosen.to_dict()))
+    if previous is None or key(profile) > key(previous):
         profiles[asset] = profile
+
+
+def _scan_page_manifest(batches):
+    """Bind passive continuations to their exact typed saved page metadata."""
+    return [dict(filename='import-batches/' + identity + '.json',
+                 scan_sha256=digest(canonical(record['scan'])))
+            for identity, record in sorted(batches.items()) if record['version'] in (2, 3)]
+
+
+def _manifest_scan_pages(metadata, files):
+    rows = metadata.get('scan_pages', [])
+    if type(rows) is not list or len(rows) > MAX_BATCHES:
+        raise ValueError('Invalid pending scan-page inventory.')
+    names = set()
+    for row in rows:
+        if (type(row) is not dict or set(row) != {'filename', 'scan_sha256'}
+                or not isinstance(row['filename'], str)
+                or re.fullmatch(r'import-batches/[0-9a-f]{32}\.json', row['filename']) is None
+                or row['filename'] not in files or row['filename'] in names
+                or not _hash(row['scan_sha256'])):
+            raise ValueError('Invalid pending scan-page binding.')
+        names.add(row['filename'])
+    if rows != sorted(rows, key=lambda row: row['filename']):
+        raise ValueError('Pending scan-page inventory is not canonical.')
+    if metadata['version'] == 2 and not rows:
+        raise ValueError('Versioned pending scan pages require a saved continuation.')
+    return rows
 
 
 def _profile_manifest(profiles):
     return [dict(sha256=asset, profile=profile.to_dict()) for asset, profile in sorted(profiles.items())]
 
 
-def _manifest_profiles(metadata):
+def _manifest_profiles(metadata, *, backup_budget=None):
     rows = metadata.get('source_profiles', [])
-    if not isinstance(rows, list) or len(rows) > MAX_FILES:
+    if not isinstance(rows, list) or len(rows) > resource_limit(backup_budget, 'pending_files', MAX_FILES):
         raise ValueError('Invalid streamed pending-source profile inventory.')
     profiles = {}
     for row in rows:
@@ -822,8 +867,14 @@ def _verify_original(asset, path, profile, cancelled):
             raise ValueError('Pending original MIME or checksum mismatch.')
 
 
-def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=None):
+def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=None,
+                     backup_budget=None, maximum_bytes=None):
     """Create a self-contained component under the caller's root writer guard."""
+    if maximum_bytes is not None and (type(maximum_bytes) is not int or maximum_bytes <= 0):
+        raise ValueError('Choose a positive pending snapshot byte allowance.')
+    maximum = resource_limit(backup_budget, 'pending_bytes', MAX_TOTAL)
+    total_limit = maximum if maximum_bytes is None else min(maximum, maximum_bytes)
+    cancelled = bounded_cancel(cancelled, backup_budget)
     _check(cancelled)
     root = local_path(app.root, exists=True)
     roots = pending_roots(root)
@@ -831,48 +882,58 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
         raise ValueError('Pending import roots changed during backup; retry after pausing imports.')
     target = local_path(target)
     target.mkdir(mode=0o700)
-    before = _inventory(root)
+    before = _inventory(root, **resource_arguments(backup_budget))
     catalog_path = target.parent / 'library.sqlite'
     if not catalog_path.exists():
         catalog_path = app.database
     journal = None
     files, assets, bindings, profiles = [], {}, [], {}
+    copied_bytes = 0
     try:
-        with closing(_catalog(catalog_path)) as catalog:
+        with closing(_catalog(catalog_path, **resource_arguments(backup_budget))) as catalog:
             jobs = {}
             journal_path = root / 'imports.sqlite'
             if _present(journal_path):
                 for suffix in ('-wal', '-shm', '-journal'):
                     if _present(Path(str(journal_path) + suffix)):
                         local_path(Path(str(journal_path) + suffix), exists=True)
-                source_db, _ = _journal(journal_path, catalog, cancelled)
+                source_db, _ = _journal(journal_path, catalog, cancelled, **resource_arguments(backup_budget))
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
+                journal_limit = min(total_limit, resource_limit(backup_budget, 'journal_bytes', MAX_JOURNAL))
+                if source_db.execute('PRAGMA page_count').fetchone()[0] * page_size > journal_limit:
+                    source_db.close()
+                    raise ValueError('Pending journal exceeds its available staging allowance.')
                 with closing(source_db), closing(sqlite3.connect(target / 'imports.sqlite')) as backup:
                     def progress(status, remaining, total):
                         _check(cancelled)
-                        if total * page_size > MAX_JOURNAL:
+                        if total * page_size > journal_limit:
                             raise ValueError('Pending journal exceeds its backup budget.')
-                    source_db.backup(backup, pages=256, progress=progress)
+                    source_db.backup(backup, pages=min(256, max(1, journal_limit // page_size)), progress=progress)
                     # Online backup copies the source header's WAL flag. Make
                     # the independent snapshot self-contained before read-only
                     # validation, so it cannot create unlisted WAL/SHM files.
                     if backup.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                         raise ValueError('Pending journal snapshot is not self-contained.')
-                journal, jobs = _journal(target / 'imports.sqlite', catalog, cancelled)
+                journal, jobs = _journal(target / 'imports.sqlite', catalog, cancelled, **resource_arguments(backup_budget))
                 files.append(_entry(target / 'imports.sqlite', 'imports.sqlite', cancelled))
+                copied_bytes += files[-1]['size_bytes']
             for name, stamp in sorted(before.items()):
                 _check(cancelled)
                 maximum = MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST
                 raw = _read(root / name, maximum)
                 if _stamp(regular(root / name)) != stamp:
                     raise ValueError('Pending import state changed during backup; retry after pausing imports.')
+                if copied_bytes + len(raw) > total_limit:
+                    raise ValueError('Pending metadata exceeds its available staging allowance.')
                 entry = _write(target / name, raw)
                 entry['filename'] = name
                 files.append(entry)
+                copied_bytes += entry['size_bytes']
             requests, batches, reviews = _records(target, str(root), catalog, before)
             direct_requests = _relations(requests, batches, reviews, jobs, journal)
 
             def retain(expected=None, known=None, source=None, profile=None):
+                nonlocal copied_bytes
                 wanted = known or (expected['sha256'] if expected else None)
                 if wanted in assets:
                     entry = assets[wanted]
@@ -902,8 +963,11 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                     raise ValueError('Pending import retained source bytes are missing; a complete backup cannot be created.')
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
+                if incoming.size > (resource_limit(backup_budget, 'original_bytes', STREAMED_TEXT_MAX_BYTES)
+                        if profile is not None else MAX_BYTES):
+                    raise ValueError('Pending original exceeds the explicitly selected backup allowance.')
                 name = incoming.digest + SUFFIXES[incoming.mime]
-                if sum(item['size_bytes'] for item in files) + incoming.size > MAX_TOTAL:
+                if copied_bytes + incoming.size > total_limit:
                     raise ValueError('Pending import backup exceeds its total byte budget.')
                 if profile is not None:
                     entry = dict(filename=name, size_bytes=incoming.size, sha256=incoming.digest)
@@ -915,7 +979,8 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                 entry['mime'] = incoming.mime
                 assets[incoming.digest] = entry
                 files.append({key: value for key, value in dict(entry, filename='originals/' + name).items() if key != 'mime'})
-                if sum(item['size_bytes'] for item in files) > MAX_TOTAL:
+                copied_bytes += entry['size_bytes']
+                if copied_bytes > total_limit:
                     raise ValueError('Pending import backup exceeds its total byte budget.')
                 return incoming.digest
 
@@ -934,7 +999,7 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
                 _check(cancelled)
                 _direct_job(request, catalog, assets.get(request.get('asset_sha256')),
                             target / 'originals', cancelled)
-        if _inventory(root) != before or pending_roots(root) != roots:
+        if _inventory(root, **resource_arguments(backup_budget)) != before or pending_roots(root) != roots:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
         for entry in files:
             _check(cancelled)
@@ -945,9 +1010,12 @@ def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=Non
             journal.close()
     result = dict(version=1, data_dir=str(root), files=sorted(files, key=lambda item: item['filename']),
                   assets=sorted(assets.values(), key=lambda item: item['filename']), sources=bindings)
+    scan_pages = _scan_page_manifest(batches)
     if profiles:
-        result.update(version=3, scan_pages=[], source_profiles=_profile_manifest(profiles))
-    validate_pending(result)
+        result.update(version=3, scan_pages=scan_pages, source_profiles=_profile_manifest(profiles))
+    elif scan_pages:
+        result.update(version=2, scan_pages=scan_pages)
+    validate_pending(result, **resource_arguments(backup_budget))
     sync_directory(target)
     return result
 
@@ -959,21 +1027,24 @@ def _component_name(name):
         + '|'.join(re.escape(suffix) for suffix in sorted(set(SUFFIXES.values()))) + ')', name))
 
 
-def validate_pending(metadata):
+def validate_pending(metadata, *, backup_budget=None):
     """Validate enclosing manifest fields before touching component paths."""
+    checked_budget(backup_budget)
     base = {'version', 'data_dir', 'files', 'assets', 'sources'}
     if (not isinstance(metadata, dict) or type(metadata.get('version')) is not int
-            or metadata['version'] not in (1, 3)
-            or set(metadata) != (base if metadata['version'] == 1 else base | {'scan_pages', 'source_profiles'})
+            or metadata['version'] not in (1, 2, 3)
+            or set(metadata) != (base if metadata['version'] == 1 else
+                                base | ({'scan_pages'} if metadata['version'] == 2 else
+                                        {'scan_pages', 'source_profiles'}))
             or any(not isinstance(metadata[key], list) for key in ('files', 'assets', 'sources'))
-            or any(len(metadata[key]) > MAX_FILES for key in ('files', 'assets', 'sources'))):
+            or any(len(metadata[key]) > resource_limit(backup_budget, 'pending_files', MAX_FILES)
+                   for key in ('files', 'assets', 'sources'))):
         raise ValueError('Invalid pending import backup manifest.')
+    check_metadata_memory(0, sum(len(metadata[key]) for key in ('files', 'assets', 'sources')), backup_budget)
     _source(metadata['data_dir'])
-    profiles = _manifest_profiles(metadata)
+    profiles = _manifest_profiles(metadata, **resource_arguments(backup_budget))
     if bool(profiles) != (metadata['version'] == 3):
         raise ValueError('Streamed pending sources require their versioned profile inventory.')
-    if metadata['version'] == 3 and metadata['scan_pages'] != []:
-        raise ValueError('Saved folder-scan continuations are not part of this source profile.')
     files, total = {}, 0
     for item in metadata['files']:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
@@ -982,14 +1053,17 @@ def validate_pending(metadata):
             raise ValueError('Invalid pending import file manifest.')
         name = item['filename']
         profile = profiles.get(Path(name).stem) if name.startswith('originals/') else None
-        limit = MAX_JOURNAL if name == 'imports.sqlite' else (
+        limit = resource_limit(backup_budget, 'journal_bytes', MAX_JOURNAL) if name == 'imports.sqlite' else (
             profile.maximum_bytes if profile is not None else MAX_BYTES) if name.startswith('originals/') else (
             MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST)
+        if profile is not None:
+            limit = min(limit, resource_limit(backup_budget, 'original_bytes', STREAMED_TEXT_MAX_BYTES))
         if item['size_bytes'] > limit:
             raise ValueError('Pending import file exceeds its byte budget.')
         files[name] = item
         total += item['size_bytes']
-    if total > MAX_TOTAL:
+    _manifest_scan_pages(metadata, files)
+    if total > resource_limit(backup_budget, 'pending_bytes', MAX_TOTAL):
         raise ValueError('Pending import backup exceeds its total byte budget.')
     assets = {}
     for item in metadata['assets']:
@@ -1024,16 +1098,17 @@ def validate_pending(metadata):
         _source(item['source'])
 
 
-def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: False):
+def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: False, backup_budget=None):
     """Restore into a private staging root; return extra assets and root paths.
 
     ``stage/library.sqlite`` must already be the enclosing verified catalog.
     The caller publishes only after this and the other backup components pass.
     ``new_root`` is the final destination, not the temporary staging directory.
     """
+    cancelled = bounded_cancel(cancelled, backup_budget)
     _check(cancelled)
-    validate_pending(metadata)
-    profiles = _manifest_profiles(metadata)
+    validate_pending(metadata, **resource_arguments(backup_budget))
+    profiles = _manifest_profiles(metadata, **resource_arguments(backup_budget))
     source = local_path(source, exists=True)
     regular(source, directory=True)
     stage = local_path(stage, exists=True)
@@ -1075,12 +1150,14 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
         _copy(source / entry['filename'], verified / entry['filename'], entry, cancelled)
     journal = None
     try:
-        with closing(_catalog(stage / 'library.sqlite')) as catalog:
+        with closing(_catalog(stage / 'library.sqlite', **resource_arguments(backup_budget))) as catalog:
             jobs = {}
             if 'imports.sqlite' in names:
-                journal, jobs = _journal(verified / 'imports.sqlite', catalog, cancelled)
+                journal, jobs = _journal(verified / 'imports.sqlite', catalog, cancelled, **resource_arguments(backup_budget))
             requests, batches, reviews = _records(verified, metadata['data_dir'], catalog, names)
             direct_requests = _relations(requests, batches, reviews, jobs, journal)
+            if _scan_page_manifest(batches) != metadata.get('scan_pages', []):
+                raise ValueError('Pending scan-page inventory differs from its actual typed journals.')
             assets = {entry['sha256']: entry for entry in metadata['assets']}
             bindings = {(entry['filename'], entry['row_id']): entry for entry in metadata['sources']}
             expected_bindings, referenced = set(), {job['asset'] for job in jobs.values()}
@@ -1133,6 +1210,10 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 _write(stage / 'import-requests' / (request_id + '.json'), (canonical(request) + '\n').encode('utf-8'))
             for batch_id, batch in batches.items():
                 batch['data_dir'] = str(new_root)
+                if batch['version'] in (2, 3):
+                    # Stored paths and directory identities are passive evidence,
+                    # never permission to enumerate a restored external root.
+                    batch['scan']['review_required'] = True
                 rebased = {}
                 for row in batch['rows']:
                     if row['manifest'] is None:

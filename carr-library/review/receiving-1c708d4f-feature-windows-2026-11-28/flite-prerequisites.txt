@@ -1,0 +1,28 @@
+_ ERROR at setup of test_actual_three_voice_music_production_preserves_text_stereo_chapters_and_outputs _
+
+    @pytest.fixture
+    def registry():
+        registry=VoiceRegistry()
+        available={voice.id for voice in registry.list_voices()}
+>       assert {'flite:kal','flite:slt','flite:rms'}<=available, 'Install reviewed full FFmpeg for actual audio acceptance.'
+E       AssertionError: Install reviewed full FFmpeg for actual audio acceptance.
+E       assert {'flite:kal', 'flite:slt', 'flite:rms'} <= {'sapi5:x64:a4a21a4d14ca43b3714c2898', 'sapi5:x86:a4a21a4d14ca43b3714c2898', 'sapi5:x64:dac5df3cd814aa727e5b904b', 'sapi5:x86:dac5df3cd814aa727e5b904b'}
+E         
+E         Extra items in the left set:
+E         'flite:kal'
+E         'flite:slt'
+E         'flite:rms'
+
+tests\audio\test_director.py:23: AssertionError
+
+_____ test_actual_render_and_resume_use_the_same_canonical_output_parent ______
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_actual_render_and_resume_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002AB9D29AA90>
+
+    def test_actual_render_and_resume_use_the_same_canonical_output_parent(tmp_path, monkeypatch):
+        registry = VoiceRegistry()
+>       assert 'flite:kal' in {voice.id for voice in registry.list_voices()}
+E       AssertionError: assert 'flite:kal' in {'sapi5:x64:a4a21a4d14ca43b3714c2898', 'sapi5:x86:a4a21a4d14ca43b3714c2898', 'sapi5:x64:dac5df3cd814aa727e5b904b', 'sapi5:x86:dac5df3cd814aa727e5b904b'}
+
+tests\audio\test_director_path_identity.py:17: AssertionError

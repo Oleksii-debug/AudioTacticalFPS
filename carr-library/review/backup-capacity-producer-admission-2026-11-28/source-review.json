@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "scope": "Selected backup capacity: source page/copy/receipt admission; no backup envelope, archive authority, default cap or timeout increase",
+  "source_tree": "f14e3d98d24a9df7b82ffa99ec28b3ff35e7f93c",
+  "supersedes": {
+    "tree": "70193eb9965daa311f8fb51a32d97b8cb6cf8173",
+    "sidecars": "021f9832203cdd13c96abc8b44145870ffb28ab3",
+    "sidecar_tests": "19a82ea1f154393e22ea40daa937f7ce2d424305",
+    "reason": "Call-time omitted limit and explicit equal-limit policy must remain distinct"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "2f8068f3b70119c86ad3be532800b36d02b5d149",
+      "successor": "ed811fea47c7defa842703ef063ffc84a06b4c9b",
+      "before_utf8_bytes": 31634,
+      "after_utf8_bytes": 33559,
+      "before_sha256": "3fb229ef73f887de84a0002ea774cc9e11206403b24df0d0d4c5ff20b6641af7",
+      "after_sha256": "bffda122db89bc29c3bccc419bda0be9cb93c559e5432ca6cc8067c0350c95ab",
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "preimage": "43db8db8af313d5e632ca22f818ca50251b89b10",
+      "successor": "34929b4c6dc9149cf8df2d47fafff083c887976c",
+      "before_utf8_bytes": 31958,
+      "after_utf8_bytes": 33891,
+      "before_sha256": "b9a37a1eb2ed101f797749d79788d1eee5ffe4397d36cf57707729dbe44abe2b",
+      "after_sha256": "1ad34da50feacc8dedea480ace10dfe4371f370a7ad9f829e26cc73d884cb973",
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/backup_inputs.py",
+      "preimage": "4af9b3e3d92b0e957453424d080b5ff8d61f0acd",
+      "successor": "fd0534541d59bc9a488aa48399c20514fe8ab63f",
+      "before_utf8_bytes": 23830,
+      "after_utf8_bytes": 24451,
+      "before_sha256": "acef13b130e56936353c509a11d1683eef3b5343c84dcf894c7e2ab2b193fddf",
+      "after_sha256": "31884d4d8836a437f16605b7d585adb23b90e1d623f48e6b23cf9c29c92e08c6",
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_sidecars.py",
+      "preimage": "54240b18368c4f512b776f3f3f1af2d6a0426b35",
+      "successor": "8e64d49708af591b199fe50ab918a797a778773b",
+      "before_utf8_bytes": 25660,
+      "after_utf8_bytes": 36323,
+      "before_sha256": "d4c1e48759251a816fcbf0af7668c390741983398a7326bbd2ed8e5c4145f33f",
+      "after_sha256": "db76ec35d1241a2349867f9acd574f11cc20163f02cdd17af4b911a060f27184",
+      "old_prefix_exact": true,
+      "planned_added_cases": 13
+    },
+    {
+      "path": "carr-library/tests/storage/test_studio_clip_inputs_backup.py",
+      "preimage": "1c3d3fcfe7891a154770ff0496f8882e0de90be5",
+      "successor": "61c1947fb855a3ac3788ecd84abda000049f987a",
+      "before_utf8_bytes": 26101,
+      "after_utf8_bytes": 29909,
+      "before_sha256": "b6e2412831e8cbf6de222a06ff08320344696888101d4aedc0fe4a8a76f49e72",
+      "after_sha256": "6640cbd1faaf4dd31e4e853b758d9e16dd869b2775f0f34a5eae85f55bda5f84",
+      "old_prefix_exact": true,
+      "planned_added_cases": 9
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity.py",
+      "preimage": null,
+      "successor": "a3b32ca426f3fc51f4590774fc1eb24ff5246f90",
+      "after_utf8_bytes": 11073,
+      "after_sha256": "509a27bdaa176211e60d3a84998af0ebff0e7bac071f7770269a8f34ab6295a4",
+      "planned_added_cases": 18
+    }
+  ],
+  "planned_new_cases": 40,
+  "meaningful_regressions": [
+    "Actual SQLite page_count*page_size refusal before backup destination creation; bounded first pages and final private-size cap",
+    "Original cancellation/deadline exception retained from copy and integrity handlers; handler removed before following ordinary check",
+    "Actual live WAL journal exceeds physical main-file size and is refused before opening its output, for lower and equal explicit caps",
+    "Fresh pre-copy size rejects same-source growth; omitted max_bytes resolves current MAX_BYTES without adding new _copy kwargs",
+    "Retained Studio input receipt size included before atomic_json publication; exact-fit and one-byte-under boundaries use actual canonical bytes"
+  ],
+  "compatibility": [
+    "Storage backup/check without selected cancellation or maximum retain their exact previous native call shape",
+    "Sidecar max_bytes=None resolves current MAX_BYTES at invocation; any explicit valid integer, including equal cap, selects the new fresh-copy/WAL checks",
+    "No selected limit raises existing sidecar/data-format maximum; bool, invalid numeric/string and out-of-range inputs refuse",
+    "Studio snapshot_inputs maximum_bytes=None retains previous behavior and encoded receipt bytes",
+    "Original existing test files remain complete exact prefixes"
+  ],
+  "source_dependency": {
+    "storage_preimage": "43db8db8af313d5e632ca22f818ca50251b89b10",
+    "root_helper_tree": "843c36beba1752958e736d0bc073f5e000848800",
+    "current_product_before_root_helper": "dda329e4ed291da4829f53d624c5479aec76bcbd",
+    "note": "Storage successor includes the separately owned root capacity API preimage; compose this full successor only with that agreed root helper slice"
+  },
+  "reuse": {
+    "donor_test_blob": "7000b1ebce6a4bd8e48fd5136c23fed5a7582a5d",
+    "adapted_cases": 14,
+    "additional_sqlite_cases": 4,
+    "changes": [
+      "Current Storage schema and maximum_bytes keyword",
+      "Chunk observer selects an explicit cancellation callback because omitted default backup remains unchanged",
+      "Private-copy check observer binds only this actual stage, forwarding foreign calls",
+      "Original callback failures and final selected-size publication boundary use the current API"
+    ],
+    "donor_execution_transferred": false
+  },
+  "reviews": {
+    "root_storage_and_studio": "CLEAR",
+    "voice_three_test_modules": "CLEAR at70193",
+    "voice_default_equal_limit_successor": "CLEAR atf14e",
+    "root_sidecar_final_readback": "pending at manifest freeze"
+  },
+  "test_selectors": [
+    "tests/storage/test_backup_capacity.py",
+    "tests/storage/test_backup_sidecars.py",
+    "tests/storage/test_studio_clip_inputs_backup.py"
+  ],
+  "limitations": [
+    "Source and fixture review only; no execution performed in this checkpoint",
+    "End-to-end selected full/incremental backup integration and policy UI are parent-owned",
+    "No private data, OS policy, device or consent changes"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "carr-chorus-tail-fixture-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "receiving": {
+    "head": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+    "run_id": 46129784287,
+    "job_id": 140932191681,
+    "scope": "Completed Windows source and installed modes; original test fails at nonzero-tail assertion after its frame/rate assertions passed.",
+    "trace_blob": "c98cf67336dd1598836f1780081905db9a4bd1f2",
+    "trace_tree": "ca93b53066643eb65ff218fbb872cffbc2775a44",
+    "original_log_blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf"
+  },
+  "file": {
+    "path": "carr-library/tests/audio/test_dsp.py",
+    "before_blob": "6e81fa2376109187253472aa263855cdb7380574",
+    "after_blob": "a02cb036ede0e5ce33e89bb7b5dba7e1b8e64ced",
+    "sha256": "b978e6d665c44127b699f41f060a2fdf1bfdbda4f9df12111015b738a57caa88",
+    "bytes": 22434,
+    "hunks": [
+      {
+        "before": "    values[-100] = .5\n    source = write_wave(tmp_path / 'tail-source.wav', values)\n",
+        "after": "    # Keep the input active through EOF. FFmpeg's moving chorus tap is\n    # bounded by depth (48 frames here); an impulse 100 frames before EOF\n    # has already left that window even though delay+depth is drained.\n    values[-64:] = [.5] * 64\n    source = write_wave(tmp_path / 'tail-source.wav', values)\n"
+      }
+    ],
+    "inverse_exact": true,
+    "all_assertion_and_raises_lines_byte_identical": true
+  },
+  "source_identity": {
+    "dsp": "8e6681b169bb1015454d9373140fad03008eb6d4",
+    "effects": "2455097b2ee3ed54bae2e478f985f45776f5991c",
+    "render": "b78a6a7e45c44821ce461ad000f1eec8fdccbb2d"
+  },
+  "primary_sources": [
+    {
+      "url": "https://github.com/FFmpeg/FFmpeg/blob/n8.0/libavfilter/af_chorus.c",
+      "sha256": "38837d6b27c65eb7a07148c51c1ad46f258ae2f63c0e27302b40675f96fcce05",
+      "scope": "config_output separately sets max_samples/fade_out from delay+depth and a moving lookup range from depth; filter_frame reads that lookup before retaining each input."
+    },
+    {
+      "url": "https://github.com/FFmpeg/FFmpeg/blob/n8.0/libavfilter/generate_wave_table.c",
+      "sha256": "d0798ed5fa5b2453c457a1c8a81901089e0842451bc1c5a856ab11941e9758c3",
+      "scope": "Sine lookup is rounded to integer values inside its supplied minimum/maximum range."
+    }
+  ],
+  "diagnosis": {
+    "kind": "test input does not excite the observed EOF window",
+    "source_inference": "At 24 kHz and depth 2 ms the lookup spans 0..48 frames. The old impulse 100 frames before EOF can have fully passed through the moving tap before EOF. The 42 ms drain still correctly emits 1008 frames, but those frames need not contain signal.",
+    "correction": "Use the same 0.5 amplitude for the final 64 source frames. This keeps real energy in the moving tap at EOF and preserves the original >0.01 tail requirement.",
+    "not_claimed": "This source explanation and corrected fixture are not a new FFmpeg execution result or an acoustic quality qualification."
+  },
+  "preserved": [
+    "Same converter, FFmpeg, controls, source length, sample rate, output format and source hash checks.",
+    "Same exact tail frame count and nonzero amplitude threshold.",
+    "Same track truncation refusal, master time-changing refusal and absence/cleanup checks.",
+    "Every old test and assertion outside the one input fixture hunk.",
+    "All production and workflow bytes; no timeout or budget change."
+  ],
+  "qualification": {
+    "corrected_fixture": "NOT_RUN",
+    "native17": "Earlier separate native effects checks do not establish that this corrected fixture has executed."
+  }
+}

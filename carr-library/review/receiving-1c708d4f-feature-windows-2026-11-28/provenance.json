@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_FAILURE",
+  "head": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "run": 46129784287,
+  "job": 140932191681,
+  "platform": "Windows2022",
+  "conclusion": "failure",
+  "completed_at": "2026-11-28T09:42:10Z",
+  "raw_log_utf8_bytes": 1449327,
+  "raw_log_sha256": "6f6600cbc1308b68029ec4bcbeb21c533527906592aa6d9e84c98335100e060d",
+  "source": {
+    "passed": 1026,
+    "failed": 55,
+    "errors": 65,
+    "skipped": 12,
+    "seconds": 597.04
+  },
+  "installed": {
+    "passed": 1026,
+    "failed": 55,
+    "errors": 65,
+    "skipped": 12,
+    "seconds": 565.47
+  },
+  "native_effects": {
+    "status": "PASS",
+    "checks": 17
+  },
+  "native_director": {
+    "status": "FAIL",
+    "at": "Required Flite voice inventory assertion before production"
+  },
+  "native_translation": {
+    "source": "FAIL DOCX source-bound translation timeout",
+    "installed": "FAIL DOCX source-bound translation timeout"
+  },
+  "limits": [
+    "Strict source/installed and aggregate job verdicts remain FAILURE.",
+    "Setup/call/teardown counts are separate; error rows may refer to cases already counted as failed or passed.",
+    "Top20 duration rows are partial per-phase timing observations, not complete module totals.",
+    "No fix or new execution result is asserted by this receipt."
+  ]
+}

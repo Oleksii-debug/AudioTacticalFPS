@@ -66,7 +66,7 @@ def center(monkeypatch, tmp_path):
     library = SimpleNamespace(root=tmp_path, read=Mock(side_effect=read),
         import_batches=Mock(side_effect=lambda workspace: tuple(deepcopy(list(saved.values())))),
         import_batch=Mock(side_effect=lambda workspace, identity: deepcopy(saved[identity])),
-        plan_import_batch=Mock(), run_import_batch=Mock(), set_import_batch_row=Mock())
+        plan_import_page=Mock(), continue_import_scan=Mock(), run_import_batch=Mock(), set_import_batch_row=Mock())
     jobs = []
     frame = SimpleNamespace(library=library, working=False, cancel_event=Event(), book=None)
 
@@ -84,10 +84,13 @@ def center(monkeypatch, tmp_path):
     view.collection, view.languages = Control(selection=1), Control(selection=3)
     view.ocr_config = Config(languages='eng+ukr+slk')
     view.recursive = Control(value=True)
+    view.page_files, view.page_entries, view.page_seconds = Control(value=1000), Control(value=20000), Control(value=60)
+    view.resource_summary, view.import_budget = Control(), None
     view.batches, view.rows = Control(), Control(selection=0)
     view.details, view.status, view.cancel = Control(), Control(), Control()
     view.cancel.Disable()
-    view.mutable = [view.collection, view.languages, view.recursive, view.batches, Control()]
+    view.mutable = [view.collection, view.languages, view.recursive, view.batches, Control(),
+                    view.page_files, view.page_entries, view.page_seconds]
     view.EndModal = Mock()
     view.jobs, view.pending, view.saved = jobs, pending, saved
     return view
@@ -100,7 +103,7 @@ def complete(center, job, value):
 
 def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(center):
     center.plan(('/selected/folder',))
-    center.library.plan_import_batch.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
     assert center.busy and center.cancel.enabled
     assert all(not control.enabled for control in center.mutable)
     center.collection.SetSelection(0)
@@ -108,7 +111,7 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     center.recursive.SetValue(False)
     center.cancel_operation()
     center.jobs[0].operation()
-    args, kwargs = center.library.plan_import_batch.call_args
+    args, kwargs = center.library.plan_import_page.call_args
     assert args == ('library', ('/selected/folder',))
     assert kwargs['collections'] == ('selected-collection',)
     assert kwargs['config'].languages == 'eng+ukr+slk'
@@ -121,7 +124,7 @@ def test_invalid_plan_choices_never_start_a_job(center, control, selection):
     with pytest.raises(ValueError, match='Choose a destination'):
         center.plan(('/selected/folder',))
     center.frame.run_job.assert_not_called()
-    center.library.plan_import_batch.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
 
 
 def test_missing_ocr_configuration_never_starts_a_plan(center):
@@ -146,7 +149,7 @@ def test_model_choice_updates_new_plans_only_and_cancel_preserves_previous(cente
     assert center.ocr_config == selected and center.batch == original
     center.plan(('/selected/folder',))
     center.jobs[-1].operation()
-    assert center.library.plan_import_batch.call_args.kwargs['config'] == selected
+    assert center.library.plan_import_page.call_args.kwargs['config'] == selected
 
 
 def test_busy_import_cannot_launch_model_configuration(center, monkeypatch):
@@ -170,7 +173,7 @@ def test_managed_model_choice_is_frozen_into_new_plan_and_never_rewrites_saved_b
     center.plan(('/selected/scanned.pdf',))
     center.ocr_config = Config()
     center.jobs[-1].operation()
-    assert center.library.plan_import_batch.call_args.kwargs['config'] == chosen
+    assert center.library.plan_import_page.call_args.kwargs['config'] == chosen
     assert center.batch == saved
 
 
@@ -187,7 +190,7 @@ def test_unusable_model_dialog_result_does_not_replace_current_choices(center, m
     monkeypatch.setattr(ocr_options, 'choose_model_config', choose)
     center.choose_languages()
     assert center.ocr_config is before
-    center.library.plan_import_batch.assert_not_called()
+    center.library.plan_import_page.assert_not_called()
 
 
 def test_progress_is_marshaled_and_completion_preserves_quarantine_status(center):
@@ -465,3 +468,142 @@ def test_import_report_propagates_saved_cleanup_notice(center, tmp_path, monkeyp
     assert target.read_text(encoding='utf-8') == batch_report(center.saved['first'])
     assert center.status.value == 'Import report saved. ' + warning
     assert len(center.jobs) == 2
+
+
+def test_explicit_page_limits_and_policy_are_captured_before_dispatch(center):
+    from carr_library.ingest.resource_budget import ImportBudget
+    selected = ImportBudget()
+    center.import_budget = selected
+    center.page_files.SetValue(12)
+    center.page_entries.SetValue(42)
+    center.page_seconds.SetValue(90)
+    center.plan(('/selected/originals',))
+    center.import_budget = None
+    center.page_files.SetValue(1)
+    center.page_entries.SetValue(1)
+    center.page_seconds.SetValue(1)
+    center.jobs[-1].operation()
+    call = center.library.plan_import_page.call_args
+    assert call.args == ('library', ('/selected/originals',))
+    assert call.kwargs['import_budget'] is selected
+    assert (call.kwargs['max_files'], call.kwargs['max_entries'], call.kwargs['timeout']) == (12, 42, 90.0)
+    assert call.kwargs['max_bytes'] == 4 * 1024**2
+
+
+@pytest.mark.parametrize('boundary', ['closed', 'library-swap', 'new-token'])
+def test_queued_page_cannot_open_sources_after_ownership_is_lost(center, boundary):
+    center.plan(('/selected/originals',))
+    if boundary == 'closed':
+        center._dispose()
+    elif boundary == 'library-swap':
+        center.frame.library = SimpleNamespace()
+    else:
+        center._job_token = object()
+    with pytest.raises((ValueError, InterruptedError)):
+        center.jobs[-1].operation()
+    center.library.plan_import_page.assert_not_called()
+
+
+def test_continuation_captures_saved_identity_and_never_overrides_saved_policy(center):
+    center.batch.update(version=3, source_profile={'opaque': 'already saved by the service'})
+    center.continue_scan()
+    center.batch = batch('replacement')
+    center.import_budget = object()
+    center.jobs[-1].operation()
+    call = center.library.continue_import_scan.call_args
+    assert call.args == ('library', 'first')
+    assert set(call.kwargs) == {'cancelled', 'max_files', 'max_entries', 'timeout', 'max_bytes'}
+    center.library.plan_import_page.assert_not_called()
+    center.library.run_import_batch.assert_not_called()
+
+
+@pytest.mark.parametrize('result', ['cancel', 'default', 'selected'])
+def test_resource_review_changes_only_future_plans_on_explicit_acceptance(center, monkeypatch, result):
+    from carr_library.ingest.resource_budget import ImportBudget
+    from carr_library.ui import import_resources
+    selected = ImportBudget()
+    old = deepcopy(center.batch)
+    chosen = None if result == 'default' else selected
+    chooser = Mock(return_value=(result != 'cancel', chosen))
+    monkeypatch.setattr(import_resources, 'choose_import_resources', chooser)
+    center.choose_resources()
+    assert center.import_budget is (selected if result == 'selected' else None)
+    assert center.batch == old and not center.jobs
+    assert chooser.call_args.args == (center, None)
+    assert chooser.call_args.kwargs['current']()
+    if result != 'cancel':
+        assert center.resource_summary.value == import_resources.profile_summary(chosen)
+
+
+@pytest.mark.parametrize('boundary', ['destroy', 'library-swap', 'became-busy'])
+def test_resource_modal_return_cannot_mutate_a_revoked_or_busy_owner(center, monkeypatch, boundary):
+    from carr_library.ingest.resource_budget import ImportBudget
+    from carr_library.ui import import_resources
+    original = deepcopy(center.batch)
+    def choose(*args, **kwargs):
+        assert kwargs['current']()
+        if boundary == 'destroy':
+            center._dispose()
+        elif boundary == 'library-swap':
+            center.frame.library = SimpleNamespace()
+        else:
+            center.frame.working = True
+        return True, ImportBudget()
+    monkeypatch.setattr(import_resources, 'choose_import_resources', choose)
+    center.choose_resources()
+    assert center.import_budget is None and center.batch == original
+    assert center.resource_summary.value == ''
+
+
+@pytest.mark.parametrize('phase', ['queued', 'completed', 'failed'])
+def test_direct_disposal_suppresses_late_page_delivery_without_native_access(center, phase):
+    center.plan(('/selected/originals',))
+    job = center.jobs[-1]
+    if phase != 'queued':
+        center.library.plan_import_page.return_value = batch('returned')
+        result = job.operation()
+    before = deepcopy(center.batch), center.status.value
+    center._dispose()
+    assert center.closed and center.frame.cancel_event.is_set()
+    def dead(*args, **kwargs):
+        pytest.fail('A destroyed import control was accessed.')
+    for control in (*center.mutable, center.status, center.cancel, center.rows, center.details):
+        control.SetValue = control.SetFocus = control.SetItems = control.Enable = control.Disable = dead
+    if phase == 'queued':
+        with pytest.raises(ValueError):
+            job.operation()
+        job.failed(InterruptedError('Closed before admission.'))
+    elif phase == 'completed':
+        job.done(result)
+    else:
+        job.failed(RuntimeError('Late completed worker failure.'))
+    assert (center.batch, center.status.value) == before
+    center.library.import_batches.assert_not_called()
+
+
+def test_same_cleanup_owner_keeps_admission_closed_until_notifications_finish(center):
+    from carr_library.audio.cleanup import CleanupOwner
+    from threading import Thread
+    allow, entered, released = Event(), Event(), Event()
+    owner = CleanupOwner(allow.is_set)
+    def retained_stage_notification():
+        entered.set()
+        assert released.wait(5)
+    owner.add_quiescent_callback(retained_stage_notification)
+    center._cleanup_owner = owner
+    allow.set()
+    closing = Thread(target=owner.close)
+    closing.start()
+    try:
+        assert entered.wait(5) and owner.quiescent
+        assert not owner.notifications_complete_event.is_set()
+        center.plan(('/selected/originals',))
+        center.frame.run_job.assert_not_called()
+        released.set()
+        closing.join(5)
+        assert not closing.is_alive() and owner.notifications_complete_event.is_set()
+        center.plan(('/selected/originals',))
+        center.frame.run_job.assert_called_once()
+    finally:
+        released.set()
+        closing.join(5)

@@ -87,6 +87,9 @@ def main(argv=None, *, delivery=None):
     if arguments[:1] == ['backup-incremental']:
         from .backup_incremental_cli import main as backup_incremental_main
         return backup_incremental_main(arguments[1:])
+    if arguments[:1] == ['import-batch']:
+        from .ingest.batch_cli import main as batch_import_main
+        return batch_import_main(arguments[1:])
     if arguments[:1] == ['import-text']:
         from .streamed_import_cli import main as streamed_import_main
         return streamed_import_main(arguments[1:])
@@ -106,6 +109,11 @@ def main(argv=None, *, delivery=None):
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    parser.add_argument('--backup-include-generated', action='store_true',
+        help='Include generated audio stored inside the library in this backup.')
+    from .backup_options import FIELDS as resource_fields, add_resource_arguments, resources_from_arguments
+    from .backup_budget import arguments as resource_arguments
+    add_resource_arguments(parser)
     ocr = parser.add_mutually_exclusive_group()
     ocr.add_argument('--list-ocr-models', action='store_true',
                      help='List the pinned official OCR catalogue; never downloads models')
@@ -148,6 +156,12 @@ def main(argv=None, *, delivery=None):
     add_audio_arguments(parser)
     args = parser.parse_args(argv)
     validate_acquisition_arguments(parser, args)
+    backup_resource_requested = args.backup_reviewed_resources or any(
+        getattr(args, 'backup_resource_' + row[0]) is not None for row in resource_fields)
+    if backup_resource_requested and not (args.backup or args.restore):
+        parser.error('Backup resource choices require --backup or --restore.')
+    if args.backup_include_generated and not args.backup:
+        parser.error('--backup-include-generated requires --backup.')
     identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
@@ -175,6 +189,7 @@ def main(argv=None, *, delivery=None):
     native_handle = local_audio_binding = None
     frame = None
     try:
+        backup_budget = resources_from_arguments(args)
         if args.document_formats:
             from .extract.document_formats import supported_formats_text
             print(supported_formats_text())
@@ -210,7 +225,8 @@ def main(argv=None, *, delivery=None):
             if not args.data_dir or not args.manifest_sha256:
                 parser.error('--restore requires a new --data-dir and --manifest-sha256')
             from .library_backup import restore_backup
-            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256)
+            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256,
+                           **resource_arguments(backup_budget))
             print('Backup restored. Open the new data directory to continue.')
             return 0
         location_notice = ''
@@ -271,7 +287,10 @@ def main(argv=None, *, delivery=None):
                               for group in session.groups]}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            backup_kwargs = resource_arguments(backup_budget)
+            if args.backup_include_generated:
+                backup_kwargs['include_generated'] = True
+            checksum = app.backup(args.backup, **backup_kwargs)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
         from .audio.local_runtime import prepare_local_audio_runtime

@@ -438,7 +438,10 @@ def test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_trunc
 
     frames = RATE // 2
     values = [0.] * frames
-    values[-100] = .5
+    # Keep the input active through EOF. FFmpeg's moving chorus tap is
+    # bounded by depth (48 frames here); an impulse 100 frames before EOF
+    # has already left that window even though delay+depth is drained.
+    values[-64:] = [.5] * 64
     source = write_wave(tmp_path / 'tail-source.wav', values)
     original_bytes = source.read_bytes()
     effect = ConverterEffect('chorus', {'delay_ms': 40, 'depth_ms': 2, 'speed_hz': 1, 'mix': .5})

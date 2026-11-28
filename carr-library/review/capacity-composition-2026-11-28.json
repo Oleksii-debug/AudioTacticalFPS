@@ -1,0 +1,475 @@
+{
+  "schema": "carr-capacity-composition/1",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "parent_commit": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "canonical_head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+  "issue_reference": {
+    "updated_at": "2026-11-27T16:44:15Z",
+    "sha256": "22f227a37837334801ed1788c4231f1189be9b3dca16e30bc0c9c3590eac5f84"
+  },
+  "inputs": {
+    "import_tree": "a510250f2c49f0623cb23f60f40f6b0623a439ac",
+    "backup_tree": "c801e9f9b09b750351326a9cdf5e670c17c01a38",
+    "shared_application_tree": "d4e8d78760ee460998cfa15eab6a34e09d3e02f7",
+    "pending_tree": "577f2c38842a1c008a162d093c6d930d1801151b",
+    "native_probe_tree": "4efc8bd74f42a17468e3a93599d91b5ffc2c7da6",
+    "fixture_repair_tree": "6351d677b09bd44611c3b312f657340f79e2fba0",
+    "chorus_repair_tree": "77a6f0c61fd0cf30583ea844dbd5a1d4a1a1f6a8"
+  },
+  "integration": {
+    "shared_paths": [
+      "application.py",
+      "__main__.py",
+      "pending_backup.py"
+    ],
+    "application_and_main_nonoverlap": true,
+    "pending_semantic_and_budget_peer": "CLEAR",
+    "all_other_collisions": "EXACT_IDENTICAL_ONLY",
+    "python_files": 398,
+    "product_paths": 30,
+    "new_python_modules": 10,
+    "removed_paths": 0,
+    "base_preservation": "All untargeted blobs must match parent exactly."
+  },
+  "source_review": {
+    "typed_profile_and_pages": "Root complete; captured cursor, original identity, pure restore validation and unchanged legacy guards inspected.",
+    "worker_session": "Independent Audio peer CLEAR",
+    "backup_producers": "Root and Audio peer CLEAR",
+    "fixture_apis": "Independent Locate peer CLEAR",
+    "native_probe": "Independent Locate peer CLEAR",
+    "full_execution": "NOT_RUN"
+  },
+  "focus": {
+    "suites": [
+      "tests/e2e/test_import_batch_cli.py",
+      "tests/e2e/test_streamed_import_cli.py",
+      "tests/e2e/test_streaming_import_pages.py",
+      "tests/ingest/test_import_budget.py",
+      "tests/ingest/test_import_budget_worker.py",
+      "tests/ingest/test_import_scan_pages.py",
+      "tests/ingest/test_import_session.py",
+      "tests/storage/test_import_capacity_backup.py",
+      "tests/ui/test_import_center.py",
+      "tests/ui/test_import_resources.py",
+      "tests/e2e/test_backup_resource_cli.py",
+      "tests/storage/test_backup_budget.py",
+      "tests/storage/test_backup_capacity.py",
+      "tests/storage/test_backup_resource_roundtrip.py",
+      "tests/storage/test_backup_sidecars.py",
+      "tests/storage/test_studio_clip_inputs_backup.py",
+      "tests/ui/test_backup_resource_actions.py",
+      "tests/ingest/test_batch_scan.py",
+      "tests/ingest/test_streamed_text.py",
+      "tests/ingest/test_streamed_ingest.py",
+      "tests/ingest/test_streamed_admission.py",
+      "tests/e2e/test_streamed_source_import.py",
+      "tests/e2e/test_import_batches.py",
+      "tests/e2e/test_import_worker_publication.py",
+      "tests/storage/test_library_backup.py",
+      "tests/storage/test_backup_incremental.py",
+      "tests/storage/test_backup_boundary.py",
+      "tests/storage/test_backup_schema_identity.py",
+      "tests/storage/test_backup_scan_bounds.py",
+      "tests/storage/test_pending_backup.py",
+      "tests/storage/test_complete_pending_backup.py",
+      "tests/storage/test_direct_import_pending_backup.py",
+      "tests/storage/test_streamed_source_backup.py",
+      "tests/storage/test_composite_backup.py",
+      "tests/storage/test_canonical_backup_compat.py",
+      "tests/ui/test_backup_incremental_dialog.py",
+      "tests/ui/test_streamed_import.py",
+      "tests/audio/test_cleanup_contexts.py",
+      "tests/packaging/test_managed_launch_boundary.py"
+    ],
+    "origins": [
+      "carr_library.__main__",
+      "carr_library.application",
+      "carr_library.backup_budget",
+      "carr_library.backup_compat",
+      "carr_library.backup_incremental",
+      "carr_library.backup_incremental_cli",
+      "carr_library.backup_options",
+      "carr_library.backup_report",
+      "carr_library.backup_sidecars",
+      "carr_library.ingest.batch_cli",
+      "carr_library.ingest.batch_pages",
+      "carr_library.ingest.batch_scan",
+      "carr_library.ingest.batches",
+      "carr_library.ingest.catalog_asset_copy",
+      "carr_library.ingest.resource_budget",
+      "carr_library.ingest.session",
+      "carr_library.ingest.streamed_ingest",
+      "carr_library.ingest.streamed_text",
+      "carr_library.ingest.worker",
+      "carr_library.library_backup",
+      "carr_library.pending_backup",
+      "carr_library.storage.revisions",
+      "carr_library.streamed_import_cli",
+      "carr_library.studio.backup_inputs",
+      "carr_library.ui.backup_actions",
+      "carr_library.ui.backup_incremental_dialog",
+      "carr_library.ui.backup_resources",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.import_center",
+      "carr_library.ui.import_resources"
+    ],
+    "source_and_installed": "REQUIRED_STRICT",
+    "native_windows": "REQUIRED_INSTALLED",
+    "benchmarks": "NOT_RUN_SEPARATE_WORK"
+  },
+  "reference": {
+    "git_rows_sha256": "af79ef9977bd24aba1932e46a59fcaae6c06fddbec639fd8e6a024400a90c503",
+    "runtime_rows_sha256": "9443a44824fa7f4349716896b227671748f056a2ca1b466b15d67f0befd2a761",
+    "compact_mapping_sha256": "6416870d6ea939472560580e014c598221e24c51cfe56a010c4d2cdc6163058e"
+  },
+  "previous_feature_failure": {
+    "blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf",
+    "sha256": "6f6600cbc1308b68029ec4bcbeb21c533527906592aa6d9e84c98335100e060d",
+    "bytes": 1449327
+  },
+  "pending": [
+    "Exact successor feature repair and acceptance",
+    "Measured capacity/performance harness",
+    "Aggregate selectors and complete final-head Windows gates",
+    "Manual NVDA, physical audio, provider/model quality and rights qualification remain separate"
+  ],
+  "entries": [
+    {
+      "path": ".github/workflows/carr-capacity-evaluation.yml",
+      "git_blob": "75986c355938b419378142e376dd9c99dd8c9e47"
+    },
+    {
+      "path": ".github/workflows/carr-feature-completion-evaluation.yml",
+      "git_blob": "1293a98d5c4aebb1082a780dfde68249880a8069"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "git_blob": "64fe0a67ea0b977800af6df9355c2790dd324123"
+    },
+    {
+      "path": "carr-library/docs/BACKUP_RESOURCE_LIMITS.md",
+      "git_blob": "df70f01e98f847ee53dc5db56e2e6064eefeb86c"
+    },
+    {
+      "path": "carr-library/docs/IMPORT_CENTER.md",
+      "git_blob": "fc89fc31450860698a6d21be6ea1a8dda3e886b9"
+    },
+    {
+      "path": "carr-library/docs/LARGE_SOURCE_PROFILES.md",
+      "git_blob": "b806926db7c113579a5e6ea350c0c10e92d7674c"
+    },
+    {
+      "path": "carr-library/review/backup-capacity-producer-admission-2026-11-28/inverse-hunks.json",
+      "git_blob": "78b028708df63732ff2645c77262b8f8ec480c31"
+    },
+    {
+      "path": "carr-library/review/backup-capacity-producer-admission-2026-11-28/review-completion.json",
+      "git_blob": "7050e5a2069ea67975870b74a52f9dc663dd3b01"
+    },
+    {
+      "path": "carr-library/review/backup-capacity-producer-admission-2026-11-28/source-review.json",
+      "git_blob": "0ea86230e3257b685f0b7861f85b20841e480393"
+    },
+    {
+      "path": "carr-library/review/bundle-native-acquisition-junit-2026-11-28/exact-hunks.json",
+      "git_blob": "c45e9b74a3751d5974ded6a02a1d5cf9a9ca6231"
+    },
+    {
+      "path": "carr-library/review/bundle-native-acquisition-junit-2026-11-28/source-review.json",
+      "git_blob": "2f18d479e7207d5d0aa9072b2f089c6acd08137e"
+    },
+    {
+      "path": "carr-library/review/capacity-application-composition-2026-11-28.json",
+      "git_blob": "0417861b443dee353ab747884db6f7549584d93d"
+    },
+    {
+      "path": "carr-library/review/capacity-pending-composition-2026-11-28.json",
+      "git_blob": "8dc00644bc437edf0521ba4bc3acdd554e03785e"
+    },
+    {
+      "path": "carr-library/review/chorus-tail-fixture-correction-2026-11-28.json",
+      "git_blob": "e493b510356e3d268e5cbf2a10acf805627d5e0f"
+    },
+    {
+      "path": "carr-library/review/feature-runtime-and-cue-fixture-repair-2026-11-28.json",
+      "git_blob": "fe56973ed6246e1d902a1cc50d3627be8ff7a70f"
+    },
+    {
+      "path": "carr-library/review/import-capacity-component-2026-11-28.json",
+      "git_blob": "d0dea15d317699293dd637bcdb93d014e42c4b37"
+    },
+    {
+      "path": "carr-library/review/import-capacity-inverse-2026-11-28.json",
+      "git_blob": "0c04baa46ad8eede4ae960c663fc8198381fa10e"
+    },
+    {
+      "path": "carr-library/review/import-capacity-worker-session-2026-11-28/source-review.json",
+      "git_blob": "eee4dc5869ceafd48048e66a99cb6593cdc897e7"
+    },
+    {
+      "path": "carr-library/review/native-backup-capacity-component-2026-11-28.json",
+      "git_blob": "6a81753f309c14ab42d82ab4fff75f0f7854e1ee"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/chorus-tail.txt",
+      "git_blob": "c98cf67336dd1598836f1780081905db9a4bd1f2"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/cue-fixtures.txt",
+      "git_blob": "5575d2967b3f9e989f8cd7684d0546598f9c5a88"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/director-integration.txt",
+      "git_blob": "bcf989d0e11e385205d302d9017059d4f9365368"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/durations20.txt",
+      "git_blob": "667988767f575a328c9395b36d19176ef2ec3f50"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/failures-summary.txt",
+      "git_blob": "507c818d4cb15f2ce9979bc0da892d08ee5b41fe"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/flite-prerequisites.txt",
+      "git_blob": "115b8058f7ccc2220ef3f6fa5687e6c2421be7e0"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/job.json",
+      "git_blob": "c1035e339ba0176c9ddf2d475e576df751665a8c"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/native-effects-director.txt",
+      "git_blob": "8d81eeabce5e02abb65a188c7b69e24a8e3289f2"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/native-translation.txt",
+      "git_blob": "d4c7f1fe93135a6ca2f524ae296f24c570e2edff"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/provenance.json",
+      "git_blob": "f8107cb0439d0b00551a0b4e657f924ec85d29d4"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/terminal.log",
+      "git_blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf"
+    },
+    {
+      "path": "carr-library/review/receiving-1c708d4f-feature-windows-2026-11-28/translation-boundary.txt",
+      "git_blob": "90803b4dd5489580b3f53f58a1bf934917d5b96d"
+    },
+    {
+      "path": "carr-library/scripts/probe_cue_interchange.py",
+      "git_blob": "717988446ab4a7755124d8bde2a98d2a05edbcd3"
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_import_access_smoke.py",
+      "git_blob": "ff46ae2b890e0ce0f81e8445a246496e3cb8d0d3"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "git_blob": "8dfd5313a9a9452c6ea799ebe37640d9a23ba8f6"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "git_blob": "7bf626ad0545b64313bf680b14caa3b40f4c67d2"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_budget.py",
+      "git_blob": "37997d492d6c2319d76c409d3c458a86700acdf8"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "git_blob": "0c35a19e893618fad75c1167c8147b590ae71121"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_incremental_cli.py",
+      "git_blob": "2b0e0daf2e8f5e571a500a9d1748b7e510a73174"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_incremental.py",
+      "git_blob": "01233c735ce0cc3686f9970b0ae89c8351afc9b9"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_options.py",
+      "git_blob": "155111c5de97a1f6947b8a06b2f0425b6ce20616"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_report.py",
+      "git_blob": "2ef5481fce48a41d1aacb2e901ccafe063f558a4"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "git_blob": "ed811fea47c7defa842703ef063ffc84a06b4c9b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_cli.py",
+      "git_blob": "2780bc1e65b2da8bde415cafcd4174bf702c968e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "git_blob": "0a41bbb7f1a8bd492bbdd26c4392be5b04af1ed2"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "git_blob": "a29fe0ef613201aafd92070deafdaa8859169f93"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "git_blob": "f9c73a33ff8a819dba086f7cd7dc8b776b670985"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "git_blob": "43c6ae327be908e981c4f43e34594d730765df5b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/resource_budget.py",
+      "git_blob": "fb6c7fcd52cf7aabeaeb8a55a1f7922dee6ea4d2"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/session.py",
+      "git_blob": "e61ef61b4c8a48d2aa9625b4b15856b20794d277"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/streamed_ingest.py",
+      "git_blob": "7c5e798a2e7d25e502211a3473f2bad2ea681834"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/streamed_text.py",
+      "git_blob": "1d1ccc542ee3e75881570a62432ba0dd93686d2a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "git_blob": "c94d8828dd0adb595b943e77224d8adc596b6efe"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "git_blob": "24b48d439cbad63367856695ae429ab9809681d8"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "git_blob": "5e1c48533eaae23cca140825ae4c734aaa3ed558"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "git_blob": "34929b4c6dc9149cf8df2d47fafff083c887976c"
+    },
+    {
+      "path": "carr-library/src/carr_library/streamed_import_cli.py",
+      "git_blob": "1fd04eed266fcf19f50d9dfb49773ba939037f77"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/backup_inputs.py",
+      "git_blob": "fd0534541d59bc9a488aa48399c20514fe8ab63f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_actions.py",
+      "git_blob": "a2979d5d3afec64f4475ec2d0b898247b4c6d2bd"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_incremental_dialog.py",
+      "git_blob": "843b99a68c277413fd3c0243f993f26b258188f9"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_resources.py",
+      "git_blob": "3e248e8b5c7f533c75f6d6d263b42a9efc28bf78"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "git_blob": "638220343e46ef86aae6d5194980f72e83585690"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "git_blob": "289d92eca377944d02674d726e798aeaf5300c0a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_resources.py",
+      "git_blob": "7100ff2447dce155dd8c1617c53d0ca6d056c102"
+    },
+    {
+      "path": "carr-library/tests/audio/test_dsp.py",
+      "git_blob": "a02cb036ede0e5ce33e89bb7b5dba7e1b8e64ced"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_backup_resource_cli.py",
+      "git_blob": "1b6d8fb20d80d133086116e8412fe0ef977f04ad"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_batch_cli.py",
+      "git_blob": "39b5e498ad48928d1c1dafbf32b2d11d78409869"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_streamed_import_cli.py",
+      "git_blob": "284975ca766521b4e83038b37b7c370d69787d75"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_streaming_import_pages.py",
+      "git_blob": "b41677ec26f7269c0311c9817042d81ed7cf35c8"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_budget_worker.py",
+      "git_blob": "ebdce4010a2990eb9eba9581027f6a8243e3398f"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_budget.py",
+      "git_blob": "2381bfd6084fa139d9a6b4714a85046cf173dde8"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_scan_pages.py",
+      "git_blob": "f2606939ce9cfb8b1ecffe4e167d41d30c7fd762"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_session.py",
+      "git_blob": "445eabdb6bc07e1d9d73b260eff1719a833b953f"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_budget.py",
+      "git_blob": "4676aa9bb30061e4704a7a7a57bd38a657082eea"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity.py",
+      "git_blob": "a3b32ca426f3fc51f4590774fc1eb24ff5246f90"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_resource_roundtrip.py",
+      "git_blob": "97f111294a2afcc6be01fc5d4d5f2d36e6286366"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_sidecars.py",
+      "git_blob": "8e64d49708af591b199fe50ab918a797a778773b"
+    },
+    {
+      "path": "carr-library/tests/storage/test_cue_interchange_backup.py",
+      "git_blob": "cfc935289414a45154bc57420209bc0f6d62d6ae"
+    },
+    {
+      "path": "carr-library/tests/storage/test_import_capacity_backup.py",
+      "git_blob": "3c127366751a65f435520dcc9b3c83a7f249a1b8"
+    },
+    {
+      "path": "carr-library/tests/storage/test_studio_clip_inputs_backup.py",
+      "git_blob": "61c1947fb855a3ac3788ecd84abda000049f987a"
+    },
+    {
+      "path": "carr-library/tests/studio/test_interchange.py",
+      "git_blob": "f13175d97a43f51027e3be0ac947ad0b0c3df52a"
+    },
+    {
+      "path": "carr-library/tests/ui/test_backup_resource_actions.py",
+      "git_blob": "cd05fbbb6858d61014e12a4acab53acc9e35ee2d"
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_center.py",
+      "git_blob": "b25e9de35d36bc06b123a12374ee3d7f704c2c77"
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_resources.py",
+      "git_blob": "77d4c02ffbf935171aa6c7ae4ee29e20580ecf98"
+    },
+    {
+      "path": "carr-library/review/backup-capacity-test-api-peer-2026-11-28.json",
+      "git_blob": "11389c530647ef69b9c118066dee4b293c9bd993"
+    }
+  ]
+}

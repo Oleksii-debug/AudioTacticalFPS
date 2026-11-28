@@ -1,0 +1,216 @@
+__ test_partition_reuses_one_job_and_retains_accepted_receipts_across_pause ___
+
+setup = namespace(app=<carr_library.application.LibraryApp object at 0x000002AB9BAA8590>, workspace='f467d744704c4876be4ad2578...calls=[('GET', None)], vault_calls=[('google_source', 'carr/provider/google_source/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')])
+
+    def test_partition_reuses_one_job_and_retains_accepted_receipts_across_pause(setup):
+        case = setup
+>       captured, partition, identity = partitioned(case)
+                                        ^^^^^^^^^^^^^^^^^
+
+tests\assistant\test_translation_partition.py:115: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\assistant\test_translation_partition.py:42: in partitioned
+    approval, cost = translation_approval(case.profile, captured.text, 'en', 'uk', '1',
+src\carr_library\assistant\translation.py:210: in translation_approval
+    approval = Authorization(identity, task, ((profile.id, profile.endpoint),),
+<string>:13: in __init__
+    ???
+src\carr_library\assistant\canonical_gateway.py:69: in __post_init__
+    text(self.task_id, 'authorized task', maximum=128)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = '5cbc74417a18481d88f4d53cc2d778e8:source:bd504850a916d3554dedb6b6dcb1f3e2490c6973d0d41c34da69b99494282601:layout:169a881f8c40b7d23c879530db97291ff7fdd442042fb87511e31ac292ccd8ae'
+label = 'authorized task'
+
+    def text(value, label, *, maximum=8192, empty=False):
+        if not isinstance(value, str) or (not value.strip() and not empty) or len(value) > maximum:
+>           raise ValueError(f'Invalid {label}.')
+E           ValueError: Invalid authorized task.
+
+src\carr_library\assistant\models.py:56: ValueError
+
+____ test_actual_worker_cancel_reaps_child_before_lease_and_stage_release _____
+
+bound = namespace(app=<carr_library.application.LibraryApp object at 0x000002AB9BA9BE50>, workspace='3e70bebb5b164e429420fe514...\x87\x00\x00docProps/thumbnail.jpegPK\x05\x06\x00\x00\x00\x00\x12\x00\x12\x00\x9f\x04\x00\x00\xb2\x8d\x00\x00\x00\x00')
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_actual_worker_cancel_reap0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002AB9BA99950>
+
+    def test_actual_worker_cancel_reaps_child_before_lease_and_stage_release(bound, tmp_path, monkeypatch):
+        marker = tmp_path / 'worker-ready.json'
+        actual_command, actual_start = layout_module._command, process._start_process
+        commands, children = [], []
+        def blocked(*args, **kwargs):
+            command, environment = actual_command(*args, **kwargs)
+            index = command.index('-c') + 1
+            command[index] = (
+                'import os,time; from pathlib import Path; p=Path(' + repr(str(marker)) + '); '
+                't=p.with_suffix(".pending"); t.write_bytes(b"owned"); os.replace(t,p); '
+                'time.sleep(60); ' + command[index])
+            commands.append(tuple(command))
+            return command, environment
+        def start(args, **kwargs):
+            child = actual_start(args, **kwargs)
+            if tuple(args) in commands:
+                children.append(child)
+            return child
+        monkeypatch.setattr(layout_module, '_command', blocked)
+        monkeypatch.setattr(process, '_start_process', start)
+        with pytest.raises((AudioCancelled, InterruptedError)):
+>           capture_layout(bound.app, bound.workspace, bound.edition, kind='docx', cancelled=marker.exists)
+
+tests\assistant\test_translation_layout.py:393: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\carr_library\assistant\translation_layout.py:453: in capture_layout
+    mapping = _invoke(library, desk, directory, kind, action='describe',
+src\carr_library\assistant\translation_layout.py:397: in _invoke
+    result = run_process(args, env=environment, cwd=directory,
+src\carr_library\audio\process.py:551: in run_process
+    check()
+src\carr_library\audio\process.py:477: in check
+    if cancelled():
+       ^^^^^^^^^^^
+src\carr_library\assistant\translation_layout.py:297: in stopped
+    lease.checkpoint()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <carr_library.operations.broker.ResourceLease object at 0x000002AB9D739450>
+
+    def checkpoint(self):
+        if self._pid != os.getpid() or self._released or not self._lock.held:
+            raise ResourceStateError('This resource reservation is not held by the current process.')
+        self._stopped = self._stopped or bool(self._cancelled())
+        if self._stopped:
+>           raise ResourceCancelled('Operation cancelled; finish native worker cleanup before leaving the reservation.')
+E           carr_library.operations.models.ResourceCancelled: Operation cancelled; finish native worker cleanup before leaving the reservation.
+
+src\carr_library\operations\broker.py:67: ResourceCancelled
+
+_ test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-operation] _
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_portable_cli_process_keep0')
+phase = 'operation', masked = False, first = 0
+
+    @pytest.mark.parametrize('phase', ['operation', 'runtime-close'])
+    @pytest.mark.parametrize('masked', [False, True], ids=['direct', 'causal'])
+    @pytest.mark.parametrize('first', [0, 1], ids=['first-family', 'second-family'])
+    def test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet(
+            tmp_path, phase, masked, first):
+        import carr_library
+        package_root = str(Path(carr_library.__file__).resolve().parent.parent)
+        marker = tmp_path / 'pending.json'
+        code = r"""
+    import json, os, subprocess, sys, tempfile, time
+    from contextlib import ExitStack
+    from pathlib import Path
+    sys.path.insert(0, sys.argv[1])
+    from carr_library import translation_cli, native_runtime
+    from carr_library.audio import process
+    from carr_library.audio.cleanup import AudioCleanupPending, _pending_owners, retained_context
+    root, phase, masked = Path(sys.argv[2]), sys.argv[3], sys.argv[4] == '1'
+    children, failures = [], []
+    actual_stop = process._stop_owned
+    
+    def publish(path, raw):
+        temporary = path.with_suffix('.pending')
+        temporary.write_bytes(raw)
+        os.replace(temporary, path)
+    
+    def stop(child):
+        index = next((index for index, member in enumerate(children) if member is child), None)
+        if index is not None and not (root / ('release-' + str(index))).exists():
+            return False
+        confirmed = actual_stop(child)
+        if confirmed is True and index is not None:
+            publish(root / ('quiet-' + str(index)), b'confirmed')
+        return confirmed
+    process._stop_owned = stop
+    
+    def pending_families():
+        try:
+            with retained_context(tempfile.TemporaryDirectory(prefix='actual-cli-stage-', dir=root)) as temporary:
+                stage = Path(temporary)
+                (stage / 'retained-original').write_bytes(b'exact retained source')
+                with ExitStack() as owned:
+                    ready = []
+                    for index in range(2):
+                        marker = stage / ('child-' + str(index))
+                        child = owned.enter_context(process.owned_process(
+                            [sys.executable, '-I', '-S', '-c',
+                             'import os,sys,time; from pathlib import Path; p=Path(sys.argv[1]); '
+                             't=p.with_suffix(".pending"); t.write_bytes(b"running"); os.replace(t,p); time.sleep(60)',
+                             str(marker)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL))
+                        children.append(child)
+                        ready.append(marker)
+                    deadline = time.monotonic() + 10
+                    while not all(path.exists() for path in ready) and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    assert all(path.read_bytes() == b'running' for path in ready)
+                    raise RuntimeError('The exact fixture operation requires native cleanup.')
+        except AudioCleanupPending as error:
+            assert len(_pending_owners(error)) == 2
+            publish(root / 'pending.json', json.dumps({'stage': str(stage), 'owners': 2}).encode('utf-8'))
+            if masked:
+                try:
+                    raise InterruptedError('Cancellation retains the same native families.') from error
+                except InterruptedError as wrapped:
+                    failures.append(wrapped)
+                    raise
+            failures.append(error)
+            raise
+    
+    class Handle:
+        def close(self):
+            if phase == 'runtime-close':
+                pending_families()
+            assert len(children) == 2 and all(child.returncode is not None for child in children)
+            publish(root / 'runtime-closed', b'closed after native quiescence')
+    
+    native_runtime.activate_bundled_runtime = lambda: Handle()
+    translation_cli.execute = lambda args: pending_families() if phase == 'operation' else {'status': 'complete'}
+    try:
+        result = translation_cli.main(['profiles'])
+    except (AudioCleanupPending, InterruptedError) as error:
+        assert phase == 'runtime-close' and error is failures[-1]
+        owners = _pending_owners(error)
+        assert len(owners) == 2
+        assert all(owner.quiescent and owner.notifications_complete_event.is_set() for owner in owners)
+        result = 72 if masked else 71
+    publish(root / 'returned.json', json.dumps({'result': result}).encode('utf-8'))
+    raise SystemExit(result)
+    """
+        releases = tuple(tmp_path / ('release-' + str(index)) for index in range(2))
+        with process.owned_process([sys.executable, '-I', '-B', '-c', code,
+                package_root, str(tmp_path), phase, '1' if masked else '0'],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) as cli_child:
+            try:
+                deadline = time.monotonic() + 10
+                while not marker.exists() and cli_child.poll() is None and time.monotonic() < deadline:
+                    time.sleep(.01)
+>               assert marker.exists(), 'The portable CLI never reached its actual pending native families.'
+E               AssertionError: The portable CLI never reached its actual pending native families.
+E               assert False
+E                +  where False = exists()
+E                +    where exists = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_portable_cli_process_keep0/pending.json').exists
+
+tests\assistant\test_translation_layout.py:623: AssertionError
+
+_ ERROR at teardown of test_review_binds_one_job_to_exact_structure_without_provider_or_credentials _
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_review_binds_one_job_to_e0')
+setup = namespace(app=<carr_library.application.LibraryApp object at 0x000002AB9DB3B3D0>, workspace='64f74c1c36d446e697ec862b2...calls=[('GET', None)], vault_calls=[('google_source', 'carr/provider/google_source/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')])
+
+    @pytest.fixture
+    def bound(tmp_path, setup):
+        source = tmp_path / 'Selected Ω.docx'
+        raw = docx_bytes()
+        source.write_bytes(raw)
+        result = setup.app._import_file(setup.workspace, source, title='Retained DOCX Ω',
+            authors=('Synthetic original author',), work_id='docx-layout-work', edition_id='docx-layout-edition')
+        assert result['state'] == 'complete' and result['verified'] is False
+        yield SimpleNamespace(**vars(setup), edition='docx-layout-edition', source=source, raw=raw)
+>       setup.app.close_search()
+        ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'LibraryApp' object has no attribute 'close_search'
+
+tests\assistant\test_translation_layout.py:100: AttributeError

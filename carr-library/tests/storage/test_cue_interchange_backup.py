@@ -69,8 +69,8 @@ def authored(tmp_path):
         (job_root / ('.pending-' + name)).write_bytes(raw)
         (output / name).write_bytes(raw)
     yield app, workspace, service, project, job_root, timeline, cue_files, output
-    assert service.close()
-    app.close_search()
+    assert service.close() is None
+    assert service._closed and service._voices is None
 
 
 def snapshot(app, directory, flat, generated=False):
@@ -124,13 +124,10 @@ def test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authorit
     assert again == cue_files and report == timeline['editor_interchange']
     assert not any((target / relative / name).exists() for name, _ in cue_files)
     restored = LibraryApp(target)
-    try:
-        assert restored.search(workspace, 'retained')
-        second = tmp_path / 'second-backup'
-        next_checksum = create_backup(restored, second, include_generated=generated)
-        assert verify_backup(second, next_checksum)
-    finally:
-        restored.close_search()
+    assert restored.search(workspace, 'retained')
+    second = tmp_path / 'second-backup'
+    next_checksum = create_backup(restored, second, include_generated=generated)
+    assert verify_backup(second, next_checksum)
     assert {path: path.read_bytes() for path in source_bytes} == source_bytes
     assert {name: (output / name).read_bytes() for name in external} == external
 

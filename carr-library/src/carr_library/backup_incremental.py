@@ -6,7 +6,7 @@ Materialization is private, bounded and reverified by library_backup before any
 restored library is published. There is no alternate database or restore model.
 """
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import json
 import os
@@ -20,6 +20,8 @@ import unicodedata
 from .durable_state import local_path
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
+from .backup_budget import (arguments as resource_arguments, bounded_cancel,
+    check_manifest_memory, check_staging_bytes, limit as resource_limit, preflight)
 
 SCHEMA = 'carr.library-incremental.v1'
 MAX_CHAIN = 8
@@ -66,6 +68,7 @@ class _Snapshot:
     files: dict
     directories: tuple
     chain: tuple
+    staged_bytes: int = 0
 
 
 def _check(cancelled):
@@ -91,9 +94,11 @@ def _json(raw):
         raise RestoreError('Invalid incremental backup JSON.') from exc
 
 
-def _read(path, checksum, *, maximum=full.MAX_MANIFEST):
+def _read(path, checksum, *, maximum=full.MAX_MANIFEST, backup_budget=None):
     local_path(path, exists=True)
-    raw = backup_compat.read_regular(path, maximum)
+    raw = backup_compat.read_regular(path,
+        resource_limit(backup_budget, 'manifest_bytes', maximum))
+    check_manifest_memory(len(raw), 0, backup_budget)
     if sha256(raw).hexdigest() != checksum:
         raise RestoreError('Incremental backup manifest digest mismatch.')
     return raw
@@ -103,7 +108,7 @@ def _portable_key(value):
     return unicodedata.normalize('NFC', value).casefold()
 
 
-def _layout(manifest):
+def _layout(manifest, *, backup_budget=None):
     """Discriminate existing full envelopes; never coerce one shape into another.
 
     This is only a bounded filename projection. Existing producer validators
@@ -128,11 +133,11 @@ def _layout(manifest):
     database = manifest['database']
     if (type(database) is not dict or set(database) != {'filename', 'size_bytes', 'sha256'}
             or database['filename'] != full.DATABASE or type(database['size_bytes']) is not int
-            or not 0 < database['size_bytes'] <= full.MAX_DATABASE
+            or not 0 < database['size_bytes'] <= resource_limit(backup_budget, 'database_bytes', full.MAX_DATABASE)
             or type(database['sha256']) is not str or _HASH.fullmatch(database['sha256']) is None):
         raise RestoreError('Invalid complete-backup database inventory.')
     assets = manifest['assets']
-    if type(assets) is not list or len(assets) > full.MAX_ASSETS:
+    if type(assets) is not list or len(assets) > resource_limit(backup_budget, 'assets', full.MAX_ASSETS):
         raise RestoreError('Invalid complete-backup original inventory.')
     rows, roots, digests, total = [database], {full.ORIGINALS}, set(), 0
     # Match the full reader's outer size envelope only. The canonical verifier
@@ -145,17 +150,18 @@ def _layout(manifest):
                 or asset['filename'] != asset['sha256'] + full.SUFFIXES[asset['mime']]
                 or asset['sha256'] in digests or type(asset['size_bytes']) is not int
                 or not 0 < asset['size_bytes'] <= (
-                    full.STREAMED_TEXT_MAX_BYTES if asset['mime'] == 'text/plain' else full.MAX_BYTES)):
+                    resource_limit(backup_budget, 'original_bytes', full.STREAMED_TEXT_MAX_BYTES)
+                    if asset['mime'] == 'text/plain' else full.MAX_BYTES)):
             raise RestoreError('Invalid complete-backup original identity.')
         digests.add(asset['sha256'])
         total += asset['size_bytes']
-        if total > full.MAX_ASSET_BYTES:
+        if total > resource_limit(backup_budget, 'asset_bytes', full.MAX_ASSET_BYTES):
             raise RestoreError('Complete-backup originals exceed their existing allowance.')
         rows.append({'filename': full.ORIGINALS + '/' + asset['filename'],
                      'size_bytes': asset['size_bytes'], 'sha256': asset['sha256']})
     pending = None
     if backup_compat.is_flat_manifest(manifest):
-        incoming = backup_compat.normalize_manifest(manifest)
+        incoming = backup_compat.normalize_manifest(manifest, **resource_arguments(backup_budget))
         rows.extend(incoming.entries)
         roots.update(incoming.empty_roots)
         pending = incoming.pending
@@ -190,18 +196,19 @@ def _layout(manifest):
             roots.add(backup_sidecars.DIRECTORY)
         if 'pending' in manifest:
             pending = manifest['pending']
-            pending_backup.validate_pending(pending)
+            pending_backup.validate_pending(pending, **resource_arguments(backup_budget))
     if pending is not None:
-        pending_backup.validate_pending(pending)
+        pending_backup.validate_pending(pending, **resource_arguments(backup_budget))
         rows.extend({**row, 'filename': 'pending/' + row['filename']} for row in pending['files'])
         roots.add('pending')
     return rows, roots
 
 
-def _inventory(manifest, max_bytes):
+def _inventory(manifest, max_bytes, *, backup_budget=None):
     """Project the exact full snapshot with portable ancestor and byte bounds."""
-    rows, roots = _layout(manifest)
-    if len(rows) > MAX_FILES:
+    rows, roots = _layout(manifest, **resource_arguments(backup_budget))
+    check_manifest_memory(0, len(rows), backup_budget)
+    if len(rows) > _file_limit(backup_budget):
         raise RestoreError('Incremental file inventory exceeds the existing backup allowance.')
     files, keys, total, aliases = {}, set(), 0, {}
     directories = set(roots)
@@ -238,6 +245,33 @@ def _inventory(manifest, max_bytes):
     return files, tuple(sorted(directories, key=lambda name: (name.count('/'), name)))
 
 
+def _file_limit(selected):
+    if selected is None:
+        return MAX_FILES
+    return (resource_limit(selected, 'assets', full.MAX_ASSETS) +
+            resource_limit(selected, 'pending_files', pending_backup.MAX_FILES) +
+            backup_sidecars.MAX_FILES + state_backup.MAX_STATE_FILES + 1)
+
+
+def _reserved_budget(selected, staged_bytes):
+    """Reduce caller allowance by the copies retained by this operation.
+
+    Children receive only unoccupied staging bytes. Their cancellation callback
+    also checks the original operation deadline. Archive fields grant no budget.
+    """
+    if selected is None or not staged_bytes:
+        return selected
+    remaining = selected.staging_bytes - staged_bytes
+    if remaining <= 0:
+        raise RestoreError('Retained incremental copies exhaust the selected staging budget.')
+    return replace(selected, staging_bytes=remaining)
+
+
+def _child_cancel(cancelled, selected):
+    # Preserve the first deadline when a reduced child policy is selected.
+    return (lambda: cancelled()) if selected is not None else cancelled
+
+
 def _parents(references):
     if type(references) not in (tuple, list) or len(references) > MAX_CHAIN + 1:
         raise RestoreError('Select at most eight incremental ancestors and one full backup.')
@@ -249,12 +283,13 @@ def _parents(references):
     return result
 
 
-def _layer_header(raw):
+def _layer_header(raw, *, backup_budget=None):
+    check_manifest_memory(len(raw), 0, backup_budget)
     descriptor = _json(raw)
     if type(descriptor) is not dict:
         raise RestoreError('Backup manifest must be an object.')
     if descriptor.get('schema') != SCHEMA:
-        _layout(descriptor)
+        _layout(descriptor, **resource_arguments(backup_budget))
         return None
     if set(descriptor) != {'schema', 'base_sha256', 'snapshot_sha256', 'stored'}:
         raise RestoreError('Unsupported incremental backup fields.')
@@ -263,26 +298,28 @@ def _layer_header(raw):
            for value in (base_digest, snapshot_digest)):
         raise RestoreError('Invalid incremental parent or snapshot checksum.')
     stored = descriptor['stored']
-    if (type(stored) is not list or len(stored) > MAX_FILES
+    if (type(stored) is not list or len(stored) > _file_limit(backup_budget)
             or any(type(name) is not str for name in stored)
             or stored != sorted(set(stored))):
         raise RestoreError('Invalid incremental changed-file inventory.')
+    check_manifest_memory(len(raw), len(stored), backup_budget)
     return descriptor
 
 
-def required_base_sha256(reference):
+def required_base_sha256(reference, *, backup_budget=None):
     """Read an authenticated header only; complete verification is a separate action."""
     if not isinstance(reference, BackupReference):
         raise RestoreError('Choose an exact backup reference.')
-    descriptor = _layer_header(_read(reference.path / 'manifest.json', reference.sha256))
+    descriptor = _layer_header(_read(reference.path / 'manifest.json', reference.sha256,
+        **resource_arguments(backup_budget)), **resource_arguments(backup_budget))
     return None if descriptor is None else descriptor['base_sha256']
 
 
-def _root_guard(reference, identity):
+def _root_guard(reference, identity, *, backup_budget=None):
     value = _plain(local_path(reference.path, exists=True), directory=True)
     if (value.st_dev, value.st_ino) != identity:
         raise RestoreError('The selected backup directory changed.')
-    _read(reference.path / 'manifest.json', reference.sha256)
+    _read(reference.path / 'manifest.json', reference.sha256, **resource_arguments(backup_budget))
 
 
 def _space(parent, amount):
@@ -329,7 +366,8 @@ def _namespace(root, stored, cancelled=lambda: False):
 
 
 @contextmanager
-def _snapshot(reference, parents, temporary_parent, cancelled, max_bytes, *, depth=0, seen=()):
+def _snapshot(reference, parents, temporary_parent, cancelled, max_bytes, *,
+              depth=0, seen=(), backup_budget=None):
     _check(cancelled)
     if not isinstance(reference, BackupReference):
         raise RestoreError('Choose an exact backup reference.')
@@ -337,24 +375,24 @@ def _snapshot(reference, parents, temporary_parent, cancelled, max_bytes, *, dep
         raise RestoreError('Incremental backup chain is cyclic or exceeds eight layers.')
     before = _plain(reference.path, directory=True)
     identity = before.st_dev, before.st_ino
-    raw = _read(reference.path / 'manifest.json', reference.sha256)
-    descriptor = _layer_header(raw)
+    raw = _read(reference.path / 'manifest.json', reference.sha256, **resource_arguments(backup_budget))
+    descriptor = _layer_header(raw, **resource_arguments(backup_budget))
     if descriptor is None:
         # The authenticated manifest is enough to reject the caller's logical
         # byte budget before canonical verification opens any backup payload.
-        logical, _ = _inventory(_json(raw), max_bytes)
+        logical, _ = _inventory(_json(raw), max_bytes, **resource_arguments(backup_budget))
         _space(Path(temporary_parent), sum(row['size_bytes'] for row in logical.values()))
         manifest = full.verify_backup(reference.path, reference.sha256, cancelled=cancelled,
-                                      temporary_parent=temporary_parent)
-        files, directories = _inventory(manifest, max_bytes)
-        _root_guard(reference, identity)
+            temporary_parent=temporary_parent, **resource_arguments(backup_budget))
+        files, directories = _inventory(manifest, max_bytes, **resource_arguments(backup_budget))
+        _root_guard(reference, identity, **resource_arguments(backup_budget))
         yield _Snapshot(reference, reference.path, raw, manifest, files, directories, (reference,))
         return
     base_digest, snapshot_digest = descriptor['base_sha256'], descriptor['snapshot_sha256']
     stored = descriptor['stored']
-    snapshot_raw = _read(reference.path / 'snapshot.json', snapshot_digest)
+    snapshot_raw = _read(reference.path / 'snapshot.json', snapshot_digest, **resource_arguments(backup_budget))
     manifest = _json(snapshot_raw)
-    files, directories = _inventory(manifest, max_bytes)
+    files, directories = _inventory(manifest, max_bytes, **resource_arguments(backup_budget))
     if not set(stored) <= set(files):
         raise RestoreError('Incremental changed files are not in the canonical snapshot.')
     _namespace(reference.path, stored, cancelled)
@@ -362,10 +400,17 @@ def _snapshot(reference, parents, temporary_parent, cancelled, max_bytes, *, dep
     if base is None:
         raise RestoreError('Select the required base backup with manifest SHA256 ' + base_digest + '.')
     with _snapshot(base, parents, temporary_parent, cancelled, max_bytes,
-                   depth=depth + 1, seen=(*seen, reference.sha256)) as previous:
+                   depth=depth + 1, seen=(*seen, reference.sha256),
+                   **resource_arguments(backup_budget)) as previous:
         for name, row in files.items():
             if name not in stored and previous.files.get(name) != row:
                 raise RestoreError('An inherited file does not match the selected base backup.')
+        stage_bytes = sum(row['size_bytes'] for row in files.values()) + len(snapshot_raw)
+        retained_bytes = previous.staged_bytes + stage_bytes
+        check_staging_bytes((retained_bytes,), backup_budget)
+        child_budget = _reserved_budget(backup_budget, retained_bytes)
+        if backup_budget is not None:
+            full._staging_requirement(manifest, child_budget)
         with TemporaryDirectory(prefix='.carr-incremental-materialize-', dir=temporary_parent) as temporary:
             stage = Path(temporary)
             for name in directories:
@@ -374,27 +419,30 @@ def _snapshot(reference, parents, temporary_parent, cancelled, max_bytes, *, dep
                 source = reference.path / 'files' / name if name in stored else previous.root / name
                 _copy(source, stage / name, row, cancelled)
             full._sync_file(stage / 'manifest.json', snapshot_raw)
-            verified = full.verify_backup(stage, snapshot_digest, cancelled=cancelled,
-                                          temporary_parent=temporary_parent)
-            _root_guard(reference, identity)
+            verified = full.verify_backup(stage, snapshot_digest,
+                cancelled=_child_cancel(cancelled, child_budget), temporary_parent=temporary_parent,
+                **resource_arguments(child_budget))
+            _root_guard(reference, identity, **resource_arguments(backup_budget))
             yield _Snapshot(reference, stage, snapshot_raw, verified, files, directories,
-                            (reference, *previous.chain))
+                            (reference, *previous.chain), retained_bytes)
 
 
-def _recheck_chain(chain, cancelled, max_bytes):
+def _recheck_chain(chain, cancelled, max_bytes, *, backup_budget=None):
     """Recheck actual base bytes after current snapshot work and before publication."""
     for reference in chain:
         _check(cancelled)
         value = _plain(reference.path, directory=True)
         identity = value.st_dev, value.st_ino
-        raw = _read(reference.path / 'manifest.json', reference.sha256)
-        descriptor = _layer_header(raw)
+        raw = _read(reference.path / 'manifest.json', reference.sha256, **resource_arguments(backup_budget))
+        descriptor = _layer_header(raw, **resource_arguments(backup_budget))
         if descriptor is None:
-            _inventory(_json(raw), max_bytes)
-            full.verify_backup(reference.path, reference.sha256, cancelled=cancelled)
+            _inventory(_json(raw), max_bytes, **resource_arguments(backup_budget))
+            full.verify_backup(reference.path, reference.sha256, cancelled=cancelled,
+                               **resource_arguments(backup_budget))
         else:
-            manifest = _json(_read(reference.path / 'snapshot.json', descriptor['snapshot_sha256']))
-            files, _directories = _inventory(manifest, max_bytes)
+            manifest = _json(_read(reference.path / 'snapshot.json', descriptor['snapshot_sha256'],
+                **resource_arguments(backup_budget)))
+            files, _directories = _inventory(manifest, max_bytes, **resource_arguments(backup_budget))
             _namespace(reference.path, descriptor['stored'], cancelled)
             for name in descriptor['stored']:
                 if name not in files:
@@ -402,7 +450,7 @@ def _recheck_chain(chain, cancelled, max_bytes):
                 row = files[name]
                 backup_compat._stream_file(reference.path / 'files' / name, expected=row,
                     maximum=max(1, row['size_bytes']), allow_empty=True, cancelled=cancelled)
-        _root_guard(reference, identity)
+        _root_guard(reference, identity, **resource_arguments(backup_budget))
 
 
 def _selected_destination(value, references, *, library=None):
@@ -440,59 +488,80 @@ def _publish(stage, destination, stored, *, cancelled=lambda: False):
 
 
 def create_incremental_backup(app, destination, *, base, ancestors=(), include_generated=False,
-                              max_bytes=DEFAULT_MAX_BYTES, cancelled=lambda: False):
-    """Store only changed files; retain the selected base chain for later restore."""
+                              max_bytes=DEFAULT_MAX_BYTES, cancelled=lambda: False,
+                              backup_budget=None):
+    """Store changed bytes using canonical snapshots and explicitly selected budgets."""
+    cancelled = bounded_cancel(cancelled, backup_budget)
     max_bytes = _budget(max_bytes)
     if not isinstance(base, BackupReference):
         raise RestoreError('Choose the verified base backup and its independently retained checksum.')
     parents = _parents(ancestors)
     destination = _selected_destination(destination, (base, *parents.values()), library=app.root)
+    preflight(destination.parent, backup_budget)
     with TemporaryDirectory(prefix='.carr-incremental-create-', dir=destination.parent) as temporary:
         temporary = Path(temporary)
-        with _snapshot(base, parents, temporary, cancelled, max_bytes) as previous:
+        with _snapshot(base, parents, temporary, cancelled, max_bytes,
+                       **resource_arguments(backup_budget)) as previous:
             if len(previous.chain) > MAX_CHAIN:
                 raise RestoreError('Eight incremental layers are already present. Create a new full backup.')
-            current = temporary / 'current'
-            # The existing producer keeps all per-component bounds. The
-            # caller's logical budget is also checked before publishing a layer.
+            previous_files, previous_chain = previous.files, previous.chain
+        # Release materialized ancestor copies before creating the new full
+        # snapshot. Only authenticated metadata is needed for comparison.
+        stage = temporary / 'delta'
+        (stage / 'files').mkdir(mode=0o700, parents=True)
+        with TemporaryDirectory(prefix='.current-', dir=temporary) as current_parent:
+            current = Path(current_parent) / 'snapshot'
             checksum = full.create_backup(app, current, include_generated=include_generated,
-                                          cancelled=cancelled)
-            current_manifest = _json(_read(current / 'manifest.json', checksum))
-            _inventory(current_manifest, max_bytes)
-            manifest = full.verify_backup(current, checksum, cancelled=cancelled,
-                                          temporary_parent=temporary)
-            files, directories = _inventory(manifest, max_bytes)
-            snapshot_raw = _read(current / 'manifest.json', checksum)
-            stored = sorted(name for name, row in files.items() if previous.files.get(name) != row)
-            stage = temporary / 'delta'
-            (stage / 'files').mkdir(mode=0o700, parents=True)
-            for name in stored:
-                _copy(current / name, stage / 'files' / name, files[name], cancelled)
-            full._sync_file(stage / 'snapshot.json', snapshot_raw)
+                cancelled=cancelled, **resource_arguments(backup_budget))
+            snapshot_raw = _read(current / 'manifest.json', checksum,
+                                 **resource_arguments(backup_budget))
+            current_manifest = _json(snapshot_raw)
+            _inventory(current_manifest, max_bytes, **resource_arguments(backup_budget))
+            current_bytes = sum(row['size_bytes'] for row in
+                full._manifest_entries(current_manifest)) + len(snapshot_raw)
+            child_budget = _reserved_budget(backup_budget, current_bytes)
+            manifest = full.verify_backup(current, checksum,
+                cancelled=_child_cancel(cancelled, child_budget), temporary_parent=temporary,
+                **resource_arguments(child_budget))
+            files, _directories = _inventory(manifest, max_bytes, **resource_arguments(backup_budget))
+            stored = sorted(name for name, row in files.items() if previous_files.get(name) != row)
             descriptor = {'schema': SCHEMA, 'base_sha256': base.sha256,
                           'snapshot_sha256': checksum, 'stored': stored}
             raw = _encode(descriptor)
-            if len(raw) > full.MAX_MANIFEST:
+            if len(raw) > resource_limit(backup_budget, 'manifest_bytes', full.MAX_MANIFEST):
                 raise RestoreError('Incremental manifest exceeds its size allowance.')
+            check_manifest_memory(len(raw) + len(snapshot_raw), len(files), backup_budget)
+            stored_bytes = sum(files[name]['size_bytes'] for name in stored) + len(snapshot_raw) + len(raw)
+            check_staging_bytes((current_bytes, stored_bytes), backup_budget)
+            for name in stored:
+                _copy(current / name, stage / 'files' / name, files[name], cancelled)
+            full._sync_file(stage / 'snapshot.json', snapshot_raw)
             full._sync_file(stage / 'manifest.json', raw)
-            _namespace(stage, stored, cancelled)
-            _check(cancelled)
-            _recheck_chain(previous.chain, cancelled, max_bytes)
-            _check(cancelled)
-            _publish(stage, destination, stored, cancelled=cancelled)
-            receipt = IncrementalReceipt(destination, sha256(raw).hexdigest(), base.sha256, checksum,
-                len(files), len(stored), sum(row['size_bytes'] for row in files.values()),
-                sum(files[name]['size_bytes'] for name in stored) + len(snapshot_raw) + len(raw))
+        # Only the delta remains staged while the complete original chain is
+        # rechecked. The child's allowance excludes those still-owned bytes.
+        _namespace(stage, stored, cancelled)
+        _check(cancelled)
+        chain_budget = _reserved_budget(backup_budget, stored_bytes)
+        _recheck_chain(previous_chain, _child_cancel(cancelled, chain_budget), max_bytes,
+                       **resource_arguments(chain_budget))
+        _check(cancelled)
+        _publish(stage, destination, stored, cancelled=cancelled)
+        receipt = IncrementalReceipt(destination, sha256(raw).hexdigest(), base.sha256, checksum,
+            len(files), len(stored), sum(row['size_bytes'] for row in files.values()), stored_bytes)
     return receipt
 
 
 def verify_incremental_backup(source, expected_manifest_sha256, *, bases=(),
-                              max_bytes=DEFAULT_MAX_BYTES, cancelled=lambda: False):
+                              max_bytes=DEFAULT_MAX_BYTES, cancelled=lambda: False,
+                              backup_budget=None):
     """Verify every required layer without changing a backup or starting a worker."""
+    cancelled = bounded_cancel(cancelled, backup_budget)
     reference, parents = BackupReference(source, expected_manifest_sha256), _parents(bases)
     max_bytes = _budget(max_bytes)
     with TemporaryDirectory(prefix='carr-incremental-verify-') as temporary:
-        with _snapshot(reference, parents, temporary, cancelled, max_bytes) as snapshot:
+        preflight(Path(temporary), backup_budget)
+        with _snapshot(reference, parents, temporary, cancelled, max_bytes,
+                       **resource_arguments(backup_budget)) as snapshot:
             return {'manifest_sha256': reference.sha256,
                     'snapshot_sha256': sha256(snapshot.manifest_raw).hexdigest(),
                     'files': len(snapshot.files), 'logical_bytes': sum(
@@ -502,13 +571,19 @@ def verify_incremental_backup(source, expected_manifest_sha256, *, bases=(),
 
 
 def restore_incremental_backup(source, destination, expected_manifest_sha256, *, bases=(),
-                               max_bytes=DEFAULT_MAX_BYTES, cancelled=lambda: False):
+                               max_bytes=DEFAULT_MAX_BYTES, cancelled=lambda: False,
+                               backup_budget=None):
     """Use canonical schema/typed-sidecar/source verification before fresh restore."""
+    cancelled = bounded_cancel(cancelled, backup_budget)
     reference, parents = BackupReference(source, expected_manifest_sha256), _parents(bases)
     max_bytes = _budget(max_bytes)
     destination = _selected_destination(destination, (reference, *parents.values()))
+    preflight(destination.parent, backup_budget)
     with TemporaryDirectory(prefix='.carr-incremental-restore-', dir=destination.parent) as temporary:
-        with _snapshot(reference, parents, temporary, cancelled, max_bytes) as snapshot:
+        with _snapshot(reference, parents, temporary, cancelled, max_bytes,
+                       **resource_arguments(backup_budget)) as snapshot:
             _check(cancelled)
+            child_budget = _reserved_budget(backup_budget, snapshot.staged_bytes)
             return full.restore_backup(snapshot.root, destination,
-                sha256(snapshot.manifest_raw).hexdigest(), cancelled=cancelled)
+                sha256(snapshot.manifest_raw).hexdigest(),
+                cancelled=_child_cancel(cancelled, child_budget), **resource_arguments(child_budget))

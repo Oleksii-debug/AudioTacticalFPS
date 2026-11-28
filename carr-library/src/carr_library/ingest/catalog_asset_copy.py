@@ -28,7 +28,7 @@ class AssetEntry:
 
 
 def catalog_inventory(db, *, include_all_workspaces=False,
-                      max_assets=10000, max_bytes=8 * 1024**3):
+                      max_assets=10000, max_bytes=8 * 1024**3, max_source_bytes=None):
     """Preserve all registered assets, including not-yet-indexed editions.
 
     Require the proposed V2 authoritative composite revision binding; reject
@@ -41,6 +41,9 @@ def catalog_inventory(db, *, include_all_workspaces=False,
         raise RetentionError('invalid asset count limit')
     if type(max_bytes) is not int or max_bytes < 1:
         raise RetentionError('invalid asset byte limit')
+    if max_source_bytes is not None and (type(max_source_bytes) is not int
+            or not 0 < max_source_bytes <= 2**63 - 1):
+        raise RetentionError('invalid original byte limit')
     if db.execute('PRAGMA foreign_key_check').fetchone() is not None:
         raise RetentionError('snapshot foreign key violation')
     if db.execute('SELECT 1 FROM revision r LEFT JOIN sealed s ON s.revision=r.id '
@@ -62,6 +65,8 @@ def catalog_inventory(db, *, include_all_workspaces=False,
             raise RetentionError('invalid or unsupported catalog asset manifest')
         from .streamed_text import catalog_profile
         profile = catalog_profile(db, digest, mime, size)
+        if max_source_bytes is not None and size > (max_source_bytes if mime == 'text/plain' else MAX_BYTES):
+            raise RetentionError('retained original exceeds the selected backup byte allowance')
         total += size
         if total > max_bytes:
             raise RetentionError('asset byte limit exceeded')

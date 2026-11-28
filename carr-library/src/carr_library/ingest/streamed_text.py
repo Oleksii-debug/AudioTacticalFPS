@@ -24,6 +24,7 @@ FRAGMENT_CHARS = 64 * 1024
 MAX_FRAGMENTS = 8192
 ADAPTER = 'strict-utf8-stream-v1'
 SCHEMA = 'carr-streamed-text-profile/1'
+BUDGET_SCHEMA = 'carr-streamed-text-profile/2'
 _CONTROLS = re.compile(r'[\x00-\x08\x0b\x0e-\x1f]')
 
 
@@ -34,37 +35,60 @@ def check_cancelled(cancelled):
 
 @dataclass(frozen=True)
 class TextProfile:
-    """Explicit per-source allowance; no caller can remove the finite ceiling.
+    """Explicit per-source allowance with byte-compatible legacy defaults.
 
-    The 128 MiB ceiling leaves room for JSON escaping and SQLite pages in the
-    existing 512 MiB pending-journal backup budget. It is not a corpus limit.
+    Schema1 retains its 128 MiB ceiling. A caller-selected typed ImportBudget
+    creates schema2 with finite source, fragment, memory, disk and work limits.
+    Resource policy never replaces exact source identity or publication checks.
     """
     maximum_bytes: int = MAX_BYTES
+    import_budget: object = None
     mime = 'text/plain'
     suffix = '.txt'
     maximum_fragments = MAX_FRAGMENTS
     maximum_records = MAX_FRAGMENTS
     maximum_timeout = 600
+    maximum_steps = MAX_FRAGMENTS + 1
 
     def __post_init__(self):
-        if type(self.maximum_bytes) is not int or not 1 <= self.maximum_bytes <= MAX_BYTES:
-            raise ValueError('Streamed UTF-8 text needs a byte limit from 1 through 128 MiB.')
+        if self.import_budget is None:
+            if type(self.maximum_bytes) is not int or not 1 <= self.maximum_bytes <= MAX_BYTES:
+                raise ValueError('Streamed UTF-8 text needs a byte limit from 1 through 128 MiB.')
+            return
+        from .resource_budget import checked_budget
+        selected = checked_budget(self.import_budget)
+        if type(self.maximum_bytes) is not int or not 1 <= self.maximum_bytes <= selected.source_bytes:
+            raise ValueError('The streamed original exceeds its explicit import byte allowance.')
+        object.__setattr__(self, 'maximum_fragments', selected.segments)
+        object.__setattr__(self, 'maximum_records', selected.segments)
+        object.__setattr__(self, 'maximum_timeout', selected.seconds)
+        object.__setattr__(self, 'maximum_steps', selected.steps)
 
     def to_dict(self):
-        return dict(schema=SCHEMA, maximum_bytes=self.maximum_bytes)
+        if self.import_budget is None:
+            return dict(schema=SCHEMA, maximum_bytes=self.maximum_bytes)
+        return dict(schema=BUDGET_SCHEMA, maximum_bytes=self.maximum_bytes,
+                    import_budget=self.import_budget.to_dict())
 
     def configuration(self):
-        return dict(adapter=ADAPTER, kind='logical_segment', fragment_chars=FRAGMENT_CHARS,
-                    maximum_fragments=MAX_FRAGMENTS, maximum_bytes=self.maximum_bytes)
+        value = dict(adapter=ADAPTER, kind='logical_segment', fragment_chars=FRAGMENT_CHARS,
+                     maximum_fragments=self.maximum_fragments, maximum_bytes=self.maximum_bytes)
+        if self.import_budget is not None:
+            value['import_budget'] = self.import_budget.to_dict()
+        return value
 
 
 def profile_from_value(value):
     if isinstance(value, TextProfile):
         return value
-    if (type(value) is not dict or set(value) != {'schema', 'maximum_bytes'}
-            or value['schema'] != SCHEMA):
+    if type(value) is not dict:
         raise ValueError('Invalid streamed UTF-8 source profile.')
-    return TextProfile(value['maximum_bytes'])
+    if set(value) == {'schema', 'maximum_bytes'} and value['schema'] == SCHEMA:
+        return TextProfile(value['maximum_bytes'])
+    if set(value) == {'schema', 'maximum_bytes', 'import_budget'} and value['schema'] == BUDGET_SCHEMA:
+        from .resource_budget import ImportBudget
+        return TextProfile(value['maximum_bytes'], ImportBudget.from_dict(value['import_budget']))
+    raise ValueError('Invalid streamed UTF-8 source profile.')
 
 
 def profile_from_config(value):
@@ -73,7 +97,11 @@ def profile_from_config(value):
         value = json.loads(value)
     if type(value) is not dict or value.get('adapter') != ADAPTER:
         return None
-    profile = TextProfile(value.get('maximum_bytes'))
+    if 'import_budget' in value:
+        from .resource_budget import ImportBudget
+        profile = TextProfile(value.get('maximum_bytes'), ImportBudget.from_dict(value['import_budget']))
+    else:
+        profile = TextProfile(value.get('maximum_bytes'))
     if value != profile.configuration():
         raise ValueError('Invalid streamed UTF-8 extraction configuration.')
     return profile
@@ -222,7 +250,7 @@ def _decoded(stream, profile, hashed, cancelled):
             yield decoded
 
 
-def _fragments(chunks, cancelled, *, maximum_fragments=MAX_FRAGMENTS):
+def _fragments(chunks, cancelled, *, maximum_fragments=MAX_FRAGMENTS, maximum_segment_bytes=None):
     buffer, field, offset = '', 1, 0
     emitted, count, nonempty = False, 0, False
 
@@ -232,6 +260,8 @@ def _fragments(chunks, cancelled, *, maximum_fragments=MAX_FRAGMENTS):
         count += 1
         if count > maximum_fragments:
             raise ValueError('Streamed UTF-8 text exceeds its logical-fragment limit.')
+        if maximum_segment_bytes is not None and len(text.encode('utf-8')) > maximum_segment_bytes:
+            raise ValueError('One streamed fragment exceeds the explicit segment-byte allowance.')
         nonempty = nonempty or bool(text.strip())
         return Fragment(text, source_field, start)
 
@@ -278,7 +308,9 @@ def fragments(path, profile, *, expected_digest=None, expected_size=None,
         from ..native_file_metadata import stream_change_time
         change_time = stream_change_time(stream)
         yield from _fragments(_decoded(stream, profile, hashed, cancelled), cancelled,
-                             maximum_fragments=profile.maximum_fragments)
+                             maximum_fragments=profile.maximum_fragments,
+                             maximum_segment_bytes=(profile.import_budget.segment_bytes
+                                 if profile.import_budget is not None else None))
         if stream.tell() != info.st_size or os.fstat(stream.fileno()).st_nlink != 1:
             raise ValueError('The streamed original changed while it was read.')
         actual = hashed.hexdigest()
@@ -310,7 +342,7 @@ def catalog_profile(db, asset, mime, size):
         raise ValueError('Invalid original source size.')
     if size <= ORDINARY_MAX_BYTES:
         return None
-    if mime != 'text/plain' or size > MAX_BYTES:
+    if mime != 'text/plain':
         raise ValueError('The original exceeds its supported format-specific byte limit.')
     selected = None
     for row in db.execute('SELECT DISTINCT r.config FROM revision r JOIN sealed s '

@@ -121,7 +121,7 @@ class StreamedTextIngest(Ingest):
 
     def run(self, workspace, job, root, relative, config=None, *,
             max_steps=None, cancelled=lambda: False):
-        maximum = self.profile.maximum_fragments + 1
+        maximum = self.profile.maximum_steps
         if max_steps is None:
             max_steps = maximum
         if type(max_steps) is not int or not 1 <= max_steps <= maximum:

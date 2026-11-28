@@ -10,35 +10,39 @@ from pathlib import Path
 
 from ..backup_incremental import (BackupReference, MAX_CHAIN, required_base_sha256,
     create_incremental_backup, verify_incremental_backup, restore_incremental_backup)
+from ..backup_budget import arguments as resource_arguments
+from .backup_resources import BackupOptions, review_backup_options
+from .backup_actions import BackupOwner, choose_directory, choose_checksum, show_report
 
 
 class NativeDialogs:
     def __init__(self, frame):
         self.frame = frame
+        self._owner = None
+
+    def resources(self, *, restore, guard):
+        self._owner = BackupOwner(self.frame)
+        def current():
+            guard()
+            self._owner.guard()
+        return review_backup_options(self.frame, restore=restore, guard=current)
 
     def folder(self, title):
         import wx
-        dialog = wx.DirDialog(self.frame, title)
-        try:
-            return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
-        finally:
-            if dialog:
-                dialog.Destroy()
+        owner = self._owner or BackupOwner(self.frame)
+        return choose_directory(owner, title, wx)
 
     def checksum(self):
         import wx
-        dialog = wx.TextEntryDialog(self.frame,
-            'Paste the manifest SHA256 kept separately when this backup was created.',
-            'Verify the selected backup identity')
-        try:
-            return dialog.GetValue().strip().lower() if dialog.ShowModal() == wx.ID_OK else None
-        finally:
-            if dialog:
-                dialog.Destroy()
+        owner = self._owner or BackupOwner(self.frame)
+        result = choose_checksum(owner, 'Verify the selected backup identity',
+            'Paste the manifest SHA256 kept separately when this backup was created.', wx)
+        return result.strip().lower() if result is not None else None
 
     def show(self, title, body):
-        from .desktop_app import show_text
-        show_text(self.frame, title, body)
+        import wx
+        owner = self._owner or BackupOwner(self.frame)
+        show_report(owner, title, body, wx)
 
 
 class IncrementalBackupActions:
@@ -66,7 +70,7 @@ class IncrementalBackupActions:
         if action not in ('create', 'verify', 'restore'):
             raise ValueError('Choose create, verify or restore.')
         frame = self.frame
-        if getattr(frame, '_closing', False):
+        if getattr(frame, '_closing', False) or getattr(frame, '_backup_review', None) is not None:
             return
         if frame.working:
             frame.report('An operation is already running. Wait or cancel it before using backups.')
@@ -76,8 +80,14 @@ class IncrementalBackupActions:
         generation = self._generation
         selected, seen = [], set()
         started = False
+        options = BackupOptions(False)
+        resource_kwargs = {}
+        review_token = frame._backup_review = object()
 
         def guard():
+            owner = getattr(self.dialogs, '_owner', None)
+            if isinstance(owner, BackupOwner):
+                owner.guard()
             if (generation != self._generation or getattr(frame, '_closing', False)
                     or frame.library is not app or Path(app.root) != root):
                 raise InterruptedError('The data folder or backup action changed. Open this action again.')
@@ -145,14 +155,17 @@ class IncrementalBackupActions:
 
             def work():
                 guard()
+                create_kwargs = dict(resource_kwargs)
+                if options.include_generated:
+                    create_kwargs['include_generated'] = True
                 if action == 'create':
                     return create_incremental_backup(app, destination, base=first, ancestors=bases,
-                                                     cancelled=cancelled).to_dict()
+                                                     cancelled=cancelled, **create_kwargs).to_dict()
                 if action == 'verify':
                     return verify_incremental_backup(first.path, first.sha256, bases=bases,
-                                                     cancelled=cancelled)
+                                                     cancelled=cancelled, **resource_kwargs)
                 result = restore_incremental_backup(first.path, destination, first.sha256,
-                                                    bases=bases, cancelled=cancelled)
+                                                    bases=bases, cancelled=cancelled, **resource_kwargs)
                 return {'restored_root': str(result), 'manifest_sha256': first.sha256}
             queue({'create': 'Creating incremental backup', 'verify': 'Verifying backup chain',
                    'restore': 'Restoring incremental backup'}[action], work, finish, durable=True)
@@ -161,7 +174,7 @@ class IncrementalBackupActions:
             def read_header():
                 guard()
                 reference = BackupReference(*declaration)
-                required = required_base_sha256(reference)
+                required = required_base_sha256(reference, **resource_kwargs)
                 guard()
                 return reference, required
 
@@ -184,12 +197,26 @@ class IncrementalBackupActions:
             queue('Checking selected backup identity', read_header, inspected)
 
         try:
+            # Injected legacy dialog adapters retain their explicit existing defaults.
+            # The native adapter always offers this review before any archive header.
+            resources = getattr(self.dialogs, 'resources', None)
+            if resources is not None:
+                options = resources(restore=action != 'create', guard=guard)
+                guard()
+                if options is None:
+                    return
+                if type(options) is not BackupOptions:
+                    raise ValueError('Review exact backup options before choosing a chain.')
+                resource_kwargs = resource_arguments(options.budget)
             first = self._reference('Select the base backup' if action == 'create' else
                                     'Select the incremental backup to ' + action, guard)
             if first is not None:
                 inspect(first)
         except Exception as exc:
             failed(exc)
+        finally:
+            if getattr(frame, '_backup_review', None) is review_token:
+                frame._backup_review = None
 
     def create(self, event=None):
         self.start('create')

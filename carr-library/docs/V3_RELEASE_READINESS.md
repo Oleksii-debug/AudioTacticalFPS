@@ -1,5 +1,59 @@
 # Resonance V3 implementation and owner-test delivery status
 
+## Current receiving: explicit import and native-backup resource policies
+
+**SOURCE_REVIEWED / execution NOT_RUN on this composition.** This candidate
+extends `1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf` with caller-selected finite
+TXT/import and backup policies, durable bounded scan pages, and the existing
+Desktop/CLI workflows. Historical sections below describe only their named
+commits and do not qualify this successor.
+
+The updated canonical specification was checked again against branch
+`carr-library` at `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`; finalization
+blob `db8adbdc483a03c262885928c7ed214ca70bbaa7`, audio/agent specification
+blob `d0b2761dd22b33233b311d4800230fb47f5d3d8b`, and issue 1's retained
+content are unchanged. No requirement was removed to obtain a passing build.
+
+The composed package has 398 Python files. Its committed complete reference
+binds every source path, Git blob and UTF-8 byte checksum. The focused evaluation
+selects 39 source and isolated-installed suites, including all 17 new/changed
+capacity test modules and 22 adjacent regressions. Every selected module must
+collect and all selected cases must pass without skips or expected failures.
+Actual OCR prerequisites remain required for the existing pending-import test.
+Windows additionally executes the native Import Center/full/incremental backup
+probe with its original 450/510/540-second bounds, whole installed inventory and
+wheel RECORD validation. Manual NVDA and physical audio remain NOT_RUN.
+
+The legacy omitted-policy behavior remains available. New policies are exact
+typed caller choices, never authority granted by restored metadata. TXT alone
+can use the explicit streaming profile; other whole-buffer formats retain their
+existing limits. Continuation opens no restored scan root without a fresh review.
+The same catalog, import journals, owned worker, resource broker and publication
+transaction are reused. Native full/flat compatibility/incremental backup formats,
+independent checksums, required ancestor chains and new-destination restore
+remain unchanged. New backup allowances are checked before copying producer
+payloads, include staging and a single caller deadline, and do not claim OS quotas.
+
+The planned 129 MiB original, 8,193-fragment journal and 5,001-entry scan fixtures
+are tests awaiting execution. They are not measured machine-capacity promises.
+The separate 1k/10k/50k and multi-GiB performance harness is still being reconciled;
+p50/p95 latency, peak resource use and measured capacity are NOT_RUN here.
+
+The predecessor's focused Windows run 46129784287 failed: both source and
+installed phases reported 55 failed, 1,026 passed, 12 skipped and 65 errors.
+Its complete terminal log is retained with independent byte/checksum verification.
+Native numeric effects alone passed 17 checks; native Director and formatted
+translation did not pass. This composition repairs the exact complete-audio-pack
+selection error, the new CUE fixtures' canonical lifecycle mismatches and the
+unexcited chorus EOF fixture. Formatted translation and Director publication/flat
+recovery corrections are separate active work, with no qualification transferred.
+
+The MAIN bundled guard now requires both actual parametrized DOI and ISBN
+native acquisition cases rather than the nonexistent unsuffixed case. All other
+existing selectors, assertions and timeouts remain unchanged. Aggregate capacity
+selectors and the final complete Windows delivery gates are still to be integrated
+and executed. No final owner build or distributable platform is certified here.
+
 ## Current receiving: native process ownership and isolated cancellation fixtures
 
 **Composition status: SOURCE_REVIEWED / NOT_RUN.** This follow-up is based on

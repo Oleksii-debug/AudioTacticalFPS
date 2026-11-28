@@ -1,0 +1,253 @@
+##[group]Run $probeBefore = (Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant()
+$probeBefore = (Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant()
+$failures = @()
+python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --source . --output ci-cue-interchange/translation-source.json 2>&1 | Tee-Object ci-cue-interchange/translation-source.txt
+if ($LASTEXITCODE -ne 0) { $failures += 'translation-source' }
+python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --expect-installed --output ci-cue-interchange/translation-installed.json 2>&1 | Tee-Object ci-cue-interchange/translation-installed.txt
+if ($LASTEXITCODE -ne 0) { $failures += 'translation-installed' }
+if ((Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant() -ne $probeBefore) { throw 'The native translation probe changed during acceptance.' }
+$proof = @'
+import hashlib, importlib.metadata, json, pathlib, re, sys
+root = pathlib.Path.cwd().resolve()
+source = root / 'src' / 'carr_library'
+installed = pathlib.Path(importlib.metadata.distribution('universal-research-library').locate_file('carr_library')).resolve()
+expected = json.loads((root / 'ci-cue-interchange' / 'source-package-inventory.json').read_text(encoding='utf-8'))['files']
+def inventory(path):
+    return {p.relative_to(path).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(path.rglob('*.py'))}
+assert source != installed and inventory(source) == inventory(installed) == expected
+names = {'carr_library.assistant.profiles', 'carr_library.assistant.translation',
+         'carr_library.assistant.providers', 'carr_library.ui.translation_dialog',
+         'carr_library.assistant.translation_layout', 'carr_library.assistant.translation_partition',
+         'carr_library.assistant.translation_layout_worker', 'carr_library.assistant.translation_epub_layout_worker'}
+result = []
+for mode, count, selected in (('source', 122, source), ('installed', 130, installed)):
+    report = json.loads((root / 'ci-cue-interchange' / ('translation-' + mode + '.json')).read_text(encoding='utf-8-sig'))
+    assert report['status'] == 'PASS' and report['phase'] == 'complete'
+    assert len(report['checks']) == count and report['synthetic_rest_calls'] == 9
+    assert report['native_keyboard'] == 'PASS' and report['source_override'] == (mode == 'source')
+    assert all(report[name] == 'NOT_RUN' for name in
+               ('live_google_api', 'billing_and_quality', 'native_approval_and_file_pickers', 'manual_nvda'))
+    assert set(report['origins']) == set(report['module_sha256']) == names
+    for name in names:
+        relative = pathlib.Path(*name.split('.')[1:]).with_suffix('.py')
+        assert pathlib.Path(report['origins'][name]).resolve() == selected / relative
+        assert report['module_sha256'][name] == expected[relative.as_posix()]
+    exports = report['structured_exports']
+    assert len(exports) == 2 and {entry['format'] for entry in exports} == {'docx', 'epub'}
+    for entry in exports:
+        assert entry['provider_calls_during_export'] == 0 and entry['quotation_authority'] is False
+        assert (entry['output_bytes'] > 0 and entry['source_partition']['profile'] in
+            ('carr-docx-body-layout/1', 'carr-epub-xhtml-layout/1'))
+        assert all(re.fullmatch(r'[0-9a-f]{64}', entry[name]) for name in ('source_sha256', 'output_sha256'))
+    result.append({'mode': mode, 'checks': count, 'structured_exports': exports, 'origins': report['origins']})
+output = {'status': 'PASS', 'native_probe_sha256': sys.argv[1], 'modes': result,
+          'manual_nvda': 'NOT_RUN', 'live_google_api': 'NOT_RUN'}
+(root / 'ci-cue-interchange' / 'translation-native-qualification.json').write_text(
+    json.dumps(output, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+print(json.dumps({'status': 'PASS', 'native_checks': [122, 130], 'formats': ['docx', 'epub']}))
+'@
+python -I -B -X utf8 -c $proof $probeBefore 2>&1 | Tee-Object ci-cue-interchange/translation-native-qualification.txt
+if ($LASTEXITCODE -ne 0) { $failures += 'translation-proof' }
+if ($failures.Count) { throw ('Required formatted translation checks failed: ' + ($failures -join ', ')) }
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  CARR_CUE_HEAD: 1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf
+  PYTHONUTF8: 1
+  PYTHONDONTWRITEBYTECODE: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+##[endgroup]
+TRANSLATION_V3_PHASE starting
+TRANSLATION_V3_PHASE native Windows wx
+TRANSLATION_V3_PHASE retained DOCX canonical import
+TRANSLATION_V3_PHASE retained EPUB canonical import
+TRANSLATION_V3_PHASE real modal translation workspace
+TRANSLATION_V3_PHASE named native control: Preview, supported languages and job status
+TRANSLATION_V3_PHASE named native control: Source language code; auto detects
+TRANSLATION_V3_PHASE named native control: Target language code
+TRANSLATION_V3_PHASE named native control: Advanced v3 glossary resource; blank for none
+TRANSLATION_V3_PHASE named native control: Selected text; originals remain unchanged
+TRANSLATION_V3_PHASE named native control: Maximum approved budget in USD; no default price
+TRANSLATION_V3_PHASE named native control: Fetch languages
+TRANSLATION_V3_PHASE foreground focus: Fetch languages
+TRANSLATION_V3_PHASE native Space down: Fetch languages
+TRANSLATION_V3_PHASE native Space up: Fetch languages
+TRANSLATION_V3_PHASE fixed official authority
+TRANSLATION_V3_PHASE OAuth bearer, never API-key header
+TRANSLATION_V3_PHASE language completion retains readable native status focus
+TRANSLATION_V3_PHASE named native control: Preview
+TRANSLATION_V3_PHASE foreground focus: Preview
+TRANSLATION_V3_PHASE native Space down: Preview
+TRANSLATION_V3_PHASE native Space up: Preview
+TRANSLATION_V3_PHASE preview contains exact endpoint and glossary
+TRANSLATION_V3_PHASE named native control: Translate / resume
+TRANSLATION_V3_PHASE foreground focus: Translate / resume
+TRANSLATION_V3_PHASE native Space down: Translate / resume
+TRANSLATION_V3_PHASE native Space up: Translate / resume
+TRANSLATION_V3_PHASE fixed official authority
+TRANSLATION_V3_PHASE OAuth bearer, never API-key header
+TRANSLATION_V3_PHASE translation completion status focus
+TRANSLATION_V3_PHASE confirmation binds exact glossary
+TRANSLATION_V3_PHASE named native control: Export
+TRANSLATION_V3_PHASE foreground focus: Export
+TRANSLATION_V3_PHASE native Space down: Export
+TRANSLATION_V3_PHASE native Space up: Export
+TRANSLATION_V3_PHASE retained original and non-authoritative derivative
+TRANSLATION_V3_PHASE actual exported hashes
+TRANSLATION_V3_PHASE verified glossary provenance
+TRANSLATION_V3_PHASE independent decoded translation receipt is retained
+TRANSLATION_V3_PHASE original selected text unchanged
+TRANSLATION_V3_PHASE named native control: Preview
+TRANSLATION_V3_PHASE foreground focus: Preview
+TRANSLATION_V3_PHASE native Space down: Preview
+TRANSLATION_V3_PHASE native Space up: Preview
+TRANSLATION_V3_PHASE named native control: Translate / resume
+TRANSLATION_V3_PHASE foreground focus: Translate / resume
+TRANSLATION_V3_PHASE native Space down: Translate / resume
+TRANSLATION_V3_PHASE native Space up: Translate / resume
+TRANSLATION_V3_PHASE changed glossary requires fresh review without transfer
+TRANSLATION_V3_PHASE named native control: Translation input scope
+TRANSLATION_V3_PHASE named native control: Source title filter for library selection
+TRANSLATION_V3_PHASE named native control: Choose library sources
+TRANSLATION_V3_PHASE foreground focus: Choose library sources
+TRANSLATION_V3_PHASE native Space down: Choose library sources
+TRANSLATION_V3_PHASE native Space up: Choose library sources
+TRANSLATION_V3_PHASE native retained-source choice
+TRANSLATION_V3_PHASE foreground focus: button
+TRANSLATION_V3_PHASE native Space down: button
+TRANSLATION_V3_PHASE native Space up: button
+TRANSLATION_V3_PHASE native docx capture is read-only and sends nothing
+TRANSLATION_V3_PHASE named native control: Preview
+TRANSLATION_V3_PHASE foreground focus: Preview
+TRANSLATION_V3_PHASE native Space down: Preview
+TRANSLATION_V3_PHASE native Space up: Preview
+TRANSLATION_V3_PHASE docx preview binds explicit structure profile without transfer
+TRANSLATION_V3_PHASE named native control: Translate / resume
+TRANSLATION_V3_PHASE foreground focus: Translate / resume
+TRANSLATION_V3_PHASE native Space down: Translate / resume
+TRANSLATION_V3_PHASE native Space up: Translate / resume
+TRANSLATION_V3_PHASE failed
+Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 453, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 436, in main
+    run_native(source, report, checkpoint)
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 398, in run_native
+    raise RuntimeError('\n'.join(errors))
+RuntimeError: Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 325, in exercise
+    pump(lambda: not frame.working and '"status": "complete"' in status.GetValue(),
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 64, in pump
+    raise TimeoutError(label)
+TimeoutError: DOCX source-bound translation
+
+TRANSLATION_V3_PHASE starting
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.profiles
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.translation
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.providers
+TRANSLATION_V3_PHASE installed module: carr_library.ui.translation_dialog
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.translation_layout
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.translation_partition
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.translation_layout_worker
+TRANSLATION_V3_PHASE installed module: carr_library.assistant.translation_epub_layout_worker
+TRANSLATION_V3_PHASE native Windows wx
+TRANSLATION_V3_PHASE retained DOCX canonical import
+TRANSLATION_V3_PHASE retained EPUB canonical import
+TRANSLATION_V3_PHASE real modal translation workspace
+TRANSLATION_V3_PHASE named native control: Preview, supported languages and job status
+TRANSLATION_V3_PHASE named native control: Source language code; auto detects
+TRANSLATION_V3_PHASE named native control: Target language code
+TRANSLATION_V3_PHASE named native control: Advanced v3 glossary resource; blank for none
+TRANSLATION_V3_PHASE named native control: Selected text; originals remain unchanged
+TRANSLATION_V3_PHASE named native control: Maximum approved budget in USD; no default price
+TRANSLATION_V3_PHASE named native control: Fetch languages
+TRANSLATION_V3_PHASE foreground focus: Fetch languages
+TRANSLATION_V3_PHASE native Space down: Fetch languages
+TRANSLATION_V3_PHASE native Space up: Fetch languages
+TRANSLATION_V3_PHASE fixed official authority
+TRANSLATION_V3_PHASE OAuth bearer, never API-key header
+TRANSLATION_V3_PHASE language completion retains readable native status focus
+TRANSLATION_V3_PHASE named native control: Preview
+TRANSLATION_V3_PHASE foreground focus: Preview
+TRANSLATION_V3_PHASE native Space down: Preview
+TRANSLATION_V3_PHASE native Space up: Preview
+TRANSLATION_V3_PHASE preview contains exact endpoint and glossary
+TRANSLATION_V3_PHASE named native control: Translate / resume
+TRANSLATION_V3_PHASE foreground focus: Translate / resume
+TRANSLATION_V3_PHASE native Space down: Translate / resume
+TRANSLATION_V3_PHASE native Space up: Translate / resume
+TRANSLATION_V3_PHASE fixed official authority
+TRANSLATION_V3_PHASE OAuth bearer, never API-key header
+TRANSLATION_V3_PHASE translation completion status focus
+TRANSLATION_V3_PHASE confirmation binds exact glossary
+TRANSLATION_V3_PHASE named native control: Export
+TRANSLATION_V3_PHASE foreground focus: Export
+TRANSLATION_V3_PHASE native Space down: Export
+TRANSLATION_V3_PHASE native Space up: Export
+TRANSLATION_V3_PHASE retained original and non-authoritative derivative
+TRANSLATION_V3_PHASE actual exported hashes
+TRANSLATION_V3_PHASE verified glossary provenance
+TRANSLATION_V3_PHASE independent decoded translation receipt is retained
+TRANSLATION_V3_PHASE original selected text unchanged
+TRANSLATION_V3_PHASE named native control: Preview
+TRANSLATION_V3_PHASE foreground focus: Preview
+TRANSLATION_V3_PHASE native Space down: Preview
+TRANSLATION_V3_PHASE native Space up: Preview
+TRANSLATION_V3_PHASE named native control: Translate / resume
+TRANSLATION_V3_PHASE foreground focus: Translate / resume
+TRANSLATION_V3_PHASE native Space down: Translate / resume
+TRANSLATION_V3_PHASE native Space up: Translate / resume
+TRANSLATION_V3_PHASE changed glossary requires fresh review without transfer
+TRANSLATION_V3_PHASE named native control: Translation input scope
+TRANSLATION_V3_PHASE named native control: Source title filter for library selection
+TRANSLATION_V3_PHASE named native control: Choose library sources
+TRANSLATION_V3_PHASE foreground focus: Choose library sources
+TRANSLATION_V3_PHASE native Space down: Choose library sources
+TRANSLATION_V3_PHASE native Space up: Choose library sources
+TRANSLATION_V3_PHASE native retained-source choice
+TRANSLATION_V3_PHASE foreground focus: button
+TRANSLATION_V3_PHASE native Space down: button
+TRANSLATION_V3_PHASE native Space up: button
+TRANSLATION_V3_PHASE native docx capture is read-only and sends nothing
+TRANSLATION_V3_PHASE named native control: Preview
+TRANSLATION_V3_PHASE foreground focus: Preview
+TRANSLATION_V3_PHASE native Space down: Preview
+TRANSLATION_V3_PHASE native Space up: Preview
+TRANSLATION_V3_PHASE docx preview binds explicit structure profile without transfer
+TRANSLATION_V3_PHASE named native control: Translate / resume
+TRANSLATION_V3_PHASE foreground focus: Translate / resume
+TRANSLATION_V3_PHASE native Space down: Translate / resume
+TRANSLATION_V3_PHASE native Space up: Translate / resume
+TRANSLATION_V3_PHASE failed
+Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 453, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 436, in main
+    run_native(source, report, checkpoint)
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 398, in run_native
+    raise RuntimeError('\n'.join(errors))
+RuntimeError: Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 325, in exercise
+    pump(lambda: not frame.working and '"status": "complete"' in status.GetValue(),
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_translation_v3_smoke.py", line 64, in pump
+    raise TimeoutError(label)
+TimeoutError: DOCX source-bound translation
+
+Traceback (most recent call last):
+  File "<string>", line 17, in <module>
+AssertionError
+Exception: D:\a\_temp\a3b40504-a2fb-4494-8307-b1e06c345409.ps1:52
+Line |
+  52 |  … es.Count) { throw ('Required formatted translation checks failed: ' + …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Required formatted translation checks failed: translation-source, translation-installed, translation-proof
+##[error]Process completed with exit code 1.

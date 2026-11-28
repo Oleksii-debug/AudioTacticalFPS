@@ -6,6 +6,9 @@ from pathlib import Path
 import sqlite3
 import sys
 
+from .backup_options import add_resource_arguments, resources_from_arguments
+from .backup_budget import arguments as resource_arguments
+
 from .backup_incremental import (BackupReference, DEFAULT_MAX_BYTES,
     create_incremental_backup, verify_incremental_backup, restore_incremental_backup)
 
@@ -29,10 +32,12 @@ def main(argv=None):
         if name == 'restore':
             command.add_argument('--output', type=Path, required=True)
     for command in (create, commands.choices['verify'], commands.choices['restore']):
+        add_resource_arguments(command)
         command.add_argument('--max-bytes', type=int, default=DEFAULT_MAX_BYTES,
                              help='Logical snapshot byte budget; default 64 GiB')
     args = parser.parse_args(argv)
     try:
+        kwargs = resource_arguments(resources_from_arguments(args))
         if args.command == 'create':
             from .application import LibraryApp
             if not (args.data_dir / 'library.sqlite').is_file():
@@ -40,14 +45,14 @@ def main(argv=None):
             result = create_incremental_backup(LibraryApp(args.data_dir), args.output,
                 base=BackupReference(Path(args.base[0]), args.base[1]),
                 ancestors=tuple(BackupReference(Path(path), checksum) for path, checksum in args.ancestor),
-                include_generated=args.include_generated, max_bytes=args.max_bytes).to_dict()
+                include_generated=args.include_generated, max_bytes=args.max_bytes, **kwargs).to_dict()
         else:
             bases = tuple(BackupReference(Path(path), checksum) for path, checksum in args.base)
             if args.command == 'verify':
-                result = verify_incremental_backup(args.source, args.sha256, bases=bases, max_bytes=args.max_bytes)
+                result = verify_incremental_backup(args.source, args.sha256, bases=bases, max_bytes=args.max_bytes, **kwargs)
             else:
                 root = restore_incremental_backup(args.source, args.output, args.sha256,
-                                                 bases=bases, max_bytes=args.max_bytes)
+                                                 bases=bases, max_bytes=args.max_bytes, **kwargs)
                 result = {'restored_root': str(root), 'manifest_sha256': args.sha256,
                           'external_execution_review_required': True}
         print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))

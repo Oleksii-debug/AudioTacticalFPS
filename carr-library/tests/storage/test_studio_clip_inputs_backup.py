@@ -496,3 +496,83 @@ def test_projection_cannot_expand_the_foreign_flat_snapshot_budget(library, tmp_
     with pytest.raises(RestoreError, match='projection.*budget'):
         restore_backup(folder, tmp_path / 'restored', checksum)
     assert not (tmp_path / 'restored').exists()
+
+
+
+def _resource_snapshot(app, stage):
+    from carr_library.state_backup import snapshot_state
+    stage.mkdir()
+    return snapshot_state(app.root / 'state', stage, include_generated=False,
+                          missing_ok=False)
+
+
+@pytest.mark.parametrize('maximum', [True, -1, 1.5, 2**63, '1'])
+def test_input_snapshot_resource_cap_is_exact_and_bounded(library, tmp_path, maximum):
+    app = library[0]
+    stage = tmp_path / 'invalid-input-cap'
+    entries = _resource_snapshot(app, stage)
+    before = {row['filename']: (stage / row['filename']).read_bytes() for row in entries}
+    with pytest.raises(ValueError, match='byte allowance'):
+        backup_inputs.snapshot_inputs(stage, entries, source_state_root=app.root / 'state',
+                                      maximum_bytes=maximum)
+    assert not (stage / backup_inputs.SNAPSHOT).exists()
+    assert all((stage / name).read_bytes() == raw for name, raw in before.items())
+
+
+@pytest.mark.parametrize('fits', [False, True])
+def test_input_snapshot_cap_includes_the_actual_new_receipt_before_atomic_write(
+        library, tmp_path, monkeypatch, fits):
+    app = library[0]
+    reference = tmp_path / 'reference-input-state'
+    reference_entries = _resource_snapshot(app, reference)
+    complete = backup_inputs.snapshot_inputs(reference, reference_entries,
+        source_state_root=app.root / 'state')
+    reference_bytes = (reference / backup_inputs.SNAPSHOT).read_bytes()
+    required = sum(row['size_bytes'] for row in complete)
+    assert required > sum(row['size_bytes'] for row in reference_entries)
+    stage = tmp_path / 'bounded-input-state'
+    entries = _resource_snapshot(app, stage)
+    before = {row['filename']: (stage / row['filename']).read_bytes() for row in entries}
+    calls = []
+    actual = backup_inputs.atomic_json
+    def write(path, value, **options):
+        calls.append(Path(path))
+        return actual(path, value, **options)
+    monkeypatch.setattr(backup_inputs, 'atomic_json', write)
+    if fits:
+        result = backup_inputs.snapshot_inputs(stage, entries,
+            source_state_root=app.root / 'state', maximum_bytes=required)
+        assert result == complete
+        assert calls == [stage / backup_inputs.SNAPSHOT]
+        assert (stage / backup_inputs.SNAPSHOT).read_bytes() == reference_bytes
+        assert sum(row['size_bytes'] for row in result) == required
+    else:
+        with pytest.raises(ValueError, match='byte allowance'):
+            backup_inputs.snapshot_inputs(stage, entries,
+                source_state_root=app.root / 'state', maximum_bytes=required - 1)
+        assert calls == []
+        assert not (stage / backup_inputs.SNAPSHOT).exists()
+    assert all((stage / name).read_bytes() == raw for name, raw in before.items())
+
+
+def test_empty_input_snapshot_accepts_zero_remaining_bytes_without_a_receipt(tmp_path):
+    root, source = tmp_path / 'state', tmp_path / 'source-state'
+    root.mkdir()
+    source.mkdir()
+    assert backup_inputs.snapshot_inputs(root, [], source_state_root=source, maximum_bytes=0) == []
+    assert list(root.iterdir()) == []
+
+
+def test_existing_input_state_over_cap_is_refused_before_receipt_construction(
+        library, tmp_path, monkeypatch):
+    app = library[0]
+    stage = tmp_path / 'already-over-cap'
+    entries = _resource_snapshot(app, stage)
+    maximum = sum(row['size_bytes'] for row in entries) - 1
+    def forbidden(*_args, **_options):
+        pytest.fail('Over-budget existing state reached receipt construction.')
+    monkeypatch.setattr(backup_inputs, '_snapshot', forbidden)
+    with pytest.raises(ValueError, match='byte allowance'):
+        backup_inputs.snapshot_inputs(stage, entries,
+            source_state_root=app.root / 'state', maximum_bytes=maximum)
+    assert not (stage / backup_inputs.SNAPSHOT).exists()

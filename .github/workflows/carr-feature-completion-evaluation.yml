@@ -59,9 +59,12 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force 'ci-cue-interchange' | Out-Null
           $audio = Join-Path $env:RUNNER_TEMP 'carr-cue-audio'
-          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-cue-audio-cache') --output $audio --download | Tee-Object 'ci-cue-interchange/audio-runtime.json'
+          python packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-cue-interchange/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $ffmpeg = Join-Path $audio 'bin/ffmpeg.exe'
+          python -I -B -X utf8 -c "import json,sys; from pathlib import Path; from carr_library.audio.voices import VoiceRegistry; registry=VoiceRegistry({'ffmpeg':str(Path(sys.argv[1]).resolve()),'espeak_ng':False,'include_sapi':False}); voices={v.id for v in registry.list_voices()}; assert {'flite:kal','flite:slt','flite:rms'} <= voices, (sorted(voices),registry.engine_status()); print(json.dumps({'status':'PASS','ffmpeg':str(registry.ffmpeg),'required_voices':['flite:kal','flite:slt','flite:rms'],'available_voices':sorted(voices)}))" $ffmpeg | Tee-Object 'ci-cue-interchange/required-audio-engines.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare exact source and installed acceptance harness
         run: |
           mkdir -p ci-cue-interchange

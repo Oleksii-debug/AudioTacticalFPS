@@ -100,7 +100,8 @@ def run(library, report):
                       'original_script_sha256': sha256(script.encode()).hexdigest(),
                       'master_sha256': before[str(destination / 'master.wav')],
                       'artifact_count': len(before), 'artifact_bytes_unchanged': True}
-        assert service.close(), 'Actual interchange producer must release its retained resources.'
+        assert service.close() is None
+        assert service._closed and service._voices is None, 'Actual interchange producer retained its registry.'
 
     # The sheet boundary and long absolute offsets are real upstream parser calls,
     # with simulated measured timelines; they are not long audio render claims.

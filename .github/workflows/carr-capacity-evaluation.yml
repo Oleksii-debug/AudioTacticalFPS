@@ -1,0 +1,290 @@
+name: Import and backup resource capacity acceptance
+on:
+  push:
+    branches: [carr/capacity-evaluation-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-capacity-evaluation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-capacity-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  review:
+    name: Large-source import, bounded scan pages and native backup policy / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 95
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      CARR_CAPACITY_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact application and declared capacity prerequisites
+        shell: pwsh
+        run: |
+          $extras = if ($IsWindows) { '.[test,desktop,sync]' } else { '.[test,sync]' }
+          python -m pip install --only-binary=cryptography,cffi $extras 'lxml==6.1.3' 'cffi==2.1.1' 'pycparser==3.12'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare real Linux audio and OCR prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg tesseract-ocr tesseract-ocr-eng fonts-dejavu-core
+      - name: Prepare the existing pinned Windows audio and OCR runtimes
+        if: runner.os == 'Windows'
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-capacity' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-capacity-audio'
+          python -I -B packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-capacity/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-capacity-ocr-work'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          $ocr = Join-Path $ocrWork 'ocr'
+          python -I -B packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'cache') --output $ocr --source-archive (Join-Path $ocrWork 'corresponding-source.tar') --download | Tee-Object 'ci-capacity/ocr-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          python -I -B ../.github/scripts/carr_prepare_test_font.py --report ci-capacity/test-font.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare exact source and installed acceptance harness
+        run: |
+          mkdir -p ci-capacity
+          cat > ci-capacity/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import subprocess
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-capacity"
+          suites = ["tests/e2e/test_import_batch_cli.py","tests/e2e/test_streamed_import_cli.py","tests/e2e/test_streaming_import_pages.py","tests/ingest/test_import_budget.py","tests/ingest/test_import_budget_worker.py","tests/ingest/test_import_scan_pages.py","tests/ingest/test_import_session.py","tests/storage/test_import_capacity_backup.py","tests/ui/test_import_center.py","tests/ui/test_import_resources.py","tests/e2e/test_backup_resource_cli.py","tests/storage/test_backup_budget.py","tests/storage/test_backup_capacity.py","tests/storage/test_backup_resource_roundtrip.py","tests/storage/test_backup_sidecars.py","tests/storage/test_studio_clip_inputs_backup.py","tests/ui/test_backup_resource_actions.py","tests/ingest/test_batch_scan.py","tests/ingest/test_streamed_text.py","tests/ingest/test_streamed_ingest.py","tests/ingest/test_streamed_admission.py","tests/e2e/test_streamed_source_import.py","tests/e2e/test_import_batches.py","tests/e2e/test_import_worker_publication.py","tests/storage/test_library_backup.py","tests/storage/test_backup_incremental.py","tests/storage/test_backup_boundary.py","tests/storage/test_backup_schema_identity.py","tests/storage/test_backup_scan_bounds.py","tests/storage/test_pending_backup.py","tests/storage/test_complete_pending_backup.py","tests/storage/test_direct_import_pending_backup.py","tests/storage/test_streamed_source_backup.py","tests/storage/test_composite_backup.py","tests/storage/test_canonical_backup_compat.py","tests/ui/test_backup_incremental_dialog.py","tests/ui/test_streamed_import.py","tests/audio/test_cleanup_contexts.py","tests/packaging/test_managed_launch_boundary.py"]
+
+          names = ["carr_library.__main__","carr_library.application","carr_library.backup_budget","carr_library.backup_compat","carr_library.backup_incremental","carr_library.backup_incremental_cli","carr_library.backup_options","carr_library.backup_report","carr_library.backup_sidecars","carr_library.ingest.batch_cli","carr_library.ingest.batch_pages","carr_library.ingest.batch_scan","carr_library.ingest.batches","carr_library.ingest.catalog_asset_copy","carr_library.ingest.resource_budget","carr_library.ingest.session","carr_library.ingest.streamed_ingest","carr_library.ingest.streamed_text","carr_library.ingest.worker","carr_library.library_backup","carr_library.pending_backup","carr_library.storage.revisions","carr_library.streamed_import_cli","carr_library.studio.backup_inputs","carr_library.ui.backup_actions","carr_library.ui.backup_incremental_dialog","carr_library.ui.backup_resources","carr_library.ui.desktop_app","carr_library.ui.import_center","carr_library.ui.import_resources"]
+          
+          def checkout_head():
+              value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()
+              assert value == os.environ["CARR_CAPACITY_HEAD"], (value, os.environ["CARR_CAPACITY_HEAD"])
+              return value
+
+          commit_before = checkout_head()
+          helper_before = sha256(Path(__file__).read_bytes()).hexdigest()
+          tests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}
+
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              return result
+          
+          expected = package_inventory(source)
+          reference_path = root / "review" / "capacity-python-reference-2026-11-28.json"
+          reference_before = sha256(reference_path.read_bytes()).hexdigest()
+          reference = json.loads(reference_path.read_text(encoding="utf-8"))
+          assert expected == reference["compact_mapping"], "Checkout differs from its committed complete Python reference."
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      print("CARR_CAPACITY_COLLECTION_FAILURE " + str(report.longrepr)[:12000], flush=True)
+
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "-s", "--durations=20", "--import-mode=importlib", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-capacity-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              assert checkout_head() == commit_before, "The checked-out commit changed."
+              assert sha256(reference_path.read_bytes()).hexdigest() == reference_before, "The committed Python reference changed."
+              assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, "The executed proof helper changed."
+              assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, "Executed test bytes changed."
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "qualification": "IMPORT_AND_NATIVE_BACKUP_CAPACITY",
+                        "large_corpus_performance": "SEPARATE_MEASURED_GATE",
+                        "native_backup_import_controls": "SEPARATE_WINDOWS_STEP",
+                        "commit": commit_before, "proof_helper_sha256": helper_before,
+                        "python_reference_sha256": reference_before,
+                        "test_files": tests_before,
+                        "selected_suites": proof.collected, "package_python_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require actual source capacity and unchanged adjacent contracts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -B -X utf8 ci-capacity/check.py source 2>&1 | tee ci-capacity/source.txt
+      - name: Require isolated installed capacity and unchanged adjacent contracts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-capacity/check.py installed 2>&1 | tee ci-capacity/installed.txt
+      - name: Require actual installed Windows import and backup controls
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $before = (Get-FileHash scripts/windows_backup_import_access_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant()
+          python -I -B -X utf8 scripts/windows_backup_import_access_smoke.py 2>&1 | Tee-Object 'ci-capacity/native-backup-import.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash scripts/windows_backup_import_access_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant() -ne $before) { throw 'Native capacity probe changed during execution.' }
+          $proof = @'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import sys
+          root = Path.cwd().resolve()
+          result = json.loads((root / 'ci-capacity/native-backup-import.txt').read_text(encoding='utf-8-sig').strip().splitlines()[-1])
+          assert result['result'] == 'PASS' and type(result['checks']) is int and result['checks'] > 0
+          for name in ('native_keyboard', 'actual_scan_page_continuation', 'actual_snapshot_then_native_cancel',
+                       'full_incremental_verify_restore', 'independent_checksum_and_required_base_folders',
+                       'same_desktop_executor', 'restored_original_bytes_and_verified_copy'):
+              assert result[name] == 'PASS', name
+          assert result['native_full_backup_format'] == 5 and result['reviewed_import_original_mib'] == 128
+          assert all(result[name] == 'NOT_RUN' for name in ('native_folder_picker', 'physical_output', 'NVDA'))
+          assert result['flat4_compatibility'] == 'SEPARATE_PORTABLE_GATE'
+          assert result['large_original_capacity'] == 'SEPARATE_API_GATE'
+          probe = root / 'scripts/windows_backup_import_access_smoke.py'
+          assert result['probe_identity'] == {str(probe): sys.argv[1]}
+          reference = json.loads((root / 'review/capacity-python-reference-2026-11-28.json').read_text(encoding='utf-8'))
+          expected = {row['path'].removeprefix('carr_library/'): {'sha256': row['sha256'], 'bytes': row['bytes']}
+                      for row in reference['runtime_rows']}
+          identity = result['source_identity']
+          assert identity['python_inventory'] == expected and identity['python_files'] == len(expected)
+          source, installed = root / 'src/carr_library', Path(identity['installed_root'])
+          assert source.resolve() != installed.resolve() and identity['source_root'] == str(source.resolve())
+          for directory in (source, installed):
+              actual = {p.relative_to(directory).as_posix(): {'sha256': sha256(p.read_bytes()).hexdigest(), 'bytes': p.stat().st_size}
+                        for p in sorted(directory.rglob('*.py'))}
+              assert actual == expected
+          for name, row in identity['modules'].items():
+              relative = name.removeprefix('carr_library.').replace('.', '/') + '.py'
+              assert Path(row['path']).resolve() == installed / relative
+              assert {k: row[k] for k in ('sha256', 'bytes')} == expected[relative]
+          assert len(identity['modules']) == 28
+          result['commit'] = sys.argv[2]
+          (root / 'ci-capacity/native-backup-import-qualification.json').write_text(
+              json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'checks': result['checks'], 'python_files': len(expected),
+                            'native_keyboard': 'PASS', 'NVDA': 'NOT_RUN'}))
+          '@
+          python -I -B -X utf8 -c $proof $before $env:CARR_CAPACITY_HEAD | Tee-Object 'ci-capacity/native-qualification.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-capacity
+          git rev-parse HEAD > ci-capacity/commit.txt
+          git rev-parse HEAD^{tree} > ci-capacity/tree.txt
+          python -m pip freeze > ci-capacity/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: capacity-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-capacity
+          if-no-files-found: error

@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "scope": "Correct complete-bundle JUnit acceptance for the actual parameterized native DOI/ISBN cases",
+  "path": ".github/workflows/carr-windows.yml",
+  "preimage": "63c17303df508f19acbb13bdbe78af6dd737bc12",
+  "successor": "64fe0a67ea0b977800af6df9355c2790dd324123",
+  "before_utf8_bytes": 168513,
+  "after_utf8_bytes": 169253,
+  "before_sha256": "d1a2f70b219a7468dc523df472d9017d5f0df5d5aeda598ed8e2cccdac824be4",
+  "after_sha256": "38ef25a683ce39588c890f7dab85b389e8b26c413824f8902f25502aad23def3",
+  "inverse_exact": true,
+  "evidence": {
+    "tested_head": "943f585659c55481046266338f428e4a1043a9bd",
+    "source_run": 46119978375,
+    "source_job": 140902138753,
+    "artifact_id": 15256851282,
+    "artifact_bytes": 475789,
+    "artifact_sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
+    "xml_bytes": 1495285,
+    "xml_sha256": "a4425cc38f8879b77473943199fbc3fd86ae00f3cc29048fa4392dbcc5615b50",
+    "prior_diagnostic_tree": "94af55f92c7b3e6b93d05693a8ce17f67b239914",
+    "observed_cases": 9319,
+    "observed_failures": 0,
+    "observed_errors": 0,
+    "observed_skipped": 0,
+    "historical_required_name_missing": "test_windows_native_dialog_async_lookup_focus_and_close",
+    "actual_doi_isbn_rows": "Not emitted by that first diagnostic; separately pinned append-only reader run46130843660 is queued at this review"
+  },
+  "required_names": [
+    "test_windows_native_dialog_async_lookup_focus_and_close[doi]",
+    "test_windows_native_dialog_async_lookup_focus_and_close[isbn]"
+  ],
+  "guards": [
+    "Both exact parameterized names remain required in the existing overall expected-name set",
+    "Matching cases must belong to test_native_acquisition, have exactly two rows and exactly the two unique required names",
+    "Neither native row may contain failure, error or skipped",
+    "The existing required metadata/OCR/state inventories and overall zero failure/error/skip predicates remain unchanged"
+  ],
+  "preservation": {
+    "all_other_workflow_bytes": "exact inverse",
+    "pytest_body_flags_selectors_and_deadlines": "unchanged",
+    "original_native_test_assertions_and_deadlines": "unchanged",
+    "source_or_product_edits": false
+  },
+  "reviews": {
+    "root": "CLEAR on exact64fe0a67; current selector inventory retained"
+  },
+  "limitations": [
+    "This source review does not retroactively change the943 complete-bundle failure.",
+    "9319 passing testcases do not alone establish complete-bundle qualification.",
+    "The revised guard must execute on a new receiving head; no candidate runtime PASS is claimed."
+  ]
+}

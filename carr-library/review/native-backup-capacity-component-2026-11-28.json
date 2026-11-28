@@ -1,0 +1,250 @@
+{
+  "schema": "carr-native-backup-capacity-component/1",
+  "status": "SOURCE_ONLY_NOT_RUN_DEPENDENT_COMPONENT",
+  "receiving_base": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "required_adjacent_component": "Locate current ImportBudget/TextProfile2/paged batches: application.py and __main__.py require nonoverlapping hunk composition; pending_backup already composes its semantic overlay",
+  "canonical_formats": "Existing native version5 and read-only flat4; no new writer/version/policy from archives",
+  "policy": "Exact optional BackupBudget; omission preserves existing signatures, bounds and bytes",
+  "staging": "Before each producer writes, reserve second verification copy and bounded manifests; pass only remaining original copy bytes; incremental releases ancestor stages before creating current snapshot and subtracts retained bytes from child allowances while retaining the original deadline.",
+  "helper_peer": "Audio production; Voice independent fixture/API CLEAR; root production CLEAR",
+  "helper_tree": "f14e3d98d24a9df7b82ffa99ec28b3ff35e7f93c",
+  "source_files": [
+    {
+      "path": "carr-library/src/carr_library/backup_budget.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "0f240e6e5e9d20afbb59adceb5f861298f1da6eb48cf49cb590607f65f471151",
+      "bytes": 8189
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_options.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "da8fab816fc2422d0daff3f10d25ef252df605477ca6c06004860498a8374045",
+      "bytes": 4043
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_report.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "cda21e9574aa0bcd23b670be4b7dca6d119becf1c760dc58acd5fad7056b118d",
+      "bytes": 1201
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before_blob": "d26c07dd1ecd21cc1c67e925ba10a63c3cd457de",
+      "after_blob": null,
+      "sha256": "978e5ff177c66b42f8549b88743792c4dc97c57ccc5d222cf6cf0c256d37afac",
+      "bytes": 32560
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_incremental.py",
+      "before_blob": "ca512566d010c6c8c7f084cbfdcafc4588b5f9f5",
+      "after_blob": null,
+      "sha256": "9e3edbd119c9eb98a51ffd3f8d9d9e6c820bc57bad78ab1e0346b34848a2cd58",
+      "bytes": 31117
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_incremental_cli.py",
+      "before_blob": "176b48d7af97728f4bf53ba815c4b33e59d09718",
+      "after_blob": null,
+      "sha256": "604793e072ea5db628f53e0c253ea59795f741ebd917ac093bccef17a1bda3e5",
+      "bytes": 3681
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_compat.py",
+      "before_blob": "ce1895c11219630cf79c7cfe49868c62dca540e9",
+      "after_blob": null,
+      "sha256": "d8acb677e786acf5324b769f9fb70694fc4721b636dae33eba01c8432ca260eb",
+      "bytes": 38977
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "before_blob": "88072d6a4e777953d77ffa5810a44734856ef5a6",
+      "after_blob": null,
+      "sha256": "cf10746fa68f696740aaafa87cb9bd3d048ba67add83e027d98045278ae3f7f3",
+      "bytes": 74274
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "before_blob": "0f6e0fba6af9b06570cdcc0ac62139e116087148",
+      "after_blob": null,
+      "sha256": "4bd12db23fd9e1f89b833547b1d1ee17e666e8f8a8053848611501850ee7bbeb",
+      "bytes": 5982
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "before_blob": "84b03eb9348ab04321f59bf613f8b9709eede364",
+      "after_blob": null,
+      "sha256": "5c754842715885caf6d5fc439dc37a4a88d69bb9af5d72329a7d7ef738f03c8e",
+      "bytes": 87077
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "before_blob": "ac572b69e3feceeeea5d2f26913f01ec6729275e",
+      "after_blob": null,
+      "sha256": "14bdc6637dac0cfb9cfc61c1c0fa07b4a267b649998e4b0a75bbe0dd220b91d8",
+      "bytes": 20214
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_resources.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "9c2fbcbff5d616e3a6f7acf2e9c317fc77b53a1283b0b9d28ce3a39ea1c6aa66",
+      "bytes": 6592
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_actions.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "b4ac38da0000529f9d7080c35a4493043b2df3a4af2468df6ec08ff57e56fa1d",
+      "bytes": 8974
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_incremental_dialog.py",
+      "before_blob": "27dbde765aadfef849f80c0503a874a90a86c649",
+      "after_blob": null,
+      "sha256": "628c12f6d5290775aabbcb97ece040a2a4a8418198370f299ed6f01e6b072a5c",
+      "bytes": 11104
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before_blob": "3aed5a412b8ac3611045f75226d42b20bf1d1d1f",
+      "after_blob": null,
+      "sha256": "cbc634d42ffbf7c6c56914f8c8bdb534d3202437e4e5521138fd40468e781b56",
+      "bytes": 77020
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_budget.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "fa215fabe985963e9d886f02c76401d0d02540286bf2b8cd1b0395b7ac8bd45b",
+      "bytes": 6917
+    },
+    {
+      "path": "carr-library/tests/e2e/test_backup_resource_cli.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "20f4b0bdc9dc42e53e88b637e455618644bdf7252eef5262d994f989719538e6",
+      "bytes": 10501
+    },
+    {
+      "path": "carr-library/tests/ui/test_backup_resource_actions.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "6a00b966f0e649de8226cea3c4fd3415149bfdc9fbf93d5ed6c111513d219936",
+      "bytes": 23468
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_resource_roundtrip.py",
+      "before_blob": null,
+      "after_blob": null,
+      "sha256": "717d67259bee41031879677789107f046333bc0efe189414b0247a129089e9d7",
+      "bytes": 6759
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "before_blob": "2f8068f3b70119c86ad3be532800b36d02b5d149",
+      "after_blob": "ed811fea47c7defa842703ef063ffc84a06b4c9b"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "before_blob": "dda329e4ed291da4829f53d624c5479aec76bcbd",
+      "after_blob": "34929b4c6dc9149cf8df2d47fafff083c887976c"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/backup_inputs.py",
+      "before_blob": "4af9b3e3d92b0e957453424d080b5ff8d61f0acd",
+      "after_blob": "fd0534541d59bc9a488aa48399c20514fe8ab63f"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity.py",
+      "before_blob": null,
+      "after_blob": "a3b32ca426f3fc51f4590774fc1eb24ff5246f90"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_sidecars.py",
+      "before_blob": "54240b18368c4f512b776f3f3f1af2d6a0426b35",
+      "after_blob": "8e64d49708af591b199fe50ab918a797a778773b"
+    },
+    {
+      "path": "carr-library/tests/storage/test_studio_clip_inputs_backup.py",
+      "before_blob": "1c3d3fcfe7891a154770ff0496f8882e0de90be5",
+      "after_blob": "61c1947fb855a3ac3788ecd84abda000049f987a"
+    }
+  ],
+  "tests": "Actual full/incremental copies, profile/manifest bounds, resource prerequisites, portable/installed CLI, native peer lifetimes, SQLite cancellation/WAL/pre-copy/final cap and retained input receipts. Not yet run.",
+  "pending_composition_tree": "577f2c38842a1c008a162d093c6d930d1801151b",
+  "application_hunks": [
+    {
+      "before": "    def backup(self, destination):\n        from .library_backup import create_backup\n        return create_backup(self, destination)",
+      "after": "    def backup(self, destination, *, include_generated=False, cancelled=None, backup_budget=None):\n        from .library_backup import create_backup\n        from .backup_budget import arguments as resource_arguments\n        kwargs = resource_arguments(backup_budget)\n        if include_generated:\n            kwargs['include_generated'] = include_generated\n        if cancelled is not None:\n            kwargs['cancelled'] = cancelled\n        return create_backup(self, destination, **kwargs)",
+      "count": 1
+    },
+    {
+      "before": "        kwargs = resource_arguments(backup_budget)",
+      "after": "        if type(include_generated) is not bool:\n            raise ValueError('Choose generated-audio inclusion explicitly.')\n        kwargs = resource_arguments(backup_budget)",
+      "count": 1
+    }
+  ],
+  "main_hunks": [
+    {
+      "before": "    parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')",
+      "after": "    parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')\n    parser.add_argument('--backup-include-generated', action='store_true',\n        help='Include generated audio stored inside the library in this backup.')\n    from .backup_options import FIELDS as resource_fields, add_resource_arguments, resources_from_arguments\n    from .backup_budget import arguments as resource_arguments\n    add_resource_arguments(parser)",
+      "count": 1
+    },
+    {
+      "before": "    validate_acquisition_arguments(parser, args)",
+      "after": "    validate_acquisition_arguments(parser, args)\n    backup_resource_requested = args.backup_reviewed_resources or any(\n        getattr(args, 'backup_resource_' + row[0]) is not None for row in resource_fields)\n    if backup_resource_requested and not (args.backup or args.restore):\n        parser.error('Backup resource choices require --backup or --restore.')\n    if args.backup_include_generated and not args.backup:\n        parser.error('--backup-include-generated requires --backup.')",
+      "count": 1
+    },
+    {
+      "before": "    frame = None\n    try:\n",
+      "after": "    frame = None\n    try:\n        backup_budget = resources_from_arguments(args)\n",
+      "count": 1
+    },
+    {
+      "before": "            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256)",
+      "after": "            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256,\n                           **resource_arguments(backup_budget))",
+      "count": 1
+    },
+    {
+      "before": "            checksum = app.backup(args.backup)",
+      "after": "            backup_kwargs = resource_arguments(backup_budget)\n            if args.backup_include_generated:\n                backup_kwargs['include_generated'] = True\n            checksum = app.backup(args.backup, **backup_kwargs)",
+      "count": 1
+    }
+  ],
+  "desktop_hunks": [
+    {
+      "before": "    def backup(self, event):\n        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete library and recoverable-jobs backup')\n        try:\n            if dialog.ShowModal() != wx.ID_OK:\n                return\n            parent = Path(dialog.GetPath())\n        finally:\n            dialog.Destroy()\n        from datetime import datetime\n        destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))\n        def done(checksum):\n            show_text(self, 'Backup complete', f'Backup folder: {destination}\\n\\n'\n                'Libraries, retained originals, saved evidence, notes, settings, reading state and recoverable pending jobs are included. '\n                'The manifest lists included inputs and excluded or separately installed assets. '\n                'Credentials and external model packs need their own recovery; generated audio is optional.\\n\\n'\n                f'Keep this checksum separately; it is needed to verify a restore:\\n{checksum}')\n        self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)\n",
+      "after": "    def backup(self, event):\n        from .backup_actions import backup\n        return backup(self)\n",
+      "count": 1
+    },
+    {
+      "before": "    def restore_backup(self, event):\n        dialog = wx.DirDialog(self, 'Select the backup folder')\n        try:\n            if dialog.ShowModal() != wx.ID_OK:\n                return\n            source = Path(dialog.GetPath())\n        finally:\n            dialog.Destroy()\n        checksum = text_dialog(self, 'Verify backup', 'Paste the manifest checksum saved when this backup was created.')\n        if checksum is None:\n            return\n        dialog = wx.DirDialog(self, 'Choose a parent folder for the restored libraries')\n        try:\n            if dialog.ShowModal() != wx.ID_OK:\n                return\n            parent = Path(dialog.GetPath())\n        finally:\n            dialog.Destroy()\n        from datetime import datetime\n        from ..library_backup import restore_backup\n        destination = parent / ('ResearchLibrary-restored-' + datetime.now().strftime('%Y%m%d-%H%M%S'))\n        def done(path):\n            if wx.MessageBox('Backup restored successfully. Open the restored libraries now?',\n                'Restore complete',wx.YES_NO | wx.ICON_QUESTION,self) == wx.YES:\n                self._open_data_root(path)\n            else:\n                show_text(self,'Restore complete',f'Restored library folder: {path}\\n\\n'\n                    'You can open it later through Library, Open existing library folder.')\n        self.run_job('Restoring backup', lambda: restore_backup(source, destination, expected_manifest_sha256=checksum.strip()),\n            done)\n",
+      "after": "    def restore_backup(self, event):\n        from .backup_actions import restore_backup\n        return restore_backup(self)\n",
+      "count": 1
+    }
+  ],
+  "donor_lifecycle_adaptation": {
+    "scope": "Current LibraryApp.search/read/write are call-scoped and expose no close_search API; remove donor-only cleanup calls rather than add a nonexistent persistent search lifecycle.",
+    "changes": [
+      {
+        "key": "r75_test_backup_budget",
+        "removed_nonexistent_donor_cleanup_calls": 1
+      },
+      {
+        "key": "r75_test_backup_resource_cli",
+        "removed_nonexistent_donor_cleanup_calls": 2
+      },
+      {
+        "key": "r75_test_backup_resource_ui",
+        "removed_nonexistent_donor_cleanup_calls": 1
+      },
+      {
+        "key": "r75_test_backup_resource_roundtrip",
+        "removed_nonexistent_donor_cleanup_calls": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+##[group]Run $failures = @()
+$failures = @()
+python -I -B -X utf8 tests/ui/native_audio_effects_smoke.py 2>&1 | Tee-Object ci-cue-interchange/native-effects.txt
+if ($LASTEXITCODE -ne 0) { $failures += 'native-effects' }
+python -I -B -X utf8 tests/ui/native_audio_studio_smoke.py 2>&1 | Tee-Object ci-cue-interchange/native-director.txt
+if ($LASTEXITCODE -ne 0) { $failures += 'native-director' }
+python -I -B -c "import json; from pathlib import Path; specs=[('native-effects.txt',17),('native-director.txt',14)]; reports=[(json.loads(Path('ci-cue-interchange',name).read_text(encoding='utf-8-sig').strip().splitlines()[-1]),minimum) for name,minimum in specs]; assert all(r.get('status')=='PASS' and len(r.get('checks',[]))==n for r,n in reports); print(json.dumps(dict(status='PASS',native_checks=[len(r['checks']) for r,n in reports],nvda='NOT_RUN',physical_output='NOT_RUN')))" | Tee-Object ci-cue-interchange/native-checks.json
+if ($LASTEXITCODE -ne 0) { $failures += 'native-check-counts' }
+if ($failures.Count) { throw ('Required actual native feature checks failed: ' + ($failures -join ', ')) }
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  CARR_CUE_HEAD: 1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf
+  PYTHONUTF8: 1
+  PYTHONDONTWRITEBYTECODE: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+##[endgroup]
+{"extended_effects": {"frames": 25008, "sample_rate": 24000, "channels": 2, "live_playback": "NOT_RUN"}, "status": "PASS", "platform": "Windows", "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8", "checks": ["effects entry in the native Audio Studio menu", "named native controls", "initial readable status focus", "native forward keyboard traversal", "ordered preset and explicit move", "bypass retained", "native numeric parameter dialog and return focus", "asynchronous conversion and cancellable focus", "real verified local FLAC output", "unchanged source bytes and unsaved parent note", "completed status focus", "ten named scrollable graphic EQ numeric controls", "native access to the last fixed band", "Nyquist refusal preserves the reviewed chain", "native addition of shelves, notch, chorus and graphic EQ", "native numeric values and return focus retained", "actual converter chorus tail and unchanged source"], "frames": 24000, "sample_rate": 24000, "source": "synthetic local PCM", "audio_engine": "actual local FFmpeg", "manual_nvda": "NOT_RUN"}
+Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\tests\ui\native_audio_studio_smoke.py", line 283, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\tests\ui\native_audio_studio_smoke.py", line 149, in main
+    assert {'flite:kal','flite:slt','flite:rms'}<={voice.id for voice in controller.voices}
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "<string>", line 1, in <listcomp>
+  File "C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\json\decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\json\decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Exception: D:\a\_temp\6adbc603-82bb-4384-8964-00660b920df4.ps1:9
+Line |
+   9 |  … es.Count) { throw ('Required actual native feature checks failed: ' + …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Required actual native feature checks failed: native-director, native-check-counts
+##[error]Process completed with exit code 1.

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "reviewer_scope": "Distinct budgeted import worker/session ownership, current publication guard and actual-owner fixtures",
+  "submitted_tree": "694877445f073dd6ffe244ea1e35adb721a10950",
+  "reviewed": {
+    "carr-library/src/carr_library/ingest/worker.py": "c94d8828dd0adb595b943e77224d8adc596b6efe",
+    "carr-library/src/carr_library/ingest/session.py": "e61ef61b4c8a48d2aa9625b4b15856b20794d277",
+    "carr-library/src/carr_library/application.py": "31b8132e2a37ac8175f17cea2530d9c72b254444",
+    "carr-library/src/carr_library/ingest/batch_cli.py": "2780bc1e65b2da8bde415cafcd4174bf702c968e",
+    "carr-library/tests/ingest/test_import_budget_worker.py": "ebdce4010a2990eb9eba9581027f6a8243e3398f",
+    "carr-library/tests/ingest/test_import_session.py": "445eabdb6bc07e1d9d73b260eff1719a833b953f"
+  },
+  "verdict": "CLEAR",
+  "findings": [
+    "The explicit-policy worker reuses run_process with the existing owned native family; legacy _invoke remains its previous separate default path.",
+    "An unresolved native family or required diagnostic-reader close raises AudioCleanupPending before publication reconciliation; existing retained contexts keep the protocol directory, same request NativeLock and broker reservation until their causal owner completes.",
+    "ProcessResult.stdout is bounded bytes and decoded as strict UTF-8 before JSON validation; child input is a finite private file bound to its exact SHA-256.",
+    "The Windows base-interpreter/environment pair preserves the existing selected virtual-environment contract; the native environment sanitizer retains that explicit pair.",
+    "The same finite import session binds app, workspace, Storage, thread and typed budget; fresh root/leaf checks bracket actual SQLite physical/logical allocations and retained-original accounting.",
+    "The initial publisher checks resource_guard after prepare_publication but before COMMIT. The existing replay branches already call local checked_cancelled, which invokes accounting.check at that same rollbackable boundary.",
+    "The actual-child tests observe only their selected owner, preserve protocol/native handles and verify quiescence plus notification completion before asserting stage/lock/lease release.",
+    "The actual committed-child cancellation test keeps canonical publication recovery without a second child; portable CLI tests preserve direct and masked owner errors and synchronously drain the same owner before runtime closure.",
+    "Real SQLite tests exercise unflushed allocation, rollback, invalid current sidecars, thread/scope refusal, cancellation during disk observation and refusal after the actual receipt is prepared."
+  ],
+  "fixture_correction": {
+    "before": "5853b21d9c63826d6f5da41a0eda72ad9f6e50a7",
+    "after": "ebdce4010a2990eb9eba9581027f6a8243e3398f",
+    "removed_line": "    assert app.close_search() is not False",
+    "reason": "Current LibraryApp uses scoped search reads and has no close_search method.",
+    "entire_file_inverse_exact": true,
+    "old_other_assertions_and_deadlines": "unchanged"
+  },
+  "planned_cases": {
+    "worker": 12,
+    "session": 15,
+    "total": 27
+  },
+  "limits": [
+    "Source/API/fixture review only; no tests or native imports were executed here.",
+    "A declared memory budget is not a measured RSS result or an operating-system sandbox.",
+    "Typed profile, paged batch protocol, full backup semantic integration and broader UI are distinct parent/peer review scopes."
+  ]
+}

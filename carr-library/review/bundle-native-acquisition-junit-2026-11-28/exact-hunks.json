@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "path": ".github/workflows/carr-windows.yml",
+  "preimage": "63c17303df508f19acbb13bdbe78af6dd737bc12",
+  "successor": "64fe0a67ea0b977800af6df9355c2790dd324123",
+  "inverse_order": "reverse",
+  "hunks": [
+    {
+      "before": "'test_windows_native_dialog_async_lookup_focus_and_close',",
+      "after": "'test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]',"
+    },
+    {
+      "before": "; metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape'];",
+      "after": "; native_lookup_required={'test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]'}; native_lookup_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_native_acquisition' and c.get('name','').startswith('test_windows_native_dialog_async_lookup_focus_and_close')]; assert len(native_lookup_cases)==2 and {c.get('name') for c in native_lookup_cases}==native_lookup_required and all(all(c.find(t) is None for t in ('failure','error','skipped')) for c in native_lookup_cases); metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape'];"
+    },
+    {
+      "before": "large_source_presentation='PASS',academic_documents='PASS',ocr_inventory_exact='PASS'",
+      "after": "large_source_presentation='PASS',academic_documents='PASS',native_acquisition_exact='PASS',native_acquisition_cases=sorted(c.get('name') for c in native_lookup_cases),ocr_inventory_exact='PASS'"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryDirectory, TemporaryFile, gettempdir
 import time
 from uuid import uuid4
 
@@ -661,18 +661,16 @@ class RuntimeBoundIngest(Ingest):
 
 @contextmanager
 def request_lock(root, request_id):
-    from filelock import FileLock, Timeout
-    lock_path = _path(root, request_id).with_suffix('.lock')
-    if os.path.lexists(lock_path):
-        info = lock_path.lstat()
-        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
-                or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
-            raise ValueError('Invalid import request lock.')
+    # The existing native backend owns this same lock pathname and supports
+    # release from a retained CleanupOwner callback after a child has exited.
+    from ..operations._locks import NativeLock
+    lock = NativeLock(_path(root, request_id).with_suffix('.lock'))
+    if not lock.acquire():
+        raise ValueError('This import request is already running.')
     try:
-        with FileLock(lock_path, mode=0o600).acquire(timeout=0):
-            yield
-    except Timeout as exc:
-        raise ValueError('This import request is already running.') from exc
+        yield
+    finally:
+        lock.release()
 
 
 def _review_path(root, request_id):
@@ -866,11 +864,12 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None, source_profile=None):
+                timeout=None, request_id=None, source_profile=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
-    with request_lock(root, request_id):
+    from ..audio.cleanup import retained_context
+    with retained_context(request_lock(root, request_id)):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
                             request_id=request_id, new=new, source_profile=source_profile)
@@ -878,13 +877,11 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
                  timeout, request_id, new, source_profile=None):
-    if (not callable(cancelled) or type(timeout) not in (int, float)
-            or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
-        raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
+    if not callable(cancelled):
+        raise ValueError('A current import cancellation callback is required.')
     if new:
         record = _request_record(root, workspace, source, metadata, config, request_id,
                                  source_profile=source_profile)
-        _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
@@ -894,6 +891,14 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         from .streamed_text import profile_from_value
         if profile_from_value(source_profile) != profile:
             raise ValueError('The resumed import must keep its original source profile.')
+    policy = getattr(profile, 'import_budget', None)
+    maximum_timeout = profile.maximum_timeout if profile is not None else 600
+    timeout = (policy.seconds if policy is not None else 120.0) if timeout is None else timeout
+    if (type(timeout) not in (int, float) or not math.isfinite(timeout)
+            or not 0.1 <= timeout <= maximum_timeout):
+        raise ValueError(f'Import timeout must be between 0.1 and {maximum_timeout:g} seconds.')
+    if new:
+        _store(root, request_id, record, create=True)
     identity = request_identity(record)
     if not cancelled() and (record.get('publication') is not None
                             or record.get('publication_candidate') is not None
@@ -909,7 +914,8 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
                    'timeout': timeout}
         if profile is not None:
             message.update(request_sha256=identity, attempt_id=attempt)
-        result = _invoke(message, timeout=timeout, cancelled=stopped)
+        result = (_invoke(message, timeout=timeout, cancelled=stopped) if policy is None else
+                  _invoke_owned(message, timeout=timeout, cancelled=stopped, import_budget=policy))
         # The unchanged supervisor has stopped/reaped its exact interpreter
         # before publication reconciliation. A late stop cannot undo a commit.
         return _settle_request(root, request_id, identity, result)
@@ -922,12 +928,19 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     # only an explicit streamed profile can increase it.
     # This is declared capacity, not measured RSS or an OS memory sandbox.
     maximum_bytes = profile.maximum_bytes if profile is not None else MAX_BYTES
-    request = ResourceRequest(cpu_slots=1, memory_bytes=512 * 1024**2,
-        disk_bytes=10 * maximum_bytes + 128 * 1024**2,
-        disk_path=Path(root).resolve())
+    if policy is None:
+        request = ResourceRequest(cpu_slots=1, memory_bytes=512 * 1024**2,
+            disk_bytes=10 * maximum_bytes + 128 * 1024**2,
+            disk_path=Path(root).resolve())
+    else:
+        from .session import WRITE_HEADROOM
+        request = ResourceRequest(cpu_slots=1, memory_bytes=policy.memory_bytes,
+            disk_bytes=policy.library_bytes + WRITE_HEADROOM, disk_path=Path(root).resolve(),
+            additional_disks=((Path(gettempdir()).resolve(), policy.temporary_bytes),))
+    from ..audio.cleanup import retained_context
     try:
-        with broker.reserve(request, operation_id='document:' + request_id,
-                            cancelled=cancelled, timeout=60) as lease:
+        with retained_context(broker.reserve(request, operation_id='document:' + request_id,
+                            cancelled=cancelled, timeout=60 if policy is None else policy.seconds)) as lease:
             if request_identity(load_request(root, request_id)) != identity:
                 raise ValueError('The import request changed while waiting for shared resources.')
             def stopped():
@@ -960,6 +973,86 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             stopped_state.update(attempt=attempt, attempt_id=attempt)
         record_progress(root, request_id, **stopped_state)
         return result
+
+
+def _load_worker_input(path, expected):
+    """Capture the finite private protocol and bind it to the parent's bytes."""
+    from ..durable_state import read_bytes_snapshot
+    if not isinstance(expected, str) or re.fullmatch('[0-9a-f]{64}', expected) is None:
+        raise ValueError('Invalid captured import worker input identity.')
+    raw, actual = read_bytes_snapshot(path, max_bytes=MAX_REQUEST)
+    if not raw or actual != expected:
+        raise ValueError('Import worker input differs from its captured protocol bytes.')
+    return raw
+
+
+def _invoke_owned(message, *, timeout, cancelled, import_budget):
+    """Reuse the existing exact native Job/group for an explicit resource policy."""
+    from ..audio.cleanup import AudioCleanupPending, retained_temporary_directory
+    from ..audio.models import AudioBudget, AudioCancelled, AudioError
+    from ..audio.process import run_process
+    from .resource_budget import checked_budget
+    policy = checked_budget(import_budget)
+    if policy is None:
+        raise ValueError('Owned budgeted import requires its explicit policy.')
+    payload = canonical(message).encode('utf-8')
+    if not 0 < len(payload) <= MAX_REQUEST:
+        raise ValueError('Import request is too large.')
+    if cancelled():
+        return {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
+    with retained_temporary_directory(prefix='carr-import-worker-', dir=None) as temporary:
+        directory = Path(temporary)
+        path = directory / 'request.json'
+        with path.open('xb') as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        package_root = Path(__file__).resolve().parents[2]
+        roots = [str(package_root)]
+        if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+            roots.append(str(package_root.parent))
+        bootstrap = ("import sys,runpy,io; sys.path[:0]=sys.argv[3:]; "
+                     "from carr_library.ingest.worker import _load_worker_input; "
+                     "raw=_load_worker_input(sys.argv[1],sys.argv[2]); "
+                     "sys.stdin=io.TextIOWrapper(io.BytesIO(raw),encoding='utf-8'); "
+                     "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+        executable = sys.executable
+        environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8',
+                           TMPDIR=str(directory), TEMP=str(directory), TMP=str(directory),
+                           OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
+        if (os.name == 'nt' and sys.prefix != sys.base_prefix
+                and getattr(sys, '_base_executable', None)
+                and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
+            environment.pop('PYTHONEXECUTABLE', None)
+            environment['__PYVENV_LAUNCHER__'] = executable
+            executable = sys._base_executable
+        started = time.monotonic()
+        try:
+            native = run_process([str(Path(executable).absolute()), '-I', '-B', '-X', 'utf8', '-c',
+                    bootstrap, str(path), sha256(payload).hexdigest(), *roots],
+                budget=AudioBudget(timeout=timeout, max_log_bytes=MAX_LOG, threads=1,
+                                   max_output_bytes=policy.temporary_bytes, reserve_disk_bytes=0),
+                cancelled=cancelled, env=environment, watch=(directory,),
+                owned_tree=True, allow_failure=True)
+        except AudioCleanupPending:
+            raise
+        except AudioCancelled:
+            return {'state': 'cancelled', 'message':
+                    'The owned import worker was cancelled; resume verifies saved checkpoints.'}
+        except AudioError as exc:
+            return {'state': 'timed_out' if time.monotonic() - started >= timeout else 'failed',
+                    'message': str(exc)[:2000]}
+        if len(native.stdout) > MAX_REPLY:
+            return {'state': 'failed', 'message': 'Import worker reply exceeded its limit.'}
+        try:
+            reply = json.loads(native.stdout.decode('utf-8'))
+        except (UnicodeError, ValueError):
+            reply = None
+        if (native.returncode != 0 or not isinstance(reply, dict)
+                or not isinstance(reply.get('result'), dict)):
+            return {'state': 'failed', 'message': str(reply.get('error') if isinstance(reply, dict)
+                else f'Import worker exited unexpectedly ({native.returncode}).')[:2000]}
+        return reply['result']
 
 
 def _invoke(message, *, timeout, cancelled=lambda: False):
@@ -1046,14 +1139,14 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
     return result
 
 
-def _resource_limits(timeout):
+def _resource_limits(timeout, memory_bytes=3 * 1024**3):
     try:
         import resource
     except ImportError:
         return
     # Runtime libraries and a bounded 64 MiB source fit well below this address
     # limit. Windows uses process/time isolation; POSIX limits are not claimed there.
-    for key, value in ((resource.RLIMIT_AS, 3 * 1024**3),
+    for key, value in ((resource.RLIMIT_AS, memory_bytes),
                        (resource.RLIMIT_CPU, max(1, math.ceil(timeout)))):
         _, hard = resource.getrlimit(key)
         limit = value if hard == resource.RLIM_INFINITY else min(value, hard)
@@ -1085,6 +1178,7 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
 
 
 def main():
+    started = time.monotonic()
     try:
         raw = sys.stdin.buffer.read(MAX_REQUEST + 1)
         if len(raw) > MAX_REQUEST:
@@ -1097,9 +1191,13 @@ def main():
         if not isinstance(message, dict) or set(message) not in (import_keys, streamed_keys, render_keys, direct_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
-        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
+        if (type(timeout) not in (int, float) or not math.isfinite(timeout)
+                or not 0.1 <= timeout <= 86400):
             raise ValueError('Invalid import worker timeout.')
-        _resource_limits(timeout)
+        if set(message) in (direct_keys, render_keys):
+            if timeout > 600:
+                raise ValueError('Invalid document verification timeout.')
+            _resource_limits(timeout)
         import socket
         def denied(*args, **kwargs):
             raise PermissionError('Network access is disabled in the import worker.')
@@ -1131,6 +1229,16 @@ def main():
             return 0
         record = load_request(message['data_dir'], message['request_id'])
         profile = request_profile(record)
+        policy = getattr(profile, 'import_budget', None)
+        if timeout > (profile.maximum_timeout if profile is not None else 600):
+            raise ValueError('Import worker timeout exceeds the frozen source profile.')
+        _resource_limits(timeout, policy.memory_bytes if policy is not None else 3 * 1024**3)
+        deadline = started + timeout
+        def budget_stopped():
+            if time.monotonic() >= deadline:
+                raise TimeoutError('Import time allowance reached; saved checkpoints can be resumed.')
+            return False
+        budget_arguments = dict(cancelled=budget_stopped) if policy is not None else {}
         if profile is not None:
             if set(message) != streamed_keys:
                 raise ValueError('A streamed import requires its frozen supervising attempt.')
@@ -1155,9 +1263,9 @@ def main():
             source = record['source']
             if record.get('asset_sha256'):
                 source = (app.assets.resolve(record['asset_sha256']) if profile is None else
-                          app.assets.resolve(record['asset_sha256'], profile=profile))
+                          app.assets.resolve(record['asset_sha256'], profile=profile, **budget_arguments))
             result = app._import_file(record['workspace'], source, **metadata,
-                                      config=Config(**record['config']),
+                                      config=Config(**record['config']), **budget_arguments,
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
                                       _expected_manifest=record.get('expected_manifest'),
                                       **(dict(_source_profile=profile,

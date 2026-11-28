@@ -1,0 +1,5870 @@
+{
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "parent": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "failure_job": 140932191681,
+  "raw_terminal_blob": "c34169c2865b09669293d5ac2eb8c64efc7f41bf",
+  "causes": [
+    "Feature workflow's --cache activates the retained four-file compatibility setup; existing native Director and adjacent audio tests require the complete source-locked pack with actual Flite voices.",
+    "Two new CUE fixture sites used absent LibraryApp.close_search; current LibraryApp opens call-scoped reads.",
+    "Three new CUE teardown sites presumed a boolean ProductionService.close result; the canonical method returns None and sets _closed while releasing _voices."
+  ],
+  "repair": [
+    "Use the same complete pinned setup as MAIN, then require the actual three configured Flite identities before tests.",
+    "Remove absent search finalizers and empty wrapper, preserving every behavioral assertion.",
+    "Assert the actual None return plus closed/no-retained-registry state in both fixtures and independent libcue runner."
+  ],
+  "unchanged": [
+    "Production code and source locks unchanged.",
+    "No test deletion, waiver, xfail, selected-voice substitution or deadline increase."
+  ],
+  "records": [
+    {
+      "path": ".github/workflows/carr-feature-completion-evaluation.yml",
+      "before": {
+        "sha256": "ba1b87dd9b621542005ff7626b17a80bae96bf013e00f78c3039937b606b2d23",
+        "bytes": 21395
+      },
+      "after": {
+        "sha256": "22cd7b3c93d8b216ac0a87275f01d1e3a08fe1ff7a8de9c64d2f0ef754b2c85b",
+        "bytes": 22060
+      },
+      "inverse": [
+        {
+          "op": "=",
+          "old": 1,
+          "new": 1,
+          "x": "name: Updated technical project feature acceptance"
+        },
+        {
+          "op": "=",
+          "old": 2,
+          "new": 2,
+          "x": "on:"
+        },
+        {
+          "op": "=",
+          "old": 3,
+          "new": 3,
+          "x": "  push:"
+        },
+        {
+          "op": "=",
+          "old": 4,
+          "new": 4,
+          "x": "    branches: [carr/feature-completion-evaluation-20261128]"
+        },
+        {
+          "op": "=",
+          "old": 5,
+          "new": 5,
+          "x": "    paths: ['carr-library/**', '.github/workflows/carr-feature-completion-evaluation.yml']"
+        },
+        {
+          "op": "=",
+          "old": 6,
+          "new": 6,
+          "x": "  workflow_dispatch:"
+        },
+        {
+          "op": "=",
+          "old": 7,
+          "new": 7,
+          "x": "permissions:"
+        },
+        {
+          "op": "=",
+          "old": 8,
+          "new": 8,
+          "x": "  contents: read"
+        },
+        {
+          "op": "=",
+          "old": 9,
+          "new": 9,
+          "x": "concurrency:"
+        },
+        {
+          "op": "=",
+          "old": 10,
+          "new": 10,
+          "x": "  group: carr-feature-completion-${{ github.sha }}"
+        },
+        {
+          "op": "=",
+          "old": 11,
+          "new": 11,
+          "x": "  cancel-in-progress: false"
+        },
+        {
+          "op": "=",
+          "old": 12,
+          "new": 12,
+          "x": "jobs:"
+        },
+        {
+          "op": "=",
+          "old": 13,
+          "new": 13,
+          "x": "  review:"
+        },
+        {
+          "op": "=",
+          "old": 14,
+          "new": 14,
+          "x": "    name: Director FX, numeric effects, formatted translation and CUE / ${{ matrix.os }}"
+        },
+        {
+          "op": "=",
+          "old": 15,
+          "new": 15,
+          "x": "    strategy:"
+        },
+        {
+          "op": "=",
+          "old": 16,
+          "new": 16,
+          "x": "      fail-fast: false"
+        },
+        {
+          "op": "=",
+          "old": 17,
+          "new": 17,
+          "x": "      matrix:"
+        },
+        {
+          "op": "=",
+          "old": 18,
+          "new": 18,
+          "x": "        os: [ubuntu-24.04, windows-2022]"
+        },
+        {
+          "op": "=",
+          "old": 19,
+          "new": 19,
+          "x": "    runs-on: ${{ matrix.os }}"
+        },
+        {
+          "op": "=",
+          "old": 20,
+          "new": 20,
+          "x": "    timeout-minutes: 65"
+        },
+        {
+          "op": "=",
+          "old": 21,
+          "new": 21,
+          "x": "    defaults:"
+        },
+        {
+          "op": "=",
+          "old": 22,
+          "new": 22,
+          "x": "      run:"
+        },
+        {
+          "op": "=",
+          "old": 23,
+          "new": 23,
+          "x": "        working-directory: carr-library"
+        },
+        {
+          "op": "=",
+          "old": 24,
+          "new": 24,
+          "x": "        shell: bash"
+        },
+        {
+          "op": "=",
+          "old": 25,
+          "new": 25,
+          "x": "    env:"
+        },
+        {
+          "op": "=",
+          "old": 26,
+          "new": 26,
+          "x": "      CARR_CUE_HEAD: ${{ github.sha }}"
+        },
+        {
+          "op": "=",
+          "old": 27,
+          "new": 27,
+          "x": "      PYTHONUTF8: '1'"
+        },
+        {
+          "op": "=",
+          "old": 28,
+          "new": 28,
+          "x": "      PYTHONDONTWRITEBYTECODE: '1'"
+        },
+        {
+          "op": "=",
+          "old": 29,
+          "new": 29,
+          "x": "      HF_HUB_OFFLINE: '1'"
+        },
+        {
+          "op": "=",
+          "old": 30,
+          "new": 30,
+          "x": "      TRANSFORMERS_OFFLINE: '1'"
+        },
+        {
+          "op": "=",
+          "old": 31,
+          "new": 31,
+          "x": "      DO_NOT_TRACK: '1'"
+        },
+        {
+          "op": "=",
+          "old": 32,
+          "new": 32,
+          "x": "    steps:"
+        },
+        {
+          "op": "=",
+          "old": 33,
+          "new": 33,
+          "x": "      - name: Preserve exact committed source bytes"
+        },
+        {
+          "op": "=",
+          "old": 34,
+          "new": 34,
+          "x": "        working-directory: ${{ github.workspace }}"
+        },
+        {
+          "op": "=",
+          "old": 35,
+          "new": 35,
+          "x": "        run: git config --global core.autocrlf false"
+        },
+        {
+          "op": "=",
+          "old": 36,
+          "new": 36,
+          "x": "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        },
+        {
+          "op": "=",
+          "old": 37,
+          "new": 37,
+          "x": "        with:"
+        },
+        {
+          "op": "=",
+          "old": 38,
+          "new": 38,
+          "x": "          persist-credentials: false"
+        },
+        {
+          "op": "=",
+          "old": 39,
+          "new": 39,
+          "x": "          ref: ${{ github.sha }}"
+        },
+        {
+          "op": "=",
+          "old": 40,
+          "new": 40,
+          "x": "      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+        },
+        {
+          "op": "=",
+          "old": 41,
+          "new": 41,
+          "x": "        with:"
+        },
+        {
+          "op": "=",
+          "old": 42,
+          "new": 42,
+          "x": "          python-version: '3.11'"
+        },
+        {
+          "op": "=",
+          "old": 43,
+          "new": 43,
+          "x": "      - name: Install exact application and declared feature prerequisites"
+        },
+        {
+          "op": "=",
+          "old": 44,
+          "new": 44,
+          "x": "        shell: pwsh"
+        },
+        {
+          "op": "=",
+          "old": 45,
+          "new": 45,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 46,
+          "new": 46,
+          "x": "          $extras = if ($IsWindows) { '.[test,desktop,sync]' } else { '.[test,sync]' }"
+        },
+        {
+          "op": "=",
+          "old": 47,
+          "new": 47,
+          "x": "          python -m pip install --only-binary=cryptography,cffi $extras 'lxml==6.1.3' 'cffi==2.1.1' 'pycparser==3.12'"
+        },
+        {
+          "op": "=",
+          "old": 48,
+          "new": 48,
+          "x": "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+        },
+        {
+          "op": "=",
+          "old": 49,
+          "new": 49,
+          "x": "          python -m pip check"
+        },
+        {
+          "op": "=",
+          "old": 50,
+          "new": 50,
+          "x": "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+        },
+        {
+          "op": "=",
+          "old": 51,
+          "new": 51,
+          "x": "      - name: Prepare the Linux test audio and independent C parser toolchain"
+        },
+        {
+          "op": "=",
+          "old": 52,
+          "new": 52,
+          "x": "        if: runner.os == 'Linux'"
+        },
+        {
+          "op": "=",
+          "old": 53,
+          "new": 53,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 54,
+          "new": 54,
+          "x": "          sudo apt-get update"
+        },
+        {
+          "op": "=",
+          "old": 55,
+          "new": 55,
+          "x": "          sudo apt-get install --no-install-recommends -y ffmpeg flex bison cmake build-essential"
+        },
+        {
+          "op": "=",
+          "old": 56,
+          "new": 56,
+          "x": "      - name: Prepare the already pinned Windows test audio runtime"
+        },
+        {
+          "op": "=",
+          "old": 57,
+          "new": 57,
+          "x": "        if: runner.os == 'Windows'"
+        },
+        {
+          "op": "=",
+          "old": 58,
+          "new": 58,
+          "x": "        shell: pwsh"
+        },
+        {
+          "op": "=",
+          "old": 59,
+          "new": 59,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 60,
+          "new": 60,
+          "x": "          New-Item -ItemType Directory -Force 'ci-cue-interchange' | Out-Null"
+        },
+        {
+          "op": "=",
+          "old": 61,
+          "new": 61,
+          "x": "          $audio = Join-Path $env:RUNNER_TEMP 'carr-cue-audio'"
+        },
+        {
+          "op": "+",
+          "old": 62,
+          "new": 62,
+          "x": "          python packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-cue-interchange/audio-runtime.json'"
+        },
+        {
+          "op": "-",
+          "old": 62,
+          "new": 63,
+          "x": "          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-cue-audio-cache') --output $audio --download | Tee-Object 'ci-cue-interchange/audio-runtime.json'"
+        },
+        {
+          "op": "=",
+          "old": 63,
+          "new": 63,
+          "x": "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+        },
+        {
+          "op": "=",
+          "old": 64,
+          "new": 64,
+          "x": "          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append"
+        },
+        {
+          "op": "+",
+          "old": 65,
+          "new": 65,
+          "x": "          $ffmpeg = Join-Path $audio 'bin/ffmpeg.exe'"
+        },
+        {
+          "op": "+",
+          "old": 65,
+          "new": 66,
+          "x": "          python -I -B -X utf8 -c \"import json,sys; from pathlib import Path; from carr_library.audio.voices import VoiceRegistry; registry=VoiceRegistry({'ffmpeg':str(Path(sys.argv[1]).resolve()),'espeak_ng':False,'include_sapi':False}); voices={v.id for v in registry.list_voices()}; assert {'flite:kal','flite:slt','flite:rms'} <= voices, (sorted(voices),registry.engine_status()); print(json.dumps({'status':'PASS','ffmpeg':str(registry.ffmpeg),'required_voices':['flite:kal','flite:slt','flite:rms'],'available_voices':sorted(voices)}))\" $ffmpeg | Tee-Object 'ci-cue-interchange/required-audio-engines.json'"
+        },
+        {
+          "op": "+",
+          "old": 65,
+          "new": 67,
+          "x": "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+        },
+        {
+          "op": "=",
+          "old": 65,
+          "new": 68,
+          "x": "      - name: Prepare exact source and installed acceptance harness"
+        },
+        {
+          "op": "=",
+          "old": 66,
+          "new": 69,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 67,
+          "new": 70,
+          "x": "          mkdir -p ci-cue-interchange"
+        },
+        {
+          "op": "=",
+          "old": 68,
+          "new": 71,
+          "x": "          cat > ci-cue-interchange/check.py <<'PY'"
+        },
+        {
+          "op": "=",
+          "old": 69,
+          "new": 72,
+          "x": "          from hashlib import sha256"
+        },
+        {
+          "op": "=",
+          "old": 70,
+          "new": 73,
+          "x": "          import importlib"
+        },
+        {
+          "op": "=",
+          "old": 71,
+          "new": 74,
+          "x": "          import importlib.util"
+        },
+        {
+          "op": "=",
+          "old": 72,
+          "new": 75,
+          "x": "          import json"
+        },
+        {
+          "op": "=",
+          "old": 73,
+          "new": 76,
+          "x": "          import os"
+        },
+        {
+          "op": "=",
+          "old": 74,
+          "new": 77,
+          "x": "          from pathlib import Path"
+        },
+        {
+          "op": "=",
+          "old": 75,
+          "new": 78,
+          "x": "          import sys"
+        },
+        {
+          "op": "=",
+          "old": 76,
+          "new": 79,
+          "x": "          import subprocess"
+        },
+        {
+          "op": "=",
+          "old": 77,
+          "new": 80,
+          "x": "          import sysconfig"
+        },
+        {
+          "op": "=",
+          "old": 78,
+          "new": 81,
+          "x": "          import tempfile"
+        },
+        {
+          "op": "=",
+          "old": 79,
+          "new": 82,
+          "x": "          import xml.etree.ElementTree as ET"
+        },
+        {
+          "op": "=",
+          "old": 80,
+          "new": 83,
+          "x": "          import pytest"
+        },
+        {
+          "op": "=",
+          "old": 81,
+          "new": 84,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 82,
+          "new": 85,
+          "x": "          mode = sys.argv[1]"
+        },
+        {
+          "op": "=",
+          "old": 83,
+          "new": 86,
+          "x": "          assert mode in (\"source\", \"installed\"), mode"
+        },
+        {
+          "op": "=",
+          "old": 84,
+          "new": 87,
+          "x": "          assert bool(sys.flags.isolated) == (mode == \"installed\"), mode"
+        },
+        {
+          "op": "=",
+          "old": 85,
+          "new": 88,
+          "x": "          assert not os.environ.get(\"PYTHONPATH\"), \"Do not repair ordinary child imports with PYTHONPATH.\""
+        },
+        {
+          "op": "=",
+          "old": 86,
+          "new": 89,
+          "x": "          root = Path.cwd().resolve()"
+        },
+        {
+          "op": "=",
+          "old": 87,
+          "new": 90,
+          "x": "          source = (root / \"src\" / \"carr_library\").resolve()"
+        },
+        {
+          "op": "=",
+          "old": 88,
+          "new": 91,
+          "x": "          installed = (Path(sysconfig.get_path(\"purelib\")) / \"carr_library\").resolve()"
+        },
+        {
+          "op": "=",
+          "old": 89,
+          "new": 92,
+          "x": "          assert source != installed and not installed.is_relative_to(root / \"src\")"
+        },
+        {
+          "op": "=",
+          "old": 90,
+          "new": 93,
+          "x": "          selected = source if mode == \"source\" else installed"
+        },
+        {
+          "op": "=",
+          "old": 91,
+          "new": 94,
+          "x": "          artifacts = root / \"ci-cue-interchange\""
+        },
+        {
+          "op": "=",
+          "old": 92,
+          "new": 95,
+          "x": "          suites = [\"tests/studio/test_interchange.py\",\"tests/storage/test_cue_interchange_backup.py\",\"tests/audio/test_director_effects.py\",\"tests/storage/test_director_effects_backup.py\",\"tests/assistant/test_translation_partition.py\",\"tests/assistant/test_translation_layout.py\",\"tests/assistant/test_translation_epub_layout.py\",\"tests/ui/test_translation_layout.py\",\"tests/storage/test_translation_layout_backup.py\",\"tests/audio/test_effects.py\",\"tests/audio/test_dsp.py\",\"tests/audio/test_effect_presets.py\",\"tests/audio/test_render.py\",\"tests/ui/test_audio_effects.py\",\"tests/studio/test_project_effects.py\",\"tests/audio/test_director.py\",\"tests/audio/test_director_resources.py\",\"tests/audio/test_director_path_identity.py\",\"tests/audio/test_projects.py\",\"tests/ui/test_audio_studio.py\",\"tests/studio/test_publishing_primary.py\",\"tests/studio/test_director_silence.py\",\"tests/assistant/test_translation.py\",\"tests/assistant/test_translation_v3.py\",\"tests/assistant/test_library_translation.py\",\"tests/ui/test_translation_selection.py\",\"tests/ui/test_library_translation_dialog.py\",\"tests/storage/test_translation_runtime_recovery.py\",\"tests/studio/test_production.py\",\"tests/studio/test_production_cancellation_outcomes.py\",\"tests/studio/test_production_hardening.py\",\"tests/studio/test_publishing.py\",\"tests/storage/test_production_operation_backup.py\",\"tests/storage/test_studio_timeline_backup.py\",\"tests/storage/test_canonical_backup_compat.py\",\"tests/audio/test_cleanup_contexts.py\",\"tests/packaging/test_managed_launch_boundary.py\"]"
+        },
+        {
+          "op": "=",
+          "old": 93,
+          "new": 96,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 94,
+          "new": 97,
+          "x": "          names = [\"carr_library.studio.interchange\",\"carr_library.studio.render\",\"carr_library.studio.publishing\",\"carr_library.studio.project\",\"carr_library.audio.director\",\"carr_library.audio.projects\",\"carr_library.audio.dsp\",\"carr_library.audio.effects\",\"carr_library.audio.effect_controls\",\"carr_library.ui.audio_studio\",\"carr_library.ui.audio_effects\",\"carr_library.ui.effects_dialog\",\"carr_library.assistant.translation\",\"carr_library.assistant.translation_layout\",\"carr_library.assistant.translation_layout_worker\",\"carr_library.assistant.translation_epub_layout_worker\",\"carr_library.assistant.translation_partition\",\"carr_library.ui.translation_dialog\",\"carr_library.backup_producers\",\"carr_library.state_recovery\",\"carr_library.durable_state\",\"carr_library.audio.cleanup\",\"carr_library.translation_cli\",\"carr_library.installation_lease\"]"
+        },
+        {
+          "op": "=",
+          "old": 95,
+          "new": 98,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 96,
+          "new": 99,
+          "x": "          def checkout_head():"
+        },
+        {
+          "op": "=",
+          "old": 97,
+          "new": 100,
+          "x": "              value = subprocess.run([\"git\", \"rev-parse\", \"HEAD\"], check=True,"
+        },
+        {
+          "op": "=",
+          "old": 98,
+          "new": 101,
+          "x": "                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()"
+        },
+        {
+          "op": "=",
+          "old": 99,
+          "new": 102,
+          "x": "              assert value == os.environ[\"CARR_CUE_HEAD\"], (value, os.environ[\"CARR_CUE_HEAD\"])"
+        },
+        {
+          "op": "=",
+          "old": 100,
+          "new": 103,
+          "x": "              return value"
+        },
+        {
+          "op": "=",
+          "old": 101,
+          "new": 104,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 102,
+          "new": 105,
+          "x": "          commit_before = checkout_head()"
+        },
+        {
+          "op": "=",
+          "old": 103,
+          "new": 106,
+          "x": "          helper_before = sha256(Path(__file__).read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 104,
+          "new": 107,
+          "x": "          tests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}"
+        },
+        {
+          "op": "=",
+          "old": 105,
+          "new": 108,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 106,
+          "new": 109,
+          "x": "          def package_inventory(directory):"
+        },
+        {
+          "op": "=",
+          "old": 107,
+          "new": 110,
+          "x": "              assert directory.is_dir() and not directory.is_symlink(), str(directory)"
+        },
+        {
+          "op": "=",
+          "old": 108,
+          "new": 111,
+          "x": "              result = {}"
+        },
+        {
+          "op": "=",
+          "old": 109,
+          "new": 112,
+          "x": "              for path in sorted(directory.rglob(\"*.py\")):"
+        },
+        {
+          "op": "=",
+          "old": 110,
+          "new": 113,
+          "x": "                  assert path.is_file() and not path.is_symlink(), str(path)"
+        },
+        {
+          "op": "=",
+          "old": 111,
+          "new": 114,
+          "x": "                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 112,
+          "new": 115,
+          "x": "              assert result and \"__init__.py\" in result, str(directory)"
+        },
+        {
+          "op": "=",
+          "old": 113,
+          "new": 116,
+          "x": "              return result"
+        },
+        {
+          "op": "=",
+          "old": 114,
+          "new": 117,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 115,
+          "new": 118,
+          "x": "          expected = package_inventory(source)"
+        },
+        {
+          "op": "=",
+          "old": 116,
+          "new": 119,
+          "x": "          assert package_inventory(installed) == expected, \"Installed Python file set/content differs from checkout.\""
+        },
+        {
+          "op": "=",
+          "old": 117,
+          "new": 120,
+          "x": "          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(\",\", \":\")).encode()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 118,
+          "new": 121,
+          "x": "          (artifacts / (mode + \"-package-inventory.json\")).write_text("
+        },
+        {
+          "op": "=",
+          "old": 119,
+          "new": 122,
+          "x": "              json.dumps({\"source\": str(source), \"installed\": str(installed), \"sha256\": inventory_digest,"
+        },
+        {
+          "op": "=",
+          "old": 120,
+          "new": 123,
+          "x": "                          \"files\": expected}, sort_keys=True, indent=2) + \"\\n\", encoding=\"utf-8\")"
+        },
+        {
+          "op": "=",
+          "old": 121,
+          "new": 124,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 122,
+          "new": 125,
+          "x": "          def origins():"
+        },
+        {
+          "op": "=",
+          "old": 123,
+          "new": 126,
+          "x": "              package = importlib.import_module(\"carr_library\")"
+        },
+        {
+          "op": "=",
+          "old": 124,
+          "new": 127,
+          "x": "              actual_package = Path(package.__file__).resolve()"
+        },
+        {
+          "op": "=",
+          "old": 125,
+          "new": 128,
+          "x": "              assert actual_package == selected / \"__init__.py\", (mode, str(actual_package), str(selected))"
+        },
+        {
+          "op": "=",
+          "old": 126,
+          "new": 129,
+          "x": "              result = {}"
+        },
+        {
+          "op": "=",
+          "old": 127,
+          "new": 130,
+          "x": "              for name in names:"
+        },
+        {
+          "op": "=",
+          "old": 128,
+          "new": 131,
+          "x": "                  spec = importlib.util.find_spec(name)"
+        },
+        {
+          "op": "=",
+          "old": 129,
+          "new": 132,
+          "x": "                  assert spec is not None and spec.origin, name"
+        },
+        {
+          "op": "=",
+          "old": 130,
+          "new": 133,
+          "x": "                  actual = Path(spec.origin).resolve()"
+        },
+        {
+          "op": "=",
+          "old": 131,
+          "new": 134,
+          "x": "                  relative = Path(*name.split(\".\")[1:]).with_suffix(\".py\")"
+        },
+        {
+          "op": "=",
+          "old": 132,
+          "new": 135,
+          "x": "                  assert actual == selected / relative, (name, str(actual), str(selected / relative))"
+        },
+        {
+          "op": "=",
+          "old": 133,
+          "new": 136,
+          "x": "                  digest = sha256(actual.read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 134,
+          "new": 137,
+          "x": "                  assert digest == expected[relative.as_posix()], name"
+        },
+        {
+          "op": "=",
+          "old": 135,
+          "new": 138,
+          "x": "                  result[name] = {\"path\": str(actual), \"sha256\": digest}"
+        },
+        {
+          "op": "=",
+          "old": 136,
+          "new": 139,
+          "x": "              return result"
+        },
+        {
+          "op": "=",
+          "old": 137,
+          "new": 140,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 138,
+          "new": 141,
+          "x": "          class Proof:"
+        },
+        {
+          "op": "=",
+          "old": 139,
+          "new": 142,
+          "x": "              before = None"
+        },
+        {
+          "op": "=",
+          "old": 140,
+          "new": 143,
+          "x": "              collected = None"
+        },
+        {
+          "op": "=",
+          "old": 141,
+          "new": 144,
+          "x": "              expected_failure_reports = None"
+        },
+        {
+          "op": "=",
+          "old": 142,
+          "new": 145,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 143,
+          "new": 146,
+          "x": "              def pytest_sessionstart(self, session):"
+        },
+        {
+          "op": "=",
+          "old": 144,
+          "new": 147,
+          "x": "                  self.before = origins()"
+        },
+        {
+          "op": "=",
+          "old": 145,
+          "new": 148,
+          "x": "                  self.expected_failure_reports = []"
+        },
+        {
+          "op": "=",
+          "old": 146,
+          "new": 149,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 147,
+          "new": 150,
+          "x": "              def pytest_collectreport(self, report):"
+        },
+        {
+          "op": "=",
+          "old": 148,
+          "new": 151,
+          "x": "                  if report.failed:"
+        },
+        {
+          "op": "=",
+          "old": 149,
+          "new": 152,
+          "x": "                      print(\"CARR_CUE_COLLECTION_FAILURE \" + str(report.longrepr)[:12000], flush=True)"
+        },
+        {
+          "op": "=",
+          "old": 150,
+          "new": 153,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 151,
+          "new": 154,
+          "x": "              def pytest_collection_finish(self, session):"
+        },
+        {
+          "op": "=",
+          "old": 152,
+          "new": 155,
+          "x": "                  self.collected = {suite: 0 for suite in suites}"
+        },
+        {
+          "op": "=",
+          "old": 153,
+          "new": 156,
+          "x": "                  for item in session.items:"
+        },
+        {
+          "op": "=",
+          "old": 154,
+          "new": 157,
+          "x": "                      selector = item.nodeid.split(\"::\", 1)[0].replace(\"\\\\\", \"/\")"
+        },
+        {
+          "op": "=",
+          "old": 155,
+          "new": 158,
+          "x": "                      assert selector in self.collected, selector"
+        },
+        {
+          "op": "=",
+          "old": 156,
+          "new": 159,
+          "x": "                      self.collected[selector] += 1"
+        },
+        {
+          "op": "=",
+          "old": 157,
+          "new": 160,
+          "x": "                  assert all(self.collected.values()), self.collected"
+        },
+        {
+          "op": "=",
+          "old": 158,
+          "new": 161,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 159,
+          "new": 162,
+          "x": "              def pytest_runtest_logreport(self, report):"
+        },
+        {
+          "op": "=",
+          "old": 160,
+          "new": 163,
+          "x": "                  if hasattr(report, \"wasxfail\"):"
+        },
+        {
+          "op": "=",
+          "old": 161,
+          "new": 164,
+          "x": "                      self.expected_failure_reports.append(report.nodeid)"
+        },
+        {
+          "op": "=",
+          "old": 162,
+          "new": 165,
+          "x": "          "
+        },
+        {
+          "op": "=",
+          "old": 163,
+          "new": 166,
+          "x": "          proof = Proof()"
+        },
+        {
+          "op": "=",
+          "old": 164,
+          "new": 167,
+          "x": "          # Source deliberately keeps pyproject's normal parent selection. Ordinary"
+        },
+        {
+          "op": "=",
+          "old": 165,
+          "new": 168,
+          "x": "          # child imports must choose their own installed/source origin without repair."
+        },
+        {
+          "op": "=",
+          "old": 166,
+          "new": 169,
+          "x": "          options = [\"-vv\", \"-s\", \"--durations=20\", \"--import-mode=importlib\", \"-o\", \"addopts=\", \"-o\", \"xfail_strict=true\","
+        },
+        {
+          "op": "=",
+          "old": 167,
+          "new": 170,
+          "x": "                     \"-o\", \"faulthandler_timeout=60\"]"
+        },
+        {
+          "op": "=",
+          "old": 168,
+          "new": 171,
+          "x": "          if mode == \"installed\":"
+        },
+        {
+          "op": "=",
+          "old": 169,
+          "new": 172,
+          "x": "              options += [\"-o\", \"pythonpath=\"]"
+        },
+        {
+          "op": "=",
+          "old": 170,
+          "new": 173,
+          "x": "          report = artifacts / (mode + \".xml\")"
+        },
+        {
+          "op": "=",
+          "old": 171,
+          "new": 174,
+          "x": "          with tempfile.TemporaryDirectory(prefix=\"carr-cue-interchange-\") as temporary:"
+        },
+        {
+          "op": "=",
+          "old": 172,
+          "new": 175,
+          "x": "              status = pytest.main([*options, \"--junitxml\", str(report), \"--basetemp\","
+        },
+        {
+          "op": "=",
+          "old": 173,
+          "new": 176,
+          "x": "                                    str(Path(temporary) / \"pytest\"), *suites], plugins=[proof])"
+        },
+        {
+          "op": "=",
+          "old": 174,
+          "new": 177,
+          "x": "              cases = list(ET.parse(report).iter(\"testcase\"))"
+        },
+        {
+          "op": "=",
+          "old": 175,
+          "new": 178,
+          "x": "              assert status == 0 and cases and proof.before is not None, (status, len(cases))"
+        },
+        {
+          "op": "=",
+          "old": 176,
+          "new": 179,
+          "x": "              assert proof.collected and all(proof.collected.values()), proof.collected"
+        },
+        {
+          "op": "=",
+          "old": 177,
+          "new": 180,
+          "x": "              assert not proof.expected_failure_reports, proof.expected_failure_reports"
+        },
+        {
+          "op": "=",
+          "old": 178,
+          "new": 181,
+          "x": "              assert all(not any(case.find(tag) is not None for tag in (\"failure\", \"error\", \"skipped\"))"
+        },
+        {
+          "op": "=",
+          "old": 179,
+          "new": 182,
+          "x": "                         for case in cases), \"Every selected case must pass without a skip or expected failure.\""
+        },
+        {
+          "op": "=",
+          "old": 180,
+          "new": 183,
+          "x": "              assert origins() == proof.before, \"Selected module origin/content changed during acceptance.\""
+        },
+        {
+          "op": "=",
+          "old": 181,
+          "new": 184,
+          "x": "              assert package_inventory(source) == expected, \"Checkout Python inventory changed.\""
+        },
+        {
+          "op": "=",
+          "old": 182,
+          "new": 185,
+          "x": "              assert package_inventory(installed) == expected, \"Installed Python inventory changed.\""
+        },
+        {
+          "op": "=",
+          "old": 183,
+          "new": 186,
+          "x": "              assert checkout_head() == commit_before, \"The checked-out commit changed.\""
+        },
+        {
+          "op": "=",
+          "old": 184,
+          "new": 187,
+          "x": "              assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, \"The executed proof helper changed.\""
+        },
+        {
+          "op": "=",
+          "old": 185,
+          "new": 188,
+          "x": "              assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, \"Executed test bytes changed.\""
+        },
+        {
+          "op": "=",
+          "old": 186,
+          "new": 189,
+          "x": "              result = {\"status\": \"PASS\", \"mode\": mode, \"cases\": len(cases),"
+        },
+        {
+          "op": "=",
+          "old": 187,
+          "new": 190,
+          "x": "                        \"qualification\": \"UPDATED_TECHNICAL_PROJECT_FEATURES\","
+        },
+        {
+          "op": "=",
+          "old": 188,
+          "new": 191,
+          "x": "                        \"external_editor_gui_import\": \"NOT_RUN\","
+        },
+        {
+          "op": "=",
+          "old": 189,
+          "new": 192,
+          "x": "                        \"libcue_reader\": \"SEPARATE_LINUX_STEP\","
+        },
+        {
+          "op": "=",
+          "old": 190,
+          "new": 193,
+          "x": "                        \"commit\": commit_before, \"proof_helper_sha256\": helper_before,"
+        },
+        {
+          "op": "=",
+          "old": 191,
+          "new": 194,
+          "x": "                        \"test_files\": tests_before,"
+        },
+        {
+          "op": "=",
+          "old": 192,
+          "new": 195,
+          "x": "                        \"selected_suites\": proof.collected, \"package_python_files\": len(expected),"
+        },
+        {
+          "op": "=",
+          "old": 193,
+          "new": 196,
+          "x": "                        \"package_inventory_sha256\": inventory_digest, \"origins\": proof.before,"
+        },
+        {
+          "op": "=",
+          "old": 194,
+          "new": 197,
+          "x": "                        \"physical_microphone\": \"NOT_RUN\", \"physical_output\": \"NOT_RUN\", \"NVDA\": \"NOT_RUN\"}"
+        },
+        {
+          "op": "=",
+          "old": 195,
+          "new": 198,
+          "x": "              (artifacts / (mode + \"-identity.json\")).write_text("
+        },
+        {
+          "op": "=",
+          "old": 196,
+          "new": 199,
+          "x": "                  json.dumps(result, sort_keys=True, indent=2) + \"\\n\", encoding=\"utf-8\")"
+        },
+        {
+          "op": "=",
+          "old": 197,
+          "new": 200,
+          "x": "              print(json.dumps(result, sort_keys=True))"
+        },
+        {
+          "op": "=",
+          "old": 198,
+          "new": 201,
+          "x": "          PY"
+        },
+        {
+          "op": "=",
+          "old": 199,
+          "new": 202,
+          "x": "      - name: Require actual source features and unchanged adjacent contracts"
+        },
+        {
+          "op": "=",
+          "old": 200,
+          "new": 203,
+          "x": "        if: \"!cancelled()\""
+        },
+        {
+          "op": "=",
+          "old": 201,
+          "new": 204,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 202,
+          "new": 205,
+          "x": "          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS"
+        },
+        {
+          "op": "=",
+          "old": 203,
+          "new": 206,
+          "x": "          python -B -X utf8 ci-cue-interchange/check.py source 2>&1 | tee ci-cue-interchange/source.txt"
+        },
+        {
+          "op": "=",
+          "old": 204,
+          "new": 207,
+          "x": "      - name: Require isolated installed features and unchanged adjacent contracts"
+        },
+        {
+          "op": "=",
+          "old": 205,
+          "new": 208,
+          "x": "        if: \"!cancelled()\""
+        },
+        {
+          "op": "=",
+          "old": 206,
+          "new": 209,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 207,
+          "new": 210,
+          "x": "          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS"
+        },
+        {
+          "op": "=",
+          "old": 208,
+          "new": 211,
+          "x": "          python -I -B -X utf8 ci-cue-interchange/check.py installed 2>&1 | tee ci-cue-interchange/installed.txt"
+        },
+        {
+          "op": "=",
+          "old": 209,
+          "new": 212,
+          "x": "      - name: Require real installed Windows effect controls and Director rendering"
+        },
+        {
+          "op": "=",
+          "old": 210,
+          "new": 213,
+          "x": "        if: ${{ !cancelled() && runner.os == 'Windows' }}"
+        },
+        {
+          "op": "=",
+          "old": 211,
+          "new": 214,
+          "x": "        timeout-minutes: 6"
+        },
+        {
+          "op": "=",
+          "old": 212,
+          "new": 215,
+          "x": "        shell: pwsh"
+        },
+        {
+          "op": "=",
+          "old": 213,
+          "new": 216,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 214,
+          "new": 217,
+          "x": "          $failures = @()"
+        },
+        {
+          "op": "=",
+          "old": 215,
+          "new": 218,
+          "x": "          python -I -B -X utf8 tests/ui/native_audio_effects_smoke.py 2>&1 | Tee-Object ci-cue-interchange/native-effects.txt"
+        },
+        {
+          "op": "=",
+          "old": 216,
+          "new": 219,
+          "x": "          if ($LASTEXITCODE -ne 0) { $failures += 'native-effects' }"
+        },
+        {
+          "op": "=",
+          "old": 217,
+          "new": 220,
+          "x": "          python -I -B -X utf8 tests/ui/native_audio_studio_smoke.py 2>&1 | Tee-Object ci-cue-interchange/native-director.txt"
+        },
+        {
+          "op": "=",
+          "old": 218,
+          "new": 221,
+          "x": "          if ($LASTEXITCODE -ne 0) { $failures += 'native-director' }"
+        },
+        {
+          "op": "=",
+          "old": 219,
+          "new": 222,
+          "x": "          python -I -B -c \"import json; from pathlib import Path; specs=[('native-effects.txt',17),('native-director.txt',14)]; reports=[(json.loads(Path('ci-cue-interchange',name).read_text(encoding='utf-8-sig').strip().splitlines()[-1]),minimum) for name,minimum in specs]; assert all(r.get('status')=='PASS' and len(r.get('checks',[]))==n for r,n in reports); print(json.dumps(dict(status='PASS',native_checks=[len(r['checks']) for r,n in reports],nvda='NOT_RUN',physical_output='NOT_RUN')))\" | Tee-Object ci-cue-interchange/native-checks.json"
+        },
+        {
+          "op": "=",
+          "old": 220,
+          "new": 223,
+          "x": "          if ($LASTEXITCODE -ne 0) { $failures += 'native-check-counts' }"
+        },
+        {
+          "op": "=",
+          "old": 221,
+          "new": 224,
+          "x": "          if ($failures.Count) { throw ('Required actual native feature checks failed: ' + ($failures -join ', ')) }"
+        },
+        {
+          "op": "=",
+          "old": 222,
+          "new": 225,
+          "x": "      - name: Require source and installed formatted translation controls"
+        },
+        {
+          "op": "=",
+          "old": 223,
+          "new": 226,
+          "x": "        if: ${{ !cancelled() && runner.os == 'Windows' }}"
+        },
+        {
+          "op": "=",
+          "old": 224,
+          "new": 227,
+          "x": "        shell: pwsh"
+        },
+        {
+          "op": "=",
+          "old": 225,
+          "new": 228,
+          "x": "        timeout-minutes: 7"
+        },
+        {
+          "op": "=",
+          "old": 226,
+          "new": 229,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 227,
+          "new": 230,
+          "x": "          $probeBefore = (Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant()"
+        },
+        {
+          "op": "=",
+          "old": 228,
+          "new": 231,
+          "x": "          $failures = @()"
+        },
+        {
+          "op": "=",
+          "old": 229,
+          "new": 232,
+          "x": "          python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --source . --output ci-cue-interchange/translation-source.json 2>&1 | Tee-Object ci-cue-interchange/translation-source.txt"
+        },
+        {
+          "op": "=",
+          "old": 230,
+          "new": 233,
+          "x": "          if ($LASTEXITCODE -ne 0) { $failures += 'translation-source' }"
+        },
+        {
+          "op": "=",
+          "old": 231,
+          "new": 234,
+          "x": "          python -I -B -X utf8 scripts/windows_translation_v3_smoke.py --expect-installed --output ci-cue-interchange/translation-installed.json 2>&1 | Tee-Object ci-cue-interchange/translation-installed.txt"
+        },
+        {
+          "op": "=",
+          "old": 232,
+          "new": 235,
+          "x": "          if ($LASTEXITCODE -ne 0) { $failures += 'translation-installed' }"
+        },
+        {
+          "op": "=",
+          "old": 233,
+          "new": 236,
+          "x": "          if ((Get-FileHash scripts/windows_translation_v3_smoke.py -Algorithm SHA256).Hash.ToLowerInvariant() -ne $probeBefore) { throw 'The native translation probe changed during acceptance.' }"
+        },
+        {
+          "op": "=",
+          "old": 234,
+          "new": 237,
+          "x": "          $proof = @'"
+        },
+        {
+          "op": "=",
+          "old": 235,
+          "new": 238,
+          "x": "          import hashlib, importlib.metadata, json, pathlib, re, sys"
+        },
+        {
+          "op": "=",
+          "old": 236,
+          "new": 239,
+          "x": "          root = pathlib.Path.cwd().resolve()"
+        },
+        {
+          "op": "=",
+          "old": 237,
+          "new": 240,
+          "x": "          source = root / 'src' / 'carr_library'"
+        },
+        {
+          "op": "=",
+          "old": 238,
+          "new": 241,
+          "x": "          installed = pathlib.Path(importlib.metadata.distribution('universal-research-library').locate_file('carr_library')).resolve()"
+        },
+        {
+          "op": "=",
+          "old": 239,
+          "new": 242,
+          "x": "          expected = json.loads((root / 'ci-cue-interchange' / 'source-package-inventory.json').read_text(encoding='utf-8'))['files']"
+        },
+        {
+          "op": "=",
+          "old": 240,
+          "new": 243,
+          "x": "          def inventory(path):"
+        },
+        {
+          "op": "=",
+          "old": 241,
+          "new": 244,
+          "x": "              return {p.relative_to(path).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 242,
+          "new": 245,
+          "x": "                      for p in sorted(path.rglob('*.py'))}"
+        },
+        {
+          "op": "=",
+          "old": 243,
+          "new": 246,
+          "x": "          assert source != installed and inventory(source) == inventory(installed) == expected"
+        },
+        {
+          "op": "=",
+          "old": 244,
+          "new": 247,
+          "x": "          names = {'carr_library.assistant.profiles', 'carr_library.assistant.translation',"
+        },
+        {
+          "op": "=",
+          "old": 245,
+          "new": 248,
+          "x": "                   'carr_library.assistant.providers', 'carr_library.ui.translation_dialog',"
+        },
+        {
+          "op": "=",
+          "old": 246,
+          "new": 249,
+          "x": "                   'carr_library.assistant.translation_layout', 'carr_library.assistant.translation_partition',"
+        },
+        {
+          "op": "=",
+          "old": 247,
+          "new": 250,
+          "x": "                   'carr_library.assistant.translation_layout_worker', 'carr_library.assistant.translation_epub_layout_worker'}"
+        },
+        {
+          "op": "=",
+          "old": 248,
+          "new": 251,
+          "x": "          result = []"
+        },
+        {
+          "op": "=",
+          "old": 249,
+          "new": 252,
+          "x": "          for mode, count, selected in (('source', 122, source), ('installed', 130, installed)):"
+        },
+        {
+          "op": "=",
+          "old": 250,
+          "new": 253,
+          "x": "              report = json.loads((root / 'ci-cue-interchange' / ('translation-' + mode + '.json')).read_text(encoding='utf-8-sig'))"
+        },
+        {
+          "op": "=",
+          "old": 251,
+          "new": 254,
+          "x": "              assert report['status'] == 'PASS' and report['phase'] == 'complete'"
+        },
+        {
+          "op": "=",
+          "old": 252,
+          "new": 255,
+          "x": "              assert len(report['checks']) == count and report['synthetic_rest_calls'] == 9"
+        },
+        {
+          "op": "=",
+          "old": 253,
+          "new": 256,
+          "x": "              assert report['native_keyboard'] == 'PASS' and report['source_override'] == (mode == 'source')"
+        },
+        {
+          "op": "=",
+          "old": 254,
+          "new": 257,
+          "x": "              assert all(report[name] == 'NOT_RUN' for name in"
+        },
+        {
+          "op": "=",
+          "old": 255,
+          "new": 258,
+          "x": "                         ('live_google_api', 'billing_and_quality', 'native_approval_and_file_pickers', 'manual_nvda'))"
+        },
+        {
+          "op": "=",
+          "old": 256,
+          "new": 259,
+          "x": "              assert set(report['origins']) == set(report['module_sha256']) == names"
+        },
+        {
+          "op": "=",
+          "old": 257,
+          "new": 260,
+          "x": "              for name in names:"
+        },
+        {
+          "op": "=",
+          "old": 258,
+          "new": 261,
+          "x": "                  relative = pathlib.Path(*name.split('.')[1:]).with_suffix('.py')"
+        },
+        {
+          "op": "=",
+          "old": 259,
+          "new": 262,
+          "x": "                  assert pathlib.Path(report['origins'][name]).resolve() == selected / relative"
+        },
+        {
+          "op": "=",
+          "old": 260,
+          "new": 263,
+          "x": "                  assert report['module_sha256'][name] == expected[relative.as_posix()]"
+        },
+        {
+          "op": "=",
+          "old": 261,
+          "new": 264,
+          "x": "              exports = report['structured_exports']"
+        },
+        {
+          "op": "=",
+          "old": 262,
+          "new": 265,
+          "x": "              assert len(exports) == 2 and {entry['format'] for entry in exports} == {'docx', 'epub'}"
+        },
+        {
+          "op": "=",
+          "old": 263,
+          "new": 266,
+          "x": "              for entry in exports:"
+        },
+        {
+          "op": "=",
+          "old": 264,
+          "new": 267,
+          "x": "                  assert entry['provider_calls_during_export'] == 0 and entry['quotation_authority'] is False"
+        },
+        {
+          "op": "=",
+          "old": 265,
+          "new": 268,
+          "x": "                  assert (entry['output_bytes'] > 0 and entry['source_partition']['profile'] in"
+        },
+        {
+          "op": "=",
+          "old": 266,
+          "new": 269,
+          "x": "                      ('carr-docx-body-layout/1', 'carr-epub-xhtml-layout/1'))"
+        },
+        {
+          "op": "=",
+          "old": 267,
+          "new": 270,
+          "x": "                  assert all(re.fullmatch(r'[0-9a-f]{64}', entry[name]) for name in ('source_sha256', 'output_sha256'))"
+        },
+        {
+          "op": "=",
+          "old": 268,
+          "new": 271,
+          "x": "              result.append({'mode': mode, 'checks': count, 'structured_exports': exports, 'origins': report['origins']})"
+        },
+        {
+          "op": "=",
+          "old": 269,
+          "new": 272,
+          "x": "          output = {'status': 'PASS', 'native_probe_sha256': sys.argv[1], 'modes': result,"
+        },
+        {
+          "op": "=",
+          "old": 270,
+          "new": 273,
+          "x": "                    'manual_nvda': 'NOT_RUN', 'live_google_api': 'NOT_RUN'}"
+        },
+        {
+          "op": "=",
+          "old": 271,
+          "new": 274,
+          "x": "          (root / 'ci-cue-interchange' / 'translation-native-qualification.json').write_text("
+        },
+        {
+          "op": "=",
+          "old": 272,
+          "new": 275,
+          "x": "              json.dumps(output, ensure_ascii=False, sort_keys=True, indent=2) + '\\n', encoding='utf-8')"
+        },
+        {
+          "op": "=",
+          "old": 273,
+          "new": 276,
+          "x": "          print(json.dumps({'status': 'PASS', 'native_checks': [122, 130], 'formats': ['docx', 'epub']}))"
+        },
+        {
+          "op": "=",
+          "old": 274,
+          "new": 277,
+          "x": "          '@"
+        },
+        {
+          "op": "=",
+          "old": 275,
+          "new": 278,
+          "x": "          python -I -B -X utf8 -c $proof $probeBefore 2>&1 | Tee-Object ci-cue-interchange/translation-native-qualification.txt"
+        },
+        {
+          "op": "=",
+          "old": 276,
+          "new": 279,
+          "x": "          if ($LASTEXITCODE -ne 0) { $failures += 'translation-proof' }"
+        },
+        {
+          "op": "=",
+          "old": 277,
+          "new": 280,
+          "x": "          if ($failures.Count) { throw ('Required formatted translation checks failed: ' + ($failures -join ', ')) }"
+        },
+        {
+          "op": "=",
+          "old": 278,
+          "new": 281,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 279,
+          "new": 282,
+          "x": "      - name: Read the exact independent upstream CUE parser source"
+        },
+        {
+          "op": "=",
+          "old": 280,
+          "new": 283,
+          "x": "        if: runner.os == 'Linux'"
+        },
+        {
+          "op": "=",
+          "old": 281,
+          "new": 284,
+          "x": "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        },
+        {
+          "op": "=",
+          "old": 282,
+          "new": 285,
+          "x": "        with:"
+        },
+        {
+          "op": "=",
+          "old": 283,
+          "new": 286,
+          "x": "          repository: lipnitsk/libcue"
+        },
+        {
+          "op": "=",
+          "old": 284,
+          "new": 287,
+          "x": "          ref: cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea"
+        },
+        {
+          "op": "=",
+          "old": 285,
+          "new": 288,
+          "x": "          path: .ci-libcue"
+        },
+        {
+          "op": "=",
+          "old": 286,
+          "new": 289,
+          "x": "          persist-credentials: false"
+        },
+        {
+          "op": "=",
+          "old": 287,
+          "new": 290,
+          "x": "      - name: Build and require the actual upstream reader"
+        },
+        {
+          "op": "=",
+          "old": 288,
+          "new": 291,
+          "x": "        if: runner.os == 'Linux'"
+        },
+        {
+          "op": "=",
+          "old": 289,
+          "new": 292,
+          "x": "        timeout-minutes: 12"
+        },
+        {
+          "op": "=",
+          "old": 290,
+          "new": 293,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 291,
+          "new": 294,
+          "x": "          test \"$(git -C ../.ci-libcue rev-parse HEAD)\" = cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea"
+        },
+        {
+          "op": "=",
+          "old": 292,
+          "new": 295,
+          "x": "          cmake -S ../.ci-libcue -B ../.ci-libcue/build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+        },
+        {
+          "op": "=",
+          "old": 293,
+          "new": 296,
+          "x": "          cmake --build ../.ci-libcue/build --parallel 2"
+        },
+        {
+          "op": "=",
+          "old": 294,
+          "new": 297,
+          "x": "          ctest --test-dir ../.ci-libcue/build --output-on-failure"
+        },
+        {
+          "op": "=",
+          "old": 295,
+          "new": 298,
+          "x": "          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS"
+        },
+        {
+          "op": "=",
+          "old": 296,
+          "new": 299,
+          "x": "          python -I -B -X utf8 scripts/probe_cue_interchange.py --libcue ../.ci-libcue/build/libcue.so.2.3.0 --report ci-cue-interchange/libcue-reader.json 2>&1 | tee ci-cue-interchange/libcue-reader.txt"
+        },
+        {
+          "op": "=",
+          "old": 297,
+          "new": 300,
+          "x": "      - name: Preserve exact identity"
+        },
+        {
+          "op": "=",
+          "old": 298,
+          "new": 301,
+          "x": "        if: always()"
+        },
+        {
+          "op": "=",
+          "old": 299,
+          "new": 302,
+          "x": "        run: |"
+        },
+        {
+          "op": "=",
+          "old": 300,
+          "new": 303,
+          "x": "          mkdir -p ci-cue-interchange"
+        },
+        {
+          "op": "=",
+          "old": 301,
+          "new": 304,
+          "x": "          git rev-parse HEAD > ci-cue-interchange/commit.txt"
+        },
+        {
+          "op": "=",
+          "old": 302,
+          "new": 305,
+          "x": "          git rev-parse HEAD^{tree} > ci-cue-interchange/tree.txt"
+        },
+        {
+          "op": "=",
+          "old": 303,
+          "new": 306,
+          "x": "          python -m pip freeze > ci-cue-interchange/packages.txt"
+        },
+        {
+          "op": "=",
+          "old": 304,
+          "new": 307,
+          "x": "      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+        },
+        {
+          "op": "=",
+          "old": 305,
+          "new": 308,
+          "x": "        if: always()"
+        },
+        {
+          "op": "=",
+          "old": 306,
+          "new": 309,
+          "x": "        with:"
+        },
+        {
+          "op": "=",
+          "old": 307,
+          "new": 310,
+          "x": "          name: feature-completion-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}"
+        },
+        {
+          "op": "=",
+          "old": 308,
+          "new": 311,
+          "x": "          path: carr-library/ci-cue-interchange"
+        },
+        {
+          "op": "=",
+          "old": 309,
+          "new": 312,
+          "x": "          if-no-files-found: error"
+        },
+        {
+          "op": "=",
+          "old": 310,
+          "new": 313,
+          "x": ""
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_cue_interchange_backup.py",
+      "before": {
+        "sha256": "b28f270717eae49b4d6040a6396acf5764cdd7cb237c19856f51abdbb3f76845",
+        "bytes": 10779
+      },
+      "after": {
+        "sha256": "ad737d6f5fc3a85f20a990aa05c1352ee68c22bf94e2d0c9b68c22370551c7c5",
+        "bytes": 10749
+      },
+      "inverse": [
+        {
+          "op": "=",
+          "old": 1,
+          "new": 1,
+          "x": "\"\"\"Actual native and legacy flat backups retain passive measured CUE metadata."
+        },
+        {
+          "op": "=",
+          "old": 2,
+          "new": 2,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 3,
+          "new": 3,
+          "x": "The declared timings are synthetic fixtures. Actual PCM publication/replay is"
+        },
+        {
+          "op": "=",
+          "old": 4,
+          "new": 4,
+          "x": "covered separately by the Studio interchange tests."
+        },
+        {
+          "op": "=",
+          "old": 5,
+          "new": 5,
+          "x": "\"\"\""
+        },
+        {
+          "op": "=",
+          "old": 6,
+          "new": 6,
+          "x": "from copy import deepcopy"
+        },
+        {
+          "op": "=",
+          "old": 7,
+          "new": 7,
+          "x": "from hashlib import sha256"
+        },
+        {
+          "op": "=",
+          "old": 8,
+          "new": 8,
+          "x": "import json"
+        },
+        {
+          "op": "=",
+          "old": 9,
+          "new": 9,
+          "x": "from pathlib import Path"
+        },
+        {
+          "op": "=",
+          "old": 10,
+          "new": 10,
+          "x": "import runpy"
+        },
+        {
+          "op": "=",
+          "old": 11,
+          "new": 11,
+          "x": "import subprocess"
+        },
+        {
+          "op": "=",
+          "old": 12,
+          "new": 12,
+          "x": "from types import SimpleNamespace"
+        },
+        {
+          "op": "=",
+          "old": 13,
+          "new": 13,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 14,
+          "new": 14,
+          "x": "import pytest"
+        },
+        {
+          "op": "=",
+          "old": 15,
+          "new": 15,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 16,
+          "new": 16,
+          "x": "from carr_library.application import LibraryApp"
+        },
+        {
+          "op": "=",
+          "old": 17,
+          "new": 17,
+          "x": "from carr_library.durable_state import atomic_json, encode, read_json"
+        },
+        {
+          "op": "=",
+          "old": 18,
+          "new": 18,
+          "x": "from carr_library.ingest.restore import RestoreError"
+        },
+        {
+          "op": "=",
+          "old": 19,
+          "new": 19,
+          "x": "from carr_library.keybindings import Command, KeybindingStore"
+        },
+        {
+          "op": "=",
+          "old": 20,
+          "new": 20,
+          "x": "from carr_library.library_backup import create_backup, restore_backup, verify_backup"
+        },
+        {
+          "op": "=",
+          "old": 21,
+          "new": 21,
+          "x": "from carr_library.studio.interchange import chapter_cues"
+        },
+        {
+          "op": "=",
+          "old": 22,
+          "new": 22,
+          "x": "from carr_library.studio.project import Project"
+        },
+        {
+          "op": "=",
+          "old": 23,
+          "new": 23,
+          "x": "from carr_library.studio.render import ProductionService"
+        },
+        {
+          "op": "=",
+          "old": 24,
+          "new": 24,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 25,
+          "new": 25,
+          "x": "FLAT = runpy.run_path(str(Path(__file__).with_name('test_canonical_backup_compat.py')))"
+        },
+        {
+          "op": "=",
+          "old": 26,
+          "new": 26,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 27,
+          "new": 27,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 28,
+          "new": 28,
+          "x": "class InventoryOnly:"
+        },
+        {
+          "op": "=",
+          "old": 29,
+          "new": 29,
+          "x": "    def voices(self):"
+        },
+        {
+          "op": "=",
+          "old": 30,
+          "new": 30,
+          "x": "        return (SimpleNamespace(id='fixture:cue'),)"
+        },
+        {
+          "op": "=",
+          "old": 31,
+          "new": 31,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 32,
+          "new": 32,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 33,
+          "new": 33,
+          "x": "@pytest.fixture"
+        },
+        {
+          "op": "=",
+          "old": 34,
+          "new": 34,
+          "x": "def authored(tmp_path):"
+        },
+        {
+          "op": "=",
+          "old": 35,
+          "new": 35,
+          "x": "    app = LibraryApp(tmp_path / 'library')"
+        },
+        {
+          "op": "=",
+          "old": 36,
+          "new": 36,
+          "x": "    workspace = app.create_workspace('CUE backup')"
+        },
+        {
+          "op": "=",
+          "old": 37,
+          "new": 37,
+          "x": "    app.add_text(workspace, 'Original', 'Exact retained source for passive recovery.')"
+        },
+        {
+          "op": "=",
+          "old": 38,
+          "new": 38,
+          "x": "    KeybindingStore(app.root).save("
+        },
+        {
+          "op": "=",
+          "old": 39,
+          "new": 39,
+          "x": "        [Command('fixture.cue', 'Synthetic CUE recovery command')],"
+        },
+        {
+          "op": "=",
+          "old": 40,
+          "new": 40,
+          "x": "        {'fixture.cue': 'Ctrl+F9'})"
+        },
+        {
+          "op": "=",
+          "old": 41,
+          "new": 41,
+          "x": "    output = tmp_path / 'external-output'"
+        },
+        {
+          "op": "=",
+          "old": 42,
+          "new": 42,
+          "x": "    output.mkdir()"
+        },
+        {
+          "op": "=",
+          "old": 43,
+          "new": 43,
+          "x": "    service = ProductionService(app.root / 'state/studio', voices=InventoryOnly())"
+        },
+        {
+          "op": "=",
+          "old": 44,
+          "new": 44,
+          "x": "    script = '[Scene: Архів]\\nNarrator: First exact line.\\n[Scene: Žilina]\\nNarrator: Second exact line.\\n'"
+        },
+        {
+          "op": "=",
+          "old": 45,
+          "new": 45,
+          "x": "    project = service.create(script, title='Measured declaration fixture', voice_ids=('fixture:cue',))"
+        },
+        {
+          "op": "=",
+          "old": 46,
+          "new": 46,
+          "x": "    identity = service.submit(project, output)"
+        },
+        {
+          "op": "=",
+          "old": 47,
+          "new": 47,
+          "x": "    chapters, lines = [], []"
+        },
+        {
+          "op": "=",
+          "old": 48,
+          "new": 48,
+          "x": "    for index, scene in enumerate(project.scenes):"
+        },
+        {
+          "op": "=",
+          "old": 49,
+          "new": 49,
+          "x": "        start, end = index * .25, (index + 1) * .25"
+        },
+        {
+          "op": "=",
+          "old": 50,
+          "new": 50,
+          "x": "        chapters.append(dict(id=scene.id, title=scene.title, start=start, end=end))"
+        },
+        {
+          "op": "=",
+          "old": 51,
+          "new": 51,
+          "x": "        line, = scene.lines"
+        },
+        {
+          "op": "=",
+          "old": 52,
+          "new": 52,
+          "x": "        lines.append(dict(scene=scene.id, line=line.id, role=line.role, text=line.text,"
+        },
+        {
+          "op": "=",
+          "old": 53,
+          "new": 53,
+          "x": "                          source_ref=line.source_ref, start=start, end=end, timing='authored fixture'))"
+        },
+        {
+          "op": "=",
+          "old": 54,
+          "new": 54,
+          "x": "    timeline = dict(schema=1, project=project.id, revision=project.revision,"
+        },
+        {
+          "op": "=",
+          "old": 55,
+          "new": 55,
+          "x": "        source_sha256=sha256(project.original_script.encode()).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 56,
+          "new": 56,
+          "x": "        chapters=chapters, lines=lines, duration=.5, sample_rate=project.sample_rate,"
+        },
+        {
+          "op": "=",
+          "old": 57,
+          "new": 57,
+          "x": "        channels=2, mode=project.mode, local_only=True, loudness={},"
+        },
+        {
+          "op": "=",
+          "old": 58,
+          "new": 58,
+          "x": "        music_kind='authored fixture', timing_notice='Authored times, not actual native measurements.')"
+        },
+        {
+          "op": "=",
+          "old": 59,
+          "new": 59,
+          "x": "    cue_files, timeline['editor_interchange'] = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 60,
+          "new": 60,
+          "x": "    job_root = service.jobs_root / identity"
+        },
+        {
+          "op": "=",
+          "old": 61,
+          "new": 61,
+          "x": "    atomic_json(job_root / 'project.json', project.to_dict())"
+        },
+        {
+          "op": "=",
+          "old": 62,
+          "new": 62,
+          "x": "    atomic_json(job_root / 'timeline.json', timeline)"
+        },
+        {
+          "op": "=",
+          "old": 63,
+          "new": 63,
+          "x": "    saved = service.get(identity)"
+        },
+        {
+          "op": "=",
+          "old": 64,
+          "new": 64,
+          "x": "    saved['result'] = deepcopy(timeline)"
+        },
+        {
+          "op": "=",
+          "old": 65,
+          "new": 65,
+          "x": "    atomic_json(job_root / 'job.json', saved, replace=True)"
+        },
+        {
+          "op": "=",
+          "old": 66,
+          "new": 66,
+          "x": "    # CUE payloads are public artifacts. Private generation uses the existing"
+        },
+        {
+          "op": "=",
+          "old": 67,
+          "new": 67,
+          "x": "    # excluded pending namespace; this is an inert abandoned staging fixture."
+        },
+        {
+          "op": "=",
+          "old": 68,
+          "new": 68,
+          "x": "    for name, raw in cue_files:"
+        },
+        {
+          "op": "=",
+          "old": 69,
+          "new": 69,
+          "x": "        (job_root / ('.pending-' + name)).write_bytes(raw)"
+        },
+        {
+          "op": "=",
+          "old": 70,
+          "new": 70,
+          "x": "        (output / name).write_bytes(raw)"
+        },
+        {
+          "op": "=",
+          "old": 71,
+          "new": 71,
+          "x": "    yield app, workspace, service, project, job_root, timeline, cue_files, output"
+        },
+        {
+          "op": "+",
+          "old": 72,
+          "new": 72,
+          "x": "    assert service.close() is None"
+        },
+        {
+          "op": "+",
+          "old": 72,
+          "new": 73,
+          "x": "    assert service._closed and service._voices is None"
+        },
+        {
+          "op": "-",
+          "old": 72,
+          "new": 74,
+          "x": "    assert service.close()"
+        },
+        {
+          "op": "-",
+          "old": 73,
+          "new": 74,
+          "x": "    app.close_search()"
+        },
+        {
+          "op": "=",
+          "old": 74,
+          "new": 74,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 75,
+          "new": 75,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 76,
+          "new": 76,
+          "x": "def snapshot(app, directory, flat, generated=False):"
+        },
+        {
+          "op": "=",
+          "old": 77,
+          "new": 77,
+          "x": "    if flat:"
+        },
+        {
+          "op": "=",
+          "old": 78,
+          "new": 78,
+          "x": "        return FLAT['_flat_backup'](app, directory, generated=generated)"
+        },
+        {
+          "op": "=",
+          "old": 79,
+          "new": 79,
+          "x": "    checksum = create_backup(app, directory, include_generated=generated)"
+        },
+        {
+          "op": "=",
+          "old": 80,
+          "new": 80,
+          "x": "    return read_json(directory / 'manifest.json'), checksum"
+        },
+        {
+          "op": "=",
+          "old": 81,
+          "new": 81,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 82,
+          "new": 82,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 83,
+          "new": 83,
+          "x": "def rewrite(directory, manifest, relative, value, flat):"
+        },
+        {
+          "op": "=",
+          "old": 84,
+          "new": 84,
+          "x": "    raw = encode(value)"
+        },
+        {
+          "op": "=",
+          "old": 85,
+          "new": 85,
+          "x": "    (directory / relative).write_bytes(raw)"
+        },
+        {
+          "op": "=",
+          "old": 86,
+          "new": 86,
+          "x": "    rows = manifest['sidecars'] if flat else manifest['state']"
+        },
+        {
+          "op": "=",
+          "old": 87,
+          "new": 87,
+          "x": "    name = relative.as_posix() if flat else relative.relative_to('state').as_posix()"
+        },
+        {
+          "op": "=",
+          "old": 88,
+          "new": 88,
+          "x": "    entry, = [row for row in rows if row['filename'] == name]"
+        },
+        {
+          "op": "=",
+          "old": 89,
+          "new": 89,
+          "x": "    entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())"
+        },
+        {
+          "op": "=",
+          "old": 90,
+          "new": 90,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 91,
+          "new": 91,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 92,
+          "new": 92,
+          "x": "def resign(directory, manifest):"
+        },
+        {
+          "op": "=",
+          "old": 93,
+          "new": 93,
+          "x": "    raw = encode(manifest)"
+        },
+        {
+          "op": "=",
+          "old": 94,
+          "new": 94,
+          "x": "    (directory / 'manifest.json').write_bytes(raw)"
+        },
+        {
+          "op": "=",
+          "old": 95,
+          "new": 95,
+          "x": "    return sha256(raw).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 96,
+          "new": 96,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 97,
+          "new": 97,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 98,
+          "new": 98,
+          "x": "@pytest.mark.parametrize('flat', [False, True], ids=['native-format5', 'legacy-flat4'])"
+        },
+        {
+          "op": "=",
+          "old": 99,
+          "new": 99,
+          "x": "@pytest.mark.parametrize('generated', [False, True])"
+        },
+        {
+          "op": "=",
+          "old": 100,
+          "new": 100,
+          "x": "def test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority("
+        },
+        {
+          "op": "=",
+          "old": 101,
+          "new": 101,
+          "x": "        authored, tmp_path, monkeypatch, flat, generated):"
+        },
+        {
+          "op": "=",
+          "old": 102,
+          "new": 102,
+          "x": "    app, workspace, service, project, job_root, timeline, cue_files, output = authored"
+        },
+        {
+          "op": "=",
+          "old": 103,
+          "new": 103,
+          "x": "    source_bytes = {path: path.read_bytes() for path in job_root.iterdir() if path.is_file()}"
+        },
+        {
+          "op": "=",
+          "old": 104,
+          "new": 104,
+          "x": "    external = {name: (output / name).read_bytes() for name, _ in cue_files}"
+        },
+        {
+          "op": "=",
+          "old": 105,
+          "new": 105,
+          "x": "    def forbidden(*args, **kwargs):"
+        },
+        {
+          "op": "=",
+          "old": 106,
+          "new": 106,
+          "x": "        pytest.fail('Passive interchange backup or restore started an audio runtime.')"
+        },
+        {
+          "op": "=",
+          "old": 107,
+          "new": 107,
+          "x": "    monkeypatch.setattr(ProductionService, 'run', forbidden)"
+        },
+        {
+          "op": "=",
+          "old": 108,
+          "new": 108,
+          "x": "    monkeypatch.setattr(subprocess, 'Popen', forbidden)"
+        },
+        {
+          "op": "=",
+          "old": 109,
+          "new": 109,
+          "x": "    directory = tmp_path / 'backup'"
+        },
+        {
+          "op": "=",
+          "old": 110,
+          "new": 110,
+          "x": "    manifest, checksum = snapshot(app, directory, flat, generated)"
+        },
+        {
+          "op": "=",
+          "old": 111,
+          "new": 111,
+          "x": "    assert manifest['version'] == (4 if flat else 5)"
+        },
+        {
+          "op": "=",
+          "old": 112,
+          "new": 112,
+          "x": "    assert verify_backup(directory, checksum)"
+        },
+        {
+          "op": "=",
+          "old": 113,
+          "new": 113,
+          "x": "    relative = job_root.relative_to(app.root)"
+        },
+        {
+          "op": "=",
+          "old": 114,
+          "new": 114,
+          "x": "    assert read_json(directory / relative / 'timeline.json') == timeline"
+        },
+        {
+          "op": "=",
+          "old": 115,
+          "new": 115,
+          "x": "    rows = manifest['sidecars'] if flat else manifest['state']"
+        },
+        {
+          "op": "=",
+          "old": 116,
+          "new": 116,
+          "x": "    assert not any(row['filename'].endswith('.cue') for row in rows)"
+        },
+        {
+          "op": "=",
+          "old": 117,
+          "new": 117,
+          "x": "    target = restore_backup(directory, tmp_path / 'restored', checksum)"
+        },
+        {
+          "op": "=",
+          "old": 118,
+          "new": 118,
+          "x": "    assert read_json(target / relative / 'timeline.json') == timeline"
+        },
+        {
+          "op": "=",
+          "old": 119,
+          "new": 119,
+          "x": "    original_job = read_json(job_root / 'job.json')"
+        },
+        {
+          "op": "=",
+          "old": 120,
+          "new": 120,
+          "x": "    restored_job = read_json(target / relative / 'job.json')"
+        },
+        {
+          "op": "=",
+          "old": 121,
+          "new": 121,
+          "x": "    assert restored_job == {**original_job, 'restore_requires_new_output': True}"
+        },
+        {
+          "op": "=",
+          "old": 122,
+          "new": 122,
+          "x": "    restored_project = Project.from_dict(read_json(target / relative / 'project.json'))"
+        },
+        {
+          "op": "=",
+          "old": 123,
+          "new": 123,
+          "x": "    again, report = chapter_cues(restored_project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 124,
+          "new": 124,
+          "x": "    assert again == cue_files and report == timeline['editor_interchange']"
+        },
+        {
+          "op": "=",
+          "old": 125,
+          "new": 125,
+          "x": "    assert not any((target / relative / name).exists() for name, _ in cue_files)"
+        },
+        {
+          "op": "=",
+          "old": 126,
+          "new": 126,
+          "x": "    restored = LibraryApp(target)"
+        },
+        {
+          "op": "+",
+          "old": 127,
+          "new": 127,
+          "x": "    assert restored.search(workspace, 'retained')"
+        },
+        {
+          "op": "+",
+          "old": 127,
+          "new": 128,
+          "x": "    second = tmp_path / 'second-backup'"
+        },
+        {
+          "op": "+",
+          "old": 127,
+          "new": 129,
+          "x": "    next_checksum = create_backup(restored, second, include_generated=generated)"
+        },
+        {
+          "op": "+",
+          "old": 127,
+          "new": 130,
+          "x": "    assert verify_backup(second, next_checksum)"
+        },
+        {
+          "op": "-",
+          "old": 127,
+          "new": 131,
+          "x": "    try:"
+        },
+        {
+          "op": "-",
+          "old": 128,
+          "new": 131,
+          "x": "        assert restored.search(workspace, 'retained')"
+        },
+        {
+          "op": "-",
+          "old": 129,
+          "new": 131,
+          "x": "        second = tmp_path / 'second-backup'"
+        },
+        {
+          "op": "-",
+          "old": 130,
+          "new": 131,
+          "x": "        next_checksum = create_backup(restored, second, include_generated=generated)"
+        },
+        {
+          "op": "-",
+          "old": 131,
+          "new": 131,
+          "x": "        assert verify_backup(second, next_checksum)"
+        },
+        {
+          "op": "-",
+          "old": 132,
+          "new": 131,
+          "x": "    finally:"
+        },
+        {
+          "op": "-",
+          "old": 133,
+          "new": 131,
+          "x": "        restored.close_search()"
+        },
+        {
+          "op": "=",
+          "old": 134,
+          "new": 131,
+          "x": "    assert {path: path.read_bytes() for path in source_bytes} == source_bytes"
+        },
+        {
+          "op": "=",
+          "old": 135,
+          "new": 132,
+          "x": "    assert {name: (output / name).read_bytes() for name in external} == external"
+        },
+        {
+          "op": "=",
+          "old": 136,
+          "new": 133,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 137,
+          "new": 134,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 138,
+          "new": 135,
+          "x": "@pytest.mark.parametrize('flat', [False, True], ids=['native-format5', 'legacy-flat4'])"
+        },
+        {
+          "op": "=",
+          "old": 139,
+          "new": 136,
+          "x": "@pytest.mark.parametrize('damage', ['false-index', 'false-source', 'false-project',"
+        },
+        {
+          "op": "=",
+          "old": 140,
+          "new": 137,
+          "x": "                                   'false-qualification', 'false-schema'])"
+        },
+        {
+          "op": "=",
+          "old": 141,
+          "new": 138,
+          "x": "def test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline("
+        },
+        {
+          "op": "=",
+          "old": 142,
+          "new": 139,
+          "x": "        authored, tmp_path, flat, damage):"
+        },
+        {
+          "op": "=",
+          "old": 143,
+          "new": 140,
+          "x": "    app, _, _, _, job_root, timeline, _, _ = authored"
+        },
+        {
+          "op": "=",
+          "old": 144,
+          "new": 141,
+          "x": "    directory = tmp_path / 'backup'"
+        },
+        {
+          "op": "=",
+          "old": 145,
+          "new": 142,
+          "x": "    manifest, _ = snapshot(app, directory, flat)"
+        },
+        {
+          "op": "=",
+          "old": 146,
+          "new": 143,
+          "x": "    relative = job_root.relative_to(app.root) / 'timeline.json'"
+        },
+        {
+          "op": "=",
+          "old": 147,
+          "new": 144,
+          "x": "    damaged = deepcopy(timeline)"
+        },
+        {
+          "op": "=",
+          "old": 148,
+          "new": 145,
+          "x": "    if damage == 'false-index':"
+        },
+        {
+          "op": "=",
+          "old": 149,
+          "new": 146,
+          "x": "        damaged['editor_interchange']['files'][0]['tracks'][0]['index_75hz'] += 1"
+        },
+        {
+          "op": "=",
+          "old": 150,
+          "new": 147,
+          "x": "    elif damage == 'false-source':"
+        },
+        {
+          "op": "=",
+          "old": 151,
+          "new": 148,
+          "x": "        damaged['source_sha256'] = '0' * 64"
+        },
+        {
+          "op": "=",
+          "old": 152,
+          "new": 149,
+          "x": "    elif damage == 'false-project':"
+        },
+        {
+          "op": "=",
+          "old": 153,
+          "new": 150,
+          "x": "        damaged['project'] = 'foreign-project'"
+        },
+        {
+          "op": "=",
+          "old": 154,
+          "new": 151,
+          "x": "    elif damage == 'false-schema':"
+        },
+        {
+          "op": "=",
+          "old": 155,
+          "new": 152,
+          "x": "        damaged['editor_interchange']['schema'] = True"
+        },
+        {
+          "op": "=",
+          "old": 156,
+          "new": 153,
+          "x": "    else:"
+        },
+        {
+          "op": "=",
+          "old": 157,
+          "new": 154,
+          "x": "        damaged['editor_interchange']['editor_import'] = 'PASS'"
+        },
+        {
+          "op": "=",
+          "old": 158,
+          "new": 155,
+          "x": "    rewrite(directory, manifest, relative, damaged, flat)"
+        },
+        {
+          "op": "=",
+          "old": 159,
+          "new": 156,
+          "x": "    checksum = resign(directory, manifest)"
+        },
+        {
+          "op": "=",
+          "old": 160,
+          "new": 157,
+          "x": "    raw = (directory / relative).read_bytes()"
+        },
+        {
+          "op": "=",
+          "old": 161,
+          "new": 158,
+          "x": "    target = tmp_path / 'must-not-publish'"
+        },
+        {
+          "op": "=",
+          "old": 162,
+          "new": 159,
+          "x": "    with pytest.raises((ValueError, RestoreError), match='interchange|timeline|chapter|project|schema'):"
+        },
+        {
+          "op": "=",
+          "old": 163,
+          "new": 160,
+          "x": "        restore_backup(directory, target, checksum)"
+        },
+        {
+          "op": "=",
+          "old": 164,
+          "new": 161,
+          "x": "    assert not target.exists()"
+        },
+        {
+          "op": "=",
+          "old": 165,
+          "new": 162,
+          "x": "    assert (directory / relative).read_bytes() == raw"
+        },
+        {
+          "op": "=",
+          "old": 166,
+          "new": 163,
+          "x": "    assert read_json(job_root / 'timeline.json') == timeline"
+        },
+        {
+          "op": "=",
+          "old": 167,
+          "new": 164,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 168,
+          "new": 165,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 169,
+          "new": 166,
+          "x": "@pytest.mark.parametrize('flat', [False, True], ids=['native-format5', 'legacy-flat4'])"
+        },
+        {
+          "op": "=",
+          "old": 170,
+          "new": 167,
+          "x": "def test_cue_timeline_requires_its_retained_project_checkpoint(authored, tmp_path, flat):"
+        },
+        {
+          "op": "=",
+          "old": 171,
+          "new": 168,
+          "x": "    app, _, _, _, job_root, _, _, _ = authored"
+        },
+        {
+          "op": "=",
+          "old": 172,
+          "new": 169,
+          "x": "    directory = tmp_path / 'backup'"
+        },
+        {
+          "op": "=",
+          "old": 173,
+          "new": 170,
+          "x": "    manifest, _ = snapshot(app, directory, flat)"
+        },
+        {
+          "op": "=",
+          "old": 174,
+          "new": 171,
+          "x": "    relative = job_root.relative_to(app.root) / 'project.json'"
+        },
+        {
+          "op": "=",
+          "old": 175,
+          "new": 172,
+          "x": "    (directory / relative).unlink()"
+        },
+        {
+          "op": "=",
+          "old": 176,
+          "new": 173,
+          "x": "    field = 'sidecars' if flat else 'state'"
+        },
+        {
+          "op": "=",
+          "old": 177,
+          "new": 174,
+          "x": "    name = relative.as_posix() if flat else relative.relative_to('state').as_posix()"
+        },
+        {
+          "op": "=",
+          "old": 178,
+          "new": 175,
+          "x": "    manifest[field] = [row for row in manifest[field] if row['filename'] != name]"
+        },
+        {
+          "op": "=",
+          "old": 179,
+          "new": 176,
+          "x": "    checksum = resign(directory, manifest)"
+        },
+        {
+          "op": "=",
+          "old": 180,
+          "new": 177,
+          "x": "    target = tmp_path / 'must-not-publish'"
+        },
+        {
+          "op": "=",
+          "old": 181,
+          "new": 178,
+          "x": "    with pytest.raises((ValueError, RestoreError), match='retained project checkpoint'):"
+        },
+        {
+          "op": "=",
+          "old": 182,
+          "new": 179,
+          "x": "        restore_backup(directory, target, checksum)"
+        },
+        {
+          "op": "=",
+          "old": 183,
+          "new": 180,
+          "x": "    assert not target.exists()"
+        },
+        {
+          "op": "=",
+          "old": 184,
+          "new": 181,
+          "x": "    assert (job_root / 'project.json').is_file()"
+        },
+        {
+          "op": "=",
+          "old": 185,
+          "new": 182,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 186,
+          "new": 183,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 187,
+          "new": 184,
+          "x": "@pytest.mark.parametrize('flat', [False, True], ids=['native-format5', 'legacy-flat4'])"
+        },
+        {
+          "op": "=",
+          "old": 188,
+          "new": 185,
+          "x": "def test_legacy_timeline_without_interchange_keeps_its_original_bytes(authored, tmp_path, flat):"
+        },
+        {
+          "op": "=",
+          "old": 189,
+          "new": 186,
+          "x": "    app, _, service, _, job_root, timeline, _, _ = authored"
+        },
+        {
+          "op": "=",
+          "old": 190,
+          "new": 187,
+          "x": "    legacy = deepcopy(timeline)"
+        },
+        {
+          "op": "=",
+          "old": 191,
+          "new": 188,
+          "x": "    legacy.pop('editor_interchange')"
+        },
+        {
+          "op": "=",
+          "old": 192,
+          "new": 189,
+          "x": "    atomic_json(job_root / 'timeline.json', legacy, replace=True)"
+        },
+        {
+          "op": "=",
+          "old": 193,
+          "new": 190,
+          "x": "    state = service.get(job_root.name)"
+        },
+        {
+          "op": "=",
+          "old": 194,
+          "new": 191,
+          "x": "    state['result'] = deepcopy(legacy)"
+        },
+        {
+          "op": "=",
+          "old": 195,
+          "new": 192,
+          "x": "    atomic_json(job_root / 'job.json', state, replace=True)"
+        },
+        {
+          "op": "=",
+          "old": 196,
+          "new": 193,
+          "x": "    raw = (job_root / 'timeline.json').read_bytes()"
+        },
+        {
+          "op": "=",
+          "old": 197,
+          "new": 194,
+          "x": "    directory = tmp_path / 'backup'"
+        },
+        {
+          "op": "=",
+          "old": 198,
+          "new": 195,
+          "x": "    _, checksum = snapshot(app, directory, flat)"
+        },
+        {
+          "op": "=",
+          "old": 199,
+          "new": 196,
+          "x": "    target = restore_backup(directory, tmp_path / 'restored', checksum)"
+        },
+        {
+          "op": "=",
+          "old": 200,
+          "new": 197,
+          "x": "    relative = job_root.relative_to(app.root) / 'timeline.json'"
+        },
+        {
+          "op": "=",
+          "old": 201,
+          "new": 198,
+          "x": "    assert (target / relative).read_bytes() == raw"
+        },
+        {
+          "op": "=",
+          "old": 202,
+          "new": 199,
+          "x": "    assert (job_root / 'timeline.json').read_bytes() == raw"
+        },
+        {
+          "op": "=",
+          "old": 203,
+          "new": 200,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 204,
+          "new": 201,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 205,
+          "new": 202,
+          "x": "def test_cancellation_during_real_cue_metadata_validation_publishes_no_backup("
+        },
+        {
+          "op": "=",
+          "old": 206,
+          "new": 203,
+          "x": "        authored, tmp_path, monkeypatch):"
+        },
+        {
+          "op": "=",
+          "old": 207,
+          "new": 204,
+          "x": "    app, _, _, _, job_root, timeline, _, _ = authored"
+        },
+        {
+          "op": "=",
+          "old": 208,
+          "new": 205,
+          "x": "    from carr_library.studio import interchange"
+        },
+        {
+          "op": "=",
+          "old": 209,
+          "new": 206,
+          "x": "    original = interchange.validated_cues"
+        },
+        {
+          "op": "=",
+          "old": 210,
+          "new": 207,
+          "x": "    reached = False"
+        },
+        {
+          "op": "=",
+          "old": 211,
+          "new": 208,
+          "x": "    def observe(*args, **kwargs):"
+        },
+        {
+          "op": "=",
+          "old": 212,
+          "new": 209,
+          "x": "        nonlocal reached"
+        },
+        {
+          "op": "=",
+          "old": 213,
+          "new": 210,
+          "x": "        result = original(*args, **kwargs)"
+        },
+        {
+          "op": "=",
+          "old": 214,
+          "new": 211,
+          "x": "        reached = True"
+        },
+        {
+          "op": "=",
+          "old": 215,
+          "new": 212,
+          "x": "        return result"
+        },
+        {
+          "op": "=",
+          "old": 216,
+          "new": 213,
+          "x": "    monkeypatch.setattr(interchange, 'validated_cues', observe)"
+        },
+        {
+          "op": "=",
+          "old": 217,
+          "new": 214,
+          "x": "    directory = tmp_path / 'cancelled'"
+        },
+        {
+          "op": "=",
+          "old": 218,
+          "new": 215,
+          "x": "    with pytest.raises(InterruptedError):"
+        },
+        {
+          "op": "=",
+          "old": 219,
+          "new": 216,
+          "x": "        create_backup(app, directory, cancelled=lambda: reached)"
+        },
+        {
+          "op": "=",
+          "old": 220,
+          "new": 217,
+          "x": "    assert reached and not directory.exists()"
+        },
+        {
+          "op": "=",
+          "old": 221,
+          "new": 218,
+          "x": "    assert read_json(job_root / 'timeline.json') == timeline"
+        },
+        {
+          "op": "=",
+          "old": 222,
+          "new": 219,
+          "x": ""
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_interchange.py",
+      "before": {
+        "sha256": "f5380b2a6ef2452c021ec168b036b4e571c33291541f3b829825989326f3fe9e",
+        "bytes": 13674
+      },
+      "after": {
+        "sha256": "c2200e76b7865f1a2db1b6095d87c22cfab7d61df8019ab0abec1f983de6dcf3",
+        "bytes": 13737
+      },
+      "inverse": [
+        {
+          "op": "=",
+          "old": 1,
+          "new": 1,
+          "x": "\"\"\"Measured CUE serialization and actual production publication contracts.\"\"\""
+        },
+        {
+          "op": "=",
+          "old": 2,
+          "new": 2,
+          "x": "from copy import deepcopy"
+        },
+        {
+          "op": "=",
+          "old": 3,
+          "new": 3,
+          "x": "from dataclasses import replace"
+        },
+        {
+          "op": "=",
+          "old": 4,
+          "new": 4,
+          "x": "from decimal import Decimal, ROUND_FLOOR"
+        },
+        {
+          "op": "=",
+          "old": 5,
+          "new": 5,
+          "x": "from hashlib import sha256"
+        },
+        {
+          "op": "=",
+          "old": 6,
+          "new": 6,
+          "x": "import json"
+        },
+        {
+          "op": "=",
+          "old": 7,
+          "new": 7,
+          "x": "import math"
+        },
+        {
+          "op": "=",
+          "old": 8,
+          "new": 8,
+          "x": "from pathlib import Path"
+        },
+        {
+          "op": "=",
+          "old": 9,
+          "new": 9,
+          "x": "import re"
+        },
+        {
+          "op": "=",
+          "old": 10,
+          "new": 10,
+          "x": "import shutil"
+        },
+        {
+          "op": "=",
+          "old": 11,
+          "new": 11,
+          "x": "import struct"
+        },
+        {
+          "op": "=",
+          "old": 12,
+          "new": 12,
+          "x": "from types import SimpleNamespace"
+        },
+        {
+          "op": "=",
+          "old": 13,
+          "new": 13,
+          "x": "import wave"
+        },
+        {
+          "op": "=",
+          "old": 14,
+          "new": 14,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 15,
+          "new": 15,
+          "x": "import pytest"
+        },
+        {
+          "op": "=",
+          "old": 16,
+          "new": 16,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 17,
+          "new": 17,
+          "x": "from carr_library.studio.interchange import chapter_cues"
+        },
+        {
+          "op": "=",
+          "old": 18,
+          "new": 18,
+          "x": "from carr_library.studio.project import parse_script"
+        },
+        {
+          "op": "=",
+          "old": 19,
+          "new": 19,
+          "x": "from carr_library.studio.render import ProductionService"
+        },
+        {
+          "op": "=",
+          "old": 20,
+          "new": 20,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 21,
+          "new": 21,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 22,
+          "new": 22,
+          "x": "def measured(count=2, duration=.25):"
+        },
+        {
+          "op": "=",
+          "old": 23,
+          "new": 23,
+          "x": "    script = ''.join(f'[Scene: Chapter {index + 1}]\\nNarrator: Exact line {index + 1}.\\n'"
+        },
+        {
+          "op": "=",
+          "old": 24,
+          "new": 24,
+          "x": "                     for index in range(count))"
+        },
+        {
+          "op": "=",
+          "old": 25,
+          "new": 25,
+          "x": "    project = parse_script(script, title='Українська & Slovenská production', voice_ids=('tone',))"
+        },
+        {
+          "op": "=",
+          "old": 26,
+          "new": 26,
+          "x": "    assert len(project.scenes) == count"
+        },
+        {
+          "op": "=",
+          "old": 27,
+          "new": 27,
+          "x": "    chapters, lines = [], []"
+        },
+        {
+          "op": "=",
+          "old": 28,
+          "new": 28,
+          "x": "    for index, scene in enumerate(project.scenes):"
+        },
+        {
+          "op": "=",
+          "old": 29,
+          "new": 29,
+          "x": "        start, end = index * duration, (index + 1) * duration"
+        },
+        {
+          "op": "=",
+          "old": 30,
+          "new": 30,
+          "x": "        chapters.append({'id': scene.id, 'title': scene.title, 'start': start, 'end': end})"
+        },
+        {
+          "op": "=",
+          "old": 31,
+          "new": 31,
+          "x": "        line, = scene.lines"
+        },
+        {
+          "op": "=",
+          "old": 32,
+          "new": 32,
+          "x": "        lines.append({'scene': scene.id, 'line': line.id, 'role': line.role,"
+        },
+        {
+          "op": "=",
+          "old": 33,
+          "new": 33,
+          "x": "                      'text': line.text, 'source_ref': line.source_ref, 'start': start, 'end': end})"
+        },
+        {
+          "op": "=",
+          "old": 34,
+          "new": 34,
+          "x": "    return project, {'schema': 1, 'project': project.id, 'revision': project.revision,"
+        },
+        {
+          "op": "=",
+          "old": 35,
+          "new": 35,
+          "x": "        'source_sha256': sha256(script.encode()).hexdigest(), 'sample_rate': project.sample_rate,"
+        },
+        {
+          "op": "=",
+          "old": 36,
+          "new": 36,
+          "x": "        'duration': count * duration, 'chapters': chapters, 'lines': lines}"
+        },
+        {
+          "op": "=",
+          "old": 37,
+          "new": 37,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 38,
+          "new": 38,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 39,
+          "new": 39,
+          "x": "def parse_indices(raw):"
+        },
+        {
+          "op": "=",
+          "old": 40,
+          "new": 40,
+          "x": "    # This assertion parser checks the declared wire layout. The independent"
+        },
+        {
+          "op": "=",
+          "old": 41,
+          "new": 41,
+          "x": "    # pinned libcue reader is exercised by scripts/probe_cue_interchange.py."
+        },
+        {
+          "op": "=",
+          "old": 42,
+          "new": 42,
+          "x": "    text = raw.decode('utf-8')"
+        },
+        {
+          "op": "=",
+          "old": 43,
+          "new": 43,
+          "x": "    assert text.count('FILE \"master.wav\" WAVE\\r\\n') == 1"
+        },
+        {
+          "op": "=",
+          "old": 44,
+          "new": 44,
+          "x": "    numbers = [int(value) for value in re.findall(r'^  TRACK (\\d{2}) AUDIO\\r$', text, re.M)]"
+        },
+        {
+          "op": "=",
+          "old": 45,
+          "new": 45,
+          "x": "    indices = [int(minutes) * 4500 + int(seconds) * 75 + int(frames)"
+        },
+        {
+          "op": "=",
+          "old": 46,
+          "new": 46,
+          "x": "               for minutes, seconds, frames in re.findall("
+        },
+        {
+          "op": "=",
+          "old": 47,
+          "new": 47,
+          "x": "                   r'^    INDEX 01 (\\d+):([0-5]\\d):([0-6]\\d|7[0-4])\\r$', text, re.M)]"
+        },
+        {
+          "op": "=",
+          "old": 48,
+          "new": 48,
+          "x": "    assert numbers == list(range(1, len(indices) + 1))"
+        },
+        {
+          "op": "=",
+          "old": 49,
+          "new": 49,
+          "x": "    return indices"
+        },
+        {
+          "op": "=",
+          "old": 50,
+          "new": 50,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 51,
+          "new": 51,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 52,
+          "new": 52,
+          "x": "@pytest.mark.parametrize('count', [1, 2, 99, 100, 198, 199])"
+        },
+        {
+          "op": "=",
+          "old": 53,
+          "new": 53,
+          "x": "def test_every_chapter_survives_sheet_boundaries_with_exact_binding(count):"
+        },
+        {
+          "op": "=",
+          "old": 54,
+          "new": 54,
+          "x": "    project, timeline = measured(count)"
+        },
+        {
+          "op": "=",
+          "old": 55,
+          "new": 55,
+          "x": "    before = deepcopy(timeline), project.to_dict()"
+        },
+        {
+          "op": "=",
+          "old": 56,
+          "new": 56,
+          "x": "    artifacts, report = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 57,
+          "new": 57,
+          "x": "    assert len(artifacts) == (count + 98) // 99"
+        },
+        {
+          "op": "=",
+          "old": 58,
+          "new": 58,
+          "x": "    assert [name for name, _ in artifacts] == [row['file'] for row in report['files']]"
+        },
+        {
+          "op": "=",
+          "old": 59,
+          "new": 59,
+          "x": "    decoded = [index for _, raw in artifacts for index in parse_indices(raw)]"
+        },
+        {
+          "op": "=",
+          "old": 60,
+          "new": 60,
+          "x": "    expected = [int((Decimal(str(row['start'])) * 75).to_integral_value(rounding=ROUND_FLOOR))"
+        },
+        {
+          "op": "=",
+          "old": 61,
+          "new": 61,
+          "x": "                for row in timeline['chapters']]"
+        },
+        {
+          "op": "=",
+          "old": 62,
+          "new": 62,
+          "x": "    assert decoded == expected"
+        },
+        {
+          "op": "=",
+          "old": 63,
+          "new": 63,
+          "x": "    bindings = [track for sheet in report['files'] for track in sheet['tracks']]"
+        },
+        {
+          "op": "=",
+          "old": 64,
+          "new": 64,
+          "x": "    assert [row['scene'] for row in bindings] == [scene.id for scene in project.scenes]"
+        },
+        {
+          "op": "=",
+          "old": 65,
+          "new": 65,
+          "x": "    assert [row['chapter'] for row in bindings] == list(range(1, count + 1))"
+        },
+        {
+          "op": "=",
+          "old": 66,
+          "new": 66,
+          "x": "    assert [row['index_75hz'] for row in bindings] == expected"
+        },
+        {
+          "op": "=",
+          "old": 67,
+          "new": 67,
+          "x": "    assert report['status'] == 'ready' and report['timebase'] == 75"
+        },
+        {
+          "op": "=",
+          "old": 68,
+          "new": 68,
+          "x": "    assert report['editor_import'] == 'NOT_RUN'"
+        },
+        {
+          "op": "=",
+          "old": 69,
+          "new": 69,
+          "x": "    assert (timeline, project.to_dict()) == before"
+        },
+        {
+          "op": "=",
+          "old": 70,
+          "new": 70,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 71,
+          "new": 71,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 72,
+          "new": 72,
+          "x": "@pytest.mark.parametrize('duration', [.25, .4, 1.005, 60.01, 3601.5])"
+        },
+        {
+          "op": "=",
+          "old": 73,
+          "new": 73,
+          "x": "def test_reported_quantization_never_moves_marker_forward_or_by_one_frame(duration):"
+        },
+        {
+          "op": "=",
+          "old": 74,
+          "new": 74,
+          "x": "    project, timeline = measured(3, duration)"
+        },
+        {
+          "op": "=",
+          "old": 75,
+          "new": 75,
+          "x": "    artifacts, report = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 76,
+          "new": 76,
+          "x": "    indices = [index for _, raw in artifacts for index in parse_indices(raw)]"
+        },
+        {
+          "op": "=",
+          "old": 77,
+          "new": 77,
+          "x": "    for row, index in zip(timeline['chapters'], indices):"
+        },
+        {
+          "op": "=",
+          "old": 78,
+          "new": 78,
+          "x": "        shift = Decimal(str(row['start'])) - Decimal(index) / 75"
+        },
+        {
+          "op": "=",
+          "old": 79,
+          "new": 79,
+          "x": "        assert 0 <= shift < Decimal(1) / 75"
+        },
+        {
+          "op": "=",
+          "old": 80,
+          "new": 80,
+          "x": "    assert report['rounding'] == 'floor'"
+        },
+        {
+          "op": "=",
+          "old": 81,
+          "new": 81,
+          "x": "    assert '1/75 second' in report['notice']"
+        },
+        {
+          "op": "=",
+          "old": 82,
+          "new": 82,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 83,
+          "new": 83,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 84,
+          "new": 84,
+          "x": "def test_unicode_titles_are_utf8_and_unsafe_labels_cannot_add_commands():"
+        },
+        {
+          "op": "=",
+          "old": 85,
+          "new": 85,
+          "x": "    project, timeline = measured()"
+        },
+        {
+          "op": "=",
+          "old": 86,
+          "new": 86,
+          "x": "    titles = ('Тихий архів — Žilina', '\"\\nFILE \"foreign.wav\" WAVE\\n')"
+        },
+        {
+          "op": "=",
+          "old": 87,
+          "new": 87,
+          "x": "    project = replace(project, title='A \"quoted\" project', scenes=tuple("
+        },
+        {
+          "op": "=",
+          "old": 88,
+          "new": 88,
+          "x": "        replace(scene, title=title) for scene, title in zip(project.scenes, titles)))"
+        },
+        {
+          "op": "=",
+          "old": 89,
+          "new": 89,
+          "x": "    for row, title in zip(timeline['chapters'], titles):"
+        },
+        {
+          "op": "=",
+          "old": 90,
+          "new": 90,
+          "x": "        row['title'] = title"
+        },
+        {
+          "op": "=",
+          "old": 91,
+          "new": 91,
+          "x": "    artifacts, report = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 92,
+          "new": 92,
+          "x": "    raw = artifacts[0][1]"
+        },
+        {
+          "op": "=",
+          "old": 93,
+          "new": 93,
+          "x": "    assert titles[0].encode() in raw and b'foreign.wav' not in raw"
+        },
+        {
+          "op": "=",
+          "old": 94,
+          "new": 94,
+          "x": "    assert b'TITLE \"Chapter 000002\"' in raw"
+        },
+        {
+          "op": "=",
+          "old": 95,
+          "new": 95,
+          "x": "    assert not report['project_title_preserved']"
+        },
+        {
+          "op": "=",
+          "old": 96,
+          "new": 96,
+          "x": "    assert [row['original_title_preserved'] for row in report['files'][0]['tracks']] == [True, False]"
+        },
+        {
+          "op": "=",
+          "old": 97,
+          "new": 97,
+          "x": "    assert timeline['chapters'][1]['title'] == titles[1]"
+        },
+        {
+          "op": "=",
+          "old": 98,
+          "new": 98,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 99,
+          "new": 99,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 100,
+          "new": 100,
+          "x": "def test_long_multibyte_title_remains_in_timeline_with_explicit_cue_fallback():"
+        },
+        {
+          "op": "=",
+          "old": 101,
+          "new": 101,
+          "x": "    project, timeline = measured(1)"
+        },
+        {
+          "op": "=",
+          "old": 102,
+          "new": 102,
+          "x": "    title = 'Ж' * 200"
+        },
+        {
+          "op": "=",
+          "old": 103,
+          "new": 103,
+          "x": "    project = replace(project, scenes=(replace(project.scenes[0], title=title),))"
+        },
+        {
+          "op": "=",
+          "old": 104,
+          "new": 104,
+          "x": "    timeline['chapters'][0]['title'] = title"
+        },
+        {
+          "op": "=",
+          "old": 105,
+          "new": 105,
+          "x": "    artifacts, report = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 106,
+          "new": 106,
+          "x": "    assert b'Chapter 000001' in artifacts[0][1]"
+        },
+        {
+          "op": "=",
+          "old": 107,
+          "new": 107,
+          "x": "    assert not report['files'][0]['tracks'][0]['original_title_preserved']"
+        },
+        {
+          "op": "=",
+          "old": 108,
+          "new": 108,
+          "x": "    assert timeline['chapters'][0]['title'] == title"
+        },
+        {
+          "op": "=",
+          "old": 109,
+          "new": 109,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 110,
+          "new": 110,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 111,
+          "new": 111,
+          "x": "def test_subframe_chapters_are_explicitly_unavailable_without_merging_or_audio_failure():"
+        },
+        {
+          "op": "=",
+          "old": 112,
+          "new": 112,
+          "x": "    project, timeline = measured(3, .001)"
+        },
+        {
+          "op": "=",
+          "old": 113,
+          "new": 113,
+          "x": "    before = deepcopy(timeline)"
+        },
+        {
+          "op": "=",
+          "old": 114,
+          "new": 114,
+          "x": "    artifacts, report = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 115,
+          "new": 115,
+          "x": "    assert artifacts == () and report['status'] == 'unavailable'"
+        },
+        {
+          "op": "=",
+          "old": 116,
+          "new": 116,
+          "x": "    assert report['files'] == [] and 'Distinct chapter starts' in report['reason']"
+        },
+        {
+          "op": "=",
+          "old": 117,
+          "new": 117,
+          "x": "    assert timeline == before"
+        },
+        {
+          "op": "=",
+          "old": 118,
+          "new": 118,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 119,
+          "new": 119,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 120,
+          "new": 120,
+          "x": "@pytest.mark.parametrize('damage', ['project', 'revision', 'source', 'line-text', 'missing-line',"
+        },
+        {
+          "op": "=",
+          "old": 121,
+          "new": 121,
+          "x": "                                    'scene-id', 'chapter-gap', 'duration', 'nonfinite'])"
+        },
+        {
+          "op": "=",
+          "old": 122,
+          "new": 122,
+          "x": "def test_wrong_or_incomplete_measured_source_is_refused(damage):"
+        },
+        {
+          "op": "=",
+          "old": 123,
+          "new": 123,
+          "x": "    project, timeline = measured()"
+        },
+        {
+          "op": "=",
+          "old": 124,
+          "new": 124,
+          "x": "    if damage == 'project':"
+        },
+        {
+          "op": "=",
+          "old": 125,
+          "new": 125,
+          "x": "        timeline['project'] = 'foreign-project'"
+        },
+        {
+          "op": "=",
+          "old": 126,
+          "new": 126,
+          "x": "    elif damage == 'revision':"
+        },
+        {
+          "op": "=",
+          "old": 127,
+          "new": 127,
+          "x": "        timeline['revision'] += 1"
+        },
+        {
+          "op": "=",
+          "old": 128,
+          "new": 128,
+          "x": "    elif damage == 'source':"
+        },
+        {
+          "op": "=",
+          "old": 129,
+          "new": 129,
+          "x": "        timeline['source_sha256'] = '0' * 64"
+        },
+        {
+          "op": "=",
+          "old": 130,
+          "new": 130,
+          "x": "    elif damage == 'line-text':"
+        },
+        {
+          "op": "=",
+          "old": 131,
+          "new": 131,
+          "x": "        timeline['lines'][0]['text'] += ' changed'"
+        },
+        {
+          "op": "=",
+          "old": 132,
+          "new": 132,
+          "x": "    elif damage == 'missing-line':"
+        },
+        {
+          "op": "=",
+          "old": 133,
+          "new": 133,
+          "x": "        timeline['lines'].pop()"
+        },
+        {
+          "op": "=",
+          "old": 134,
+          "new": 134,
+          "x": "    elif damage == 'scene-id':"
+        },
+        {
+          "op": "=",
+          "old": 135,
+          "new": 135,
+          "x": "        timeline['chapters'][0]['id'] = 'foreign-scene'"
+        },
+        {
+          "op": "=",
+          "old": 136,
+          "new": 136,
+          "x": "    elif damage == 'chapter-gap':"
+        },
+        {
+          "op": "=",
+          "old": 137,
+          "new": 137,
+          "x": "        timeline['chapters'][1]['start'] += .1"
+        },
+        {
+          "op": "=",
+          "old": 138,
+          "new": 138,
+          "x": "    elif damage == 'duration':"
+        },
+        {
+          "op": "=",
+          "old": 139,
+          "new": 139,
+          "x": "        timeline['duration'] += 1"
+        },
+        {
+          "op": "=",
+          "old": 140,
+          "new": 140,
+          "x": "    else:"
+        },
+        {
+          "op": "=",
+          "old": 141,
+          "new": 141,
+          "x": "        timeline['chapters'][0]['start'] = float('nan')"
+        },
+        {
+          "op": "=",
+          "old": 142,
+          "new": 142,
+          "x": "    with pytest.raises(ValueError):"
+        },
+        {
+          "op": "=",
+          "old": 143,
+          "new": 143,
+          "x": "        chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 144,
+          "new": 144,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 145,
+          "new": 145,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 146,
+          "new": 146,
+          "x": "@pytest.mark.parametrize('stop_at', [1, 5, 22])"
+        },
+        {
+          "op": "=",
+          "old": 147,
+          "new": 147,
+          "x": "def test_cancellation_returns_no_partial_interchange_and_preserves_source(stop_at):"
+        },
+        {
+          "op": "=",
+          "old": 148,
+          "new": 148,
+          "x": "    project, timeline = measured(12)"
+        },
+        {
+          "op": "=",
+          "old": 149,
+          "new": 149,
+          "x": "    before = deepcopy(timeline), project.to_dict()"
+        },
+        {
+          "op": "=",
+          "old": 150,
+          "new": 150,
+          "x": "    calls = 0"
+        },
+        {
+          "op": "=",
+          "old": 151,
+          "new": 151,
+          "x": "    def cancelled():"
+        },
+        {
+          "op": "=",
+          "old": 152,
+          "new": 152,
+          "x": "        nonlocal calls"
+        },
+        {
+          "op": "=",
+          "old": 153,
+          "new": 153,
+          "x": "        calls += 1"
+        },
+        {
+          "op": "=",
+          "old": 154,
+          "new": 154,
+          "x": "        return calls >= stop_at"
+        },
+        {
+          "op": "=",
+          "old": 155,
+          "new": 155,
+          "x": "    with pytest.raises(InterruptedError):"
+        },
+        {
+          "op": "=",
+          "old": 156,
+          "new": 156,
+          "x": "        chapter_cues(project, timeline, cancelled=cancelled)"
+        },
+        {
+          "op": "=",
+          "old": 157,
+          "new": 157,
+          "x": "    assert (timeline, project.to_dict()) == before"
+        },
+        {
+          "op": "=",
+          "old": 158,
+          "new": 158,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 159,
+          "new": 159,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 160,
+          "new": 160,
+          "x": "class ToneVoices:"
+        },
+        {
+          "op": "=",
+          "old": 161,
+          "new": 161,
+          "x": "    def voices(self):"
+        },
+        {
+          "op": "=",
+          "old": 162,
+          "new": 162,
+          "x": "        return (SimpleNamespace(id='tone', name='Synthetic fixture', language='und', engine='fixture'),)"
+        },
+        {
+          "op": "=",
+          "old": 163,
+          "new": 163,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 164,
+          "new": 164,
+          "x": "    def synthesize(self, text, voice_id, destination, *, settings, cancelled):"
+        },
+        {
+          "op": "=",
+          "old": 165,
+          "new": 165,
+          "x": "        if cancelled():"
+        },
+        {
+          "op": "=",
+          "old": 166,
+          "new": 166,
+          "x": "            raise InterruptedError('Synthetic fixture cancelled')"
+        },
+        {
+          "op": "=",
+          "old": 167,
+          "new": 167,
+          "x": "        with wave.open(str(destination), 'wb') as output:"
+        },
+        {
+          "op": "=",
+          "old": 168,
+          "new": 168,
+          "x": "            output.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))"
+        },
+        {
+          "op": "=",
+          "old": 169,
+          "new": 169,
+          "x": "            output.writeframes(b''.join(struct.pack('<h', round(3000 * math.sin(index * math.tau * 440 / 24000)))"
+        },
+        {
+          "op": "=",
+          "old": 170,
+          "new": 170,
+          "x": "                                        for index in range(6000)))"
+        },
+        {
+          "op": "=",
+          "old": 171,
+          "new": 171,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 172,
+          "new": 172,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 173,
+          "new": 173,
+          "x": "def test_actual_ffmpeg_job_publishes_cue_through_existing_receipts_and_resume(tmp_path):"
+        },
+        {
+          "op": "=",
+          "old": 174,
+          "new": 174,
+          "x": "    assert shutil.which('ffmpeg') and shutil.which('ffprobe'), 'Install the selected test audio runtime.'"
+        },
+        {
+          "op": "=",
+          "old": 175,
+          "new": 175,
+          "x": "    output = tmp_path / 'outputs'; output.mkdir()"
+        },
+        {
+          "op": "=",
+          "old": 176,
+          "new": 176,
+          "x": "    service = ProductionService(tmp_path / 'library' / 'state' / 'studio', voices=ToneVoices())"
+        },
+        {
+          "op": "=",
+          "old": 177,
+          "new": 177,
+          "x": "    script = '[Scene: Архів]\\nNarrator: Exact original.\\n[Scene: Žilina]\\nNarrator: Second exact line.\\n'"
+        },
+        {
+          "op": "=",
+          "old": 178,
+          "new": 178,
+          "x": "    project = service.create(script, title='Actual measured CUE fixture', voice_ids=('tone',))"
+        },
+        {
+          "op": "=",
+          "old": 179,
+          "new": 179,
+          "x": "    identity = service.submit(project, output, stems=True)"
+        },
+        {
+          "op": "=",
+          "old": 180,
+          "new": 180,
+          "x": "    complete = service.run(identity)"
+        },
+        {
+          "op": "=",
+          "old": 181,
+          "new": 181,
+          "x": "    assert complete['status'] == 'complete'"
+        },
+        {
+          "op": "=",
+          "old": 182,
+          "new": 182,
+          "x": "    destination = Path(complete['destination'])"
+        },
+        {
+          "op": "=",
+          "old": 183,
+          "new": 183,
+          "x": "    cue = destination / 'chapters-0001.cue'"
+        },
+        {
+          "op": "=",
+          "old": 184,
+          "new": 184,
+          "x": "    receipt, = [row for row in complete['artifacts'] if Path(row['path']) == cue]"
+        },
+        {
+          "op": "=",
+          "old": 185,
+          "new": 185,
+          "x": "    assert receipt['sha256'] == sha256(cue.read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 186,
+          "new": 186,
+          "x": "    assert receipt['size'] == cue.stat().st_size"
+        },
+        {
+          "op": "=",
+          "old": 187,
+          "new": 187,
+          "x": "    timeline = json.loads((destination / 'timeline.json').read_text(encoding='utf-8'))"
+        },
+        {
+          "op": "=",
+          "old": 188,
+          "new": 188,
+          "x": "    assert timeline == complete['result'] and timeline['editor_interchange']['status'] == 'ready'"
+        },
+        {
+          "op": "=",
+          "old": 189,
+          "new": 189,
+          "x": "    assert parse_indices(cue.read_bytes()) == ["
+        },
+        {
+          "op": "=",
+          "old": 190,
+          "new": 190,
+          "x": "        row['index_75hz'] for row in timeline['editor_interchange']['files'][0]['tracks']]"
+        },
+        {
+          "op": "=",
+          "old": 191,
+          "new": 191,
+          "x": "    assert json.loads((destination / 'project.json').read_text(encoding='utf-8'))['original_script'] == script"
+        },
+        {
+          "op": "=",
+          "old": 192,
+          "new": 192,
+          "x": "    before = {row['path']: (sha256(Path(row['path']).read_bytes()).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 193,
+          "new": 193,
+          "x": "                            Path(row['path']).stat().st_mtime_ns) for row in complete['artifacts']}"
+        },
+        {
+          "op": "=",
+          "old": 194,
+          "new": 194,
+          "x": "    resumed = service.run(identity)"
+        },
+        {
+          "op": "=",
+          "old": 195,
+          "new": 195,
+          "x": "    assert resumed == complete"
+        },
+        {
+          "op": "=",
+          "old": 196,
+          "new": 196,
+          "x": "    assert before == {name: (sha256(Path(name).read_bytes()).hexdigest(), Path(name).stat().st_mtime_ns)"
+        },
+        {
+          "op": "=",
+          "old": 197,
+          "new": 197,
+          "x": "                      for name in before}"
+        },
+        {
+          "op": "=",
+          "old": 198,
+          "new": 198,
+          "x": "    service._verify_artifacts(complete)"
+        },
+        {
+          "op": "=",
+          "old": 199,
+          "new": 199,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 200,
+          "new": 200,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 201,
+          "new": 201,
+          "x": "@pytest.fixture"
+        },
+        {
+          "op": "=",
+          "old": 202,
+          "new": 202,
+          "x": "def completed_cue(tmp_path):"
+        },
+        {
+          "op": "=",
+          "old": 203,
+          "new": 203,
+          "x": "    assert shutil.which('ffmpeg') and shutil.which('ffprobe'), 'Install the selected test audio runtime.'"
+        },
+        {
+          "op": "=",
+          "old": 204,
+          "new": 204,
+          "x": "    output = tmp_path / 'outputs'"
+        },
+        {
+          "op": "=",
+          "old": 205,
+          "new": 205,
+          "x": "    output.mkdir()"
+        },
+        {
+          "op": "=",
+          "old": 206,
+          "new": 206,
+          "x": "    service = ProductionService(tmp_path / 'library' / 'state' / 'studio', voices=ToneVoices())"
+        },
+        {
+          "op": "=",
+          "old": 207,
+          "new": 207,
+          "x": "    project = service.create('[Scene: First]\\nNarrator: Retained original.\\n'"
+        },
+        {
+          "op": "=",
+          "old": 208,
+          "new": 208,
+          "x": "                             '[Scene: Second]\\nNarrator: Other retained original.\\n',"
+        },
+        {
+          "op": "=",
+          "old": 209,
+          "new": 209,
+          "x": "                             voice_ids=('tone',))"
+        },
+        {
+          "op": "=",
+          "old": 210,
+          "new": 210,
+          "x": "    identity = service.submit(project, output, stems=True)"
+        },
+        {
+          "op": "=",
+          "old": 211,
+          "new": 211,
+          "x": "    complete = service.run(identity)"
+        },
+        {
+          "op": "=",
+          "old": 212,
+          "new": 212,
+          "x": "    assert complete['status'] == 'complete'"
+        },
+        {
+          "op": "=",
+          "old": 213,
+          "new": 213,
+          "x": "    yield service, identity, complete"
+        },
+        {
+          "op": "+",
+          "old": 214,
+          "new": 214,
+          "x": "    assert service.close() is None"
+        },
+        {
+          "op": "+",
+          "old": 214,
+          "new": 215,
+          "x": "    assert service._closed and service._voices is None"
+        },
+        {
+          "op": "-",
+          "old": 214,
+          "new": 216,
+          "x": "    assert service.close()"
+        },
+        {
+          "op": "=",
+          "old": 215,
+          "new": 216,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 216,
+          "new": 217,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 217,
+          "new": 218,
+          "x": "@pytest.mark.parametrize('damage', ['missing-receipt', 'rehashed-bytes', 'false-index', 'false-qualification'])"
+        },
+        {
+          "op": "=",
+          "old": 218,
+          "new": 219,
+          "x": "def test_completed_replay_requires_exact_cue_bytes_and_declared_source(completed_cue, damage):"
+        },
+        {
+          "op": "=",
+          "old": 219,
+          "new": 220,
+          "x": "    service, identity, complete = completed_cue"
+        },
+        {
+          "op": "=",
+          "old": 220,
+          "new": 221,
+          "x": "    damaged = deepcopy(complete)"
+        },
+        {
+          "op": "=",
+          "old": 221,
+          "new": 222,
+          "x": "    cue = Path(complete['destination']) / 'chapters-0001.cue'"
+        },
+        {
+          "op": "=",
+          "old": 222,
+          "new": 223,
+          "x": "    original = cue.read_bytes()"
+        },
+        {
+          "op": "=",
+          "old": 223,
+          "new": 224,
+          "x": "    if damage == 'missing-receipt':"
+        },
+        {
+          "op": "=",
+          "old": 224,
+          "new": 225,
+          "x": "        damaged['artifacts'] = [row for row in damaged['artifacts'] if Path(row['path']) != cue]"
+        },
+        {
+          "op": "=",
+          "old": 225,
+          "new": 226,
+          "x": "    elif damage == 'rehashed-bytes':"
+        },
+        {
+          "op": "=",
+          "old": 226,
+          "new": 227,
+          "x": "        raw = original.replace(b'INDEX 01 00:00:00', b'INDEX 01 00:00:01')"
+        },
+        {
+          "op": "=",
+          "old": 227,
+          "new": 228,
+          "x": "        assert raw != original"
+        },
+        {
+          "op": "=",
+          "old": 228,
+          "new": 229,
+          "x": "        cue.write_bytes(raw)"
+        },
+        {
+          "op": "=",
+          "old": 229,
+          "new": 230,
+          "x": "        receipt, = [row for row in damaged['artifacts'] if Path(row['path']) == cue]"
+        },
+        {
+          "op": "=",
+          "old": 230,
+          "new": 231,
+          "x": "        receipt.update(size=len(raw), sha256=sha256(raw).hexdigest())"
+        },
+        {
+          "op": "=",
+          "old": 231,
+          "new": 232,
+          "x": "    elif damage == 'false-index':"
+        },
+        {
+          "op": "=",
+          "old": 232,
+          "new": 233,
+          "x": "        damaged['result']['editor_interchange']['files'][0]['tracks'][0]['index_75hz'] += 1"
+        },
+        {
+          "op": "=",
+          "old": 233,
+          "new": 234,
+          "x": "    else:"
+        },
+        {
+          "op": "=",
+          "old": 234,
+          "new": 235,
+          "x": "        damaged['result']['editor_interchange']['editor_import'] = 'PASS'"
+        },
+        {
+          "op": "=",
+          "old": 235,
+          "new": 236,
+          "x": "    try:"
+        },
+        {
+          "op": "=",
+          "old": 236,
+          "new": 237,
+          "x": "        with pytest.raises(ValueError, match='interchange|chapter|artifacts'):"
+        },
+        {
+          "op": "=",
+          "old": 237,
+          "new": 238,
+          "x": "            service._verify_artifacts(damaged)"
+        },
+        {
+          "op": "=",
+          "old": 238,
+          "new": 239,
+          "x": "    finally:"
+        },
+        {
+          "op": "=",
+          "old": 239,
+          "new": 240,
+          "x": "        cue.write_bytes(original)"
+        },
+        {
+          "op": "=",
+          "old": 240,
+          "new": 241,
+          "x": "    assert service.get(identity) == complete"
+        },
+        {
+          "op": "=",
+          "old": 241,
+          "new": 242,
+          "x": "    service._verify_artifacts(complete)"
+        },
+        {
+          "op": "=",
+          "old": 242,
+          "new": 243,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 243,
+          "new": 244,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 244,
+          "new": 245,
+          "x": "def test_new_cue_private_staging_is_disposable_and_legacy_completed_jobs_stay_valid(completed_cue):"
+        },
+        {
+          "op": "=",
+          "old": 245,
+          "new": 246,
+          "x": "    service, identity, complete = completed_cue"
+        },
+        {
+          "op": "=",
+          "old": 246,
+          "new": 247,
+          "x": "    assert not list((service.jobs_root / identity).glob('*.cue'))"
+        },
+        {
+          "op": "=",
+          "old": 247,
+          "new": 248,
+          "x": "    assert not list((service.jobs_root / identity).glob('.pending-*.cue'))"
+        },
+        {
+          "op": "=",
+          "old": 248,
+          "new": 249,
+          "x": "    legacy = deepcopy(complete)"
+        },
+        {
+          "op": "=",
+          "old": 249,
+          "new": 250,
+          "x": "    legacy['result'].pop('editor_interchange')"
+        },
+        {
+          "op": "=",
+          "old": 250,
+          "new": 251,
+          "x": "    legacy['artifacts'] = [row for row in legacy['artifacts']"
+        },
+        {
+          "op": "=",
+          "old": 251,
+          "new": 252,
+          "x": "                           if not Path(row['path']).name.endswith('.cue')]"
+        },
+        {
+          "op": "=",
+          "old": 252,
+          "new": 253,
+          "x": "    before = {row['path']: Path(row['path']).read_bytes() for row in legacy['artifacts']}"
+        },
+        {
+          "op": "=",
+          "old": 253,
+          "new": 254,
+          "x": "    service._verify_artifacts(legacy)"
+        },
+        {
+          "op": "=",
+          "old": 254,
+          "new": 255,
+          "x": "    assert {name: Path(name).read_bytes() for name in before} == before"
+        },
+        {
+          "op": "=",
+          "old": 255,
+          "new": 256,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 256,
+          "new": 257,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 257,
+          "new": 258,
+          "x": "@pytest.mark.parametrize('count', [1, 99, 100, 10000, 10001])"
+        },
+        {
+          "op": "=",
+          "old": 258,
+          "new": 259,
+          "x": "def test_declared_storage_allowance_covers_payload_and_metadata_without_source_changes(count):"
+        },
+        {
+          "op": "=",
+          "old": 259,
+          "new": 260,
+          "x": "    from carr_library.durable_state import encode"
+        },
+        {
+          "op": "=",
+          "old": 260,
+          "new": 261,
+          "x": "    from carr_library.studio.interchange import storage_allowance"
+        },
+        {
+          "op": "=",
+          "old": 261,
+          "new": 262,
+          "x": "    if count > 10000:"
+        },
+        {
+          "op": "=",
+          "old": 262,
+          "new": 263,
+          "x": "        project = SimpleNamespace(scenes=(None,) * count)"
+        },
+        {
+          "op": "=",
+          "old": 263,
+          "new": 264,
+          "x": "        files, report = chapter_cues(project, {})"
+        },
+        {
+          "op": "=",
+          "old": 264,
+          "new": 265,
+          "x": "    else:"
+        },
+        {
+          "op": "=",
+          "old": 265,
+          "new": 266,
+          "x": "        project, timeline = measured(count)"
+        },
+        {
+          "op": "=",
+          "old": 266,
+          "new": 267,
+          "x": "        files, report = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 267,
+          "new": 268,
+          "x": "    allowance = storage_allowance(project)"
+        },
+        {
+          "op": "=",
+          "old": 268,
+          "new": 269,
+          "x": "    payload = sum(len(raw) for _, raw in files)"
+        },
+        {
+          "op": "=",
+          "old": 269,
+          "new": 270,
+          "x": "    metadata = len(encode(report))"
+        },
+        {
+          "op": "=",
+          "old": 270,
+          "new": 271,
+          "x": "    assert allowance['export_bytes'] >= payload + metadata"
+        },
+        {
+          "op": "=",
+          "old": 271,
+          "new": 272,
+          "x": "    assert allowance['private_bytes'] >= payload + 2 * metadata"
+        },
+        {
+          "op": "=",
+          "old": 272,
+          "new": 273,
+          "x": "    assert max(allowance.values()) <= 32 * 1024 * 1024"
+        },
+        {
+          "op": "=",
+          "old": 273,
+          "new": 274,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 274,
+          "new": 275,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 275,
+          "new": 276,
+          "x": "def test_report_validation_observes_existing_cancellation_without_changing_declared_data():"
+        },
+        {
+          "op": "=",
+          "old": 276,
+          "new": 277,
+          "x": "    from carr_library.studio.interchange import validated_cues"
+        },
+        {
+          "op": "=",
+          "old": 277,
+          "new": 278,
+          "x": "    project, timeline = measured(5)"
+        },
+        {
+          "op": "=",
+          "old": 278,
+          "new": 279,
+          "x": "    _, timeline['editor_interchange'] = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 279,
+          "new": 280,
+          "x": "    before = deepcopy(timeline)"
+        },
+        {
+          "op": "=",
+          "old": 280,
+          "new": 281,
+          "x": "    with pytest.raises(InterruptedError):"
+        },
+        {
+          "op": "=",
+          "old": 281,
+          "new": 282,
+          "x": "        validated_cues(project, timeline, cancelled=lambda: True)"
+        },
+        {
+          "op": "=",
+          "old": 282,
+          "new": 283,
+          "x": "    assert timeline == before"
+        },
+        {
+          "op": "=",
+          "old": 283,
+          "new": 284,
+          "x": ""
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/probe_cue_interchange.py",
+      "before": {
+        "sha256": "ef294fee2bb07d2feeab786d040db8aa4104815d8ae10c5ea163f18afcbfcf32",
+        "bytes": 7266
+      },
+      "after": {
+        "sha256": "bae5af77a6fe96cfe0a90743d4879be358e400bbb0a85ffb810c7d5564b0cc81",
+        "bytes": 7319
+      },
+      "inverse": [
+        {
+          "op": "=",
+          "old": 1,
+          "new": 1,
+          "x": "\"\"\"Read actual published CUE bytes with pinned upstream libcue; no GUI claim.\"\"\""
+        },
+        {
+          "op": "=",
+          "old": 2,
+          "new": 2,
+          "x": "import argparse"
+        },
+        {
+          "op": "=",
+          "old": 3,
+          "new": 3,
+          "x": "import ctypes"
+        },
+        {
+          "op": "=",
+          "old": 4,
+          "new": 4,
+          "x": "from hashlib import sha256"
+        },
+        {
+          "op": "=",
+          "old": 5,
+          "new": 5,
+          "x": "import importlib.util"
+        },
+        {
+          "op": "=",
+          "old": 6,
+          "new": 6,
+          "x": "import json"
+        },
+        {
+          "op": "=",
+          "old": 7,
+          "new": 7,
+          "x": "import os"
+        },
+        {
+          "op": "=",
+          "old": 8,
+          "new": 8,
+          "x": "import subprocess"
+        },
+        {
+          "op": "=",
+          "old": 9,
+          "new": 9,
+          "x": "import sysconfig"
+        },
+        {
+          "op": "=",
+          "old": 10,
+          "new": 10,
+          "x": "from pathlib import Path"
+        },
+        {
+          "op": "=",
+          "old": 11,
+          "new": 11,
+          "x": "import sys"
+        },
+        {
+          "op": "=",
+          "old": 12,
+          "new": 12,
+          "x": "from tempfile import TemporaryDirectory"
+        },
+        {
+          "op": "=",
+          "old": 13,
+          "new": 13,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 14,
+          "new": 14,
+          "x": "from carr_library.studio.interchange import chapter_cues"
+        },
+        {
+          "op": "=",
+          "old": 15,
+          "new": 15,
+          "x": "from carr_library.studio.render import ProductionService"
+        },
+        {
+          "op": "=",
+          "old": 16,
+          "new": 16,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 17,
+          "new": 17,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 18,
+          "new": 18,
+          "x": "UPSTREAM = 'cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea'"
+        },
+        {
+          "op": "=",
+          "old": 19,
+          "new": 19,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 20,
+          "new": 20,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 21,
+          "new": 21,
+          "x": "def run(library, report):"
+        },
+        {
+          "op": "=",
+          "old": 22,
+          "new": 22,
+          "x": "    if not sys.flags.isolated:"
+        },
+        {
+          "op": "=",
+          "old": 23,
+          "new": 23,
+          "x": "        raise RuntimeError('Use the isolated installed interpreter for the independent reader.')"
+        },
+        {
+          "op": "=",
+          "old": 24,
+          "new": 24,
+          "x": "    library = Path(library).resolve(strict=True)"
+        },
+        {
+          "op": "=",
+          "old": 25,
+          "new": 25,
+          "x": "    if not library.is_file() or library.is_symlink():"
+        },
+        {
+          "op": "=",
+          "old": 26,
+          "new": 26,
+          "x": "        raise ValueError('Choose the actual built libcue shared library.')"
+        },
+        {
+          "op": "=",
+          "old": 27,
+          "new": 27,
+          "x": "    root = Path(__file__).resolve().parents[1]"
+        },
+        {
+          "op": "=",
+          "old": 28,
+          "new": 28,
+          "x": "    commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, check=True,"
+        },
+        {
+          "op": "=",
+          "old": 29,
+          "new": 29,
+          "x": "                            capture_output=True, text=True, timeout=10).stdout.strip()"
+        },
+        {
+          "op": "=",
+          "old": 30,
+          "new": 30,
+          "x": "    assert commit == os.environ['CARR_CUE_HEAD']"
+        },
+        {
+          "op": "=",
+          "old": 31,
+          "new": 31,
+          "x": "    source = root / 'src' / 'carr_library'"
+        },
+        {
+          "op": "=",
+          "old": 32,
+          "new": 32,
+          "x": "    installed = Path(sysconfig.get_path('purelib')) / 'carr_library'"
+        },
+        {
+          "op": "=",
+          "old": 33,
+          "new": 33,
+          "x": "    import carr_library"
+        },
+        {
+          "op": "=",
+          "old": 34,
+          "new": 34,
+          "x": "    assert Path(carr_library.__file__).resolve() == installed.resolve() / '__init__.py'"
+        },
+        {
+          "op": "=",
+          "old": 35,
+          "new": 35,
+          "x": "    def inventory(directory):"
+        },
+        {
+          "op": "=",
+          "old": 36,
+          "new": 36,
+          "x": "        return {path.relative_to(directory).as_posix(): sha256(path.read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 37,
+          "new": 37,
+          "x": "                for path in sorted(directory.rglob('*.py')) if path.is_file() and not path.is_symlink()}"
+        },
+        {
+          "op": "=",
+          "old": 38,
+          "new": 38,
+          "x": "    expected = inventory(source)"
+        },
+        {
+          "op": "=",
+          "old": 39,
+          "new": 39,
+          "x": "    assert expected and inventory(installed) == expected"
+        },
+        {
+          "op": "=",
+          "old": 40,
+          "new": 40,
+          "x": "    library_hash = sha256(library.read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 41,
+          "new": 41,
+          "x": "    helper_hash = sha256(Path(__file__).read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 42,
+          "new": 42,
+          "x": "    fixture_path = root / 'tests' / 'studio' / 'test_interchange.py'"
+        },
+        {
+          "op": "=",
+          "old": 43,
+          "new": 43,
+          "x": "    fixture_bytes = fixture_path.read_bytes()"
+        },
+        {
+          "op": "=",
+          "old": 44,
+          "new": 44,
+          "x": "    spec = importlib.util.spec_from_file_location('cue_acceptance_fixture', fixture_path)"
+        },
+        {
+          "op": "=",
+          "old": 45,
+          "new": 45,
+          "x": "    fixture = importlib.util.module_from_spec(spec)"
+        },
+        {
+          "op": "=",
+          "old": 46,
+          "new": 46,
+          "x": "    spec.loader.exec_module(fixture)"
+        },
+        {
+          "op": "=",
+          "old": 47,
+          "new": 47,
+          "x": "    native = ctypes.CDLL(str(library))"
+        },
+        {
+          "op": "=",
+          "old": 48,
+          "new": 48,
+          "x": "    native.cue_parse_string.argtypes = [ctypes.c_char_p]"
+        },
+        {
+          "op": "=",
+          "old": 49,
+          "new": 49,
+          "x": "    native.cue_parse_string.restype = ctypes.c_void_p"
+        },
+        {
+          "op": "=",
+          "old": 50,
+          "new": 50,
+          "x": "    native.cd_delete.argtypes = [ctypes.c_void_p]"
+        },
+        {
+          "op": "=",
+          "old": 51,
+          "new": 51,
+          "x": "    native.cd_delete.restype = None"
+        },
+        {
+          "op": "=",
+          "old": 52,
+          "new": 52,
+          "x": "    native.cd_get_ntrack.argtypes = [ctypes.c_void_p]"
+        },
+        {
+          "op": "=",
+          "old": 53,
+          "new": 53,
+          "x": "    native.cd_get_ntrack.restype = ctypes.c_int"
+        },
+        {
+          "op": "=",
+          "old": 54,
+          "new": 54,
+          "x": "    native.cd_get_track.argtypes = [ctypes.c_void_p, ctypes.c_int]"
+        },
+        {
+          "op": "=",
+          "old": 55,
+          "new": 55,
+          "x": "    native.cd_get_track.restype = ctypes.c_void_p"
+        },
+        {
+          "op": "=",
+          "old": 56,
+          "new": 56,
+          "x": "    native.track_get_filename.argtypes = [ctypes.c_void_p]"
+        },
+        {
+          "op": "=",
+          "old": 57,
+          "new": 57,
+          "x": "    native.track_get_filename.restype = ctypes.c_char_p"
+        },
+        {
+          "op": "=",
+          "old": 58,
+          "new": 58,
+          "x": "    native.track_get_start.argtypes = [ctypes.c_void_p]"
+        },
+        {
+          "op": "=",
+          "old": 59,
+          "new": 59,
+          "x": "    native.track_get_start.restype = ctypes.c_long"
+        },
+        {
+          "op": "=",
+          "old": 60,
+          "new": 60,
+          "x": "    evidence = []"
+        },
+        {
+          "op": "=",
+          "old": 61,
+          "new": 61,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 62,
+          "new": 62,
+          "x": "    def consume(name, payload, expected):"
+        },
+        {
+          "op": "=",
+          "old": 63,
+          "new": 63,
+          "x": "        disc = native.cue_parse_string(payload)"
+        },
+        {
+          "op": "=",
+          "old": 64,
+          "new": 64,
+          "x": "        if not disc:"
+        },
+        {
+          "op": "=",
+          "old": 65,
+          "new": 65,
+          "x": "            raise AssertionError('Pinned libcue refused generated CUE bytes.')"
+        },
+        {
+          "op": "=",
+          "old": 66,
+          "new": 66,
+          "x": "        try:"
+        },
+        {
+          "op": "=",
+          "old": 67,
+          "new": 67,
+          "x": "            count = native.cd_get_ntrack(disc)"
+        },
+        {
+          "op": "=",
+          "old": 68,
+          "new": 68,
+          "x": "            assert count == len(expected) and 1 <= count <= 99"
+        },
+        {
+          "op": "=",
+          "old": 69,
+          "new": 69,
+          "x": "            actual = []"
+        },
+        {
+          "op": "=",
+          "old": 70,
+          "new": 70,
+          "x": "            for number, wanted in enumerate(expected, 1):"
+        },
+        {
+          "op": "=",
+          "old": 71,
+          "new": 71,
+          "x": "                track = native.cd_get_track(disc, number)"
+        },
+        {
+          "op": "=",
+          "old": 72,
+          "new": 72,
+          "x": "                assert track and native.track_get_filename(track) == b'master.wav'"
+        },
+        {
+          "op": "=",
+          "old": 73,
+          "new": 73,
+          "x": "                index = native.track_get_start(track)"
+        },
+        {
+          "op": "=",
+          "old": 74,
+          "new": 74,
+          "x": "                assert index == wanted['index_75hz'], (name, number, index, wanted)"
+        },
+        {
+          "op": "=",
+          "old": 75,
+          "new": 75,
+          "x": "                actual.append(index)"
+        },
+        {
+          "op": "=",
+          "old": 76,
+          "new": 76,
+          "x": "            evidence.append({'file': name, 'sha256': sha256(payload).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 77,
+          "new": 77,
+          "x": "                             'tracks': count, 'indices_75hz': actual})"
+        },
+        {
+          "op": "=",
+          "old": 78,
+          "new": 78,
+          "x": "        finally:"
+        },
+        {
+          "op": "=",
+          "old": 79,
+          "new": 79,
+          "x": "            native.cd_delete(disc)"
+        },
+        {
+          "op": "=",
+          "old": 80,
+          "new": 80,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 81,
+          "new": 81,
+          "x": "    with TemporaryDirectory(prefix='carr-cue-upstream-') as temporary:"
+        },
+        {
+          "op": "=",
+          "old": 82,
+          "new": 82,
+          "x": "        work = Path(temporary)"
+        },
+        {
+          "op": "=",
+          "old": 83,
+          "new": 83,
+          "x": "        output = work / 'outputs'; output.mkdir()"
+        },
+        {
+          "op": "=",
+          "old": 84,
+          "new": 84,
+          "x": "        service = ProductionService(work / 'library' / 'state' / 'studio', voices=fixture.ToneVoices())"
+        },
+        {
+          "op": "=",
+          "old": 85,
+          "new": 85,
+          "x": "        script = '[Scene: Архів]\\nNarrator: Exact original.\\n[Scene: Žilina]\\nNarrator: Exact second line.\\n'"
+        },
+        {
+          "op": "=",
+          "old": 86,
+          "new": 86,
+          "x": "        project = service.create(script, title='Actual UTF-8 upstream CUE acceptance', voice_ids=('tone',))"
+        },
+        {
+          "op": "=",
+          "old": 87,
+          "new": 87,
+          "x": "        identity = service.submit(project, output, stems=True)"
+        },
+        {
+          "op": "=",
+          "old": 88,
+          "new": 88,
+          "x": "        state = service.run(identity)"
+        },
+        {
+          "op": "=",
+          "old": 89,
+          "new": 89,
+          "x": "        assert state['status'] == 'complete'"
+        },
+        {
+          "op": "=",
+          "old": 90,
+          "new": 90,
+          "x": "        before = {item['path']: sha256(Path(item['path']).read_bytes()).hexdigest()"
+        },
+        {
+          "op": "=",
+          "old": 91,
+          "new": 91,
+          "x": "                  for item in state['artifacts']}"
+        },
+        {
+          "op": "=",
+          "old": 92,
+          "new": 92,
+          "x": "        destination = Path(state['destination'])"
+        },
+        {
+          "op": "=",
+          "old": 93,
+          "new": 93,
+          "x": "        for sheet in state['result']['editor_interchange']['files']:"
+        },
+        {
+          "op": "=",
+          "old": 94,
+          "new": 94,
+          "x": "            cue = destination / sheet['file']"
+        },
+        {
+          "op": "=",
+          "old": 95,
+          "new": 95,
+          "x": "            consume(sheet['file'], cue.read_bytes(), sheet['tracks'])"
+        },
+        {
+          "op": "=",
+          "old": 96,
+          "new": 96,
+          "x": "        assert before == {path: sha256(Path(path).read_bytes()).hexdigest() for path in before}"
+        },
+        {
+          "op": "=",
+          "old": 97,
+          "new": 97,
+          "x": "        assert state == service.get(identity)"
+        },
+        {
+          "op": "=",
+          "old": 98,
+          "new": 98,
+          "x": "        assert json.loads((destination / 'project.json').read_text(encoding='utf-8'))['original_script'] == script"
+        },
+        {
+          "op": "=",
+          "old": 99,
+          "new": 99,
+          "x": "        production = {'job': identity, 'project_fingerprint': project.fingerprint,"
+        },
+        {
+          "op": "=",
+          "old": 100,
+          "new": 100,
+          "x": "                      'original_script_sha256': sha256(script.encode()).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 101,
+          "new": 101,
+          "x": "                      'master_sha256': before[str(destination / 'master.wav')],"
+        },
+        {
+          "op": "=",
+          "old": 102,
+          "new": 102,
+          "x": "                      'artifact_count': len(before), 'artifact_bytes_unchanged': True}"
+        },
+        {
+          "op": "+",
+          "old": 103,
+          "new": 103,
+          "x": "        assert service.close() is None"
+        },
+        {
+          "op": "+",
+          "old": 103,
+          "new": 104,
+          "x": "        assert service._closed and service._voices is None, 'Actual interchange producer retained its registry.'"
+        },
+        {
+          "op": "-",
+          "old": 103,
+          "new": 105,
+          "x": "        assert service.close(), 'Actual interchange producer must release its retained resources.'"
+        },
+        {
+          "op": "=",
+          "old": 104,
+          "new": 105,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 105,
+          "new": 106,
+          "x": "    # The sheet boundary and long absolute offsets are real upstream parser calls,"
+        },
+        {
+          "op": "=",
+          "old": 106,
+          "new": 107,
+          "x": "    # with simulated measured timelines; they are not long audio render claims."
+        },
+        {
+          "op": "=",
+          "old": 107,
+          "new": 108,
+          "x": "    project, timeline = fixture.measured(100, 3601.5)"
+        },
+        {
+          "op": "=",
+          "old": 108,
+          "new": 109,
+          "x": "    artifacts, result = chapter_cues(project, timeline)"
+        },
+        {
+          "op": "=",
+          "old": 109,
+          "new": 110,
+          "x": "    for (name, payload), sheet in zip(artifacts, result['files']):"
+        },
+        {
+          "op": "=",
+          "old": 110,
+          "new": 111,
+          "x": "        consume('synthetic-boundary/' + name, payload, sheet['tracks'])"
+        },
+        {
+          "op": "=",
+          "old": 111,
+          "new": 112,
+          "x": "    assert fixture_path.read_bytes() == fixture_bytes"
+        },
+        {
+          "op": "=",
+          "old": 112,
+          "new": 113,
+          "x": "    assert inventory(source) == expected and inventory(installed) == expected"
+        },
+        {
+          "op": "=",
+          "old": 113,
+          "new": 114,
+          "x": "    assert subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, check=True,"
+        },
+        {
+          "op": "=",
+          "old": 114,
+          "new": 115,
+          "x": "                          capture_output=True, text=True, timeout=10).stdout.strip() == commit"
+        },
+        {
+          "op": "=",
+          "old": 115,
+          "new": 116,
+          "x": "    assert sha256(library.read_bytes()).hexdigest() == library_hash"
+        },
+        {
+          "op": "=",
+          "old": 116,
+          "new": 117,
+          "x": "    assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_hash"
+        },
+        {
+          "op": "=",
+          "old": 117,
+          "new": 118,
+          "x": "    value = {'schema': 1, 'status': 'PASS', 'commit': commit,"
+        },
+        {
+          "op": "=",
+          "old": 118,
+          "new": 119,
+          "x": "        'package_python_files': len(expected),"
+        },
+        {
+          "op": "=",
+          "old": 119,
+          "new": 120,
+          "x": "        'package_inventory_sha256': sha256(json.dumps(expected, sort_keys=True).encode()).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 120,
+          "new": 121,
+          "x": "        'upstream': 'lipnitsk/libcue',"
+        },
+        {
+          "op": "=",
+          "old": 121,
+          "new": 122,
+          "x": "        'upstream_commit': UPSTREAM, 'library_sha256': sha256(library.read_bytes()).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 122,
+          "new": 123,
+          "x": "        'fixture_sha256': sha256(fixture_bytes).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 123,
+          "new": 124,
+          "x": "        'probe_sha256': sha256(Path(__file__).read_bytes()).hexdigest(),"
+        },
+        {
+          "op": "=",
+          "old": 124,
+          "new": 125,
+          "x": "        'production': production, 'parsed_sheets': evidence,"
+        },
+        {
+          "op": "=",
+          "old": 125,
+          "new": 126,
+          "x": "        'actual_external_gui_editor_import': 'NOT_RUN', 'acoustic_quality': 'NOT_RUN',"
+        },
+        {
+          "op": "=",
+          "old": 126,
+          "new": 127,
+          "x": "        'physical_output': 'NOT_RUN', 'NVDA': 'NOT_RUN'}"
+        },
+        {
+          "op": "=",
+          "old": 127,
+          "new": 128,
+          "x": "    Path(report).write_text(json.dumps(value, sort_keys=True, indent=2) + '\\n', encoding='utf-8')"
+        },
+        {
+          "op": "=",
+          "old": 128,
+          "new": 129,
+          "x": "    print(json.dumps(value, sort_keys=True))"
+        },
+        {
+          "op": "=",
+          "old": 129,
+          "new": 130,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 130,
+          "new": 131,
+          "x": ""
+        },
+        {
+          "op": "=",
+          "old": 131,
+          "new": 132,
+          "x": "if __name__ == '__main__':"
+        },
+        {
+          "op": "=",
+          "old": 132,
+          "new": 133,
+          "x": "    parser = argparse.ArgumentParser(description=__doc__)"
+        },
+        {
+          "op": "=",
+          "old": 133,
+          "new": 134,
+          "x": "    parser.add_argument('--libcue', required=True)"
+        },
+        {
+          "op": "=",
+          "old": 134,
+          "new": 135,
+          "x": "    parser.add_argument('--report', required=True)"
+        },
+        {
+          "op": "=",
+          "old": 135,
+          "new": 136,
+          "x": "    args = parser.parse_args()"
+        },
+        {
+          "op": "=",
+          "old": 136,
+          "new": 137,
+          "x": "    run(args.libcue, args.report)"
+        },
+        {
+          "op": "=",
+          "old": 137,
+          "new": 138,
+          "x": ""
+        }
+      ]
+    }
+  ]
+}

@@ -18,7 +18,8 @@ import sqlite3
 import stat
 from uuid import uuid4
 
-from filelock import FileLock, Timeout
+from ..audio.cleanup import AudioCleanupPending, retained_context
+from ..operations._locks import NativeLock
 
 from ..catalog.intake import MAX_BYTES
 from ..catalog.membership import Catalog
@@ -26,6 +27,7 @@ from ..extract.page_ocr import Config, config_dict
 from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
+from .batch_pages import batch_profile, batch_shape, row_profile, validate_scan_metadata
 
 
 MAX_BATCH = 16 * 1024 * 1024
@@ -87,13 +89,13 @@ class ImportBatchStore:
 
     @contextmanager
     def _lock(self, batch_id):
-        path = self._path(batch_id).with_suffix('.lock')
-        _regular(path, missing=True)
+        lock = NativeLock(self._path(batch_id).with_suffix('.lock'))
+        if not lock.acquire():
+            raise ValueError('This import batch is already running.')
         try:
-            with FileLock(path, mode=0o600).acquire(timeout=0):
-                yield
-        except Timeout as exc:
-            raise ValueError('This import batch is already running.') from exc
+            yield
+        finally:
+            lock.release()
 
     def _authorize(self, workspace, collections=()):
         with self.app.read(workspace) as db:
@@ -102,8 +104,7 @@ class ImportBatchStore:
                 catalog._active_collection(collection)
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not batch_shape(record, _BATCH_KEYS)
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -117,6 +118,8 @@ class ImportBatchStore:
                 or not isinstance(record['rows'], list) or len(record['rows']) > MAX_ROWS):
             raise ValueError('Invalid import batch schema or data-directory binding.')
         Config(**record['config'])
+        profile = batch_profile(record)
+        validate_scan_metadata(record)
         seen = {name: set() for name in ('row_id', 'work_id', 'edition_id', 'request_id')}
         for row in record['rows']:
             if (not isinstance(row, dict) or set(row) != _ROW_KEYS
@@ -143,7 +146,9 @@ class ImportBatchStore:
                     or not isinstance(manifest['sha256'], str)
                     or not re.fullmatch('[0-9a-f]{64}', manifest['sha256'])
                     or manifest['mime'] not in _MIMES
-                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= MAX_BYTES):
+                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= (
+                        profile.maximum_bytes if profile is not None and manifest['mime'] == profile.mime
+                        else MAX_BYTES)):
                 raise ValueError('Invalid import batch source manifest.')
         counts = dict.fromkeys(STATES, 0)
         counts.update(Counter(row['state'] for row in record['rows']))
@@ -245,6 +250,14 @@ class ImportBatchStore:
             self._store(record, create=True, paused=bool(cancelled()))
         return _copy(record)
 
+    def plan_page(self, workspace, paths, **options):
+        from .batch_pages import plan_page
+        return plan_page(self, workspace, paths, **options)
+
+    def continue_plan(self, workspace, batch_id, **options):
+        from .batch_pages import continue_plan
+        return continue_plan(self, workspace, batch_id, **options)
+
     def get(self, workspace, batch_id):
         self._authorize(workspace)
         record = self._load(batch_id)
@@ -272,6 +285,8 @@ class ImportBatchStore:
             expected = dict(workspace=record['workspace'], source=row['source'],
                             metadata=_copy(self._metadata(row, record)),
                             config=record['config'], expected_manifest=row['manifest'])
+            profile = row_profile(record, row)
+            expected['source_profile'] = profile.to_dict() if profile is not None else None
             result = request.get('result')
             if (any(request.get(key) != value for key, value in expected.items())
                     or not isinstance(result, dict) or result.get('state') != 'complete'
@@ -345,13 +360,14 @@ class ImportBatchStore:
         row['result'] = result
         state = result.get('state')
         row['state'] = (state if state in ('complete', 'quarantined') else
-                        'queued' if state == 'cancelled' else 'failed')
+                        'queued' if state in ('cancelled', 'pending') else 'failed')
         row['message'] = str(result.get('message') or result.get('error') or '')[:4000]
 
-    def run(self, workspace, batch_id, *, cancelled=lambda: False, timeout=120.0,
+    def run(self, workspace, batch_id, *, cancelled=lambda: False, timeout=None,
             retry_failed=False, progress=None):
-        if (not callable(cancelled) or type(timeout) not in (int, float)
-                or not math.isfinite(timeout) or not 0.1 <= timeout <= 600
+        if (not callable(cancelled) or timeout is not None and (
+                type(timeout) not in (int, float) or not math.isfinite(timeout)
+                or not 0.1 <= timeout <= 86400)
                 or type(retry_failed) is not bool or (progress is not None and not callable(progress))):
             raise ValueError('Invalid import batch execution options.')
         self._authorize(workspace)
@@ -364,8 +380,11 @@ class ImportBatchStore:
             self._store(record, paused=stopped)
             if progress is not None:
                 progress(_copy(record))
-        with self._lock(batch_id):
+        with retained_context(self._lock(batch_id)):
             record = self.get(workspace, batch_id)
+            profile = batch_profile(record)
+            if timeout is not None and timeout > (profile.maximum_timeout if profile is not None else 600):
+                raise ValueError('Import timeout exceeds the saved batch source policy.')
             self._authorize(workspace, record['collections'])
             config = Config(**record['config'])
             for row in record['rows']:
@@ -389,7 +408,9 @@ class ImportBatchStore:
                 try:
                     request = prepare_request(self.root, workspace, row['source'],
                         self._metadata(row, record), config, request_id=row['request_id'],
-                        expected_manifest=row['manifest'])
+                        expected_manifest=row['manifest'], source_profile=row_profile(record, row))
+                except AudioCleanupPending:
+                    raise
                 except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                     self._result(row, {'state': 'failed', 'message': str(exc)[:4000]})
                     save(record)
@@ -410,6 +431,10 @@ class ImportBatchStore:
                     self._result(row, result)
                     if result.get('state') == 'cancelled':
                         stopped = True
+                except AudioCleanupPending:
+                    # The same child still owns this batch/request/lease.
+                    # Do not write a terminal row or release its lock early.
+                    raise
                 except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                     row['state'] = 'failed'
                     row['message'] = str(exc)[:4000]

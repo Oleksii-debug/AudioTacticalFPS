@@ -401,8 +401,10 @@ def _collection_budgets(entries):
             raise RestoreError('narration producer snapshot budget exceeded')
 
 
-def normalize_manifest(manifest):
+def normalize_manifest(manifest, *, backup_budget=None):
     """Discriminate exact v3 shapes without changing the signed source manifest."""
+    from .backup_budget import arguments as resource_arguments
+    resource_arguments(backup_budget)
     version = manifest.get('version')
     fields = {'version', 'kind', 'schema_version', 'database', 'assets'}
     if type(version) is not int or version not in (1, 2, 3, 4, 5):
@@ -491,7 +493,7 @@ def normalize_manifest(manifest):
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
     if pending is not None:
         from .pending_backup import validate_pending
-        validate_pending(pending)
+        validate_pending(pending, **resource_arguments(backup_budget))
     return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
 
 

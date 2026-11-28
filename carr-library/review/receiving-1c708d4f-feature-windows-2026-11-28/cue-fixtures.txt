@@ -1,0 +1,71 @@
+_ ERROR at teardown of test_completed_replay_requires_exact_cue_bytes_and_declared_source[missing-receipt] _
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_completed_replay_requires0')
+
+    @pytest.fixture
+    def completed_cue(tmp_path):
+        assert shutil.which('ffmpeg') and shutil.which('ffprobe'), 'Install the selected test audio runtime.'
+        output = tmp_path / 'outputs'
+        output.mkdir()
+        service = ProductionService(tmp_path / 'library' / 'state' / 'studio', voices=ToneVoices())
+        project = service.create('[Scene: First]\nNarrator: Retained original.\n'
+                                 '[Scene: Second]\nNarrator: Other retained original.\n',
+                                 voice_ids=('tone',))
+        identity = service.submit(project, output, stems=True)
+        complete = service.run(identity)
+        assert complete['status'] == 'complete'
+        yield service, identity, complete
+>       assert service.close()
+E       assert None
+E        +  where None = close()
+E        +    where close = <carr_library.studio.render.ProductionService object at 0x000002AB9B9EC610>.close
+
+tests\studio\test_interchange.py:214: AssertionError
+
+_ test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5] _
+
+authored = (<carr_library.application.LibraryApp object at 0x000002AB9E5A5F50>, 'f5edf7043e754074b78ad86e36d7bc54', <carr_library...': 'NOT_RUN', 'encoding': 'UTF-8', 'files': [{'file': 'chapters-0001.cue', 'tracks': [{...}, {...}]}], ...}, ...}, ...)
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_actual_backup_retains_exa0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002AB9E5A9890>
+flat = False, generated = False
+
+    @pytest.mark.parametrize('flat', [False, True], ids=['native-format5', 'legacy-flat4'])
+    @pytest.mark.parametrize('generated', [False, True])
+    def test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority(
+            authored, tmp_path, monkeypatch, flat, generated):
+        app, workspace, service, project, job_root, timeline, cue_files, output = authored
+        source_bytes = {path: path.read_bytes() for path in job_root.iterdir() if path.is_file()}
+        external = {name: (output / name).read_bytes() for name, _ in cue_files}
+        def forbidden(*args, **kwargs):
+            pytest.fail('Passive interchange backup or restore started an audio runtime.')
+        monkeypatch.setattr(ProductionService, 'run', forbidden)
+        monkeypatch.setattr(subprocess, 'Popen', forbidden)
+        directory = tmp_path / 'backup'
+        manifest, checksum = snapshot(app, directory, flat, generated)
+        assert manifest['version'] == (4 if flat else 5)
+        assert verify_backup(directory, checksum)
+        relative = job_root.relative_to(app.root)
+        assert read_json(directory / relative / 'timeline.json') == timeline
+        rows = manifest['sidecars'] if flat else manifest['state']
+        assert not any(row['filename'].endswith('.cue') for row in rows)
+        target = restore_backup(directory, tmp_path / 'restored', checksum)
+        assert read_json(target / relative / 'timeline.json') == timeline
+        original_job = read_json(job_root / 'job.json')
+        restored_job = read_json(target / relative / 'job.json')
+        assert restored_job == {**original_job, 'restore_requires_new_output': True}
+        restored_project = Project.from_dict(read_json(target / relative / 'project.json'))
+        again, report = chapter_cues(restored_project, timeline)
+        assert again == cue_files and report == timeline['editor_interchange']
+        assert not any((target / relative / name).exists() for name, _ in cue_files)
+        restored = LibraryApp(target)
+        try:
+            assert restored.search(workspace, 'retained')
+            second = tmp_path / 'second-backup'
+            next_checksum = create_backup(restored, second, include_generated=generated)
+            assert verify_backup(second, next_checksum)
+        finally:
+>           restored.close_search()
+            ^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'LibraryApp' object has no attribute 'close_search'
+
+tests\storage\test_cue_interchange_backup.py:133: AttributeError

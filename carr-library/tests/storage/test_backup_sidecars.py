@@ -489,3 +489,220 @@ def test_studio_source_must_belong_to_its_exact_saved_revision(library, tmp_path
     with pytest.raises(RestoreError, match='exact saved source'):
         create_backup(app, tmp_path / 'backup')
     assert not (tmp_path / 'backup').exists()
+
+
+
+@pytest.mark.parametrize('maximum', ['1', True, -1, 1.5, sidecars.MAX_BYTES + 1])
+def test_selected_sidecar_limit_can_only_lower_the_existing_cap(
+        library, tmp_path, maximum):
+    app, workspace = library
+    reading(app, workspace)
+    stage = tmp_path / 'invalid-cap'
+    stage.mkdir()
+    with app.read(workspace) as db:
+        with pytest.raises(ValueError, match='resource limit'):
+            sidecars.snapshot(app, stage, set(), db=db, include_pending=False,
+                              max_bytes=maximum)
+    assert not (stage / sidecars.DIRECTORY).exists()
+
+
+def test_selected_sidecar_exact_cap_preserves_default_manifest_and_bytes(library, tmp_path):
+    app, workspace = library
+    reading(app, workspace)
+    original = (app.root / 'reading-state.json').read_bytes()
+    ordinary, selected = tmp_path / 'ordinary', tmp_path / 'selected'
+    ordinary.mkdir()
+    selected.mkdir()
+    with app.read(workspace) as db:
+        old = sidecars.snapshot(app, ordinary, set(), db=db, include_pending=False)
+        bounded = sidecars.snapshot(app, selected, set(), db=db, include_pending=False,
+                                   max_bytes=len(original))
+    assert old == bounded
+    assert [row['path'] for row in bounded['files']] == ['reading-state.json']
+    assert sum(row['size_bytes'] for row in bounded['files']) == len(original)
+    assert (selected / sidecars.DIRECTORY / 'reading-state.json').read_bytes() == original
+    assert (ordinary / sidecars.DIRECTORY / 'reading-state.json').read_bytes() == original
+    assert (app.root / 'reading-state.json').read_bytes() == original
+
+
+def test_selected_sidecar_cap_refuses_the_next_file_before_copy(
+        library, tmp_path, monkeypatch):
+    app, workspace = library
+    reading(app, workspace)
+    ConnectionStore(app.root).save_profile(ProviderProfile(
+        'resource-review', 'Resource review', 'openai-compatible',
+        'https://api.example.com/v1', 'chosen-model', 'chat'))
+    originals = {name: (app.root / name).read_bytes()
+                 for name in ('connections.json', 'reading-state.json')}
+    stage = tmp_path / 'one-file-cap'
+    stage.mkdir()
+    copied = []
+    actual = sidecars._copy
+    def observed(source, target, **options):
+        result = actual(source, target, **options)
+        if Path(target).is_relative_to(stage):
+            copied.append(Path(target).relative_to(stage).as_posix())
+        return result
+    monkeypatch.setattr(sidecars, '_copy', observed)
+    with app.read(workspace) as db:
+        with pytest.raises(ValueError, match='resource limit'):
+            sidecars.snapshot(app, stage, set(), db=db, include_pending=False,
+                              max_bytes=len(originals['connections.json']))
+    assert copied == ['sidecars/connections.json']
+    assert not (stage / sidecars.DIRECTORY / 'reading-state.json').exists()
+    assert (stage / sidecars.DIRECTORY / 'connections.json').read_bytes() == originals['connections.json']
+    assert all((app.root / name).read_bytes() == raw for name, raw in originals.items())
+
+
+@pytest.mark.parametrize('cap_kind', ['lowered', 'equal-current-maximum'])
+def test_selected_sidecar_cap_rechecks_growth_before_opening_the_destination(
+        library, tmp_path, monkeypatch, cap_kind):
+    app, workspace = library
+    reading(app, workspace)
+    original_path = app.root / 'reading-state.json'
+    original = original_path.read_bytes()
+    if cap_kind == 'equal-current-maximum':
+        monkeypatch.setattr(sidecars, 'MAX_BYTES', len(original))
+    stage = tmp_path / 'changed-before-copy'
+    stage.mkdir()
+    actual = sidecars._copy
+    observed = []
+    def grow(source, target, **options):
+        if Path(source) == original_path:
+            observed.append(options['maximum_bytes'])
+            original_path.write_bytes(original + b' ')
+        return actual(source, target, **options)
+    monkeypatch.setattr(sidecars, '_copy', grow)
+    try:
+        with app.read(workspace) as db:
+            with pytest.raises(ValueError, match='resource limit'):
+                sidecars.snapshot(app, stage, set(), db=db, include_pending=False,
+                                  max_bytes=len(original))
+        assert observed == [len(original)]
+        assert not (stage / sidecars.DIRECTORY / 'reading-state.json').exists()
+    finally:
+        original_path.write_bytes(original)
+    assert original_path.read_bytes() == original
+
+
+def test_selected_sidecar_journal_cap_refuses_before_journal_copy(
+        library, tmp_path, monkeypatch):
+    app, workspace = library
+    incoming = tmp_path / 'queued-resource.txt'
+    incoming.write_bytes(b'An explicitly planned synthetic source.')
+    app.plan_import_batch(workspace, [incoming])
+    stage = tmp_path / 'journal-cap'
+    stage.mkdir()
+    # Use the actual canonical folder inventory; exclude the journal's bytes.
+    selected = [(name + '/' + relative, path)
+                for name in ('import-requests', 'import-batches')
+                if (app.root / name).exists()
+                for relative, path in sidecars._walk(
+                    app.root / name, exclude_temporary=True, cancelled=lambda: False)]
+    maximum = sum(path.stat().st_size for _, path in selected)
+    assert selected and (app.root / 'imports.sqlite').stat().st_size > 0
+    actual = sidecars._journal
+    calls = []
+    def observed(path):
+        calls.append(Path(path))
+        return actual(path)
+    monkeypatch.setattr(sidecars, '_journal', observed)
+    with app.read(workspace) as db:
+        registered = {row[0] for row in db.execute('SELECT digest FROM catalog_asset')}
+        with pytest.raises(ValueError, match='resource limit'):
+            sidecars.snapshot(app, stage, registered, db=db, max_bytes=maximum)
+    assert calls == []
+    assert not (stage / sidecars.DIRECTORY / 'imports.sqlite').exists()
+    assert sum(path.stat().st_size for path in (stage / sidecars.DIRECTORY).rglob('*')
+               if path.is_file()) <= maximum
+    assert incoming.read_bytes() == b'An explicitly planned synthetic source.'
+
+
+
+@pytest.mark.parametrize('cap_kind', ['lowered', 'equal-current-maximum'])
+def test_selected_sidecar_journal_accounts_for_real_wal_pages_before_destination_open(
+        library, tmp_path, monkeypatch, cap_kind):
+    import sqlite3
+    app, workspace = library
+    incoming = tmp_path / 'wal-source.txt'
+    incoming.write_bytes(b'Original planned input is unchanged.')
+    app.plan_import_batch(workspace, [incoming])
+    selected = [(name + '/' + relative, path)
+                for name in ('import-requests', 'import-batches')
+                if (app.root / name).exists()
+                for relative, path in sidecars._walk(
+                    app.root / name, exclude_temporary=True, cancelled=lambda: False)]
+    sidecar_bytes = sum(path.stat().st_size for _, path in selected)
+    stage = tmp_path / 'wal-bounded-stage'
+    stage.mkdir()
+    journal = app.root / 'imports.sqlite'
+    writer = sqlite3.connect(journal, isolation_level=None)
+    try:
+        assert writer.execute('PRAGMA journal_mode=WAL').fetchone()[0] == 'wal'
+        writer.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        writer.execute('PRAGMA wal_autocheckpoint=0')
+        # Resource admission is checked before the later catalog/job verifier.
+        # The real canonical journal tables and FK remain valid; this synthetic
+        # row exists only to keep genuinely committed pages in its live WAL.
+        job = 'f' * 64
+        writer.execute('INSERT INTO job VALUES(?,?,?,?,?,?,?,?,?)',
+            (job, workspace, 'bounded-wal-fixture', 'e' * 64, '{}', 1, None, 'pending', None))
+        payload = 'Synthetic checkpoint bytes. ' * 100_000
+        writer.execute('INSERT INTO checkpoint VALUES(?,?,?,?)',
+            (job, 1, payload, sha256(payload.encode('utf-8')).hexdigest()))
+        page_size = writer.execute('PRAGMA page_size').fetchone()[0]
+        page_count = writer.execute('PRAGMA page_count').fetchone()[0]
+        physical = journal.stat().st_size
+        assert page_size * page_count > physical
+        maximum = sidecar_bytes + physical
+        if cap_kind == 'equal-current-maximum':
+            monkeypatch.setattr(sidecars, 'MAX_BYTES', maximum)
+        target = stage / sidecars.DIRECTORY / 'imports.sqlite'
+        actual_connect = sqlite3.connect
+        def connect(path, *args, **options):
+            if str(path) == str(target):
+                pytest.fail('Known over-cap WAL snapshot opened its destination.')
+            return actual_connect(path, *args, **options)
+        with app.read(workspace) as db:
+            registered = {row[0] for row in db.execute('SELECT digest FROM catalog_asset')}
+            monkeypatch.setattr(sidecars.sqlite3, 'connect', connect)
+            with pytest.raises(ValueError, match='resource limit'):
+                sidecars.snapshot(app, stage, registered, db=db, max_bytes=maximum)
+        assert not target.exists()
+        assert sum(path.stat().st_size for path in (stage / sidecars.DIRECTORY).rglob('*')
+                   if path.is_file()) <= maximum
+        assert incoming.read_bytes() == b'Original planned input is unchanged.'
+    finally:
+        writer.close()
+
+
+def test_omitted_sidecar_limit_reads_current_default_and_keeps_legacy_copy_call(
+        library, tmp_path, monkeypatch):
+    app, workspace = library
+    reading(app, workspace)
+    source = app.root / 'reading-state.json'
+    original = source.read_bytes()
+    fitting, too_small = tmp_path / 'current-default', tmp_path / 'lower-current-default'
+    fitting.mkdir()
+    too_small.mkdir()
+    actual = sidecars._copy
+    calls = []
+    def observed(path, target, **options):
+        if Path(path) == source:
+            calls.append(dict(options))
+            assert 'maximum_bytes' not in options
+        return actual(path, target, **options)
+    monkeypatch.setattr(sidecars, '_copy', observed)
+    monkeypatch.setattr(sidecars, 'MAX_BYTES', len(original))
+    with app.read(workspace) as db:
+        result = sidecars.snapshot(app, fitting, set(), db=db, include_pending=False)
+        assert len(calls) == 1
+        assert sum(row['size_bytes'] for row in result['files']) == len(original)
+        assert (fitting / sidecars.DIRECTORY / 'reading-state.json').read_bytes() == original
+        calls.clear()
+        monkeypatch.setattr(sidecars, 'MAX_BYTES', len(original) - 1)
+        with pytest.raises(ValueError, match='resource limit'):
+            sidecars.snapshot(app, too_small, set(), db=db, include_pending=False)
+    assert calls == []
+    assert not (too_small / sidecars.DIRECTORY / 'reading-state.json').exists()
+    assert source.read_bytes() == original

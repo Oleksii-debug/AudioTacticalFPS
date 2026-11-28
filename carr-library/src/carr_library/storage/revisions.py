@@ -477,9 +477,42 @@ class Storage:
             WHERE v.raw_sha256<>p.digest LIMIT 1''').fetchone():
             raise ValueError('page review text digest mismatch')
 
-    def check(self):
-        with self.transaction():
-            self._check()
+    def check(self, *, cancelled=None):
+        if cancelled is None:
+            with self.transaction():
+                self._check()
+            return
+        if not callable(cancelled):
+            raise ValueError('A database validation cancellation callback is required.')
+        stopped = []
+        def checkpoint():
+            if stopped:
+                raise stopped[0]
+            if cancelled():
+                raise InterruptedError('SQLite validation cancelled before publication.')
+        def progress():
+            try:
+                checkpoint()
+            except BaseException as error:
+                # sqlite3 otherwise discards callback exceptions and reports
+                # only "interrupted". Keep this operation's original reason.
+                if not stopped:
+                    stopped.append(error)
+                return 1
+            return 0
+        checkpoint()
+        self.db.set_progress_handler(progress, 10_000)
+        try:
+            try:
+                with self.transaction():
+                    self._check()
+                    checkpoint()
+            except BaseException:
+                if stopped:
+                    raise stopped[0]
+                raise
+        finally:
+            self.db.set_progress_handler(None, 0)
 
     def rebuild(self):
         with self.transaction():
@@ -489,7 +522,7 @@ class Storage:
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
             self._check()
 
-    def backup(self, path):
+    def backup(self, path, *, cancelled=None, maximum_bytes=None):
         """Publish a checked SQLite snapshot without replacing any existing path.
 
         Requires a local filesystem supporting hard links. Interrupted processes
@@ -497,6 +530,15 @@ class Storage:
         The caller must own a stable private parent directory and exclude
         concurrent namespace writers; these checks are not a hostile-directory lock.
         """
+        if cancelled is not None and not callable(cancelled):
+            raise ValueError('A backup cancellation callback is required.')
+        if maximum_bytes is not None and (type(maximum_bytes) is not int
+                or not 0 < maximum_bytes <= 2**63 - 1):
+            raise ValueError('Choose a bounded positive SQLite snapshot allowance.')
+        def check():
+            if cancelled is not None and cancelled():
+                raise InterruptedError('SQLite backup cancelled before publication.')
+        check()
         if self.db.in_transaction:
             raise ValueError('backup forbidden inside publication transaction')
         self._require_pragmas()
@@ -504,20 +546,46 @@ class Storage:
         path = Path(path)
         if os.path.lexists(path) or _sidecars(path):
             raise FileExistsError(path)
+        page_size = None
+        if maximum_bytes is not None:
+            page_size = self.db.execute('PRAGMA page_size').fetchone()[0]
+            page_count = self.db.execute('PRAGMA page_count').fetchone()[0]
+            if page_size * page_count > maximum_bytes:
+                raise ValueError('SQLite snapshot exceeds the selected byte allowance.')
+            check()
         with TemporaryDirectory(prefix='.carr-backup-', dir=path.parent) as work:
             staged = Path(work) / 'snapshot.db'
             dst = sqlite3.connect(staged)
             try:
-                self.db.backup(dst)
+                if cancelled is None and maximum_bytes is None:
+                    self.db.backup(dst)
+                else:
+                    if page_size is None:
+                        page_size = self.db.execute('PRAGMA page_size').fetchone()[0]
+                    def progress(status, remaining, total):
+                        check()
+                        if maximum_bytes is not None and total * page_size > maximum_bytes:
+                            raise ValueError('SQLite snapshot exceeds the selected byte allowance.')
+                    pages = (256 if maximum_bytes is None else
+                             max(1, min(256, maximum_bytes // page_size)))
+                    self.db.backup(dst, pages=pages, progress=progress)
+                    check()
                 # A backup of a WAL source may retain the WAL file format.
                 # Convert only the private snapshot to a standalone database.
                 if dst.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                     raise ValueError('snapshot journal mode is not DELETE')
             finally:
                 dst.close()
+            if maximum_bytes is not None and staged.stat().st_size > maximum_bytes:
+                raise ValueError('SQLite snapshot exceeds the selected byte allowance.')
+            check()
             copy = Storage(staged)
             try:
-                copy.check()
+                if cancelled is None:
+                    copy.check()
+                else:
+                    copy.check(cancelled=cancelled)
+                check()
             finally:
                 copy.close()
             if _sidecars(staged):
@@ -528,6 +596,9 @@ class Storage:
             # Unsupported filesystems fail closed; no overwrite/copy fallback.
             if _sidecars(path):
                 raise FileExistsError(path)
+            if maximum_bytes is not None and staged.stat().st_size > maximum_bytes:
+                raise ValueError('SQLite snapshot exceeds the selected byte allowance.')
+            check()
             os.link(staged, path)
 
 

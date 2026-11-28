@@ -1,0 +1,25 @@
+_ test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation _
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_converter_chorus_retains_0')
+
+    def test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation(tmp_path):
+        from carr_library.audio.effects import Effect as ConverterEffect
+        from carr_library.audio.render import Track as ConverterTrack, convert_audio, mix_tracks
+    
+        frames = RATE // 2
+        values = [0.] * frames
+        values[-100] = .5
+        source = write_wave(tmp_path / 'tail-source.wav', values)
+        original_bytes = source.read_bytes()
+        effect = ConverterEffect('chorus', {'delay_ms': 40, 'depth_ms': 2, 'speed_hz': 1, 'mix': .5})
+        result = convert_audio(source, tmp_path / 'tail.wav', sample_rate=RATE, channels=1,
+                               effects=(effect,))
+        changed, rate = samples(result.path)
+        tail_frames = math.floor((40 + 2) * RATE / 1000)
+        assert len(changed[0]) == frames + tail_frames
+        assert result.frames == frames + tail_frames and rate == RATE
+>       assert any(abs(value) > .01 for value in changed[0][frames:])
+E       assert False
+E        +  where False = any(<generator object test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation.<locals>.<genexpr> at 0x000002AB9BA02500>)
+
+tests\audio\test_dsp.py:451: AssertionError

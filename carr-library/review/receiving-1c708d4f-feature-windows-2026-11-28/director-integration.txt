@@ -1,0 +1,176 @@
+_ test_effect_project_publishes_through_the_existing_primary_source_validator _
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_effect_project_publishes_0')
+
+    def test_effect_project_publishes_through_the_existing_primary_source_validator(tmp_path):
+        from carr_library.studio.publishing_source import DirectorPublicationSource
+        store, project, voices, broker, director = prepared(tmp_path)
+        result = director.render(project.id, tmp_path / 'output')
+        source = DirectorPublicationSource(store.root, project.id)
+        state = source.get(result['job_id'])
+        with source.publication_lock(result['job_id']):
+>           snapshot = source.publication_snapshot(state, AudioBudget(max_output_bytes=64 * 1024**2),
+                                                    lambda: None, lambda value: None)
+
+tests\audio\test_director_effects.py:425: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <carr_library.studio.publishing_source.DirectorPublicationSource object at 0x000002AB9E4DF350>
+state = {'created_at': '2026-11-28T09:23:26.602286+00:00', 'id': 'cb50447085174b8fb9029243c658b958', 'message': 'Audio files c...unneradmin\\AppData\\Local\\Temp\\carr-cue-interchange-nffmqx6t\\pytest\\test_effect_project_publishes_0\\output', ...}
+budget = AudioBudget(timeout=3600, max_output_bytes=67108864, max_log_bytes=2097152, reserve_disk_bytes=33554432, max_inputs=64, threads=2, max_alloc_bytes=268435456, max_staging_files=10000)
+check = <function test_effect_project_publishes_through_the_existing_primary_source_validator.<locals>.<lambda> at 0x000002AB9DC40360>
+progress = <function test_effect_project_publishes_through_the_existing_primary_source_validator.<locals>.<lambda> at 0x000002AB9DC46520>
+
+    def publication_snapshot(self, state, budget, check, progress):
+        from .publishing import _read, _json, _segments, _text, _HASH
+        from ..audio.models import finite
+    
+        restored = state.get('restore_requires_new_output', False)
+        if type(restored) is not bool or restored:
+            raise ValueError('This restored primary Studio job requires a newly approved output before publication.')
+        if state.get('state') != 'complete':
+            raise ValueError('Choose a completed primary Studio job.')
+        project = Project.from_dict(state['project'])
+        destination = local_path(state['output_dir'], exists=True)
+        regular(destination, directory=True)
+        if read_json(destination / '.production-job.json') != {
+                'job_id': state['id'], 'project_fingerprint': project.fingerprint}:
+            raise ValueError('The primary Studio output belongs to another production.')
+        artifacts = state.get('outputs')
+        if not isinstance(artifacts, list) or not 3 <= len(artifacts) <= 100000:
+            raise ValueError('The primary Studio job lacks a bounded output receipt graph.')
+        paths, names, total, metadata = {}, set(), 0, None
+        for index, artifact in enumerate(artifacts, 1):
+            check()
+            if (type(artifact) is not dict or set(artifact) != {'file', 'sha256', 'size_bytes'}
+                    or type(artifact['size_bytes']) is not int or artifact['size_bytes'] < 0
+                    or not isinstance(artifact['sha256'], str) or not _HASH.fullmatch(artifact['sha256'])):
+                raise ValueError('Invalid primary Studio artifact receipt.')
+            name = _leaf(artifact['file'])
+            if name.casefold() in names:
+                raise ValueError('Duplicate primary Studio artifact.')
+            names.add(name.casefold())
+            total += artifact['size_bytes']
+            if total > budget.max_output_bytes:
+                raise ValueError('The complete source artifact graph exceeds the publication byte budget.')
+            path = local_path(destination / name, root=destination, exists=True)
+            receipt = {'path': str(path), 'size': artifact['size_bytes'], 'sha256': artifact['sha256']}
+            paths[name] = (path, receipt)
+            progress(f'Verifying primary Studio source artifact {index}/{len(artifacts)}')
+            raw = _read(path, receipt, check, collect=name == 'production.json')
+            if name == 'production.json':
+                metadata = _json(raw)
+        if not {'master.wav', 'production.json', 'narration.srt'} <= paths.keys():
+            raise ValueError('The completed primary Studio job lacks its master, timeline or narration receipt.')
+        result = state.get('result')
+        if (not isinstance(result, dict) or result.get('state') != 'complete'
+                or result.get('job_id') != state['id'] or result.get('project_id') != project.id
+                or result.get('output_dir') != state['output_dir'] or result.get('outputs') != artifacts):
+            raise ValueError('The primary Studio completion receipt differs from its original job.')
+        expected_header = {'version': 1, 'kind': 'research-audio-production', 'project_id': project.id,
+            'revision': project.revision, 'project_fingerprint': project.fingerprint,
+            'script_sha256': project.script_sha256, 'job_id': state['id'], 'mode': 'LOCAL_ONLY',
+            'sample_rate': project.settings.sample_rate, 'channels': project.settings.channels}
+        if (not isinstance(metadata, dict) or any(metadata.get(k) != v for k, v in expected_header.items())
+                or metadata.get('voices') != [role.to_dict() for role in project.roles]
+                or metadata.get('outputs') != [row for row in artifacts if row['file'] not in ('production.json', 'narration.srt')]):
+>           raise ValueError('Primary Studio timeline does not belong to the original project and completed artifacts.')
+E           ValueError: Primary Studio timeline does not belong to the original project and completed artifacts.
+
+src\carr_library\studio\publishing_source.py:201: ValueError
+
+_ test_typed_effects_survive_real_backup_without_restoring_execution_authority[foreign-flat4] _
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-cue-interchange-nffmqx6t/pytest/test_typed_effects_survive_rea1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002AB9D9EDFD0>
+flat = True
+
+    @pytest.mark.parametrize('flat', [False, True], ids=['native5', 'foreign-flat4'])
+    def test_typed_effects_survive_real_backup_without_restoring_execution_authority(tmp_path, monkeypatch, flat):
+        app, workspace, store, project, job_id, original = prepared(tmp_path)
+        project_path = store.path(project.id) / 'project.json'
+        before = project_path.read_bytes()
+        monkeypatch.setattr(subprocess, 'Popen',
+                            lambda *a, **k: pytest.fail('Passive effect backup or recovery launched a process.'))
+        monkeypatch.setattr(VoiceRegistry, 'for_library',
+                            classmethod(lambda *a, **k: pytest.fail('Passive recovery discovered a voice.')))
+        folder = tmp_path / 'backup'
+        manifest, checksum = snapshot(app, folder, flat)
+        assert manifest['version'] == (4 if flat else 5) and manifest['schema_version'] == 6
+>       recovered_root = restore_backup(folder, tmp_path / 'recovered', checksum)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\storage\test_director_effects_backup.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\carr_library\library_backup.py:444: in restore_backup
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\library_backup.py:216: in _read_manifest
+    inventory = backup_compat.normalize_manifest(manifest)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\carr_library\backup_compat.py:468: in normalize_manifest
+    maximum = sidecar_limit(entry['filename'])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'studio/projects/57f681a03e9f4e3a9e36e21395d2bce6/jobs/c1e204cb02424d5d9e2a850f8b90ffe7.json'
+
+    def sidecar_limit(name):
+        """Resolve only explicit formats; also fail early if a producer is absent."""
+        portable_name(name)
+        if name == 'portable-sync-state.json':
+            return _model('sync.state').MAX_BYTES
+        if name == 'desktop-preferences.json':
+            return _model('desktop_preferences').MAX_BYTES
+        if name == 'reading-state.json':
+            return READING_BYTES
+        if name == 'keybindings.json':
+            return _model('keybindings').MAX_BYTES
+        if name == 'keyboard-shortcuts.json':
+            return _model('keyboard_preferences').MAX_BYTES
+        if name == 'evidence-drafts.json':
+            return _model('evidence_drafts').MAX_BYTES
+        if name == 'ocr-language-presets.json':
+            return _model('extract.ocr_languages').MAX_PRESET_BYTES
+        if name == 'progress-preferences.json':
+            return _model('progress_preferences').MAX_BYTES
+        if name.casefold() == 'state/audio-metadata/choices.json':
+            return _model('audio.metadata_review').MAX_BYTES
+        if name.casefold() == 'state/speech/playback-queue.json':
+            return _model('speech.playlist').MAX_STATE_BYTES
+        if name.casefold() == 'state/speech/reading-tabs.json':
+            return _model('speech.tabs').MAX_BYTES
+        if name == 'state/audio/engines.json':
+            return ENGINE_SETTINGS_BYTES
+        if name == 'state/operations/resources.json':
+            return 32768
+        if book_backup.namespace(name):
+            maximum = book_backup.limit(name)
+            if maximum is None:
+                raise RestoreError('Unsupported Book recovery path.')
+            return maximum
+        if backup_inputs.namespace(name):
+            return backup_inputs.limit(name)
+        if backup_transcription.namespace(name):
+            maximum = backup_transcription.limit(name)
+            if name != name.casefold() or maximum is None:
+                raise RestoreError('Unsupported local-file transcription sidecar path.')
+            return maximum
+        if recording_backup.state_path(name):
+            return recording_backup.state_limit(name)
+        if maximum := backup_generated.limit(name):
+            return maximum
+        if maximum := backup_producers.limit(name):
+            return maximum
+        if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
+            return _model('reader.narration').MAX_PROJECT_BYTES
+        if re.fullmatch(r'reading-copies/[0-9a-f]{32}\.json', name):
+            return _model('reader.reading_copy').MAX_PROJECT_BYTES
+        if _STUDIO.fullmatch(name):
+            _model('studio.project')
+            return 32 * 1024 * 1024
+>       raise RestoreError('No validated backup adapter is installed for ' + name +
+                           '. Save and pause its producer; this backup was not completed.')
+E       carr_library.ingest.restore.RestoreError: No validated backup adapter is installed for studio/projects/57f681a03e9f4e3a9e36e21395d2bce6/jobs/c1e204cb02424d5d9e2a850f8b90ffe7.json. Save and pause its producer; this backup was not completed.
+
+src\carr_library\backup_compat.py:128: RestoreError

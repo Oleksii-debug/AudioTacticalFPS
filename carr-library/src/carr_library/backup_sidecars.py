@@ -131,11 +131,16 @@ def _write_json(path, value):
         os.fsync(stream.fileno())
 
 
-def _copy(source, target, *, expected=None, cancelled=lambda: False):
+def _copy(source, target, *, expected=None, cancelled=lambda: False, maximum_bytes=None):
+    if maximum_bytes is not None and (type(maximum_bytes) is not int
+            or not 0 <= maximum_bytes <= MAX_BYTES):
+        raise RestoreError('sidecar snapshot resource limit')
     _check(cancelled)
     before = _plain(source)
     if not 0 < before.st_size <= MAX_FILE_BYTES:
         raise RestoreError('sidecar file size limit')
+    if maximum_bytes is not None and before.st_size > maximum_bytes:
+        raise RestoreError('sidecar snapshot resource limit')
     if expected is not None and before.st_size != expected['size_bytes']:
         raise RestoreError('sidecar size mismatch')
     target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -459,10 +464,15 @@ def _verify_tree(stage, manifest, *, db, cancelled=lambda: False):
 
 
 def snapshot(app, stage, registered_assets, *, db, include_pending=True,
-             include_generated=True, cancelled=lambda: False):
+             include_generated=True, cancelled=lambda: False, max_bytes=None):
     """Return None for a legacy-shaped library; otherwise seal all accepted state."""
     if type(include_pending) is not bool or type(include_generated) is not bool or not callable(cancelled):
         raise ValueError('Invalid application sidecar snapshot options.')
+    selected_limit = max_bytes is not None
+    if max_bytes is None:
+        max_bytes = MAX_BYTES
+    if type(max_bytes) is not int or not 0 <= max_bytes <= MAX_BYTES:
+        raise RestoreError('sidecar snapshot resource limit must only lower the existing byte cap')
     _check(cancelled)
     root, target = app.root, stage / DIRECTORY
     selected = []
@@ -500,9 +510,10 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
         if not 0 < size <= _TYPED_ROOT_LIMITS.get(relative, MAX_FILE_BYTES):
             raise RestoreError('sidecar exceeds its data-format size limit')
         total += size
-        if total > MAX_BYTES or len(records) >= MAX_FILES:
+        if total > max_bytes or len(records) >= MAX_FILES:
             raise RestoreError('sidecar snapshot resource limit')
-        size, checksum = _copy(source, target / relative, cancelled=cancelled)
+        size, checksum = _copy(source, target / relative, cancelled=cancelled,
+            **({'maximum_bytes': size} if selected_limit else {}))
         records.append(dict(path=relative, size_bytes=size, sha256=checksum))
         if relative.startswith('import-requests/') and '/reviews/' not in relative:
             value = _read_json(target / relative)
@@ -511,24 +522,47 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
                 pending.add(value['asset_sha256'])
     journal = root / 'imports.sqlite'
     if meaningful_imports and os.path.lexists(journal):
-        total += _plain(journal).st_size
-        if total > MAX_BYTES or len(records) >= MAX_FILES:
+        journal_size = _plain(journal).st_size
+        total += journal_size
+        if total > max_bytes or len(records) >= MAX_FILES:
             raise RestoreError('sidecar snapshot resource limit')
         _journal(journal)
         journal_copy = target / 'imports.sqlite'
         with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as incoming:
+            remaining_bytes = max_bytes - (total - journal_size)
+            if selected_limit:
+                page_size = incoming.execute('PRAGMA page_size').fetchone()[0]
+                page_count = incoming.execute('PRAGMA page_count').fetchone()[0]
+                if page_size * page_count > remaining_bytes:
+                    raise RestoreError('sidecar snapshot resource limit')
+                _check(cancelled)
             with closing(sqlite3.connect(journal_copy)) as outgoing:
-                incoming.backup(outgoing)
+                if not selected_limit:
+                    incoming.backup(outgoing)
+                else:
+                    def progress(status, remaining, total_pages):
+                        _check(cancelled)
+                        if total_pages * page_size > remaining_bytes:
+                            raise RestoreError('sidecar snapshot resource limit')
+                    pages = max(1, min(256, remaining_bytes // page_size))
+                    incoming.backup(outgoing, pages=pages, progress=progress)
         pending.update(_journal(journal_copy))
-        records.append(_file_record(journal_copy, 'imports.sqlite', cancelled=cancelled))
+        record = _file_record(journal_copy, 'imports.sqlite', cancelled=cancelled)
+        if selected_limit:
+            total += record['size_bytes'] - journal_size
+            if total > max_bytes:
+                raise RestoreError('sidecar snapshot resource limit')
+        records.append(record)
     for digest in sorted(pending - set(registered_assets)):
         _check(cancelled)
         source = app.assets.resolve(digest)
-        total += _plain(source).st_size
-        if total > MAX_BYTES or len(records) >= MAX_FILES:
+        size = _plain(source).st_size
+        total += size
+        if total > max_bytes or len(records) >= MAX_FILES:
             raise RestoreError('sidecar snapshot resource limit')
         relative = 'pending-originals/' + source.name
-        size, checksum = _copy(source, target / relative, cancelled=cancelled)
+        size, checksum = _copy(source, target / relative, cancelled=cancelled,
+            **({'maximum_bytes': size} if selected_limit else {}))
         records.append(dict(path=relative, size_bytes=size, sha256=checksum))
     manifest = dict(version=1, source_root=str(root), files=sorted(records, key=lambda row: row['path']))
     _verify_tree(target, manifest, db=db, cancelled=cancelled)

@@ -1,0 +1,46 @@
+SOURCE
+============================ slowest 20 durations =============================
+13.98s call     tests/audio/test_director_effects.py::test_actual_role_scene_master_edits_reuse_only_unaffected_cached_nodes
+13.43s setup    tests/audio/test_director.py::test_actual_three_voice_music_production_preserves_text_stereo_chapters_and_outputs
+13.30s call     tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions
+9.78s call     tests/studio/test_project_effects.py::test_actual_clip_scene_master_processing_preview_and_backup_restore
+9.47s call     tests/studio/test_project_effects.py::test_actual_speech_cache_survives_role_and_master_effect_edits
+8.47s call     tests/audio/test_director_effects.py::test_actual_dynamics_order_changes_pcm_without_changing_time_or_synthesizing_again
+8.06s call     tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job
+7.70s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[masked-pending]
+7.65s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[direct-pending]
+7.43s call     tests/audio/test_director_effects.py::test_processed_cache_tamper_regenerates_that_node_without_new_synthesis
+7.10s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[role]
+6.90s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[scene]
+6.87s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[master]
+6.65s call     tests/audio/test_director_effects.py::test_pause_reopen_and_resume_keeps_accepted_effect_nodes_and_raw_speech
+5.97s call     tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator
+5.90s call     tests/audio/test_director_effects.py::test_master_reverb_is_processed_once_and_chapters_copy_exact_master_frames
+5.11s call     tests/audio/test_director_effects.py::test_changed_accepted_input_cannot_publish_an_effect_cache_receipt[master-chapter-input]
+3.70s call     tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-native5]
+3.69s call     tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-flat4]
+3.68s call     tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-native5]
+=========================== 
+INSTALLED
+============================ slowest 20 durations =============================
+14.35s call     tests/audio/test_director_effects.py::test_actual_role_scene_master_edits_reuse_only_unaffected_cached_nodes
+12.78s call     tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions
+9.67s call     tests/studio/test_project_effects.py::test_actual_clip_scene_master_processing_preview_and_backup_restore
+8.42s call     tests/audio/test_director_effects.py::test_actual_dynamics_order_changes_pcm_without_changing_time_or_synthesizing_again
+8.22s call     tests/studio/test_project_effects.py::test_actual_speech_cache_survives_role_and_master_effect_edits
+7.50s call     tests/audio/test_director_effects.py::test_processed_cache_tamper_regenerates_that_node_without_new_synthesis
+7.32s call     tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job
+7.24s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[masked-pending]
+7.22s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[scene]
+7.20s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[role]
+7.16s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[direct-pending]
+7.11s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[master]
+6.71s call     tests/audio/test_director_effects.py::test_pause_reopen_and_resume_keeps_accepted_effect_nodes_and_raw_speech
+6.16s call     tests/audio/test_director_effects.py::test_master_reverb_is_processed_once_and_chapters_copy_exact_master_frames
+5.44s call     tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator
+5.17s call     tests/audio/test_director_effects.py::test_changed_accepted_input_cannot_publish_an_effect_cache_receipt[master-chapter-input]
+3.39s call     tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-flat4]
+3.36s call     tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-native5]
+3.34s call     tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-flat4]
+3.32s call     tests/audio/test_director_resources.py::test_actual_music_stage_and_primary_lease_survive_uncertain_native_exit[direct-music-pending]
+=========================== 

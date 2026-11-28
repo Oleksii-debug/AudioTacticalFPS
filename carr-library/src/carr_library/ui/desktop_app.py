@@ -1400,53 +1400,12 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete library and recoverable-jobs backup')
-        try:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            parent = Path(dialog.GetPath())
-        finally:
-            dialog.Destroy()
-        from datetime import datetime
-        destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
-        def done(checksum):
-            show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'Libraries, retained originals, saved evidence, notes, settings, reading state and recoverable pending jobs are included. '
-                'The manifest lists included inputs and excluded or separately installed assets. '
-                'Credentials and external model packs need their own recovery; generated audio is optional.\n\n'
-                f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
+        from .backup_actions import backup
+        return backup(self)
 
     def restore_backup(self, event):
-        dialog = wx.DirDialog(self, 'Select the backup folder')
-        try:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            source = Path(dialog.GetPath())
-        finally:
-            dialog.Destroy()
-        checksum = text_dialog(self, 'Verify backup', 'Paste the manifest checksum saved when this backup was created.')
-        if checksum is None:
-            return
-        dialog = wx.DirDialog(self, 'Choose a parent folder for the restored libraries')
-        try:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            parent = Path(dialog.GetPath())
-        finally:
-            dialog.Destroy()
-        from datetime import datetime
-        from ..library_backup import restore_backup
-        destination = parent / ('ResearchLibrary-restored-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
-        def done(path):
-            if wx.MessageBox('Backup restored successfully. Open the restored libraries now?',
-                'Restore complete',wx.YES_NO | wx.ICON_QUESTION,self) == wx.YES:
-                self._open_data_root(path)
-            else:
-                show_text(self,'Restore complete',f'Restored library folder: {path}\n\n'
-                    'You can open it later through Library, Open existing library folder.')
-        self.run_job('Restoring backup', lambda: restore_backup(source, destination, expected_manifest_sha256=checksum.strip()),
-            done)
+        from .backup_actions import restore_backup
+        return restore_backup(self)
 
     def check_installation(self, event):
         from ..__main__ import self_test

@@ -211,7 +211,8 @@ def completed_cue(tmp_path):
     complete = service.run(identity)
     assert complete['status'] == 'complete'
     yield service, identity, complete
-    assert service.close()
+    assert service.close() is None
+    assert service._closed and service._voices is None
 
 
 @pytest.mark.parametrize('damage', ['missing-receipt', 'rehashed-bytes', 'false-index', 'false-qualification'])

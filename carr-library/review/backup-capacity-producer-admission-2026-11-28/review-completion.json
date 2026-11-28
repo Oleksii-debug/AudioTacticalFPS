@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "reviewed_tree": "fe68634b2917534ba4ba1cdc0452ac49020edca4",
+  "original_review_blob": "0ea86230e3257b685f0b7861f85b20841e480393",
+  "update": "Append-only completion of the root sidecar review; no source/test bytes changed.",
+  "reviews": {
+    "root_sidecar_final_readback": "CLEAR on ed811fea47c7defa842703ef063ffc84a06b4c9b",
+    "root_storage_and_studio": "CLEAR",
+    "voice_three_test_modules": "CLEAR",
+    "voice_default_equal_limit_successor": "CLEAR"
+  },
+  "unchanged": {
+    "source_tree": "f14e3d98d24a9df7b82ffa99ec28b3ff35e7f93c",
+    "new_planned_cases": 40,
+    "sidecar_cases": 13,
+    "sqlite_cases": 18,
+    "studio_input_cases": 9
+  },
+  "parent_integration_review": {
+    "tree": "6c8ca9b8e7d5801dfa7fc9203e91bcff02be252d",
+    "verdict": "CLEAR",
+    "scope": "Distinct full/incremental backup pre-copy allowance, selected hash/check cancellation, retained-copy/deadline accounting; source-only.",
+    "source_blobs": {
+      "library_backup": "24b48d439cbad63367856695ae429ab9809681d8",
+      "backup_incremental": "01233c735ce0cc3686f9970b0ae89c8351afc9b9",
+      "backup_budget": "37997d492d6c2319d76c409d3c458a86700acdf8"
+    }
+  },
+  "limitations": [
+    "No source or test execution was performed for these review verdicts.",
+    "The parent-owned full/incremental integration remains subject to its receiving gates."
+  ]
+}
