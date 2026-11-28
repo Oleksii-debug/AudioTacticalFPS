@@ -1,0 +1,149 @@
+{
+  "schema": "carr-final-legacy-windows/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "run_id": 46136582933,
+  "attempt": 1,
+  "job_id": 140953133725,
+  "status": "SUCCESS",
+  "workflow": {
+    "path": ".github/workflows/carr-legacy-reading-review.yml",
+    "blob": "13168b80c241db1f8b59f2c90b7319b002daec08"
+  },
+  "raw_log_blob": "691d835a1916ac7177765536a4d039d238206534",
+  "source_head_lines": [
+    "2026-11-28T10:46:50.7056511Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588\r",
+    "2026-11-28T10:46:51.2118094Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588\r"
+  ],
+  "boundaries": {
+    "suite_count": 8,
+    "cases_passed": 401,
+    "suites": [
+      {
+        "name": "tests/conversion/test_office_selection.py",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/conversion/test_office_workspace.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/conversion/test_conversion_publication.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/extract/test_document_formats_xml.py",
+        "passed": 234,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/conversion/test_conversion.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/audio/test_process_scratch.py",
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/conversion/test_archive_reading.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "name": "tests/ui/test_audio_conversion_controls.py",
+        "passed": 48,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "actual_legacy_source": {
+    "suite": {
+      "name": "tests/conversion/office_native_acceptance.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    "elapsed_seconds": 34.92
+  },
+  "installed": {
+    "expected_failures": false,
+    "failed": 0,
+    "installed_source_identity": {
+      "carr_library.audio.process": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+        "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+      },
+      "carr_library.conversion.office": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\office.py",
+        "sha256": "8e03f8dc6dea46752b590b254eb0abf262b496d5d9070ddc746ffab900257988"
+      },
+      "carr_library.conversion.service": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py",
+        "sha256": "9bcfe75eab79b14196ce356b0dd52750d8f7ca25426d6ee0b3709422ed8e7a04"
+      },
+      "carr_library.conversion.worker": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\worker.py",
+        "sha256": "297392959e4cd9c72b36f28493e7d48677a5474e7408e5bfa21629e62093c50b"
+      },
+      "carr_library.extract.document_formats": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats.py",
+        "sha256": "560563bc55cce8f989c4b77591b3b8506a8e4256c4ebcc5f4c47a8c6f3b2ab01"
+      },
+      "carr_library.extract.document_formats_xml": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats_xml.py",
+        "sha256": "edac0874c28a22d1ea20e3d45c35a7c825a444a2e6dcbbee356c80fbbe4891d3"
+      }
+    },
+    "passed": 33,
+    "skipped": 0,
+    "source_unchanged": true,
+    "status": "PASS",
+    "elapsed_seconds": 32.62
+  },
+  "office": {
+    "package": "libreoffice-fresh",
+    "requested_version": "26.8.3",
+    "installation_logged_success": true,
+    "selected_executable": "C:\\Program Files\\LibreOffice\\program\\soffice.com",
+    "version_and_launcher_hash_saved_to_artifact": true,
+    "version_file_not_decoded": true
+  },
+  "firewall": {
+    "selected_runtime_ActiveStore_assertions_executed": true,
+    "step_conclusion": "success",
+    "owned_rule_removal_and_profile_restore_in_finally_succeeded": true,
+    "coverage": "Selected Python/base/PowerShell and enumerated Office executables; no broader machine-wide or physical qualification."
+  },
+  "artifact": {
+    "id": 15260396408,
+    "size_bytes": 16492
+  },
+  "limitations": [
+    "Windows first-attempt outcome only; Linux first attempt failed runtime acquisition and its sole unchanged retry is pending.",
+    "Six installed named source origins were compared before and after; do not infer an entire-package equality proof from this workflow.",
+    "No proprietary WordPerfect/Palm/Microsoft Office GUI, physical output or NVDA qualification is inferred."
+  ]
+}

@@ -1,0 +1,280 @@
+{
+  "schema": "carr-final-calibre-acceptance/2",
+  "status": "PASS",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "run": {
+    "id": 46136582936,
+    "event": "push",
+    "attempt": 1,
+    "conclusion": "success",
+    "created_at": "2026-11-28T10:44:22Z",
+    "updated_at": "2026-11-28T10:55:24Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582936"
+  },
+  "job": 140953133813,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582936/job/140953133813",
+  "raw_log_blob": "c8497e4ddc25090d2f48f26a5c6a0d95d31360da",
+  "raw_log_characters": 141013,
+  "raw_readback": true,
+  "actual_checkout_lines": [
+    "2026-11-28T10:53:25.3482212Z [command]\"C:\\Program Files\\Git\\bin\\git.exe\" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +57bd81ebabc0df2ffc4106c44b94805ee2da7588:refs/remotes/origin/carr/canonical-integrity-finish-20261127",
+    "2026-11-28T10:53:27.2320431Z  * [new ref]         57bd81ebabc0df2ffc4106c44b94805ee2da7588 -> origin/carr/canonical-integrity-finish-20261127",
+    "2026-11-28T10:53:27.3009455Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "2026-11-28T10:53:27.7278526Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "2026-11-28T10:55:18.4701727Z   name: calibre-reading-Windows-57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "2026-11-28T10:55:18.8938293Z Uploading artifact: calibre-reading-Windows-57bd81ebabc0df2ffc4106c44b94805ee2da7588.zip",
+    "2026-11-28T10:55:19.7729861Z Artifact calibre-reading-Windows-57bd81ebabc0df2ffc4106c44b94805ee2da7588 successfully finalized. Artifact ID 15260147717",
+    "2026-11-28T10:55:19.7730742Z Artifact calibre-reading-Windows-57bd81ebabc0df2ffc4106c44b94805ee2da7588 has been successfully uploaded! Final size is 201127 bytes. Artifact ID is 15260147717"
+  ],
+  "source_blobs": {
+    ".github/workflows/carr-calibre-reading-review.yml": "2de8f8fdcb91ef8ad42109cd71e8a76cdfe6c2b3",
+    "carr-library/scripts/create_calibre_fixtures.py": "d5a098ccd00ab1cfb9d45d8f0408c95d57716deb",
+    "carr-library/scripts/calibre_conversion_acceptance.py": "20bfd008480832b296b9d68c3ac97822575fb020"
+  },
+  "selected_boundary_suites": {
+    "suites": [
+      {
+        "path": "tests/conversion/test_calibre_acceptance.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/conversion/test_calibre_process_ownership.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/conversion/test_calibre_selection.py",
+        "passed": 71,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/conversion/test_conversion_publication.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/conversion/test_conversion.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/conversion/test_office_selection.py",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/conversion/test_archive_reading.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "path": "tests/ui/test_audio_conversion_controls.py",
+        "passed": 48,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "passed": 235,
+    "failed": 0,
+    "skipped": 0,
+    "suites_passed": 8
+  },
+  "installed_native_acceptance": {
+    "arbitrary_document_fidelity": "NOT_QUALIFIED",
+    "decryption_or_drm_removal": "NOT_SUPPORTED",
+    "distributed_runtime": false,
+    "fixture_inventory_sha256": "dccead4acded513243867962118ca1a4f988eb6f98ce40c13c49563165876ce1",
+    "fixture_scope": "source-authored books; uncompressed CHM; DjVu embedded text with JPEG page",
+    "fixtures": [
+      {
+        "format": ".azw",
+        "source_sha256": "634bd9300c286aa9a47980a0db1589bb52164969249b66346fa26340518958e2",
+        "status": "PASS",
+        "text_sha256": "3b613492f34d5d5386e1b9d7c53bb41d6d5df8b48151b6cd78bf7f34904a0436"
+      },
+      {
+        "format": ".azw3",
+        "source_sha256": "8aa9f7603d851ffe2e44d42f54025ea9c8c6d23a3d90d8f8431259d50fb7df3d",
+        "status": "PASS",
+        "text_sha256": "85dc2d185bec78d9902fa61451cbb2acf767799c2185ce5cc4e149e67ff4e6c8"
+      },
+      {
+        "format": ".chm",
+        "source_sha256": "29e3596465df5603e463b1499f62c04d3aa9fd569f557df60d2a62dd0b66d121",
+        "status": "PASS",
+        "text_sha256": "de1f9d08c873c56862a01277ff53be17354096ed85ae35c912c7ffb3ae26532e"
+      },
+      {
+        "format": ".djvu",
+        "source_sha256": "1ee1d03f811da2b485899fb28b798bc50fb5feb7b8f4864e7da231c8959f5d8d",
+        "status": "PASS",
+        "text_sha256": "7740fdd0c4fd4471bf0f3d3485c1a8432b2e715efa2b88475f22b8b9dee3badf"
+      },
+      {
+        "format": ".lit",
+        "source_sha256": "c8f8f1c70e0833a7c41664be670458c73442b3d8b7b79cb3a1700c61f3584106",
+        "status": "PASS",
+        "text_sha256": "430f27bc163e2234a2f43d2b0ac14602cb22ca853ead981dbf1a3d330d58fa78"
+      },
+      {
+        "format": ".mobi",
+        "source_sha256": "634bd9300c286aa9a47980a0db1589bb52164969249b66346fa26340518958e2",
+        "status": "PASS",
+        "text_sha256": "3b613492f34d5d5386e1b9d7c53bb41d6d5df8b48151b6cd78bf7f34904a0436"
+      },
+      {
+        "format": ".prc",
+        "source_sha256": "57aba3f232748d3088ac6440ea99e858b0753c76815348feb62d046612ae7a9c",
+        "status": "PASS",
+        "text_sha256": "e845f34fbfa06b3eeeb02f412f03d34ac667a9528882bdac7bfea8885eb40ccd"
+      },
+      {
+        "format": ".tcr",
+        "source_sha256": "fe2f4eb69f6e8c1f456e3e2126d471036d0c96a229ad1b8874ef718e5cf56aee",
+        "status": "PASS",
+        "text_sha256": "50e8e6bbaf812ea5fd67423d3be30f98ea62ea28a3b0babf33a8d0b3783aae27"
+      }
+    ],
+    "generation_evidence_sha256": "b997c7ef05a1da99548ab3f3ffdcdd880428233e11697734d90764091a841316",
+    "installed_package": true,
+    "installed_sources_after": {
+      "carr_library": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__init__.py",
+        "sha256": "cbf48cd0f9668eece48ee14713f173a03a0bc862946a2f18e5290e60b14b99f2"
+      },
+      "carr_library.audio.cleanup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+        "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+      },
+      "carr_library.audio.process": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+        "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+      },
+      "carr_library.conversion.calibre": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\calibre.py",
+        "sha256": "65cf94f4866efa65f8a10f45758abd2e5a11c952ca63be36412092ab71bdd18b"
+      },
+      "carr_library.conversion.formats": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\formats.py",
+        "sha256": "5a71d0e0d9dcb3f80f37963dfbaade393dc69bfae8b5bf50e5321e46b03950e6"
+      },
+      "carr_library.conversion.models": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\models.py",
+        "sha256": "f7d12c1521561314c5ee4324425fd92bc730cbfee38676293e9c933b056d7038"
+      },
+      "carr_library.conversion.office": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\office.py",
+        "sha256": "8e03f8dc6dea46752b590b254eb0abf262b496d5d9070ddc746ffab900257988"
+      },
+      "carr_library.conversion.service": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py",
+        "sha256": "9bcfe75eab79b14196ce356b0dd52750d8f7ca25426d6ee0b3709422ed8e7a04"
+      },
+      "carr_library.conversion.worker": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\worker.py",
+        "sha256": "297392959e4cd9c72b36f28493e7d48677a5474e7408e5bfa21629e62093c50b"
+      },
+      "carr_library.durable_state": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+        "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+      }
+    },
+    "installed_sources_before": {
+      "carr_library": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__init__.py",
+        "sha256": "cbf48cd0f9668eece48ee14713f173a03a0bc862946a2f18e5290e60b14b99f2"
+      },
+      "carr_library.audio.cleanup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+        "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+      },
+      "carr_library.audio.process": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+        "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+      },
+      "carr_library.conversion.calibre": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\calibre.py",
+        "sha256": "65cf94f4866efa65f8a10f45758abd2e5a11c952ca63be36412092ab71bdd18b"
+      },
+      "carr_library.conversion.formats": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\formats.py",
+        "sha256": "5a71d0e0d9dcb3f80f37963dfbaade393dc69bfae8b5bf50e5321e46b03950e6"
+      },
+      "carr_library.conversion.models": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\models.py",
+        "sha256": "f7d12c1521561314c5ee4324425fd92bc730cbfee38676293e9c933b056d7038"
+      },
+      "carr_library.conversion.office": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\office.py",
+        "sha256": "8e03f8dc6dea46752b590b254eb0abf262b496d5d9070ddc746ffab900257988"
+      },
+      "carr_library.conversion.service": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py",
+        "sha256": "9bcfe75eab79b14196ce356b0dd52750d8f7ca25426d6ee0b3709422ed8e7a04"
+      },
+      "carr_library.conversion.worker": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\worker.py",
+        "sha256": "297392959e4cd9c72b36f28493e7d48677a5474e7408e5bfa21629e62093c50b"
+      },
+      "carr_library.durable_state": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+        "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+      }
+    },
+    "native_conversions": 8,
+    "negative_controls": {
+      "image_only_djvu_refused": "PASS",
+      "no_clobber": "PASS",
+      "no_implicit_selection": "PASS",
+      "private_configuration": "PASS"
+    },
+    "scanned_djvu_ocr": "NOT_RUN",
+    "selected_core_sha256": "b2d3e1928447d4120e2c2bf4b221664b88544bab7d5f070d3dd83edc1e5848f2",
+    "status": "PASS",
+    "versions": [
+      "ebook-convert.exe (calibre 9.19.0)"
+    ]
+  },
+  "installed_binding_scope": {
+    "selected_module_files": 10,
+    "before_after_exact": true,
+    "full_package_inventory": "NOT_EMITTED_BY_THIS_GATE"
+  },
+  "artifacts": [
+    {
+      "id": 15260147717,
+      "name": "calibre-reading-Windows-57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+      "size_in_bytes": 201127,
+      "digest": "sha256:b9592f54f413b9fc922acc3e4fa00ff375c6f1816b999a8afa9d75f3f1999261",
+      "expired": false
+    }
+  ],
+  "runtime_policy": "Actual pinned Calibre MSI verified/admin-extracted; selected Python and runtime executable ActiveStore egress rules were required, then this run's rules/profile changes restored.",
+  "limits": {
+    "fixture_scope": "source-authored books; uncompressed CHM; DjVu embedded text with JPEG page",
+    "arbitrary_document_fidelity": "NOT_QUALIFIED",
+    "scanned_djvu_ocr": "NOT_RUN",
+    "decryption_or_drm_removal": "NOT_SUPPORTED",
+    "distributed_runtime": false,
+    "other_final_gates": "SEPARATE"
+  },
+  "qualification": "Actual exact57bd run; no prior-head PASS transfer. Main/V3/capacity and other gates remain separately required."
+}

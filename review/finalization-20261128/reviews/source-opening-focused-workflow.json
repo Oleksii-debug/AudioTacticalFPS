@@ -1,0 +1,91 @@
+{
+  "schema": "carr-focused-source-open-workflow-review/1",
+  "source_candidate": {
+    "head": "3993ddfa1d48352d86c304e427f0ae781b41ddbf",
+    "tree": "3c75f60a88410f4274aa24221d8465ab165a5114",
+    "parent": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "files": 1567,
+    "delta": [
+      {
+        "path": "carr-library/tests/ui/probe_source_open_native.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "897d495570aed708c41b54d40a835b4e4410f993"
+      }
+    ],
+    "source_review": "b872887dedc1a3f05c0426704535b0971260fa80",
+    "verified": true,
+    "status": "PREPARED_NOT_PUBLISHED; FOCUSED_RUNTIME_AND_MAIN_FAILURE_LOG_PENDING"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-source-open-native-review.yml",
+    "sha": "88d0cb03314fd8bccaac9c73c75c6349abadc3d3",
+    "base": "9512dd57563a3fe28b65ebee8214b1ebe97d1d4b",
+    "headers": [
+      [
+        "name: Final coherent source and native preflight",
+        "name: Exact installed source-opening native review"
+      ],
+      [
+        "branches: [carr/final-scope-preflight-20261128]",
+        "branches: [carr/source-open-native-review-20261128]"
+      ],
+      [
+        "group: carr-final-scope-preflight-${{ github.ref_name }}",
+        "group: carr-source-open-native-review-${{ github.ref_name }}"
+      ],
+      [
+        "name: All eight final installed native scope contracts",
+        "name: Actual source opening and Research Search Center"
+      ],
+      [
+        "timeout-minutes: 110",
+        "timeout-minutes: 20"
+      ],
+      [
+        "name: final-composition-syntax-${{ github.sha }}",
+        "name: source-open-syntax-${{ github.sha }}"
+      ],
+      [
+        "name: final-scope-native-${{ github.sha }}",
+        "name: source-open-native-${{ github.sha }}"
+      ]
+    ]
+  },
+  "verdict": "SOURCE_APPROVED",
+  "peer": "reader_review",
+  "source_repair_review": "b872887dedc1a3f05c0426704535b0971260fa80",
+  "preserved": [
+    "Exact unchanged syntax body",
+    "Pinned installed standard dependency profile",
+    "Actual installed notice and pinned external audio preparation",
+    "Whole committed source byte proof",
+    "Complete installed/source Python and22 selected assets before and finally",
+    "Actual corrected source-open probe and adjacent Research Search Center helper",
+    "Existing45-second internal timer, 120-second parent,3-minute step",
+    "Full stdout/stderr and bounded failure tails"
+  ],
+  "not_claimed": [
+    "Actual focused execution before run completes",
+    "Full eight-scope native repeat",
+    "Main installed full-bundle acceptance",
+    "Firewall or actual external viewer/NVDA qualification"
+  ],
+  "syntax_scope_note": "The reused syntax harness statically compiles main/V3 embedded Python; the newly introduced focused inline block is additionally validated by actual Windows execution.",
+  "published": {
+    "head": "90f1d8f8a61c1e97e69e0fa1d4ba58de228dd5a5",
+    "tree": "85e92161a3dfd73806c83a5796d028fc6dd1e6bb",
+    "parent": "3993ddfa1d48352d86c304e427f0ae781b41ddbf",
+    "source_parent": "3993ddfa1d48352d86c304e427f0ae781b41ddbf",
+    "source_tree": "3c75f60a88410f4274aa24221d8465ab165a5114",
+    "files": 1568,
+    "workflow": "88d0cb03314fd8bccaac9c73c75c6349abadc3d3",
+    "branch": "carr/source-open-native-review-20261128",
+    "ref_readback": true,
+    "source_review": "b872887dedc1a3f05c0426704535b0971260fa80",
+    "workflow_peer_review": "reader_review SOURCE_APPROVE",
+    "status": "PUBLISHED_FOCUSED_RUNTIME_PENDING",
+    "published_utc": "2026-11-28 11:11:58 UTC"
+  },
+  "run": 46138741201
+}

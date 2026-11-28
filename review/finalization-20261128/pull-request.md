@@ -26,17 +26,19 @@ The complete preflight of these exact source bytes succeeded at `6c7e02188dc0c48
 
 **Final acceptance is still pending.** The following maintained workflows are admitted on exact **57bd** and must complete before merge. The preflight and prior-head results do not transfer runtime acceptance.
 
-| Required maintained workflow | Exact 57bd run | Status at admission |
+| Required maintained workflow | Exact 57bd run | Latest actual status |
 | --- | --- | --- |
-| CARR Windows integrated desktop | [46136589121](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589121) | Queued; standard/full installation, native/offline and source/installed gates required |
-| CARR V3 local studio and assistant | [46136589112](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589112) | Admitted; both portable and Windows jobs required |
+| CARR Windows integrated desktop | [46136589121](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589121) | **Two required steps failed:** native source-opening step 17 and full-bundle step 32. Independent source step 34 continues. Completed log required before assigning the full-bundle cause. |
+| CARR V3 local studio and assistant | [46136589112](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589112) | Portable and Windows source/installed stages running; subsequent native/offline acceptance pending |
 | Actual library corpus scale | [46136589122](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589122) | Pending behind the unchanged concurrency group; all 12 actual tiers and four largest backup rounds required |
-| CARR native Windows launch entry | [46136589124](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589124) | Queued; both MSVC and pinned Zig required |
-| CARR bibliography and import acceptance | [46136589151](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589151) | Queued |
-| Selected Calibre reading review | [46136582936](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582936) | Queued |
-| Selected legacy document and archive conversion review | [46136582933](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582933) | Queued; both Windows and Linux required |
+| CARR native Windows launch entry | [46136589124](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589124) | **PASS:** both MSVC and pinned Zig, nine actual PE checks each; record `0df0e01890ada1e99cc8d3509d9faf1913efc866` |
+| CARR bibliography and import acceptance | [46136589151](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589151) | Running actual wheel build/verification/install and required suites |
+| Selected Calibre reading review | [46136582936](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582936) | **PASS:** 235 boundary cases, eight actual installed conversions, four negative controls and ten selected before/after module identities; record `66c6bf1619e13ed8ea055ec80d0206587d5ba3cf` |
+| Selected legacy document and archive conversion review | [46136582933](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582933) | Windows **PASS**: 401 boundary + nine actual source + 33 installed cases. Linux first attempt stopped on curl TLS issuer verification before runtime installation; exactly one unchanged Linux-only retry is running and has passed provisioning/source in step metadata. Original failure `2a87fdd370c337d80801473fd3f330464da90bc1` is retained; no TLS bypass or pin change. |
 
 Duplicate push runs for main/V3/launcher were automatically cancelled by the existing workflow concurrency; their surviving pull-request runs above own acceptance. No healthy job was manually cancelled.
+
+A minimal source-opening fixture correction is prepared at `3993ddfa1d48352d86c304e427f0ae781b41ddbf`, tree `3c75f60a88410f4274aa24221d8465ab165a5114`. It changes only the probe's stale direct-child lookup to the existing `search_viewport`; the exact button label, genuine event, source bytes, view-copy isolation, focus and lifetime assertions remain unchanged. Source review `b872887dedc1a3f05c0426704535b0971260fa80`. This is **not yet the PR head**, and focused real native execution is being prepared. The same probe is called in both failed main stages, but the full-bundle failure phase is still unproven until the completed job log is available.
 
 ### Predecessor 71ca results retained for correction evidence
 

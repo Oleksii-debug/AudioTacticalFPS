@@ -1,0 +1,253 @@
+﻿2026-11-28T10:45:09.0448922Z Current runner version: '2.338.2'
+2026-11-28T10:45:09.0474164Z ##[group]Runner Image Provisioner
+2026-11-28T10:45:09.0475024Z Hosted Compute Agent
+2026-11-28T10:45:09.0475708Z Version: 20261111.635
+2026-11-28T10:45:09.0476710Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T10:45:09.0477556Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T10:45:09.0478601Z Worker ID: {3964a2a1-3c63-4626-a38c-a8cf59ca7b60}
+2026-11-28T10:45:09.0479372Z Region: centralus
+2026-11-28T10:45:09.0480038Z Cloud: Azure
+2026-11-28T10:45:09.0480692Z ##[endgroup]
+2026-11-28T10:45:09.0482200Z ##[group]Operating System
+2026-11-28T10:45:09.0483345Z Ubuntu
+2026-11-28T10:45:09.0483885Z 24.04.5
+2026-11-28T10:45:09.0484431Z LTS
+2026-11-28T10:45:09.0485008Z ##[endgroup]
+2026-11-28T10:45:09.0485556Z ##[group]Runner Image
+2026-11-28T10:45:09.0486191Z Image: ubuntu-24.04
+2026-11-28T10:45:09.0486757Z Version: 20261122.23.1
+2026-11-28T10:45:09.0488096Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261122.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-28T10:45:09.0489894Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261122.23
+2026-11-28T10:45:09.0490910Z ##[endgroup]
+2026-11-28T10:45:09.0492096Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T10:45:09.0494342Z Actions: read
+2026-11-28T10:45:09.0494964Z Contents: read
+2026-11-28T10:45:09.0495620Z Metadata: read
+2026-11-28T10:45:09.0496198Z ##[endgroup]
+2026-11-28T10:45:09.0498501Z Secret source: Actions
+2026-11-28T10:45:09.0499635Z Cache mode: write
+2026-11-28T10:45:09.0500582Z Prepare workflow directory
+2026-11-28T10:45:09.1142106Z Prepare all required actions
+2026-11-28T10:45:09.1192105Z Getting action download info
+2026-11-28T10:45:09.3657620Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T10:45:09.5045564Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T10:45:09.5884981Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T10:45:09.7622376Z Complete job name: extract
+2026-11-28T10:45:09.8512156Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T10:45:09.8513792Z with:
+2026-11-28T10:45:09.8514555Z   ref: e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:09.8515528Z   fetch-depth: 2
+2026-11-28T10:45:09.8516268Z   persist-credentials: false
+2026-11-28T10:45:09.8517171Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T10:45:09.8524731Z   token: ***
+2026-11-28T10:45:09.8525500Z   ssh-strict: true
+2026-11-28T10:45:09.8526217Z   ssh-user: git
+2026-11-28T10:45:09.8526898Z   clean: true
+2026-11-28T10:45:09.8527629Z   sparse-checkout-cone-mode: true
+2026-11-28T10:45:09.8528665Z   fetch-tags: false
+2026-11-28T10:45:09.8529403Z   show-progress: true
+2026-11-28T10:45:09.8530134Z   lfs: false
+2026-11-28T10:45:09.8530827Z   submodules: false
+2026-11-28T10:45:09.8531561Z   set-safe-directory: true
+2026-11-28T10:45:09.8532385Z   allow-unsafe-pr-checkout: false
+2026-11-28T10:45:09.8533667Z env:
+2026-11-28T10:45:09.8534470Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:45:09.8535368Z   PYTHONUTF8: 1
+2026-11-28T10:45:09.8536270Z   CARR_HARVEST_HEAD: e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:09.8536917Z ##[endgroup]
+2026-11-28T10:45:10.1684976Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T10:45:10.1687957Z ##[group]Getting Git version info
+2026-11-28T10:45:10.1689360Z Working directory is '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T10:45:10.1690504Z [command]/usr/bin/git version
+2026-11-28T10:45:10.1834712Z git version 2.56.1
+2026-11-28T10:45:10.1859773Z ##[endgroup]
+2026-11-28T10:45:10.1877250Z Temporarily overriding HOME='/home/runner/work/_temp/31326299-425d-416f-968b-acbe9778b86f' before making global git config changes
+2026-11-28T10:45:10.1880130Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T10:45:10.1889454Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T10:45:10.1938865Z Deleting the contents of '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T10:45:10.1948576Z ##[group]Determining repository object format
+2026-11-28T10:45:10.1950240Z ##[endgroup]
+2026-11-28T10:45:10.1958992Z ##[group]Initializing the repository
+2026-11-28T10:45:10.1960265Z [command]/usr/bin/git init /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T10:45:10.2101341Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-28T10:45:10.2103085Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-28T10:45:10.2104558Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-28T10:45:10.2105312Z hint: call:
+2026-11-28T10:45:10.2105712Z hint:
+2026-11-28T10:45:10.2106301Z hint: 	git config --global init.defaultBranch <name>
+2026-11-28T10:45:10.2107373Z hint:
+2026-11-28T10:45:10.2108797Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-28T10:45:10.2110583Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-28T10:45:10.2112374Z hint:
+2026-11-28T10:45:10.2113432Z hint: 	git branch -m <name>
+2026-11-28T10:45:10.2114592Z hint:
+2026-11-28T10:45:10.2116710Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-28T10:45:10.2119281Z Initialized empty Git repository in /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T10:45:10.2127018Z [command]/usr/bin/git remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T10:45:10.2220795Z ##[endgroup]
+2026-11-28T10:45:10.2221997Z ##[group]Disabling automatic garbage collection
+2026-11-28T10:45:10.2222974Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-28T10:45:10.2268301Z ##[endgroup]
+2026-11-28T10:45:10.2270073Z ##[group]Setting up auth
+2026-11-28T10:45:10.2271134Z Removing SSH command configuration
+2026-11-28T10:45:10.2278155Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T10:45:10.2333552Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T10:45:10.2792693Z Removing HTTP extra header
+2026-11-28T10:45:10.2797025Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T10:45:10.2845562Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T10:45:10.3086449Z Removing includeIf entries pointing to credentials config files
+2026-11-28T10:45:10.3099787Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T10:45:10.3145915Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T10:45:10.3391156Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-28T10:45:10.3443645Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path /home/runner/work/_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:10.3486922Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:10.3531067Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:10.3575769Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:10.3616819Z ##[endgroup]
+2026-11-28T10:45:10.3617588Z ##[group]Fetching the repository
+2026-11-28T10:45:10.3623185Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=2 origin e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:11.6775409Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T10:45:11.6776603Z  * branch            e5ea0d6446ea17d4114f0bb6be494580a5aed245 -> FETCH_HEAD
+2026-11-28T10:45:11.6787213Z [command]/usr/bin/git rev-parse --verify --quiet e5ea0d6446ea17d4114f0bb6be494580a5aed245^{object}
+2026-11-28T10:45:11.6831386Z e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:11.6845664Z ##[endgroup]
+2026-11-28T10:45:11.6846999Z ##[group]Determining the checkout info
+2026-11-28T10:45:11.6848979Z ##[endgroup]
+2026-11-28T10:45:11.6869395Z [command]/usr/bin/git sparse-checkout disable
+2026-11-28T10:45:11.6936257Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-28T10:45:11.6981793Z ##[group]Checking out the ref
+2026-11-28T10:45:11.6986186Z [command]/usr/bin/git checkout --progress --force e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:11.8447772Z Note: switching to 'e5ea0d6446ea17d4114f0bb6be494580a5aed245'.
+2026-11-28T10:45:11.8448973Z 
+2026-11-28T10:45:11.8449613Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T10:45:11.8451086Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T10:45:11.8452443Z state without impacting any branches by switching back to a branch.
+2026-11-28T10:45:11.8453225Z 
+2026-11-28T10:45:11.8453744Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T10:45:11.8455153Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T10:45:11.8456100Z 
+2026-11-28T10:45:11.8456449Z   git switch -c <new-branch-name>
+2026-11-28T10:45:11.8457025Z 
+2026-11-28T10:45:11.8457441Z Or undo this operation with:
+2026-11-28T10:45:11.8458199Z 
+2026-11-28T10:45:11.8458799Z   git switch -
+2026-11-28T10:45:11.8459259Z 
+2026-11-28T10:45:11.8459989Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T10:45:11.8461064Z 
+2026-11-28T10:45:11.8462488Z HEAD is now at e5ea0d6 Preserve completed phase evidence from the original failed 2 GiB corpus job
+2026-11-28T10:45:11.8466173Z ##[endgroup]
+2026-11-28T10:45:11.8524165Z [command]/usr/bin/git log -1 --format=%H
+2026-11-28T10:45:11.8564034Z e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:11.8573996Z ##[group]Removing auth
+2026-11-28T10:45:11.8574938Z Removing SSH command configuration
+2026-11-28T10:45:11.8578197Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T10:45:11.8625353Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T10:45:11.8865228Z Removing HTTP extra header
+2026-11-28T10:45:11.8868878Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T10:45:11.8916590Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T10:45:11.9155288Z Removing includeIf entries pointing to credentials config files
+2026-11-28T10:45:11.9158156Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T10:45:11.9197340Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T10:45:11.9201150Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T10:45:11.9204005Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T10:45:11.9205690Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T10:45:11.9222861Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T10:45:11.9249406Z /home/runner/work/_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:11.9261216Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-3575141c\-b3e5\-46fd\-937c\-1e73fe8bf096\.config
+2026-11-28T10:45:11.9312912Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T10:45:11.9347132Z /home/runner/work/_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:11.9357955Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-3575141c\-b3e5\-46fd\-937c\-1e73fe8bf096\.config
+2026-11-28T10:45:11.9404278Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T10:45:11.9439417Z /github/runner_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:11.9450305Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-3575141c\-b3e5\-46fd\-937c\-1e73fe8bf096\.config
+2026-11-28T10:45:11.9503315Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T10:45:11.9538662Z /github/runner_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config
+2026-11-28T10:45:11.9546908Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-3575141c\-b3e5\-46fd\-937c\-1e73fe8bf096\.config
+2026-11-28T10:45:11.9599496Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T10:45:11.9834841Z Removing credentials config '/home/runner/work/_temp/git-credentials-3575141c-b3e5-46fd-937c-1e73fe8bf096.config'
+2026-11-28T10:45:11.9843113Z ##[endgroup]
+2026-11-28T10:45:12.0294264Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T10:45:12.0295900Z with:
+2026-11-28T10:45:12.0296701Z   python-version: 3.11
+2026-11-28T10:45:12.0297625Z   check-latest: false
+2026-11-28T10:45:12.0306958Z   token: ***
+2026-11-28T10:45:12.0308261Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T10:45:12.0309991Z   update-environment: true
+2026-11-28T10:45:12.0310994Z   allow-prereleases: false
+2026-11-28T10:45:12.0311976Z   freethreaded: false
+2026-11-28T10:45:12.0312859Z env:
+2026-11-28T10:45:12.0313669Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:45:12.0314672Z   PYTHONUTF8: 1
+2026-11-28T10:45:12.0315761Z   CARR_HARVEST_HEAD: e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:12.0317112Z ##[endgroup]
+2026-11-28T10:45:12.1480933Z ##[group]Installed versions
+2026-11-28T10:45:12.1573362Z Successfully set up CPython (3.11.18)
+2026-11-28T10:45:12.1575359Z ##[endgroup]
+2026-11-28T10:45:12.1813675Z ##[group]Run unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+2026-11-28T10:45:12.1815844Z [36;1munset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS[0m
+2026-11-28T10:45:12.1818740Z [36;1mpython -I -B -X utf8 .github/diagnostics/harvest_final_scale_artifacts.py[0m
+2026-11-28T10:45:12.1905319Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T10:45:12.1906677Z env:
+2026-11-28T10:45:12.1907482Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:45:12.1908690Z   PYTHONUTF8: 1
+2026-11-28T10:45:12.1909798Z   CARR_HARVEST_HEAD: e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:12.1911667Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:12.1913416Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T10:45:12.1915153Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:12.1916715Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:12.1918550Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:12.1920174Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T10:45:12.1929935Z   CARR_ARTIFACT_TOKEN: ***
+2026-11-28T10:45:12.1930896Z ##[endgroup]
+2026-11-28T10:45:14.0883097Z CARR_FINAL_SCALE_ARTIFACT {"artifact_expanded_bytes": 379494, "completed_saved_reports": {"benchmark/authored-crash.json": {"batch_id": "02717a86e61a4f85b620465b5f4945db", "boundary": "durable batch save after actual owned worker return", "committed": 1, "elapsed_seconds": 203.32664163699997, "pid": 2346, "schema": "carr-library-catalog-benchmark/1"}, "benchmark/catalog-verification.json": {"created_pid": 2342, "disk": {"application_profile": {"allocated_bytes": 8860454912, "allocation_method": "stat.st_blocks * 512", "entries": 37, "files": 29, "logical_bytes": 8860354400}, "benchmark_evidence": {"allocated_bytes": 24576, "allocation_method": "stat.st_blocks * 512", "entries": 8, "files": 6, "logical_bytes": 8606}, "external_originals": {"allocated_bytes": 2147487744, "allocation_method": "stat.st_blocks * 512", "entries": 1, "files": 1, "logical_bytes": 2147483648}, "imports.sqlite": {"main": 2150539264}, "library.sqlite": {"main": 4562325504}, "note": "application_profile includes retained originals and SQLite files; categories overlap.", "retained_originals": {"allocated_bytes": 2147573760, "allocation_method": "stat.st_blocks * 512", "entries": 22, "files": 22, "logical_bytes": 2147484593}}, "durable_scan_pages": 1, "elapsed_seconds": 26.314950846999977, "implementation_unchanged": true, "library_benchmark": "SEARCH_NOT_RUN", "memory": {"coordinator_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss", "coordinator_peak_bytes": 3162599424, "largest_reaped_child_peak_bytes": 0, "simultaneous_family_peak_bytes": null}, "operations": {"authored_postcommit_crash": {"batch_id": "02717a86e61a4f85b620465b5f4945db", "boundary": "durable batch save after actual owned worker return", "committed": 1, "elapsed_seconds": 203.32664163699997, "pid": 2346, "schema": "carr-library-catalog-benchmark/1"}, "import_slices": {"maximum_seconds": 203.32664163699997, "minimum_seconds": 203.32664163699997, "p50_seconds": 203.32664163699997, "p95_method": "nearest rank", "p95_seconds": 203.32664163699997, "samples": 1}, "measured_import_seconds": 203.32664163699997, "measured_scan_seconds": 8.147313533000016, "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.", "scan": {"maximum_seconds": 8.147313533000016, "minimum_seconds": 8.147313533000016, "p50_seconds": 8.147313533000016, "p95_method": "nearest rank", "p95_seconds": 8.147313533000016, "samples": 1}}, "originals": {"declared_original_segments": 1000, "verified_original_bytes": 2147483648, "verified_sources": 1}, "pid": 2422, "raw_characters": 2147470646, "raw_utf8_bytes": 2147482646, "schema": "carr-library-catalog-benchmark/1", "separate_process": true, "source_books": 1, "source_segments": 1000, "startup_seconds": 14.409046584999999, "status": "CATALOG_VERIFIED", "worker_peaks": {"maximum_worker_own_peak_bytes": 98582528, "measured_worker_exits": 1, "methods": ["resource.getrusage(RUSAGE_SELF).ru_maxrss"], "note": "Actual per-worker exit peaks; concurrent family peak is not measured.", "simultaneous_family_peak_bytes": null}}, "generation.json": {"completed_books": 1, "generated_bytes": 2147483648, "generation_seconds": 11.73577185100001, "library_benchmark": "NOT_RUN", "manifest_sha256": "86ad5411c607ed93161f86c7b6404da949ca8e2be4528a226478d035cb1ef96b", "schema": "carr-library-scale/1", "segments": 1000, "status": "FIXTURE_GENERATED_NOT_BENCHMARKED"}}, "job_steps": [{"completed_at": "2026-11-28T08:28:29Z", "conclusion": "success", "name": "Set up job", "number": 1, "started_at": "2026-11-28T08:28:27Z", "status": "completed"}, {"completed_at": "2026-11-28T08:28:34Z", "conclusion": "success", "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "number": 2, "started_at": "2026-11-28T08:28:29Z", "status": "completed"}, {"completed_at": "2026-11-28T08:28:35Z", "conclusion": "success", "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0", "number": 3, "started_at": "2026-11-28T08:28:34Z", "status": "completed"}, {"completed_at": "2026-11-28T08:28:36Z", "conclusion": "success", "name": "Select this runner's fresh measured profile path", "number": 4, "started_at": "2026-11-28T08:28:35Z", "status": "completed"}, {"completed_at": "2026-11-28T08:28:54Z", "conclusion": "success", "name": "Install the exact composed application", "number": 5, "started_at": "2026-11-28T08:28:36Z", "status": "completed"}, {"completed_at": "2026-11-28T08:28:55Z", "conclusion": "success", "name": "Bind all installed package bytes and the actual measurement scripts", "number": 6, "started_at": "2026-11-28T08:28:54Z", "status": "completed"}, {"completed_at": "2026-11-28T08:28:55Z", "conclusion": "success", "name": "Admit largest-tier import and full backup capacity before writing the corpus", "number": 7, "started_at": "2026-11-28T08:28:55Z", "status": "completed"}, {"completed_at": "2026-11-28T08:29:08Z", "conclusion": "success", "name": "Generate and independently hash the actual original corpus", "number": 8, "started_at": "2026-11-28T08:28:55Z", "status": "completed"}, {"completed_at": "2026-11-28T08:29:19Z", "conclusion": "success", "name": "Admit the measured profile through the actual public queue", "number": 9, "started_at": "2026-11-28T08:29:08Z", "status": "completed"}, {"completed_at": "2026-11-28T08:32:42Z", "conclusion": "success", "name": "Interrupt the actual coordinator after one committed and quiescent publication", "number": 10, "started_at": "2026-11-28T08:29:19Z", "status": "completed"}, {"completed_at": "2026-11-28T08:32:56Z", "conclusion": "success", "name": "Resume the same durable queue in a new actual process", "number": 11, "started_at": "2026-11-28T08:32:42Z", "status": "completed"}, {"completed_at": "2026-11-28T08:33:23Z", "conclusion": "success", "name": "Reopen and verify every original catalog segment and retained source", "number": 12, "started_at": "2026-11-28T08:32:56Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:38Z", "conclusion": "failure", "name": "Measure actual complete traversal, exact quotations and scoped ranking", "number": 13, "started_at": "2026-11-28T08:33:23Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:38Z", "conclusion": "skipped", "name": "Require actual complete backup verification and fresh restore on the largest tiers", "number": 14, "started_at": "2026-11-28T10:10:38Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:38Z", "conclusion": "success", "name": "Preserve actual measured phase records and independent original manifest", "number": 15, "started_at": "2026-11-28T10:10:38Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:39Z", "conclusion": "failure", "name": "Require complete exact counts and unchanged installed bytes", "number": 16, "started_at": "2026-11-28T10:10:38Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:39Z", "conclusion": "success", "name": "Preserve selected dependency identity", "number": 17, "started_at": "2026-11-28T10:10:39Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:41Z", "conclusion": "success", "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9", "number": 18, "started_at": "2026-11-28T10:10:39Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:41Z", "conclusion": "skipped", "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0", "number": 35, "started_at": "2026-11-28T10:10:41Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:41Z", "conclusion": "success", "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "number": 36, "started_at": "2026-11-28T10:10:41Z", "status": "completed"}, {"completed_at": "2026-11-28T10:10:41Z", "conclusion": "success", "name": "Complete job", "number": 37, "started_at": "2026-11-28T10:10:41Z", "status": "completed"}], "largest_tier_capacity": {"archive_estimate_bytes": 15436351488, "authored_books": 1, "authored_segments": 1000, "authored_source_bytes": 2147483648, "fixture_volume": {"free_bytes": 93914349568, "identity": [64512, 4005449, 16832, 0], "path": "/home/runner/work/_temp/carr-scale-text-2g-ptumople", "total_bytes": 154894188544, "used_bytes": 60963061760}, "import_capacity_plan": {"catalog_estimate_bytes": 6443474944, "fixture_manifest_estimate_bytes": 260608, "free_reserve_bytes": 1073741824, "journal_estimate_bytes": 4294983680, "memory_headroom_bytes": 2214592512, "original_bytes": 2147483648, "retained_bytes": 2147483648, "search_spool_budget_bytes": 8589934592}, "memory": {"available_bytes": 15497531392, "cgroup": null, "method": "/proc/meminfo.MemAvailable"}, "note": "Conservative admission estimates only; the unchanged backup adapter measures live inputs again.", "reasons": [], "required_initial_fixture_free_bytes": 62482567680, "required_separate_temporary_free_bytes": 23422595072, "restore_or_verify_staging_estimate_bytes": 22281744384, "same_volume": true, "selected_backup_memory_bytes": 2147483648, "status": "READY_FOR_ACTUAL_LARGEST_TIER", "tier": "text-2g", "verifier_temporary_volume": {"free_bytes": 93914349568, "identity": [64512, 1700, 17407, 0], "path": "/tmp", "total_bytes": 154894188544, "used_bytes": 60963061760}}, "outcome": {"actual_phase_outcomes": {"backup": "skipped", "backup_preflight": "success", "catalog": "success", "collect": "success", "generate": "success", "initialize": "success", "interruption": "success", "resume": "success", "search": "failure"}, "physical_or_human_quality": "NOT_ASSESSED", "status": "FAILED"}, "package_files": 426, "package_sha256": "805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1", "phase_admissions": {"benchmark/state.json": {"disk": {"components": {"catalog_estimate_bytes": 6443474944, "fixture_manifest_estimate_bytes": 260608, "free_reserve_bytes": 1073741824, "journal_estimate_bytes": 4294983680, "memory_headroom_bytes": 1342177280, "original_bytes": 2147483648, "retained_bytes": 2147483648, "search_spool_budget_bytes": 8589934592}, "free_bytes": 91766628352, "required_estimate_bytes": 24697362944, "total_bytes": 154894188544}, "memory": {"available_bytes": 15420866560, "cgroup": null, "method": "/proc/meminfo.MemAvailable", "required_headroom_bytes": 1342177280}, "note": "Admission estimates are not measured application use or enforced memory limits.", "reason": null, "status": "READY_FOR_FIXTURE"}}, "platform": "Linux-7.0.0-1018-aws-x86_64-with-glibc2.39", "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]", "run_id": 46124999025, "runner_capacity": {"fixture": "/home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture", "observed_roots": [{"canonical_path": "/home/runner/work/_temp", "free_bytes": 94333059072, "identity": [64512, 4005427, 16877, 0], "name": "RUNNER_TEMP", "supplied_path": "/home/runner/work/_temp", "total_bytes": 154894188544}, {"canonical_path": "/tmp", "free_bytes": 94333059072, "identity": [64512, 1700, 17407, 0], "name": "python_tempfile", "supplied_path": "/tmp", "total_bytes": 154894188544}], "private_parent": "/home/runner/work/_temp/carr-scale-text-2g-ptumople", "private_parent_identity": [64512, 4005449, 16832, 0], "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight", "selected_root": {"canonical_path": "/home/runner/work/_temp", "free_bytes": 94333059072, "identity": [64512, 4005427, 16877, 0], "name": "RUNNER_TEMP", "supplied_path": "/home/runner/work/_temp", "total_bytes": 154894188544}, "selection": "larger measured free space among two known runner temporary roots"}, "schema": "carr-final-scale-artifact-harvest/1", "scope": "READ_ONLY_SAVED_ACTUAL_REPORTS_NO_CORPUS_REPLAY", "scripts": {"benchmark_library_backup.py": "8cf97171449547b2636daadd1602b7c0ffcc1c77d9d29b933d0ecb1f8eb0e57b", "benchmark_library_catalog.py": "582b5fbc2d4ff1a39bfc5e68de582895138831a4ad763a1465c3a4e1ee275238", "benchmark_library_scale.py": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d"}, "selected_json_bytes": 146127, "selected_origins": {"carr_library.application": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py", "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"}, "carr_library.audio.cleanup": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/cleanup.py", "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"}, "carr_library.audio.process": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/process.py", "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"}, "carr_library.backup_budget": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_budget.py", "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"}, "carr_library.backup_current": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_current.py", "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"}, "carr_library.backup_producers": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_producers.py", "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"}, "carr_library.backup_sidecars": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_sidecars.py", "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"}, "carr_library.backup_transcription": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_transcription.py", "sha256": "b32790b54edba557dd54b83af00a92c214971e9cadf9d066b2e59adfecc193e9"}, "carr_library.catalog.intake": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/intake.py", "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"}, "carr_library.catalog.membership": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/membership.py", "sha256": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937"}, "carr_library.catalog.read_views": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/read_views.py", "sha256": "d5d87ffc31f1d44862d7717dc322ef169e53367261e2dbd51ed13d3b17c09687"}, "carr_library.catalog.registration": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/registration.py", "sha256": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef"}, "carr_library.citations.historical": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/historical.py", "sha256": "a4421f05e5c80c614219c4b4b00456d7f1ac6b66e2cd769045a0b9c711613d9e"}, "carr_library.citations.pdf_review_attestation": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/pdf_review_attestation.py", "sha256": "474763e81f29d2fbb60288ba079509d7634246732e53fd85d43cc1b0436a2645"}, "carr_library.citations.text_attestation": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/text_attestation.py", "sha256": "a58cc9df3eefe1652c32953665b36b418a18576a2efdf2a622cb684d24594a3e"}, "carr_library.durable_state": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py", "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"}, "carr_library.extract.page_ocr": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/page_ocr.py", "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"}, "carr_library.extract.raster_pages": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/raster_pages.py", "sha256": "5590e87310cbc21541ccbe28ecd5164e8c8abd9a2a6be4c584c0ad427811bb9a"}, "carr_library.extract.runtime_identity": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/runtime_identity.py", "sha256": "7cf8684d7dc99cf4c5dfb9f3bd634c2b3dc2411f15ab60195d80d6d48931d1f9"}, "carr_library.ingest.batch_pages": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batch_pages.py", "sha256": "64031c10dc86579d4122378f625c95351ad26c638a644c95efbf04967b417ac4"}, "carr_library.ingest.batch_scan": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batch_scan.py", "sha256": "8d1f3a30b46b7bd3aa759e49609c072bdecf0a74cfc9ffcc346c909d7092e5ca"}, "carr_library.ingest.batches": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batches.py", "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"}, "carr_library.ingest.catalog_asset_copy": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/catalog_asset_copy.py", "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"}, "carr_library.ingest.pipeline": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/pipeline.py", "sha256": "a47c7b809d00042f454d385c1210b1a547a8d8ba72e75e14e0a6e53ddb89cb63"}, "carr_library.ingest.publication_identity": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/publication_identity.py", "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"}, "carr_library.ingest.reconciliation": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/reconciliation.py", "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"}, "carr_library.ingest.resource_budget": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/resource_budget.py", "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"}, "carr_library.ingest.restore": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/restore.py", "sha256": "597f6dd758df252004084ad3cdadcb028ee68a5796bf2c2919098a6dfbf33859"}, "carr_library.ingest.retained_assets": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/retained_assets.py", "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"}, "carr_library.ingest.session": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/session.py", "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"}, "carr_library.ingest.slices": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/slices.py", "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"}, "carr_library.ingest.worker": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/worker.py", "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"}, "carr_library.library_backup": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py", "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"}, "carr_library.operations.broker": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/broker.py", "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"}, "carr_library.operations.models": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/models.py", "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"}, "carr_library.pending_backup": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/pending_backup.py", "sha256": "60ead9abcc82f473cf2d321b7fc8e97cb66ba256cd86d56e5aad886c38a8106f"}, "carr_library.search.federated": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/federated.py", "sha256": "5453979f2b69f33a1a497e6bfa9b8daf4618872354e49d1a0d761e48336b6583"}, "carr_library.search.literal": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/literal.py", "sha256": "ccb413548f5115ed487430bbd6ae5b284e2b98afb8946e9ef46051c18e5f62d6"}, "carr_library.search.paging": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/paging.py", "sha256": "1485292255ea2fb389307aab31f9ceac99e9b34e6932edc18fca6a5381369d98"}, "carr_library.search.ranked_scope": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/ranked_scope.py", "sha256": "bf9d70393a41d8069371eb449c4a863abe1f4ee6943701aa69d1def838c48691"}, "carr_library.search.semantic_windows": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/semantic_windows.py", "sha256": "453e5a64c48b55c4415971e5bd1b75fdb7be0c795f61aa73b01fac4270f0e9fe"}, "carr_library.search.thematic": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/thematic.py", "sha256": "811e87ce340f43ec8d5336045425d389f05c94eb08b1ac80768360ed66bf24e6"}, "carr_library.semantic": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/semantic.py", "sha256": "15384da7582ed9e0d39b464b361393addf7029c64fd2df2b1cad4ba40f7ba0d4"}, "carr_library.storage.publication": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/publication.py", "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"}, "carr_library.storage.revisions": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/revisions.py", "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"}}, "selected_sha256": {"backup-capacity-before-import.json": "987efea25b7924fe11948068b5034c2100175f1bafff6ebfa6c3661da085b5e2", "collected-evidence.json": "9c4975d9fecd479e427b7034a3db23498407a204a61f9f034412c415c98a93e2", "fixture-evidence/benchmark/authored-crash.json": "edbb18a601f5210a5219ff1b10254ababb84363cd5caeb07fd403b35c91c2bd3", "fixture-evidence/benchmark/catalog-verification.json": "a36b551bc96f42b16d31e00bf44278f716adc64aaef786bf6f5f1304bd33a164", "fixture-evidence/benchmark/state.json": "6ca8a4bf8b8c70a230e778f40da22af484ef2ea7719f387a6cecfb310f108dd5", "fixture-evidence/generation.json": "5a75d89cb704837cb0f4b42fcd7e8e5d2cec383fa4288ba134b0bfaa1cad0e0c", "fixture-evidence/preflight.json": "7fb67a188739980df24683a48cb82c219f21c77b8316afedcc2ffefbf77bb398", "installed-after.json": "8e2c6da9a3b466241c92e4a1a2ef8c00a01b40464fab72ecee18aac2601955e3", "installed-before.json": "8e2c6da9a3b466241c92e4a1a2ef8c00a01b40464fab72ecee18aac2601955e3", "outcome.json": "4c65880d824c2f5c748b03cd021c538f1b0a775737d85a9cfbd0c684cd290e76", "runner-capacity.json": "f7b489f9c6556161ec09e0ea6639416e3689c70e921e84649cedb0bd8b67c42f"}, "selection": {"artifact_id": 15258975624, "conclusion": "failure", "job_id": 140917529733, "os": "ubuntu-24.04", "sha256": "5d10aab9a1d6bb77d763bc22b49e1b04633eff619856d424d4097e2293c242cb", "size_in_bytes": 122712, "tier": "text-2g"}, "sqlite": "3.45.1", "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e"}
+2026-11-28T10:45:14.1295596Z CARR_FINAL_SCALE_HARVEST_SOURCE_UNCHANGED 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T10:45:14.1467300Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T10:45:14.1467952Z with:
+2026-11-28T10:45:14.1468247Z   name: final71ca-corpus-failure-artifact-evidence
+2026-11-28T10:45:14.1468945Z   path: capacity-harvest-output/
+2026-11-28T10:45:14.1469279Z   if-no-files-found: error
+2026-11-28T10:45:14.1469556Z   retention-days: 14
+2026-11-28T10:45:14.1469813Z   compression-level: 6
+2026-11-28T10:45:14.1470072Z   overwrite: false
+2026-11-28T10:45:14.1470324Z   include-hidden-files: false
+2026-11-28T10:45:14.1470612Z   archive: true
+2026-11-28T10:45:14.1470846Z env:
+2026-11-28T10:45:14.1471080Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:45:14.1471367Z   PYTHONUTF8: 1
+2026-11-28T10:45:14.1471695Z   CARR_HARVEST_HEAD: e5ea0d6446ea17d4114f0bb6be494580a5aed245
+2026-11-28T10:45:14.1472129Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:14.1472595Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T10:45:14.1473098Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:14.1473529Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:14.1473958Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:45:14.1474390Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T10:45:14.1474752Z ##[endgroup]
+2026-11-28T10:45:14.2949809Z With the provided path, there will be 1 file uploaded
+2026-11-28T10:45:14.2952058Z Artifact name is valid!
+2026-11-28T10:45:14.2952837Z Root directory input is valid!
+2026-11-28T10:45:14.5813336Z Uploading artifact: final71ca-corpus-failure-artifact-evidence.zip
+2026-11-28T10:45:14.5853988Z Beginning upload of artifact content to blob storage
+2026-11-28T10:45:14.7520236Z Uploaded bytes 6856
+2026-11-28T10:45:14.7884262Z Finished uploading artifact content to blob storage!
+2026-11-28T10:45:14.7885704Z SHA256 digest of uploaded artifact is 144796644e06a146efe5a5dca897c30de3f8878d3a6a94df3ea0aeef56b1a183
+2026-11-28T10:45:14.7886703Z Finalizing artifact upload
+2026-11-28T10:45:15.2049264Z Artifact final71ca-corpus-failure-artifact-evidence successfully finalized. Artifact ID 15260315740
+2026-11-28T10:45:15.2072873Z Artifact final71ca-corpus-failure-artifact-evidence has been successfully uploaded! Final size is 6856 bytes. Artifact ID is 15260315740
+2026-11-28T10:45:15.2099515Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135670812/artifacts/15260315740
+2026-11-28T10:45:15.2269060Z Post job cleanup.
+2026-11-28T10:45:15.3571506Z Post job cleanup.
+2026-11-28T10:45:15.4503921Z [command]/usr/bin/git version
+2026-11-28T10:45:15.4549743Z git version 2.56.1
+2026-11-28T10:45:15.4617459Z Temporarily overriding HOME='/home/runner/work/_temp/3e1812c2-8784-4e4b-a9f4-716c80cc2a5d' before making global git config changes
+2026-11-28T10:45:15.4619461Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T10:45:15.4623878Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T10:45:15.4660793Z Removing SSH command configuration
+2026-11-28T10:45:15.4666939Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T10:45:15.4707333Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T10:45:15.4985800Z Removing HTTP extra header
+2026-11-28T10:45:15.5004645Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T10:45:15.5057462Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T10:45:15.5380408Z Removing includeIf entries pointing to credentials config files
+2026-11-28T10:45:15.5384388Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T10:45:15.5452415Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T10:45:15.5914048Z Cleaning up orphan processes

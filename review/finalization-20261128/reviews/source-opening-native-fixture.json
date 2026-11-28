@@ -1,0 +1,82 @@
+{
+  "schema": "carr-native-source-opening-fixture-review/1",
+  "final_head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "observed_main": {
+    "run_id": 46136589121,
+    "job_id": 140953156680,
+    "reported_failed_steps": [
+      17,
+      32
+    ],
+    "completed_log_available": false
+  },
+  "path": "carr-library/tests/ui/probe_source_open_native.py",
+  "preimage": "f3cdd8272b478911e7e549dd99a93ff61695c2bd",
+  "candidate": "897d495570aed708c41b54d40a835b4e4410f993",
+  "mechanical_diff": [
+    {
+      "old": 114,
+      "new": 114,
+      "removed": [
+        "            buttons = [child for child in panel.GetChildren() if isinstance(child, wx.Button)"
+      ],
+      "added": [
+        "            buttons = [child for child in panel.search_viewport.GetChildren() if isinstance(child, wx.Button)"
+      ]
+    }
+  ],
+  "mechanical_reversal_exact": true,
+  "production": {
+    "path": "carr-library/src/carr_library/ui/desktop_app.py",
+    "blob": "0c6d2a617cb22cca0ee0c26ab594955fce3f74c2",
+    "button_creation_lines": [
+      168,
+      170
+    ],
+    "reparenting_lines": [
+      176,
+      189
+    ],
+    "finding": "The same original-source button is reparented into panel.search_viewport. It is no longer a direct child of the notebook panel."
+  },
+  "change": "Read only the existing search_viewport's direct children instead of the notebook panel's direct children.",
+  "preserved": [
+    "Exact wx.Button type filter",
+    "Unique exact original-source label",
+    "Shown and enabled control checks",
+    "Handled genuine wx.CommandEvent",
+    "Actual public import and search",
+    "Exact selected result and original/view-copy bytes",
+    "Retained-original inode isolation",
+    "Status text and focus",
+    "Same Desktop worker/busy/cancel/lifetime behavior",
+    "Same adjacent federated native helper and all of its assertions",
+    "No-argument CLI and existing report/check schema",
+    "45-second outer timeout and existing 30-second helper bound"
+  ],
+  "consumers": [
+    {
+      "file": ".github/workflows/carr-windows.yml",
+      "line": 214,
+      "text": "          & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'"
+    },
+    {
+      "file": ".github/workflows/carr-windows.yml",
+      "line": 820,
+      "text": "          & $installedPython -I -B -c \"import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')\" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'"
+    }
+  ],
+  "sibling_helper": {
+    "path": "carr-library/tests/ui/federated_native_smoke.py",
+    "blob": "7820aa877f814fbe4ab58ef492e21dcaf0870804",
+    "changed": false
+  },
+  "peer_review": {
+    "reviewer": "reader_review",
+    "verdict": "SOURCE_APPROVE",
+    "scope": "Exact one-expression lookup correction; current Desktop reparenting independently confirmed."
+  },
+  "runtime": "NOT_RUN",
+  "limitations": "This proves a stale fixture assumption, not the operand or phase of either actual main failure. Step32 has earlier acquisition, packaging and native operations; its failure cannot be attributed to this shared probe until its completed log is available.",
+  "refs_mutated": false
+}

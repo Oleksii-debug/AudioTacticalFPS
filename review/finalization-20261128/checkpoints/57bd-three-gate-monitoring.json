@@ -1,0 +1,56 @@
+{
+  "schema": "carr-final57-reviewer-gate-checkpoint/1",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "observed_utc": "2026-11-28 10:59:44 UTC",
+  "bounded_completeness_review": "964a432db0f31bda9b46816523a13b26272d9645",
+  "runs": {
+    "bibliography": {
+      "run_id": 46136589151,
+      "job_id": 140953154953,
+      "status": "queued"
+    },
+    "launcher": {
+      "run_id": 46136589124,
+      "msvc": {
+        "job_id": 140953156165,
+        "status": "SUCCESS",
+        "evidence": "105eb21e86255009e3512d7ee1bfc89fc1878aa3"
+      },
+      "zig": {
+        "job_id": 140953156306,
+        "status": "queued"
+      }
+    },
+    "legacy": {
+      "run_id": 46136582933,
+      "first_attempt_evidence": "2a87fdd370c337d80801473fd3f330464da90bc1",
+      "windows": {
+        "job_id": 140953133725,
+        "status": "SUCCESS",
+        "evidence": "6b59df102247e63458c582143f4796904e3de5a0",
+        "retried": false
+      },
+      "linux": {
+        "original_job_id": 140953133924,
+        "original_status": "FAILED_EXTERNAL_TLS_ACQUISITION",
+        "rerun_job_id": 140956145428,
+        "run_attempt": 2,
+        "status": "queued",
+        "one_job_rerun_request": {
+          "job_id": 140953133924,
+          "run_id": 46136582933,
+          "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+          "first_attempt_evidence": "2a87fdd370c337d80801473fd3f330464da90bc1",
+          "once_only": true,
+          "tool_response": {
+            "success": true
+          }
+        },
+        "retry_changes": "None. Same source, HTTPS verification, fixed archive bytes and SHA256, native acceptance and installed proof."
+      }
+    }
+  },
+  "responsibility": "Read-only monitoring and once-only completed-log harvest. Root owns final branch/source mutations.",
+  "no_pass_transfer": true
+}

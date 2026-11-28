@@ -1,0 +1,86 @@
+{
+  "schema": "carr-release-legacy-first-attempt/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "workflow": {
+    "path": ".github/workflows/carr-legacy-reading-review.yml",
+    "sha": "13168b80c241db1f8b59f2c90b7319b002daec08",
+    "identical_to_prior_71ca": true
+  },
+  "run_id": 46136582933,
+  "attempt": 1,
+  "linux": {
+    "job_id": 140953133924,
+    "status": "FAILED",
+    "raw_log_blob": "f98500bb790a3f8638b7efb261a9c8d5d35ec3f5",
+    "boundary": {
+      "suites": 8,
+      "passed": 401,
+      "failed": 0
+    },
+    "posix": {
+      "passed": 4,
+      "failed": 0
+    },
+    "runtime_preparation": {
+      "status": "FAILED",
+      "exit_code": 60,
+      "error": "curl: (60) SSL certificate problem: unable to get local issuer certificate",
+      "utc": "2026-11-28T10:52:16.8647163Z",
+      "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz",
+      "expected_bytes": 221377373,
+      "expected_sha256": "e7cd3538e85818ff9dd9bb65386769fde927011242aace5a144989f4000dcabf",
+      "checksum_validation_reached": false,
+      "installation_reached": false,
+      "redirect_failure_host": "NOT_OBSERVED"
+    },
+    "native_source": {
+      "status": "FAILED_PREREQUISITE",
+      "failed": 9,
+      "reason": "CARR_SOFFICE was not provisioned"
+    },
+    "native_installed": {
+      "status": "NOT_RUN",
+      "step_conclusion": "failure",
+      "exit_code": 2,
+      "reason": "verify_installed_office.py was absent because its prerequisite preparation step was skipped after runtime acquisition failure"
+    },
+    "artifact": {
+      "id": 15259429041,
+      "size_bytes": 12453
+    }
+  },
+  "windows": {
+    "job_id": 140953133725,
+    "status": "SUCCESS",
+    "raw_log_blob": "691d835a1916ac7177765536a4d039d238206534",
+    "boundary": {
+      "suites": 8,
+      "passed": 401,
+      "failed": 0
+    },
+    "native_source": {
+      "passed": 9,
+      "failed": 0
+    },
+    "native_installed": {
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "source_unchanged": true
+    },
+    "artifact": {
+      "id": 15260396408,
+      "size_bytes": 16492
+    }
+  },
+  "diagnosis": "External TLS runtime-acquisition failure before archive validation or Office execution. Later source failures and absent installed runner are prerequisite cascades; no executed Office acceptance assertion explains the first failure. The log does not establish the failed redirect hostname or whether its certificate or the runner trust store is responsible.",
+  "authorized_followup": {
+    "scope": "One rerun of failed Linux job 140953133924 only, with unchanged inputs and workflow",
+    "reason": "Root authorized one unchanged job retry for concrete upstream/runner installation failure",
+    "tls_and_hash_checks_preserved": true,
+    "successful_windows_job_not_retried": true,
+    "product_or_ref_changes": false
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "schema": "carr-final-native-launcher-component/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "workflow": {
+    "path": ".github/workflows/carr-native-launcher.yml",
+    "blob": "0e8ce239bd8f00648a957ddda71088e9fa819c16"
+  },
+  "run_id": 46136589124,
+  "job_id": 140953156165,
+  "compiler": "MSVC",
+  "status": "SUCCESS",
+  "raw_log_blob": "b09139428ed973432eb61e19c6e2bbeea167fe2a",
+  "source_head_lines": [
+    "2026-11-28T10:50:39.2987006Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588\r",
+    "2026-11-28T10:50:39.8626457Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588\r",
+    "2026-11-28T10:50:55.4040361Z 57bd81ebabc0df2ffc4106c44b94805ee2da7588\r"
+  ],
+  "build": {
+    "source_sha256": {
+      "launcher.c": "052c2d285d6be44013e0da3b9ca1a155e5d6bcf991ba1e9fa30ebde03d1752bd",
+      "probe_pe.py": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+      "windows_child_probe.c": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+      "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+      "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+      "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+      "build_msvc.ps1": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+    },
+    "pe": {
+      "schema": 1,
+      "file": "ResearchLibrary.exe",
+      "bytes": 15872,
+      "sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+      "machine": "x86_64",
+      "subsystem": "windows-gui",
+      "aslr": true,
+      "high_entropy_aslr": true,
+      "dep": true,
+      "timestamp": 3641759729,
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll",
+        "SHELL32.dll"
+      ],
+      "reproducible_build_marker": true,
+      "embedded_as_invoker": true,
+      "certificate_table_present": false,
+      "authenticode_signed": false,
+      "windows_execution_verified": false,
+      "nvda_verified": false
+    },
+    "schema": 1,
+    "release_status": "unsigned-private-candidate",
+    "toolchain": {
+      "link.exe": {
+        "version": "14.44.35230.0",
+        "sha256": "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+      },
+      "cl.exe": {
+        "version": "19.44.35230.0",
+        "sha256": "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+      },
+      "rc.exe": {
+        "version": "10.0.26100.9457 (WinBuild.160101.0800)",
+        "sha256": "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+      }
+    },
+    "target": "Windows x64 / MSVC"
+  },
+  "actual_probe": {
+    "schema": 1,
+    "status": "passed",
+    "checks": [
+      "unicode-spaces-fixed-argv-offline-optional-runtimes",
+      "read-only-ready-probe",
+      "fixed-installation-check",
+      "child-exit-status-propagated",
+      "extra-arguments-rejected",
+      "incomplete-state-preserved-without-reinstall",
+      "missing-runtime-does-not-search-path",
+      "fresh-package-reuses-fixed-offline-installer",
+      "research-data-sentinel-preserved"
+    ],
+    "check_count": 9,
+    "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+    "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+    "native_launcher_execution_verified": true,
+    "actual_python_installation_verified": false,
+    "nvda_verified": false,
+    "authenticode_verified": false
+  },
+  "report_printed_twice_and_equal": true,
+  "unit_checks": "PASS: quoting, Unicode paths, command bounds and installation lifecycle",
+  "limits": [
+    "This is only the completed MSVC job; the final57 Zig job remains pending.",
+    "The actual executable was exercised with its authored synthetic child.",
+    "Actual Python installation, NVDA and Authenticode qualification are not claimed."
+  ]
+}

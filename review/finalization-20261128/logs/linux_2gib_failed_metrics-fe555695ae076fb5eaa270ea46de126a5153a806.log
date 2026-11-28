@@ -1,0 +1,1503 @@
+﻿2026-11-28T08:28:27.7091433Z Current runner version: '2.338.2'
+2026-11-28T08:28:27.7110305Z ##[group]Runner Image Provisioner
+2026-11-28T08:28:27.7110977Z Hosted Compute Agent
+2026-11-28T08:28:27.7111371Z Version: 20261111.635
+2026-11-28T08:28:27.7111849Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T08:28:27.7112362Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T08:28:27.7112836Z Worker ID: {51f2a5ef-c055-4bc0-a37a-05324f59986b}
+2026-11-28T08:28:27.7113427Z Region: us-west-2
+2026-11-28T08:28:27.7113816Z Cloud: AWS
+2026-11-28T08:28:27.7114205Z ##[endgroup]
+2026-11-28T08:28:27.7115069Z ##[group]Operating System
+2026-11-28T08:28:27.7115494Z Ubuntu
+2026-11-28T08:28:27.7115877Z 24.04.5
+2026-11-28T08:28:27.7116235Z LTS
+2026-11-28T08:28:27.7116598Z ##[endgroup]
+2026-11-28T08:28:27.7116970Z ##[group]Runner Image
+2026-11-28T08:28:27.7117360Z Image: ubuntu-24.04
+2026-11-28T08:28:27.7118081Z Version: 20261122.23.1
+2026-11-28T08:28:27.7118946Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261122.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-28T08:28:27.7120084Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261122.23
+2026-11-28T08:28:27.7120726Z ##[endgroup]
+2026-11-28T08:28:27.7121553Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T08:28:27.7123156Z Contents: read
+2026-11-28T08:28:27.7123564Z Metadata: read
+2026-11-28T08:28:27.7123996Z ##[endgroup]
+2026-11-28T08:28:27.7125491Z Secret source: Actions
+2026-11-28T08:28:27.7126103Z Cache mode: write
+2026-11-28T08:28:27.7126618Z Prepare workflow directory
+2026-11-28T08:28:27.8845013Z Prepare all required actions
+2026-11-28T08:28:27.8884226Z Getting action download info
+2026-11-28T08:28:28.2695627Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T08:28:29.0455193Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T08:28:29.1384731Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T08:28:29.5213040Z Complete job name: text-2g / ubuntu-24.04
+2026-11-28T08:28:29.7976693Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T08:28:29.7978109Z with:
+2026-11-28T08:28:29.7978640Z   ref: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:29.7979388Z   persist-credentials: false
+2026-11-28T08:28:29.7979959Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:28:29.7984000Z   token: ***
+2026-11-28T08:28:29.7984451Z   ssh-strict: true
+2026-11-28T08:28:29.7984892Z   ssh-user: git
+2026-11-28T08:28:29.7985350Z   clean: true
+2026-11-28T08:28:29.7985831Z   sparse-checkout-cone-mode: true
+2026-11-28T08:28:29.7986355Z   fetch-depth: 1
+2026-11-28T08:28:29.7986794Z   fetch-tags: false
+2026-11-28T08:28:29.7987238Z   show-progress: true
+2026-11-28T08:28:29.7987972Z   lfs: false
+2026-11-28T08:28:29.7988406Z   submodules: false
+2026-11-28T08:28:29.7988905Z   set-safe-directory: true
+2026-11-28T08:28:29.7990029Z   allow-unsafe-pr-checkout: false
+2026-11-28T08:28:29.7991254Z env:
+2026-11-28T08:28:29.7991556Z   PYTHONUTF8: 1
+2026-11-28T08:28:29.7991953Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:29.7992346Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:29.7992656Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:29.7992974Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:29.7993269Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:29.7993613Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:29.7993923Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:29.7994277Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:29.7994651Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:29.7995063Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:29.7995510Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:29.7995858Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:29.7996231Z ##[endgroup]
+2026-11-28T08:28:32.7011194Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:28:32.7013937Z ##[group]Getting Git version info
+2026-11-28T08:28:32.7015359Z Working directory is '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T08:28:32.7017390Z [command]/usr/bin/git version
+2026-11-28T08:28:32.8214347Z git version 2.56.1
+2026-11-28T08:28:32.8229816Z ##[endgroup]
+2026-11-28T08:28:32.8238124Z Temporarily overriding HOME='/home/runner/work/_temp/444e31f2-9946-4463-9739-748fc0146613' before making global git config changes
+2026-11-28T08:28:32.8240772Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T08:28:32.8243197Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T08:28:32.8294277Z Deleting the contents of '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T08:28:32.8296824Z ##[group]Determining repository object format
+2026-11-28T08:28:32.8298931Z ##[endgroup]
+2026-11-28T08:28:32.8300620Z ##[group]Initializing the repository
+2026-11-28T08:28:32.8302341Z [command]/usr/bin/git init /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T08:28:32.8452743Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-28T08:28:32.8454652Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-28T08:28:32.8456583Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-28T08:28:32.8458265Z hint: call:
+2026-11-28T08:28:32.8459184Z hint:
+2026-11-28T08:28:32.8460308Z hint: 	git config --global init.defaultBranch <name>
+2026-11-28T08:28:32.8461665Z hint:
+2026-11-28T08:28:32.8462912Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-28T08:28:32.8464868Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-28T08:28:32.8466471Z hint:
+2026-11-28T08:28:32.8467355Z hint: 	git branch -m <name>
+2026-11-28T08:28:32.8468640Z hint:
+2026-11-28T08:28:32.8470057Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-28T08:28:32.8472860Z Initialized empty Git repository in /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T08:28:32.8477710Z [command]/usr/bin/git remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:28:32.8532015Z ##[endgroup]
+2026-11-28T08:28:32.8534071Z ##[group]Disabling automatic garbage collection
+2026-11-28T08:28:32.8535744Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-28T08:28:32.8559352Z ##[endgroup]
+2026-11-28T08:28:32.8560673Z ##[group]Setting up auth
+2026-11-28T08:28:32.8561824Z Removing SSH command configuration
+2026-11-28T08:28:32.8563332Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:28:32.8592704Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T08:28:33.0519056Z Removing HTTP extra header
+2026-11-28T08:28:33.0525526Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:28:33.0561562Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T08:28:33.0711568Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:28:33.0716063Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:28:33.0741218Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T08:28:33.0893618Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-28T08:28:33.0922468Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path /home/runner/work/_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:33.0944440Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:33.0966405Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:33.0988791Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:33.1008736Z ##[endgroup]
+2026-11-28T08:28:33.1012930Z ##[group]Fetching the repository
+2026-11-28T08:28:33.1013464Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:34.5422630Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T08:28:34.5423183Z  * branch            71ca92be691455d0ff51ed163b1d91749e5ae62e -> FETCH_HEAD
+2026-11-28T08:28:34.5430854Z [command]/usr/bin/git rev-parse --verify --quiet 71ca92be691455d0ff51ed163b1d91749e5ae62e^{object}
+2026-11-28T08:28:34.5452853Z 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:34.5455857Z ##[endgroup]
+2026-11-28T08:28:34.5456249Z ##[group]Determining the checkout info
+2026-11-28T08:28:34.5456912Z ##[endgroup]
+2026-11-28T08:28:34.5460831Z [command]/usr/bin/git sparse-checkout disable
+2026-11-28T08:28:34.5524602Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-28T08:28:34.5546281Z ##[group]Checking out the ref
+2026-11-28T08:28:34.5549507Z [command]/usr/bin/git checkout --progress --force 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:34.6609717Z Note: switching to '71ca92be691455d0ff51ed163b1d91749e5ae62e'.
+2026-11-28T08:28:34.6610147Z 
+2026-11-28T08:28:34.6610314Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T08:28:34.6610918Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T08:28:34.6611320Z state without impacting any branches by switching back to a branch.
+2026-11-28T08:28:34.6611565Z 
+2026-11-28T08:28:34.6611705Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T08:28:34.6612055Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T08:28:34.6612313Z 
+2026-11-28T08:28:34.6612401Z   git switch -c <new-branch-name>
+2026-11-28T08:28:34.6612632Z 
+2026-11-28T08:28:34.6612724Z Or undo this operation with:
+2026-11-28T08:28:34.6612843Z 
+2026-11-28T08:28:34.6612918Z   git switch -
+2026-11-28T08:28:34.6613026Z 
+2026-11-28T08:28:34.6613191Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T08:28:34.6613457Z 
+2026-11-28T08:28:34.6613727Z HEAD is now at 71ca92b Complete current Resonance finalization scope and require exact installed acceptance
+2026-11-28T08:28:34.6625025Z ##[endgroup]
+2026-11-28T08:28:34.6669558Z [command]/usr/bin/git log -1 --format=%H
+2026-11-28T08:28:34.6692605Z 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:34.6702242Z ##[group]Removing auth
+2026-11-28T08:28:34.6702538Z Removing SSH command configuration
+2026-11-28T08:28:34.6703619Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T08:28:34.6729908Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T08:28:34.6882126Z Removing HTTP extra header
+2026-11-28T08:28:34.6885623Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T08:28:34.6910080Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T08:28:34.7062412Z Removing includeIf entries pointing to credentials config files
+2026-11-28T08:28:34.7064909Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T08:28:34.7088634Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:28:34.7089276Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:28:34.7089736Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:28:34.7090085Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:28:34.7095578Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T08:28:34.7119214Z /home/runner/work/_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:34.7126163Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-cb31a158\-229a\-44a6\-ab0d\-0f0eb93f1210\.config
+2026-11-28T08:28:34.7154010Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T08:28:34.7171087Z /home/runner/work/_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:34.7177314Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-cb31a158\-229a\-44a6\-ab0d\-0f0eb93f1210\.config
+2026-11-28T08:28:34.7201009Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T08:28:34.7218443Z /github/runner_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:34.7222884Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-cb31a158\-229a\-44a6\-ab0d\-0f0eb93f1210\.config
+2026-11-28T08:28:34.7247176Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T08:28:34.7264438Z /github/runner_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config
+2026-11-28T08:28:34.7269518Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-cb31a158\-229a\-44a6\-ab0d\-0f0eb93f1210\.config
+2026-11-28T08:28:34.7293897Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T08:28:34.7440718Z Removing credentials config '/home/runner/work/_temp/git-credentials-cb31a158-229a-44a6-ab0d-0f0eb93f1210.config'
+2026-11-28T08:28:34.7445876Z ##[endgroup]
+2026-11-28T08:28:34.9839424Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T08:28:34.9839738Z with:
+2026-11-28T08:28:34.9839898Z   python-version: 3.11
+2026-11-28T08:28:34.9840064Z   check-latest: false
+2026-11-28T08:28:34.9841865Z   token: ***
+2026-11-28T08:28:34.9842113Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T08:28:34.9842395Z   update-environment: true
+2026-11-28T08:28:34.9842574Z   allow-prereleases: false
+2026-11-28T08:28:34.9842739Z   freethreaded: false
+2026-11-28T08:28:34.9842897Z env:
+2026-11-28T08:28:34.9843033Z   PYTHONUTF8: 1
+2026-11-28T08:28:34.9843193Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:34.9843364Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:34.9843514Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:34.9843673Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:34.9843819Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:34.9843987Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:34.9844139Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:34.9844356Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:34.9844652Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:34.9844858Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:34.9845088Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:34.9845264Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:34.9845440Z ##[endgroup]
+2026-11-28T08:28:35.0745281Z ##[group]Installed versions
+2026-11-28T08:28:35.4301458Z Successfully set up CPython (3.11.18)
+2026-11-28T08:28:35.4302123Z ##[endgroup]
+2026-11-28T08:28:35.4535056Z ##[group]Run python -I -B -X utf8 - <<'PY'
+2026-11-28T08:28:35.4535608Z [36;1mpython -I -B -X utf8 - <<'PY'[0m
+2026-11-28T08:28:35.4536107Z [36;1mimport json[0m
+2026-11-28T08:28:35.4536317Z [36;1mimport os[0m
+2026-11-28T08:28:35.4536542Z [36;1mfrom pathlib import Path[0m
+2026-11-28T08:28:35.4536823Z [36;1mimport shutil[0m
+2026-11-28T08:28:35.4537060Z [36;1mimport stat[0m
+2026-11-28T08:28:35.4537290Z [36;1mimport tempfile[0m
+2026-11-28T08:28:35.4537737Z [36;1m[0m
+2026-11-28T08:28:35.4537967Z [36;1mdef directory(path):[0m
+2026-11-28T08:28:35.4538230Z [36;1m    info = path.lstat()[0m
+2026-11-28T08:28:35.4538649Z [36;1m    assert stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode), path[0m
+2026-11-28T08:28:35.4539264Z [36;1m    assert not int(getattr(info, "st_file_attributes", 0)) & 0x400, path[0m
+2026-11-28T08:28:35.4539830Z [36;1m    return [info.st_dev, info.st_ino, info.st_mode, int(getattr(info, "st_file_attributes", 0))][0m
+2026-11-28T08:28:35.4540296Z [36;1m[0m
+2026-11-28T08:28:35.4540506Z [36;1mobservations = [][0m
+2026-11-28T08:28:35.4540837Z [36;1mfor label, raw in (("RUNNER_TEMP", os.environ["RUNNER_TEMP"]),[0m
+2026-11-28T08:28:35.4541245Z [36;1m                   ("python_tempfile", tempfile.gettempdir())):[0m
+2026-11-28T08:28:35.4541611Z [36;1m    spelling = Path(raw).absolute()[0m
+2026-11-28T08:28:35.4541946Z [36;1m    for parent in reversed(spelling.parents):[0m
+2026-11-28T08:28:35.4542273Z [36;1m        directory(parent)[0m
+2026-11-28T08:28:35.4542575Z [36;1m    before = directory(spelling)[0m
+2026-11-28T08:28:35.4542896Z [36;1m    selected = spelling.resolve(strict=True)[0m
+2026-11-28T08:28:35.4543194Z [36;1m    assert directory(selected) == before[0m
+2026-11-28T08:28:35.4543486Z [36;1m    usage = shutil.disk_usage(selected)[0m
+2026-11-28T08:28:35.4543863Z [36;1m    assert directory(spelling) == directory(selected) == before[0m
+2026-11-28T08:28:35.4544333Z [36;1m    observations.append({"name": label, "supplied_path": str(spelling),[0m
+2026-11-28T08:28:35.4544751Z [36;1m        "canonical_path": str(selected), "identity": before,[0m
+2026-11-28T08:28:35.4545123Z [36;1m        "free_bytes": usage.free, "total_bytes": usage.total})[0m
+2026-11-28T08:28:35.4545558Z [36;1mchosen = max(observations, key=lambda item: item["free_bytes"])[0m
+2026-11-28T08:28:35.4545962Z [36;1mselected = Path(chosen["canonical_path"])[0m
+2026-11-28T08:28:35.4546318Z [36;1massert directory(selected) == chosen["identity"][0m
+2026-11-28T08:28:35.4546662Z [36;1mtier = os.environ["CARR_SCALE_TIER"][0m
+2026-11-28T08:28:35.4547048Z [36;1massert tier in {"books-1000", "books-10000", "books-50000",[0m
+2026-11-28T08:28:35.4547465Z [36;1m                "text-65m", "text-129m", "text-2g"}[0m
+2026-11-28T08:28:35.4548129Z [36;1m# Exclusive new parent; the generator still creates a nonexisting child.[0m
+2026-11-28T08:28:35.4548687Z [36;1mprivate = Path(tempfile.mkdtemp(prefix="carr-scale-" + tier + "-", dir=selected))[0m
+2026-11-28T08:28:35.4549162Z [36;1mprivate_identity = directory(private)[0m
+2026-11-28T08:28:35.4549502Z [36;1massert directory(selected) == chosen["identity"][0m
+2026-11-28T08:28:35.4549820Z [36;1mpath = private / "fixture"[0m
+2026-11-28T08:28:35.4550227Z [36;1massert not os.path.lexists(path) and "\n" not in str(path) and "\r" not in str(path)[0m
+2026-11-28T08:28:35.4550757Z [36;1mreport = {"observed_roots": observations, "selected_root": chosen,[0m
+2026-11-28T08:28:35.4551269Z [36;1m    "private_parent": str(private), "private_parent_identity": private_identity,[0m
+2026-11-28T08:28:35.4551953Z [36;1m    "fixture": str(path),[0m
+2026-11-28T08:28:35.4552396Z [36;1m    "selection": "larger measured free space among two known runner temporary roots",[0m
+2026-11-28T08:28:35.4552997Z [36;1m    "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight"}[0m
+2026-11-28T08:28:35.4553398Z [36;1mout = Path("ci-library-corpus")[0m
+2026-11-28T08:28:35.4553812Z [36;1mout.mkdir(exist_ok=True)[0m
+2026-11-28T08:28:35.4554275Z [36;1mwith (out / "runner-capacity.json").open("x", encoding="utf-8", newline="\n") as stream:[0m
+2026-11-28T08:28:35.4554844Z [36;1m    json.dump(report, stream, ensure_ascii=False, sort_keys=True)[0m
+2026-11-28T08:28:35.4555246Z [36;1m    stream.write("\n")[0m
+2026-11-28T08:28:35.4555768Z [36;1mprint("CARR_RUNNER_TEMP_CAPACITY " + json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)[0m
+2026-11-28T08:28:35.4556442Z [36;1mwith open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:[0m
+2026-11-28T08:28:35.4556950Z [36;1m    stream.write("CARR_SCALE_DIR=" + str(path) + "\n")[0m
+2026-11-28T08:28:35.4557282Z [36;1mPY[0m
+2026-11-28T08:28:35.8569516Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:28:35.8569793Z env:
+2026-11-28T08:28:35.8569957Z   PYTHONUTF8: 1
+2026-11-28T08:28:35.8570124Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:35.8570306Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:35.8570475Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:35.8570632Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:35.8570782Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:35.8570945Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:35.8571099Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:35.8571263Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:35.8571424Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:35.8571632Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:35.8571859Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:35.8572036Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:35.8572285Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:35.8572601Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:28:35.8572898Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:35.8573166Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:35.8573430Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:35.8573703Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:28:35.8573932Z ##[endgroup]
+2026-11-28T08:28:36.9717284Z CARR_RUNNER_TEMP_CAPACITY {"fixture": "/home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture", "observed_roots": [{"canonical_path": "/home/runner/work/_temp", "free_bytes": 94333059072, "identity": [64512, 4005427, 16877, 0], "name": "RUNNER_TEMP", "supplied_path": "/home/runner/work/_temp", "total_bytes": 154894188544}, {"canonical_path": "/tmp", "free_bytes": 94333059072, "identity": [64512, 1700, 17407, 0], "name": "python_tempfile", "supplied_path": "/tmp", "total_bytes": 154894188544}], "private_parent": "/home/runner/work/_temp/carr-scale-text-2g-ptumople", "private_parent_identity": [64512, 4005449, 16832, 0], "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight", "selected_root": {"canonical_path": "/home/runner/work/_temp", "free_bytes": 94333059072, "identity": [64512, 4005427, 16877, 0], "name": "RUNNER_TEMP", "supplied_path": "/home/runner/work/_temp", "total_bytes": 154894188544}, "selection": "larger measured free space among two known runner temporary roots"}
+2026-11-28T08:28:36.9898339Z ##[group]Run python -m pip install ".[test,sync]"
+2026-11-28T08:28:36.9898660Z [36;1mpython -m pip install ".[test,sync]"[0m
+2026-11-28T08:28:36.9923957Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:28:36.9924202Z env:
+2026-11-28T08:28:36.9924345Z   PYTHONUTF8: 1
+2026-11-28T08:28:36.9924508Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:36.9924796Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:36.9924949Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:36.9925119Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:36.9925269Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:36.9925433Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:36.9925588Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:36.9925757Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:36.9925923Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:36.9926129Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:36.9926355Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:36.9926589Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:36.9926821Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:36.9927124Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:28:36.9927415Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:36.9927818Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:36.9928087Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:36.9928357Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:28:36.9928670Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:28:36.9928933Z ##[endgroup]
+2026-11-28T08:28:40.3782057Z Processing ./.
+2026-11-28T08:28:40.3797707Z   Installing build dependencies: started
+2026-11-28T08:28:41.9510147Z   Installing build dependencies: finished with status 'done'
+2026-11-28T08:28:41.9515236Z   Getting requirements to build wheel: started
+2026-11-28T08:28:42.4725138Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T08:28:42.4730915Z   Preparing metadata (pyproject.toml): started
+2026-11-28T08:28:42.8158843Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T08:28:42.8890614Z Collecting pypdf==7.1.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:42.9432885Z   Downloading pypdf-7.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T08:28:43.0304431Z Collecting pypdfium2==5.13.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.0389634Z   Downloading pypdfium2-5.13.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (66 kB)
+2026-11-28T08:28:43.0693820Z Collecting python-docx==1.2.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.0777830Z   Downloading python_docx-1.2.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T08:28:43.0969011Z Collecting platformdirs==4.10.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.1053061Z   Downloading platformdirs-4.10.0-py3-none-any.whl.metadata (5.5 kB)
+2026-11-28T08:28:43.1255467Z Collecting filelock==3.29.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.1357483Z   Downloading filelock-3.29.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T08:28:43.2609384Z Collecting Pillow==13.0.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.2698076Z   Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+2026-11-28T08:28:43.2862861Z Collecting py3langid==0.4.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.2962827Z   Downloading py3langid-0.4.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T08:28:43.3101593Z Collecting defusedxml==0.7.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.3194615Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-11-28T08:28:43.3386708Z Collecting bibtexparser==2.1.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.3469194Z   Downloading bibtexparser-2.1.0-py3-none-any.whl.metadata (6.3 kB)
+2026-11-28T08:28:43.3609045Z Collecting pylatexenc==2.11 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.3692961Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl.metadata (3.9 kB)
+2026-11-28T08:28:43.3873126Z Collecting quickjs-ng==0.18.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.4225905Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+2026-11-28T08:28:43.5621473Z Collecting cryptography==50.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.5715493Z   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (4.4 kB)
+2026-11-28T08:28:43.5934466Z Collecting pytest==9.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.6016860Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T08:28:43.6179675Z Collecting beautifulsoup4<5,>=4.12 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.6265182Z   Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
+2026-11-28T08:28:43.6417770Z Collecting openpyxl<4,>=3.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.6507956Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:28:43.6575838Z Collecting packaging<27,>=25 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.6586244Z   Using cached packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T08:28:43.6889731Z Collecting huggingface-hub==1.16.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.6971618Z   Downloading huggingface_hub-1.16.1-py3-none-any.whl.metadata (14 kB)
+2026-11-28T08:28:43.7736532Z Collecting reportlab==4.4.9 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.7824132Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T08:28:43.7968559Z Collecting pytesseract==0.3.13 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:43.8049272Z   Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 kB)
+2026-11-28T08:28:44.1219553Z Collecting rapidfuzz==3.14.6 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.1304890Z   Downloading rapidfuzz-3.14.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (12 kB)
+2026-11-28T08:28:44.1468027Z Collecting nltk==3.9.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.1552344Z   Downloading nltk-3.9.2-py3-none-any.whl.metadata (3.2 kB)
+2026-11-28T08:28:44.1996485Z Collecting zstandard==0.25.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.2085073Z   Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.3 kB)
+2026-11-28T08:28:44.3053145Z Collecting cffi>=2.0.0 (from cryptography==50.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.3141711Z   Downloading cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+2026-11-28T08:28:44.3340945Z Collecting fsspec>=2023.5.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.3426792Z   Downloading fsspec-2026.9.0-py3-none-any.whl.metadata (10 kB)
+2026-11-28T08:28:44.3828258Z Collecting hf-xet<2.0.0,>=1.4.3 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.3913647Z   Downloading hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+2026-11-28T08:28:44.4087940Z Collecting httpx<1,>=0.23.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.4177357Z   Downloading httpx-0.29.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T08:28:44.4489412Z Collecting pyyaml>=5.1 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.4589034Z   Downloading pyyaml-6.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.3 kB)
+2026-11-28T08:28:44.4809261Z Collecting tqdm>=4.42.1 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.4892831Z   Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+2026-11-28T08:28:44.5139572Z Collecting typer>=0.20.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.5224090Z   Downloading typer-0.29.3-py3-none-any.whl.metadata (16 kB)
+2026-11-28T08:28:44.5397469Z Collecting typing-extensions>=4.1.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.5485121Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-28T08:28:44.5656793Z Collecting click (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.5740236Z   Downloading click-8.5.1-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T08:28:44.5918071Z Collecting joblib (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.6135508Z   Downloading joblib-1.6.0-py3-none-any.whl.metadata (6.5 kB)
+2026-11-28T08:28:44.9049640Z Collecting regex>=2021.8.3 (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:44.9143472Z   Downloading regex-2026.11.25-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+2026-11-28T08:28:45.0451053Z Collecting numpy>=2.0.0 (from py3langid==0.4.0->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.0539938Z   Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+2026-11-28T08:28:45.0706237Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.0791340Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T08:28:45.0930966Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.1014121Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T08:28:45.1188055Z Collecting pygments>=2.7.2 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.1269603Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:28:45.3038661Z Collecting lxml>=3.1.0 (from python-docx==1.2.0->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.3129284Z   Downloading lxml-6.2.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl.metadata (5.6 kB)
+2026-11-28T08:28:45.3995712Z Collecting charset-normalizer (from reportlab==4.4.9->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.4084564Z   Downloading charset_normalizer-3.5.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (43 kB)
+2026-11-28T08:28:45.4327154Z Collecting soupsieve>=1.6.1 (from beautifulsoup4<5,>=4.12->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.4412344Z   Downloading soupsieve-4.1.3-py3-none-any.whl.metadata (4.4 kB)
+2026-11-28T08:28:45.4610976Z Collecting anyio (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.4697064Z   Downloading anyio-4.16.0-py3-none-any.whl.metadata (4.7 kB)
+2026-11-28T08:28:45.4875774Z Collecting certifi (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.4978705Z   Downloading certifi-2026.11.20-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T08:28:45.5136351Z Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.5224380Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-11-28T08:28:45.5395425Z Collecting idna (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.5478903Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-11-28T08:28:45.5626788Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.5707146Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-11-28T08:28:45.5843966Z Collecting et-xmlfile (from openpyxl<4,>=3.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.5930400Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-11-28T08:28:45.6076608Z Collecting pycparser (from cffi>=2.0.0->cryptography==50.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.6159320Z   Downloading pycparser-3.12-py3-none-any.whl.metadata (9.7 kB)
+2026-11-28T08:28:45.7268592Z Collecting pydantic>=2.5.3 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.7358279Z   Downloading pydantic-2.14.4-py3-none-any.whl.metadata (143 kB)
+2026-11-28T08:28:45.7665729Z Collecting shellingham>=1.3.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.7752276Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T08:28:45.7986330Z Collecting rich>=13.8.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.8073247Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-11-28T08:28:45.8214080Z Collecting annotated-doc>=0.0.2 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.8301022Z   Downloading annotated_doc-0.0.7-py3-none-any.whl.metadata (6.4 kB)
+2026-11-28T08:28:45.8438247Z Collecting annotated-types>=0.6.0 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:45.8525906Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-11-28T08:28:46.3057437Z Collecting pydantic-core==2.50.5 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:46.3149987Z   Downloading pydantic_core-2.50.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (6.6 kB)
+2026-11-28T08:28:46.3292024Z Collecting typing-inspection>=0.4.4 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:46.3376867Z   Downloading typing_inspection-0.4.5-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T08:28:46.3539460Z Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:46.3627187Z   Downloading markdown_it_py-4.3.0-py3-none-any.whl.metadata (7.9 kB)
+2026-11-28T08:28:46.3783162Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:46.3867047Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-11-28T08:28:46.4064220Z Collecting cloudpickle>=3.0 (from joblib->nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T08:28:46.4147819Z   Downloading cloudpickle-3.1.3-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T08:28:46.4269988Z Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.1 MB)
+2026-11-28T08:28:46.6847061Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.1/7.1 MB 29.5 MB/s  0:00:00
+2026-11-28T08:28:46.6932947Z Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T08:28:46.7037973Z Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T08:28:46.7140486Z Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl (4.8 MB)
+2026-11-28T08:28:46.7847197Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.8/4.8 MB 67.3 MB/s  0:00:00
+2026-11-28T08:28:46.7933389Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T08:28:46.8031452Z Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T08:28:46.8126030Z Downloading huggingface_hub-1.16.1-py3-none-any.whl (668 kB)
+2026-11-28T08:28:46.8203574Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 668.2/668.2 kB 84.2 MB/s  0:00:00
+2026-11-28T08:28:46.8289384Z Downloading nltk-3.9.2-py3-none-any.whl (1.5 MB)
+2026-11-28T08:28:46.8461237Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.5/1.5 MB 89.6 MB/s  0:00:00
+2026-11-28T08:28:46.8566489Z Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T08:28:46.8683589Z Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T08:28:46.9102992Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.6/4.6 MB 110.4 MB/s  0:00:00
+2026-11-28T08:28:46.9188468Z Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T08:28:46.9307436Z Downloading pypdfium2-5.13.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.7 MB)
+2026-11-28T08:28:46.9590903Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 131.4 MB/s  0:00:00
+2026-11-28T08:28:46.9676706Z Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+2026-11-28T08:28:46.9773979Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T08:28:46.9889291Z Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T08:28:47.0001608Z Downloading quickjs_ng-0.18.0.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (2.5 MB)
+2026-11-28T08:28:47.0187972Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 136.0 MB/s  0:00:00
+2026-11-28T08:28:47.0271257Z Downloading rapidfuzz-3.14.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (3.2 MB)
+2026-11-28T08:28:47.0472207Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 159.3 MB/s  0:00:00
+2026-11-28T08:28:47.0595496Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T08:28:47.0721421Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 159.9 MB/s  0:00:00
+2026-11-28T08:28:47.0803824Z Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.6 MB)
+2026-11-28T08:28:47.1093030Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.6/5.6 MB 195.4 MB/s  0:00:00
+2026-11-28T08:28:47.1183377Z Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
+2026-11-28T08:28:47.1283749Z Downloading hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.3 MB)
+2026-11-28T08:28:47.1496628Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.3/4.3 MB 210.3 MB/s  0:00:00
+2026-11-28T08:28:47.1585394Z Downloading httpx-0.29.0-py3-none-any.whl (73 kB)
+2026-11-28T08:28:47.1675813Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-11-28T08:28:47.1772186Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-11-28T08:28:47.1800198Z Using cached packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T08:28:47.1885798Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T08:28:47.1982052Z Downloading cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (217 kB)
+2026-11-28T08:28:47.2112494Z Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+2026-11-28T08:28:47.2215221Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-11-28T08:28:47.2311425Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T08:28:47.2409143Z Downloading lxml-6.2.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (5.3 MB)
+2026-11-28T08:28:47.2637781Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.3/5.3 MB 237.5 MB/s  0:00:00
+2026-11-28T08:28:47.2727722Z Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.9 MB)
+2026-11-28T08:28:47.3330349Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.9/16.9 MB 286.6 MB/s  0:00:00
+2026-11-28T08:28:47.3417432Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T08:28:47.3472921Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 296.1 MB/s  0:00:00
+2026-11-28T08:28:47.3559322Z Downloading pyyaml-6.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (828 kB)
+2026-11-28T08:28:47.3598453Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 828.0/828.0 kB 238.3 MB/s  0:00:00
+2026-11-28T08:28:47.3682922Z Downloading regex-2026.11.25-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (812 kB)
+2026-11-28T08:28:47.3723627Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 813.0/813.0 kB 246.0 MB/s  0:00:00
+2026-11-28T08:28:47.3803613Z Downloading soupsieve-4.1.3-py3-none-any.whl (59 kB)
+2026-11-28T08:28:47.3906016Z Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-28T08:28:47.4000591Z Downloading typer-0.29.3-py3-none-any.whl (121 kB)
+2026-11-28T08:28:47.4102110Z Downloading annotated_doc-0.0.7-py3-none-any.whl (5.3 kB)
+2026-11-28T08:28:47.4202321Z Downloading pydantic-2.14.4-py3-none-any.whl (494 kB)
+2026-11-28T08:28:47.4309731Z Downloading pydantic_core-2.50.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (2.3 MB)
+2026-11-28T08:28:47.4388334Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 318.8 MB/s  0:00:00
+2026-11-28T08:28:47.4471006Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-11-28T08:28:47.4567996Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-11-28T08:28:47.4674002Z Downloading markdown_it_py-4.3.0-py3-none-any.whl (96 kB)
+2026-11-28T08:28:47.4767929Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-11-28T08:28:47.4866790Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-11-28T08:28:47.4958539Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T08:28:47.5056914Z Downloading typing_inspection-0.4.5-py3-none-any.whl (14 kB)
+2026-11-28T08:28:47.5151418Z Downloading anyio-4.16.0-py3-none-any.whl (134 kB)
+2026-11-28T08:28:47.5250201Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-11-28T08:28:47.5344958Z Downloading certifi-2026.11.20-py3-none-any.whl (127 kB)
+2026-11-28T08:28:47.5483667Z Downloading charset_normalizer-3.5.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (263 kB)
+2026-11-28T08:28:47.5583945Z Downloading click-8.5.1-py3-none-any.whl (126 kB)
+2026-11-28T08:28:47.5688488Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-11-28T08:28:47.5784756Z Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+2026-11-28T08:28:47.5885270Z Downloading cloudpickle-3.1.3-py3-none-any.whl (22 kB)
+2026-11-28T08:28:47.5980986Z Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+2026-11-28T08:28:47.7401783Z Building wheels for collected packages: universal-research-library
+2026-11-28T08:28:47.7405925Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T08:28:48.4313434Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T08:28:48.4322294Z   /tmp/pip-build-env-fcnunvbr/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T08:28:48.4323346Z   !!
+2026-11-28T08:28:48.4323556Z   
+2026-11-28T08:28:48.4323824Z           ********************************************************************************
+2026-11-28T08:28:48.4324191Z           ############################
+2026-11-28T08:28:48.4324490Z           # Package would be ignored #
+2026-11-28T08:28:48.4324779Z           ############################
+2026-11-28T08:28:48.4325288Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T08:28:48.4326249Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:28:48.4326612Z   
+2026-11-28T08:28:48.4327006Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:28:48.4327894Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T08:28:48.4328553Z           to the `packages` configuration field.
+2026-11-28T08:28:48.4328861Z   
+2026-11-28T08:28:48.4329178Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:28:48.4329702Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:28:48.4330150Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:28:48.4330462Z   
+2026-11-28T08:28:48.4330806Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:28:48.4331216Z   
+2026-11-28T08:28:48.4331582Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:28:48.4332024Z   
+2026-11-28T08:28:48.4332394Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T08:28:48.4333032Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T08:28:48.4333629Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:28:48.4334226Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:28:48.4334792Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:28:48.4335181Z   
+2026-11-28T08:28:48.4335507Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:28:48.4335915Z   
+2026-11-28T08:28:48.4336231Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:28:48.4336621Z   
+2026-11-28T08:28:48.4336888Z   
+2026-11-28T08:28:48.4337202Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:28:48.4337876Z                 even if it does not contain any `.py` files.
+2026-11-28T08:28:48.4338318Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:28:48.4338794Z                 directory, all directories are treated like packages.
+2026-11-28T08:28:48.4339316Z           ********************************************************************************
+2026-11-28T08:28:48.4339640Z   
+2026-11-28T08:28:48.4339810Z   !!
+2026-11-28T08:28:48.4339997Z     check.warn(importable)
+2026-11-28T08:28:48.4340755Z   /tmp/pip-build-env-fcnunvbr/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T08:28:48.4341571Z   !!
+2026-11-28T08:28:48.4341740Z   
+2026-11-28T08:28:48.4341948Z           ********************************************************************************
+2026-11-28T08:28:48.4342330Z           ############################
+2026-11-28T08:28:48.4342682Z           # Package would be ignored #
+2026-11-28T08:28:48.4343099Z           ############################
+2026-11-28T08:28:48.4343703Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T08:28:48.4344258Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:28:48.4344585Z   
+2026-11-28T08:28:48.4344914Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:28:48.4345513Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T08:28:48.4345995Z           to the `packages` configuration field.
+2026-11-28T08:28:48.4346261Z   
+2026-11-28T08:28:48.4346534Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:28:48.4347228Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:28:48.4347917Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:28:48.4348193Z   
+2026-11-28T08:28:48.4348500Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:28:48.4348882Z   
+2026-11-28T08:28:48.4349207Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:28:48.4349684Z   
+2026-11-28T08:28:48.4350026Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T08:28:48.4350925Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T08:28:48.4351553Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:28:48.4352114Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:28:48.4352638Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:28:48.4353018Z   
+2026-11-28T08:28:48.4353339Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:28:48.4353721Z   
+2026-11-28T08:28:48.4354011Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:28:48.4354357Z   
+2026-11-28T08:28:48.4354512Z   
+2026-11-28T08:28:48.4354801Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:28:48.4355210Z                 even if it does not contain any `.py` files.
+2026-11-28T08:28:48.4355726Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:28:48.4356154Z                 directory, all directories are treated like packages.
+2026-11-28T08:28:48.4356534Z           ********************************************************************************
+2026-11-28T08:28:48.4356831Z   
+2026-11-28T08:28:48.4356989Z   !!
+2026-11-28T08:28:48.4357181Z     check.warn(importable)
+2026-11-28T08:28:48.4358435Z   /tmp/pip-build-env-fcnunvbr/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T08:28:48.4359337Z   !!
+2026-11-28T08:28:48.4359525Z   
+2026-11-28T08:28:48.4359752Z           ********************************************************************************
+2026-11-28T08:28:48.4360074Z           ############################
+2026-11-28T08:28:48.4360328Z           # Package would be ignored #
+2026-11-28T08:28:48.4360574Z           ############################
+2026-11-28T08:28:48.4361013Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T08:28:48.4361538Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:28:48.4361887Z   
+2026-11-28T08:28:48.4362198Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:28:48.4362794Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T08:28:48.4363265Z           to the `packages` configuration field.
+2026-11-28T08:28:48.4363500Z   
+2026-11-28T08:28:48.4363751Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:28:48.4364166Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:28:48.4364549Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:28:48.4364803Z   
+2026-11-28T08:28:48.4365086Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:28:48.4365437Z   
+2026-11-28T08:28:48.4365749Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:28:48.4366134Z   
+2026-11-28T08:28:48.4366475Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T08:28:48.4367255Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T08:28:48.4367991Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:28:48.4368457Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:28:48.4368915Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:28:48.4369333Z   
+2026-11-28T08:28:48.4369620Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:28:48.4369972Z   
+2026-11-28T08:28:48.4370255Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:28:48.4370623Z   
+2026-11-28T08:28:48.4370799Z   
+2026-11-28T08:28:48.4371096Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:28:48.4371554Z                 even if it does not contain any `.py` files.
+2026-11-28T08:28:48.4371976Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:28:48.4372433Z                 directory, all directories are treated like packages.
+2026-11-28T08:28:48.4372852Z           ********************************************************************************
+2026-11-28T08:28:48.4373176Z   
+2026-11-28T08:28:48.4373353Z   !!
+2026-11-28T08:28:48.4373568Z     check.warn(importable)
+2026-11-28T08:28:48.4374553Z   /tmp/pip-build-env-fcnunvbr/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T08:28:48.4375559Z   !!
+2026-11-28T08:28:48.4375749Z   
+2026-11-28T08:28:48.4376002Z           ********************************************************************************
+2026-11-28T08:28:48.4376367Z           ############################
+2026-11-28T08:28:48.4376666Z           # Package would be ignored #
+2026-11-28T08:28:48.4376958Z           ############################
+2026-11-28T08:28:48.4377456Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T08:28:48.4378265Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:28:48.4378627Z   
+2026-11-28T08:28:48.4379067Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:28:48.4379755Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T08:28:48.4380303Z           to the `packages` configuration field.
+2026-11-28T08:28:48.4380606Z   
+2026-11-28T08:28:48.4380914Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:28:48.4381584Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:28:48.4381925Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:28:48.4382195Z   
+2026-11-28T08:28:48.4382536Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:28:48.4382972Z   
+2026-11-28T08:28:48.4383332Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:28:48.4383759Z   
+2026-11-28T08:28:48.4384133Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T08:28:48.4384771Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T08:28:48.4385394Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:28:48.4385981Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:28:48.4386545Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:28:48.4386942Z   
+2026-11-28T08:28:48.4387298Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:28:48.4387902Z   
+2026-11-28T08:28:48.4388347Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:28:48.4388725Z   
+2026-11-28T08:28:48.4388905Z   
+2026-11-28T08:28:48.4389216Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:28:48.4389617Z                 even if it does not contain any `.py` files.
+2026-11-28T08:28:48.4389980Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:28:48.4390459Z                 directory, all directories are treated like packages.
+2026-11-28T08:28:48.4390846Z           ********************************************************************************
+2026-11-28T08:28:48.4391163Z   
+2026-11-28T08:28:48.4391340Z   !!
+2026-11-28T08:28:48.4391551Z     check.warn(importable)
+2026-11-28T08:28:48.4392434Z   /tmp/pip-build-env-fcnunvbr/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T08:28:48.4393369Z   !!
+2026-11-28T08:28:48.4393563Z   
+2026-11-28T08:28:48.4393816Z           ********************************************************************************
+2026-11-28T08:28:48.4394179Z           ############################
+2026-11-28T08:28:48.4394484Z           # Package would be ignored #
+2026-11-28T08:28:48.4394775Z           ############################
+2026-11-28T08:28:48.4395231Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T08:28:48.4395840Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:28:48.4396209Z   
+2026-11-28T08:28:48.4396567Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:28:48.4397182Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T08:28:48.4397967Z           to the `packages` configuration field.
+2026-11-28T08:28:48.4398281Z   
+2026-11-28T08:28:48.4398611Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:28:48.4399139Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:28:48.4399584Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:28:48.4399892Z   
+2026-11-28T08:28:48.4400237Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:28:48.4400692Z   
+2026-11-28T08:28:48.4401038Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:28:48.4401460Z   
+2026-11-28T08:28:48.4401795Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T08:28:48.4402352Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T08:28:48.4402921Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:28:48.4403519Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:28:48.4404116Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:28:48.4404507Z   
+2026-11-28T08:28:48.4404912Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:28:48.4405333Z   
+2026-11-28T08:28:48.4405650Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:28:48.4406078Z   
+2026-11-28T08:28:48.4406257Z   
+2026-11-28T08:28:48.4406566Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:28:48.4407024Z                 even if it does not contain any `.py` files.
+2026-11-28T08:28:48.4407454Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:28:48.4408063Z                 directory, all directories are treated like packages.
+2026-11-28T08:28:48.4408443Z           ********************************************************************************
+2026-11-28T08:28:48.4408748Z   
+2026-11-28T08:28:48.4409070Z   !!
+2026-11-28T08:28:48.4409261Z     check.warn(importable)
+2026-11-28T08:28:48.4410175Z   /tmp/pip-build-env-fcnunvbr/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T08:28:48.4411125Z   !!
+2026-11-28T08:28:48.4411397Z   
+2026-11-28T08:28:48.4411648Z           ********************************************************************************
+2026-11-28T08:28:48.4411975Z           ############################
+2026-11-28T08:28:48.4412265Z           # Package would be ignored #
+2026-11-28T08:28:48.4412538Z           ############################
+2026-11-28T08:28:48.4413027Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T08:28:48.4413616Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T08:28:48.4413965Z   
+2026-11-28T08:28:48.4414285Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T08:28:48.4414894Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T08:28:48.4415364Z           to the `packages` configuration field.
+2026-11-28T08:28:48.4415641Z   
+2026-11-28T08:28:48.4415935Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T08:28:48.4416455Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T08:28:48.4416936Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T08:28:48.4417244Z   
+2026-11-28T08:28:48.4417796Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T08:28:48.4418237Z   
+2026-11-28T08:28:48.4418588Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T08:28:48.4419101Z   
+2026-11-28T08:28:48.4419481Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T08:28:48.4420093Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T08:28:48.4420656Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T08:28:48.4421188Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T08:28:48.4421724Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T08:28:48.4422120Z   
+2026-11-28T08:28:48.4422474Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T08:28:48.4422909Z   
+2026-11-28T08:28:48.4423212Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T08:28:48.4423607Z   
+2026-11-28T08:28:48.4423779Z   
+2026-11-28T08:28:48.4424087Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T08:28:48.4424539Z                 even if it does not contain any `.py` files.
+2026-11-28T08:28:48.4424983Z                 On the other hand, currently there is no concept of package data
+2026-11-28T08:28:48.4425422Z                 directory, all directories are treated like packages.
+2026-11-28T08:28:48.4425826Z           ********************************************************************************
+2026-11-28T08:28:48.4426119Z   
+2026-11-28T08:28:48.4426283Z   !!
+2026-11-28T08:28:48.4426470Z     check.warn(importable)
+2026-11-28T08:28:48.4427265Z   Created wheel for universal-research-library: filename=universal_research_library-0.3.0.dev1-py3-none-any.whl size=2766355 sha256=587e22f0ef1842396bcddf2c1823d80dec539c7c393736cd926f76cdc3660032
+2026-11-28T08:28:48.4428483Z   Stored in directory: /tmp/pip-ephem-wheel-cache-p2c2rodg/wheels/8c/4a/13/69c77a7a70caad6cbb87efa216817814a8429d6f623984ab19
+2026-11-28T08:28:48.4432697Z Successfully built universal-research-library
+2026-11-28T08:28:48.5650118Z Installing collected packages: pylatexenc, zstandard, typing-extensions, tqdm, soupsieve, shellingham, regex, rapidfuzz, quickjs-ng, pyyaml, pypdfium2, pypdf, pygments, pycparser, pluggy, platformdirs, Pillow, packaging, numpy, mdurl, lxml, iniconfig, idna, hf-xet, h11, fsspec, filelock, et-xmlfile, defusedxml, cloudpickle, click, charset-normalizer, certifi, bibtexparser, annotated-types, annotated-doc, typing-inspection, reportlab, python-docx, pytest, pytesseract, pydantic-core, py3langid, openpyxl, markdown-it-py, joblib, httpcore, cffi, beautifulsoup4, anyio, universal-research-library, rich, pydantic, nltk, httpx, cryptography, typer, huggingface-hub
+2026-11-28T08:28:54.8116293Z 
+2026-11-28T08:28:54.8136907Z Successfully installed Pillow-13.0.0 annotated-doc-0.0.7 annotated-types-0.8.0 anyio-4.16.0 beautifulsoup4-4.15.0 bibtexparser-2.1.0 certifi-2026.11.20 cffi-2.1.1 charset-normalizer-3.5.3 click-8.5.1 cloudpickle-3.1.3 cryptography-50.0.2 defusedxml-0.7.1 et-xmlfile-2.0.0 filelock-3.29.0 fsspec-2026.9.0 h11-0.16.0 hf-xet-1.8.0 httpcore-1.0.9 httpx-0.29.0 huggingface-hub-1.16.1 idna-3.20 iniconfig-2.3.1 joblib-1.6.0 lxml-6.2.0 markdown-it-py-4.3.0 mdurl-0.1.2 nltk-3.9.2 numpy-2.4.6 openpyxl-3.1.5 packaging-26.4 platformdirs-4.10.0 pluggy-1.7.0 py3langid-0.4.0 pycparser-3.12 pydantic-2.14.4 pydantic-core-2.50.5 pygments-2.21.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 pytesseract-0.3.13 pytest-9.0.2 python-docx-1.2.0 pyyaml-6.0.4 quickjs-ng-0.18.0.2 rapidfuzz-3.14.6 regex-2026.11.25 reportlab-4.4.9 rich-15.0.0 shellingham-1.5.4 soupsieve-4.1.3 tqdm-4.70.1 typer-0.29.3 typing-extensions-4.16.0 typing-inspection-0.4.5 universal-research-library-0.3.0.dev1 zstandard-0.25.0
+2026-11-28T08:28:54.9993219Z ##[group]Run mkdir -p ci-library-corpus
+2026-11-28T08:28:54.9994085Z [36;1mmkdir -p ci-library-corpus[0m
+2026-11-28T08:28:54.9994311Z [36;1mcat > ci-library-corpus/check.py <<'PY'[0m
+2026-11-28T08:28:54.9994636Z [36;1m"""Exact installed-byte binding and collection for real synthetic corpus tiers."""[0m
+2026-11-28T08:28:54.9994949Z [36;1mfrom hashlib import sha256[0m
+2026-11-28T08:28:54.9995141Z [36;1mimport importlib[0m
+2026-11-28T08:28:54.9995318Z [36;1mimport importlib.util[0m
+2026-11-28T08:28:54.9995490Z [36;1mimport json[0m
+2026-11-28T08:28:54.9995639Z [36;1mimport os[0m
+2026-11-28T08:28:54.9995798Z [36;1mfrom pathlib import Path[0m
+2026-11-28T08:28:54.9995981Z [36;1mimport shutil[0m
+2026-11-28T08:28:54.9996137Z [36;1mimport stat[0m
+2026-11-28T08:28:54.9996304Z [36;1mimport subprocess[0m
+2026-11-28T08:28:54.9996465Z [36;1mimport sys[0m
+2026-11-28T08:28:54.9996616Z [36;1mimport sysconfig[0m
+2026-11-28T08:28:54.9996775Z [36;1m[0m
+2026-11-28T08:28:54.9997025Z [36;1massert sys.flags.isolated and not os.environ.get("PYTHONPATH")[0m
+2026-11-28T08:28:54.9997303Z [36;1mROOT = Path.cwd().resolve()[0m
+2026-11-28T08:28:54.9997500Z [36;1mOUT = ROOT / "ci-library-corpus"[0m
+2026-11-28T08:28:54.9997962Z [36;1mFIXTURE = Path(os.environ["CARR_SCALE_DIR"]).resolve()[0m
+2026-11-28T08:28:54.9998257Z [36;1mEXPECTED_BOOKS = int(os.environ["CARR_SCALE_BOOKS"]) or 1[0m
+2026-11-28T08:28:54.9998592Z [36;1mEXPECTED_SEGMENTS = EXPECTED_BOOKS * int(os.environ["CARR_SCALE_SEGMENTS"])[0m
+2026-11-28T08:28:55.0001586Z [36;1mMODULES = ["carr_library.storage.publication","carr_library.storage.revisions","carr_library.application","carr_library.catalog.membership","carr_library.catalog.registration","carr_library.ingest.pipeline","carr_library.ingest.worker","carr_library.ingest.publication_identity","carr_library.ingest.retained_assets","carr_library.catalog.intake","carr_library.ingest.resource_budget","carr_library.durable_state","carr_library.citations.text_attestation","carr_library.citations.historical","carr_library.ingest.session","carr_library.ingest.slices","carr_library.ingest.reconciliation","carr_library.ingest.batch_pages","carr_library.ingest.batches","carr_library.ingest.batch_scan","carr_library.citations.pdf_review_attestation","carr_library.extract.raster_pages","carr_library.extract.page_ocr","carr_library.extract.runtime_identity","carr_library.search.paging","carr_library.search.ranked_scope","carr_library.search.federated","carr_library.search.literal","carr_library.search.thematic","carr_library.search.semantic_windows","carr_library.semantic","carr_library.audio.process","carr_library.audio.cleanup","carr_library.catalog.read_views","carr_library.operations.broker","carr_library.operations.models"][0m
+2026-11-28T08:28:55.0004831Z [36;1mMODULES += ["carr_library.backup_budget", "carr_library.library_backup",[0m
+2026-11-28T08:28:55.0005202Z [36;1m            "carr_library.pending_backup", "carr_library.backup_sidecars",[0m
+2026-11-28T08:28:55.0005549Z [36;1m            "carr_library.backup_current", "carr_library.backup_producers",[0m
+2026-11-28T08:28:55.0005980Z [36;1m            "carr_library.backup_transcription", "carr_library.ingest.catalog_asset_copy",[0m
+2026-11-28T08:28:55.0006312Z [36;1m            "carr_library.ingest.restore"][0m
+2026-11-28T08:28:55.0006605Z [36;1mSCRIPTS = ("benchmark_library_scale.py", "benchmark_library_catalog.py",[0m
+2026-11-28T08:28:55.0006908Z [36;1m           "benchmark_library_backup.py")[0m
+2026-11-28T08:28:55.0007213Z [36;1mBACKUP_REQUIRED = os.environ["CARR_SCALE_TIER"] in {"books-50000", "text-2g"}[0m
+2026-11-28T08:28:55.0007748Z [36;1mBACKUP_MEMORY_BYTES = int(os.environ["CARR_SCALE_BACKUP_MEMORY_MIB"]) * 1024**2[0m
+2026-11-28T08:28:55.0008036Z [36;1m[0m
+2026-11-28T08:28:55.0008174Z [36;1m[0m
+2026-11-28T08:28:55.0008318Z [36;1mdef inventory(root):[0m
+2026-11-28T08:28:55.0008493Z [36;1m    rows = [][0m
+2026-11-28T08:28:55.0008683Z [36;1m    for path in sorted(root.rglob("*.py")):[0m
+2026-11-28T08:28:55.0009012Z [36;1m        observed = path.lstat()[0m
+2026-11-28T08:28:55.0009355Z [36;1m        assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1 and not path.is_symlink(), path[0m
+2026-11-28T08:28:55.0009743Z [36;1m        assert path.resolve().is_relative_to(root), path[0m
+2026-11-28T08:28:55.0010060Z [36;1m        assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path[0m
+2026-11-28T08:28:55.0010371Z [36;1m        assert observed.st_size <= 32 * 1024**2, path[0m
+2026-11-28T08:28:55.0010724Z [36;1m        rows.append([path.relative_to(root).as_posix(), sha256(path.read_bytes()).hexdigest()])[0m
+2026-11-28T08:28:55.0011127Z [36;1m    assert len(rows) >= 380 and len(rows) == len({row[0] for row in rows}), len(rows)[0m
+2026-11-28T08:28:55.0011411Z [36;1m    return rows[0m
+2026-11-28T08:28:55.0011566Z [36;1m[0m
+2026-11-28T08:28:55.0011697Z [36;1m[0m
+2026-11-28T08:28:55.0011839Z [36;1mdef identity():[0m
+2026-11-28T08:28:55.0012019Z [36;1m    observed_head = subprocess.run([0m
+2026-11-28T08:28:55.0012263Z [36;1m        ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,[0m
+2026-11-28T08:28:55.0012563Z [36;1m        capture_output=True, text=True, timeout=10).stdout.strip()[0m
+2026-11-28T08:28:55.0012830Z [36;1m    assert (len(observed_head) == 40[0m
+2026-11-28T08:28:55.0013120Z [36;1m            and all(character in "0123456789abcdef" for character in observed_head)[0m
+2026-11-28T08:28:55.0013446Z [36;1m            and observed_head == os.environ["CARR_SCALE_HEAD"]), ([0m
+2026-11-28T08:28:55.0013770Z [36;1m                "Checkout differs from the selected exact candidate.", observed_head)[0m
+2026-11-28T08:28:55.0014101Z [36;1m    source = (ROOT / "src" / "carr_library").resolve()[0m
+2026-11-28T08:28:55.0014424Z [36;1m    installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()[0m
+2026-11-28T08:28:55.0014799Z [36;1m    assert source != installed and not installed.is_relative_to(ROOT / "src")[0m
+2026-11-28T08:28:55.0015130Z [36;1m    first, second = inventory(source), inventory(installed)[0m
+2026-11-28T08:28:55.0015479Z [36;1m    assert first == second, "Installed package differs from the exact selected source."[0m
+2026-11-28T08:28:55.0015773Z [36;1m    origins = {}[0m
+2026-11-28T08:28:55.0015943Z [36;1m    for name in MODULES:[0m
+2026-11-28T08:28:55.0016161Z [36;1m        module = importlib.import_module(name)[0m
+2026-11-28T08:28:55.0016460Z [36;1m        path = Path(module.__file__).resolve()[0m
+2026-11-28T08:28:55.0016896Z [36;1m        assert path.is_relative_to(installed) and not path.is_relative_to(ROOT / "src"), (name, path)[0m
+2026-11-28T08:28:55.0017269Z [36;1m        relative = path.relative_to(installed)[0m
+2026-11-28T08:28:55.0017651Z [36;1m        digest = sha256(path.read_bytes()).hexdigest()[0m
+2026-11-28T08:28:55.0018046Z [36;1m        assert digest == sha256((source / relative).read_bytes()).hexdigest()[0m
+2026-11-28T08:28:55.0018372Z [36;1m        origins[name] = {"path": str(path), "sha256": digest}[0m
+2026-11-28T08:28:55.0018623Z [36;1m    scripts = {}[0m
+2026-11-28T08:28:55.0018865Z [36;1m    for name in SCRIPTS:[0m
+2026-11-28T08:28:55.0019089Z [36;1m        path = ROOT / "scripts" / name[0m
+2026-11-28T08:28:55.0019301Z [36;1m        raw = path.read_bytes()[0m
+2026-11-28T08:28:55.0019510Z [36;1m        compile(raw, str(path), "exec")[0m
+2026-11-28T08:28:55.0019740Z [36;1m        scripts[name] = sha256(raw).hexdigest()[0m
+2026-11-28T08:28:55.0020003Z [36;1m    return {"package_files": len(first), "inventory": first,[0m
+2026-11-28T08:28:55.0020372Z [36;1m            "package_sha256": sha256(json.dumps(first, separators=(",", ":")).encode()).hexdigest(),[0m
+2026-11-28T08:28:55.0020729Z [36;1m            "origins": origins, "scripts": scripts,[0m
+2026-11-28T08:28:55.0021047Z [36;1m            "python": sys.version, "executable": str(Path(sys.executable).resolve()),[0m
+2026-11-28T08:28:55.0021435Z [36;1m            "sqlite": __import__("sqlite3").sqlite_version,[0m
+2026-11-28T08:28:55.0021704Z [36;1m            "platform": __import__("platform").platform(),[0m
+2026-11-28T08:28:55.0021991Z [36;1m            "commit": observed_head, "run": os.environ["CARR_SCALE_RUN"],[0m
+2026-11-28T08:28:55.0022269Z [36;1m            "tier": os.environ["CARR_SCALE_TIER"]}[0m
+2026-11-28T08:28:55.0022472Z [36;1m[0m
+2026-11-28T08:28:55.0022606Z [36;1m[0m
+2026-11-28T08:28:55.0022756Z [36;1m_foundation = None[0m
+2026-11-28T08:28:55.0022919Z [36;1m[0m
+2026-11-28T08:28:55.0023047Z [36;1m[0m
+2026-11-28T08:28:55.0023185Z [36;1mdef foundation():[0m
+2026-11-28T08:28:55.0023355Z [36;1m    global _foundation[0m
+2026-11-28T08:28:55.0023537Z [36;1m    if _foundation is None:[0m
+2026-11-28T08:28:55.0023775Z [36;1m        path = ROOT / "scripts" / "benchmark_library_scale.py"[0m
+2026-11-28T08:28:55.0024144Z [36;1m        spec = importlib.util.spec_from_file_location("_carr_actual_scale_evidence", path)[0m
+2026-11-28T08:28:55.0024515Z [36;1m        module = importlib.util.module_from_spec(spec)[0m
+2026-11-28T08:28:55.0024766Z [36;1m        sys.modules[spec.name] = module[0m
+2026-11-28T08:28:55.0024985Z [36;1m        spec.loader.exec_module(module)[0m
+2026-11-28T08:28:55.0025192Z [36;1m        _foundation = module[0m
+2026-11-28T08:28:55.0025386Z [36;1m    return _foundation[0m
+2026-11-28T08:28:55.0025552Z [36;1m[0m
+2026-11-28T08:28:55.0025681Z [36;1m[0m
+2026-11-28T08:28:55.0025819Z [36;1mdef read(path):[0m
+2026-11-28T08:28:55.0025988Z [36;1m    chunks, size = [], 0[0m
+2026-11-28T08:28:55.0026221Z [36;1m    with foundation()._opened(path) as (stream, before):[0m
+2026-11-28T08:28:55.0026490Z [36;1m        assert before.st_size <= 64 * 1024**2, path[0m
+2026-11-28T08:28:55.0026781Z [36;1m        while chunk := stream.read(min(64 * 1024, 64 * 1024**2 + 1 - size)):[0m
+2026-11-28T08:28:55.0027053Z [36;1m            size += len(chunk)[0m
+2026-11-28T08:28:55.0027264Z [36;1m            assert size <= 64 * 1024**2, path[0m
+2026-11-28T08:28:55.0027479Z [36;1m            chunks.append(chunk)[0m
+2026-11-28T08:28:55.0027827Z [36;1m    return json.loads(b"".join(chunks))[0m
+2026-11-28T08:28:55.0028024Z [36;1m[0m
+2026-11-28T08:28:55.0028155Z [36;1m[0m
+2026-11-28T08:28:55.0028299Z [36;1mdef read_phase(path):[0m
+2026-11-28T08:28:55.0028586Z [36;1m    """Validate every bounded JSON-lines record before accepting its final value."""[0m
+2026-11-28T08:28:55.0028878Z [36;1m    last, size = None, 0[0m
+2026-11-28T08:28:55.0029084Z [36;1m    maximum, line_maximum = 128 * 1024**2, 1024**2[0m
+2026-11-28T08:28:55.0029344Z [36;1m    with foundation()._opened(path) as (stream, before):[0m
+2026-11-28T08:28:55.0029598Z [36;1m        assert before.st_size <= maximum, path[0m
+2026-11-28T08:28:55.0029842Z [36;1m        while raw := stream.readline(line_maximum + 1):[0m
+2026-11-28T08:28:55.0030128Z [36;1m            size += len(raw)[0m
+2026-11-28T08:28:55.0030376Z [36;1m            assert len(raw) <= line_maximum and size <= maximum, path[0m
+2026-11-28T08:28:55.0030637Z [36;1m            if not raw.strip():[0m
+2026-11-28T08:28:55.0030829Z [36;1m                continue[0m
+2026-11-28T08:28:55.0031018Z [36;1m            last = json.loads(raw)[0m
+2026-11-28T08:28:55.0031235Z [36;1m            assert type(last) is dict, path[0m
+2026-11-28T08:28:55.0031526Z [36;1m    assert last is not None, ("The actual phase produced no JSON result.", path)[0m
+2026-11-28T08:28:55.0031810Z [36;1m    return last[0m
+2026-11-28T08:28:55.0031964Z [36;1m[0m
+2026-11-28T08:28:55.0032094Z [36;1m[0m
+2026-11-28T08:28:55.0032241Z [36;1mdef write(name, value):[0m
+2026-11-28T08:28:55.0032419Z [36;1m    path = OUT / name[0m
+2026-11-28T08:28:55.0032656Z [36;1m    with path.open("x", encoding="utf-8", newline="\n") as stream:[0m
+2026-11-28T08:28:55.0033022Z [36;1m        json.dump(value, stream, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False)[0m
+2026-11-28T08:28:55.0033336Z [36;1m        stream.write("\n")[0m
+2026-11-28T08:28:55.0033505Z [36;1m[0m
+2026-11-28T08:28:55.0033672Z [36;1m[0m
+2026-11-28T08:28:55.0033830Z [36;1mdef backup_capacity_before_import():[0m
+2026-11-28T08:28:55.0034160Z [36;1m    """Conservative authored-input admission before the expensive largest tiers."""[0m
+2026-11-28T08:28:55.0034471Z [36;1m    if not BACKUP_REQUIRED:[0m
+2026-11-28T08:28:55.0034698Z [36;1m        write("backup-capacity-before-import.json", {[0m
+2026-11-28T08:28:55.0035054Z [36;1m            "status": "NOT_REQUIRED", "reason": "Full roundtrip is required on the 50k and 2GiB tiers."})[0m
+2026-11-28T08:28:55.0035364Z [36;1m        return[0m
+2026-11-28T08:28:55.0035539Z [36;1m    from dataclasses import asdict[0m
+2026-11-28T08:28:55.0035757Z [36;1m    from tempfile import gettempdir[0m
+2026-11-28T08:28:55.0036015Z [36;1m    from carr_library.durable_state import local_path, regular[0m
+2026-11-28T08:28:55.0036280Z [36;1m    module = foundation()[0m
+2026-11-28T08:28:55.0036491Z [36;1m    books = int(os.environ["CARR_SCALE_BOOKS"])[0m
+2026-11-28T08:28:55.0036849Z [36;1m    spec = (module.CorpusSpec(books=books, segments_per_book=int(os.environ["CARR_SCALE_SEGMENTS"]))[0m
+2026-11-28T08:28:55.0037272Z [36;1m            if books else module.LargeTextSpec(int(os.environ["CARR_SCALE_BYTES"]),[0m
+2026-11-28T08:28:55.0037735Z [36;1m                                              int(os.environ["CARR_SCALE_SEGMENTS"])))[0m
+2026-11-28T08:28:55.0037991Z [36;1m    spec.checked()[0m
+2026-11-28T08:28:55.0038165Z [36;1m    count = books or 1[0m
+2026-11-28T08:28:55.0038421Z [36;1m    plan = module.capacity_plan(spec.source_bytes, count, spec.segments,[0m
+2026-11-28T08:28:55.0038792Z [36;1m        search_spool_budget_bytes=int(os.environ["CARR_SCALE_SPOOL_MIB"]) * 1024**2,[0m
+2026-11-28T08:28:55.0039192Z [36;1m        free_reserve_bytes=1024**3, memory_headroom_bytes=BACKUP_MEMORY_BYTES + 64 * 1024**2)[0m
+2026-11-28T08:28:55.0039560Z [36;1m    # These are conservative projections from authored sizes, not[0m
+2026-11-28T08:28:55.0039884Z [36;1m    # measured use, policy authority, or a substitute for the later[0m
+2026-11-28T08:28:55.0040199Z [36;1m    # live-library BackupBudget and current-volume preflight.[0m
+2026-11-28T08:28:55.0040514Z [36;1m    metadata = count * 16 * 1024 + spec.segments * 256 + 64 * 1024**2[0m
+2026-11-28T08:28:55.0040853Z [36;1m    pending = plan.journal_estimate_bytes + plan.retained_bytes + metadata[0m
+2026-11-28T08:28:55.0041159Z [36;1m    manifest, other = 256 * 1024**2, 64 * 1024**2[0m
+2026-11-28T08:28:55.0041493Z [36;1m    archive = plan.catalog_estimate_bytes + plan.retained_bytes + pending + manifest + other[0m
+2026-11-28T08:28:55.0041896Z [36;1m    staging = (plan.catalog_estimate_bytes + plan.retained_bytes + 2 * pending[0m
+2026-11-28T08:28:55.0042202Z [36;1m               + 2 * manifest + other + 64 * 1024**2)[0m
+2026-11-28T08:28:55.0042549Z [36;1m    required = plan.required_disk_bytes + archive + staging + 64 * 1024**2[0m
+2026-11-28T08:28:55.0042882Z [36;1m    temporary_required = staging + 1024**3 + 64 * 1024**2[0m
+2026-11-28T08:28:55.0043117Z [36;1m[0m
+2026-11-28T08:28:55.0043262Z [36;1m    def observed(path):[0m
+2026-11-28T08:28:55.0043474Z [36;1m        path = local_path(Path(path), exists=True)[0m
+2026-11-28T08:28:55.0043725Z [36;1m        before = regular(path, directory=True)[0m
+2026-11-28T08:28:55.0043957Z [36;1m        usage = shutil.disk_usage(path)[0m
+2026-11-28T08:28:55.0044197Z [36;1m        after = regular(path, directory=True)[0m
+2026-11-28T08:28:55.0044481Z [36;1m        identity = lambda value: [value.st_dev, value.st_ino, value.st_mode,[0m
+2026-11-28T08:28:55.0044804Z [36;1m                                  int(getattr(value, "st_file_attributes", 0))][0m
+2026-11-28T08:28:55.0045095Z [36;1m        assert identity(before) == identity(after), path[0m
+2026-11-28T08:28:55.0045385Z [36;1m        return {"path": str(path), "identity": identity(before),[0m
+2026-11-28T08:28:55.0045681Z [36;1m                "free_bytes": usage.free, "total_bytes": usage.total,[0m
+2026-11-28T08:28:55.0045984Z [36;1m                "used_bytes": usage.used}[0m
+2026-11-28T08:28:55.0046174Z [36;1m[0m
+2026-11-28T08:28:55.0046327Z [36;1m    disk = observed(FIXTURE.parent)[0m
+2026-11-28T08:28:55.0046548Z [36;1m    temporary = observed(gettempdir())[0m
+2026-11-28T08:28:55.0046816Z [36;1m    same_volume = disk["identity"][0] == temporary["identity"][0][0m
+2026-11-28T08:28:55.0047095Z [36;1m    memory = module.available_memory()[0m
+2026-11-28T08:28:55.0047298Z [36;1m    reasons = [][0m
+2026-11-28T08:28:55.0047473Z [36;1m    if disk["free_bytes"] < required:[0m
+2026-11-28T08:28:55.0047978Z [36;1m        reasons.append("insufficient measured fixture-volume space for import, archive and fresh restore")[0m
+2026-11-28T08:28:55.0048400Z [36;1m    if not same_volume and temporary["free_bytes"] < temporary_required:[0m
+2026-11-28T08:28:55.0048772Z [36;1m        reasons.append("insufficient measured separate verifier temporary-volume space")[0m
+2026-11-28T08:28:55.0049214Z [36;1m    if memory["available_bytes"] is None or memory["available_bytes"] < BACKUP_MEMORY_BYTES + 64 * 1024**2:[0m
+2026-11-28T08:28:55.0049709Z [36;1m        reasons.append("insufficient measured available memory for the explicit largest-tier backup policy")[0m
+2026-11-28T08:28:55.0050143Z [36;1m    result = {"status": "NOT_RUN" if reasons else "READY_FOR_ACTUAL_LARGEST_TIER",[0m
+2026-11-28T08:28:55.0050476Z [36;1m              "reasons": reasons, "tier": os.environ["CARR_SCALE_TIER"],[0m
+2026-11-28T08:28:55.0050798Z [36;1m              "authored_source_bytes": spec.source_bytes, "authored_books": count,[0m
+2026-11-28T08:28:55.0051160Z [36;1m              "authored_segments": spec.segments, "import_capacity_plan": asdict(plan),[0m
+2026-11-28T08:28:55.0051563Z [36;1m              "archive_estimate_bytes": archive, "restore_or_verify_staging_estimate_bytes": staging,[0m
+2026-11-28T08:28:55.0051919Z [36;1m              "required_initial_fixture_free_bytes": required,[0m
+2026-11-28T08:28:55.0052212Z [36;1m              "required_separate_temporary_free_bytes": temporary_required,[0m
+2026-11-28T08:28:55.0052543Z [36;1m              "fixture_volume": disk, "verifier_temporary_volume": temporary,[0m
+2026-11-28T08:28:55.0052833Z [36;1m              "same_volume": same_volume, "memory": memory,[0m
+2026-11-28T08:28:55.0053103Z [36;1m              "selected_backup_memory_bytes": BACKUP_MEMORY_BYTES,[0m
+2026-11-28T08:28:55.0053507Z [36;1m              "note": "Conservative admission estimates only; the unchanged backup adapter measures live inputs again."}[0m
+2026-11-28T08:28:55.0053918Z [36;1m    write("backup-capacity-before-import.json", result)[0m
+2026-11-28T08:28:55.0054270Z [36;1m    print("CARR_LARGEST_TIER_CAPACITY " + json.dumps(result, sort_keys=True), flush=True)[0m
+2026-11-28T08:28:55.0054614Z [36;1m    if reasons:[0m
+2026-11-28T08:28:55.0054780Z [36;1m        raise SystemExit(3)[0m
+2026-11-28T08:28:55.0054951Z [36;1m[0m
+2026-11-28T08:28:55.0055076Z [36;1m[0m
+2026-11-28T08:28:55.0055215Z [36;1mdef collect():[0m
+2026-11-28T08:28:55.0055399Z [36;1m    destination = OUT / "fixture-evidence"[0m
+2026-11-28T08:28:55.0055622Z [36;1m    destination.mkdir(exist_ok=True)[0m
+2026-11-28T08:28:55.0055834Z [36;1m    captured, total_bytes = [], 0[0m
+2026-11-28T08:28:55.0056238Z [36;1m    paths = [FIXTURE / name for name in ("owner.json", "preflight.json", "generation.json", "verified-generation.json", "sources.jsonl")][0m
+2026-11-28T08:28:55.0056640Z [36;1m    benchmark = FIXTURE / "benchmark"[0m
+2026-11-28T08:28:55.0056840Z [36;1m    if benchmark.is_dir():[0m
+2026-11-28T08:28:55.0057048Z [36;1m        paths += sorted(benchmark.glob("*.json"))[0m
+2026-11-28T08:28:55.0057289Z [36;1m        for name in ("events", "worker-peaks"):[0m
+2026-11-28T08:28:55.0057508Z [36;1m            folder = benchmark / name[0m
+2026-11-28T08:28:55.0057824Z [36;1m            if folder.is_dir():[0m
+2026-11-28T08:28:55.0058046Z [36;1m                paths += sorted(folder.glob("*.json"))[0m
+2026-11-28T08:28:55.0058418Z [36;1m    assert len(paths) <= 200_010, "The bounded benchmark evidence count was exceeded."[0m
+2026-11-28T08:28:55.0058714Z [36;1m    for path in paths:[0m
+2026-11-28T08:28:55.0058994Z [36;1m        if not path.exists():[0m
+2026-11-28T08:28:55.0059184Z [36;1m            continue[0m
+2026-11-28T08:28:55.0059370Z [36;1m        observed = path.lstat()[0m
+2026-11-28T08:28:55.0059698Z [36;1m        assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1 and not path.is_symlink(), path[0m
+2026-11-28T08:28:55.0060113Z [36;1m        assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path[0m
+2026-11-28T08:28:55.0060427Z [36;1m        relative = path.relative_to(FIXTURE)[0m
+2026-11-28T08:28:55.0060650Z [36;1m        target = destination / relative[0m
+2026-11-28T08:28:55.0060901Z [36;1m        target.parent.mkdir(parents=True, exist_ok=True)[0m
+2026-11-28T08:28:55.0061145Z [36;1m        checksum, size = sha256(), 0[0m
+2026-11-28T08:28:55.0061464Z [36;1m        with foundation()._opened(path) as (source, captured_stat), target.open("xb") as output:[0m
+2026-11-28T08:28:55.0061882Z [36;1m            assert foundation()._stamp(captured_stat) == foundation()._stamp(observed), path[0m
+2026-11-28T08:28:55.0062199Z [36;1m            while chunk := source.read(64 * 1024):[0m
+2026-11-28T08:28:55.0062418Z [36;1m                size += len(chunk)[0m
+2026-11-28T08:28:55.0062631Z [36;1m                total_bytes += len(chunk)[0m
+2026-11-28T08:28:55.0062883Z [36;1m                assert size <= 1024**3 and total_bytes <= 2 * 1024**3, path[0m
+2026-11-28T08:28:55.0063137Z [36;1m                output.write(chunk)[0m
+2026-11-28T08:28:55.0063347Z [36;1m                checksum.update(chunk)[0m
+2026-11-28T08:28:55.0063571Z [36;1m        assert size == observed.st_size, path[0m
+2026-11-28T08:28:55.0063910Z [36;1m        captured.append({"path": relative.as_posix(), "bytes": size, "sha256": checksum.hexdigest()})[0m
+2026-11-28T08:28:55.0064264Z [36;1m    write("collected-evidence.json", captured)[0m
+2026-11-28T08:28:55.0064477Z [36;1m[0m
+2026-11-28T08:28:55.0064606Z [36;1m[0m
+2026-11-28T08:28:55.0064740Z [36;1mdef finish():[0m
+2026-11-28T08:28:55.0064966Z [36;1m    before, after = read(OUT / "installed-before.json"), identity()[0m
+2026-11-28T08:28:55.0065333Z [36;1m    for key in ("inventory", "package_sha256", "origins", "scripts", "executable", "commit"):[0m
+2026-11-28T08:28:55.0065746Z [36;1m        assert before[key] == after[key], ("Implementation changed during the actual tier.", key)[0m
+2026-11-28T08:28:55.0066074Z [36;1m    write("installed-after.json", after)[0m
+2026-11-28T08:28:55.0066325Z [36;1m    early = OUT / "backup-capacity-before-import.json"[0m
+2026-11-28T08:28:55.0066618Z [36;1m    if early.exists() and read(early).get("status") == "NOT_RUN":[0m
+2026-11-28T08:28:55.0067089Z [36;1m        write("outcome.json", {"status": "NOT_RUN", "reason": "Largest-tier measured capacity refused before import.",[0m
+2026-11-28T08:28:55.0067658Z [36;1m                              "capacity": read(early), "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0067954Z [36;1m        raise SystemExit(2)[0m
+2026-11-28T08:28:55.0068166Z [36;1m    if not (FIXTURE / "generation.json").exists():[0m
+2026-11-28T08:28:55.0068555Z [36;1m        write("outcome.json", {"status": "INCOMPLETE", "reason": "The actual source generator produced no final report.",[0m
+2026-11-28T08:28:55.0068968Z [36;1m                              "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0069295Z [36;1m        raise AssertionError("The source generator did not complete.")[0m
+2026-11-28T08:28:55.0069588Z [36;1m    generated = read(FIXTURE / "generation.json")[0m
+2026-11-28T08:28:55.0069922Z [36;1m    if generated.get("status") == "NOT_RUN":[0m
+2026-11-28T08:28:55.0070277Z [36;1m        write("outcome.json", {"status": "NOT_RUN", "reason": "Measured source-generation capacity refused.",[0m
+2026-11-28T08:28:55.0070757Z [36;1m                              "generation": generated, "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0071054Z [36;1m        raise SystemExit(2)[0m
+2026-11-28T08:28:55.0071277Z [36;1m    initialization = OUT / "initialize.jsonl"[0m
+2026-11-28T08:28:55.0071504Z [36;1m    if initialization.exists():[0m
+2026-11-28T08:28:55.0071722Z [36;1m        admitted = read_phase(initialization)[0m
+2026-11-28T08:28:55.0071953Z [36;1m        if admitted.get("status") == "NOT_RUN":[0m
+2026-11-28T08:28:55.0072293Z [36;1m            write("outcome.json", {"status": "NOT_RUN", "reason": "Measured application capacity refused.",[0m
+2026-11-28T08:28:55.0072649Z [36;1m                                  "application_admission": admitted,[0m
+2026-11-28T08:28:55.0072920Z [36;1m                                  "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0073184Z [36;1m            raise SystemExit(2)[0m
+2026-11-28T08:28:55.0073390Z [36;1m    backup_phase = OUT / "backup.jsonl"[0m
+2026-11-28T08:28:55.0073689Z [36;1m    if BACKUP_REQUIRED and backup_phase.exists() and backup_phase.stat().st_size:[0m
+2026-11-28T08:28:55.0074016Z [36;1m        backup_admission = read_phase(backup_phase)[0m
+2026-11-28T08:28:55.0074268Z [36;1m        if backup_admission.get("status") == "NOT_RUN":[0m
+2026-11-28T08:28:55.0074653Z [36;1m            write("outcome.json", {"status": "NOT_RUN", "reason": "Actual live-library backup capacity refused.",[0m
+2026-11-28T08:28:55.0075019Z [36;1m                                  "backup_admission": backup_admission,[0m
+2026-11-28T08:28:55.0075310Z [36;1m                                  "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0075562Z [36;1m            raise SystemExit(2)[0m
+2026-11-28T08:28:55.0075809Z [36;1m    phases = json.loads(os.environ["CARR_SCALE_PHASE_OUTCOMES"])[0m
+2026-11-28T08:28:55.0076182Z [36;1m    assert set(phases) == {"backup_preflight", "generate", "initialize", "interruption", "resume",[0m
+2026-11-28T08:28:55.0076535Z [36;1m                           "catalog", "search", "backup", "collect"}[0m
+2026-11-28T08:28:55.0076826Z [36;1m    incomplete = {name: value for name, value in phases.items()[0m
+2026-11-28T08:28:55.0077187Z [36;1m                  if value != ("skipped" if name == "backup" and not BACKUP_REQUIRED else "success")}[0m
+2026-11-28T08:28:55.0077491Z [36;1m    if incomplete:[0m
+2026-11-28T08:28:55.0077900Z [36;1m        write("outcome.json", {"status": "FAILED" if "failure" in incomplete.values() else "INCOMPLETE",[0m
+2026-11-28T08:28:55.0078251Z [36;1m                              "actual_phase_outcomes": phases,[0m
+2026-11-28T08:28:55.0078511Z [36;1m                              "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0078883Z [36;1m        raise AssertionError("An actual measured command did not finish successfully: " + str(incomplete))[0m
+2026-11-28T08:28:55.0079292Z [36;1m    required = {"resume": OUT / "resume.jsonl",[0m
+2026-11-28T08:28:55.0079566Z [36;1m                "crash": FIXTURE / "benchmark" / "authored-crash.json",[0m
+2026-11-28T08:28:55.0079903Z [36;1m                "catalog": FIXTURE / "benchmark" / "catalog-verification.json",[0m
+2026-11-28T08:28:55.0080235Z [36;1m                "search": FIXTURE / "benchmark" / "search-measurements.json"}[0m
+2026-11-28T08:28:55.0080570Z [36;1m    missing = [name for name, path in required.items() if not path.exists()][0m
+2026-11-28T08:28:55.0080842Z [36;1m    if missing:[0m
+2026-11-28T08:28:55.0081099Z [36;1m        write("outcome.json", {"status": "INCOMPLETE", "missing_actual_phases": missing,[0m
+2026-11-28T08:28:55.0081430Z [36;1m                              "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0081798Z [36;1m        raise AssertionError("The actual product tier did not complete: " + ", ".join(missing))[0m
+2026-11-28T08:28:55.0082190Z [36;1m    result = {name: (read_phase(path) if name == "resume" else read(path))[0m
+2026-11-28T08:28:55.0082518Z [36;1m              for name, path in required.items()}[0m
+2026-11-28T08:28:55.0082781Z [36;1m    assert result["resume"]["status"] == "IMPORT_COMPLETE"[0m
+2026-11-28T08:28:55.0083041Z [36;1m    assert result["crash"]["committed"] == 1[0m
+2026-11-28T08:28:55.0083368Z [36;1m    assert result["crash"]["boundary"] == "durable batch save after actual owned worker return"[0m
+2026-11-28T08:28:55.0083716Z [36;1m    assert result["catalog"]["status"] == "CATALOG_VERIFIED"[0m
+2026-11-28T08:28:55.0084026Z [36;1m    assert result["search"]["status"] == "MEASURED_SYNTHETIC_CORPUS"[0m
+2026-11-28T08:28:55.0084297Z [36;1m    for name in ("catalog", "search"):[0m
+2026-11-28T08:28:55.0084499Z [36;1m        item = result[name][0m
+2026-11-28T08:28:55.0084812Z [36;1m        assert item["source_books"] == EXPECTED_BOOKS and item["source_segments"] == EXPECTED_SEGMENTS[0m
+2026-11-28T08:28:55.0085244Z [36;1m        assert item["separate_process"] is True and item["implementation_unchanged"] is True[0m
+2026-11-28T08:28:55.0085604Z [36;1m        assert item["worker_peaks"]["measured_worker_exits"] > 0[0m
+2026-11-28T08:28:55.0085843Z [36;1m    backup_result = None[0m
+2026-11-28T08:28:55.0086020Z [36;1m    if BACKUP_REQUIRED:[0m
+2026-11-28T08:28:55.0086276Z [36;1m        backup_result = read(FIXTURE / "benchmark" / "backup-restore.json")[0m
+2026-11-28T08:28:55.0086592Z [36;1m        assert backup_result == read_phase(OUT / "backup.jsonl")[0m
+2026-11-28T08:28:55.0086884Z [36;1m        assert backup_result["status"] == "BACKUP_RESTORE_VERIFIED"[0m
+2026-11-28T08:28:55.0087176Z [36;1m        assert (backup_result["source_books"] == EXPECTED_BOOKS[0m
+2026-11-28T08:28:55.0087469Z [36;1m                and backup_result["source_segments"] == EXPECTED_SEGMENTS)[0m
+2026-11-28T08:28:55.0087923Z [36;1m        for key in ("source_inventory_equal", "archive_inventory_equal", "catalog_equal",[0m
+2026-11-28T08:28:55.0088305Z [36;1m                    "raw_equal", "external_originals_equal", "implementation_unchanged"):[0m
+2026-11-28T08:28:55.0088622Z [36;1m            assert backup_result[key] is True, key[0m
+2026-11-28T08:28:55.0088914Z [36;1m        assert backup_result["source_oracle"] == backup_result["restored_oracle"][0m
+2026-11-28T08:28:55.0089278Z [36;1m        assert backup_result["passive_restore"]["completed_rows"] == EXPECTED_BOOKS[0m
+2026-11-28T08:28:55.0089658Z [36;1m        assert backup_result["passive_restore"]["fresh_scan_review_required"] is True[0m
+2026-11-28T08:28:55.0090032Z [36;1m        assert backup_result["passive_restore"]["old_attempts_removed"] is True[0m
+2026-11-28T08:28:55.0090353Z [36;1m        assert backup_result["automatic_resume"] is False[0m
+2026-11-28T08:28:55.0090686Z [36;1m        assert backup_result["last_verified_source_copy"]["actual_verified_copy"] is True[0m
+2026-11-28T08:28:55.0091169Z [36;1m        assert backup_result["last_verified_source_copy"]["foreign_scope_refused"] is True[0m
+2026-11-28T08:28:55.0091534Z [36;1m        assert backup_result["admission"]["status"] == "READY_FOR_BACKUP"[0m
+2026-11-28T08:28:55.0091874Z [36;1m        assert backup_result["policy"]["memory_bytes"] == BACKUP_MEMORY_BYTES[0m
+2026-11-28T08:28:55.0092157Z [36;1m    measured = result["search"][0m
+2026-11-28T08:28:55.0092396Z [36;1m    admitted_profile = read_phase(OUT / "initialize.jsonl")[0m
+2026-11-28T08:28:55.0092691Z [36;1m    saved_profile = read(FIXTURE / "benchmark" / "state.json")[0m
+2026-11-28T08:28:55.0092988Z [36;1m    assert (measured["search_memory_allowance_bytes"][0m
+2026-11-28T08:28:55.0093247Z [36;1m            == admitted_profile["search_memory_bytes"][0m
+2026-11-28T08:28:55.0093495Z [36;1m            == saved_profile["search_memory_bytes"])[0m
+2026-11-28T08:28:55.0093740Z [36;1m    if int(os.environ["CARR_SCALE_BYTES"]) > 0:[0m
+2026-11-28T08:28:55.0094026Z [36;1m        assert measured["search_memory_allowance_bytes"] == 1024 * 1024**2[0m
+2026-11-28T08:28:55.0094340Z [36;1m    assert measured["federated_cleanup_confirmed"] is True[0m
+2026-11-28T08:28:55.0094677Z [36;1m    assert measured["explicit_library_navigation"]["selected"] == 21[0m
+2026-11-28T08:28:55.0094999Z [36;1m    assert measured["bounded_title_anchor_latency"]["samples"] == 50[0m
+2026-11-28T08:28:55.0095294Z [36;1m    assert len(measured["complete_scope_ranking"]) == 2[0m
+2026-11-28T08:28:55.0095598Z [36;1m    assert measured["complete_scope_ranking"][1]["updated_index_rows"] == 0[0m
+2026-11-28T08:28:55.0095901Z [36;1m    assert measured["semantic_model"] == "NOT_RUN"[0m
+2026-11-28T08:28:55.0096175Z [36;1m    assert measured["simultaneous_family_peak"] == "NOT_MEASURED"[0m
+2026-11-28T08:28:55.0096563Z [36;1m    write("outcome.json", {"status": "MEASURED_SYNTHETIC_CORPUS", "tier": os.environ["CARR_SCALE_TIER"],[0m
+2026-11-28T08:28:55.0096986Z [36;1m          "actual_books": EXPECTED_BOOKS, "actual_original_segments": EXPECTED_SEGMENTS,[0m
+2026-11-28T08:28:55.0097394Z [36;1m          "installed_package_sha256": after["package_sha256"], "commit": after["commit"],[0m
+2026-11-28T08:28:55.0097867Z [36;1m          "run": after["run"], "manifest_sha256": generated["manifest_sha256"],[0m
+2026-11-28T08:28:55.0098227Z [36;1m          "generation": generated, "catalog": result["catalog"], "search": measured,[0m
+2026-11-28T08:28:55.0098520Z [36;1m          "backup_roundtrip": backup_result,[0m
+2026-11-28T08:28:55.0098957Z [36;1m          "backup_roundtrip_scope": "REQUIRED_AND_VERIFIED" if BACKUP_REQUIRED else "NOT_REQUIRED_ON_THIS_TIER",[0m
+2026-11-28T08:28:55.0099398Z [36;1m          "real_first_commit_process_exit": 73, "resume_same_saved_queue": True,[0m
+2026-11-28T08:28:55.0099777Z [36;1m          "semantic_model": "NOT_RUN", "simultaneous_family_peak": "NOT_MEASURED",[0m
+2026-11-28T08:28:55.0100100Z [36;1m          "physical_or_human_quality": "NOT_ASSESSED"})[0m
+2026-11-28T08:28:55.0100466Z [36;1m    print(json.dumps({"status": "MEASURED_SYNTHETIC_CORPUS", "tier": os.environ["CARR_SCALE_TIER"],[0m
+2026-11-28T08:28:55.0100910Z [36;1m                      "actual_books": EXPECTED_BOOKS, "actual_original_segments": EXPECTED_SEGMENTS,[0m
+2026-11-28T08:28:55.0101302Z [36;1m                      "manifest_sha256": generated["manifest_sha256"]}), flush=True)[0m
+2026-11-28T08:28:55.0101571Z [36;1m[0m
+2026-11-28T08:28:55.0101702Z [36;1m[0m
+2026-11-28T08:28:55.0101840Z [36;1mmode = sys.argv[1][0m
+2026-11-28T08:28:55.0102020Z [36;1mif mode == "before":[0m
+2026-11-28T08:28:55.0102221Z [36;1m    write("installed-before.json", identity())[0m
+2026-11-28T08:28:55.0102449Z [36;1melif mode == "backup-preflight":[0m
+2026-11-28T08:28:55.0102663Z [36;1m    backup_capacity_before_import()[0m
+2026-11-28T08:28:55.0102865Z [36;1melif mode == "collect":[0m
+2026-11-28T08:28:55.0103042Z [36;1m    collect()[0m
+2026-11-28T08:28:55.0103210Z [36;1melif mode == "finish":[0m
+2026-11-28T08:28:55.0103440Z [36;1m    finish()[0m
+2026-11-28T08:28:55.0103591Z [36;1melse:[0m
+2026-11-28T08:28:55.0103752Z [36;1m    raise ValueError(mode)[0m
+2026-11-28T08:28:55.0103932Z [36;1mPY[0m
+2026-11-28T08:28:55.0104115Z [36;1munset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS[0m
+2026-11-28T08:28:55.0104394Z [36;1mpython -I -B -X utf8 ci-library-corpus/check.py before[0m
+2026-11-28T08:28:55.0130020Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:28:55.0130276Z env:
+2026-11-28T08:28:55.0130424Z   PYTHONUTF8: 1
+2026-11-28T08:28:55.0130596Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:55.0130775Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:55.0130934Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:55.0131100Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:55.0131249Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:55.0131414Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:55.0131573Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:55.0131751Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:55.0131932Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:55.0132146Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:55.0132376Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:55.0132636Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:55.0132877Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.0133191Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:28:55.0133498Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.0133776Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.0134051Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.0134332Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:28:55.0134659Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:28:55.0134936Z ##[endgroup]
+2026-11-28T08:28:55.6721888Z ##[group]Run python -I -B -X utf8 ci-library-corpus/check.py backup-preflight
+2026-11-28T08:28:55.6722327Z [36;1mpython -I -B -X utf8 ci-library-corpus/check.py backup-preflight[0m
+2026-11-28T08:28:55.6747064Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:28:55.6747306Z env:
+2026-11-28T08:28:55.6747449Z   PYTHONUTF8: 1
+2026-11-28T08:28:55.6747767Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:55.6747943Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:55.6748104Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:55.6748264Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:55.6748419Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:55.6748582Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:55.6748756Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:55.6748927Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:55.6749093Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:55.6749295Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:55.6749525Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:55.6749765Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:55.6750006Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.6750299Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:28:55.6750593Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.6750859Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.6751125Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.6751403Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:28:55.6751721Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:28:55.6751985Z ##[endgroup]
+2026-11-28T08:28:55.7329817Z CARR_LARGEST_TIER_CAPACITY {"archive_estimate_bytes": 15436351488, "authored_books": 1, "authored_segments": 1000, "authored_source_bytes": 2147483648, "fixture_volume": {"free_bytes": 93914349568, "identity": [64512, 4005449, 16832, 0], "path": "/home/runner/work/_temp/carr-scale-text-2g-ptumople", "total_bytes": 154894188544, "used_bytes": 60963061760}, "import_capacity_plan": {"catalog_estimate_bytes": 6443474944, "fixture_manifest_estimate_bytes": 260608, "free_reserve_bytes": 1073741824, "journal_estimate_bytes": 4294983680, "memory_headroom_bytes": 2214592512, "original_bytes": 2147483648, "retained_bytes": 2147483648, "search_spool_budget_bytes": 8589934592}, "memory": {"available_bytes": 15497531392, "cgroup": null, "method": "/proc/meminfo.MemAvailable"}, "note": "Conservative admission estimates only; the unchanged backup adapter measures live inputs again.", "reasons": [], "required_initial_fixture_free_bytes": 62482567680, "required_separate_temporary_free_bytes": 23422595072, "restore_or_verify_staging_estimate_bytes": 22281744384, "same_volume": true, "selected_backup_memory_bytes": 2147483648, "status": "READY_FOR_ACTUAL_LARGEST_TIER", "tier": "text-2g", "verifier_temporary_volume": {"free_bytes": 93914349568, "identity": [64512, 1700, 17407, 0], "path": "/tmp", "total_bytes": 154894188544, "used_bytes": 60963061760}}
+2026-11-28T08:28:55.7765164Z ##[group]Run if [ "$CARR_SCALE_BOOKS" -gt 0 ]; then
+2026-11-28T08:28:55.7765466Z [36;1mif [ "$CARR_SCALE_BOOKS" -gt 0 ]; then[0m
+2026-11-28T08:28:55.7766299Z [36;1m  python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --books "$CARR_SCALE_BOOKS" --segments "$CARR_SCALE_SEGMENTS" --search-spool-bytes "$((CARR_SCALE_SPOOL_MIB * 1024 * 1024))" --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-corpus/generate.json[0m
+2026-11-28T08:28:55.7767098Z [36;1melse[0m
+2026-11-28T08:28:55.7768059Z [36;1m  python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --large-bytes "$CARR_SCALE_BYTES" --segments "$CARR_SCALE_SEGMENTS" --search-spool-bytes "$((CARR_SCALE_SPOOL_MIB * 1024 * 1024))" --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-corpus/generate.json[0m
+2026-11-28T08:28:55.7768878Z [36;1mfi[0m
+2026-11-28T08:28:55.7793067Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:28:55.7793322Z env:
+2026-11-28T08:28:55.7793467Z   PYTHONUTF8: 1
+2026-11-28T08:28:55.7793632Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:28:55.7793805Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:28:55.7793957Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:28:55.7794114Z   DO_NOT_TRACK: 1
+2026-11-28T08:28:55.7794265Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:28:55.7794430Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:28:55.7794593Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:28:55.7794762Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:28:55.7794929Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:28:55.7795139Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:28:55.7795371Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:28:55.7795545Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:28:55.7795771Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.7796059Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:28:55.7796359Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.7796633Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.7796895Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:28:55.7797165Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:28:55.7797486Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:28:55.7797898Z ##[endgroup]
+2026-11-28T08:29:08.9971206Z ##[group]Run scale_search_memory_args=()
+2026-11-28T08:29:08.9971500Z [36;1mscale_search_memory_args=()[0m
+2026-11-28T08:29:08.9971708Z [36;1mif [ "$CARR_SCALE_BYTES" != "0" ]; then[0m
+2026-11-28T08:29:08.9971965Z [36;1m  scale_search_memory_args=(--search-memory-mib 1024)[0m
+2026-11-28T08:29:08.9972199Z [36;1mfi[0m
+2026-11-28T08:29:08.9972993Z [36;1mpython -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib "$CARR_SCALE_SPOOL_MIB" --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 "${scale_search_memory_args[@]}" > ci-library-corpus/initialize.jsonl[0m
+2026-11-28T08:29:08.9998625Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:29:08.9998865Z env:
+2026-11-28T08:29:08.9999011Z   PYTHONUTF8: 1
+2026-11-28T08:29:08.9999175Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:29:08.9999351Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:29:08.9999632Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:29:08.9999837Z   DO_NOT_TRACK: 1
+2026-11-28T08:29:09.0000026Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:29:09.0000235Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:29:09.0000432Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:29:09.0000662Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:29:09.0000893Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:29:09.0001176Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:29:09.0001499Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:29:09.0001753Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:29:09.0002076Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:09.0002452Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:29:09.0002750Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:09.0003019Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:09.0003283Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:09.0003553Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:29:09.0003869Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:29:09.0004135Z ##[endgroup]
+2026-11-28T08:29:19.0554544Z ##[group]Run set +e
+2026-11-28T08:29:19.0554769Z [36;1mset +e[0m
+2026-11-28T08:29:19.0555281Z [36;1mpython -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds 1800 --crash-after-first-commit > ci-library-corpus/authored-crash-output.log 2>&1[0m
+2026-11-28T08:29:19.0555878Z [36;1mphase_status=$?[0m
+2026-11-28T08:29:19.0556047Z [36;1mset -e[0m
+2026-11-28T08:29:19.0556209Z [36;1mif [ "$phase_status" -ne 73 ]; then[0m
+2026-11-28T08:29:19.0556457Z [36;1m  cat ci-library-corpus/authored-crash-output.log[0m
+2026-11-28T08:29:19.0556679Z [36;1m  exit 1[0m
+2026-11-28T08:29:19.0556818Z [36;1mfi[0m
+2026-11-28T08:29:19.0580170Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:29:19.0580417Z env:
+2026-11-28T08:29:19.0580561Z   PYTHONUTF8: 1
+2026-11-28T08:29:19.0580724Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:29:19.0580897Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:29:19.0581048Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:29:19.0581261Z   DO_NOT_TRACK: 1
+2026-11-28T08:29:19.0581413Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:29:19.0581576Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:29:19.0581733Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:29:19.0581906Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:29:19.0582077Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:29:19.0582294Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:29:19.0582523Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:29:19.0582708Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:29:19.0582940Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:19.0583235Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:29:19.0583529Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:19.0583793Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:19.0584056Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:29:19.0584332Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:29:19.0584646Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:29:19.0584924Z ##[endgroup]
+2026-11-28T08:32:42.5376086Z ##[group]Run seconds=5400
+2026-11-28T08:32:42.5376324Z [36;1mseconds=5400[0m
+2026-11-28T08:32:42.5376654Z [36;1mif [ "$CARR_SCALE_TIER" = "books-50000" ]; then seconds=14400; fi[0m
+2026-11-28T08:32:42.5377148Z [36;1mpython -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds "$seconds" > ci-library-corpus/resume.jsonl[0m
+2026-11-28T08:32:42.5401577Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:32:42.5401822Z env:
+2026-11-28T08:32:42.5401966Z   PYTHONUTF8: 1
+2026-11-28T08:32:42.5402126Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:32:42.5402310Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:32:42.5402465Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:32:42.5402623Z   DO_NOT_TRACK: 1
+2026-11-28T08:32:42.5402773Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:32:42.5402941Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:32:42.5403097Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:32:42.5403269Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:32:42.5403499Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:32:42.5403711Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:32:42.5403950Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:32:42.5404131Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:32:42.5404366Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:42.5404670Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:32:42.5404971Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:42.5405246Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:42.5405512Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:42.5405790Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:32:42.5406103Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:32:42.5406367Z ##[endgroup]
+2026-11-28T08:32:56.9931446Z ##[group]Run python -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl
+2026-11-28T08:32:56.9932156Z [36;1mpython -I -B -X utf8 scripts/benchmark_library_catalog.py verify "$CARR_SCALE_DIR" --seconds 1800 > ci-library-corpus/verify.jsonl[0m
+2026-11-28T08:32:56.9957043Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:32:56.9957297Z env:
+2026-11-28T08:32:56.9957443Z   PYTHONUTF8: 1
+2026-11-28T08:32:56.9957756Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:32:56.9957952Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:32:56.9958108Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:32:56.9958277Z   DO_NOT_TRACK: 1
+2026-11-28T08:32:56.9958433Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:32:56.9958601Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:32:56.9958756Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:32:56.9958928Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:32:56.9959103Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:32:56.9959366Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:32:56.9959596Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:32:56.9959774Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:32:56.9960012Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:56.9960311Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:32:56.9960608Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:56.9960878Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:56.9961149Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:32:56.9961414Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:32:56.9961727Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:32:56.9961992Z ##[endgroup]
+2026-11-28T08:33:23.4911695Z ##[group]Run seconds=3600
+2026-11-28T08:33:23.4911928Z [36;1mseconds=3600[0m
+2026-11-28T08:33:23.4912145Z [36;1mif [ "$CARR_SCALE_TIER" = "books-50000" ]; then seconds=5400; fi[0m
+2026-11-28T08:33:23.4912446Z [36;1mif [ "$CARR_SCALE_TIER" = "text-2g" ]; then seconds=14400; fi[0m
+2026-11-28T08:33:23.4913112Z [36;1mpython -I -B -X utf8 scripts/benchmark_library_catalog.py search "$CARR_SCALE_DIR" --seconds "$seconds" --query-seconds 1800 --query-samples 50 > ci-library-corpus/search.jsonl[0m
+2026-11-28T08:33:23.5015959Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T08:33:23.5016201Z env:
+2026-11-28T08:33:23.5016344Z   PYTHONUTF8: 1
+2026-11-28T08:33:23.5016506Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T08:33:23.5016675Z   HF_HUB_OFFLINE: 1
+2026-11-28T08:33:23.5016829Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T08:33:23.5016982Z   DO_NOT_TRACK: 1
+2026-11-28T08:33:23.5017129Z   CARR_SCALE_TIER: text-2g
+2026-11-28T08:33:23.5017288Z   CARR_SCALE_BOOKS: 0
+2026-11-28T08:33:23.5017474Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T08:33:23.5017920Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T08:33:23.5018085Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T08:33:23.5018285Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T08:33:23.5018503Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T08:33:23.5018680Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T08:33:23.5018904Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:33:23.5019296Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T08:33:23.5019605Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:33:23.5019875Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:33:23.5020141Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T08:33:23.5020406Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T08:33:23.5020724Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T08:33:23.5020993Z ##[endgroup]
+2026-11-28T10:10:38.5251910Z Traceback (most recent call last):
+2026-11-28T10:10:38.5263418Z   File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/scripts/benchmark_library_catalog.py", line 873, in <module>
+2026-11-28T10:10:38.5263974Z     raise SystemExit(main())
+2026-11-28T10:10:38.5264189Z                      ^^^^^^
+2026-11-28T10:10:38.5264592Z   File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/scripts/benchmark_library_catalog.py", line 866, in main
+2026-11-28T10:10:38.5265056Z     result = search_catalog(args.fixture, seconds=args.seconds,
+2026-11-28T10:10:38.5265307Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T10:10:38.5265748Z   File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/scripts/benchmark_library_catalog.py", line 793, in search_catalog
+2026-11-28T10:10:38.5266306Z     _require(page.updated_index_rows == 0, "An unchanged scoped index rewrote original rows.")
+2026-11-28T10:10:38.5266861Z   File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/scripts/benchmark_library_catalog.py", line 118, in _require
+2026-11-28T10:10:38.5267293Z     raise AssertionError(message)
+2026-11-28T10:10:38.5267783Z AssertionError: An unchanged scoped index rewrote original rows.
+2026-11-28T10:10:38.6025016Z ##[error]Process completed with exit code 1.
+2026-11-28T10:10:38.6265217Z ##[group]Run python -I -B -X utf8 ci-library-corpus/check.py collect
+2026-11-28T10:10:38.6265590Z [36;1mpython -I -B -X utf8 ci-library-corpus/check.py collect[0m
+2026-11-28T10:10:38.6289997Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T10:10:38.6290238Z env:
+2026-11-28T10:10:38.6290378Z   PYTHONUTF8: 1
+2026-11-28T10:10:38.6290540Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:10:38.6290716Z   HF_HUB_OFFLINE: 1
+2026-11-28T10:10:38.6290877Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T10:10:38.6291034Z   DO_NOT_TRACK: 1
+2026-11-28T10:10:38.6291184Z   CARR_SCALE_TIER: text-2g
+2026-11-28T10:10:38.6291344Z   CARR_SCALE_BOOKS: 0
+2026-11-28T10:10:38.6291502Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T10:10:38.6291670Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T10:10:38.6291838Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T10:10:38.6292046Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T10:10:38.6292398Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T10:10:38.6292631Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T10:10:38.6292865Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.6293157Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T10:10:38.6293449Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.6293711Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.6293977Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.6294258Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T10:10:38.6294572Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T10:10:38.6294836Z ##[endgroup]
+2026-11-28T10:10:38.7128322Z ##[group]Run python -I -B -X utf8 ci-library-corpus/check.py finish
+2026-11-28T10:10:38.7128708Z [36;1mpython -I -B -X utf8 ci-library-corpus/check.py finish[0m
+2026-11-28T10:10:38.7152333Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T10:10:38.7152575Z env:
+2026-11-28T10:10:38.7152718Z   PYTHONUTF8: 1
+2026-11-28T10:10:38.7152884Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:10:38.7153066Z   HF_HUB_OFFLINE: 1
+2026-11-28T10:10:38.7153218Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T10:10:38.7153377Z   DO_NOT_TRACK: 1
+2026-11-28T10:10:38.7153526Z   CARR_SCALE_TIER: text-2g
+2026-11-28T10:10:38.7153694Z   CARR_SCALE_BOOKS: 0
+2026-11-28T10:10:38.7153851Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T10:10:38.7154028Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T10:10:38.7154196Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T10:10:38.7154406Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T10:10:38.7154633Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T10:10:38.7154855Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T10:10:38.7155086Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.7155381Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T10:10:38.7155688Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.7155955Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.7156227Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:38.7156493Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T10:10:38.7156812Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T10:10:38.7157452Z   CARR_SCALE_PHASE_OUTCOMES: {"backup_preflight":"success","generate":"success","initialize":"success","interruption":"success","resume":"success","catalog":"success","search":"failure","backup":"skipped","collect":"success"}
+2026-11-28T10:10:38.7158165Z ##[endgroup]
+2026-11-28T10:10:39.0120432Z Traceback (most recent call last):
+2026-11-28T10:10:39.0121522Z   File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-library-corpus/check.py", line 363, in <module>
+2026-11-28T10:10:39.0122534Z     finish()
+2026-11-28T10:10:39.0123505Z   File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-library-corpus/check.py", line 284, in finish
+2026-11-28T10:10:39.0124918Z     raise AssertionError("An actual measured command did not finish successfully: " + str(incomplete))
+2026-11-28T10:10:39.0126150Z AssertionError: An actual measured command did not finish successfully: {'search': 'failure', 'backup': 'skipped'}
+2026-11-28T10:10:39.0370068Z ##[error]Process completed with exit code 1.
+2026-11-28T10:10:39.0535042Z ##[group]Run python -I -m pip freeze > ci-library-corpus/dependencies.txt
+2026-11-28T10:10:39.0535461Z [36;1mpython -I -m pip freeze > ci-library-corpus/dependencies.txt[0m
+2026-11-28T10:10:39.0560563Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T10:10:39.0560807Z env:
+2026-11-28T10:10:39.0560948Z   PYTHONUTF8: 1
+2026-11-28T10:10:39.0561110Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:10:39.0561281Z   HF_HUB_OFFLINE: 1
+2026-11-28T10:10:39.0561567Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T10:10:39.0561732Z   DO_NOT_TRACK: 1
+2026-11-28T10:10:39.0561896Z   CARR_SCALE_TIER: text-2g
+2026-11-28T10:10:39.0562064Z   CARR_SCALE_BOOKS: 0
+2026-11-28T10:10:39.0562221Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T10:10:39.0562397Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T10:10:39.0562572Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T10:10:39.0562787Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T10:10:39.0563025Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T10:10:39.0563253Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T10:10:39.0563492Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.0563790Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T10:10:39.0564096Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.0564367Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.0564640Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.0564924Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T10:10:39.0565245Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T10:10:39.0565532Z ##[endgroup]
+2026-11-28T10:10:39.3672219Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T10:10:39.3672520Z with:
+2026-11-28T10:10:39.3672789Z   name: actual-library-ubuntu-24.04-text-2g-71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T10:10:39.3673118Z   path: carr-library/ci-library-corpus/
+2026-11-28T10:10:39.3673332Z   if-no-files-found: error
+2026-11-28T10:10:39.3673502Z   retention-days: 14
+2026-11-28T10:10:39.3673661Z   compression-level: 6
+2026-11-28T10:10:39.3673818Z   overwrite: false
+2026-11-28T10:10:39.3673977Z   include-hidden-files: false
+2026-11-28T10:10:39.3674145Z   archive: true
+2026-11-28T10:10:39.3674282Z env:
+2026-11-28T10:10:39.3674411Z   PYTHONUTF8: 1
+2026-11-28T10:10:39.3674564Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T10:10:39.3674742Z   HF_HUB_OFFLINE: 1
+2026-11-28T10:10:39.3674892Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T10:10:39.3675058Z   DO_NOT_TRACK: 1
+2026-11-28T10:10:39.3675205Z   CARR_SCALE_TIER: text-2g
+2026-11-28T10:10:39.3675403Z   CARR_SCALE_BOOKS: 0
+2026-11-28T10:10:39.3675567Z   CARR_SCALE_BYTES: 2147483648
+2026-11-28T10:10:39.3675740Z   CARR_SCALE_SEGMENTS: 1000
+2026-11-28T10:10:39.3675906Z   CARR_SCALE_SPOOL_MIB: 8192
+2026-11-28T10:10:39.3676110Z   CARR_SCALE_HEAD: 71ca92be691455d0ff51ed163b1d91749e5ae62e
+2026-11-28T10:10:39.3676332Z   CARR_SCALE_RUN: 46124999025
+2026-11-28T10:10:39.3676507Z   CARR_SCALE_BACKUP_MEMORY_MIB: 2048
+2026-11-28T10:10:39.3676735Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.3677034Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T10:10:39.3677327Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.3677796Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.3678087Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T10:10:39.3678359Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T10:10:39.3678673Z   CARR_SCALE_DIR: /home/runner/work/_temp/carr-scale-text-2g-ptumople/fixture
+2026-11-28T10:10:39.3678948Z ##[endgroup]
+2026-11-28T10:10:39.4890399Z With the provided path, there will be 26 files uploaded
+2026-11-28T10:10:39.4894106Z Artifact name is valid!
+2026-11-28T10:10:39.4894382Z Root directory input is valid!
+2026-11-28T10:10:40.0339295Z Uploading artifact: actual-library-ubuntu-24.04-text-2g-71ca92be691455d0ff51ed163b1d91749e5ae62e.zip
+2026-11-28T10:10:40.0366115Z Beginning upload of artifact content to blob storage
+2026-11-28T10:10:40.6735826Z Uploaded bytes 122712
+2026-11-28T10:10:40.7626422Z Finished uploading artifact content to blob storage!
+2026-11-28T10:10:40.7627098Z SHA256 digest of uploaded artifact is 5d10aab9a1d6bb77d763bc22b49e1b04633eff619856d424d4097e2293c242cb
+2026-11-28T10:10:40.7627779Z Finalizing artifact upload
+2026-11-28T10:10:41.3093266Z Artifact actual-library-ubuntu-24.04-text-2g-71ca92be691455d0ff51ed163b1d91749e5ae62e successfully finalized. Artifact ID 15258975624
+2026-11-28T10:10:41.3094477Z Artifact actual-library-ubuntu-24.04-text-2g-71ca92be691455d0ff51ed163b1d91749e5ae62e has been successfully uploaded! Final size is 122712 bytes. Artifact ID is 15258975624
+2026-11-28T10:10:41.3096477Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124999025/artifacts/15258975624
+2026-11-28T10:10:41.4071502Z Post job cleanup.
+2026-11-28T10:10:41.4738957Z [command]/usr/bin/git version
+2026-11-28T10:10:41.4769296Z git version 2.56.1
+2026-11-28T10:10:41.4799244Z Temporarily overriding HOME='/home/runner/work/_temp/f746d80e-d29b-4f8c-bc64-3cf05ff8b716' before making global git config changes
+2026-11-28T10:10:41.4800067Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T10:10:41.4808745Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T10:10:41.4838934Z Removing SSH command configuration
+2026-11-28T10:10:41.4839357Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T10:10:41.4861782Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T10:10:41.5088208Z Removing HTTP extra header
+2026-11-28T10:10:41.5092309Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T10:10:41.5139129Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T10:10:41.5308369Z Removing includeIf entries pointing to credentials config files
+2026-11-28T10:10:41.5314903Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T10:10:41.5342702Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T10:10:41.5692006Z Cleaning up orphan processes
