@@ -1,0 +1,217 @@
+name: Optional Word citation integration contracts
+on:
+  push:
+    branches: [carr/word-integration-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-word-integration-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: word-integration-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    name: Word protocol, current citations and desktop ownership / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      CARR_WORD_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        run: |
+          python -m pip install ".[test]"
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+      - name: Prepare exact source and installed acceptance harness
+        run: |
+          mkdir -p ci-word-integration
+          cat > ci-word-integration/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import subprocess
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-word-integration"
+          suites = ["tests/academic_integration/test_bibtex_workflow.py","tests/academic_integration/test_citation_ui.py","tests/academic_integration/test_documents.py","tests/academic_integration/test_doi.py","tests/academic_integration/test_end_to_end.py","tests/academic_integration/test_formatting.py","tests/academic_integration/test_regeneration.py","tests/academic_integration/test_runtime_adapter.py","tests/academic_integration/test_word_com.py","tests/ui/test_word_citations_dialog.py","tests/ui/test_citation_styles_jobs.py","tests/citations/test_bibliography_workbench.py","tests/ui/test_academic_library_dialog.py","tests/ui/test_academic_export_handler.py","tests/ui/test_export_confirmation.py","tests/ui/test_export_destination.py","tests/ui/test_academic_actions.py"]
+
+          names = ["carr_library.application","carr_library.durable_state","carr_library.academic_integration.documents","carr_library.academic_integration.formatting","carr_library.academic_integration.regeneration","carr_library.academic_integration.runtime_adapter","carr_library.academic_integration.doi","carr_library.academic_integration.word_com","carr_library.ui.citation_formatting","carr_library.ui.word_citations_dialog","carr_library.ui.academic_library_dialog","carr_library.citations.bibliography_workbench","carr_library.citations.csl","carr_library.research.export_file"]
+          # Compile selected real source and test bytes without importing UI/native code.
+          for name in names:
+              path = source.joinpath(*name.split(".")[1:]).with_suffix(".py")
+              compile(path.read_bytes(), str(path), "exec")
+          for suite in suites:
+              path = root / suite
+              compile(path.read_bytes(), str(path), "exec")
+          
+          def checkout_head():
+              value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()
+              assert value == os.environ["CARR_WORD_HEAD"], (value, os.environ["CARR_WORD_HEAD"])
+              return value
+
+          commit_before = checkout_head()
+          helper_before = sha256(Path(__file__).read_bytes()).hexdigest()
+          tests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}
+
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              for relative in ["academic_integration/UPSTREAM.json","academic_integration/csl_worker.cjs","academic_integration/locales/locales-en-US.xml","academic_integration/locales/locales-sk-SK.xml","academic_integration/locales/locales-uk-UA.xml","academic_integration/styles/apa.csl","academic_integration/styles/chicago-author-date.csl","academic_integration/styles/chicago-fullnote-bibliography.csl","academic_integration/styles/harvard-cite-them-right.csl","academic_integration/styles/ieee.csl","academic_integration/styles/modern-language-association.csl","academic_integration/styles/nlm-citation-sequence.csl","academic_integration/vendor/LICENSE","academic_integration/vendor/LICENSE-AGPL-3.0.txt","academic_integration/vendor/LICENSE-CC-BY-SA-3.0.txt","academic_integration/vendor/LICENSE-CPAL-1.0.txt","academic_integration/vendor/NOTICE.txt","academic_integration/vendor/SORT-MACRO-CACHE-NOTICE.txt","academic_integration/vendor/citeproc-sort-macro-cache.json","academic_integration/vendor/citeproc.js"]:
+                  path = directory / relative
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[relative] = sha256(path.read_bytes()).hexdigest()
+              return result
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      # Preserve the original collection failure before the
+                      # required nonempty-suite assertion can terminate pytest.
+                      print("FAILED COLLECTION: " + report.nodeid, flush=True)
+                      print(str(report.longrepr)[:16384], flush=True)
+          
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "--durations=20", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-word-integration-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              assert checkout_head() == commit_before, "The checked-out commit changed."
+              assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, "The executed proof helper changed."
+              assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, "Executed test bytes changed."
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "qualification": "WORD_CURRENT_SCHEMA_PROTOCOL_AND_OWNER_CONTRACTS",
+                        "actual_office": "NOT_RUN", "native_word_controls": "NOT_RUN",
+                        "actual_neural_model_quality": "NOT_RUN",
+                        "commit": commit_before, "proof_helper_sha256": helper_before,
+                        "test_files": tests_before,
+                        "selected_suites": proof.collected, "package_python_files": sum(name.endswith(".py") for name in expected),
+                        "package_inventory_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require actual source Word protocol, lifetime and citation contracts
+        if: "!cancelled()"
+        timeout-minutes: 20
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -B -X utf8 ci-word-integration/check.py source 2>&1 | tee ci-word-integration/source.txt
+      - name: Require isolated installed origins and the same Word contracts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-word-integration/check.py installed 2>&1 | tee ci-word-integration/installed.txt
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-word-integration
+          git rev-parse HEAD > ci-word-integration/commit.txt
+          git rev-parse HEAD^{tree} > ci-word-integration/tree.txt
+          python -m pip freeze > ci-word-integration/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: word-integration-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-word-integration
+          if-no-files-found: error
