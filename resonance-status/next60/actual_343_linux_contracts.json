@@ -1,0 +1,344 @@
+{
+  "schema": "carr-focused-linux-contract-results/1",
+  "recorded_utc": "2026-11-28 04:40:38 UTC",
+  "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+  "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+  "status": "PASS_LINUX_CONTRACTS_ONLY",
+  "source_manifest": "b649ab95059e19e90314616c533d95f260995b09",
+  "voice_scheduling_manifest": "61a388850db43f792b4a3f6e4580abe26e6d3d93",
+  "jobs": [
+    {
+      "name": "capacity",
+      "platform": "ubuntu-24.04",
+      "run_id": 46107711781,
+      "job_id": 140864083791,
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107711781/job/140864083791",
+      "job_conclusion": "success",
+      "source_rows": [
+        {
+          "path": "tests/search/test_window_catalog_projection.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/packaging/test_library_scale_benchmark.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/packaging/test_library_capacity_measurement.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_capacity.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_capacity_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_backup_capacity.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_complete_pending_backup.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_pending_common4.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_schema_identity.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_native_backup_capacity_driver.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/catalog/test_text_screen_work.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/search/test_ascii_mapping_work.py",
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "final_receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 283,
+        "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+        "source_passed": 283,
+        "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+        "status": "PASS"
+      },
+      "actual_owner": [],
+      "decoded_log_utf8": {
+        "sha256": "586433f71ec3531774f1535240f78c8de41088c7d17b57666fdd182c8d90aa4a",
+        "bytes": 164388
+      },
+      "artifact": {
+        "id": 15248423072,
+        "name": "capacity-profile-contracts-ubuntu-24.04-343efc505230f969ec9519bd04e4340381f07909-1",
+        "bytes": 64250,
+        "digest": "sha256:8e764eaa4c6da4f94cf6e1e09a607b0d1b706b5008293948e94dbff56fc02ea1",
+        "expired": false,
+        "created_at": "2026-11-28T04:38:26Z"
+      },
+      "artifact_digest_agrees_with_upload_log": true
+    },
+    {
+      "name": "voice",
+      "platform": "ubuntu-24.04",
+      "run_id": 46107719816,
+      "job_id": 140864112491,
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107719816/job/140864112491",
+      "job_conclusion": "success",
+      "source_rows": [
+        {
+          "path": "tests/audio/test_voice_package_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_management_state.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_reference_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_protected_management.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_publication_lifetime.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_ownership.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_managed_authority.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_voice_packages.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_voice_reference.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_engine_settings_lifetime.py",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_voices.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_speech.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_settings.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_convergence.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_bundled_runtime_settings.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_v3_state_backup.py",
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_state_backup_portability.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "final_receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 495,
+        "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+        "source_passed": 495,
+        "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+        "status": "PASS"
+      },
+      "actual_owner": [
+        {
+          "checks": 25,
+          "error": null,
+          "mode": "source",
+          "report_sha256": "f2c38d0db64ef00e606d7acd7e3de51e14e2fb1ae08fa8b822d1600991362683",
+          "status": "PASS"
+        },
+        {
+          "checks": 25,
+          "error": null,
+          "mode": "installed",
+          "report_sha256": "2c5bb05e98a16349e29e94bf2fca76485e39c0645d1c18558b1266680c8eebc4",
+          "status": "PASS"
+        }
+      ],
+      "decoded_log_utf8": {
+        "sha256": "e67fccd9858a00bf41f192a19f192d6a32d0d5bf980670d21871ba02b97dbc48",
+        "bytes": 312760
+      },
+      "artifact": {
+        "id": 15248114149,
+        "name": "voice-management-linux-343efc505230f969ec9519bd04e4340381f07909-1",
+        "bytes": 136600,
+        "digest": "sha256:c8d3f29bc019112c19c8bb0b6473faaa35275ed54578dfe212a90f98a9536cc8",
+        "expired": false,
+        "created_at": "2026-11-28T04:38:41Z"
+      },
+      "artifact_digest_agrees_with_upload_log": true
+    }
+  ],
+  "limitations": [
+    "Windows results and native Windows controls are not included; both jobs were active at this capture.",
+    "The instrumented profile and all four retained-capacity profiles remain unqualified by this record.",
+    "Source and isolated installed counts are case executions, not additional unique test cases.",
+    "No result is transferred to PR successor004494613f855bbd003616e2afe86b980dae2d48."
+  ],
+  "method": "Closed decoded GitHub job logs and artifact API metadata; typed final receipts, exact whole-source rows and upload SHA256 values compared."
+}

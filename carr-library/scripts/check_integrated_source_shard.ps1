@@ -493,7 +493,7 @@ $suites = @(
   'tests/security/test_update_controller_actions.py',
   'tests/audio/test_voice_scope_checks.py',
   'tests/catalog/test_text_screen_work.py',
-  'tests/search/test_ascii_mapping_work.py',
+  'tests/search/test_ascii_mapping_work.py'
 )
 
 $operationsCounts = @{
@@ -698,7 +698,7 @@ $completedFeatureCounts = @{
   'tests/security/test_update_controller_actions.py' = 14
   'tests/audio/test_voice_scope_checks.py' = 42
   'tests/catalog/test_text_screen_work.py' = 26
-  'tests/search/test_ascii_mapping_work.py' = 41
+  'tests/search/test_ascii_mapping_work.py' = 56
 }
 $formatExpected = @{
   'tests/audio/test_audiobook.py' = 17

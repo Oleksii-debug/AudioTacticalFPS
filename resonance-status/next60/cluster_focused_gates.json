@@ -1,0 +1,205 @@
+{
+  "schema": "carr-measured-ascii-cluster-complete-handoff/1",
+  "recorded_utc": "2026-11-28 04:50:39 UTC",
+  "base_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "source_manifest": "7c1af6a2597bb9baadca14a943510f77d5c04392",
+  "actual_profile_basis": "abde0b90bc99bd7554e3f0258fb93ee600131e04",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+      "blob": "8a3819914681f08dc942b0905ab2bad796971b37"
+    },
+    {
+      "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+      "preimage": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+      "blob": "5ae468e51b908a8c15169948c5bcee6c9c6944e2"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "f5bd70522a58e35aa7d52d27d7b65334d9217be0",
+      "blob": "d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "0d102dccf94ff0993fed4488aac4c27e4747aeda",
+      "blob": "10c3e1ffd175e0941361bfeff612b22bb1ec6b97"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "33d55583b27e42ed2b3d1f8b4b2f8ff7b1ef41a5",
+      "blob": "f7b8e3c5e5386793ceddb8faf821fd5cf21ae472"
+    }
+  ],
+  "tests": {
+    "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+    "cases_before": 41,
+    "cases": 56,
+    "functions": {
+      "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary": 12,
+      "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds": 6,
+      "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries": 4,
+      "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work": 6,
+      "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners": 1,
+      "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication": 2,
+      "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch": 1,
+      "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy": 6,
+      "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries": 1,
+      "test_actual_sparse_inverse_preserves_cancellation_during_iteration": 2,
+      "test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks": 1,
+      "test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries": 4,
+      "test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries": 4,
+      "test_unicode_ascii_cluster_iteration_preserves_original_stop_objects": 2,
+      "test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup": 4
+    },
+    "added_functions": {
+      "test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks": 1,
+      "test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries": 4,
+      "test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries": 4,
+      "test_unicode_ascii_cluster_iteration_preserves_original_stop_objects": 2,
+      "test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup": 4
+    },
+    "old41_prefix_unchanged": true,
+    "companions": []
+  },
+  "focused_contracts": {
+    "capacity": {
+      "whole_suites": 14,
+      "cases_per_mode": 298,
+      "pins": 33,
+      "installed_origins": 23,
+      "source_parent_seconds": 4600,
+      "each_whole_seconds": 600,
+      "contract_step_minutes": 240,
+      "job_minutes": 270
+    },
+    "profile": {
+      "whole_suites": 6,
+      "cases": 153,
+      "pins": 38,
+      "source_jobs": 3,
+      "each_whole_seconds": 600,
+      "source_step_minutes": 30,
+      "measured_step_minutes": 200,
+      "job_minutes": 270
+    },
+    "unchanged": [
+      "All original whole selectors, origins and companions remain.",
+      "Capacity INSTALLED_CHILD, source-wheel proof, child policy and full payload verification remain byte-identical.",
+      "All4 capacity geometries remain1000×20,10000×20,50000×20,50000×40; page37/window100/repeats9/phase3600 and public-operation/backup phases remain unchanged.",
+      "The benchmark05bf and corrected profile fixture4e79 remain byte-identical.",
+      "Native44/12 and its timeout, platform dependencies, firewall/retention and all outer envelopes remain unchanged."
+    ]
+  },
+  "gate_reverse_audits": [
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "inverse_exact": true,
+      "replacements": [
+        {
+          "before": "'tests/search/test_ascii_mapping_work.py': 41,",
+          "after": "'tests/search/test_ascii_mapping_work.py': 56,",
+          "occurrences": 1
+        },
+        {
+          "before": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+          "after": "5ae468e51b908a8c15169948c5bcee6c9c6944e2",
+          "occurrences": 1
+        },
+        {
+          "before": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+          "after": "8a3819914681f08dc942b0905ab2bad796971b37",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "inverse_exact": true,
+      "replacements": [
+        {
+          "before": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+          "after": "8a3819914681f08dc942b0905ab2bad796971b37",
+          "occurrences": 1
+        },
+        {
+          "before": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+          "after": "5ae468e51b908a8c15169948c5bcee6c9c6944e2",
+          "occurrences": 1
+        },
+        {
+          "before": "\"tests/search/test_ascii_mapping_work.py\":41",
+          "after": "\"tests/search/test_ascii_mapping_work.py\":56",
+          "occurrences": 1
+        },
+        {
+          "before": "Source 138 cases",
+          "after": "Source 153 cases",
+          "occurrences": 1
+        },
+        {
+          "before": "sum(suites.values()) == 138",
+          "after": "sum(suites.values()) == 153",
+          "occurrences": 1
+        },
+        {
+          "before": "'required_cases':138",
+          "after": "'required_cases':153",
+          "occurrences": 1
+        },
+        {
+          "before": "source['required_cases']==138",
+          "after": "source['required_cases']==153",
+          "occurrences": 1
+        },
+        {
+          "before": "'source_cases_required':138",
+          "after": "'source_cases_required':153",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "inverse_exact": true,
+      "replacements": [
+        {
+          "before": "f5bd70522a58e35aa7d52d27d7b65334d9217be0",
+          "after": "d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae",
+          "occurrences": 2
+        },
+        {
+          "before": "Require all 283 source and 283 isolated installed cases",
+          "after": "Require all 298 source and 298 isolated installed cases",
+          "occurrences": 2
+        },
+        {
+          "before": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+          "after": "8a3819914681f08dc942b0905ab2bad796971b37",
+          "occurrences": 1
+        }
+      ]
+    }
+  ],
+  "source_pin_verification": {
+    "base_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+    "preimages": 5,
+    "helper_pins": 33,
+    "profile_pins": 38,
+    "all_match_exact_base_or_accepted_two_source_overlay": true
+  },
+  "reviews": {
+    "source_and_tests": "Progress independently accepted8a381/5ae468; root independently reviewed the one source hunk, exact old41 prefix and all15 new meaningful cases. STATIC_NOT_RUN.",
+    "focused_gates": "Progress independently reconstructed d6cad/10c3/f7b8 to exact predecessors and verified14/298,6/153, retained selectors/child/origins/budgets/geometries. STATIC_NOT_RUN."
+  },
+  "fullgate_owner": "Locate owns the exact41→56 and five-function update on the unchanged487-whole inventory; this handoff does not modify the shared full gates.",
+  "qualification": {
+    "execution": "NOT_RUN",
+    "parser": "NOT_RUN",
+    "new_speedup": "NOT_MEASURED",
+    "new_2m_capacity": "NOT_RUN",
+    "refs_moved": false,
+    "current343_measurements_untouched": true
+  }
+}

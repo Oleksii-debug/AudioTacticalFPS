@@ -12,7 +12,7 @@ from carr_library.audio import voice_packages, voice_transport
 from carr_library.audio.models import AudioCancelled
 from carr_library.audio.voice_manifest import LocalModelManifest
 from carr_library.audio.voice_packages import managed_catalog, approved_profile
-from carr_library.operations import ResourceBroker
+from carr_library.operations import ResourceBroker, ResourceCancelled
 
 _fixture = runpy.run_path(str(Path(__file__).with_name('voice_management_fixtures.py')))
 installed = _fixture['installed']
@@ -162,22 +162,70 @@ def test_actual_owner_child_cannot_connect_or_start_an_unowned_child(installed, 
     assert_released(library)
 
 
-def test_actual_slow_owner_is_reaped_before_cancellation_releases_admission(installed, tmp_path):
+def test_actual_slow_owner_is_reaped_before_cancellation_releases_admission(installed, tmp_path, monkeypatch):
+    from carr_library.audio import process as audio_process
+    from carr_library.operations import ResourceLease
+
     library, selected, manager, calls = installed
     configure(manager)
     archive = tmp_path / 'slow.zip'
     package(archive, source='fixture:slow')
     review = manager.inspect(archive)
     marker = tmp_path / 'voice-install-entered.txt'
-    previous = manager.store.read()
-    with pytest.raises((AudioCancelled, InterruptedError)):
+    previous, before_calls = manager.store.read(), len(calls)
+    # The real public broker boundary already exposes ResourceCancelled even
+    # before the first child. A later checkpoint may observe the same request.
+    with pytest.raises(ResourceCancelled):
+        manager.apply(review, rights_approved=True, supported_languages=['uk'],
+                      cancelled=lambda: True)
+    assert len(calls) == before_calls and not marker.exists()
+    assert manager.store.read() == previous
+    assert_released(library)
+
+    children, released = [], []
+    if os.name == 'nt':
+        from carr_library.audio import windows_job
+        process_module, process_name = windows_job, 'JobProcess'
+    else:
+        process_module, process_name = audio_process.subprocess, 'Popen'
+    original_spawn = getattr(process_module, process_name)
+    original_release = ResourceLease.release
+
+    def observed_spawn(*args, **kwargs):
+        child = original_spawn(*args, **kwargs)
+        children.append(child)
+        return child
+
+    def observed_release(lease):
+        if marker.exists():
+            released.append({
+                'operation': lease.record['operation_id'].split(':', 1)[0],
+                'children': len(children),
+                'exited': all(child.poll() is not None for child in children),
+                'streams_closed': all(child.stdout.closed and child.stderr.closed
+                                      for child in children),
+                'native_handles_closed': (all(child._job is None
+                    and not child._process.hProcess and not child._process.hThread
+                    for child in children) if os.name == 'nt' else None),
+            })
+        return original_release(lease)
+
+    monkeypatch.setattr(process_module, process_name, observed_spawn)
+    monkeypatch.setattr(ResourceLease, 'release', observed_release)
+    with pytest.raises((AudioCancelled, InterruptedError, ResourceCancelled)):
         manager.apply(review, rights_approved=True, supported_languages=['uk'],
                       cancelled=marker.exists)
     assert marker.read_text() == 'actual owner entered'
     assert manager.store.read() == previous
     assert not (selected.parent / 'models/voices/packages/fixture').exists()
+    assert len(children) == 1
+    assert len(released) == 2
+    assert {row['operation'] for row in released} == {'voice-package', 'voice-data'}
+    assert all(row['children'] == 1 and row['exited'] and row['streams_closed']
+               for row in released)
+    assert all(row['native_handles_closed'] is (True if os.name == 'nt' else None)
+               for row in released)
     assert_released(library)
-
 
 def test_owner_helpers_are_captured_and_checked_again_inside_actual_child(installed, tmp_path, monkeypatch):
     library, selected, manager, calls = installed

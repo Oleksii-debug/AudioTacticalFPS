@@ -136,7 +136,7 @@ jobs:
         timeout-minutes: 60
         run: |
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '33e1f0b75071bc1f64d86553d0197b6b05196a93'
+          $expectedBlob = 'a7cd67986474b15702c630e62ccca62e96c2e4d6'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()

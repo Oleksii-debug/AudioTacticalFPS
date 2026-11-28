@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "kind": "actual_ci_orchestration_wait_and_required_check_review",
+  "recorded_at_utc": "2026-11-28T04:43:46Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "current_head": "004494613f855bbd003616e2afe86b980dae2d48",
+  "workflow": {
+    "path": ".github/workflows/carr-windows.yml",
+    "blob": "a4855c1de2fd0073f6a242458feacdc31a84e693",
+    "concurrency": "carr-windows-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}",
+    "cancel_in_progress": true,
+    "source_aggregate_if": "always()",
+    "final_required_if": "always()",
+    "source_whole_suites": 487,
+    "partition_whole_suites": [
+      122,
+      122,
+      122,
+      121
+    ]
+  },
+  "observation_scope": "Read-only API snapshots obtained during this review; workflow queue states are transient and are not execution verdicts.",
+  "actual_snapshots": {
+    "superseded_main": {
+      "id": 46107731793,
+      "head_sha": "343efc505230f969ec9519bd04e4340381f07909",
+      "status": "queued",
+      "conclusion": null,
+      "created_at": "2026-11-28T04:28:54Z",
+      "updated_at": "2026-11-28T04:28:54Z"
+    },
+    "superseded_main_jobs": [
+      {
+        "id": 140864153262,
+        "name": "Exact source / Python 3.11 syntax and package metadata",
+        "status": "completed",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 140865992161,
+        "name": "Required complete source inventory / 487 whole suites",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "id": 140865992507,
+        "name": "Required whole source partition 1 of 4",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865992546,
+        "name": "Required whole source partition 3 of 4",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865992725,
+        "name": "Required current composition / Windows source regressions",
+        "status": "completed",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 140865992855,
+        "name": "Required configured native Apply and checked restart",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865992884,
+        "name": "Windows x64 / CPython 3.11 / integrated desktop",
+        "status": "completed",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 140865992903,
+        "name": "Required portable encrypted backup",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865992986,
+        "name": "Required whole source partition 4 of 4",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865993108,
+        "name": "Required whole source partition 2 of 4",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865993118,
+        "name": "Required signed client and maintenance boundaries",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865993169,
+        "name": "Windows x64 / native commands and draft recovery",
+        "status": "completed",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 140865993218,
+        "name": "Required native managed update",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 140865993240,
+        "name": "Required Linux Flite speech",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ],
+    "current_main": {
+      "id": 46108325018,
+      "head_sha": "004494613f855bbd003616e2afe86b980dae2d48",
+      "status": "pending",
+      "conclusion": null,
+      "created_at": "2026-11-28T04:36:19Z",
+      "updated_at": "2026-11-28T04:36:20Z"
+    },
+    "current_main_jobs_at_0443": [],
+    "current_v3_jobs_at_0443": [
+      {
+        "id": 140866045427,
+        "name": "native-studio",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 140866045616,
+        "name": "Required Linux Flite speech / Ubuntu 24.04 / six actual Flite speech cases",
+        "status": "queued",
+        "conclusion": null
+      }
+    ]
+  },
+  "primary_sources": [
+    {
+      "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-cancellation",
+      "finding": "Cancellation reevaluates job conditions. Jobs whose condition remains true continue; the five-minute forced termination applies to jobs marked for cancellation."
+    },
+    {
+      "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions",
+      "finding": "always() is true even after cancellation; cancelled() describes workflow cancellation. General !cancelled() guidance does not itself establish required-check fail-closed semantics."
+    },
+    {
+      "url": "https://docs.github.com/en/pull-requests/reference/status-checks?apiVersion=2022-11-28",
+      "finding": "A skipped job reports Success and does not prevent merging even when required."
+    },
+    {
+      "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging",
+      "finding": "Required status checks can be successful, skipped, or neutral."
+    },
+    {
+      "url": "https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency",
+      "finding": "Concurrency groups limit concurrent runs; cancel-in-progress requests cancellation of the older run."
+    }
+  ],
+  "repository_rules_observation": {
+    "base_branch": "carr-library",
+    "base_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "readable_branch_summary": {
+      "protected": false,
+      "required_status_checks": {
+        "enforcement_level": "off",
+        "contexts": [],
+        "checks": []
+      }
+    },
+    "full_protection_endpoint": "403 Resource not accessible by integration",
+    "applied_rules_endpoint": "Connector rejected the endpoint as outside its allowlist; no alternate routing was attempted.",
+    "limitation": "The readable branch summary is not a complete repository-rules audit and is not authority to weaken the required aggregate."
+  },
+  "inference": {
+    "plausible_queue_relationship": "The superseded main still has its always source aggregate queued while the newer main remains pending in the same workflow concurrency group.",
+    "proven_lock_owner": false,
+    "future_workflow_change_does_not_rewrite_existing_queued_run": true
+  },
+  "decision": {
+    "disposition": "KEEP_BOTH_STRICT_ALWAYS_AGGREGATES",
+    "reason": "Skipping the final required check on cancellation could be accepted as success by branch protection. Nonweakening equivalence has not been established.",
+    "source_change": "NONE",
+    "ref_mutation": "NONE",
+    "cancellation_api_action": "NONE",
+    "endpoint_permission_or_allowlist_workaround": "NONE"
+  },
+  "verdict": "CI_ORCHESTRATION_WAIT_NOT_PASS",
+  "qualification": {
+    "main_487": "PENDING",
+    "current_v3": "IN_PROGRESS",
+    "superseded_cancellation": "NOT_PASS",
+    "native_hardware": "NO_QUALIFICATION_TRANSFER"
+  }
+}

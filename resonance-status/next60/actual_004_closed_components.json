@@ -1,0 +1,477 @@
+{
+  "schema": "carr-closed-004-component-results/1",
+  "status": "PARTIAL_COMPONENT_RESULTS",
+  "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+  "source_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+  "records": [
+    {
+      "kind": "conversion",
+      "run": 46108324900,
+      "job": 140865990059,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46108324900/job/140865990059",
+      "head": "004494613f855bbd003616e2afe86b980dae2d48",
+      "tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+      "status": "success",
+      "started_at": "2026-11-28T04:42:11Z",
+      "completed_at": "2026-11-28T04:50:05Z",
+      "artifact": [
+        {
+          "id": 15248474787,
+          "name": "selected-conversion-windows-2022-004494613f855bbd003616e2afe86b980dae2d48-1",
+          "size_in_bytes": 133449,
+          "digest": "sha256:7b6ec8c82e6378264700c6518f2e3ee718253383561797c5c80b33a87b9cc5ce",
+          "head": "004494613f855bbd003616e2afe86b980dae2d48",
+          "upload_log_matches": true,
+          "archive_contents_inspected": false
+        }
+      ],
+      "ordinary_receipt": [
+        {
+          "line": 1430,
+          "all_children_reaped": true,
+          "inputs_unchanged": true,
+          "installed_passed": 358,
+          "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+          "source_passed": 358,
+          "source_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+          "status": "PASS"
+        }
+      ],
+      "actual_native_phases": [
+        {
+          "line": 1762,
+          "mode": "source",
+          "native_gui": "NOT_RUN",
+          "origins": 22,
+          "phase": "formats",
+          "report_sha256": "e2f4b57a91d5cf0acf0c6505f8b9d5c0a0b79d60ff5179780e5d4d4582f5b932",
+          "required_formats": 14,
+          "required_native_controls": null,
+          "runtime_quality": "NOT_RUN",
+          "status": "PASS",
+          "whole_cases": null
+        },
+        {
+          "line": 1928,
+          "mode": "source",
+          "native_gui": "NOT_RUN",
+          "origins": 22,
+          "phase": "old-suite",
+          "report_sha256": "7675274aaff2dba64c5ba8db490bb022ecb74df5bb62f555fa8933e5357389af",
+          "required_formats": null,
+          "required_native_controls": null,
+          "runtime_quality": "NOT_RUN",
+          "status": "PASS",
+          "whole_cases": 34
+        },
+        {
+          "line": 1944,
+          "mode": "installed",
+          "native_gui": "NOT_RUN",
+          "origins": 22,
+          "phase": "formats",
+          "report_sha256": "774f3714407762772310a516279e934f8769332804b8ba16da908e9aabae161d",
+          "required_formats": 14,
+          "required_native_controls": null,
+          "runtime_quality": "NOT_RUN",
+          "status": "PASS",
+          "whole_cases": null
+        },
+        {
+          "line": 2110,
+          "mode": "installed",
+          "native_gui": "NOT_RUN",
+          "origins": 22,
+          "phase": "old-suite",
+          "report_sha256": "fd9d7119e095ce9a3cc8f960cbdd56db9d125d489134cd8a86d8aca84cb269ae",
+          "required_formats": null,
+          "required_native_controls": null,
+          "runtime_quality": "NOT_RUN",
+          "status": "PASS",
+          "whole_cases": 34
+        },
+        {
+          "line": 2364,
+          "mode": "source",
+          "native_gui": "PASS",
+          "origins": 30,
+          "phase": "gui",
+          "report_sha256": "555c8eb3d3e09c60d708c24d5a8fdd6048f3be7b3418aad045d3baf24b588021",
+          "required_formats": null,
+          "required_native_controls": 30,
+          "runtime_quality": "NOT_RUN",
+          "status": "PASS",
+          "whole_cases": null
+        },
+        {
+          "line": 2618,
+          "mode": "installed",
+          "native_gui": "PASS",
+          "origins": 30,
+          "phase": "gui",
+          "report_sha256": "95c5d0229e64ac0bfd6630416a1e2c7cb6da123a4c85a38ffc2fff36e4c3b9f5",
+          "required_formats": null,
+          "required_native_controls": 30,
+          "runtime_quality": "NOT_RUN",
+          "status": "PASS",
+          "whole_cases": null
+        }
+      ],
+      "actual_gui": [
+        {
+          "line": 2158,
+          "mode": "source",
+          "checks": [
+            "all selected source or installed module identities are exact",
+            "real native Windows controls",
+            "existing host worker and workspace own the conversion path",
+            "conversion reuses its actual registered command identifier",
+            "native failure answers owned No before closing only the active inner modal",
+            "cancelling the source picker admits no conversion or output",
+            "cancelling the selected runtime picker admits no conversion or output",
+            "actual existing menu converts RTF with the selected native Pandoc",
+            "native conversion commits exact original reading text and fidelity report",
+            "result names the external original and report without catalog authority",
+            "conversion alone neither imports nor automatically starts reading",
+            "real existing reader receives the exact verified UTF-8 copy",
+            "verified copy remains unbound and gives no native quotation authority",
+            "real reader Save preserves the verified copy and its original",
+            "native reader closes and returns to the same conversion result window",
+            "import confirmation actually starts with default No",
+            "native default No preserves the library and external result",
+            "explicit import still starts with default No",
+            "explicit native Yes runs the canonical TXT importer on the existing worker",
+            "import completion explicitly preserves the external evidence boundary",
+            "actual imported text is searchable and native original is not substituted",
+            "unrelated original and all selected native bytes remain exact",
+            "changed reading bytes cannot reopen the reader or re-run a converter",
+            "native result close revokes its actual queued Read callback",
+            "native host Close drains the shared worker and retained finalizers",
+            "actual reader finalizers release their existing worker owners",
+            "actual converter private Job and child are closed before any fallback",
+            "current conversion resource leases and staging are empty after cleanup",
+            "all source or installed origins remain unchanged after actual cleanup",
+            "native owned temporary files were removed after every worker settled"
+          ],
+          "origins": 30,
+          "native_host_cleanup": "PASS",
+          "native_failure_cleanup": "PASS",
+          "physical_audio_device": "NOT_RUN",
+          "nvda": "NOT_RUN"
+        },
+        {
+          "line": 2412,
+          "mode": "installed",
+          "checks": [
+            "all selected source or installed module identities are exact",
+            "real native Windows controls",
+            "existing host worker and workspace own the conversion path",
+            "conversion reuses its actual registered command identifier",
+            "native failure answers owned No before closing only the active inner modal",
+            "cancelling the source picker admits no conversion or output",
+            "cancelling the selected runtime picker admits no conversion or output",
+            "actual existing menu converts RTF with the selected native Pandoc",
+            "native conversion commits exact original reading text and fidelity report",
+            "result names the external original and report without catalog authority",
+            "conversion alone neither imports nor automatically starts reading",
+            "real existing reader receives the exact verified UTF-8 copy",
+            "verified copy remains unbound and gives no native quotation authority",
+            "real reader Save preserves the verified copy and its original",
+            "native reader closes and returns to the same conversion result window",
+            "import confirmation actually starts with default No",
+            "native default No preserves the library and external result",
+            "explicit import still starts with default No",
+            "explicit native Yes runs the canonical TXT importer on the existing worker",
+            "import completion explicitly preserves the external evidence boundary",
+            "actual imported text is searchable and native original is not substituted",
+            "unrelated original and all selected native bytes remain exact",
+            "changed reading bytes cannot reopen the reader or re-run a converter",
+            "native result close revokes its actual queued Read callback",
+            "native host Close drains the shared worker and retained finalizers",
+            "actual reader finalizers release their existing worker owners",
+            "actual converter private Job and child are closed before any fallback",
+            "current conversion resource leases and staging are empty after cleanup",
+            "all source or installed origins remain unchanged after actual cleanup",
+            "native owned temporary files were removed after every worker settled"
+          ],
+          "origins": 30,
+          "native_host_cleanup": "PASS",
+          "native_failure_cleanup": "PASS",
+          "physical_audio_device": "NOT_RUN",
+          "nvda": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "kind": "conversion",
+      "run": 46108324900,
+      "job": 140865990245,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46108324900/job/140865990245",
+      "head": "004494613f855bbd003616e2afe86b980dae2d48",
+      "tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+      "status": "success",
+      "started_at": "2026-11-28T04:44:06Z",
+      "completed_at": "2026-11-28T04:44:56Z",
+      "artifact": [
+        {
+          "id": 15248881761,
+          "name": "selected-conversion-ubuntu-24.04-004494613f855bbd003616e2afe86b980dae2d48-1",
+          "size_in_bytes": 53280,
+          "digest": "sha256:a0483d817fe3d666c12b365a39b5d4ccb307eae12a449204a24cb6514487769e",
+          "head": "004494613f855bbd003616e2afe86b980dae2d48",
+          "upload_log_matches": true,
+          "archive_contents_inspected": false
+        }
+      ],
+      "ordinary_receipt": [
+        {
+          "line": 1400,
+          "all_children_reaped": true,
+          "inputs_unchanged": true,
+          "installed_passed": 358,
+          "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+          "source_passed": 358,
+          "source_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+          "status": "PASS"
+        }
+      ],
+      "actual_native_phases": [],
+      "actual_gui": []
+    },
+    {
+      "kind": "bibliography",
+      "run": 46108324968,
+      "job": 140865992365,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46108324968/job/140865992365",
+      "head": "004494613f855bbd003616e2afe86b980dae2d48",
+      "tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+      "status": "success",
+      "started_at": "2026-11-28T04:43:49Z",
+      "completed_at": "2026-11-28T04:49:28Z",
+      "artifact": [
+        {
+          "id": 15248479474,
+          "name": "bibliography-windows-004494613f855bbd003616e2afe86b980dae2d48",
+          "size_in_bytes": 27634,
+          "digest": "sha256:8818efe0b7df306a4480433de0343f387cb11186253f9080c464ca93dcd8e437",
+          "head": "004494613f855bbd003616e2afe86b980dae2d48",
+          "upload_log_matches": true,
+          "archive_contents_inspected": false
+        }
+      ],
+      "pytest_session_rows": [
+        {
+          "line": 679,
+          "text": "============================ 100 passed in 11.36s ============================="
+        },
+        {
+          "line": 683,
+          "text": "============================= 20 passed in 11.41s ============================="
+        },
+        {
+          "line": 834,
+          "text": "============================= 132 passed in 2.24s ============================="
+        },
+        {
+          "line": 984,
+          "text": "======================== 79 passed in 80.09s (0:01:20) ========================"
+        },
+        {
+          "line": 1016,
+          "text": "============================= 20 passed in 3.27s =============================="
+        },
+        {
+          "line": 1049,
+          "text": "============================= 22 passed in 0.48s =============================="
+        },
+        {
+          "line": 1116,
+          "text": "============================= 50 passed in 15.00s ============================="
+        },
+        {
+          "line": 1199,
+          "text": "============================= 63 passed in 1.51s =============================="
+        },
+        {
+          "line": 1286,
+          "text": "============================= 49 passed in 48.15s ============================="
+        },
+        {
+          "line": 1337,
+          "text": "============================= 39 passed in 8.50s =============================="
+        },
+        {
+          "line": 1412,
+          "text": "============================= 64 passed in 0.22s =============================="
+        },
+        {
+          "line": 1456,
+          "text": "============================= 24 passed in 35.65s ============================="
+        },
+        {
+          "line": 1478,
+          "text": "============================== 7 passed in 7.87s =============================="
+        },
+        {
+          "line": 1576,
+          "text": "======================= 118 passed in 234.48s (0:03:54) ======================="
+        },
+        {
+          "line": 1614,
+          "text": "============================= 28 passed in 0.42s =============================="
+        },
+        {
+          "line": 1678,
+          "text": "============================= 54 passed in 0.61s =============================="
+        },
+        {
+          "line": 1723,
+          "text": "============================= 35 passed in 0.52s =============================="
+        },
+        {
+          "line": 1774,
+          "text": "============================= 41 passed in 3.40s =============================="
+        },
+        {
+          "line": 1790,
+          "text": "============================== 6 passed in 0.10s =============================="
+        },
+        {
+          "line": 1840,
+          "text": "============================= 40 passed in 0.17s =============================="
+        },
+        {
+          "line": 1863,
+          "text": "============================= 80 passed in 28.03s ============================="
+        },
+        {
+          "line": 1888,
+          "text": "============================== 6 passed in 4.37s =============================="
+        },
+        {
+          "line": 1911,
+          "text": "============================== 4 passed in 4.63s =============================="
+        },
+        {
+          "line": 1933,
+          "text": "============================= 32 passed in 18.06s ============================="
+        },
+        {
+          "line": 1953,
+          "text": "============================= 10 passed in 10.59s ============================="
+        },
+        {
+          "line": 1957,
+          "text": "============================== 6 passed in 4.76s =============================="
+        },
+        {
+          "line": 1961,
+          "text": "======================= 27 passed in 252.92s (0:04:12) ========================"
+        }
+      ],
+      "scope": "Exact completed strict bibliography/replay/export job and its printed whole-session rows. No summed unique-case total, actual Word application or manual accessibility claim."
+    },
+    {
+      "kind": "native_launcher",
+      "run": 46108324994,
+      "job": 140865992495,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46108324994/job/140865992495",
+      "head": "004494613f855bbd003616e2afe86b980dae2d48",
+      "tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+      "status": "success",
+      "started_at": "2026-11-28T04:44:57Z",
+      "completed_at": "2026-11-28T04:46:36Z",
+      "artifact": [],
+      "unique_reports": [
+        {
+          "line": 326,
+          "schema": 1,
+          "status": "passed",
+          "checks": [
+            "unicode-spaces-fixed-argv-offline-optional-runtimes",
+            "read-only-ready-probe",
+            "fixed-installation-check",
+            "child-exit-status-propagated",
+            "extra-arguments-rejected",
+            "incomplete-state-preserved-without-reinstall",
+            "missing-runtime-does-not-search-path",
+            "fresh-package-reuses-fixed-offline-installer",
+            "research-data-sentinel-preserved"
+          ],
+          "check_count": 9,
+          "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+          "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+          "native_launcher_execution_verified": true,
+          "actual_python_installation_verified": false,
+          "nvda_verified": false,
+          "authenticode_verified": false
+        }
+      ],
+      "scope": "Actual compiled native launcher with the synthetic child defined by its own report; actual Python installation, manual NVDA and Authenticode are not inferred."
+    },
+    {
+      "kind": "native_launcher",
+      "run": 46108324994,
+      "job": 140865992683,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46108324994/job/140865992683",
+      "head": "004494613f855bbd003616e2afe86b980dae2d48",
+      "tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+      "status": "success",
+      "started_at": "2026-11-28T04:46:38Z",
+      "completed_at": "2026-11-28T04:47:06Z",
+      "artifact": [],
+      "unique_reports": [
+        {
+          "line": 349,
+          "schema": 1,
+          "status": "passed",
+          "checks": [
+            "unicode-spaces-fixed-argv-offline-optional-runtimes",
+            "read-only-ready-probe",
+            "fixed-installation-check",
+            "child-exit-status-propagated",
+            "extra-arguments-rejected",
+            "incomplete-state-preserved-without-reinstall",
+            "missing-runtime-does-not-search-path",
+            "fresh-package-reuses-fixed-offline-installer",
+            "research-data-sentinel-preserved"
+          ],
+          "check_count": 9,
+          "launcher_sha256": "40201a9f834ed7fe10b749fe53750867ee289c246ee1b8b5349584906bd26366",
+          "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+          "native_launcher_execution_verified": true,
+          "actual_python_installation_verified": false,
+          "nvda_verified": false,
+          "authenticode_verified": false
+        }
+      ],
+      "scope": "Actual compiled native launcher with the synthetic child defined by its own report; actual Python installation, manual NVDA and Authenticode are not inferred."
+    }
+  ],
+  "main_required_gate": {
+    "run": 46108325018,
+    "job": 140870862776,
+    "status": "FAIL",
+    "cause": "Prior source-syntax failure; unchanged final strict gate refused the failed source lanes and skipped runtime obligations.",
+    "proof": [
+      {
+        "line": 218,
+        "text": "     | Required workflow lanes did not pass: source-syntax, integrated-source-complete, completion-regressions,"
+      },
+      {
+        "line": 219,
+        "text": "     | flite-runtime, portable-sync, trusted-client, managed-update, configured-update-native, integrated-desktop,"
+      }
+    ],
+    "artifact": {
+      "id": 15249571139,
+      "digest": "sha256:a03f409483b7265953b54a344bab25846c5776b3ad14c775a456193132c147af",
+      "size_in_bytes": 697,
+      "upload_log_matches": true,
+      "archive_contents_inspected": false
+    },
+    "full487": "NOT_RUN",
+    "configured_native_BOM_retry": "NOT_RUN"
+  },
+  "qualification": "These closed jobs qualify only their stated scopes on004. They do not qualify the full product, the subsequent cluster/fixture/parser correction, manual NVDA, physical audio or private model inference."
+}

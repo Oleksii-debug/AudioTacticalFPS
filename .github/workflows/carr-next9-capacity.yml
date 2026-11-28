@@ -59,9 +59,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='f5bd70522a58e35aa7d52d27d7b65334d9217be0'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
-      - name: Require all 283 source and 283 isolated installed cases
+      - name: Require all 298 source and 298 isolated installed cases
         # Source 4600 s + 14 installed children at 600 s + build/install 540 s;
         # cleanup, full wheel/source checks and orchestration remain inside 240 min.
         timeout-minutes: 240
@@ -126,9 +126,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='f5bd70522a58e35aa7d52d27d7b65334d9217be0'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
-      - name: Require all 283 source and 283 isolated installed cases
+      - name: Require all 298 source and 298 isolated installed cases
         # Source 4600 s + 14 installed children at 600 s + build/install 540 s;
         # cleanup, full wheel/source checks and orchestration remain inside 240 min.
         timeout-minutes: 240
@@ -406,7 +406,7 @@ jobs:
             'src/carr_library/application.py':'82af31743ca5cc6557477f6492c08b912751f4a4',
             'src/carr_library/catalog/read_views.py':'53bdbf577bd7da349347d8a58cb7f0f5792db138',
             'src/carr_library/search/paging.py':'1c8dd8d0cc764737d6169f74b98d6a575f6c3615',
-            'src/carr_library/search/literal.py':'47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc',
+            'src/carr_library/search/literal.py':'8a3819914681f08dc942b0905ab2bad796971b37',
             'src/carr_library/search/presentation.py':'8ba46fa6ba4d7bafae451fab06d84ab4046bf64a',
             'src/carr_library/catalog/intake.py':'8518f012491b542a57593af75993907983ddda0d',
             'src/carr_library/operations/broker.py':'f09561333d33ae68480260668ec05b617cd72213',

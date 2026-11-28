@@ -122,7 +122,14 @@ def _mapped(text, check=lambda: None):
                 j += 1
                 if j % 1024 == 0:
                     check()
-        part = _fold(text[i:j])
+        cluster = text[i:j]
+        # The loop has already delimited a whole whitespace run or canonical
+        # cluster. ASCII clusters need only whitespace folding or ASCII case;
+        # a base followed by any Unicode mark keeps the original full fold.
+        if cluster.isascii():
+            part = ' ' if cluster.isspace() else cluster.lower()
+        else:
+            part = _fold(cluster)
         if compact and not folded.startswith(part, pos):
             raise ValueError('unsupported normalization mapping')
         starts[pos] = i

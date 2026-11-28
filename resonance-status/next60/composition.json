@@ -1,0 +1,235 @@
+{
+  "schema": "carr-measured-cluster-and-contract-composition/1",
+  "status": "SOURCE_COMPOSED_RUNTIME_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent": "004494613f855bbd003616e2afe86b980dae2d48",
+  "parent_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+  "code_changes": [
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+      "blob": "8a3819914681f08dc942b0905ab2bad796971b37"
+    },
+    {
+      "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+      "preimage": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+      "blob": "5ae468e51b908a8c15169948c5bcee6c9c6944e2"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "f5bd70522a58e35aa7d52d27d7b65334d9217be0",
+      "blob": "d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "0d102dccf94ff0993fed4488aac4c27e4747aeda",
+      "blob": "10c3e1ffd175e0941361bfeff612b22bb1ec6b97"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "33d55583b27e42ed2b3d1f8b4b2f8ff7b1ef41a5",
+      "blob": "f7b8e3c5e5386793ceddb8faf821fd5cf21ae472"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "a4855c1de2fd0073f6a242458feacdc31a84e693",
+      "blob": "476f33c89684036b64f28d9024c0768c2d522eb1"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "8e191caf9b8c4053203b1df8041f1140b32d1565",
+      "blob": "e55f3b427cf49da57b4529c95648d5af3a85ecba"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "blob": "a7cd67986474b15702c630e62ccca62e96c2e4d6"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "e1ac6435d5769b987b87a16e19a43a41bf27005d",
+      "blob": "23885f42a473cd20516b7956d776751dad997635"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "1ab6dbd6063e85b104a0f2998d18ebb1a21a9cf4",
+      "blob": "21b7e555900e85a207044c749f1811768467bee7"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "4b24b08dab0a059c329d8bca914a5afdc6ad5500",
+      "blob": "892cbb449c709322f7cf740ec441a2a8068658d7"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_package_management.py",
+      "preimage": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+      "blob": "f37fb8af516898fed38b26cdebe7fd943e188db7"
+    },
+    {
+      "path": "carr-library/scripts/ci_managed_backend_contracts.py",
+      "preimage": "8392ae3eea3d1971539666dac9b4d1f0913bd763",
+      "blob": "2d36c3ff5e6e71016f903bc70c843ae080edc8dd"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "preimage": "56de4b31e3a5cf39aaaad9a238a4d5729a5ba1f8",
+      "blob": "19dd7fc2ae977069ac621e228828f4b56df3f6a5"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "preimage": "8bf675e879da22b7758cf3b5d10ee8932a2163d5",
+      "blob": "de40faf013481f9291b4a3ed617cb5fc9d598646"
+    },
+    {
+      "path": ".github/workflows/carr-managed-backends.yml",
+      "preimage": "51ed9b704de0954c61183ec36c0be22dc055808e",
+      "blob": "afefeb1d2b0414708e5aa1be54206d6c448e76af"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "preimage": "5c4ad92d6d363d51ddd97f21a4623d0be812af34",
+      "blob": "18ee5aae1fdd69002d21b254842b1c900f94b3e6"
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "preimage": "262274836799b170991e13554aee52473ee7cec1",
+      "blob": "bed3e05d4b82f227410a6526a345b2632bee5b09"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next60/cluster_source.json",
+      "blob": "7c1af6a2597bb9baadca14a943510f77d5c04392"
+    },
+    {
+      "path": "resonance-status/next60/cluster_focused_gates.json",
+      "blob": "7f9444cd5e849d1754232b9fb385359f3b9929ad"
+    },
+    {
+      "path": "resonance-status/next60/complete_gates_and_parser.json",
+      "blob": "a764cf4d3b4698c2ad6baa842342ce6395e577fa"
+    },
+    {
+      "path": "resonance-status/next60/actual_004_parser_failure.json",
+      "blob": "29c3a6e6bc39705d7ade9276ea360ba7b279bca6"
+    },
+    {
+      "path": "resonance-status/next60/voice_cancellation_contract.json",
+      "blob": "a7dd657db823eb21e17709c41e982031534400da"
+    },
+    {
+      "path": "resonance-status/next60/actual_343_voice_cancellation_failure.json",
+      "blob": "001578f515a565d8b00cb4464067a05ac428a5ec"
+    },
+    {
+      "path": "resonance-status/next60/actual_343_profile.json",
+      "blob": "abde0b90bc99bd7554e3f0258fb93ee600131e04"
+    },
+    {
+      "path": "resonance-status/next60/actual_343_linux_contracts.json",
+      "blob": "5d9067bd4a3060fbee7594e56be724dc6bdd2bb5"
+    },
+    {
+      "path": "resonance-status/next60/actual_343_windows_capacity_contracts.json",
+      "blob": "d53803a29fbd595a6209c2be9489f02cf0918163"
+    },
+    {
+      "path": "resonance-status/next60/actual_343_corpus_1000x20.json",
+      "blob": "d0c5c4269cbadb9fa74fabbd067be496fb4344fc"
+    },
+    {
+      "path": "resonance-status/next60/actual_343_corpus_10000x20.json",
+      "blob": "ccaa2c9caa42abbac62b453b58f1c063a22679fc"
+    },
+    {
+      "path": "resonance-status/next60/actual_004_flite_linux.json",
+      "blob": "df64bdc187ecb7262582978362806a75ad30e201"
+    },
+    {
+      "path": "resonance-status/next60/actual_004_closed_components.json",
+      "blob": "9fc34d9552981d0cae2cade5a621f5dedb7ee25a"
+    },
+    {
+      "path": "resonance-status/next60/actual_62b_v3_source_timeout.json",
+      "blob": "d760197db468386508b4291f5699822dfc289af9"
+    },
+    {
+      "path": "resonance-status/next60/actual_cancelled_aggregate_wait.json",
+      "blob": "78eb09d41e9e9b66c6003549351767b3a90695cb"
+    }
+  ],
+  "verification": {
+    "readbacks": 18,
+    "maps": 31,
+    "entries": 729,
+    "mismatches": [],
+    "stale": [],
+    "main_utf8": 399136,
+    "v3_utf8": 495116,
+    "production_paths": [
+      "carr-library/src/carr_library/search/literal.py"
+    ],
+    "source_whole": 487,
+    "ascii_cases": 56,
+    "ascii_functions": 15,
+    "voice_package_cases": 30,
+    "voice_package_functions": 19,
+    "required_native_workflow": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "parser_execution": "NOT_RUN",
+    "native_execution": "NOT_RUN",
+    "profile153": "NOT_RUN",
+    "capacity298": "NOT_RUN"
+  },
+  "exact_full_gate_inverse": "PASS: all six files reconstruct exact004 preimages",
+  "purpose": [
+    "Avoid full Unicode normalization only for an already delimited cluster proven ASCII, preserving all source boundaries, whole-string equivalence and cancellation checkpoints.",
+    "Append15 real mixed-Unicode/cancellation/copy cases to the existing41;56 cases and15 functions remain one whole source module.",
+    "Correct the existing public cancellation fixture while proving actual process/streams/native handles settle before both resource leases release; no voice production behavior change.",
+    "Remove the two actual invalid final PowerShell selector commas, with exact helper dependency pins. Existing native ParseFile and inventory gates remain required before downstream runtime."
+  ],
+  "unchanged": {
+    "full_source_modules": 487,
+    "source_partitions": [
+      122,
+      122,
+      122,
+      121
+    ],
+    "per_whole_seconds": 600,
+    "asr_exception_seconds": 900,
+    "benchmark_phase_seconds": 3600,
+    "profile_geometries": [
+      [
+        1000,
+        20
+      ],
+      [
+        10000,
+        20
+      ],
+      [
+        50000,
+        20
+      ],
+      [
+        50000,
+        40
+      ]
+    ],
+    "benchmark_result_page": 37,
+    "native_workflow": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "strict_aggregate_conditions": "always(); skipped or failed lanes remain rejected",
+    "private_material": "No private model, credentials, real recording, production publisher or binary release added",
+    "canonical_branch": "UNCHANGED",
+    "automations": "UNCHANGED"
+  },
+  "focused_totals": {
+    "capacity_source": 298,
+    "capacity_installed": 298,
+    "profile_source": 153,
+    "voice_source": 495,
+    "voice_installed": 495
+  },
+  "expected_files": 1830,
+  "qualification": "All new execution is NOT_RUN. Each predecessor receipt retains its exact own head/tree and scope. No previous PASS, incomplete source phase, skipped native phase or private/manual result is transferred to this composition."
+}

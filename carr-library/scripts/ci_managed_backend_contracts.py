@@ -64,7 +64,7 @@ PINS = {
     "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
     "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
     "src/carr_library/ui/recording_dialog.py": "d2447529f7f5ac6ee07de2e06c9da7189ee3c067",
-    "tests/audio/test_voice_package_management.py": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+    "tests/audio/test_voice_package_management.py": "f37fb8af516898fed38b26cdebe7fd943e188db7",
     "tests/audio/test_voice_management_state.py": "a3f4372f0454d18e6a249b5a4248bea019aaae80",
     "tests/audio/test_voice_reference_management.py": "48da3169be41c3524ebd5af86e7af686450013a2",
     "tests/audio/test_voice_protected_management.py": "81350202f697d579e1822284c17f0252e2b294db",

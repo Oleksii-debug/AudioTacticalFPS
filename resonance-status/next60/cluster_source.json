@@ -1,0 +1,97 @@
+{
+  "schema": "carr-measured-ascii-cluster-source-handoff/1",
+  "recorded_utc": "2026-11-28 04:49:32 UTC",
+  "base_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "actual_profile_basis": "abde0b90bc99bd7554e3f0258fb93ee600131e04",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+      "blob": "8a3819914681f08dc942b0905ab2bad796971b37"
+    },
+    {
+      "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+      "preimage": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+      "blob": "5ae468e51b908a8c15169948c5bcee6c9c6944e2",
+      "cases_before": 41,
+      "cases": 56,
+      "functions": {
+        "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary": 12,
+        "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds": 6,
+        "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries": 4,
+        "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work": 6,
+        "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners": 1,
+        "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication": 2,
+        "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch": 1,
+        "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy": 6,
+        "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries": 1,
+        "test_actual_sparse_inverse_preserves_cancellation_during_iteration": 2,
+        "test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks": 1,
+        "test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries": 4,
+        "test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries": 4,
+        "test_unicode_ascii_cluster_iteration_preserves_original_stop_objects": 2,
+        "test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup": 4
+      },
+      "added_functions": {
+        "test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks": 1,
+        "test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries": 4,
+        "test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries": 4,
+        "test_unicode_ascii_cluster_iteration_preserves_original_stop_objects": 2,
+        "test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup": 4
+      },
+      "companions": []
+    }
+  ],
+  "measured_reason": "The completed343 instrumented1k×40 Unicode-containing corpus recorded21,441,580 full-fold calls. Its Unicode page prefix keeps the complete page on the general cluster path.",
+  "source_delta": {
+    "hunks": 1,
+    "before": "        part = _fold(text[i:j])\n",
+    "after": "        cluster = text[i:j]\n        # The loop has already delimited a whole whitespace run or canonical\n        # cluster. ASCII clusters need only whitespace folding or ASCII case;\n        # a base followed by any Unicode mark keeps the original full fold.\n        if cluster.isascii():\n            part = ' ' if cluster.isspace() else cluster.lower()\n        else:\n            part = _fold(cluster)\n",
+    "inverse_exact": true
+  },
+  "test_delta": {
+    "old41_bodies_byte_identical_prefix": true,
+    "added_cases": 15,
+    "added_functions": 5,
+    "total_cases": 56,
+    "total_functions": 15,
+    "checks": [
+      "Every128 ASCII character within real Unicode and mixed canonical clusters is compared with an independent token/boundary oracle.",
+      "256/65535/65536/65537-character sources require identical raw boundaries and a full-fold call bound determined by Unicode content, not ASCII padding or wall time.",
+      "Four actualSQLite search modes and offsets retain exact raw quotations and SHA256 values.",
+      "Original InterruptedError and TimeoutError objects survive both ordinary and compact cluster iteration.",
+      "Real retainedUnicode page37 exercises two fresh reads, hidden38 attestation, actual source mutation, cancellation, prior selection preservation, copy/context and actual connection/index cleanup."
+    ]
+  },
+  "semantic_argument": [
+    "The original loop still delimits an entire whitespace run or a canonical cluster before the new predicate.",
+    "A delimited allASCII cluster is either whitespace, whose exact full fold is one ASCII space, or one nonspaceASCII code point, whose lowercase equals NFD-casefold-NFD.",
+    "Every cluster containing a Unicode code point, including an ASCII base followed by a mark or mixed Unicode whitespace, retains the original full-fold function.",
+    "All original loop/cancellation cadence, source offsets, compact startswith checks and final whole-string equality/length checks are unchanged.",
+    "All fresh source snapshots, full raw SHA scans,11-field candidate equality, independent lookahead, attestation and copy verification are unchanged."
+  ],
+  "consumer_audit_basis": "fc785342fb5f641a473936d1b099b46bccb20048",
+  "reviews": {
+    "source": "Progress independently accepted8a381 over47b9 exact one-hunk inverse and semantic boundaries, STATIC_NOT_RUN.",
+    "tests": "Progress independently accepted5ae468 overc960, counted15 appended cases and verified actualSQLite/LibraryApp/read/stop/cleanup APIs, STATIC_NOT_RUN."
+  },
+  "gate_inventory": {
+    "new_whole_modules": 0,
+    "new_companions": 0,
+    "new_origins": 0,
+    "full_source_wholes": 487,
+    "capacity_wholes": 14,
+    "capacity_cases_per_mode": 298,
+    "profile_wholes": 6,
+    "profile_cases": 153
+  },
+  "qualification": {
+    "execution": "NOT_RUN",
+    "measured_speedup": "NOT_MEASURED",
+    "full_2m_capacity": "NOT_RUN_FOR_THIS_SUCCESSOR",
+    "refs_moved": false,
+    "benchmark_changed": false,
+    "deadlines_changed": false
+  }
+}

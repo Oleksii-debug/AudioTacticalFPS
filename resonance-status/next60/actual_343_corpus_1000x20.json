@@ -1,0 +1,138 @@
+{
+  "schema": "carr-retained-capacity-closed-result/1",
+  "recorded_utc": "2026-11-28 04:53:29 UTC",
+  "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+  "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+  "run_id": 46107711781,
+  "job_id": 140866490969,
+  "status": "PASS",
+  "geometry": {
+    "books": 1000,
+    "segments_per_book": 20,
+    "segments": 20000
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107711781/job/140866490969",
+  "phase_receipt": {
+    "books": 1000,
+    "phases": [
+      {
+        "phase": "build",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "measure",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "restart",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "operations",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "backup",
+        "reason": null,
+        "status": "PASS"
+      }
+    ],
+    "qualification": "Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.",
+    "retained": {
+      "1000/backup.json": {
+        "bytes": 6936,
+        "sha256": "ed046598f79b7f9ce58af348b5c8ecbb30e1730b65e5b17cd24987c53a622a0f"
+      },
+      "1000/backup.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/backup.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/build.json": {
+        "bytes": 5976,
+        "sha256": "933d23e4320d699ca8dec3d558e7da42f121741822fc0ad0b9b12c0f28d5ec7b"
+      },
+      "1000/build.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/build.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/measure.json": {
+        "bytes": 6987,
+        "sha256": "97302d26e94f8347bf2ec621a0a7cc9c1f0eae186c0211a9eedb4e3415dcc279"
+      },
+      "1000/measure.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/measure.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/operations.json": {
+        "bytes": 10140,
+        "sha256": "ddc8961457e9a4be614ada0f34083e3476034e437037ed098f6ab313b8f76b2b"
+      },
+      "1000/operations.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/operations.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/restart.json": {
+        "bytes": 6728,
+        "sha256": "f9f0cf9ee55a37271a5128393597a505c6c7d75890647d0a6b5aa5aebe276b0f"
+      },
+      "1000/restart.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "1000/restart.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "configuration.json": {
+        "bytes": 5460,
+        "sha256": "34b38a1e4ca6746ef47962b050428f5cd6b054d8b74227d63ebeba59c83d970d"
+      },
+      "library-corpus-scale.json": {
+        "bytes": 44656,
+        "sha256": "b1b7985225c1d7a0d5cea8861d535ab3e99e2b503ddbf81baec61bae3e3f1d57"
+      }
+    },
+    "segments": 20000,
+    "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+    "status": "PASS"
+  },
+  "decoded_log_utf8": {
+    "sha256": "ae044f45d018b8f0b95f3c58f9c2c88f90a1b9b3f029750f6fa836246471b1c6",
+    "bytes": 49663
+  },
+  "artifact": {
+    "id": 15249470189,
+    "name": "retained-capacity-large-source-v1-1000x20-343efc505230f969ec9519bd04e4340381f07909-1",
+    "bytes": 27246,
+    "digest": "sha256:56a6ed2da7276de3abb4566c8b6d4dd71b29d54bc6cc5cd704f837e0fccdb245",
+    "created_at": "2026-11-28T04:51:20Z",
+    "expired": false
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "limits": {
+    "detailed_phase_metrics": "PENDING_BOUNDED_IMMUTABLE_JSON_INSPECTION",
+    "larger_profiles": "SEPARATE_RESULTS_REQUIRED",
+    "construction": "retained-fixture; does not establish sustained whole-corpus one-at-a-time import throughput",
+    "successor_transfer": "NONE"
+  }
+}

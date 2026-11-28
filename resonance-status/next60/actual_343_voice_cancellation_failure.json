@@ -1,0 +1,256 @@
+{
+  "schema": "carr-voice-windows-scheduling-result/1",
+  "recorded_utc": "2026-11-28 04:52:30 UTC",
+  "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+  "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+  "run_id": 46107719816,
+  "job_id": 140864112926,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107719816/job/140864112926",
+  "status": "FAIL",
+  "platform": "windows-2022",
+  "helper": "56de4b31e3a5cf39aaaad9a238a4d5729a5ba1f8",
+  "scheduling_manifest": "61a388850db43f792b4a3f6e4580abe26e6d3d93",
+  "source_groups": [
+    {
+      "exit_code": 1,
+      "jobs": 1,
+      "log_sha256": "710fa2bcc99b885c368d80fe9b1fd947c00eadbc6d1b50e9d062595e5e81d4e6",
+      "parent_seconds": 660,
+      "status": "FAIL",
+      "suite_seconds": 600,
+      "suites": [
+        "tests/audio/test_voice_package_management.py"
+      ]
+    },
+    {
+      "exit_code": 0,
+      "jobs": 4,
+      "log_sha256": "829d30e315a1c3e8f34c47b411907830747d683a89ddf8984c75ae2a598bfc92",
+      "parent_seconds": 3300,
+      "status": "PASS",
+      "suite_seconds": 600,
+      "suites": [
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/ui/test_engine_settings_lifetime.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_host_lifecycle.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/integrations/test_dordiai_probe_cancellation.py",
+        "tests/integrations/test_dordiai_convergence.py",
+        "tests/audio/test_bundled_runtime_settings.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py"
+      ]
+    }
+  ],
+  "completed_other_wholes": [
+    {
+      "path": "tests/audio/test_voice_management_state.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_reference_management.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_protected_management.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_publication_lifetime.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_voice_ownership.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_owner_lease.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_authority.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_voice_packages.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_voice_reference.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_engine_settings_lifetime.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_voices.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_speech.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_settings.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/integrations/test_dordiai_convergence.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/audio/test_bundled_runtime_settings.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_v3_state_backup.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "package_whole": {
+    "path": "tests/audio/test_voice_package_management.py",
+    "blob": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+    "required_cases": 30,
+    "passed": 29,
+    "failed": 1,
+    "skipped": 0,
+    "pytest_exit": 1,
+    "pytest_elapsed_seconds": 379.65,
+    "timeout_seconds": 600,
+    "failed_test": "test_actual_slow_owner_is_reaped_before_cancellation_releases_admission",
+    "expected_types": [
+      "AudioCancelled",
+      "InterruptedError"
+    ],
+    "observed_type": "carr_library.operations.models.ResourceCancelled",
+    "observed_message": "Operation cancelled; finish native worker cleanup before leaving the reservation.",
+    "post_exception_marker_store_no_package_and_released_assertions": "NOT_REACHED"
+  },
+  "source_total": {
+    "whole_passed": 20,
+    "whole_failed": 1,
+    "passed_cases": 494,
+    "failed_cases": 1,
+    "skipped_cases": 0
+  },
+  "later_phases": {
+    "installed": "NOT_RUN",
+    "actual_owner": "NOT_RUN",
+    "native83": "NOT_RUN"
+  },
+  "bounded_trace": {
+    "decoded_stripped_lines": [
+      450,
+      509
+    ],
+    "text": "___ test_actual_slow_owner_is_reaped_before_cancellation_releases_admission ___\n\ninstalled = (WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-j7ddlhiq/pytest/test_actual_slow_owner_is_reap0/library'...equest['profile'],request['version'],engine_id=engine)\\n        result=document\\nprint(stable(result),flush=True)\\n\")])\ntmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-j7ddlhiq/pytest/test_actual_slow_owner_is_reap0')\n\n    def test_actual_slow_owner_is_reaped_before_cancellation_releases_admission(installed, tmp_path):\n        library, selected, manager, calls = installed\n        configure(manager)\n        archive = tmp_path / 'slow.zip'\n        package(archive, source='fixture:slow')\n        review = manager.inspect(archive)\n        marker = tmp_path / 'voice-install-entered.txt'\n        previous = manager.store.read()\n        with pytest.raises((AudioCancelled, InterruptedError)):\n>           manager.apply(review, rights_approved=True, supported_languages=['uk'],\n                          cancelled=marker.exists)\n\ntests\\audio\\test_voice_package_management.py:174: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\nsrc\\carr_library\\audio\\voice_packages.py:661: in invoke\n    result = method(self, *args, cancelled=stop, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc\\carr_library\\audio\\voice_packages.py:906: in apply\n    committed = self._apply_current(review, document, value, manifest,\nsrc\\carr_library\\audio\\voice_packages.py:931: in _apply_current\n    result = _document(_query(manifest, review.operation, cancelled=cancelled,\nsrc\\carr_library\\audio\\voice_packages.py:581: in _query\n    output = run_metadata(command, data=_json(request).encode('utf-8'), cancelled=cancelled,\ntests\\audio\\voice_management_fixtures.py:234: in synthetic_interpreter\n    return real_run([sys.executable, *command[1:]], **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc\\carr_library\\audio\\voice_transport.py:73: in run_metadata\n    result = run_process([*[os.fspath(item) for item in command], str(request), checksum],\nsrc\\carr_library\\audio\\process.py:298: in run_process\n    check()\nsrc\\carr_library\\audio\\process.py:225: in check\n    check_control()\nsrc\\carr_library\\audio\\process.py:204: in check_control\n    if cancelled():\n       ^^^^^^^^^^^\nsrc\\carr_library\\audio\\voice_packages.py:903: in stop\n    lease.checkpoint()\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <carr_library.operations.broker.ResourceLease object at 0x000001C9EC03F350>\n\n    def checkpoint(self):\n        if self._pid != os.getpid() or self._released or not self._lock.held:\n            raise ResourceStateError('This resource reservation is not held by the current process.')\n        self.broker._check_scope()\n        self._stopped = self._stopped or bool(self._cancelled())\n        if self._stopped:\n>           raise ResourceCancelled('Operation cancelled; finish native worker cleanup before leaving the reservation.')\nE           carr_library.operations.models.ResourceCancelled: Operation cancelled; finish native worker cleanup before leaving the reservation.\n\nsrc\\carr_library\\operations\\broker.py:96: ResourceCancelled\n- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-j7ddlhiq\\junit.xml -\n=========================== short test summary info ===========================\nFAILED tests/audio/test_voice_package_management.py::test_actual_slow_owner_is_reaped_before_cancellation_releases_admission - carr_library.operations.models.ResourceCancelled: Operation cancelled; finish native worker cleanup before leaving the reservation.\n================== 1 failed, 29 passed in 379.65s (0:06:19) ==================="
+  },
+  "decoded_log_utf8": {
+    "sha256": "9dd4d2b8efce8390193a52f79a95af916aec9295846ea1e5404a61843a36cd1c",
+    "bytes": 159551
+  },
+  "artifact": {
+    "id": 15248568828,
+    "name": "voice-management-windows-343efc505230f969ec9519bd04e4340381f07909-1",
+    "bytes": 22007,
+    "digest": "sha256:9166c1247d59864f538e31d1c911960a71b548a365ab92c29f8c6298fc614410",
+    "expired": false,
+    "created_at": "2026-11-28T04:50:29Z"
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "interpretation": [
+    "The package whole completed within its unchanged600s limit on this run, exposing a concrete cancellation-exception failure instead of the previous whole timeout.",
+    "The20 remaining whole modules passed exact465 cases under their unchanged600s limits.",
+    "This record does not decide whether the exception difference needs fixture or product correction. Progress owns public-contract/caller analysis before any change.",
+    "No post-cancellation cleanup qualification is inferred from the failed assertion or CI orphan cleanup.",
+    "Linux495+495 and real-owner25/25 are recorded separately in5d9067bd4a3060fbee7594e56be724dc6bdd2bb5; no platform/result transfer."
+  ]
+}

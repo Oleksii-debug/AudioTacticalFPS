@@ -96,7 +96,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '33e1f0b75071bc1f64d86553d0197b6b05196a93'
+          $expectedBlob = 'a7cd67986474b15702c630e62ccca62e96c2e4d6'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -192,7 +192,7 @@ jobs:
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required source aggregate has no exact tree.' }
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '33e1f0b75071bc1f64d86553d0197b6b05196a93'
+          $expectedBlob = 'a7cd67986474b15702c630e62ccca62e96c2e4d6'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -510,7 +510,7 @@ jobs:
             'tests/security/test_update_controller_actions.py',
             'tests/audio/test_voice_scope_checks.py',
             'tests/catalog/test_text_screen_work.py',
-            'tests/search/test_ascii_mapping_work.py',
+            'tests/search/test_ascii_mapping_work.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -671,7 +671,7 @@ jobs:
             'tests/security/test_update_controller_actions.py' = 14
             'tests/audio/test_voice_scope_checks.py' = 42
             'tests/catalog/test_text_screen_work.py' = 26
-            'tests/search/test_ascii_mapping_work.py' = 41
+            'tests/search/test_ascii_mapping_work.py' = 56
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
