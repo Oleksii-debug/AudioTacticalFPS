@@ -1,0 +1,207 @@
+{
+  "schema": "carr-bundle-spawn-entry-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "baseline_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "source_tree": "81ce99a078ba2bba303b1e2f610e2134c438ac01",
+  "changed": [
+    {
+      "path": ".github/scripts/carr_prepare_bundle_spawn_check.py",
+      "preimage": null,
+      "blob": "7c8ba5698e868ca821cb8c0a62aebefb9bf4b033",
+      "bytes": 14812,
+      "readback": "EXACT"
+    },
+    {
+      "path": ".github/workflows/carr-bundle-spawn-evaluation.yml",
+      "preimage": null,
+      "blob": "f9627c50b6632319c03117bff17240249426a492",
+      "bytes": 25953,
+      "readback": "EXACT"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "8ceddfd58e27420decfa3a718f8f8cd7582a8e05",
+      "blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+      "bytes": 166473,
+      "readback": "EXACT"
+    }
+  ],
+  "diagnosis": {
+    "application_head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "run": 46105047646,
+    "job": 140855804552,
+    "immutable_pre_source_artifact": 15250473998,
+    "artifact_sha256": "f8182f7a63281cb87e40f342634f777e4918379e2bf872c1bc70e830af833461",
+    "prior_evidence_tree": "bc9fdb5254f9d7cb733f8d3a101c40b47ba887b2",
+    "bundle_result": {
+      "passed": 9078,
+      "failed": 2
+    },
+    "observed_boundary": "Both unchanged real spawn children fail in multiprocessing.spawn._fixup_main_from_path before their fixture target runs, trying to open <stdin>.",
+    "product_broker_defect_established": false
+  },
+  "main_change": {
+    "path": ".github/workflows/carr-windows.yml",
+    "before_blob": "8ceddfd58e27420decfa3a718f8f8cd7582a8e05",
+    "after_blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+    "exact_one_line_inverse": true,
+    "wrapper_body_unchanged": true,
+    "pytest_flags_selectors_assertions_deadlines_unchanged": true,
+    "argv": {
+      "bundle": 1,
+      "pytest_start": 2
+    },
+    "transport_before": "piped stdin Python -",
+    "transport_after": "direct Python -c argument"
+  },
+  "focused": {
+    "branch": "carr/bundle-spawn-evaluation-20261128",
+    "workflow": ".github/workflows/carr-bundle-spawn-evaluation.yml",
+    "os": "windows-2022",
+    "whole_job_minutes": 45,
+    "original_cases_step_minutes": 5,
+    "concurrency_cancel_in_progress": false,
+    "reused_workflow": {
+      "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+      "blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+      "steps": [
+        "Preserve exact committed source bytes",
+        "Check out the exact triggering commit",
+        "Set up native x64 CPython",
+        "Build and install the exact event wheel with existing dependency pins",
+        "Prove complete source wheel and installed Python identity",
+        "Acquire the existing pinned compiler, original Python and native DLL runtime",
+        "Build one exact current core bundle and its standard setup"
+      ],
+      "omitted_scope": [
+        "source/installed standard contract runs",
+        "Inno preparation/setup compilation",
+        "native Install/Repair/Uninstall"
+      ],
+      "unchanged_existing_workflow": true
+    },
+    "real_core": {
+      "exact_windows_core_pins": 19,
+      "original_bundled_cpython": true,
+      "native_runtime": true,
+      "source_wheel_and_event_commit_verified": true,
+      "isolated_copy": true,
+      "actual_offline_bootstrap": true
+    },
+    "entry": {
+      "flags": [
+        "-I",
+        "-B",
+        "-c"
+      ],
+      "main_module_path_never_assigned": true,
+      "separate_ci_verifier_module": true,
+      "bundle_argv_index": 1,
+      "pytest_argv_start": 2,
+      "unchanged_PYTEST_CHILD_policy": true,
+      "actual_policy_argv_projection_explicit": true
+    },
+    "transport": {
+      "source_representation": "Deindented MAIN here-string body, excluding both opening and closing separator newlines.",
+      "source_body_utf16_units": 25052,
+      "source_body_sha256": "d4609b3b4353e070d123e4a3c62dfc6526a217c71076e926444700365cccd33c",
+      "focused_argument_utf16_units": 25566,
+      "focused_argument_sha256": "cf8dd5f04a6c914d6b9ada908b1f7b8dda73c8cdc74d3d43a311f9966223d754",
+      "reserved_other_argument_units": 2048,
+      "conservative_total_bound": 27614,
+      "windows_max_including_nul": 32767,
+      "double_quotes_in_argument": 0,
+      "nul_characters_in_argument": 0,
+      "actual_powershell_literal_hash_required": true,
+      "actual_native_GetCommandLineW_units_required": true,
+      "actual_argument_hash_required": true,
+      "full_main_body_transported_as_data": true,
+      "full_main_body_executed": false
+    },
+    "identity": {
+      "whole_source_wheel_installed_python_namespace": true,
+      "unique_actual_RECORD_owner": true,
+      "broker_origin_binds_installed_package": true,
+      "bundled_interpreter_and_base_interpreter_bound": true,
+      "sealed_manifest_and_file_verification_before_after": true,
+      "original_case_and_spawn_target_hashes_before_after": true
+    },
+    "tests": [
+      {
+        "path": "carr-library/tests/operations/test_resources.py",
+        "blob": "83aca3017ad570c6d8fad29fcf105a0c72878463",
+        "node": "test_actual_spawned_process_crash_releases_without_pid_reaping",
+        "original_readiness_seconds": 5,
+        "original_join_seconds": 5
+      },
+      {
+        "path": "carr-library/tests/operations/test_resources.py",
+        "blob": "83aca3017ad570c6d8fad29fcf105a0c72878463",
+        "node": "test_actual_process_contention_has_no_overlapping_admission",
+        "original_readiness_seconds": 10,
+        "original_join_seconds": 5
+      }
+    ],
+    "spawn_target": {
+      "path": "carr-library/tests/operations/carr_resource_process_fixture.py",
+      "blob": "484a4ff45a84467f2be9738636c39b862787af91",
+      "unchanged": true,
+      "actual_child_package_and_broker_origin_assertions": true
+    },
+    "required_receipt": {
+      "cases": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xfail_or_xpass": false
+    },
+    "public_artifacts_only": [
+      "json",
+      "txt",
+      "log",
+      "xml"
+    ],
+    "not_qualified": [
+      "full media/OCR/model wrapper execution",
+      "native network isolation",
+      "physical capture",
+      "speech quality",
+      "human listening",
+      "NVDA",
+      "standard installation lifecycle"
+    ]
+  },
+  "primary_references": [
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/multiprocessing/spawn.py",
+      "scope": "get_preparation_data and _fixup_main_from_path"
+    },
+    {
+      "url": "https://docs.python.org/3.11/using/cmdline.html",
+      "scope": "-c argv and isolated-mode semantics"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_quoting_rules?view=powershell-7.5",
+      "scope": "here-string separator newline semantics"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw",
+      "scope": "32767 UTF-16 command units including NUL"
+    }
+  ],
+  "peer_review": {
+    "reviewer": "voice_reading",
+    "verdict": "CLEAR",
+    "scope": "source/API/PowerShell transport/-c main semantics/unchanged policy/CORE identity/exact two-case receiving",
+    "execution": "NOT_RUN"
+  },
+  "limitations": [
+    "No host execution was available or attempted.",
+    "This component changes no application module, ResourceBroker or original resource test.",
+    "Only the ordinary MAIN job executes its full unchanged media/OCR/model wrapper.",
+    "The source review and structural readback are not an actual Windows passing result.",
+    "No reference was advanced by this component author."
+  ]
+}

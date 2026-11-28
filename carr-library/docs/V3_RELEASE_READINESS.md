@@ -1,5 +1,65 @@
 # Resonance V3 implementation and owner-test delivery status
 
+## Current receiving: spawned test hosts and bytecode metadata
+
+**Composition status: SOURCE_REVIEWED / NOT_RUN.** Separate completed trials below retain their exact source identities.
+
+This follow-up starts from application
+`2dfc5d32558c722ba05068dfff9ebb19eeae52f7`. The 383 Python modules in
+`src/carr_library` retain their existing bytes. Packaging and receiving-host
+corrections still require their own source, installed and complete Windows
+results; identical application bytes do not transfer an earlier PASS.
+
+The original guarded f831 full-bundle artifact completed **9,078 passing cases
+and two failures**. Both failed resource tests stopped before their importable
+target could run: Windows multiprocessing tried to reopen the receiving host's
+`<stdin>` main path and raised `OSError [Errno 22]`. The reviewed MAIN change
+passes the same Python wrapper with `-c`. Its body, selected tests, bundle argv,
+runtime/origin/seal assertions, native DLL checks, failure observer, strict
+JUnit acceptance and deadlines remain unchanged. The five- and ten-second
+resource readiness limits are preserved. The bounded original artifact trace
+and full member digest are retained in the
+[immutable receiving index](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/ffc1a8a79cc1cb2a22954c182ee01577ec9965d4/carr-library/review/receiving-evidence-2dfc5d32-2026-11-28.json).
+The enclosing old MAIN result and separate capture failure are not rewritten.
+
+The Word preview test owner now waits for actual future completion before
+dispatching a business result. A pending readiness timeout keeps the queued
+owner and busy state intact and emits bounded diagnostics without local values.
+The original 19 cases, all 61 assertion/raises lines, ten-second readiness and
+thirty-second formatter limits remain. Three real-executor controls distinguish
+pending work from completed TimeoutError/ValueError. Exact diagnostic
+`ccb340d1202e6d6f42394bef2131437c010d5a0e` passed **22 source and 22 installed
+cases** on Windows, with all 383 source/wheel/installed rows matching. This
+does not prove the historical five MAIN failure causes, actual Microsoft Word
+COM interaction, human NVDA, or this follow-up's complete acceptance.
+
+Two reviewed packaging copy seams preserve file metadata as well as verified
+bytes. Timestamp-based Python bytecode depends on its source mtime; changing
+that mtime while retaining the bytecode can invalidate the cache. Import may
+then rewrite it, after which the unchanged final seal correctly rejects the
+changed bytes. Keeping the metadata prevents that inconsistency. The source
+verification, manifest, private runtime and installer guards stay in place;
+real-import and forced-rewrite regression controls exercise both outcomes.
+The prior green installation receipts remain valid for their exact trials.
+
+The existing 2df receiving index contains completed native launcher,
+bibliography, bridge, canonical compatibility and both standard-installation
+jobs. All four Reader modes passed 746 cases each, with 80 native checks in
+each Windows mode. All four component modes passed their declared selections. In particular, Windows installed components
+passed 3,217 cases plus 12 subtests and the actual native silence-inspection
+checks; Linux source/installed components passed 3,220 cases in each mode.
+The standard Windows lifecycle passed all 12 checks while preserving a
+populated external library. These scopes are not a unique summed case count.
+
+At composition, the new corrections remain **SOURCE_REVIEWED / NOT_RUN**
+except for explicitly named separate diagnostic trials. The focused CORE
+bundle probe is designed to verify command transport, installed origin and real
+spawn behavior; its result is still pending at composition. It does not execute
+the full media/model/OCR wrapper, which remains a required MAIN gate.
+Actual selected capture, human Windows 11/NVDA, listening/model/language
+quality, signing and component-specific distribution rights retain their
+independent acceptance requirements.
+
 This document describes the implemented library, reading and audio preview of
 Resonance by Sceneria Innovative Technologies. It does not close the complete
 platform specification or the finalization addendum. An owner-test application

@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "scope": "Exact inverse of the bounded timestamp-cache staging correction",
+  "base_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "base_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "source_tree": "8ab80daa891dfe31428da1b3af0a21b56496b181",
+  "files": [
+    {
+      "path": "carr-library/packaging/add_native_runtime.py",
+      "before_blob": "c85b8dd9916df0dadbc458c09786859995ea2252",
+      "after_blob": "f294be258b79774ab7ebcc1dc8fdad3c39194cea",
+      "before_sha256": "214b2ec77726d9fcf8c973b30bd3724b17c69b243bfdde3f7d8c7a0b17a1836d",
+      "after_sha256": "8b5daf0d36b11a29f652ff3d7ca6a3149bd83946f526d5f93ef89e315ec27984",
+      "inverse_replacements": [
+        {
+          "find": "            # Keep timestamp-based runtime bytecode paired with its source.\n            shutil.copy2(bundle / name, target)\n",
+          "replace": "            shutil.copyfile(bundle / name, target)\n",
+          "expected_occurrences": 1
+        }
+      ],
+      "inverse_recovers_exact_preimage": true
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "before_blob": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "after_blob": "c6b0795e5469f7ddeeb22e5ace0f182df7864556",
+      "before_sha256": "3c4e8bd0efad1f085e60b56f3fb1faf30d1b1de5454d423c6dce5d46ad78fd82",
+      "after_sha256": "efbad62cbe7f4d69c0cf28c68615d55f80ade0bdfb5963884aaa3f8ea918f806",
+      "inverse_replacements": [
+        {
+          "find": "        # Preserve the source timestamps used by sealed Python bytecode.\n        shutil.copy2(bundle.joinpath(*relative.parts), target)\n",
+          "replace": "        shutil.copyfile(bundle.joinpath(*relative.parts), target)\n",
+          "expected_occurrences": 1
+        }
+      ],
+      "inverse_recovers_exact_preimage": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before_blob": "271e2aecc684a2b0408005fd369a298de476850b",
+      "after_blob": "e5fa35570d33440dc74b110ec255a8ccba6aabf2",
+      "before_sha256": "62e72e92f7e99dde05de343616ac5403d2aa4fdf5797426196de24ffd6e53b79",
+      "after_sha256": "3b38d18e0e24e5372df5d178021ce665f3d147cc5609b916a6acd0e692ef694f",
+      "inverse_replacements": [
+        {
+          "find": "\n\ndef cache_runtime_supplement(bundle, tmp_path, monkeypatch):\n    \"\"\"Use the real native verifier with explicit synthetic PE/file pins.\"\"\"\n    from carr_library import native_runtime as native\n\n    runtime = tmp_path / 'synthetic native cache supplement'\n    binary = bytearray(134)\n    binary[:2] = b'MZ'\n    binary[60:64] = (128).to_bytes(4, 'little')\n    binary[128:] = b'PE\\0\\0\\x64\\x86'\n    pins = {name: (len(binary), checksum(binary)) for name in native.DLLS}\n    monkeypatch.setattr(native, 'DLLS', pins)\n    for name in native.FILES:\n        path = runtime / name\n        path.parent.mkdir(parents=True, exist_ok=True)\n        path.write_bytes(binary if name.startswith('bin/') else b'Synthetic cache-copy fixture\\n')\n    source = {'selected_original_files': {\n        'Library/bin/' + name: {'destination': 'bin/' + name, 'size': size, 'sha256': sha}\n        for name, (size, sha) in pins.items()}}\n    lock = runtime / 'provenance/source-lock.json'\n    lock.write_text(json.dumps(source), encoding='utf-8')\n    monkeypatch.setattr(native, 'SOURCE_LOCK_SHA256', checksum(lock.read_bytes()))\n    (runtime / native.MANIFEST).write_text(json.dumps({\n        'schema': 1, 'target': 'Windows x64', 'use_scope': 'private-local-installation',\n        'source_lock_sha256': native.SOURCE_LOCK_SHA256,\n        'files': {name: checksum((runtime / name).read_bytes()) for name in native.FILES},\n    }), encoding='utf-8')\n    host_pins = {}\n    for name in native.HOST_DLLS:\n        path = bundle / 'runtime' / name\n        path.write_bytes(('Synthetic host cache-copy fixture ' + name).encode('ascii'))\n        host_pins[name] = checksum(path.read_bytes())\n    monkeypatch.setattr(native, 'HOST_DLLS', host_pins)\n    wheel, = (bundle / 'wheelhouse').glob('universal_research_library-*.whl')\n    # Keep this native-supplement fixture's RECORD coherent; the setup case\n    # below retains the separate exact committed-source wheel fixture.\n    with ZipFile(wheel) as archive:\n        files = {name: archive.read(name) for name in archive.namelist()}\n    for name in ('native_runtime.py', 'native_checks.py'):\n        files['carr_library/' + name] = (ROOT / 'src/carr_library' / name).read_bytes()\n    _wheel(wheel, files)\n    native.verify_native_runtime(runtime)\n    return runtime\n\n\ndef import_real_timestamp_cache(root):\n    # Protect the executing test host's stdlib. Enable writes only while the\n    # independent child imports the no-import fixture module in the copied Lib.\n    code = \"\"\"\nimport importlib, json, pathlib, sys\nlibrary = pathlib.Path(sys.argv[1]) / 'runtime' / 'Lib'\nsys.path.insert(0, str(library))\nsys.dont_write_bytecode = False\ntry:\n    module = importlib.import_module('carr_payload_cache_probe')\n    assert module.VALUE == 'sealed cache'\n    assert pathlib.Path(module.__file__).parent == library\n    enabled = not sys.dont_write_bytecode\nfinally:\n    sys.dont_write_bytecode = True\nprint(json.dumps({'value': module.VALUE, 'bytecode_enabled_for_fixture': enabled}))\n\"\"\"\n    result = subprocess.run([sys.executable, '-I', '-B', '-c', code, str(root)],\n                            check=True, capture_output=True, text=True, timeout=20)\n    assert json.loads(result.stdout) == {\n        'value': 'sealed cache', 'bytecode_enabled_for_fixture': True}\n\n\n@pytest.mark.parametrize('copy_stage', ['native-supplement', 'standard-payload'])\ndef test_payload_copy_preserves_real_timestamp_pyc_and_still_rejects_rewrite(\n        tmp_path, payload, monkeypatch, copy_stage):\n    import py_compile\n\n    root, _ = payload\n    source = root / 'runtime/Lib/carr_payload_cache_probe.py'\n    source.write_bytes(b\"VALUE = 'sealed cache'\\n\")\n    # The fixed old time makes copyfile's metadata loss observable even when\n    # compilation, staging and import all happen in the same wall-clock second.\n    os.utime(source, (946684800, 946684800))\n    cache = Path(py_compile.compile(str(source), doraise=True,\n        invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP))\n    original_cache = cache.read_bytes()\n    assert int.from_bytes(original_cache[4:8], 'little') == 0\n    assert int.from_bytes(original_cache[8:12], 'little') == 946684800\n    original_source_time = source.stat().st_mtime_ns\n    if copy_stage == 'native-supplement':\n        runtime = cache_runtime_supplement(root, tmp_path, monkeypatch)\n    expected = reseal(root)\n    original_manifest = (root / 'bundle-manifest.json').read_bytes()\n    if copy_stage == 'native-supplement':\n        monkeypatch.setattr(sys, 'path', list(sys.path))\n        supplement = load('runtime_cache_supplement_test', ROOT / 'packaging/add_native_runtime.py')\n        copied = tmp_path / 'complete cache bundle'\n        supplement.attach_runtime(root, runtime, copied)\n    else:\n        prepared = tmp_path / 'prepared cache setup'\n        build.prepare(root, prepared, manifest_sha256=expected)\n        copied = prepared / 'payload'\n    copied_source = copied / source.relative_to(root)\n    copied_cache = copied / cache.relative_to(root)\n    assert copied_cache.read_bytes() == original_cache\n    service.verifier.verify(copied)\n    import_real_timestamp_cache(copied)\n    assert copied_cache.read_bytes() == original_cache\n    assert copied_source.stat().st_mtime_ns == original_source_time\n    service.verifier.verify(copied)\n    assert cache.read_bytes() == original_cache\n    assert source.stat().st_mtime_ns == original_source_time\n    assert (root / 'bundle-manifest.json').read_bytes() == original_manifest\n    service.verifier.verify(root)\n\n    # A real stale cache is still rewritten by Python and rejected by the same\n    # unchanged sealed-file verifier; cache files were not ignored or resealed.\n    os.utime(copied_source, (946684860, 946684860))\n    import_real_timestamp_cache(copied)\n    assert copied_cache.read_bytes() != original_cache\n    with pytest.raises(ValueError, match='bundle checksum failed: runtime/Lib/__pycache__/'):\n        service.verifier.verify(copied)\n",
+          "replace": "",
+          "expected_occurrences": 1
+        }
+      ],
+      "inverse_recovers_exact_preimage": true
+    }
+  ]
+}

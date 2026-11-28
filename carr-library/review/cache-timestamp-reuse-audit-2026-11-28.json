@@ -1,0 +1,284 @@
+{
+  "schema": 1,
+  "scope": "Bounded sealed Python timestamp-cache staging correction and final reuse audit",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "observed_at_utc": "2026-11-28T06:33:10Z",
+  "base_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "base_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "source_component_tree": "8ab80daa891dfe31428da1b3af0a21b56496b181",
+  "source_files": [
+    {
+      "path": "carr-library/packaging/add_native_runtime.py",
+      "before_blob": "c85b8dd9916df0dadbc458c09786859995ea2252",
+      "sha": "f294be258b79774ab7ebcc1dc8fdad3c39194cea",
+      "bytes": 4944,
+      "sha256": "8b5daf0d36b11a29f652ff3d7ca6a3149bd83946f526d5f93ef89e315ec27984"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "before_blob": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "sha": "c6b0795e5469f7ddeeb22e5ace0f182df7864556",
+      "bytes": 11811,
+      "sha256": "efbad62cbe7f4d69c0cf28c68615d55f80ade0bdfb5963884aaa3f8ea918f806"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before_blob": "271e2aecc684a2b0408005fd369a298de476850b",
+      "sha": "e5fa35570d33440dc74b110ec255a8ccba6aabf2",
+      "bytes": 74723,
+      "sha256": "3b38d18e0e24e5372df5d178021ce665f3d147cc5609b916a6acd0e692ef694f"
+    }
+  ],
+  "application_python_modules": {
+    "before": 383,
+    "after": 383,
+    "changed": 0
+  },
+  "semantic_finding": {
+    "category": "Timestamp-cache coherence during verified payload staging",
+    "mechanism": "copyfile preserves the sealed .py and .pyc bytes but does not preserve the source modification time. CPython correctly rejects the copied timestamp cache as stale. A later import with bytecode writing enabled can replace the cache, after which the unchanged hash verifier correctly rejects the changed sealed file.",
+    "not_claimed": [
+      "Incorrect manifest hashing or acceptance of changed bytes",
+      "Corruption of the Python source semantics",
+      "Attribution of the donor's historical cache write to a particular process",
+      "A new failure of any successful 2df receiving job",
+      "Qualification of the corrected build or native setup before its new execution"
+    ],
+    "bytecode_disabled": "With writes disabled, the stale cache can cause recompilation in memory rather than a file rewrite; the proposed change preserves cache coherence in both modes.",
+    "chosen_change": "Reuse only the two reviewed payload-loop copy2 calls and their explanatory comments. No cache file exclusion, deletion, resealing, dependency, runtime archive, manifest schema, helper-copy, source guard, or deadline changes."
+  },
+  "primary_sources": [
+    {
+      "repository": "python/cpython",
+      "tag": "v3.11.9",
+      "path": "Lib/importlib/_bootstrap_external.py",
+      "blob": "e53f6acf38fc642f79a744f46d70b8b289ca7be0",
+      "sha256": "7c9a59da1b351a226a092b1e1671cf9935255f2c22d593a138c8938dec7e399e",
+      "functions": [
+        "_validate_timestamp_pyc",
+        "_code_to_timestamp_pyc",
+        "SourceLoader.get_code"
+      ],
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/importlib/_bootstrap_external.py",
+      "exact_tag_and_blob_content_compared": true
+    },
+    {
+      "repository": "python/cpython",
+      "tag": "v3.11.9",
+      "path": "Lib/shutil.py",
+      "blob": "0fad5eaea04f96f2cf0a2de8ec5e6eb7a126d0c0",
+      "sha256": "aa2c11b95294111edddfeb02f9082ec7c4c21060d87f6857364b5bb95fb94e09",
+      "functions": [
+        "copy2",
+        "copystat"
+      ],
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/shutil.py",
+      "exact_tag_and_blob_content_compared": true
+    }
+  ],
+  "donor": {
+    "pr": 99,
+    "head": "325ccde85c7a8111465df4231ea97f573e4ec52d",
+    "commit": "bf11e56b8491d2677ccc36de316c8f47c396401b",
+    "parent": "6752e8d94fdc7d84a95242f204554f4a8d10b842",
+    "report_path": "carr-library/docs/acceptance/FULL_BUNDLE_CACHE_TIMESTAMPS_20261128.md",
+    "report_blob": "cb987b92ad29d921991b965bcde22414aed445d8",
+    "recorded_observation": {
+      "head": "e828403becce67eead4f7def3ec826f7893a2970",
+      "run_id": 46104046589,
+      "job_id": 140852689912,
+      "installed_cases_passed": 4881,
+      "subsequent_failure": "The final verifier rejected runtime/Lib/__pycache__/__future__.cpython-311.pyc.",
+      "artifact_id": 15250095218,
+      "artifact_bytes": 437557,
+      "artifact_sha256": "c9131cea6100487f16725d4c2cada9ca1c1ecc6f9adfaa87b8c5be7777bcf502",
+      "provenance": "Read from the exact donor report blob. This audit did not independently retrieve that donor job log or artifact bytes. The donor report does not identify the cache's last writer or print its header."
+    },
+    "reused": "The native-supplement file is exact donor blob f294be258b79774ab7ebcc1dc8fdad3c39194cea. Only the corresponding one-line staging change is applied to the current stronger standard builder.",
+    "donor_test_blob": "3b9e5ce32e3ddbfe489d9c341b31e73039d90f9a",
+    "fixture_adaptations": [
+      "Appended new helper/test block after exact old file; py_compile imported only inside new test.",
+      "Native fixture rewrites the real wheel RECORD through existing _wheel helper instead of appending ZIP members.",
+      "Actual standard-payload case retains the current committed-application fixture and stronger complete source-wheel verification."
+    ]
+  },
+  "compatibility": {
+    "native_supplement": "Existing source bundle verification, application-wheel member admission, HOST_DLLS pins, per-file copied-byte hashes, standalone native runtime verification, final full verifier and create-only publication are unchanged.",
+    "standard_setup": "The complete current committed-source/wheel verifier, captured wheel digest, exact helper snapshots, helper post-copy equality/hash checks, final payload inventory verifier and native setup template remain unchanged.",
+    "metadata": "CPython 3.11 copy2 calls the same copyfile, then copystat. It preserves mtime/atime and permission metadata; it does not copy owner/group. No metadata is substituted for the existing byte or path checks.",
+    "actual_native_scope": "The new portable cases execute an actual Python child and actual packaging/verifier functions. Their native DLL bytes are explicit synthetic pins, never loaded. They do not execute Inno or establish the corrected native Install/Repair/Uninstall result.",
+    "existing_negative_tests": "The old helper-copy mutation delegates accept *args/**kwargs, so the added copy2-to-copyfile delegation retains their original targeting and assertions."
+  },
+  "regression": {
+    "selector": "tests/packaging/test_standard_installer.py",
+    "existing_cases": 149,
+    "new_cases": 2,
+    "planned_total": 151,
+    "old_source_prefix_characters": 68715,
+    "old_assertion_lines": 203,
+    "old_prefix_byte_exact": true,
+    "test_name": "test_payload_copy_preserves_real_timestamp_pyc_and_still_rejects_rewrite",
+    "parameters": [
+      "native-supplement",
+      "standard-payload"
+    ],
+    "actual_actions": [
+      "Compile an explicit timestamp-mode cache at a fixed old source mtime and inspect its real header.",
+      "Use the actual payload staging function for each seam.",
+      "Import the copied fixture in a real isolated child with writes enabled only around that fixture import.",
+      "Require the original .pyc bytes, copied source mtime, original source/cache/manifest, and the unmodified verifier to remain valid.",
+      "Deliberately change only copied source mtime, import again, require changed .pyc bytes and the same unchanged verifier's refusal."
+    ],
+    "child_timeout_seconds": 20,
+    "existing_test_and_product_budgets_unchanged": true,
+    "execution": "NOT_RUN"
+  },
+  "unchanged_successful_evidence": {
+    "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "run_id": 46111573953,
+    "job_id": 140876058894,
+    "evidence_tree": "12437ce701abb716d28834ea10957fe72433a022",
+    "qualification_blob": "b70c0e69b4282ea6a330d7cbd17c1e3349071be2",
+    "source_cases": 351,
+    "installed_cases": 351,
+    "installed_subtests": 22,
+    "standard_installer_existing_cases": 149,
+    "native_checks": 12,
+    "interpretation": "These successful current-head results are retained as their original historical scopes. They are not relabeled as failed and are not transferred to this unexecuted correction."
+  },
+  "final_bounded_audit": {
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "requirements": [
+      {
+        "path": "AGENTS.md",
+        "blob": "080bb9104d3224749e9317c2273d803c0ac37835"
+      },
+      {
+        "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+        "blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+      },
+      {
+        "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+        "blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+      }
+    ],
+    "readiness_blob": "bb6ba988855663f6972f7f4e86611d14caba9ecf",
+    "finite_reader_inventory_blob": "d34c1229e7975db9ae3213190eecb17017033893",
+    "recent_prs": [
+      {
+        "number": 99,
+        "head": "325ccde85c7a8111465df4231ea97f573e4ec52d",
+        "state": "open",
+        "updated_at": "2026-11-28T06:30:01Z"
+      },
+      {
+        "number": 173,
+        "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+        "state": "open",
+        "updated_at": "2026-11-28T06:28:26Z"
+      },
+      {
+        "number": 210,
+        "head": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+        "state": "open",
+        "updated_at": "2026-11-28T06:19:51Z"
+      },
+      {
+        "number": 152,
+        "head": "95d305d527f8fa4f36202d40fc069d71f2551069",
+        "state": "open",
+        "updated_at": "2026-11-28T06:06:58Z"
+      },
+      {
+        "number": 209,
+        "head": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+        "state": "closed",
+        "updated_at": "2026-11-28T05:40:35Z"
+      }
+    ],
+    "discovery": "The refreshed latest-30 all-state PR listing contained no newer PR number beyond 210. This is a bounded recent-catalog observation.",
+    "decisions": [
+      {
+        "pr": 99,
+        "decision": "ADAPT_NARROW_CORRECTION",
+        "reason": "The two current payload loops still had the demonstrated timestamp-cache coherence mismatch; reuse is this component."
+      },
+      {
+        "pr": 152,
+        "commits": [
+          "fcd7e5d81e21edfdeb9727114126f809e4154262",
+          "0f43c6e8b0f53f7103c39823597d41705f89c2a2"
+        ],
+        "current_path": "carr-library/src/carr_library/ui/command_palette.py",
+        "current_blob": "da0b8f0b2d79e0df97fb7d1c31eec234a0912d8a",
+        "decision": "NO_ADOPTION",
+        "reason": "The current separate command-palette adapter already has TE_PROCESS_ENTER, EVT_TEXT_ENTER, list Enter handling and the default Run button on the existing registry."
+      },
+      {
+        "pr": 173,
+        "current_path": "carr-library/src/carr_library/search/literal.py",
+        "current_blob": "cb65d9604fdc3c90843dc25db93d05ace7c66b1a",
+        "donor_blob": "8a3819914681f08dc942b0905ab2bad796971b37",
+        "decision": "NO_SPECULATIVE_OPTIMIZATION",
+        "reason": "The current full-ASCII fast path and full Unicode cluster mapping remain correct. The donor mixed-ASCII optimization does not establish a current incorrect result or a new measured current-head failure."
+      },
+      {
+        "pr": 173,
+        "donor_commit": "1b4437926de76a091becfbc706b246fe6d54d777",
+        "decision": "NO_ALTERNATIVE_AUTHORITY_TRANSPLANT",
+        "current_bindings": [
+          {
+            "path": "carr-library/src/carr_library/delivery_contract.py",
+            "blob": "cc3051880720c0c542c5baceee008dcbe6a787f9"
+          },
+          {
+            "path": "carr-library/src/carr_library/delivery_service.py",
+            "blob": "e62a4b63655fbecfe4a38ada58d503613b1610e1"
+          },
+          {
+            "path": "carr-library/src/carr_library/ui/delivery_dialog.py",
+            "blob": "87ee9eba47b25f07106fc921f8141cca67c85ad1"
+          }
+        ],
+        "reason": "The current product already has the typed delivery-provider lifecycle and License and updates / Check for updates UI. Signature/trust/transport authority is explicitly supplied by a reviewed private adapter. The donor security/update_* stack is a different authority architecture, not a compatible small missing UI hunk. Actual provider assembly, keys and signed update acceptance remain unqualified; this audit does not label them complete."
+      },
+      {
+        "prs": [
+          209,
+          210
+        ],
+        "decision": "PREVIOUS_BOUNDED_RECONCILIATION_RETAINED",
+        "reason": "The alternate production/schema was already reviewed. The current 2df inspector retains the existing ownership, absolute deadline and exact PCM contracts; the two compatible donor block-boundary cases are already integrated."
+      }
+    ],
+    "conclusion": "Apart from this narrow packaging correction, the inspected recent deltas did not establish another independent small core source repair. This does not close the finite acceptance inventory: private runtime/rights and provider assembly, real NVDA/acoustic/physical-capture qualification, and final candidate-wide receiving remain separate requirements.",
+    "separately_owned_known_work": [
+      "Word UI fixture readiness versus completed business-error delivery",
+      "MAIN installed pytest entrypoint compatible with multiprocessing spawn"
+    ]
+  },
+  "readback": {
+    "source_blobs_exact": true,
+    "source_sparse_inventory_exact": true,
+    "all_three_preimages_match_base_tree": true,
+    "inverse_recovers_every_preimage": true
+  },
+  "limitations": [
+    "No local Python, test, native setup, private runtime or physical-device execution was performed for this component.",
+    "No product, branch, PR or workflow reference was changed by this agent."
+  ],
+  "peer_review": {
+    "reviewer": "/root/voice_reading",
+    "verdict": "CLEAR",
+    "scope": "Three-file source/fixture seam review",
+    "target_tree": "8ab80daa891dfe31428da1b3af0a21b56496b181",
+    "findings": "Both one-hunk production inverses recover the exact preimages. All source/wheel/helper, copied-byte hash and sealed-inventory checks remain intact. The complete old test prefix and 203 assertions remain unchanged. The two added actual timestamp-pyc/import cases and forced rewrite refusal match the current fixture APIs. Synthetic native PE pins are never executed. No current 2df failure or new execution is claimed.",
+    "execution": "NOT_RUN"
+  },
+  "inverse_file": {
+    "path": "carr-library/review/cache-timestamp-copy-inverse-2026-11-28.json",
+    "blob": "63f12b6dd3ca46104bef1048180ae77651e3fa3b"
+  },
+  "finalized_at_utc": "2026-11-28 06:35:11 UTC"
+}

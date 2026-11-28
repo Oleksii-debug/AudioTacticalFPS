@@ -1,0 +1,353 @@
+{
+  "schema": "carr-reviewed-receiving-correction-composition/1",
+  "status": "SOURCE_REVIEWED; NOT_RUN at composition",
+  "application_basis": {
+    "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "git_parent": {
+    "commit": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+    "tree": "8b9227ed7ed9b7c9d54fdc3d228e9075f07e24a3",
+    "reason": "Already contains the independently reviewed Word fixture and its completed diagnostic. Using its ancestry permits fast-forward receiving on all existing refs."
+  },
+  "canonical_requirements": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "agents": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "issue_1_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "components": [
+    {
+      "name": "Word completion fixture and focused receiving",
+      "tree": "8b9227ed7ed9b7c9d54fdc3d228e9075f07e24a3",
+      "review": "carr-library/review/word-ui-completion-contract-2026-11-28.json",
+      "already_in_git_parent": true,
+      "files": [
+        {
+          "path": ".github/workflows/carr-word-preview-evaluation.yml",
+          "blob": "9a017150e77c935deaeaa391e8d591985e591e2a"
+        },
+        {
+          "path": "carr-library/review/word-preview-focused-receiving-2026-11-28.json",
+          "blob": "53ea1c5c45329fab6374ea2d4d36defc8c7ef267"
+        },
+        {
+          "path": "carr-library/review/word-ui-completion-contract-2026-11-28-inverse.json",
+          "blob": "f6df64bcee78f0b87ade108f3ad8001bb8a13e45"
+        },
+        {
+          "path": "carr-library/review/word-ui-completion-contract-2026-11-28.json",
+          "blob": "5a98b9b58bbfec2ecc6ee629fe8e8d545c039754"
+        },
+        {
+          "path": "carr-library/tests/ui/test_word_citations.py",
+          "blob": "047bc60d692f3b976be2e86eada9af4bd08b1387"
+        }
+      ]
+    },
+    {
+      "name": "Timestamp-cache staging and real import regressions",
+      "tree": "7fdecab0aa6804feea3ee78c48a605963e73e105",
+      "review": "carr-library/review/cache-timestamp-reuse-audit-2026-11-28.json",
+      "files": [
+        {
+          "path": "carr-library/packaging/add_native_runtime.py",
+          "blob": "f294be258b79774ab7ebcc1dc8fdad3c39194cea"
+        },
+        {
+          "path": "carr-library/packaging/windows_installer/build_setup.py",
+          "blob": "c6b0795e5469f7ddeeb22e5ace0f182df7864556"
+        },
+        {
+          "path": "carr-library/review/cache-timestamp-copy-inverse-2026-11-28.json",
+          "blob": "63f12b6dd3ca46104bef1048180ae77651e3fa3b"
+        },
+        {
+          "path": "carr-library/review/cache-timestamp-reuse-audit-2026-11-28.json",
+          "blob": "fc09c84cac442767ec0c36a38d306102f5d5ab22"
+        },
+        {
+          "path": "carr-library/tests/packaging/test_standard_installer.py",
+          "blob": "e5fa35570d33440dc74b110ec255a8ccba6aabf2"
+        }
+      ]
+    },
+    {
+      "name": "MAIN command entry and actual CORE-bundle diagnostic",
+      "tree": "a0528d0e575ae611ec68b5522daacdca05091eba",
+      "review": "carr-library/review/bundle-spawn-entry-2026-11-28/source-review.json",
+      "files": [
+        {
+          "path": ".github/scripts/carr_prepare_bundle_spawn_check.py",
+          "blob": "7c8ba5698e868ca821cb8c0a62aebefb9bf4b033"
+        },
+        {
+          "path": ".github/workflows/carr-bundle-spawn-evaluation.yml",
+          "blob": "f9627c50b6632319c03117bff17240249426a492"
+        },
+        {
+          "path": ".github/workflows/carr-windows.yml",
+          "blob": "8a2340458123a20fc5f050dfe5232c184fec1316"
+        },
+        {
+          "path": "carr-library/review/bundle-spawn-entry-2026-11-28/main-exact-replacement.json",
+          "blob": "b11167b8a8e44a33fba05146b3e21d16808eaddd"
+        },
+        {
+          "path": "carr-library/review/bundle-spawn-entry-2026-11-28/source-review.json",
+          "blob": "95f6bc6fe0e313099f9f0af95e8ef51889d03f6a"
+        }
+      ]
+    },
+    {
+      "name": "Current readiness with historical text preserved",
+      "tree": "e0048b2cca0db1de0877870f706c70c92889baa7",
+      "review": "Independent Locate review CLEAR; insertion reverses exactly to prior readiness blob.",
+      "files": [
+        {
+          "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+          "blob": "ff5d2878fb8c56c57e0be0c0de03c468af7f50a8"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/carr-word-preview-evaluation.yml",
+      "before": null,
+      "after": "9a017150e77c935deaeaa391e8d591985e591e2a",
+      "component": "Word completion fixture and focused receiving"
+    },
+    {
+      "path": "carr-library/review/word-preview-focused-receiving-2026-11-28.json",
+      "before": null,
+      "after": "53ea1c5c45329fab6374ea2d4d36defc8c7ef267",
+      "component": "Word completion fixture and focused receiving"
+    },
+    {
+      "path": "carr-library/review/word-ui-completion-contract-2026-11-28-inverse.json",
+      "before": null,
+      "after": "f6df64bcee78f0b87ade108f3ad8001bb8a13e45",
+      "component": "Word completion fixture and focused receiving"
+    },
+    {
+      "path": "carr-library/review/word-ui-completion-contract-2026-11-28.json",
+      "before": null,
+      "after": "5a98b9b58bbfec2ecc6ee629fe8e8d545c039754",
+      "component": "Word completion fixture and focused receiving"
+    },
+    {
+      "path": "carr-library/tests/ui/test_word_citations.py",
+      "before": "fc46e14535806decdb977e98fcd91948d8c3da52",
+      "after": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+      "component": "Word completion fixture and focused receiving"
+    },
+    {
+      "path": "carr-library/packaging/add_native_runtime.py",
+      "before": "c85b8dd9916df0dadbc458c09786859995ea2252",
+      "after": "f294be258b79774ab7ebcc1dc8fdad3c39194cea",
+      "component": "Timestamp-cache staging and real import regressions"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "before": "86f19cf23c6eb142da3bfb55ebd2ba3b4cb6c3dc",
+      "after": "c6b0795e5469f7ddeeb22e5ace0f182df7864556",
+      "component": "Timestamp-cache staging and real import regressions"
+    },
+    {
+      "path": "carr-library/review/cache-timestamp-copy-inverse-2026-11-28.json",
+      "before": null,
+      "after": "63f12b6dd3ca46104bef1048180ae77651e3fa3b",
+      "component": "Timestamp-cache staging and real import regressions"
+    },
+    {
+      "path": "carr-library/review/cache-timestamp-reuse-audit-2026-11-28.json",
+      "before": null,
+      "after": "fc09c84cac442767ec0c36a38d306102f5d5ab22",
+      "component": "Timestamp-cache staging and real import regressions"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before": "271e2aecc684a2b0408005fd369a298de476850b",
+      "after": "e5fa35570d33440dc74b110ec255a8ccba6aabf2",
+      "component": "Timestamp-cache staging and real import regressions"
+    },
+    {
+      "path": ".github/scripts/carr_prepare_bundle_spawn_check.py",
+      "before": null,
+      "after": "7c8ba5698e868ca821cb8c0a62aebefb9bf4b033",
+      "component": "MAIN command entry and actual CORE-bundle diagnostic"
+    },
+    {
+      "path": ".github/workflows/carr-bundle-spawn-evaluation.yml",
+      "before": null,
+      "after": "f9627c50b6632319c03117bff17240249426a492",
+      "component": "MAIN command entry and actual CORE-bundle diagnostic"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "8ceddfd58e27420decfa3a718f8f8cd7582a8e05",
+      "after": "8a2340458123a20fc5f050dfe5232c184fec1316",
+      "component": "MAIN command entry and actual CORE-bundle diagnostic"
+    },
+    {
+      "path": "carr-library/review/bundle-spawn-entry-2026-11-28/main-exact-replacement.json",
+      "before": null,
+      "after": "b11167b8a8e44a33fba05146b3e21d16808eaddd",
+      "component": "MAIN command entry and actual CORE-bundle diagnostic"
+    },
+    {
+      "path": "carr-library/review/bundle-spawn-entry-2026-11-28/source-review.json",
+      "before": null,
+      "after": "95f6bc6fe0e313099f9f0af95e8ef51889d03f6a",
+      "component": "MAIN command entry and actual CORE-bundle diagnostic"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "bb6ba988855663f6972f7f4e86611d14caba9ecf",
+      "after": "ff5d2878fb8c56c57e0be0c0de03c468af7f50a8",
+      "component": "Current readiness with historical text preserved"
+    }
+  ],
+  "manifest_self_reference": "This composition record is the one additional new file; it does not recursively include its own hash.",
+  "relative_to_application_basis": {
+    "changed_paths": 17,
+    "added": 11,
+    "modified": 6,
+    "deleted": 0
+  },
+  "relative_to_git_parent": {
+    "changed_paths": 12,
+    "added": 7,
+    "modified": 5,
+    "deleted": 0
+  },
+  "application_namespace": {
+    "python_modules_before": 383,
+    "python_modules_after": 383,
+    "changed_python_modules": 0,
+    "all_package_files_before": 476,
+    "all_package_files_after": 476,
+    "changed_package_files": 0,
+    "full_tree_comparison_required": true
+  },
+  "planned_regressions": {
+    "word": {
+      "old_cases": 19,
+      "new_cases": 3,
+      "total": 22,
+      "old_assertion_or_raises_lines": 61,
+      "readiness_seconds": 10,
+      "formatter_seconds": 30
+    },
+    "cache": {
+      "old_cases": 149,
+      "new_cases": 2,
+      "total": 151,
+      "old_assertion_lines": 203
+    },
+    "spawn": {
+      "original_cases": 2,
+      "new_cases": 0,
+      "readiness_seconds": [
+        5,
+        10
+      ],
+      "test_and_target_blobs_unchanged": true
+    }
+  },
+  "preserved": [
+    "All production application module bytes",
+    "Every existing MAIN source and installed selector, runtime/origin/seal/native-DLL predicate and deadline",
+    "Original Word and installer assertions",
+    "Existing Standard, Reader, component, V3, native, bibliography, bridge and canonical workflow bytes",
+    "Selected-device, consent, data-integrity and release requirements"
+  ],
+  "root_independent_review": {
+    "schema": "carr-root-minimal-entry-review/1",
+    "basis": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "before_blob": "8ceddfd58e27420decfa3a718f8f8cd7582a8e05",
+    "after_blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+    "inverse_exact": true,
+    "changes": "One literal PowerShell invocation only: stdin main replaced by -c argument; bundle remains sys.argv[1], pytest flags/selectors sys.argv[2:].",
+    "wrapper_sha256": "ed054b1e93ff7156db3511842c28623a1a12e41a10008dbafca9cde2c2d5336d",
+    "wrapper_utf16_units": 25053,
+    "remaining_file_bytes_identical": true,
+    "qualification": "SOURCE_REVIEWED; focused execution pending; no full-bundle success claimed",
+    "wrapper_hash_definition": "SHA-256 of the deindented LF source extraction, including its opening separator newline and excluding the closing separator newline; this is not a claim about PowerShell's actual here-string argument bytes.",
+    "actual_powershell_argument": "PENDING focused Windows measurement; preserve line-ending and here-string boundary distinctions.",
+    "peer_review": "Voice independently confirmed the exact single-line inverse and unchanged argv, wrapper, strict acceptance predicates and deadlines.",
+    "focused": {
+      "status": "CLEAR; SOURCE_REVIEWED / NOT_RUN",
+      "tree": "81ce99a078ba2bba303b1e2f610e2134c438ac01",
+      "workflow_blob": "f9627c50b6632319c03117bff17240249426a492",
+      "checker_blob": "7c8ba5698e868ca821cb8c0a62aebefb9bf4b033",
+      "wrapper": {
+        "sha256": "d4609b3b4353e070d123e4a3c62dfc6526a217c71076e926444700365cccd33c",
+        "bytes": 25052,
+        "utf16_units": 25052,
+        "representation": "deindented LF source body, no opening or closing separator newline"
+      },
+      "entry": {
+        "sha256": "cf8dd5f04a6c914d6b9ada908b1f7b8dda73c8cdc74d3d43a311f9966223d754",
+        "bytes": 25566,
+        "utf16_units": 25566,
+        "reserve": 2048
+      },
+      "unchanged_main_wrapper": true,
+      "reviewed": [
+        "actual copied CORE bootstrap and bundled interpreter path",
+        "full source/wheel/installed namespace, RECORD and final seal checks",
+        "separate checker module retains -c __main__ without __file__",
+        "resource child fixtures assert same installed package and broker origins",
+        "original exact two real-process cases and strict JUnit",
+        "original PYTEST_CHILD offline/xfail policy",
+        "only public JSON/text/XML artifact outputs"
+      ],
+      "limits": "Full media/model/OCR wrapper is transported as data, not executed by this focused gate. Actual command-string and PowerShell semantics pending runtime."
+    },
+    "cache": {
+      "status": "CLEAR",
+      "source_tree": "8ab80daa891dfe31428da1b3af0a21b56496b181",
+      "exact_inverse_all_three": true,
+      "old_test_prefix_exact": true,
+      "old_assertions": 203,
+      "application_python_changed": 0,
+      "executed": false
+    },
+    "documentation_peer": "Locate CLEAR: exact insertion inverse, scoped counts, separate diagnostics and no historical result transfer."
+  },
+  "historical_evidence": {
+    "commit": "ffc1a8a79cc1cb2a22954c182ee01577ec9965d4",
+    "index": "carr-library/review/receiving-evidence-2dfc5d32-2026-11-28.json",
+    "qualifies_this_composition": false,
+    "word_diagnostic": {
+      "commit": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+      "source_passed": 22,
+      "installed_passed": 22,
+      "case_result_transfer": false
+    }
+  },
+  "receiving_plan": {
+    "same_exact_commit": true,
+    "first": [
+      "carr/bundle-spawn-evaluation-20261128",
+      "carr/word-preview-evaluation-20261128",
+      "carr/standard-installation-evaluation-20261128"
+    ],
+    "then": [
+      "carr/ci-endpoint-evaluation-20261127",
+      "carr/reader-voice-controls-evaluation-20261127",
+      "carr/component-followup-evaluation-20261127",
+      "carr/v3-integrated-final-dbbb-20261126"
+    ],
+    "qualified_release": false
+  },
+  "limitations": [
+    "No host Python or local test execution is claimed.",
+    "The focused CORE job transports the unchanged full MAIN wrapper as data; only ordinary MAIN executes that media/model/OCR wrapper.",
+    "All new execution must retain its actual source/run/artifact identity.",
+    "Physical capture, human NVDA/listening, private engine/model/language quality, signing and rights remain separate requirements."
+  ]
+}

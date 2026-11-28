@@ -126,7 +126,8 @@ def prepare(bundle: Path, output: Path, *, manifest_sha256: str, installed_bundl
         relative = maintenance.relative(name)
         target = payload.joinpath(*relative.parts)
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(bundle.joinpath(*relative.parts), target)
+        # Preserve the source timestamps used by sealed Python bytecode.
+        shutil.copy2(bundle.joinpath(*relative.parts), target)
     maintenance.bundle(payload, manifest_sha256)
     helper = output / 'helpers'
     helper.mkdir()

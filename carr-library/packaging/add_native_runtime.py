@@ -64,7 +64,8 @@ def attach_runtime(bundle, runtime, output):
         for name, expected in manifest['files'].items():
             target = stage / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(bundle / name, target)
+            # Keep timestamp-based runtime bytecode paired with its source.
+            shutil.copy2(bundle / name, target)
             if digest(target) != expected:
                 raise ValueError('Source installation changed while being copied.')
         shutil.copytree(runtime, stage / 'native-runtime')
