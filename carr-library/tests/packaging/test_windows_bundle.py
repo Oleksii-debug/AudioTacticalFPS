@@ -215,6 +215,145 @@ class WindowsBundleTests(unittest.TestCase):
                                  self.output, sbom=sbom)
         self.assertFalse(self.output.exists())
 
+    def vendored_app(self, overrides=None, missing=()):
+        """Actual reviewed source bytes in an inert application wheel; never imported."""
+        prefix = "carr_library/reader/_vendor_num2words/"
+        with ZipFile(self.app) as archive:
+            payload = {info.filename: archive.read(info)
+                       for info in archive.infolist() if not info.filename.startswith(prefix)}
+        source = ROOT / "src/carr_library/reader/_vendor_num2words"
+        files = {path.name: path.read_bytes() for path in source.iterdir() if path.is_file()}
+        self.assertEqual(len(files), 8)
+        files.update(overrides or {})
+        for name in missing:
+            files.pop(name)
+        payload.update({prefix + name: raw for name, raw in files.items()})
+        with ZipFile(self.app, "w", ZIP_DEFLATED) as archive:
+            for name, raw in payload.items():
+                archive.writestr(name, raw)
+        return self.app
+
+    def vendored_sbom(self):
+        path = self.sbom()
+        bom = json.loads(path.read_bytes())
+        actual = json.loads((ROOT / "packaging/windows-sbom.cdx.json").read_bytes())
+        component = next(item for item in actual["components"]
+                         if item.get("bom-ref") == "carr-vendored-num2words-sk@0.5.14")
+        bom["components"].append(component)
+        bom["metadata"] = {"component": {"bom-ref": "synthetic-application"}}
+        bom["dependencies"] = [
+            {"ref": "synthetic-application", "dependsOn": [component["bom-ref"]]},
+            {"ref": component["bom-ref"]},
+        ]
+        path.write_text(json.dumps(bom, indent=2) + "\n", encoding="utf-8")
+        return path
+
+    def test_reviewed_vendor_and_locked_distribution_are_sealed_together(self):
+        self.vendored_app()
+        sbom = self.vendored_sbom()
+        expected = sbom.read_bytes()
+        app_bytes = self.app.read_bytes()
+        builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual((self.output / "runtime-sbom.cdx.json").read_bytes(), expected)
+        self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), app_bytes)
+        installer.verify(self.output)
+        sealed = json.loads(expected)
+        self.assertEqual(len(sealed["components"]), 2)
+        self.assertEqual(sealed["components"][1]["licenses"], [{"expression": "LGPL-2.1-or-later"}])
+
+    def test_vendor_cannot_be_omitted_or_invented_in_runtime_sbom(self):
+        sbom = self.vendored_sbom()
+        with self.assertRaisesRegex(ValueError, "omits or invents"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+        self.vendored_app()
+        sbom = self.sbom()
+        with self.assertRaisesRegex(ValueError, "omits or invents"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+    def test_vendor_descriptor_and_dependency_edges_are_exact(self):
+        self.vendored_app()
+        sbom = self.vendored_sbom()
+        original = sbom.read_bytes()
+
+        def change_license(bom):
+            bom["components"][1]["licenses"] = [{"expression": "MIT"}]
+
+        def change_version(bom):
+            bom["components"][1]["version"] = "0.5.15"
+
+        def change_provenance(bom):
+            bom["components"][1]["externalReferences"][0]["url"] += "-changed"
+
+        def duplicate(bom):
+            bom["components"].append(dict(bom["components"][1]))
+
+        def omit_edge(bom):
+            bom["dependencies"][0]["dependsOn"] = []
+
+        def duplicate_edge(bom):
+            bom["dependencies"][0]["dependsOn"] *= 2
+
+        def add_dependency(bom):
+            bom["dependencies"][1]["dependsOn"] = ["unreviewed"]
+
+        for change in (change_license, change_version, change_provenance, duplicate,
+                       omit_edge, duplicate_edge, add_dependency):
+            with self.subTest(change=change.__name__):
+                bom = json.loads(original)
+                change(bom)
+                sbom.write_text(json.dumps(bom), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "vendored|duplicate"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+                self.assertFalse(self.output.exists())
+
+    def test_vendor_sources_not_only_the_bom_label_are_verified(self):
+        sbom = self.vendored_sbom()
+        for name in ("lang_SK.py", "UPSTREAM.json", "COPYING", "__init__.py"):
+            with self.subTest(member=name):
+                self.vendored_app({name: b"unreviewed replacement\n"})
+                with self.assertRaisesRegex(ValueError, "source identity differs"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+                self.assertFalse(self.output.exists())
+        self.vendored_app(missing=("COPYING",))
+        with self.assertRaisesRegex(ValueError, "source inventory differs"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+        self.vendored_app({"unexpected.py": b"unreviewed extra source\n"})
+        with self.assertRaisesRegex(ValueError, "unexpected or duplicate"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+    def test_vendor_wheel_replacement_after_review_is_rejected(self):
+        self.vendored_app()
+        sbom = self.vendored_sbom()
+        original = builder.verify_runtime_sbom
+        reviewed = []
+
+        def replace_after_review(*args, **kwargs):
+            result = original(*args, **kwargs)
+            reviewed.append(True)
+            self.vendored_app({"lang_SK.py": b"changed after the exact vendor review\n"})
+            return result
+
+        with patch.object(builder, "verify_runtime_sbom", side_effect=replace_after_review):
+            with self.assertRaisesRegex(ValueError, "changed after vendored SBOM review"):
+                builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual(reviewed, [True])
+        self.assertFalse(self.output.exists())
+
+    def test_both_real_runtime_manifests_keep_exact_pins_and_vendor_sources(self):
+        files = builder.vendored_sources_from_package(ROOT / "src/carr_library")
+        self.assertEqual(len(files), 8)
+        for stem in ("windows", "windows-semantic"):
+            with self.subTest(profile=stem):
+                pins = builder.read_lock(ROOT / "packaging" / (stem + "-cp311.lock"))
+                bom = json.loads((ROOT / "packaging" / (stem + "-sbom.cdx.json")).read_bytes())
+                components = builder.verify_runtime_sbom(bom, pins, vendor_files=files)
+                self.assertEqual(set(components), set(pins))
+                self.assertEqual(len(bom["components"]), len(pins) + 1)
+
     def test_sbom_replaced_after_validation_cannot_change_sealed_bytes(self):
         sbom = self.sbom()
         expected = sbom.read_bytes()

@@ -13,7 +13,8 @@ import shutil
 from tempfile import TemporaryDirectory
 
 from build_windows_bundle import (read_lock, wheel_metadata, verify_application_source,
-                                  verify_dependency_closure, sha256)
+                                  verify_dependency_closure, sha256,
+                                  vendored_sources_from_wheel, verify_runtime_sbom)
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
 from create_delivery import _read_manifest, _manifest
@@ -67,12 +68,10 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
     sbom_path = HERE / ('windows-semantic-sbom.cdx.json' if previous.get('bundled_model') else 'windows-sbom.cdx.json')
     sbom_bytes = sbom_path.read_bytes()
     sbom = json.loads(sbom_bytes)
-    components = sbom.get('components', [])
-    if (sbom.get('bomFormat') != 'CycloneDX' or sbom.get('specVersion') != '1.5'
-            or len(components) != len(lock)
-            or {(item['name'], item['version']) for item in components}
-            != {(name, version) for name, (version, _) in lock.items()}):
-        raise ValueError('The current runtime SBOM differs from the dependency lock.')
+    vendor_files, reviewed_wheel_sha256 = vendored_sources_from_wheel(wheel)
+    if reviewed_wheel_sha256 != identity['wheel_sha256']:
+        raise ValueError('The application wheel changed after exact source review.')
+    verify_runtime_sbom(sbom, lock, vendor_files=vendor_files)
     audio_files = {}
     if audio is not None:
         audio = local(audio, exists=True)

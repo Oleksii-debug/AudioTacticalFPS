@@ -190,6 +190,169 @@ def reviewed_portable_launcher(native_launcher, build_evidence, native_probe, so
     return verifier.verify_launcher(native_launcher, build_evidence, native_probe, source_commit)
 
 
+VENDORED_NUM2WORDS_COMPONENT = json.loads(r'''{
+  "type": "library",
+  "bom-ref": "carr-vendored-num2words-sk@0.5.14",
+  "name": "num2words (vendored Slovak runtime closure)",
+  "version": "0.5.14",
+  "licenses": [
+    {
+      "expression": "LGPL-2.1-or-later"
+    }
+  ],
+  "externalReferences": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/savoirfairelinux/num2words/tree/6abe2c64714a38e41de23fe20fa319d0ad2fd845"
+    }
+  ],
+  "properties": [
+    {
+      "name": "carr:scope",
+      "value": "Unmodified lang_SK.py/base.py/utils.py/compat.py/currency.py; full COPYING and per-file Git identities in reader/_vendor_num2words/UPSTREAM.json; local inert initializer. No upstream eager initializer, CLI or docopt dependency."
+    }
+  ]
+}''')
+VENDORED_NUM2WORDS_FILES = {
+    "__init__.py": "4b98330587fd681df4bfa61767ba22e12816d2e2",
+    "UPSTREAM.json": "579a9b92808377a671e88d1c1c2f467468283f03",
+    "lang_SK.py": "35ece024f13cf90999d3ca4954229f1d4994a4ba",
+    "base.py": "243045ffc701ce2986f12f02101f2cbca92960a5",
+    "utils.py": "b5e4611be5fafe19324a00594b2648d75bd17bd8",
+    "compat.py": "321cd2e84e11335163afc5902b1b136196fee889",
+    "currency.py": "4982251ec4f8a15c286dab82388154daf26b706d",
+    "COPYING": "a7b7406f02f769167539316e5093cd58f609dce5"
+}
+VENDORED_NUM2WORDS_PREFIX = "carr_library/reader/_vendor_num2words/"
+VENDORED_SOURCE_LIMIT = 512 * 1024
+
+
+def _verify_vendored_sources(files):
+    """Validate the exact reviewed source closure, without importing its code."""
+    if not files:
+        return False
+    if set(files) != set(VENDORED_NUM2WORDS_FILES):
+        raise ValueError("vendored num2words source inventory differs from its reviewed closure")
+    for name, expected in VENDORED_NUM2WORDS_FILES.items():
+        raw = files[name]
+        if not isinstance(raw, bytes) or len(raw) > VENDORED_SOURCE_LIMIT:
+            raise ValueError("vendored num2words source exceeds its byte boundary")
+        identity = hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw,
+                                usedforsecurity=False).hexdigest()
+        if identity != expected:
+            raise ValueError("vendored num2words source identity differs: " + name)
+    return True
+
+
+def vendored_sources_from_wheel(wheel):
+    """Bind reviewed vendor bytes to the same wheel digest later sealed by the caller."""
+    wheel = regular(Path(wheel))
+    digest = sha256(wheel)
+    files = {}
+    with ZipFile(wheel) as archive:
+        for info in archive.infolist():
+            name = info.filename
+            if not name.casefold().startswith(VENDORED_NUM2WORDS_PREFIX.casefold()):
+                continue
+            if info.is_dir():
+                if name != VENDORED_NUM2WORDS_PREFIX:
+                    raise ValueError("unexpected vendored num2words archive directory")
+                continue
+            relative = name[len(VENDORED_NUM2WORDS_PREFIX):]
+            if (name != VENDORED_NUM2WORDS_PREFIX + relative
+                    or relative not in VENDORED_NUM2WORDS_FILES or relative in files
+                    or not 0 <= info.file_size <= VENDORED_SOURCE_LIMIT):
+                raise ValueError("unexpected or duplicate vendored num2words archive member")
+            with archive.open(info) as stream:
+                raw = stream.read(VENDORED_SOURCE_LIMIT + 1)
+            if len(raw) != info.file_size:
+                raise ValueError("vendored num2words archive member size differs")
+            files[relative] = raw
+    _verify_vendored_sources(files)
+    if sha256(wheel) != digest:
+        raise ValueError("application wheel changed during vendored source review")
+    return files, digest
+
+
+def vendored_sources_from_package(package_root):
+    """Read the installed source/notice closure; compiled caches are not source components."""
+    root = Path(package_root) / "reader" / "_vendor_num2words"
+    if not root.exists() and not root.is_symlink():
+        return {}
+    info = root.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or root.is_symlink()
+            or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        raise ValueError("expected the installed vendored num2words directory")
+    files = {}
+    for path in root.iterdir():
+        if path.name == "__pycache__" and path.is_dir() and not path.is_symlink():
+            continue
+        if path.name not in VENDORED_NUM2WORDS_FILES:
+            raise ValueError("unexpected installed vendored num2words source member")
+        regular(path)
+        with path.open("rb") as stream:
+            files[path.name] = stream.read(VENDORED_SOURCE_LIMIT + 1)
+    _verify_vendored_sources(files)
+    return files
+
+
+def runtime_sbom_components(bom, *, vendor_files):
+    """Separate exact wheel distributions from the one reviewed embedded source component."""
+    if (not isinstance(bom, dict) or bom.get("bomFormat") != "CycloneDX"
+            or bom.get("specVersion") != "1.5" or not isinstance(bom.get("components"), list)):
+        raise ValueError("runtime SBOM does not match the dependency lock format")
+    vendor_present = _verify_vendored_sources(vendor_files)
+    distributions, references, vendor_count = {}, set(), 0
+    for component in bom["components"]:
+        if not isinstance(component, dict):
+            raise ValueError("invalid runtime SBOM component")
+        reference = component.get("bom-ref")
+        if "bom-ref" in component:
+            if not isinstance(reference, str) or not reference or reference in references:
+                raise ValueError("duplicate runtime SBOM component or reference")
+            references.add(reference)
+        if reference == VENDORED_NUM2WORDS_COMPONENT["bom-ref"]:
+            if component != VENDORED_NUM2WORDS_COMPONENT:
+                raise ValueError("vendored num2words SBOM identity or notice differs")
+            vendor_count += 1
+            continue
+        name, version = component.get("name"), component.get("version")
+        if (not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name)
+                or not isinstance(version, str) or not version):
+            raise ValueError("invalid runtime SBOM distribution identity")
+        name = canonicalize_name(name)
+        if name in distributions:
+            raise ValueError("duplicate runtime SBOM component or reference")
+        distributions[name] = component
+    if vendor_count != int(vendor_present):
+        raise ValueError("runtime SBOM omits or invents the reviewed vendored num2words component")
+    if vendor_present:
+        metadata = bom.get("metadata")
+        root = metadata.get("component") if isinstance(metadata, dict) else None
+        root_ref = root.get("bom-ref") if isinstance(root, dict) else None
+        dependencies = bom.get("dependencies")
+        if not isinstance(root_ref, str) or not isinstance(dependencies, list):
+            raise ValueError("vendored num2words SBOM dependency binding is missing")
+        root_edges = [item for item in dependencies if isinstance(item, dict) and item.get("ref") == root_ref]
+        vendor_edges = [item for item in dependencies if isinstance(item, dict)
+                        and item.get("ref") == VENDORED_NUM2WORDS_COMPONENT["bom-ref"]]
+        if (len(root_edges) != 1 or len(vendor_edges) != 1
+                or not isinstance(root_edges[0].get("dependsOn"), list)
+                or root_edges[0]["dependsOn"].count(VENDORED_NUM2WORDS_COMPONENT["bom-ref"]) != 1
+                or vendor_edges[0].get("dependsOn", []) != []):
+            raise ValueError("vendored num2words SBOM dependency binding differs")
+    return distributions
+
+
+def verify_runtime_sbom(bom, pins, *, vendor_files):
+    components = runtime_sbom_components(bom, vendor_files=vendor_files)
+    actual = {(name, item["version"]) for name, item in components.items()}
+    expected = {(name, version) for name, (version, _hashes) in pins.items()}
+    if actual != expected or len(components) != len(pins):
+        raise ValueError("runtime SBOM does not match the dependency lock")
+    return components
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
                  ocr_source_archive=None, native_launcher=None, native_launcher_sha256=None,
@@ -226,16 +389,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         # Do not re-open a mutable input later in the build.
         sbom_bytes = sbom.read_bytes()
         bom = json.loads(sbom_bytes.decode("utf-8"))
-        expected = {(name, version) for name, (version, _hashes) in pins.items()}
-        actual = {(canonicalize_name(item["name"]), item["version"])
-                  for item in bom.get("components", [])}
-        if (bom.get("bomFormat") != "CycloneDX" or bom.get("specVersion") != "1.5"
-                or actual != expected):
-            raise ValueError("runtime SBOM does not match the dependency lock")
-        components = bom["components"]
-        refs = [item["bom-ref"] for item in components if "bom-ref" in item]
-        if len(components) != len(expected) or len(refs) != len(set(refs)):
-            raise ValueError("duplicate runtime SBOM component or reference")
+        vendor_files, sbom_wheel_sha256 = vendored_sources_from_wheel(wheel)
+        verify_runtime_sbom(bom, pins, vendor_files=vendor_files)
     selected = {}
     inventory = {}
     for path in sorted(wheelhouse.iterdir()):
@@ -267,6 +422,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     # the existing copy-time comparison must reject that replacement.
     inventory[wheel.name] = (source_evidence["wheel_sha256"]
                             if source_evidence is not None else sha256(wheel))
+    if sbom is not None and inventory[wheel.name] != sbom_wheel_sha256:
+        raise ValueError("application wheel changed after vendored SBOM review")
     if python_archive is not None:
         python_archive = regular(Path(python_archive))
         runtime = json.loads((HERE / "windows-python.json").read_text(encoding="utf-8"))
