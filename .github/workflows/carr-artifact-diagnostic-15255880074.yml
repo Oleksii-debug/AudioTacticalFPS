@@ -1,0 +1,117 @@
+name: CARR existing installer artifact diagnostic
+
+on:
+  push:
+    branches: ['carr/diagnostics-installer-artifact-15255880074']
+    paths: ['.github/workflows/carr-artifact-diagnostic-15255880074.yml']
+
+permissions:
+  actions: read
+
+jobs:
+  inspect-existing-artifact:
+    if: github.repository == 'Oleksii-debug/AudioTacticalFPS'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify the exact historical ZIP and print bounded uninstall diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B - <<'PY'
+          import hashlib, io, json, os, re, urllib.error, urllib.parse, urllib.request, zipfile
+          
+          repository = "Oleksii-debug/AudioTacticalFPS"
+          artifact_id = 15255880074
+          expected_run = 46112989710
+          expected_head = "325ccde85c7a8111465df4231ea97f573e4ec52d"
+          expected_size = 2604784
+          expected_sha = "5e6455966af31a4140ff1a576da2a1474faabaeb2e8455e98715541928aa0fd0"
+          api = "https://api.github.com/repos/" + repository + "/actions/artifacts/" + str(artifact_id)
+          token = os.environ.pop("GH_TOKEN")
+          headers = {"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json",
+                     "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "carr-existing-artifact-diagnostic"}
+          
+          with urllib.request.urlopen(urllib.request.Request(api, headers=headers), timeout=30) as response:
+              raw_metadata = response.read(65537)
+          if len(raw_metadata) > 65536:
+              raise RuntimeError("Artifact metadata exceeded the read bound.")
+          metadata = json.loads(raw_metadata)
+          run = metadata.get("workflow_run", {})
+          if (metadata.get("id") != artifact_id or metadata.get("expired") is not False
+                  or metadata.get("size_in_bytes") != expected_size
+                  or metadata.get("digest") != "sha256:" + expected_sha
+                  or run.get("id") != expected_run or run.get("head_sha") != expected_head):
+              raise RuntimeError("The selected artifact identity changed.")
+          
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, response, code, message, headers, new_url):
+                  return None
+          
+          opener = urllib.request.build_opener(NoRedirect())
+          try:
+              opener.open(urllib.request.Request(api + "/zip", headers=headers), timeout=30)
+          except urllib.error.HTTPError as error:
+              if error.code != 302:
+                  raise
+              location = error.headers.get("Location", "")
+              error.close()
+          else:
+              raise RuntimeError("Expected the GitHub artifact redirect.")
+          target = urllib.parse.urlsplit(location)
+          if target.scheme != "https" or not target.hostname or target.username or target.password:
+              raise RuntimeError("Artifact redirect was not an anonymous HTTPS download.")
+          # The GitHub API token is deliberately absent from the signed download request.
+          with urllib.request.urlopen(urllib.request.Request(location, headers={"User-Agent": headers["User-Agent"]}), timeout=60) as response:
+              payload = response.read(expected_size + 1)
+          if len(payload) != expected_size or hashlib.sha256(payload).hexdigest() != expected_sha:
+              raise RuntimeError("Downloaded artifact bytes do not match the recorded receipt.")
+          print(json.dumps({"artifact_id": artifact_id, "run_id": expected_run,
+                            "source_commit": expected_head, "bytes": len(payload), "sha256": expected_sha}))
+          
+          wanted = ("standard-installer/uninstall.log", "standard-installer/uninstall-process.log")
+          with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+              members = archive.infolist()
+              names = [member.filename for member in members]
+              if len(members) > 512 or len(set(names)) != len(names) or sum(map(len, names)) > 65536:
+                  raise RuntimeError("Artifact member inventory exceeded its bounds or repeated a name.")
+              for member in members:
+                  print("MEMBER " + json.dumps({"name": member.filename, "bytes": member.file_size,
+                                               "compressed_bytes": member.compress_size}, ensure_ascii=True))
+              for name in wanted:
+                  info = archive.getinfo(name)
+                  if info.is_dir() or info.file_size > 8 * 1024 * 1024:
+                      raise RuntimeError("Selected diagnostic log exceeded its bound.")
+                  with archive.open(info) as source:
+                      data = source.read(info.file_size + 1)
+                  if len(data) != info.file_size:
+                      raise RuntimeError("Selected log size changed.")
+                  encoding = "utf-16" if data.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+                  try:
+                      decoded = data.decode(encoding)
+                  except UnicodeDecodeError:
+                      encoding = "cp1252"
+                      decoded = data.decode(encoding, errors="backslashreplace")
+                  relevant = re.compile(r"error|fail|cannot|not\s+empty|in\s+use|locked|refused|denied|pending|restart", re.I)
+                  matches = []
+                  match_count = 0
+                  for number, line in enumerate(decoded.splitlines(), 1):
+                      if relevant.search(line):
+                          match_count += 1
+                          if len(matches) < 120:
+                              matches.append({"line": number, "text": line[:1024], "truncated": len(line) > 1024})
+                  print("MATCHES " + json.dumps({"name": name, "total": match_count,
+                                                "shown": len(matches), "truncated": match_count > len(matches)}))
+                  for match in matches:
+                      print("MATCH " + json.dumps(match, ensure_ascii=True))
+                  tail = decoded[-131072:]
+                  print("LOG " + json.dumps({"name": name, "bytes": len(data),
+                                            "sha256": hashlib.sha256(data).hexdigest(),
+                                            "encoding": encoding, "characters": len(decoded),
+                                            "shown_characters": len(tail), "truncated": len(tail) != len(decoded)}))
+                  for line in tail.splitlines():
+                      print("TEXT " + json.dumps(line, ensure_ascii=True))
+          print("PASS: existing artifact diagnostics printed; no installation or acceptance run was executed.")
+          PY
