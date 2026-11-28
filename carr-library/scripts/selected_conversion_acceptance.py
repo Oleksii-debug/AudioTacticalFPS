@@ -6,6 +6,7 @@ firewall rules for Python AND every native converter executable, and retains
 JSON/text/JUnit only. This script downloads nothing and changes no policy.
 """
 import argparse
+from contextlib import nullcontext
 from hashlib import sha256
 import importlib.util
 import json
@@ -54,7 +55,11 @@ def formats(args, fixture, report, children):
                 calibre=args.calibre, office=args.office, pandoc=args.pandoc,
                 state_root=library.root / 'state')
             started = time.monotonic()
-            result = service.extract(source, 'reading.txt')
+            observer = (fixture.observe_failed_xls(output, sha256(raw).hexdigest(), report, children)
+                if source.suffix == '.xls' and classification == 'synthetic native LibreOffice export'
+                else nullcontext())
+            with observer:
+                result = service.extract(source, 'reading.txt')
             text = read_result(result)
             if not all(needle in text for needle in needles):
                 raise AssertionError('Actual selected converter lost the required source text: ' + source.suffix)

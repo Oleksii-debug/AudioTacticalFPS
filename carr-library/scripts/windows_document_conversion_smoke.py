@@ -74,7 +74,7 @@ def main(argv=None):
     from carr_library.audio import windows_job
     from carr_library.progress_preferences import ProgressPreferences, ProgressPreferenceStore
     from carr_library.ui import document_conversion as view
-    from carr_library.ui import desktop_app, worker_lifetime, worker_cleanup
+    from carr_library.ui import desktop_app, worker_lifetime, worker_cleanup, speech_dialog
 
     checks, errors, origins, installed_paths, pressed = [], [], {}, {}, set()
     modal_loops, failure_control = [], {}
@@ -83,6 +83,7 @@ def main(argv=None):
     ui_thread = threading.get_ident()
     command_epoch = 0
     conversion_calls, import_calls, reader_finalizers, native_children, worker_calls = [], [], [], [], []
+    reader_handoffs = []
     timers = []
     hold_read = [False]
     read_entered, read_release = threading.Event(), threading.Event()
@@ -448,8 +449,15 @@ def main(argv=None):
             editor = control(reader, 'Reading copy (editable; Ctrl+S saves)')
             status = control(reader, 'Original and reading-copy status')
             if not state['seen']:
+                actual_text = editor.GetValue()
+                if actual_text != expected:
+                    try:
+                        observe_native(event='reader-value-mismatch', expected=text_shape(expected),
+                            actual=text_shape(actual_text), handoffs=reader_handoffs[-2:])
+                    except Exception:
+                        pass  # Preserve the exact comparison if diagnostics fail.
                 check('real existing reader receives the exact verified UTF-8 copy',
-                      editor.GetValue() == expected)
+                      actual_text == expected)
                 state['seen'] = True
             if not state['save']:
                 # Real Ctrl+S is needed before the existing reader's close guard.
@@ -552,6 +560,26 @@ def main(argv=None):
         except Exception:
             pass  # Optional diagnostics cannot change an actual call or result.
 
+    def text_shape(value):
+        if type(value) is not str:
+            return {'type': type(value).__name__[:64]}
+        return {'characters': len(value),
+                'utf8_sha256': sha256(value.encode('utf-8')).hexdigest(),
+                'cr': value.count('\r'), 'lf': value.count('\n'),
+                'crlf': value.count('\r\n'),
+                'leading_codepoints': [ord(char) for char in value[:16]],
+                'trailing_codepoints': [ord(char) for char in value[-16:]]}
+
+    def observed_reader(*values, **options):
+        try:
+            record = {'parent_is_host': bool(values and values[0] is frame),
+                      'text': text_shape(options.get('text'))}
+            reader_handoffs.append(record)
+            observe_native(event='reader-handoff-entered', **record)
+        except Exception:
+            pass  # Diagnostics must not change reader arguments or its outcome.
+        return actual_reader(*values, **options)
+
     def error_text(error):
         try:
             return type(error).__name__ + ': ' + str(error)[:4096]
@@ -602,6 +630,7 @@ def main(argv=None):
 
     actual_job, actual_extract = windows_job.JobProcess, ConversionService.extract
     actual_close_after = worker_cleanup.close_after_worker
+    actual_reader = speech_dialog.show_speech_reader
     actual_verified_read = selected_module.read_result
     actual_import = None
 
@@ -787,6 +816,7 @@ def main(argv=None):
                  patch.object(ConversionService, 'extract', new=observed_extract), \
                  patch.object(library, 'import_files', side_effect=observed_import), \
                  patch.object(worker_cleanup, 'close_after_worker', side_effect=observed_reader_cleanup), \
+                 patch.object(speech_dialog, 'show_speech_reader', new=observed_reader), \
                  patch.object(selected_module, 'read_result', side_effect=observed_verified_read):
                 try:
                     wx.CallAfter(run_steps)

@@ -7,6 +7,7 @@ qualify Pandoc, native controls, or a Windows desktop.
 import ast
 from concurrent.futures import Future
 from io import StringIO
+from hashlib import sha256
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,7 +21,8 @@ def helpers(**overrides):
     path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_document_conversion_smoke.py'
     tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
     main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
-    names = ('observe_native', 'error_text', 'observed_host_job', 'cleanup_check', 'observed_extract')
+    names = ('observe_native', 'error_text', 'observed_host_job', 'cleanup_check', 'observed_extract',
+             'text_shape', 'observed_reader')
     functions = []
     for name in names:
         node, = [item for item in main.body if isinstance(item, ast.FunctionDef) and item.name == name]
@@ -31,6 +33,7 @@ def helpers(**overrides):
         'traceback': traceback, 'worker_calls': [], 'conversion_calls': [],
         'extraction_state': {'started': 0, 'returned': 0, 'error': None},
         'ui_thread': threading.get_ident(), 'errors': [],
+        'sha256': sha256, 'reader_handoffs': [], 'frame': object(),
     }
     env.update(overrides)
     module = ast.Module(body=functions, type_ignores=[])
@@ -171,3 +174,45 @@ def test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop
     assert checked == [('remaining native owner', True)]
     assert env['errors'][0] == primary and len(env['errors']) == 2
     assert 'actual owner inspection failed' in env['errors'][1]
+
+
+@pytest.mark.parametrize('fails', [False, True])
+def test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome(fails):
+    parent, guard, result = object(), object(), object()
+    text = 'Verified \u03a9\r\n\r\ncopy\n'
+    failure = RuntimeError('original reader failure')
+    calls = []
+    def actual(*values, **options):
+        calls.append((values, options))
+        if fails:
+            raise failure
+        return result
+    env, stderr = helpers(frame=parent, actual_reader=actual)
+    options = {'text': text, 'title': 'Exact original title',
+               'source_guard': guard, 'recovery_slot': 'converted-reading-copy'}
+    if fails:
+        with pytest.raises(RuntimeError) as caught:
+            env['observed_reader'](parent, **options)
+        assert caught.value is failure
+    else:
+        assert env['observed_reader'](parent, **options) is result
+    assert calls == [((parent,), options)] and calls[0][1]['text'] is text
+    assert calls[0][1]['source_guard'] is guard
+    assert env['reader_handoffs'] == [{'parent_is_host': True, 'text': env['text_shape'](text)}]
+    assert 'reader-handoff-entered' in stderr.getvalue()
+
+
+def test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings():
+    raw = 'Exact \u03a9\r\n' + 'x' * 10000 + '\r\n'
+    native = raw.replace('\r\n', '\n')
+    env, stderr = helpers()
+    first, second = env['text_shape'](raw), env['text_shape'](native)
+    assert first['characters'] == len(raw) and second['characters'] == len(native)
+    assert first['utf8_sha256'] == sha256(raw.encode('utf-8')).hexdigest()
+    assert first['utf8_sha256'] != second['utf8_sha256']
+    assert (first['cr'], first['lf'], first['crlf']) == (2, 2, 2)
+    assert (second['cr'], second['lf'], second['crlf']) == (0, 2, 0)
+    assert all(len(row[field]) == 16 for row in (first, second)
+               for field in ('leading_codepoints', 'trailing_codepoints'))
+    assert len(json.dumps(first, ensure_ascii=True)) < 1000
+    assert stderr.getvalue() == ''  # A shape query alone emits no report or result.

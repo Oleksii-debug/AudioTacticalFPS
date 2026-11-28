@@ -507,3 +507,180 @@ selected_adapters.selected_records = checked_native_records
     assert sorted(path.name for path in result.path.parent.iterdir()) == [
         'original.rtf', 'provenance.json', 'reading.txt']
     clean(case)
+
+
+def _xls_structure_support():
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / 'scripts/selected_conversion_fixture_support.py'
+    spec = importlib.util.spec_from_file_location('_test_xls_structure_support', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _xls_structure_stage(tmp_path, styles=None):
+    from zipfile import ZipFile, ZIP_DEFLATED
+    output = tmp_path / 'reading'
+    work = output / '.pending-conversion-fixture' / 'work'
+    (work / 'office-output').mkdir(parents=True)
+    source = bytes.fromhex('d0cf11e0a1b11ae1') + b'Synthetic structural-observer bytes only.'
+    (work / 'source.xls').write_bytes(source)
+    if styles is None:
+        styles = b'''<?xml version="1.0"?>
+<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+ xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+ xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+ <office:master-styles><style:master-page style:name="PRIVATE_MASTER">
+  <style:header-left style:display="false"><style:region-center>
+   <text:p text:style-name="PRIVATE_STYLE"><text:span>PRIVATE_DOCUMENT_TEXT</text:span></text:p>
+  </style:region-center></style:header-left>
+  <style:footer-first style:display="false"><text:p/></style:footer-first>
+ </style:master-page></office:master-styles>
+</office:document-styles>'''
+    archive = work / 'office-output/source.ods'
+    with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as zipped:
+        zipped.writestr('styles.xml', styles)
+    return output, work, sha256(source).hexdigest()
+
+
+def test_native_xls_diagnostic_reads_exact_zip_but_retains_only_bounded_structure(tmp_path):
+    helper = _xls_structure_support()
+    output, work, digest = _xls_structure_stage(tmp_path)
+    paths = (work / 'source.xls', work / 'office-output/source.ods')
+    before = {path: path.read_bytes() for path in paths}
+    report = helper.failed_xls_structure(work, digest)
+    encoded = json.dumps(report, sort_keys=True)
+    assert report['status'] == 'CAPTURED'
+    assert report['source_sha256'] == digest
+    assert report['intermediate_sha256'] == sha256(before[paths[1]]).hexdigest()
+    assert report['document_text_retained'] is False and report['input_or_intermediate_exported'] is False
+    assert len(report['disabled_headers']) == 2
+    header = report['disabled_headers'][0]
+    assert header['path'] == ['office:document-styles', 'office:master-styles',
+                              'style:master-page', 'style:header-left']
+    assert [node['tag'] for node in header['nodes']] == [
+        'style:header-left', 'style:region-center', 'text:p', 'text:span']
+    assert header['nodes'][0]['attributes'] == [{'name': 'style:display',
+        'characters': 5, 'non_whitespace': True, 'fixed_value': 'false'}]
+    assert header['nodes'][-1]['text_non_whitespace'] is True
+    assert report['disabled_headers'][1]['nodes'][-1]['text_non_whitespace'] is False
+    assert all(value not in encoded for value in ('PRIVATE_MASTER', 'PRIVATE_STYLE', 'PRIVATE_DOCUMENT_TEXT'))
+    assert len(encoded.encode('utf-8')) < 128 * 1024
+    assert {path: path.read_bytes() for path in paths} == before
+
+
+@pytest.mark.parametrize('damage', ['source-hash', 'duplicate-styles', 'entity', 'size', 'cancel'])
+def test_native_xls_diagnostic_refuses_changed_unbounded_active_or_cancelled_input(tmp_path, damage):
+    from zipfile import ZipFile
+    from defusedxml.common import DefusedXmlException
+    helper = _xls_structure_support()
+    styles = None
+    if damage == 'entity':
+        styles = b'<!DOCTYPE root [<!ENTITY payload "PRIVATE_ENTITY">]><root>&payload;</root>'
+    elif damage == 'size':
+        styles = b'x' * (512 * 1024 + 1)
+    output, work, digest = _xls_structure_stage(tmp_path, styles)
+    archive = work / 'office-output/source.ods'
+    if damage == 'duplicate-styles':
+        with pytest.warns(UserWarning, match='Duplicate name'):
+            with ZipFile(archive, 'a') as zipped:
+                zipped.writestr('styles.xml', b'<duplicate/>')
+    if damage == 'source-hash':
+        (work / 'source.xls').write_bytes(b'Changed copied source')
+    before = {path: path.read_bytes() for path in (work / 'source.xls', archive)}
+    calls = []
+    def check():
+        calls.append(True)
+        return damage == 'cancel'
+    error = InterruptedError if damage == 'cancel' else DefusedXmlException if damage == 'entity' else ValueError
+    with pytest.raises(error):
+        helper.failed_xls_structure(work, digest, check=check)
+    assert calls and (damage != 'cancel' or len(calls) == 1)
+    assert {path: path.read_bytes() for path in before} == before
+
+
+def test_native_xls_observer_preserves_exact_success_arguments_and_restores_runner(tmp_path, monkeypatch):
+    helper = _xls_structure_support()
+    output, work, digest = _xls_structure_stage(tmp_path)
+    result, calls, report, children = object(), [], {}, []
+    callback = lambda: False
+    environment, budget, command = {'synthetic': 'same'}, object(), ['fixed', 'actual']
+    def runner(*arguments, **options):
+        calls.append((arguments, options))
+        return result
+    monkeypatch.setattr(selected, 'run_process', runner)
+    with helper.observe_failed_xls(output, digest, report, children):
+        actual = selected.run_process(command, cwd=work, env=environment, cancelled=callback,
+            budget=budget, watch=(work,), owned_windows_job=True)
+    assert actual is result and selected.run_process is runner
+    assert calls == [((command,), dict(cwd=work, env=environment, cancelled=callback,
+        budget=budget, watch=(work,), owned_windows_job=True))]
+    assert report == {} and children == []
+
+
+def test_native_xls_observer_keeps_original_failure_after_quiescent_exact_intermediate(tmp_path, monkeypatch):
+    from carr_library.audio.models import AudioError
+    helper = _xls_structure_support()
+    output, work, digest = _xls_structure_stage(tmp_path)
+    report, children = {}, []
+    original = AudioError('Original native refusal')
+    def runner(*arguments, **options):
+        children.append(SimpleNamespace(poll=lambda: 1, _job=None))
+        raise original
+    monkeypatch.setattr(selected, 'run_process', runner)
+    with pytest.raises(AudioError) as captured:
+        with helper.observe_failed_xls(output, digest, report, children):
+            selected.run_process(['unchanged'], cwd=work, cancelled=lambda: False)
+    assert captured.value is original and selected.run_process is runner
+    assert report['failed_xls_structure']['status'] == 'CAPTURED'
+    assert report['failed_xls_structure']['source_sha256'] == digest
+    assert (work / 'office-output/source.ods').is_file()
+    report.clear()
+    with pytest.raises(AudioError) as cancelled:
+        with helper.observe_failed_xls(output, digest, report, children):
+            selected.run_process(['unchanged'], cwd=work, cancelled=lambda: True)
+    assert cancelled.value is original and selected.run_process is runner
+    assert report['failed_xls_structure'] == {'status': 'NOT_CAPTURED', 'error_type': 'InterruptedError'}
+
+
+def test_native_xls_observer_never_reads_intermediate_while_child_owner_is_live(tmp_path, monkeypatch):
+    from carr_library.audio.models import AudioError
+    helper = _xls_structure_support()
+    output, work, digest = _xls_structure_stage(tmp_path)
+    report, children, reads = {}, [], []
+    original = AudioError('Original error with retained native owner')
+    def runner(*arguments, **options):
+        children.append(SimpleNamespace(poll=lambda: None, _job=object()))
+        raise original
+    def forbidden(*arguments, **options):
+        reads.append(True)
+        raise AssertionError('Diagnostic read preceded real ownership settlement')
+    monkeypatch.setattr(selected, 'run_process', runner)
+    monkeypatch.setattr(helper, 'failed_xls_structure', forbidden)
+    with pytest.raises(AudioError) as captured:
+        with helper.observe_failed_xls(output, digest, report, children):
+            selected.run_process(['unchanged'], cwd=work, cancelled=lambda: False)
+    assert captured.value is original and selected.run_process is runner and reads == []
+    assert report['failed_xls_structure'] == {'status': 'NOT_CAPTURED',
+        'reason': 'ordinary_error_and_quiescent_owner_required'}
+
+
+def test_native_xls_diagnostic_failure_never_replaces_or_reveals_original_failure(tmp_path, monkeypatch):
+    from carr_library.audio.models import AudioError
+    helper = _xls_structure_support()
+    output, work, digest = _xls_structure_stage(tmp_path)
+    report, children = {}, []
+    original = AudioError('Original native refusal')
+    def runner(*arguments, **options):
+        children.append(SimpleNamespace(poll=lambda: 1, _job=None))
+        raise original
+    def unavailable(*arguments, **options):
+        raise ValueError('PRIVATE_DIAGNOSTIC_DETAIL')
+    monkeypatch.setattr(selected, 'run_process', runner)
+    monkeypatch.setattr(helper, 'failed_xls_structure', unavailable)
+    with pytest.raises(AudioError) as captured:
+        with helper.observe_failed_xls(output, digest, report, children):
+            selected.run_process(['unchanged'], cwd=work, cancelled=lambda: False)
+    assert captured.value is original and selected.run_process is runner
+    assert report['failed_xls_structure'] == {'status': 'NOT_CAPTURED', 'error_type': 'ValueError'}
+    assert 'PRIVATE_DIAGNOSTIC_DETAIL' not in json.dumps(report)

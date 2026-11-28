@@ -18,14 +18,14 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
-    "tests/conversion/test_selected_conversion.py": 29,
+    "tests/conversion/test_selected_conversion.py": 39,
     "tests/conversion/test_calibre_admission.py": 49,
     "tests/conversion/test_office_admission.py": 19,
     "tests/ui/test_document_conversion.py": 20,
     "tests/extract/test_document_formats_xml.py": 114,
     "tests/audio/test_audio_process.py": 23,
     "tests/audio/test_live_metadata_retry.py": 12,
-    "tests/ui/test_native_conversion_diagnostics.py": 10,
+    "tests/ui/test_native_conversion_diagnostics.py": 13,
 }
 PINS = {
     "src/carr_library/conversion/_selected_files.py": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4",
@@ -38,7 +38,7 @@ PINS = {
     "src/carr_library/conversion/worker.py": "722d3c7b61717890dc242d8113d0617714d53a67",
     "src/carr_library/conversion/service.py": "85fab268d21295106f3f05794cb68768167f3cd9",
     "src/carr_library/ui/document_conversion.py": "83a48872bd07a0e4611ee68b1a59155fe4468239",
-    "tests/conversion/test_selected_conversion.py": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
+    "tests/conversion/test_selected_conversion.py": "16b19effb90f86ebc7b2b595de9441b69e28d767",
     "tests/conversion/test_calibre_admission.py": "bdea0804017e54a38d6036ca137feb778fea2e97",
     "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
     "tests/ui/test_document_conversion.py": "e1430ee06f64fd55e472c9cda884bb433e2d570d",
@@ -47,18 +47,19 @@ PINS = {
     "tests/extract/test_document_formats_xml.py": "fbf155467e7217eb1870167849241756690d01cb",
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
-    "scripts/selected_conversion_fixture_support.py": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b",
-    "scripts/selected_conversion_acceptance.py": "b4c60707e1554df514cd954afa89c0c7dc099713",
+    "scripts/selected_conversion_fixture_support.py": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7",
+    "scripts/selected_conversion_acceptance.py": "12ad3b13bbd452890961110b5852b05a7ef010aa",
     "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
     "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
     "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
     "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
     "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
     "tests/audio/test_live_metadata_retry.py": "9d97fca2633815e61a55c16f51a06484944f6fbc",
-    "tests/ui/test_native_conversion_diagnostics.py": "dc523d350e151eaa6c6d94a63752abf38a37a497",
-    "scripts/windows_document_conversion_smoke.py": "4b67819886d4324a616bce8dff13251fec2370f0",
+    "tests/ui/test_native_conversion_diagnostics.py": "77bd5b3d02e0f1070b8798c2b944d89cd24c2d70",
+    "scripts/windows_document_conversion_smoke.py": "2c3a928d748e337d48d2a2b9e8345a6105360fa2",
 }
-COMPANIONS = ("scripts/windows_document_conversion_smoke.py",)
+COMPANIONS = ("scripts/windows_document_conversion_smoke.py",
+              "scripts/selected_conversion_fixture_support.py")
 MODULES = (
     "carr_library.conversion._selected_files",
     "carr_library.conversion.calibre",
