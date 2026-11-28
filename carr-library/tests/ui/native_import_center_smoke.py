@@ -85,11 +85,96 @@ def main():
             assert 'before closing' in dialog.status.GetValue()
             wx.CallLater(50, poll, imported)
 
+        def visible_in(parent, child):
+            origin = parent.ClientToScreen((0, 0))
+            client = parent.GetClientSize()
+            rect = child.GetScreenRect()
+            return (origin.x <= rect.x and origin.y <= rect.y
+                    and rect.x + rect.width <= origin.x + client.width
+                    and rect.y + rect.height <= origin.y + client.height)
+
+        def layout_snapshot(phase):
+            dialog = state['dialog']
+            print('IMPORT_CENTER_VIEWPORT: ' + json.dumps({
+                'phase': phase,
+                'window': list(dialog.GetSize()),
+                'client': list(dialog.GetClientSize()),
+                'outer_minimum': list(dialog.GetSizer().GetMinSize()),
+                'viewport': list(dialog.body.GetClientSize()),
+                'content_minimum': list(dialog.body.GetSizer().GetMinSize()),
+                'virtual': list(dialog.body.GetVirtualSize()),
+            }), flush=True)
+
+        def await_focus(control, callback):
+            try:
+                if time.monotonic() - started > 90:
+                    raise AssertionError('Import Center native acceptance exceeded its deadline.')
+                if wx.Window.FindFocus() is control:
+                    callback()
+                else:
+                    wx.CallLater(50, await_focus, control, callback)
+            except BaseException:
+                fail()
+
+        def start_plan():
+            dialog = state['dialog']
+            dialog.plan((sources,))
+            assert dialog.busy and dialog.cancel.IsEnabled()
+            wx.CallLater(50, poll, planned)
+
+        def top_visible():
+            dialog = state['dialog']
+            assert visible_in(dialog.body, dialog.collection)
+            assert dialog.body.GetViewStart()[1] < state['bottom_scroll']
+            dialog.SetSize(state['original_size'])
+            dialog.Layout()
+            wx.CallLater(50, poll, start_plan)
+
+        def footer_focused():
+            dialog = state['dialog']
+            assert visible_in(dialog, dialog.status)
+            dialog.collection.SetFocus()
+            wx.CallLater(50, await_focus, dialog.collection, top_visible)
+
+        def bottom_visible():
+            dialog = state['dialog']
+            assert visible_in(dialog.body, state['last_action'])
+            state['bottom_scroll'] = dialog.body.GetViewStart()[1]
+            assert state['bottom_scroll'] > 0
+            assert visible_in(dialog, dialog.cancel)
+            assert visible_in(dialog, state['close'])
+            wx.UIActionSimulator().Char(wx.WXK_TAB)
+            wx.CallLater(50, await_focus, dialog.status, footer_focused)
+
+        def minimum_layout():
+            dialog = state['dialog']
+            layout_snapshot('minimum')
+            assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
+            assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+            assert isinstance(dialog.body, wx.ScrolledWindow)
+            assert dialog.body.GetParent() is dialog
+            assert dialog.body.GetName() == 'Import options and queued files'
+            assert dialog.body.GetVirtualSize().height >= dialog.body.GetSizer().GetMinSize().height
+            assert dialog.body.GetVirtualSize().height > dialog.body.GetClientSize().height
+            assert all(rate > 0 for rate in dialog.body.GetScrollPixelsPerUnit())
+            close = wx.Window.FindWindowById(wx.ID_CANCEL, dialog)
+            assert close is not None and close.GetParent() is dialog
+            state['close'] = close
+            for control in (dialog.status, dialog.cancel, close):
+                assert control.GetParent() is dialog and visible_in(dialog, control)
+            action, = [child for child in dialog.body.GetChildren()
+                       if isinstance(child, wx.Button) and child.GetLabel() == 'Save re&port...']
+            assert action.IsEnabled() and action.AcceptsFocusFromKeyboard()
+            state['last_action'] = action
+            action.SetFocus()
+            wx.CallLater(50, await_focus, action, bottom_visible)
+
         def begin():
             try:
                 dialog, = [window for window in wx.GetTopLevelWindows()
                            if window.GetTitle() == 'Import Center']
                 state['dialog'] = dialog
+                layout_snapshot('default')
                 assert dialog.batches.GetName() == 'Saved import batches'
                 assert dialog.rows.GetName() == 'Files and import status'
                 assert dialog.details.GetName() == 'Selected file details'
@@ -97,9 +182,12 @@ def main():
                 assert not dialog.cancel.IsEnabled()
                 assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
                 assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
-                dialog.plan((sources,))
-                assert dialog.busy and dialog.cancel.IsEnabled()
-                wx.CallLater(50, poll, planned)
+                state['original_size'] = tuple(dialog.GetSize())
+                dialog.SetSize(dialog.GetMinSize())
+                dialog.Layout()
+                # begin was queued before ScrolledPanel's normal deferred setup.
+                # Return to the same modal loop before checking its viewport.
+                wx.CallLater(50, poll, minimum_layout)
             except BaseException:
                 fail()
 

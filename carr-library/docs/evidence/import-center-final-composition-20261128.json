@@ -1,0 +1,161 @@
+{
+  "schema": "carr-import-center-final-composition/1",
+  "status": "SOURCE_COMPOSED_NOT_EXECUTED",
+  "baseline": {
+    "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
+    "tracked_files": 1816
+  },
+  "components": {
+    "import_center_layout": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+    "observed_failed_native": "52da38fd6d4cc498a54dfcd1fb579bf919ed5477",
+    "observed_basic_translation": "479c036feb6e8ab3c4fc7c45a5b1c6105e932799",
+    "observed_audio_inspection": "6a709ac97f498bc0e8f48785834d26afb8a68d07"
+  },
+  "changed_paths_excluding_this_manifest": [
+    {
+      "path": "carr-library/docs/evidence/2701-native-main-observed-failure-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "9e2325e0797e79522643425fcf425dff75be74cc"
+    },
+    {
+      "path": "carr-library/docs/evidence/2701-native-main-observed-failure-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "8c15e204117db8caab33a519335d798a9cb0cd2c"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-2701-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "e532eab2dab6f4ec0788f111d0841d940cd27e5a"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-2701-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "176dc68c226e2d7baf48911ed5cad72ab1dc8292"
+    },
+    {
+      "path": "carr-library/docs/evidence/completed-audio-inspection-helper-2701-observed-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "3dcda8660900c12cda3d7de312df24b4b15c1c99"
+    },
+    {
+      "path": "carr-library/docs/evidence/completed-audio-inspection-helper-2701-observed-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "d02dd2daef5c5d6e81e7330f4cb0495913170689"
+    },
+    {
+      "path": "carr-library/docs/evidence/import-center-scroll-layout-repair-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "d6b802aaeb7dd66b08063713c40c9f9eecd9c3c6"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "operation": "modify",
+      "previous_git_blob": "ed92cc3f23310167da755b343513ec1168e0a93f",
+      "selected_content_sha256": "2c43ce39bc328e4e2f9319e5024ac08ef42376a60575060803f5947e31ebabaa"
+    },
+    {
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "operation": "modify",
+      "previous_git_blob": "6963e5fec62dc3dac59c7b39a0dce021d98e85db",
+      "selected_content_sha256": "12d3c3208fcea36b3f8b0598ac3e7f5c81c1cd9d3cc99094fa863829d5f6e663"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "operation": "modify",
+      "previous_git_blob": "064ee4bb6c4db0001d64760910c777237f18596f",
+      "selected_git_blob": "f757c8748ef273938992a1518f327012616d5ec1"
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "operation": "modify",
+      "previous_git_blob": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+      "selected_git_blob": "40ba40266b5b8d2954563c60d965c61985b8257b"
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "operation": "modify",
+      "previous_git_blob": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+      "selected_git_blob": "baded3dff24d2974e9ba8bd6633b79a6d5e50985"
+    }
+  ],
+  "composition_record_path": "carr-library/docs/evidence/import-center-final-composition-20261128.json",
+  "expected_tree": {
+    "tracked_files": 1824,
+    "modified_paths": 5,
+    "added_paths": 8,
+    "deleted_paths": 0
+  },
+  "preservation": {
+    "application_package_files": 425,
+    "application_changed": 1,
+    "application_unchanged": 424,
+    "test_tree_files": 628,
+    "native_probes_changed": 2,
+    "regression_test_filename_files": 569,
+    "regression_test_filename_files_changed": 0,
+    "baseline_workflows": 49,
+    "baseline_workflows_changed": 0,
+    "reader_source_pins": 21,
+    "reader_source_pins_changed": 0,
+    "requirement_objects": 24,
+    "requirement_objects_changed": 0,
+    "all_prior_matrix_properties_retained": true,
+    "readiness_update": "Pure insertion; exact inverse reconstructs the baseline.",
+    "import_center_action_methods": "Exact unchanged prefix before show_import_center.",
+    "native_import_original_asserts": 23,
+    "native_import_added_asserts": 18,
+    "document_formats_named_checks": 27,
+    "document_formats_named_counter": "UNCHANGED",
+    "regression_test_filename_scope": "carr-library/tests/**/test_*.py",
+    "other_test_filename_files_outside_tests": 7,
+    "other_test_filename_files_changed": 0
+  },
+  "observed_parent": {
+    "native_focus": "FAILURE",
+    "failed_focused_step": 28,
+    "equivalent_main_step": 30,
+    "search_continuation_checks_passed": 21,
+    "numeric_failed_geometry": "NOT_RECORDED",
+    "later_focused_steps_29_through_47": "SKIPPED",
+    "basic_translation_focus": "PASS",
+    "basic_fields": 13,
+    "translation_source": 324,
+    "translation_installed": 324,
+    "translation_native": 8,
+    "inspection_focus": "PASS",
+    "inspection_source": 274,
+    "inspection_installed": 274,
+    "inspection_native": 29,
+    "full_main": "NOT_LAUNCHED",
+    "independent_review_evidence_head": "f0e15752504c6a8f0bb8f16001049a8c9dd9e597"
+  },
+  "next_acceptance": {
+    "execution": "NOT_RUN",
+    "focused": [
+      "Exact existing main native blocks with before/after source and installed payload binding",
+      "Basic plus complete local translation source324/installed324/native8",
+      "Completed-audio inspection/helper source274/installed274/native29"
+    ],
+    "required_after_focused": [
+      "Full exact-source main and five auxiliary jobs",
+      "Actual successful-main artifact binding and independent inert reading",
+      "Fresh canonical/protection/ancestry read, expected-head fast-forward and readback"
+    ],
+    "no_historical_success_transfer": true
+  },
+  "full_platform_status": "NOT_QUALIFIED",
+  "limits": [
+    "Source review does not establish successor execution.",
+    "The original native Import Center geometry and durable workflow assertions remain; the new minimum-window/focus checks require actual Windows execution.",
+    "All existing main and focused workflows and complete regression populations remain mandatory.",
+    "Real engine/model, language, acoustic, hardware, manual accessibility and distribution acceptance remain separate."
+  ]
+}

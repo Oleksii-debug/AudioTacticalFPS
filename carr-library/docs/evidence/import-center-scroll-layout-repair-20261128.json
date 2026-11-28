@@ -1,0 +1,136 @@
+{
+  "schema": "carr-import-center-scroll-layout-repair/1",
+  "status": "SOURCE_REPAIR_NOT_EXECUTED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent": {
+    "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "tree": "f7e60bc176f53e810a046640394766fc91209ad7"
+  },
+  "observed_failure": {
+    "run_id": 46128793730,
+    "job_id": 140929198970,
+    "attempt": 1,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46128793730",
+    "head_sha": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "job_started_at": "2026-11-28T09:10:20Z",
+    "job_completed_at": "2026-11-28T09:16:13Z",
+    "focused_step": 28,
+    "main_equivalent_step": 30,
+    "name": "Exercise native Import Center and durable batch workflow",
+    "conclusion": "failure",
+    "trace": "tests/ui/native_import_center_smoke.py:99 in begin: assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height",
+    "boundary": "The preceding width assertion succeeded. The height assertion failed before plan/import/cancellation/reopen checks. The log does not report numeric dimensions.",
+    "decoded_log": {
+      "decoded_utf8_bytes": 574150,
+      "decoded_characters": 574148,
+      "sha256": "a627987d1107996eeea3c632bc6d0564ebaf2d830aa5ad0566b9cafa647fedac"
+    },
+    "artifact": {
+      "id": 15257371340,
+      "bytes": 245720,
+      "sha256": "ca19658b0b97e9dd1492083b1640a225f9878bf2b6fbad29b7079cd3a13cc1d6",
+      "independent_zip_read": "NOT_RUN"
+    },
+    "scope": "This repair record cites the actual failing boundary. The separately authored complete observed-run proof owns other passing and skipped producers; no aggregate qualification is claimed here."
+  },
+  "diagnosis": {
+    "classification": "product layout defect",
+    "source_evidence": "ImportCenter puts introduction, options, streamed-text row, batch/file lists, details, actions, status and footer into one non-scrolling outer vertical sizer. Its default 920×760 and minimum 800×650 window sizes do not adapt to the current minimum content height.",
+    "uncertainty": "The observed log establishes the minimum-height/client-height inequality; it does not establish exact pixel dimensions or a measured font/DPI cause."
+  },
+  "change": {
+    "product": "Use the existing dialog owner with a lazily imported wx.lib.scrolledpanel.ScrolledPanel. Reparent only the body controls, set its viewport minimum to 240×200, and retain both scroll directions. The current status and Cancel/Close controls remain direct dialog children outside that body.",
+    "focus": "Pinned ScrolledPanel automatic child-focus scrolling remains enabled. scrollToTop=False prevents its deferred initialization from resetting the selected-control viewport. Existing default/minimum dialog sizes and initial focus selection remain.",
+    "ownership": "All ImportCenterActions methods and the complete source prefix before show_import_center are byte-identical. Existing library/workspace binding, worker/cancellation, batch state, control names/labels/handlers, close veto and final destruction are unchanged.",
+    "native_regression": "Retain every original assertion and the full plan/exclude/import/verified quote/reopen/cancel-close-veto workflow. After returning to the real modal loop for normal deferred setup, inspect the existing minimum window size, non-clipped footer, actual virtual overflow, focus-scroll to the last body action, actual Tab into the footer status, and focus-scroll back to the collection control. Restore the original size before the original import flow.",
+    "regression_limits": "All native phases use the existing 90-second deadline and 50 ms callbacks. Two bounded IMPORT_CENTER_VIEWPORT diagnostic records expose actual dimensions; the original four-field final PASS JSON is byte-identical.",
+    "dependent_fixture": "Only native_document_formats_smoke.py had an immediate-child Start queued files lookup among current audited native producers. It now walks at most 256 owned descendants while retaining visited wrappers, requires exactly one matching button and its current top-level owner, then runs the unchanged native button event and every original named check."
+  },
+  "pinned_primary_source": {
+    "repository": "wxWidgets/Phoenix",
+    "ref": "wxPython-4.2.4",
+    "path": "wx/lib/scrolledpanel.py",
+    "git_blob": "f960ba51100ad992d0e4253eab064241bfbb060a",
+    "url": "https://github.com/wxWidgets/Phoenix/blob/wxPython-4.2.4/wx/lib/scrolledpanel.py",
+    "contracts": [
+      "SetupScrolling sets virtual size from the sizer and schedules _SetupAfter.",
+      "OnChildFocus invokes ScrollChildIntoView when scrollIntoView is enabled.",
+      "Both scroll rates remain positive; the viewport minimum does not replace the content's virtual extent."
+    ]
+  },
+  "source_bindings": [
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "before_git_blob": "064ee4bb6c4db0001d64760910c777237f18596f",
+      "before_sha256": "d1824a4e4c8b30bb52c53dd7c630187eea652135d0d9cfeecbc9036ae5439f29",
+      "after_sha256": "62ded099ed5c712f009447a0981407b721b323838d7e611106a1a8a643af7966"
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "before_git_blob": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+      "before_sha256": "1b08b1b0b02df57746204b1edee4730e616a660b44a7796cb089b77608400c98",
+      "after_sha256": "657ed4a78d17e5b46b078972c0b6aaaea2e528924ee79f58aabb5792d552b462"
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "before_git_blob": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+      "before_sha256": "a24f415796b7d1a6d971fb26cae948df6a7f1332939a22737d68ca2b255e2bce",
+      "after_sha256": "5827314af7add0cbf816f9957ea47fdc9bf68fd7f8271f725b849bee8b256ca6"
+    }
+  ],
+  "dependent_native_audit": {
+    "current_head": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "inspected_producers": 88,
+    "selection": "Current .py tests named native_*, probe_*, *_native.py or *_smoke.py, and scripts whose filename contains native or smoke.",
+    "inventory_sha256": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+    "matching_files": [
+      {
+        "path": "carr-library/tests/ui/native_import_center_smoke.py",
+        "before_git_blob": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+        "disposition": "Original direct attribute contract retained; adds native minimum-window/focus assertions."
+      },
+      {
+        "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+        "before_git_blob": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+        "disposition": "Bounded descendant lookup for the same Start button; unrelated help-dialog lookup unchanged."
+      },
+      {
+        "path": "carr-library/tests/ui/probe_import_epub_continuation_native.py",
+        "git_blob": "471b1136f3116f1cd9da25d7fc45e80aa3863179",
+        "disposition": "Already descends through current dialog children; unchanged."
+      },
+      {
+        "path": "carr-library/tests/ui/probe_streamed_import_native.py",
+        "git_blob": "f9d6ffe9f6603a5e41d7b7b2c54a28c51ebf3981",
+        "disposition": "Uses retained field attributes and actual Tab; Close remains a direct footer child; unchanged."
+      }
+    ]
+  },
+  "static_checks": {
+    "productInverse": true,
+    "allOriginalNativeAssertionsRetained": true,
+    "oldAssertions": 23,
+    "newAssertions": 41,
+    "missing": [],
+    "formatsCheckCounterUnchanged": true,
+    "formatsLabels": 27,
+    "nativePassBlockUnchanged": true,
+    "nativeDeadline90Unchanged": true,
+    "productPrefixUnchanged": true
+  },
+  "population": {
+    "original_native_import_assert_statements": 23,
+    "appended_native_import_assert_statements": 18,
+    "document_formats_named_check_occurrences": 27,
+    "document_formats_named_check_counter": "UNCHANGED",
+    "test_function_populations": "UNCHANGED; all test_*.py files remain untouched",
+    "main_workflow_oracles_runners_reader21pins": "UNCHANGED"
+  },
+  "qualification": {
+    "source_review": "PENDING_INDEPENDENT_REVIEW",
+    "portable_execution": "NOT_RUN",
+    "native_execution": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "no_transfer": "The actual 2701 failure remains failure. This source repair has no runtime PASS; prior focused and auxiliary results remain bound to their own source commits."
+  }
+}

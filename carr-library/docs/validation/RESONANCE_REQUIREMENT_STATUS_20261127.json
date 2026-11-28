@@ -1239,5 +1239,73 @@
     "composed_candidate_execution": "NOT_RUN",
     "full_platform_status": "NOT_QUALIFIED",
     "no_historical_success_transfer": true
+  },
+  "post_2701_import_center_layout": {
+    "baseline_commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+    "baseline_tree": "f7e60bc176f53e810a046640394766fc91209ad7",
+    "actual_native": {
+      "run_id": 46128793730,
+      "job_id": 140929198970,
+      "attempt": 1,
+      "status": "FAILURE",
+      "failed_focused_step": 28,
+      "equivalent_main_step": 30,
+      "failure": "The existing native min-sizer-height <= client-height assertion failed.",
+      "numeric_geometry": "NOT_RECORDED",
+      "search_continuation_checks": 21,
+      "search_continuation": "PASS",
+      "later_focused_steps_29_through_47": "SKIPPED",
+      "before_payload_binding": "PASS",
+      "after_payload_binding": "SKIPPED",
+      "proof": "evidence/2701-native-main-observed-failure-20261128.json"
+    },
+    "separate_focused_2701": {
+      "translation": {
+        "run_id": 46128793566,
+        "job_id": 140929198153,
+        "status": "PASS",
+        "basic_fields": 13,
+        "basic_diagnostics": 32,
+        "source_cases": 324,
+        "installed_cases": 324,
+        "native_flows": 8,
+        "proof": "evidence/basic-and-local-translation-focused-observed-2701-20261128.json"
+      },
+      "inspection": {
+        "run_id": 46128795407,
+        "job_id": 140929203423,
+        "status": "PASS",
+        "source_cases": 274,
+        "installed_cases": 274,
+        "native_checks": 29,
+        "proof": "evidence/completed-audio-inspection-helper-2701-observed-20261128.json"
+      },
+      "scope": "These results belong only to 2701. No full main was launched for that failed source."
+    },
+    "source_correction": {
+      "component": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+      "product_path": "src/carr_library/ui/import_center.py",
+      "scope": "Bounded ScrolledPanel body with both axes and automatic focus scrolling; status/Cancel/Close stay visible outside it. All handlers and state ownership are retained.",
+      "application_files_changed": 1,
+      "native_probe_files_changed": 2,
+      "original_import_assertions_retained": 23,
+      "added_geometry_focus_assertions": 18,
+      "document_format_named_checks_retained": 27,
+      "probe_deadline_seconds": 90,
+      "regression_test_files_changed": 0,
+      "workflow_files_changed": 0,
+      "reader_pins_changed": 0,
+      "proof": "evidence/import-center-scroll-layout-repair-20261128.json",
+      "execution": "NOT_RUN"
+    },
+    "composed_candidate_execution": "NOT_RUN",
+    "required_after_source_review": [
+      "Three exact-source focused gates",
+      "Complete main and five auxiliary jobs",
+      "Independent successful-main artifact read",
+      "Fresh canonical/protection/ancestry checks and expected-head integration"
+    ],
+    "full_platform_status": "NOT_QUALIFIED",
+    "no_historical_success_transfer": true
   }
 }

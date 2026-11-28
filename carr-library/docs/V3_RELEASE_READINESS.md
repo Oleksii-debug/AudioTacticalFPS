@@ -1,5 +1,43 @@
 # Resonance — current integration and release evidence
 
+## 2026-11-28: Import Center viewport and native reachability
+
+The exact 2701 [early native run](evidence/2701-native-main-observed-failure-20261128.md)
+passed the repaired 21-check search-copy flow, then failed focused step 28
+(main step 30). The unchanged Import Center geometry assertion found that the
+minimum content height exceeded its actual client height. Numeric dimensions
+were not emitted. The planned import/reopen flow and later focused steps 29–47
+were not reached; no full main was launched for that failed candidate.
+
+Its separate [Basic/local translation run](evidence/basic-and-local-translation-focused-observed-2701-20261128.md)
+passed the strict Basic receipt, 324 source and 324 installed cases, and eight
+further native flows. Its [completed-audio/helper run](evidence/completed-audio-inspection-helper-2701-observed-20261128.md)
+passed 274 cases in each mode and 29 native checks. These results remain bound
+to 2701 and do not qualify this new product change.
+
+The [layout correction](evidence/import-center-scroll-layout-repair-20261128.json)
+keeps the existing dialog and handlers, places the body in a bounded scrollable
+viewport, and keeps status, Cancel and Close outside it. Both scroll directions
+and automatic focus scrolling remain available. All 23 original native import
+assertions and the complete plan/exclude/import/verified-copy/reopen flow remain.
+Eighteen further assertions exercise the existing minimum window size, footer
+visibility, body overflow, focus scrolling and actual Tab into the footer.
+The dependent document-format probe finds the same Start button through a
+bounded descendant walk; all 27 original named checks remain.
+
+Only one of the 425 application package files and two native probe files change.
+All 569 test_*.py files under tests/, all 49 existing workflows, their oracles and
+the 21 independent-reader source pins are unchanged. The
+[composition record](evidence/import-center-final-composition-20261128.json)
+records the exact source delta and preserves all prior requirement objects.
+
+This composition is SOURCE_REVIEWED / NOT_EXECUTED at authoring. It requires its
+own three focused outcomes, complete main and auxiliary jobs, actual successful
+main-artifact inspection, then canonical integration. Full-platform owner-engine,
+model/language/acoustic, hardware, manual-accessibility and distribution
+acceptance remains NOT_QUALIFIED.
+
+
 ## 2026-11-28: native search completion and earlier native qualification
 
 The exact 7c991 main completed with all 451 source suites and 11,589 passing case
