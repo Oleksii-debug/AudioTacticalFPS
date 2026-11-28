@@ -605,6 +605,7 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
     layout.Add(status, 0, wx.ALL | wx.EXPAND, 8)
     footer = wx.BoxSizer(wx.HORIZONTAL)
     run = wx.Button(dialog, wx.ID_OK, '&Run command')
+    run.SetDefault()
     footer.Add(run, 0, wx.ALL, 4)
     footer.Add(wx.Button(dialog, wx.ID_CANCEL, 'Cancel'), 0, wx.ALL, 4)
     layout.Add(footer, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
