@@ -1,0 +1,128 @@
+{
+  "schema": "carr-exact-capture-observation/1",
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "source_run": 46088683366,
+  "source_job": 140804190798,
+  "source_attempt": 1,
+  "source_workflow": ".github/workflows/carr-windows.yml",
+  "source_branch": "carr/ci-endpoint-evaluation-20261127",
+  "capture_verdict": "FAILED",
+  "diagnostic_verdict": "DIAGNOSED_NOT_CAPTURE_ACCEPTANCE",
+  "reader": {
+    "commit": "d573d7dfdb98dbca603bb8ae545cfe37aeaa41c2",
+    "tree": "b9953846fc0de687c145124a0185905c63e025ac",
+    "run": 46089903500,
+    "job": 140808144257,
+    "conclusion": "success",
+    "scope": "Read-only immutable uploaded public receipts; no application execution, extract or import",
+    "decoded_log_utf8": {
+      "sha256": "1ec3ee1d78de960e2e2db9c3f8e818208a5aae5784eb0b9d2370067db31796c0",
+      "bytes": 171073
+    },
+    "limits": {
+      "members": 512,
+      "member_bytes": 4194304,
+      "expanded_bytes": 33554432,
+      "output_bytes": 2097152
+    }
+  },
+  "artifacts": [
+    {
+      "id": 15240107836,
+      "name": "carr-windows-recording-17c581015fc1ca6f3294f4cce1fe894f33a843cd-1",
+      "bytes": 16757,
+      "sha256": "ff0a323ab294ad5d8704fd1f407068cf028c7a2c38d6c72c49e552e364be6caa",
+      "run": 46088683366,
+      "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd"
+    },
+    {
+      "id": 15239898079,
+      "name": "carr-windows-audio-endpoint-17c581015fc1ca6f3294f4cce1fe894f33a843cd-1",
+      "bytes": 3946,
+      "sha256": "4d3bc8ecf4bc28d2918ed1c926374c0efb648031162980489fbef952316c9077",
+      "run": 46088683366,
+      "head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd"
+    }
+  ],
+  "members": [
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/audio-endpoint.json",
+      "original_member": "audio-endpoint.json",
+      "artifact": 15239898079,
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "encoding": "utf-8-sig",
+      "provenance": "Complete original ZIP member bytes reassembled from ordered base64 chunks and independently SHA256/length checked; UTF-8 roundtrip checked, original BOM/CRLF preserved."
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/audio-services.json",
+      "original_member": "audio-services.json",
+      "artifact": 15239898079,
+      "bytes": 376,
+      "sha256": "3a84805ffb2e84c86b949aa710abc3d3dbbecccf9d7961022013dfc747785149",
+      "encoding": "utf-8-sig",
+      "provenance": "Complete original ZIP member bytes reassembled from ordered base64 chunks and independently SHA256/length checked; UTF-8 roundtrip checked, original BOM/CRLF preserved."
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/endpoint-evaluation.json",
+      "original_member": "endpoint-evaluation.json",
+      "artifact": 15239898079,
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "encoding": "utf-8-sig",
+      "provenance": "Complete original ZIP member bytes reassembled from ordered base64 chunks and independently SHA256/length checked; UTF-8 roundtrip checked, original BOM/CRLF preserved."
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/native-recording-device.json",
+      "original_member": "native-recording-device.json",
+      "artifact": 15240107836,
+      "bytes": 2773,
+      "sha256": "9a1e68b0753aa06c9e3b9a265f3cc1e93ef06b0909718a26ed6aa594909dfe40",
+      "encoding": "utf-8-sig",
+      "provenance": "Complete original ZIP member bytes reassembled from ordered base64 chunks and independently SHA256/length checked; UTF-8 roundtrip checked, original BOM/CRLF preserved."
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/recording-access-diagnostic.json",
+      "original_member": "recording-access-diagnostic.json",
+      "artifact": 15240107836,
+      "bytes": 10216,
+      "sha256": "bdf39afa4a8f1457298bc668634940795c8ebdef7ee6f2e52a0a7b387579edd2",
+      "encoding": "utf-8-sig",
+      "provenance": "Complete original ZIP member bytes reassembled from ordered base64 chunks and independently SHA256/length checked; UTF-8 roundtrip checked, original BOM/CRLF preserved."
+    }
+  ],
+  "observations": {
+    "selected_device": {
+      "id": "fbc1b2fbc27506ea2ae37465ba5224aac1d15d796dda5d3d1b7ac49fa03a756d",
+      "name": "CABLE Output (VB-Audio Virtual Cable)",
+      "alternative": "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{2A9A5F25-5E86-4606-A988-2B3CC25A5D69}"
+    },
+    "original_capture_digest": "9a1e68b0753aa06c9e3b9a265f3cc1e93ef06b0909718a26ed6aa594909dfe40",
+    "original_capture_status": "FAILED",
+    "native_child_exit": 0,
+    "wasapi_endpoint": "{0.0.1.00000000}.{2a9a5f25-5e86-4606-a988-2b3cc25a5d69}",
+    "endpoint_unchanged": true,
+    "state_before": 1,
+    "state_after": 1,
+    "data_flow": 1,
+    "wasapi_initialize_shared_hresult": "0x80070005",
+    "stream_initialized": false,
+    "mme_format_query_results": [
+      0
+    ],
+    "mme_open_without_buffers_results": [
+      1
+    ],
+    "current_user_microphone_value": "Deny",
+    "current_user_desktop_value": "Allow",
+    "machine_microphone_value": "Allow",
+    "policy_key_scope": "Only the ten fixed keys listed in recording-access-diagnostic.json were read; absence at them is not an exhaustive policy audit."
+  },
+  "limits": [
+    "Actual native input initialization returned access denied on this same selected endpoint; the observed consent value is supporting context, not proof that it is the sole possible policy cause.",
+    "Read-only diagnostic did not start capture, request sample buffers, switch device, alter formats, consent, policy, services or driver state.",
+    "Original DirectShow capture remains FAILED; driver/format query readiness and DIAGNOSED do not become capture PASS.",
+    "No physical microphone, human listening, human Windows 11/NVDA or complete application qualification is asserted.",
+    "The six ordinary same-head workflows and complete Windows aggregate remain required for delivery-wheel eligibility."
+  ]
+}

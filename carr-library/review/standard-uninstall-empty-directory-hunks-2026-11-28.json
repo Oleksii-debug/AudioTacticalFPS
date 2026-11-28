@@ -1,0 +1,272 @@
+{
+  "schema": "carr-standard-uninstall-exact-hunks/1",
+  "base_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "test_preimage_note": "The accepted explicit UTF-8 fixture successor f221a163 is retained in full; it supersedes the published 17c581 test blob 7ec96e632a1b547789c3356988c89dce5f565ffd.",
+  "files": [
+    {
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "before": "9723721a2f5e7bf3963ee40f441bbf8a0940736a",
+      "after": "a030d415cf7326e937880f150d9667104828cf60",
+      "hunks": [
+        {
+          "oldLine": 32,
+          "newLine": 32,
+          "contextBefore": [
+            "UninstallLogMode=append",
+            "DisableDirPage=no",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "[Dirs]",
+            "Name: \"{app}\\maintenance\"; Flags: uninsalwaysuninstall",
+            ""
+          ],
+          "contextAfter": [
+            "[Files]",
+            "@@FILES@@",
+            "Source: \"{srcexe}\"; DestDir: \"{app}\\maintenance\"; DestName: \"ResonanceSetup.exe\"; Flags: external ignoreversion; Check: CacheNeeded"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "before": "9d595e91c994a7d7b208bdaeb83af08541236dc5",
+      "after": "f963493b87df786336d3af38902ad88dacbbbd43",
+      "hunks": [
+        {
+          "oldLine": 14,
+          "newLine": 14,
+          "contextBefore": [
+            "import json",
+            "import os",
+            "from pathlib import Path"
+          ],
+          "removed": [],
+          "added": [
+            "import stat"
+          ],
+          "contextAfter": [
+            "import subprocess",
+            "import time",
+            ""
+          ]
+        },
+        {
+          "oldLine": 43,
+          "newLine": 44,
+          "contextBefore": [
+            "                ('InstallLocation', 'UninstallString', 'ModifyPath', 'NoModify')}",
+            "",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "def record_uninstall_state(root, report, record):",
+            "    \"\"\"Record fixed metadata only; the existing fresh acceptance checks decide.\"\"\"",
+            "    def error_state(error):",
+            "        return dict(type=type(error).__name__, errno=error.errno,",
+            "                    winerror=getattr(error, 'winerror', None))",
+            "",
+            "    try:",
+            "        registration = dict(present=registry() is not None)",
+            "    except OSError as error:",
+            "        registration = dict(present=None, error=error_state(error))",
+            "",
+            "    paths = {}",
+            "    for name in ('app', 'maintenance'):",
+            "        try:",
+            "            info = (root / name).lstat()",
+            "        except FileNotFoundError:",
+            "            paths[name] = dict(present=False)",
+            "        except OSError as error:",
+            "            paths[name] = dict(present=None, error=error_state(error))",
+            "        else:",
+            "            paths[name] = dict(present=True,",
+            "                directory=stat.S_ISDIR(info.st_mode),",
+            "                regular_file=stat.S_ISREG(info.st_mode),",
+            "                symbolic_link=stat.S_ISLNK(info.st_mode),",
+            "                reparse_point=bool(getattr(info, 'st_file_attributes', 0)",
+            "                    & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)))",
+            "",
+            "    result = dict(schema=1, observation='after_owned_uninstall',",
+            "        source_commit=record['source_commit'], setup_sha256=record['setup_sha256'],",
+            "        bundle_manifest_sha256=record['bundle_manifest_sha256'],",
+            "        registration=registration, paths=paths)",
+            "    with (report / 'uninstall-poststate.json').open('x', encoding='utf-8', newline='\\n') as stream:",
+            "        json.dump(result, stream, indent=2)",
+            "        stream.write('\\n')",
+            "    return result",
+            "",
+            ""
+          ],
+          "contextAfter": [
+            "def active_job_processes(child):",
+            "    \"\"\"Observe the existing job while Inno finishes its natural second phase.\"\"\"",
+            "    job = getattr(child, '_carr_job', None)"
+          ]
+        },
+        {
+          "oldLine": 360,
+          "newLine": 398,
+          "contextBefore": [
+            "    owned_process([root / 'unins000.exe', *common,",
+            "                   '/LOG=' + str(report / 'uninstall.log')], cwd=work,",
+            "                  log=report / 'uninstall-process.log', timeout=300)"
+          ],
+          "removed": [],
+          "added": [
+            "    record_uninstall_state(root, report, record)"
+          ],
+          "contextAfter": [
+            "    if registry() is not None or (root / 'app').exists() or (root / 'maintenance').exists():",
+            "        raise RuntimeError('Normal uninstall left program files or registration.')",
+            "    if set(path.name for path in root.iterdir()) != {'managed-install.ini', 'installation.lease'}:"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before": "f221a1634d9a295d3fbe9cc45454e71b45350478",
+      "after": "271e2aecc684a2b0408005fd369a298de476850b",
+      "hunks": [
+        {
+          "oldLine": 483,
+          "newLine": 483,
+          "contextBefore": [
+            "    assert 'CloseApplications=no' in script",
+            "    assert 'Repair Resonance' in script and 'ModifyPath' in script",
+            "    assert '[UninstallDelete]' not in script and 'filesandordirs' not in script"
+          ],
+          "removed": [],
+          "added": [
+            "    assert '[Dirs]\\nName: \"{app}\\\\maintenance\"; Flags: uninsalwaysuninstall\\n' in script"
+          ],
+          "contextAfter": [
+            "    assert ' --lease-owner ' in script",
+            "    assert script.count('Flags: dontcopy') == len(json.loads((root / 'bundle-manifest.json').read_bytes())['files']) + 1 + len(service.HELPERS)",
+            "    assert 'runtime\\\\python.exe' in script and 'CopyVerified' in script"
+          ]
+        },
+        {
+          "oldLine": 1383,
+          "newLine": 1384,
+          "contextBefore": [
+            "    assert not output.exists()",
+            "    assert not (root / 'ResearchLibrary.exe').exists()",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "@pytest.fixture",
+            "def uninstall_poststate_fixture(tmp_path):",
+            "    root = tmp_path / 'synthetic installed directory'",
+            "    report = tmp_path / 'native receipts'",
+            "    root.mkdir()",
+            "    report.mkdir()",
+            "    identity = dict(source_commit='a' * 40, setup_sha256='b' * 64,",
+            "                    bundle_manifest_sha256='c' * 64)",
+            "    return root, report, identity",
+            "",
+            "",
+            "@pytest.mark.parametrize('kind', ['absent', 'directory', 'file'])",
+            "def test_native_uninstall_poststate_records_only_fixed_metadata(",
+            "    uninstall_poststate_fixture, monkeypatch, kind",
+            "):",
+            "    root, report, identity = uninstall_poststate_fixture",
+            "    (root / 'app').mkdir()",
+            "    private = root / 'app/private-user-sentinel.txt'",
+            "    private.write_bytes(b'do not inspect or alter this content')",
+            "    maintenance = root / 'maintenance'",
+            "    if kind == 'directory':",
+            "        maintenance.mkdir()",
+            "    elif kind == 'file':",
+            "        maintenance.write_bytes(b'foreign replacement must remain untouched')",
+            "    original_lstat, observed, registry_calls = Path.lstat, [], []",
+            "",
+            "    def fixed_lstat(path):",
+            "        assert path in (root / 'app', maintenance)",
+            "        observed.append(path.name)",
+            "        return original_lstat(path)",
+            "",
+            "    def registration():",
+            "        registry_calls.append(True)",
+            "        return {'InstallLocation': 'PRIVATE VALUE MUST NOT ENTER THE REPORT'}",
+            "",
+            "    def forbidden(*args, **kwargs):",
+            "        pytest.fail('Post-uninstall diagnostics read content or traversed directories.')",
+            "",
+            "    with monkeypatch.context() as guard:",
+            "        guard.setattr(probe, 'registry', registration)",
+            "        guard.setattr(Path, 'lstat', fixed_lstat)",
+            "        for method in ('read_bytes', 'read_text', 'iterdir', 'rglob', 'glob'):",
+            "            guard.setattr(Path, method, forbidden)",
+            "        result = probe.record_uninstall_state(root, report, identity)",
+            "",
+            "    raw = (report / 'uninstall-poststate.json').read_bytes()",
+            "    assert json.loads(raw) == result",
+            "    assert len(raw) < 2048 and b'PRIVATE VALUE' not in raw",
+            "    assert result['observation'] == 'after_owned_uninstall'",
+            "    assert all(result[key] == value for key, value in identity.items())",
+            "    assert result['registration'] == {'present': True}",
+            "    assert result['paths']['app'] == dict(present=True, directory=True,",
+            "        regular_file=False, symbolic_link=False, reparse_point=False)",
+            "    expected = {'present': False} if kind == 'absent' else dict(",
+            "        present=True, directory=kind == 'directory', regular_file=kind == 'file',",
+            "        symbolic_link=False, reparse_point=False)",
+            "    assert result['paths']['maintenance'] == expected",
+            "    assert observed == ['app', 'maintenance'] and registry_calls == [True]",
+            "    assert private.read_bytes() == b'do not inspect or alter this content'",
+            "    if kind == 'file':",
+            "        assert maintenance.read_bytes() == b'foreign replacement must remain untouched'",
+            "",
+            "",
+            "def test_native_uninstall_poststate_keeps_incomplete_registry_and_stat_errors_distinct(",
+            "    uninstall_poststate_fixture, monkeypatch",
+            "):",
+            "    root, report, identity = uninstall_poststate_fixture",
+            "    original_lstat = Path.lstat",
+            "",
+            "    def registration():",
+            "        raise FileNotFoundError(errno.ENOENT, 'Private required registry value is missing')",
+            "",
+            "    def denied(path):",
+            "        if path == root / 'maintenance':",
+            "            raise PermissionError(errno.EACCES, 'Private path must not enter the report')",
+            "        return original_lstat(path)",
+            "",
+            "    monkeypatch.setattr(probe, 'registry', registration)",
+            "    monkeypatch.setattr(Path, 'lstat', denied)",
+            "    result = probe.record_uninstall_state(root, report, identity)",
+            "    assert result['registration'] == dict(present=None, error=dict(",
+            "        type='FileNotFoundError', errno=errno.ENOENT, winerror=None))",
+            "    assert result['paths']['app'] == {'present': False}",
+            "    assert result['paths']['maintenance'] == dict(present=None, error=dict(",
+            "        type='PermissionError', errno=errno.EACCES, winerror=None))",
+            "    raw = (report / 'uninstall-poststate.json').read_bytes()",
+            "    assert json.loads(raw) == result and b'Private' not in raw",
+            "    # An observation error is not converted into an absent installation.",
+            "    with pytest.raises(FileNotFoundError, match='required registry value'):",
+            "        probe.registry()",
+            "",
+            "",
+            "def test_native_uninstall_poststate_does_not_replace_an_existing_receipt(",
+            "    uninstall_poststate_fixture, monkeypatch",
+            "):",
+            "    root, report, identity = uninstall_poststate_fixture",
+            "    receipt = report / 'uninstall-poststate.json'",
+            "    receipt.write_bytes(b'keep the previous receipt exactly')",
+            "    monkeypatch.setattr(probe, 'registry', lambda: None)",
+            "    with pytest.raises(FileExistsError):",
+            "        probe.record_uninstall_state(root, report, identity)",
+            "    assert receipt.read_bytes() == b'keep the previous receipt exactly'",
+            ""
+          ]
+        }
+      ]
+    }
+  ]
+}

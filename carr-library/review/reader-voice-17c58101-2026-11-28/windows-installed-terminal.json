@@ -1,0 +1,227 @@
+{
+  "schema": "resonance-reader-voice-mode-evidence/1",
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "source_tree": "f0f24e27326e4eac0d9658c69e3b68039b837368",
+  "run_id": 46088687275,
+  "job_id": 140804204192,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46088687275/job/140804204192",
+  "runner": "windows-2022",
+  "mode": "installed",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T00:45:13Z",
+  "completed_at": "2026-11-28T00:47:20Z",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "wxpython": "4.2.4",
+  "installed_contracts": {
+    "required_modules": 11,
+    "passed": 301,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 63.3,
+    "strict_junit_pass": 301,
+    "wall_step_seconds": 64
+  },
+  "complete_package_identity": {
+    "python_modules": 379,
+    "status": "PASS",
+    "receipt_file": "windows-installed-package-identity.json",
+    "wheel": {
+      "payload_files": 489,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 394,
+      "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+      "source_tree": "f0f24e27326e4eac0d9658c69e3b68039b837368",
+      "wheel_sha256": "f7b260bdb077f0e1fca3b816cc89516a4d6c7e38f38c5c57ead101b345156a57"
+    }
+  },
+  "native": {
+    "status": "PASS",
+    "passed_checks": 80,
+    "checks": [
+      "opening preferences is silent and does not write",
+      "native control: Add or remove favorite",
+      "native Space down",
+      "native Space up",
+      "native favorite persists",
+      "native control: Save default for language",
+      "native Space down",
+      "native Space up",
+      "native exact-language default persists",
+      "native control: Voice profile name",
+      "native control: Profile synthesis rate, minus ten to ten",
+      "native control: Profile volume, zero to one hundred",
+      "native control: Save voice profile",
+      "native Space down",
+      "native Space up",
+      "native control: Saved voice profiles",
+      "native control: Use voice profile",
+      "native Space down",
+      "native Space up",
+      "native profile applies exact declared controls",
+      "native control: Use voice profile",
+      "native Space down",
+      "native Space up",
+      "native control: Voice preference status",
+      "fresh inventory refuses a removed voice without substitution",
+      "native control: Save default for language",
+      "native Space down",
+      "native Space up",
+      "native control: Voice preference status",
+      "changed library refuses native save",
+      "native control: Use voice profile",
+      "native Space down",
+      "native Space up",
+      "review is pending before close",
+      "native control: Close voice preferences",
+      "native Space down",
+      "native Space up",
+      "closed modal has no pending worker callback",
+      "close suppresses the queued selection",
+      "fresh review stays off the GUI thread",
+      "every fresh registry closes while the reader registry remains borrowed",
+      "native synthesis options own the current modal",
+      "native control: Use native voice pitch",
+      "native Space down",
+      "native Space up",
+      "native control: Read punctuation aloud",
+      "native Space down",
+      "native Space up",
+      "native control: Cancel native voice options",
+      "native Space down",
+      "native Space up",
+      "native Cancel retains default synthesis options",
+      "native synthesis options own the current modal",
+      "native control: Use native voice pitch",
+      "native Space down",
+      "native Space up",
+      "native control: Read punctuation aloud",
+      "native Space down",
+      "native Space up",
+      "native control: Apply native voice options",
+      "native Space down",
+      "native Space up",
+      "native Apply captures pitch and punctuation without automatic synthesis",
+      "native-selected settings reach the actual registry on the existing worker",
+      "native options survive passive exact draft recovery",
+      "incompatible current voice preserves and gates the requested settings",
+      "unsupported native request refuses without fallback or worker entry",
+      "native synthesis options own the current modal",
+      "unsupported native controls and Apply are disabled",
+      "native control: Reset native voice options",
+      "native Space down",
+      "native Space up",
+      "explicit native default reset makes Apply available",
+      "native control: Apply native voice options",
+      "native Space down",
+      "native Space up",
+      "native reset retains rate and volume without starting another render",
+      "native synthesis options own the current modal",
+      "direct native modal destruction cannot publish pending options",
+      "all native settings operations leave the shared worker idle"
+    ],
+    "probe_blob": "6519abd0f992d90ee596139bdad7c9595612986d",
+    "first_78_checks_match_predecessor": true,
+    "scope": "Actual native controls, current registry/worker, synthetic voice metadata and PCM, and passive draft recovery. No physical hearing, real-model quality, or human NVDA qualification is asserted.",
+    "wall_step_seconds": 1
+  },
+  "decoded_job_log_utf8": {
+    "sha256": "841232b9b1275c2f8fecf54918399f8e671d2a48c5c7192cb6f08d829f437c3e",
+    "bytes": 263427,
+    "scope": "Exact decoded completed job log, not original artifact bytes."
+  },
+  "artifact_from_completed_log": {
+    "id": 15240269718,
+    "bytes": 30490,
+    "reported_sha256": "8d4f61c099d53305860376fa3899be9fcb7eaf83a1a22e51370f77b157266471",
+    "original_artifact_independently_downloaded": false
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require source reader synthesis state and backup contracts",
+      "number": 7,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "number": 8,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require actual Windows voice option widgets in this mode",
+      "number": 9,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve public synthetic receipts and exact source evidence",
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "number": 19,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "number": 20,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "number": 21,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "limits": {
+    "native_aggregate_pass": true,
+    "human_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "real_model_quality": "NOT_RUN",
+    "successor_results_transferred": false
+  }
+}

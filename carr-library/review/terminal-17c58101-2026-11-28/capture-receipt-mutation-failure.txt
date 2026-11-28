@@ -1,0 +1,47 @@
+_________ test_changed_original_receipt_is_refused_before_native_open __________
+
+prepared = (namespace(ffmpeg='/tmp/pytest-of-runner/pytest-0/test_changed_original_receipt_0/reviewed-ffmpeg.exe', capture_report...ble)', alternative='@device_cm_exact_reviewed_input'), [PosixPath('/tmp/carr-input-open-diagnostic-blnsehov/library')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f364bce1510>
+
+    def test_changed_original_receipt_is_refused_before_native_open(prepared, monkeypatch):
+        args, selected, roots = prepared
+        class Changed:
+            def __init__(self, root, **kwargs):
+                roots.append(Path(root))
+            def devices(self):
+                value = failed_capture(selected)
+                value['selected_device'] = {'id': '0' * 64, 'name': selected.name}
+                atomic_json(args.capture_report, value)
+                return (selected,)
+        monkeypatch.setattr('carr_library.audio.recording.RecordingService', Changed)
+        monkeypatch.setattr('carr_library.audio.process.run_process',
+                            lambda *a, **k: pytest.fail('Changed receipt reached native open.'))
+        with pytest.raises(ValueError, match='changed before native'):
+>           diagnostic.run(args, diagnostic._new_report())
+
+tests/audio/test_capture_access_diagnostic.py:280: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/windows_capture_access_diagnostic.py:143: in run
+    device = _select(service.devices(), selected)
+                     ^^^^^^^^^^^^^^^^^
+tests/audio/test_capture_access_diagnostic.py:274: in devices
+    atomic_json(args.capture_report, value)
+/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py:234: in atomic_json
+    return atomic_bytes(path, encode(value), replace=replace)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/tmp/pytest-of-runner/pytest-0/test_changed_original_receipt_0/failed-capture.json')
+raw = b'{"actual_directshow_capture":false,"actual_mci_output":false,"selected_device":{"id":"0000000000000000000000000000000000000000000000000000000000000000","name":"CABLE Output (VB-Audio Virtual Cable)"},"status":"FAILED"}\n'
+
+    def atomic_bytes(path, raw, *, replace=False):
+        path = local_path(path)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        local_path(path.parent, exists=True)
+        if os.path.lexists(path):
+            regular(path)
+            if not replace:
+>               raise FileExistsError(path)
+E               FileExistsError: /tmp/pytest-of-runner/pytest-0/test_changed_original_receipt_0/failed-capture.json
+
+/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py:213: FileExistsError

@@ -10,6 +10,140 @@ Canonical `carr-library` was last checked at
 The existing composition is extended through its current services and persisted
 formats; the canonical service layout is not copied over competing implementations.
 
+## Receiving gate corrections after 17c58101 — 2026-11-28
+
+This successor extends exact source `17c581015fc1ca6f3294f4cce1fe894f33a843cd`.
+It incorporates six bounded corrections from completed, retained failures.
+The three-path native-launcher preflight parent is
+`a9843de563eebe95d1f26fcc56b7215de0e78ab8`; its two compilers have completed
+native checks separately. The full receiving composition is **INTEGRATED /
+NOT_RUN** at composition; no parent PASS is transferred to it.
+
+- The actual MSVC link failed because optimization lowered the newly added
+  managed-parent path copy to an unavailable `memcpy`. The existing launcher
+  deliberately links without a C runtime. The copy now uses the same explicit
+  volatile-store idiom already present in this launcher; its span, bounds,
+  terminator, managed-root checks, file sharing and installation lease lifetime
+  remain identical. Compiler/linker flags, PE validation and native assertions
+  are unchanged. [The exact completed error and inverse review](../review/msvc-launcher-copy-2026-11-28.json)
+  remain separate from the required new MSVC/Zig/native execution.
+- Two standard-installer test fixtures failed under Windows CP1252 before
+  exercising Repair or Uninstall. Their existing Unicode writes and the
+  corresponding text read now specify UTF-8. All 144 cases, original Unicode
+  contents, unchanged-byte assertions and production paths remain.
+- Four newly added deadline cases failed before child launch because their
+  output budget was below the existing minimum. The fixture now admits the
+  actual 4,096-byte minimum and writes an actual 8,192-byte oversized output.
+  All four fresh-guard denial assertions, all 21 deadline cases, the 1,024-byte
+  log limit and the five-second execution allowance remain.
+  [Completed failure and exact two-line correction](../review/transcription-17c58101-2026-11-28/deadline-fixture-correction.json)
+  preserve the failed receiving result.
+
+- The selected-input diagnostic test now explicitly replaces its existing
+  receipt only at the deliberate mutation fixture. Previously its atomic write
+  refused the existing file before reaching the intended changed-digest guard.
+  All 55 cases, the original refusal expectation, native-open sentinel and
+  staging cleanup assertions remain; production is unchanged.
+
+- Inno now owns one explicit empty-only maintenance-directory removal rule.
+  The current producer creates that directory before Inno installs its files;
+  the completed uninstall log removed its owned files and registration but did
+  not remove the directory. The probe additionally retains fixed non-following
+  metadata for app/maintenance and registry presence before its unchanged fresh
+  acceptance checks. All 144 old installer cases remain with five additive
+  diagnostic cases; no recursive removal, owner change or predicate relaxation
+  is introduced. [Exact source review and original evidence](../review/standard-uninstall-empty-directory-2026-11-28.json)
+  keep the supported explanation distinct from the required new native result.
+
+- Windows cleanup can requery a successful, bounded partial membership reply
+  only before termination and within the original five-second admission
+  deadline. A later complete list must still satisfy every original lifetime,
+  retained-handle, membership, coverage and post-termination fence. Invalid or
+  over-cap counts, native API errors and exhausted admission stay fatal and
+  latched; no cleanup retry can rebase after termination. Fixed numeric
+  diagnostics now retain the last actual query and its returned length.
+  Seventeen additive cases cover the retry and unchanged refusal boundaries.
+  The [source review](../review/windows-membership-query-2026-11-28/review.json)
+  explicitly leaves the old failure's unreported counters and cause UNKNOWN.
+
+The existing native-launcher workflow gains only one explicitly named receiving
+push branch so the same MSVC/Zig/native jobs can run without changing the
+divergent historical branch or replacing still-running ordinary evidence.
+Only audio/windows_process.py changes inside the application Python tree.
+Dependency pins, ordinary test selections, operation timeouts, fail/skip/xfail
+conditions and capture policy remain unchanged.
+
+### Exact completed observations available at composition
+
+| Source and scope | Completed observation | Boundary |
+| --- | --- | --- |
+| a9843de5 native launcher preflight | MSVC and pinned Zig each compiled and passed all nine existing native checks; unchanged MSVC link policy | The exact three-path parent proves its native launcher with the existing synthetic child. The full receiving head, actual Python setup, signing and NVDA require their own evidence. |
+| 17c58101 components, Linux source and installed | Each mode: 2,181 passed and five failed, zero skips; installed adds 12 subtests; source completes 63 modules | Four known deadline-fixture failures and the single deliberate receipt-mutation fixture above; both fixes await receiving execution. |
+| 17c58101 component Windows installed | 2,176 passed plus 12 subtests, seven failed, zero skips | Exactly two Unicode writes, four budget fixtures and one receipt-mutation fixture, all corrected above. No service/admission/control or native membership failure in this separate mode; its pass cases do not erase the source-mode membership failure. |
+| 17c58101 component Windows source | 62 modules; 2,177 passed, six failed, zero skipped | Five known fixture failures plus an actual FFmpeg capability child's native Job membership failure; its traceback does not retain the assigned/listed counters. Original ASR 42, resource 46 and installer 144 contracts passed. The old counters/cause remain unknown; the bounded pre-termination requery and diagnostics above require new execution. |
+| 17c58101 compatibility, Windows | 39 source modules / 1,166 cases and installed 1,166 plus seven subtests passed; all seven native steps passed | The focused two-mode workflow does not qualify the complete application. |
+| 17c58101 bibliography, Windows | All 29 source modules / 1,092 source cases and the separate 69-check installed native receipt passed | This is a focused workflow; complete application acceptance remains separate. |
+| 17c58101 supplied-worker, Linux and Windows | Each OS: 25/26 modules passed, 797 passed cases and four new deadline-fixture failures, zero skips | The four failures occurred before launch. All original 28 service and 14 admission cases, plus control/shared-reader/process suites, passed on both systems with unchanged budgets. Later native phases were not entered; repaired deadline cases require a new run. |
+| 17c58101 standard installer, both systems | Each OS: all 11 source suites / 340 cases passed; installed 340 plus 22 subtests passed; all 379 package-module identities matched | Windows built the real setup and traversed Install/Repair before its final normal-uninstall postcondition failed. Complete native acceptance remains failed. |
+| 17c58101 focused voice, all four modes | Each mode passed 301 cases, zero failed/skipped cases, all 379 module identities matched; both Windows native runs passed all 80 checks | Actual native controls and shared-worker state passed; acoustic/model quality and human NVDA remain separate. |
+| f4d6846d component Windows installed | 2,091 passed plus 12 subtests, ten failed, zero skips | Six existing ASR failures, two spawn-import failures and the two Unicode fixtures above. This source predates the reviewed process/helper corrections. |
+| f4d6846d focused voice, all four modes | Each contract selection passed 301 cases; both Linux jobs succeeded | Both Windows native probes failed after 78 checks on the old `wx.App.ProcessIdle` call. The distinct 17c58101 active-event-loop correction passed its 80-check native probes, recorded above. |
+
+These separate overlapping scopes are not a unique-test total. Exact receipts
+are retained under [a984 native launcher](../review/native-launcher-a9843de5-2026-11-28/),
+[17 component/bibliography](../review/terminal-17c58101-2026-11-28/),
+[17 supplied-worker](../review/transcription-17c58101-2026-11-28/),
+[17 standard installer](../review/standard-installation-17c581-2026-11-28/),
+[17 voice](../review/reader-voice-17c58101-2026-11-28/),
+[f4 Windows components](../review/component-followup-f4d6846d-windows-2026-11-28/)
+and [f4 voice](../review/reader-voice-f4d6846d-2026-11-28/).
+
+### Latest neighboring source review
+
+The latest heads of PR99, PR209 and PR152 were checked for a reusable correction
+before new work. Their recent changes do not supply the current uninstall or
+process repair. The two recent PR152 production deltas also do not map to a
+missing equivalent boundary here: current intake cancellation belongs to its
+existing isolated parent worker, and current EPUB position mapping already
+checks both prefix and suffix with the tested line-ending/UTF-16 candidates.
+No donor code or donor PASS was substituted. The
+[exact source-identity audit](../review/reuse-audit-17c58101-2026-11-28.json)
+retains the inspected revisions and reasons.
+
+### Actual selected-input and uninstall artifacts
+
+The exact 17c58101 selected input remains active with an unchanged opaque
+endpoint. MME format queries succeed, but every attempted buffer-free open
+returns error 1. WASAPI activation and mix-format queries succeed; shared
+initialization returns `0x80070005` and no stream is initialized. The fixed
+read-only registry observation records current-user microphone `Deny`,
+desktop-user `Allow` and machine `Allow`. This is direct access-denial evidence
+with supporting consent context; it does not prove one exclusive policy cause.
+No consent, policy, format, device selection or permission was changed.
+[Five original JSON receipts](../review/capture-17c58101-2026-11-28/provenance.json)
+were recovered byte-for-byte from the two pinned immutable artifacts, with
+independent digest and length checks. The original capture remains FAILED;
+DIAGNOSED is not a recording pass.
+
+The exact [standard-uninstall log](../review/standard-uninstall-17c58101-2026-11-28/native/uninstall.log)
+records successful Python maintenance, registry/shortcut removal, removal of
+all retained maintenance files and successful Inno exit. It does not record
+removal of the maintenance directory that Python created before Inno's file
+phase. The original probe reported a combined files/registration condition,
+so the empty-directory explanation is a source-and-log inference pending the
+corrected actual native rerun. Six small artifact members are retained
+byte-for-byte; two long install/repair logs are explicitly bounded excerpts
+with complete original-member hashes in
+[their provenance](../review/standard-uninstall-17c58101-2026-11-28/provenance.json).
+
+Current ordinary/native runs are still incomplete at composition; no inherited
+PASS is transferred to this successor. All six ordinary workflows and the
+complete Windows aggregate must pass at one exact head before a delivery wheel
+is eligible. The original selected capture failure, microphone permissions,
+fresh process/control checks, native leases, private assets, remaining
+implementation/interop work, language quality and human Windows 11/NVDA
+acceptance retain their existing requirements.
+
 ## Current process and native acceptance corrections — 2026-11-28
 
 This composition extends `f4d6846d037c079438f96c85bbebfe0f979dd25b`.

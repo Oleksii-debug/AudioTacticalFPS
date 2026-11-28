@@ -183,7 +183,7 @@ def test_repair_retains_changed_and_foreign_files_then_rebuilds(installed, tmp_p
     root, payload, expected, setup = installed
     original = root / 'app/README.txt'
     original.write_bytes(b'changed by the user or damaged; retain these exact bytes')
-    (root / 'app/foreign notes.txt').write_text('user notes Ω')
+    (root / 'app/foreign notes.txt').write_text('user notes Ω', encoding='utf-8')
     external = tmp_path / 'outside-user-library'
     external.mkdir()
     (external / 'content.db').write_bytes(b'private-data sentinel')
@@ -192,7 +192,7 @@ def test_repair_retains_changed_and_foreign_files_then_rebuilds(installed, tmp_p
     recovery = root.parent / result['retained_previous']
     assert result['operation'] == 'repair'
     assert (recovery / 'app/README.txt').read_bytes().startswith(b'changed by the user')
-    assert (recovery / 'app/foreign notes.txt').read_text() == 'user notes Ω'
+    assert (recovery / 'app/foreign notes.txt').read_text(encoding='utf-8') == 'user notes Ω'
     assert (root / 'app/README.txt').read_bytes() == (payload / 'README.txt').read_bytes()
     assert not (root / 'app/foreign notes.txt').exists()
     assert service.sha(external / 'content.db') == outside_hash
@@ -311,7 +311,7 @@ def test_uninstall_removes_only_owned_program_and_leaves_external_data(installed
     root, _, expected, setup = installed
     external = tmp_path / 'userdata'
     external.mkdir()
-    (external / 'book.txt').write_text('original Unicode prose Ω\f[pause 2]\r\n')
+    (external / 'book.txt').write_text('original Unicode prose Ω\f[pause 2]\r\n', encoding='utf-8')
     before = (external / 'book.txt').read_bytes()
     # An unrelated root-level file is never in the app-owned deletion list.
     (root / 'keep-me.txt').write_bytes(b'not part of the installer')
@@ -480,6 +480,7 @@ def test_template_uses_exact_manifest_no_recursive_uninstall_and_standard_per_us
     assert 'CloseApplications=no' in script
     assert 'Repair Resonance' in script and 'ModifyPath' in script
     assert '[UninstallDelete]' not in script and 'filesandordirs' not in script
+    assert '[Dirs]\nName: "{app}\\maintenance"; Flags: uninsalwaysuninstall\n' in script
     assert ' --lease-owner ' in script
     assert script.count('Flags: dontcopy') == len(json.loads((root / 'bundle-manifest.json').read_bytes())['files']) + 1 + len(service.HELPERS)
     assert 'runtime\\python.exe' in script and 'CopyVerified' in script
@@ -1379,3 +1380,107 @@ def test_donor_launcher_flag_cannot_replace_the_actual_owned_launcher(tmp_path, 
         build.prepare(root, output, manifest_sha256=expected)
     assert not output.exists()
     assert not (root / 'ResearchLibrary.exe').exists()
+
+
+@pytest.fixture
+def uninstall_poststate_fixture(tmp_path):
+    root = tmp_path / 'synthetic installed directory'
+    report = tmp_path / 'native receipts'
+    root.mkdir()
+    report.mkdir()
+    identity = dict(source_commit='a' * 40, setup_sha256='b' * 64,
+                    bundle_manifest_sha256='c' * 64)
+    return root, report, identity
+
+
+@pytest.mark.parametrize('kind', ['absent', 'directory', 'file'])
+def test_native_uninstall_poststate_records_only_fixed_metadata(
+    uninstall_poststate_fixture, monkeypatch, kind
+):
+    root, report, identity = uninstall_poststate_fixture
+    (root / 'app').mkdir()
+    private = root / 'app/private-user-sentinel.txt'
+    private.write_bytes(b'do not inspect or alter this content')
+    maintenance = root / 'maintenance'
+    if kind == 'directory':
+        maintenance.mkdir()
+    elif kind == 'file':
+        maintenance.write_bytes(b'foreign replacement must remain untouched')
+    original_lstat, observed, registry_calls = Path.lstat, [], []
+
+    def fixed_lstat(path):
+        assert path in (root / 'app', maintenance)
+        observed.append(path.name)
+        return original_lstat(path)
+
+    def registration():
+        registry_calls.append(True)
+        return {'InstallLocation': 'PRIVATE VALUE MUST NOT ENTER THE REPORT'}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Post-uninstall diagnostics read content or traversed directories.')
+
+    with monkeypatch.context() as guard:
+        guard.setattr(probe, 'registry', registration)
+        guard.setattr(Path, 'lstat', fixed_lstat)
+        for method in ('read_bytes', 'read_text', 'iterdir', 'rglob', 'glob'):
+            guard.setattr(Path, method, forbidden)
+        result = probe.record_uninstall_state(root, report, identity)
+
+    raw = (report / 'uninstall-poststate.json').read_bytes()
+    assert json.loads(raw) == result
+    assert len(raw) < 2048 and b'PRIVATE VALUE' not in raw
+    assert result['observation'] == 'after_owned_uninstall'
+    assert all(result[key] == value for key, value in identity.items())
+    assert result['registration'] == {'present': True}
+    assert result['paths']['app'] == dict(present=True, directory=True,
+        regular_file=False, symbolic_link=False, reparse_point=False)
+    expected = {'present': False} if kind == 'absent' else dict(
+        present=True, directory=kind == 'directory', regular_file=kind == 'file',
+        symbolic_link=False, reparse_point=False)
+    assert result['paths']['maintenance'] == expected
+    assert observed == ['app', 'maintenance'] and registry_calls == [True]
+    assert private.read_bytes() == b'do not inspect or alter this content'
+    if kind == 'file':
+        assert maintenance.read_bytes() == b'foreign replacement must remain untouched'
+
+
+def test_native_uninstall_poststate_keeps_incomplete_registry_and_stat_errors_distinct(
+    uninstall_poststate_fixture, monkeypatch
+):
+    root, report, identity = uninstall_poststate_fixture
+    original_lstat = Path.lstat
+
+    def registration():
+        raise FileNotFoundError(errno.ENOENT, 'Private required registry value is missing')
+
+    def denied(path):
+        if path == root / 'maintenance':
+            raise PermissionError(errno.EACCES, 'Private path must not enter the report')
+        return original_lstat(path)
+
+    monkeypatch.setattr(probe, 'registry', registration)
+    monkeypatch.setattr(Path, 'lstat', denied)
+    result = probe.record_uninstall_state(root, report, identity)
+    assert result['registration'] == dict(present=None, error=dict(
+        type='FileNotFoundError', errno=errno.ENOENT, winerror=None))
+    assert result['paths']['app'] == {'present': False}
+    assert result['paths']['maintenance'] == dict(present=None, error=dict(
+        type='PermissionError', errno=errno.EACCES, winerror=None))
+    raw = (report / 'uninstall-poststate.json').read_bytes()
+    assert json.loads(raw) == result and b'Private' not in raw
+    # An observation error is not converted into an absent installation.
+    with pytest.raises(FileNotFoundError, match='required registry value'):
+        probe.registry()
+
+
+def test_native_uninstall_poststate_does_not_replace_an_existing_receipt(
+    uninstall_poststate_fixture, monkeypatch
+):
+    root, report, identity = uninstall_poststate_fixture
+    receipt = report / 'uninstall-poststate.json'
+    receipt.write_bytes(b'keep the previous receipt exactly')
+    monkeypatch.setattr(probe, 'registry', lambda: None)
+    with pytest.raises(FileExistsError):
+        probe.record_uninstall_state(root, report, identity)
+    assert receipt.read_bytes() == b'keep the previous receipt exactly'

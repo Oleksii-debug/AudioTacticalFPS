@@ -442,7 +442,7 @@ def test_timely_reader_exit_preserves_fresh_caller_guards(
             if failure == 'identity':
                 reviewed.write_bytes(b'changed after the child actually exited')
             if failure == 'staging':
-                output.write_bytes(b'x' * 2048)
+                output.write_bytes(b'x' * 8192)
         if sha256(reviewed.read_bytes()).hexdigest() != approved:
             raise ValueError('reviewed runtime identity changed')
         return failure == 'cancel'
@@ -455,7 +455,7 @@ def test_timely_reader_exit_preserves_fresh_caller_guards(
     }[failure]
     with pytest.raises(error, match=message):
         run(code, cancelled=review, watch=(output,),
-            budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+            budget_options={'max_log_bytes': 1024, 'max_output_bytes': 4096})
     assert calls and tracked.waits
     assert closed(observed).returncode == 0
 

@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import time
 
@@ -38,6 +39,43 @@ def registry():
     with key:
         return {name: winreg.QueryValueEx(key, name)[0] for name in
                 ('InstallLocation', 'UninstallString', 'ModifyPath', 'NoModify')}
+
+
+def record_uninstall_state(root, report, record):
+    """Record fixed metadata only; the existing fresh acceptance checks decide."""
+    def error_state(error):
+        return dict(type=type(error).__name__, errno=error.errno,
+                    winerror=getattr(error, 'winerror', None))
+
+    try:
+        registration = dict(present=registry() is not None)
+    except OSError as error:
+        registration = dict(present=None, error=error_state(error))
+
+    paths = {}
+    for name in ('app', 'maintenance'):
+        try:
+            info = (root / name).lstat()
+        except FileNotFoundError:
+            paths[name] = dict(present=False)
+        except OSError as error:
+            paths[name] = dict(present=None, error=error_state(error))
+        else:
+            paths[name] = dict(present=True,
+                directory=stat.S_ISDIR(info.st_mode),
+                regular_file=stat.S_ISREG(info.st_mode),
+                symbolic_link=stat.S_ISLNK(info.st_mode),
+                reparse_point=bool(getattr(info, 'st_file_attributes', 0)
+                    & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)))
+
+    result = dict(schema=1, observation='after_owned_uninstall',
+        source_commit=record['source_commit'], setup_sha256=record['setup_sha256'],
+        bundle_manifest_sha256=record['bundle_manifest_sha256'],
+        registration=registration, paths=paths)
+    with (report / 'uninstall-poststate.json').open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(result, stream, indent=2)
+        stream.write('\n')
+    return result
 
 
 def active_job_processes(child):
@@ -357,6 +395,7 @@ def probe(setup, build_evidence, work, report):
     owned_process([root / 'unins000.exe', *common,
                    '/LOG=' + str(report / 'uninstall.log')], cwd=work,
                   log=report / 'uninstall-process.log', timeout=300)
+    record_uninstall_state(root, report, record)
     if registry() is not None or (root / 'app').exists() or (root / 'maintenance').exists():
         raise RuntimeError('Normal uninstall left program files or registration.')
     if set(path.name for path in root.iterdir()) != {'managed-install.ini', 'installation.lease'}:

@@ -1,0 +1,82 @@
+________ test_timely_reader_exit_preserves_fresh_caller_guards[cancel] _________
+
+observed = namespace(children=[], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f8862806650>
+tmp_path = PosixPath('/tmp/carr-ci-kwmi8fgs/pytest/test_timely_reader_exit_preser0')
+failure = 'cancel'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'identity', 'diagnostic', 'staging'])
+    def test_timely_reader_exit_preserves_fresh_caller_guards(
+            observed, monkeypatch, tmp_path, failure):
+        observed.wait_before_return = False
+        tracked = tracked_readers(monkeypatch, observed)
+        ready, release, code = gated_code(tmp_path, stderr_bytes=2048 if failure == 'diagnostic' else 0)
+        reviewed = tmp_path / 'reviewed-runtime'
+        reviewed.write_bytes(b'exact reviewed content')
+        approved = sha256(reviewed.read_bytes()).hexdigest()
+        output = tmp_path / 'worker-output'
+        output.write_bytes(b'accepted-size')
+        caller = threading.get_ident()
+        calls = []
+    
+        def review():
+            if not observed.children:
+                return False
+            assert threading.get_ident() == caller
+            calls.append(caller)
+            if len(calls) == 1:
+                wait_for_file(ready)
+                assert observed.children[0].poll() is None
+                release.write_bytes(b'complete before parent final checks')
+                join_readers(tracked)
+                observed.offset += 6.0
+                if failure == 'identity':
+                    reviewed.write_bytes(b'changed after the child actually exited')
+                if failure == 'staging':
+                    output.write_bytes(b'x' * 2048)
+            if sha256(reviewed.read_bytes()).hexdigest() != approved:
+                raise ValueError('reviewed runtime identity changed')
+            return failure == 'cancel'
+    
+        error, message = {
+            'cancel': (process.AudioCancelled, 'cancelled'),
+            'identity': (ValueError, 'runtime identity changed'),
+            'diagnostic': (process.AudioError, 'diagnostic'),
+            'staging': (process.AudioError, 'disk budget'),
+        }[failure]
+        with pytest.raises(error, match=message):
+>           run(code, cancelled=review, watch=(output,),
+                budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})
+
+tests/audio/test_process_deadline.py:457: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/audio/test_process_deadline.py:50: in run
+    owned_tree=True, budget=process.AudioBudget(timeout=5, reserve_disk_bytes=0,
+<string>:11: in __init__
+    ???
+src/carr_library/audio/models.py:69: in __post_init__
+    integer(self.max_output_bytes, 'Output budget', 4096, 2**63 - 1)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 1024, label = 'Output budget', minimum = 4096
+maximum = 9223372036854775807
+
+    def integer(value, label, minimum, maximum):
+        if type(value) is not int or not minimum <= value <= maximum:
+>           raise ValueError(f'{label} must be an integer from {minimum} to {maximum}.')
+E           ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+
+src/carr_library/audio/models.py:46: ValueError
+
+[Other three parameterizations share the same pre-launch budget validation error; exact final summary follows.]
+
+=========================== short test summary info ============================
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[cancel] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[identity] - AssertionError: Regex pattern did not match.
+  Expected regex: 'runtime identity changed'
+  Actual message: 'Output budget must be an integer from 4096 to 9223372036854775807.'
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[diagnostic] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+FAILED tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[staging] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.
+========================= 4 failed, 17 passed in 8.88s =========================
+FAIL: tests/audio/test_process_deadline.py: junit_passed=17, failed=4, skipped=0, pytest_exit=1
+Required suites complete: 26; passed=25; failed=1

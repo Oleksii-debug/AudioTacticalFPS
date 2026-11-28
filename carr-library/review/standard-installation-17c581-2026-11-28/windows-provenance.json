@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "status": "FAILED_NATIVE_UNINSTALL_ACCEPTANCE",
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "source_tree": "f0f24e27326e4eac0d9658c69e3b68039b837368",
+  "run_id": 46088685885,
+  "job_id": 140804199202,
+  "run_attempt": 1,
+  "platform": "windows-2022",
+  "job_conclusion": "failure",
+  "workflow": ".github/workflows/carr-standard-installation-evaluation.yml",
+  "workflow_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+  "probe": {
+    "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+    "blob": "9d595e91c994a7d7b208bdaeb83af08541236dc5"
+  },
+  "source_contracts": {
+    "suites": 11,
+    "passed": 340,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed_contracts": {
+    "passed": 340,
+    "subtests_passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 60.72
+  },
+  "complete_python_identity": {
+    "files": 379,
+    "status": "PASS",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]"
+  },
+  "setup": {
+    "status": "BUILT_NOT_INSTALLED",
+    "setup_sha256": "652999322be550f235f0fa66d43cb9bc1af068db7b018b79b3e6822641273bbf",
+    "setup_bytes": 82395967,
+    "bundle_manifest_sha256": "627a77154f0c1a1faf10a791f6975d256a691ae2c7b44673e7496312a9e4b5aa",
+    "application_wheel_sha256": "6faf54bb1e8db4ff83e770ccb2c09ae460b263cd7acf3c06da8d4a334f8a21d7"
+  },
+  "observed_native_failure": {
+    "line": 361,
+    "error": "RuntimeError: Normal uninstall left program files or registration.",
+    "condition": "registry() is not None or (root / 'app').exists() or (root / 'maintenance').exists()",
+    "which_condition_remained": "NOT_REPORTED by this traceback",
+    "exit_before_condition": "The owned uninstaller returned a success code and its owned-process context completed before this assertion.",
+    "full_native_result": "FAIL; no final PASS result was produced"
+  },
+  "source_control_flow_inference": "Reaching this assertion entails traversal of the preceding install, registration, native launcher checks, lease-refusal, changed-file refusal, repair and repaired-check assertions; it does not qualify the complete native workflow.",
+  "artifact": {
+    "id": 15240398613,
+    "bytes": 137752,
+    "sha256": "9016128c2b8fa951c665e01a7343b2d89dacd29ebbd57f8c9c121e1d4ec4c777",
+    "metadata_source": "GitHub artifact listing; native log members awaited separately"
+  },
+  "log": {
+    "sha256_of_decoded_utf8": "ae33579bc3d9e9e13b09d78e974ad5a2fd43d632596a5d0dd844265cb64b0627",
+    "characters": 311173
+  },
+  "extraction": "JSON files preserve complete stdout JSON payloads with a trailing newline; text excerpts retain exact timestamps after removing terminal color escapes and CR. They are not asserted to be byte-identical artifact members.",
+  "files": [
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-source-wheel.json",
+      "sha256": "83e9b59d1ce581575a0580a1afd31e2ad8407257a7fc67c3c72626363f463bd7"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-sealed-source-wheel.json",
+      "sha256": "5406c83bf7ca189e9519c9b459362920d1eba7ad6a4cfde4c48482b6c5c3c9d3"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-python-identity.json",
+      "sha256": "9aecb9bccafb2119ebe9eea1e63b55ecaeead11c5bfb8ec304135548efd7b912"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-contracts.txt",
+      "sha256": "a9296f8ba5b896bc7d456e0b15a973a1d3c026a0a1479c573695d0464db40ded"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-native-failure.txt",
+      "sha256": "6fe013c0821cbce748bdcdb8b7021dc4be407aaa6e261ba07e156955c7fa473b"
+    }
+  ],
+  "qualification_limits": [
+    "Actual native Install/Repair/Uninstall acceptance remains FAILED",
+    "The actual remaining path/registry key awaits retained uninstall logs",
+    "No physical recording, hearing, NVDA, signing or release-readiness claim"
+  ]
+}

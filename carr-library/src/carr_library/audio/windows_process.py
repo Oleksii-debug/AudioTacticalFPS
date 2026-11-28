@@ -98,6 +98,8 @@ class _Job:
         self._leader_signaled = self._leader_closed = False
         self._shutdown_total = None
         self._admission_failure = None
+        self._membership_query = None
+        self._membership_query_count = 0
         self._notification_pids = set()
         self._notification_count = 0
         self.port = None
@@ -158,9 +160,25 @@ class _Job:
         return remaining
 
     def _query(self, kind, value):
-        if not self.api.kernel.QueryInformationJobObject(
-                self.handle, kind, ctypes.byref(value), ctypes.sizeof(value), None):
-            raise self.api.error()
+        returned = ctypes.c_uint32() if kind == 3 else None
+        succeeded = self.api.kernel.QueryInformationJobObject(
+            self.handle, kind, ctypes.byref(value), ctypes.sizeof(value),
+            None if returned is None else ctypes.byref(returned))
+        # GetLastError is meaningful only after failure; capture it before any
+        # other native operation. A successful query may leave a stale value.
+        failure = None if succeeded else self.api.error()
+        if kind == 3:
+            self._membership_query_count += 1
+            self._membership_query = {
+                'attempt': self._membership_query_count,
+                'api_success': int(bool(succeeded)),
+                'assigned': int(value.assigned), 'listed': int(value.listed),
+                'capacity': _MAX_JOB_MEMBERS, 'buffer_bytes': ctypes.sizeof(value),
+                'returned_length': int(returned.value),
+                'winerror': None if failure is None else getattr(failure, 'winerror', None),
+            }
+        if failure is not None:
+            raise failure
         return value
 
     def record_leader_exit(self, handle):
@@ -265,8 +283,16 @@ class _Job:
             if not 1 <= before.total_processes <= _MAX_JOB_MEMBERS:
                 raise OSError('The Windows audio job exceeds its bounded lifetime inventory.')
             members = self._query(3, _ProcessIds())
-            if members.assigned != members.listed or members.listed > _MAX_JOB_MEMBERS:
+            if members.assigned > _MAX_JOB_MEMBERS or members.listed > _MAX_JOB_MEMBERS:
                 raise OSError('The Windows audio job exceeds its bounded membership inventory.')
+            if members.listed > members.assigned:
+                raise OSError('The Windows audio job returned invalid membership counts.')
+            if members.listed < members.assigned:
+                # A partial reply grants no process identity or shutdown proof.
+                # Requery only before termination, consuming the same deadline
+                # and rechecking notifications/accounting on the next iteration.
+                time.sleep(min(.02, self._remaining(deadline)))
+                continue
             identifiers = tuple(int(members.processes[index]) for index in range(members.listed))
             if (len(set(identifiers)) != len(identifiers)
                     or any(not 0 < pid <= 0xFFFFFFFF for pid in identifiers)):
@@ -346,6 +372,9 @@ class _Job:
             try:
                 self._retain_members(deadline)
             except Exception as failure:
+                if self._membership_query is not None:
+                    failure.add_note('Last Windows audio job membership query: '
+                                     + str(self._membership_query))
                 self._admission_failure = failure
         # Even failed or timed-out inventory admission must stop the exact
         # owned job. It must not authorize a fresh post-termination inventory,

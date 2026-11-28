@@ -29,6 +29,9 @@ UninstallFilesDir={app}
 UninstallLogMode=append
 DisableDirPage=no
 
+[Dirs]
+Name: "{app}\maintenance"; Flags: uninsalwaysuninstall
+
 [Files]
 @@FILES@@
 Source: "{srcexe}"; DestDir: "{app}\maintenance"; DestName: "ResonanceSetup.exe"; Flags: external ignoreversion; Check: CacheNeeded

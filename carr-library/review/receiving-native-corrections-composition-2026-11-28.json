@@ -1,0 +1,812 @@
+{
+  "schema": "carr-receiving-native-corrections-composition/1",
+  "created_at_utc": "2026-11-28 01:19:54 UTC",
+  "integration_base": {
+    "commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "tree": "f0f24e27326e4eac0d9658c69e3b68039b837368"
+  },
+  "parent": {
+    "commit": "a9843de563eebe95d1f26fcc56b7215de0e78ab8",
+    "tree": "6e15c50de55590228f109b99497441af174602df",
+    "scope": "Three-path MSVC explicit-store correction and dedicated receiving trigger; both native compiler jobs passed at that parent only."
+  },
+  "tree_before_manifest": "39b9cb4a48763a0d2be284d845544e73bec26eef",
+  "manifest_path": "carr-library/review/receiving-native-corrections-composition-2026-11-28.json",
+  "authority": {
+    "canonical_branch": "carr-library",
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "agents": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "integration_issue_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "application_source": {
+    "path": "carr-library/src",
+    "before": "e44f0fbe26108412154f4ca74b254d8f3d99a036",
+    "after": "278ef5d7f31ee617172945281889bc2060533da7",
+    "python_module_count": 379,
+    "changes": [
+      {
+        "path": "carr-library/src/carr_library/audio/windows_process.py",
+        "before": "12b249c548c211333d783877a7ef0c08f2dd2ed1",
+        "after": "32c38bdf6b0a343644e86437fe00bf9b5a84da63"
+      }
+    ],
+    "dependency_lock_changes": 0,
+    "process_eof_observer": "77e85fb8d7a74b9af3be921fa60907029ccb2a3c is unchanged from17"
+  },
+  "corrections": [
+    {
+      "scope": "Native launcher",
+      "before": "bf8ae5b02f222ef00a36508870812f009c3fe845",
+      "after": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+      "behavior": "Existing bounded parent-path copy uses explicit volatile stores under unchanged MSVC /NODEFAULTLIB policy.",
+      "evidence": "review/msvc-launcher-copy-2026-11-28.json",
+      "parent_execution": "Actual MSVC and Zig builds and nine native checks per compiler PASS at a9843de5; receiving whole-head qualification remains separate."
+    },
+    {
+      "scope": "Unicode installer fixtures",
+      "behavior": "Explicit UTF-8 on two existing Unicode writes and their paired read; original content and byte-preservation assertions retained.",
+      "retained_in": "271e2aecc684a2b0408005fd369a298de476850b"
+    },
+    {
+      "scope": "Deadline fixtures",
+      "after": "79948bafb1a91a6c4ffc3cc70260fec6a1b3b33d",
+      "behavior": "Admit the existing4096-byte minimum; deliberate output mutation8192, diagnostic cap1024 and all21 cases unchanged.",
+      "execution": "NOT_RUN for corrected cases"
+    },
+    {
+      "scope": "Capture receipt mutation fixture",
+      "after": "fc8e2144c33ead8d12fe46be1e00efd6ff07bfc6",
+      "behavior": "replace=True only for intentional existing-receipt mutation; all55 cases and refusal assertions retained.",
+      "execution": "NOT_RUN"
+    },
+    {
+      "scope": "Actual standard uninstall",
+      "template": "a030d415cf7326e937880f150d9667104828cf60",
+      "probe": "f963493b87df786336d3af38902ad88dacbbbd43",
+      "tests": "271e2aecc684a2b0408005fd369a298de476850b",
+      "behavior": "One empty-only maintenance-directory rule, plus fixed non-following poststate observations before unchanged native acceptance checks.144old+5new=149planned installer cases.",
+      "evidence": "review/standard-uninstall-empty-directory-2026-11-28.json",
+      "execution": "NOT_RUN for corrected native lifecycle"
+    },
+    {
+      "scope": "Windows Job inventory",
+      "after": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+      "tests": "e7a4d438f5ba33a94ee9b9f28bea419fc33de668",
+      "behavior": "Retry only successful bounded partial membership replies before termination in the original5s admission deadline; no incomplete PID authority, no post-termination rebase; original complete inventory/coverage/fences/signaled waits remain. Fixed last-query diagnostics and17additive cases.",
+      "evidence": "review/windows-membership-query-2026-11-28/review.json",
+      "historical_counts_and_cause": "UNKNOWN",
+      "execution": "NOT_RUN"
+    }
+  ],
+  "paths": [
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "before": "f721dc80a32858679bd2d4ffc747d562b2b28d46",
+      "sha": "b3fb988da8ffa9312fdd09d788b25caecef825a8",
+      "label": "receiving_docs_and_native_trigger",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md",
+      "before": "19812fb48e497c8a7b25b7334e699c4bd2c74289",
+      "sha": "7dce6e4c9126476d558922067cc71c9b9a73d258",
+      "label": "receiving_docs_and_native_trigger",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/READING_WORKFLOW_ACCEPTANCE.md",
+      "before": "5502bde45b4da18108a81535f874ad4e769f57cc",
+      "sha": "70be07ca3c9616c3b135e9a85f8f44ef037b3132",
+      "label": "receiving_docs_and_native_trigger",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "855504a6a578701d4b508ae677a8be34bd657d01",
+      "sha": "088e801467cb4b613a1564910552a8e84717f500",
+      "label": "receiving_docs_and_native_trigger",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.c",
+      "before": "bf8ae5b02f222ef00a36508870812f009c3fe845",
+      "sha": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+      "label": "msvc",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "before": "9723721a2f5e7bf3963ee40f441bbf8a0940736a",
+      "sha": "a030d415cf7326e937880f150d9667104828cf60",
+      "label": "uninstallfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/audio-endpoint.json",
+      "before": null,
+      "sha": "cdc215beb042a6338e717b02a66b99d3bef55011",
+      "label": "capture_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/audio-services.json",
+      "before": null,
+      "sha": "50dd858e517c22b75184eb2e9237e56ba12a4732",
+      "label": "capture_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/endpoint-evaluation.json",
+      "before": null,
+      "sha": "a90d54f538f4621b956047ebe964d8ae7d4720ac",
+      "label": "capture_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/native-recording-device.json",
+      "before": null,
+      "sha": "52a51130ffea7731492121cb2ecd0abea601ae9d",
+      "label": "capture_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/provenance.json",
+      "before": null,
+      "sha": "632e5e888c03fd3998030dfe2279b70338d5f311",
+      "label": "capture_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/capture-17c58101-2026-11-28/recording-access-diagnostic.json",
+      "before": null,
+      "sha": "1758d2830f824bab56cfb5e0e13ab6e52dd5dce6",
+      "label": "capture_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-windows-2026-11-28/installed-terminal.json",
+      "before": null,
+      "sha": "aeb103d595b17e9a012cf71ec9d3ead97a0318f9",
+      "label": "f4installed",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/component-followup-f4d6846d-windows-2026-11-28/installed-unicode-fixture-failures.txt",
+      "before": null,
+      "sha": "8584bc22c2c4b9ac45889209ffeedf83407cd448",
+      "label": "f4installed",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/msvc-launcher-copy-2026-11-28.json",
+      "before": null,
+      "sha": "326e25c45ea5f61506d026c9485b52ea6f44147c",
+      "label": "msvc",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/msvc-build-evidence.json",
+      "before": null,
+      "sha": "e66a5861f2db3849bb3c7e7a4337a97492113cf5",
+      "label": "native_preflight_evidence",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/msvc-windows-probe.json",
+      "before": null,
+      "sha": "e322bd1cff0be269fab2f449a03d856846c073dd",
+      "label": "native_preflight_evidence",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/provenance.json",
+      "before": null,
+      "sha": "2689f8f715bfa83b6b4aae593b81d8f2cfc495fd",
+      "label": "native_preflight_evidence",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/source-native-excerpts.txt",
+      "before": null,
+      "sha": "a5068629e32f31ae3317e901569f90e59788ea17",
+      "label": "native_preflight_evidence",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/zig-build-evidence.json",
+      "before": null,
+      "sha": "1b933be5424f67fd89753923f0096613d95ef015",
+      "label": "native_preflight_evidence",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/zig-windows-probe.json",
+      "before": null,
+      "sha": "23f7465e4aee16c11b20cee97cbda3cbc360c74c",
+      "label": "native_preflight_evidence",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/linux-installed-package-identity.json",
+      "before": null,
+      "sha": "9b74482fa42229478b45e91938d213bd18285179",
+      "label": "voice17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/linux-installed-terminal.json",
+      "before": null,
+      "sha": "5f6bbf10cf123174eba239dbabfaa81e0c665351",
+      "label": "voice17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/linux-source-package-identity.json",
+      "before": null,
+      "sha": "dda0a816e4f53d2c7484591a680c24cf47fe3361",
+      "label": "voice17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/linux-source-terminal.json",
+      "before": null,
+      "sha": "6505e8d549a9e6b45c425b6fc74020c3ba2edf23",
+      "label": "voice17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/windows-installed-package-identity.json",
+      "before": null,
+      "sha": "3b7597b8c7ac978d19db8636e4d38eff9ab99bd8",
+      "label": "voice17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/windows-installed-terminal.json",
+      "before": null,
+      "sha": "9c8dcec2bb39113518e09e9708581331df9ba771",
+      "label": "voice17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/windows-source-package-identity.json",
+      "before": null,
+      "sha": "935b527b5274de9d354797556c992161886a379b",
+      "label": "voice17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-17c58101-2026-11-28/windows-source-terminal.json",
+      "before": null,
+      "sha": "9602620206a95d1eddb294b3ca4f5272f759dddd",
+      "label": "voice17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/linux-installed-package-identity.json",
+      "before": null,
+      "sha": "5316bad4077d0c34366e3263d46d98d3c016724e",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/linux-installed-terminal.json",
+      "before": null,
+      "sha": "cbd9dc3e4102a1a63e064a5147b5c2aebb77f85d",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/linux-source-package-identity.json",
+      "before": null,
+      "sha": "fd8d19855ca92e3232308cc264ae58c9ee3f3e43",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/linux-source-terminal.json",
+      "before": null,
+      "sha": "f14d738c7160d903cd7c957d2351c688798a13ac",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/windows-source-native-failure.txt",
+      "before": null,
+      "sha": "fff998c4adc9b74d8dc4069d6157678b7ff22489",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/windows-source-package-identity.json",
+      "before": null,
+      "sha": "15a94e9a336f1c4638d21b53f16fc206f1fe5adc",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reader-voice-f4d6846d-2026-11-28/windows-source-terminal.json",
+      "before": null,
+      "sha": "86f4c0e3b0bcb440b145bb2d70b44035c1e2345d",
+      "label": "f4_late_voice",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/reuse-audit-17c58101-2026-11-28.json",
+      "before": null,
+      "sha": "8705c74da0b88da5a8f42156ddd796fa0e8ff3db",
+      "label": "reuse_audit",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-contracts.txt",
+      "before": null,
+      "sha": "9153abaf0763243ad430d4c6ddbb0b2dc263d9d7",
+      "label": "standard17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-dependencies.json",
+      "before": null,
+      "sha": "a8ffa265d8beb26ad6920602f20d7ed7b4924603",
+      "label": "standard17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-python-identity.json",
+      "before": null,
+      "sha": "8619d2b95905a0f9d3e1acd3fedb257597d3628e",
+      "label": "standard17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/linux-source-wheel.json",
+      "before": null,
+      "sha": "1940070236149b99b50d630820f088e000d44047",
+      "label": "standard17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/provenance.json",
+      "before": null,
+      "sha": "a75797d2e2f9f06cff2fc0879c5d6e39cc742734",
+      "label": "standard17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-contracts.txt",
+      "before": null,
+      "sha": "2fceda96b80a6815a891b2f86ec9ed2f022f02b1",
+      "label": "standard17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-native-failure.txt",
+      "before": null,
+      "sha": "697713813f0cc62df8afd8a3ec50b66c85882480",
+      "label": "standard17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-provenance.json",
+      "before": null,
+      "sha": "d6176cef931758cc61394d0492819681627d9489",
+      "label": "standard17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-python-identity.json",
+      "before": null,
+      "sha": "9800d962c0cac6d960ae068b9cb211bd841d7657",
+      "label": "standard17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-sealed-source-wheel.json",
+      "before": null,
+      "sha": "bb92c983cdc2324b0858e53120033a735bc7bf74",
+      "label": "standard17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-installation-17c581-2026-11-28/windows-source-wheel.json",
+      "before": null,
+      "sha": "2cd634717734f1fdbe84c17bb287df04e2d68016",
+      "label": "standard17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/install-excerpt.txt",
+      "before": null,
+      "sha": "fdf6a44ca7590f88efc35d841284532c9e801537",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native-standard-installation.txt",
+      "before": null,
+      "sha": "e710274831db6dff0c9632366f7f0f31a310a245",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/busy-uninstall.log",
+      "before": null,
+      "sha": "09345634474051dbfdf5e37bf588044c85e649b1",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/modified-uninstall.log",
+      "before": null,
+      "sha": "1012cc7926f0bdc1cc0c8ec3f8bdcd9c757780d3",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/shortcuts.json",
+      "before": null,
+      "sha": "c29cfc371367156473a70ee93ecef0f426063d7f",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/uninstall.log",
+      "before": null,
+      "sha": "9c446d7c148f21ba1810ddc6869465ce8c6a29c4",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/provenance.json",
+      "before": null,
+      "sha": "a7748ed7416109ac1c6065e5badf64b486ddd926",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/repair-excerpt.txt",
+      "before": null,
+      "sha": "9156c33b11150ce14693684b6a69a6b4bd3abdcd",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/setup-build.json",
+      "before": null,
+      "sha": "d252112112816e8bc8dafdae3b7abaf81cfd4222",
+      "label": "standard_artifacts",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-empty-directory-2026-11-28.json",
+      "before": null,
+      "sha": "5aa1e31be66121f3365a06c11461e07a47daf438",
+      "label": "uninstallfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/standard-uninstall-empty-directory-hunks-2026-11-28.json",
+      "before": null,
+      "sha": "e38a26a71c8e814b237e9237de6a37f814007085",
+      "label": "uninstallfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/capture-receipt-mutation-failure.txt",
+      "before": null,
+      "sha": "c99662237d8fdcccbb3522803ef73c62c2eb014a",
+      "label": "terminal17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/linux-installed-component.json",
+      "before": null,
+      "sha": "c8914f2f67602427f22071d664d67a637feaac90",
+      "label": "terminal17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/linux-source-component.json",
+      "before": null,
+      "sha": "e2ac867131b2e1b4680ad599fbce110a1c23d658",
+      "label": "terminal17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/windows-bibliography.json",
+      "before": null,
+      "sha": "c27d120375181b2301971195d766c2f4b89d6f90",
+      "label": "terminal17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/windows-compatibility.json",
+      "before": null,
+      "sha": "69ea4d6831b34835ad1921f41f51ab2a59108f71",
+      "label": "terminal17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/windows-installed-component.json",
+      "before": null,
+      "sha": "2aca5ab82451735482a20b18cad8bc02ba07fe0d",
+      "label": "component17windowsinstalled",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/windows-native-membership-failure.txt",
+      "before": null,
+      "sha": "420c2747cc84838b16388f5528fc3c73c2c16b94",
+      "label": "component17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/terminal-17c58101-2026-11-28/windows-source-component.json",
+      "before": null,
+      "sha": "463c2617d80112b5c00cc7a670af17c5448bcca2",
+      "label": "component17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/transcription-17c58101-2026-11-28/deadline-fixture-correction.json",
+      "before": null,
+      "sha": "fbdccb352ea8f764afed842bb760ff400ea1f404",
+      "label": "bridge17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/transcription-17c58101-2026-11-28/linux-source-deadline-fixture-failure.txt",
+      "before": null,
+      "sha": "eacf7d872a37a3a15f593712a8400a8cd064fbf7",
+      "label": "bridge17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/transcription-17c58101-2026-11-28/linux-source-terminal.json",
+      "before": null,
+      "sha": "eacac78c12a63f435fd6108e4655d3b7f20bef1b",
+      "label": "bridge17",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/transcription-17c58101-2026-11-28/windows-source-deadline-fixture-failure.txt",
+      "before": null,
+      "sha": "61ff7976d6e3e86f17896062f910e43ee6c285b8",
+      "label": "bridge17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/transcription-17c58101-2026-11-28/windows-source-terminal.json",
+      "before": null,
+      "sha": "76684996d52fb5e4d105599c6e709fd59abdd9e8",
+      "label": "bridge17windows",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/review/windows-membership-query-2026-11-28/review.json",
+      "before": null,
+      "sha": "8d144268b173e601611bdcefc03339151a09e378",
+      "label": "membershipfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "before": "9d595e91c994a7d7b208bdaeb83af08541236dc5",
+      "sha": "f963493b87df786336d3af38902ad88dacbbbd43",
+      "label": "uninstallfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/windows_process.py",
+      "before": "12b249c548c211333d783877a7ef0c08f2dd2ed1",
+      "sha": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+      "label": "membershipfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_capture_access_diagnostic.py",
+      "before": "edd302ca0efda98c3ffc236711b178c04b75c7fd",
+      "sha": "fc8e2144c33ead8d12fe46be1e00efd6ff07bfc6",
+      "label": "capturefixture",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_process_deadline.py",
+      "before": "9f8a4e0e9231492794e381b100666e779fd312fe",
+      "sha": "79948bafb1a91a6c4ffc3cc70260fec6a1b3b33d",
+      "label": "deadline",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_windows_process.py",
+      "before": "c656f32f9d39abd496e0af5d3616d5b63e9f6c75",
+      "sha": "e7a4d438f5ba33a94ee9b9f28bea419fc33de668",
+      "label": "membershipfix",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before": "7ec96e632a1b547789c3356988c89dce5f565ffd",
+      "sha": "271e2aecc684a2b0408005fd369a298de476850b",
+      "label": "uninstallfix",
+      "mode": "100644"
+    }
+  ],
+  "tree_audit": {
+    "base_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "base_tree": "f0f24e27326e4eac0d9658c69e3b68039b837368",
+    "parent_commit": "a9843de563eebe95d1f26fcc56b7215de0e78ab8",
+    "parent_tree": "6e15c50de55590228f109b99497441af174602df",
+    "pre_manifest_tree": "39b9cb4a48763a0d2be284d845544e73bec26eef",
+    "changed_vs_base": 79,
+    "changed_vs_parent": 76,
+    "added": 67,
+    "modified": 12,
+    "deletions": 0,
+    "unexpected": 0,
+    "full_blob_readback": true,
+    "readback_characters": 1391097,
+    "application_source_before": "e44f0fbe26108412154f4ca74b254d8f3d99a036",
+    "application_source_after": "278ef5d7f31ee617172945281889bc2060533da7",
+    "application_python_modules": 379,
+    "source_changes": [
+      {
+        "path": "carr-library/src/carr_library/audio/windows_process.py",
+        "before": "12b249c548c211333d783877a7ef0c08f2dd2ed1",
+        "after": "32c38bdf6b0a343644e86437fe00bf9b5a84da63"
+      }
+    ],
+    "additional_manifest_paths": 1,
+    "expected_final_changed_vs_base": 80,
+    "expected_final_changed_vs_parent": 77
+  },
+  "review": {
+    "root": "CLEAR, complete intended overlay readback and independent code/fixture/native ABI review",
+    "locate": "CLEAR for all bounded source/fixture/reader changes",
+    "audio": "Installer/launcher author and source evidence collector",
+    "voice": "Membership/EOF/deadline author and source evidence collector",
+    "inverses": {
+      "native_membership_whole_source": true,
+      "launcher": true,
+      "unicode_fixture": true,
+      "deadline_fixture": true,
+      "capture_fixture": true,
+      "inno_template_probe_old_test_prefix": true
+    },
+    "latest_neighbor_reuse_audit": "review/reuse-audit-17c58101-2026-11-28.json"
+  },
+  "workflow_delta": {
+    "path": ".github/workflows/carr-native-launcher.yml",
+    "change": "One additional exact push branch: carr/native-launcher-receiving-evaluation-20261128",
+    "existing_job_bodies_flags_timeouts_assertions": "BYTE_IDENTICAL",
+    "ordinary_selector_changes": 0,
+    "other_workflow_changes": 0
+  },
+  "actual_prior_evidence": {
+    "a984_launcher": {
+      "run": 46091522176,
+      "msvc_job": 140813291211,
+      "zig_job": 140813290912,
+      "native_checks_per_job": 9,
+      "result": "PASS",
+      "directory": "review/native-launcher-a9843de5-2026-11-28/"
+    },
+    "source17": "All following results belong exclusively to17c581015fc1ca6f3294f4cce1fe894f33a843cd.",
+    "voice17": {
+      "run": 46088687275,
+      "contract_cases_per_mode": 301,
+      "modes": 4,
+      "windows_native_checks_per_mode": 80,
+      "complete_package_modules": 379,
+      "result": "PASS",
+      "directory": "review/reader-voice-17c58101-2026-11-28/"
+    },
+    "bridge17": {
+      "run": 46088683413,
+      "each_os": {
+        "passed": 797,
+        "failed": 4,
+        "skipped": 0
+      },
+      "failures": "Four pre-child invalid budget fixtures; all original28service+14admission cases pass on both systems.",
+      "later_native_phases": "NOT_ENTERED",
+      "directory": "review/transcription-17c58101-2026-11-28/"
+    },
+    "standard17": {
+      "run": 46088685885,
+      "each_os": {
+        "source_passed": 340,
+        "installed_passed": 340,
+        "installed_subtests": 22
+      },
+      "windows_native": "FAILED at final uninstall postcondition; exact log supports but did not directly measure empty maintenance directory.",
+      "directory": "review/standard-installation-17c581-2026-11-28/"
+    },
+    "components17": {
+      "run": 46089080509,
+      "linux_source": {
+        "passed": 2181,
+        "failed": 5,
+        "skipped": 0
+      },
+      "linux_installed": {
+        "passed": 2181,
+        "subtests": 12,
+        "failed": 5,
+        "skipped": 0
+      },
+      "windows_source": {
+        "passed": 2177,
+        "failed": 6,
+        "skipped": 0
+      },
+      "windows_installed": {
+        "passed": 2176,
+        "subtests": 12,
+        "failed": 7,
+        "skipped": 0
+      },
+      "directory": "review/terminal-17c58101-2026-11-28/"
+    },
+    "compatibility17": {
+      "run": 46088683400,
+      "source_passed": 1166,
+      "installed_passed": 1166,
+      "installed_subtests": 7,
+      "native_steps": 7,
+      "result": "PASS"
+    },
+    "bibliography17": {
+      "run": 46088683363,
+      "source_passed": 1092,
+      "source_modules": 29,
+      "installed_native_checks": 69,
+      "result": "PASS"
+    },
+    "selected_capture17": {
+      "run": 46088683366,
+      "original_capture": "FAILED",
+      "diagnostic": "DIAGNOSED",
+      "shared_wasapi_initialization": "0x80070005",
+      "current_user_microphone": "Deny",
+      "causality_limit": "Actual access-denied observation; consent is supporting context and not an exclusive proven policy cause.",
+      "directory": "review/capture-17c58101-2026-11-28/"
+    },
+    "byte_exact_artifacts": {
+      "capture_tree": "8f4ff97ac46dd5be048643cdc68c2f1444961b09",
+      "capture_complete_members": 5,
+      "standard_uninstall_tree": "71717e6370c94d21d27c791ff199b9e93dda28c8",
+      "standard_complete_members": 6,
+      "standard_long_logs": "2explicit bounded excerpts with complete original member hashes"
+    },
+    "totals": "Scopes overlap; no unique grand total is asserted."
+  },
+  "preserved": {
+    "original_tests_and_assertions": true,
+    "original_product_deadlines": true,
+    "asr_five_second_allowance": true,
+    "windows_admission_five_second_allowance": true,
+    "windows_process_cap4096": true,
+    "uncached_control_and_profile_validation": true,
+    "native_family_and_io_quiet_required": true,
+    "post_termination_inventory_rebase_forbidden": true,
+    "installation_lease_and_byte_preservation": true,
+    "complete_source_wheel_verifier": true,
+    "microphone_consent_and_os_policy": true,
+    "exact_selected_device_and_branch_guards": true,
+    "private_assets_not_published": true,
+    "all_six_ordinary_and_complete_windows_same_head_required": true
+  },
+  "qualification": {
+    "receiving_composition": "INTEGRATED_NOT_RUN",
+    "receiving_identity": "The commit containing this manifest is the candidate; later execution must bind its exact source/wheel.",
+    "prior_results_transfer": false,
+    "eligible_final_wheel": false,
+    "final_archive": false,
+    "whole_platform_done": false,
+    "remaining_scope": "The full current finalization, human Windows11/NVDA/listening, actual selected input, owner-model/runtime and135-language quality, remaining implementation/interoperability, signing/private authority and profile distribution requirements remain in force."
+  }
+}

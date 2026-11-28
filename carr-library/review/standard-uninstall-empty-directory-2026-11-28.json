@@ -1,0 +1,120 @@
+{
+  "schema": "carr-standard-uninstall-empty-directory-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "code_tree": "0a1270cc4b1b68603131570f87a9922c163e34d1",
+  "exact_changes": [
+    {
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "before_blob": "9723721a2f5e7bf3963ee40f441bbf8a0940736a",
+      "before_utf8_bytes": 11688,
+      "before_sha256": "fb8d597736804954e41447ccc7a0f45b046155038736ed49bc851ee064d059d6",
+      "after_blob": "a030d415cf7326e937880f150d9667104828cf60",
+      "after_utf8_bytes": 11751,
+      "after_sha256": "cf7320bb1afc45521946c4bce06c53004e5aceb6e1587da6d8a19a9ad9cbb429"
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "before_blob": "9d595e91c994a7d7b208bdaeb83af08541236dc5",
+      "before_utf8_bytes": 19658,
+      "before_sha256": "a60587f3b0301376b8cdaa9953bd5f331f789e618194fb721436a348cb8672a8",
+      "after_blob": "f963493b87df786336d3af38902ad88dacbbbd43",
+      "after_utf8_bytes": 21303,
+      "after_sha256": "546e76737a3e4954f8c604d74d6c83ead1e71c7f1cd6e5fafdefab692e727fd3"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "before_blob": "f221a1634d9a295d3fbe9cc45454e71b45350478",
+      "before_utf8_bytes": 64058,
+      "before_sha256": "89f8f08f4c700af8dd69a49cfd94bb224ff544bac019305e7112d0dbeffc38f2",
+      "after_blob": "271e2aecc684a2b0408005fd369a298de476850b",
+      "after_utf8_bytes": 68773,
+      "after_sha256": "62e72e92f7e99dde05de343616ac5403d2aa4fdf5797426196de24ffd6e53b79"
+    }
+  ],
+  "observed_evidence": {
+    "source_run": 46088685885,
+    "source_job": 140804199202,
+    "source_head": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+    "reader_run": 46090220485,
+    "reader_job": 140809145413,
+    "artifact": {
+      "id": 15240398613,
+      "bytes": 137752,
+      "sha256": "9016128c2b8fa951c665e01a7343b2d89dacd29ebbd57f8c9c121e1d4ec4c777"
+    },
+    "raw_tree": "71717e6370c94d21d27c791ff199b9e93dda28c8",
+    "raw_uninstall_log": {
+      "path": "carr-library/review/standard-uninstall-17c58101-2026-11-28/native/uninstall.log",
+      "blob": "9c446d7c148f21ba1810ddc6869465ce8c6a29c4",
+      "bytes": 7208,
+      "sha256": "87c9891a17f0bf70f530c98da6cf071882ca9a14ead7fa14087720a3644b88be"
+    },
+    "raw_provenance_blob": "a7748ed7416109ac1c6065e5badf64b486ddd926",
+    "measured_facts": [
+      "Python check reported PASS.",
+      "Python uninstall reported PASS and user_data_modified=false.",
+      "Inno logged removal of the registration, three shortcuts and all known maintenance files.",
+      "Inno logged successful completion and closed its log before the original acceptance assertion failed.",
+      "The log has no maintenance-directory removal entry."
+    ],
+    "final_assertion": "Normal uninstall left program files or registration.",
+    "interpretation": "The exact current maintenance.install creates the maintenance directory before Inno's file phase; the template has no directory ownership entry. Together with the completed log this supports an empty retained maintenance directory. The failed original probe did not separately record post-uninstall registry/app/maintenance metadata, so directory emptiness was not directly measured.",
+    "native_lifecycle_result": "FAILED"
+  },
+  "producer_contract": {
+    "maintenance_blob": "efd6884c4d63d7c1b1a551dbe4a75ad4abc1d11d",
+    "unchanged_source": "maintenance.install creates root/maintenance with mkdir(exist_ok=True) and validates/copies only the exact helpers and selected setup. Inno remains responsible for uninstalling those files and its directory entry.",
+    "primary_documentation": "https://jrsoftware.org/inno-setup/documentation/topic_dirssection.htm",
+    "documented_flag": "uninsalwaysuninstall attempts to delete the directory only if empty, including a directory which existed before installation.",
+    "implementation": "Add one [Dirs] entry for {app}\\maintenance with uninsalwaysuninstall."
+  },
+  "fixed_diagnostic": {
+    "name": "uninstall-poststate.json",
+    "position": "After the existing owned final uninstaller call returns and before the unchanged acceptance conditions.",
+    "observations": [
+      "Existing read-only registry helper, presence or numeric/type OSError only.",
+      "Non-following lstat of exactly root/app and root/maintenance, recording absence, file type/reparse flags or numeric/type OSError.",
+      "The existing selected source/setup/bundle identity fields."
+    ],
+    "no_content_or_recursive_inventory": true,
+    "create_only": true,
+    "acceptance": "The recorded result does not authorize success. Every original fresh registry/path/shortcut/wrapper/library/recovery condition remains byte-identical.",
+    "artifact_scope": "The existing focused standard workflow already retains only public JSON/TXT/LOG/XML receipts under ci-standard-installation-results."
+  },
+  "verification": {
+    "source_readback": "All three complete GitHub blobs fetched back byte-exact.",
+    "inverse_checks": {
+      "setup_inverse": true,
+      "probe_inverse": true,
+      "tests_inverse": true,
+      "old_test_names_retained": true,
+      "original_native_failure_guard_retained": true,
+      "original_native_tail_retained": true,
+      "no_uninstall_delete": true,
+      "all_deltas_additive": true
+    },
+    "old_cases_retained": 144,
+    "new_portable_cases": 5,
+    "planned_standard_cases": 149,
+    "new_cases": [
+      "Actual absent/directory/regular-file fixed-path observations without content reads or traversal (3).",
+      "Incomplete registry and metadata permission errors remain explicit observations, not absence (1).",
+      "An existing receipt cannot be overwritten (1)."
+    ],
+    "existing_template_test": "Adds an exact directory-rule assertion while preserving the nonrecursive/no-UninstallDelete and all other assertions.",
+    "execution": "NOT_RUN",
+    "required_next": [
+      "Source and installed standard installer suites on Linux and Windows.",
+      "The unchanged actual native Install/Repair/Uninstall acceptance with this new template and source-bound setup. A new success receipt is required."
+    ]
+  },
+  "preserved": [
+    "No maintenance.py, installation lease, owner/process, uninstaller handoff, native architecture or bundle inventory changes.",
+    "No recursive uninstall directive, no foreign-directory/content deletion.",
+    "All original 12 native result predicates, refusal scenarios, source identities and deadlines.",
+    "The previously accepted explicit UTF-8 test corrections.",
+    "No refs or workflow mutations; no private binary uploads."
+  ],
+  "evidence_limit": "This source correction is not an actual native uninstall PASS and makes no signing, NVDA, physical audio capture or release qualification claim."
+}

@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 434, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 422, in main
+    _run(args, report)
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 402, in _run
+    raise RuntimeError('\n'.join(errors))
+RuntimeError: Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 384, in scenario
+    synthesis_options_scenario()
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 361, in synthesis_options_scenario
+    pump(destroyed_after_idle, 'Native options owner destruction did not settle')
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 134, in pump
+    while not predicate():
+              ^^^^^^^^^^^
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_voice_preferences_smoke.py", line 359, in destroyed_after_idle
+    app.ProcessIdle()
+    ^^^^^^^^^^^^^^^
+AttributeError: 'App' object has no attribute 'ProcessIdle'
+
+##[error]Process completed with exit code 1.

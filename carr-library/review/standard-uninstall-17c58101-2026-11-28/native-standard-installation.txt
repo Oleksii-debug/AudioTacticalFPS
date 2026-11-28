@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_standard_installer_smoke.py", line 400, in <module>
+    main()
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_standard_installer_smoke.py", line 395, in main
+    print(json.dumps(probe(args.setup.absolute(), args.build_evidence.absolute(),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\scripts\windows_standard_installer_smoke.py", line 361, in probe
+    raise RuntimeError('Normal uninstall left program files or registration.')
+RuntimeError: Normal uninstall left program files or registration.

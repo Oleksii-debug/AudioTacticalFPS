@@ -39,7 +39,76 @@ application archive excludes the separately set up audio runtime. No eligible
 delivery wheel, final private archive, signed installer or whole-platform
 completion is claimed by this checkpoint.
 
-## Current source/runtime correction composition — 2026-11-28
+## Current receiving gate corrections — 2026-11-28
+
+The successor of `17c581015fc1ca6f3294f4cce1fe894f33a843cd` repairs
+six observed receiving failures: the native launcher's bounded path copy now
+retains explicit stores under MSVC without adding a C runtime; two installer
+test fixtures explicitly preserve UTF-8; and four new deadline fixtures use
+the existing minimum output budget with an actually oversized staging file.
+A diagnostic fixture also explicitly replaces its own deliberately mutated
+receipt so the original changed-digest refusal is reached. Inno also gains
+one empty-only maintenance-directory removal rule; bounded post-uninstall
+metadata precedes every unchanged final acceptance check. All 144 existing
+installer cases remain with five additional diagnostic cases. Windows native
+cleanup also re-queries only a bounded successful partial list before
+termination inside the same five-second deadline, with seventeen additive
+cases and all original complete-list/retained-handle/lifetime fences preserved.
+Only audio/windows_process.py changes in the application tree. Production
+deadlines, original assertions, dependency
+pins, selected-device/microphone policy and final-wheel eligibility are
+unchanged. The existing native workflow gains one named receiving branch;
+all native gate bodies are unchanged. The three-path parent a9843de5 has
+already passed actual MSVC and Zig builds and all nine native checks per
+compiler. The full receiving composition is NOT_RUN; parent evidence is not
+transferred to its final installed artifact.
+
+Exact 17c58101 Linux installer selections passed 340 source and 340 installed
+cases plus 22 installed subtests; all four voice selections passed 301 cases
+per mode, with all 80 actual native checks passing on both Windows modes. Both supplied-worker Linux and Windows gates passed 797 cases and failed
+four new deadline fixtures before launch. All original service/admission
+42 cases and fresh-control suites passed with their existing budgets. Later
+native followups were not entered, and these results do not qualify the
+receiving successor. The 17c58101 Linux installed component
+selection passed 2,181 cases plus 12 subtests and failed those four deadline
+fixtures plus the diagnostic mutation fixture; its Windows bibliography
+workflow passed 29 source modules / 1,092 cases and the separate 69-check
+installed native probe. The Windows compatibility workflow passed 1,166
+source and 1,166 installed cases plus seven installed subtests and all seven
+native steps.
+
+The final 17c58101 Windows installed component run passed 2,176 cases plus
+12 subtests and failed seven already-corrected fixtures: two Unicode writes,
+four output-budget cases and one receipt mutation. It had no ASR or native
+membership failure; the separate source result remains authoritative for
+that failing execution.
+
+The 17c58101 Windows source component lane passed 2,177 cases and failed
+six: the same five fixture issues and a native Job membership inventory error
+during a real FFmpeg capability query. Its exact traceback did not preserve
+assigned/listed counter values, so the exact historical branch/cause remains unknown. Its bounded
+pre-termination requery/diagnostics correction requires actual new execution.
+The selected-input diagnostic independently observed access denied at shared
+WASAPI initialization and a current-user microphone consent value of Deny.
+The original capture remains failed; no permission or policy was altered.
+Standard Windows setup built and traversed install/repair before a failed
+final-uninstall postcondition; its retained log supports an empty-directory
+explanation requiring a corrected actual run.
+
+The final f4d6846d Windows installed component receipt records 2,091 passed
+plus 12 subtests and ten failures: six ASR, two spawned-test imports and the
+two Unicode fixtures. All four f4 voice contract selections passed 301 cases;
+both native Windows probes failed after 78 checks on the old idle API call.
+Every failure remains retained under its actual tested head.
+
+[The current receiving ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md#receiving-gate-corrections-after-17c58101--2026-11-28)
+binds these observations, exact corrections and source/installed identities.
+No final application archive, same-head ordinary/full-Windows acceptance,
+actual microphone capture, native setup lifecycle, private engine quality,
+signing, redistribution clearance or whole-platform completion is claimed
+by this composition.
+
+## Historical source/runtime correction composition — 2026-11-28
 
 The successor of `f4d6846d037c079438f96c85bbebfe0f979dd25b` addresses
 the measured exit-observation ambiguity through the existing two diagnostic

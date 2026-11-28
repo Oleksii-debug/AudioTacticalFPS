@@ -271,7 +271,7 @@ def test_changed_original_receipt_is_refused_before_native_open(prepared, monkey
         def devices(self):
             value = failed_capture(selected)
             value['selected_device'] = {'id': '0' * 64, 'name': selected.name}
-            atomic_json(args.capture_report, value)
+            atomic_json(args.capture_report, value, replace=True)
             return (selected,)
     monkeypatch.setattr('carr_library.audio.recording.RecordingService', Changed)
     monkeypatch.setattr('carr_library.audio.process.run_process',

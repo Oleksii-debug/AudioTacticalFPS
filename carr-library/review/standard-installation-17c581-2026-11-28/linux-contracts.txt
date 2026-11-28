@@ -1,0 +1,13 @@
+2026-11-28T00:42:29.5399220Z .PASS: tests/packaging/test_standard_installer.py: junit_passed=144, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:29.8378849Z PASS: tests/packaging/test_native_checks.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:30.1575062Z PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:30.6914619Z ...PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:31.0234093Z PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:31.4730644Z PASS: tests/packaging/test_worker_bytecode.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:32.3889622Z PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:32.7097440Z PASS: tests/packaging/test_native_runtime.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:33.0242779Z PASS: tests/audio/test_local_runtime_cli.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:33.4904187Z PASS: tests/test_delivery_cli.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:33.8719000Z PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+2026-11-28T00:42:33.8741992Z Required suites complete: 11; passed=11; failed=0
+2026-11-28T00:42:45.3953283Z 340 passed, 22 subtests passed in 11.16s

@@ -1,0 +1,389 @@
+{
+  "schema": "carr-native-launcher-relink-evidence/1",
+  "source_commit": "a9843de563eebe95d1f26fcc56b7215de0e78ab8",
+  "source_tree": "6e15c50de55590228f109b99497441af174602df",
+  "source_branch": "carr/native-launcher-receiving-evaluation-20261128",
+  "workflow": ".github/workflows/carr-native-launcher.yml",
+  "workflow_blob": "b3fb988da8ffa9312fdd09d788b25caecef825a8",
+  "run": 46091522176,
+  "attempt": 1,
+  "event": "push",
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "created_at": "2026-11-28T01:07:48Z",
+  "completed_metadata_at": "2026-11-28T01:09:33Z",
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46091522176",
+  "jobs": [
+    {
+      "mode": "msvc",
+      "id": 140813291211,
+      "name": "native-launcher",
+      "conclusion": "success",
+      "python": "3.11.9",
+      "native_checks": 9,
+      "native_launcher_execution_verified": true,
+      "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+      "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+      "decoded_complete_log": {
+        "utf8_bytes": 34207,
+        "sha256": "767413e21a5348a4c8cc1f6e0a9add85f566785779e46c82776d3e58de880864"
+      },
+      "complete_step_metadata": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Set up Python for stdlib-only probes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Locate installed Microsoft x64 development tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Compile private native launcher and test child with MSVC",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Execute exact launcher on native Windows with synthetic child",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Record exact source commit and private executable hashes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Post Set up Python for stdlib-only probes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13
+        },
+        {
+          "name": "Post Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        }
+      ]
+    },
+    {
+      "mode": "zig",
+      "id": 140813290912,
+      "name": "pinned-zig-native-launcher",
+      "conclusion": "success",
+      "python": "3.11.9",
+      "native_checks": 9,
+      "native_launcher_execution_verified": true,
+      "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+      "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+      "decoded_complete_log": {
+        "utf8_bytes": 30911,
+        "sha256": "63db56e3b96e9c1a06becf46cebf52a2b0cbc4114de699c09b2fa1d1acb2df93"
+      },
+      "complete_step_metadata": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Set up Python for the shared stdlib build and probe",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Verify the pinned official Zig distribution before extraction",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Build private PE with the exact shared cross-build command",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Execute the Zig PE on actual Windows",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Record source and native-tested private executable identity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Post Set up Python for the shared stdlib build and probe",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13
+        },
+        {
+          "name": "Post Check out exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        }
+      ]
+    }
+  ],
+  "receipt_files": [
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/msvc-build-evidence.json",
+      "job": 140813291211,
+      "decoded_log_lines": [
+        298,
+        348
+      ],
+      "utf8_bytes": 2715,
+      "sha256": "31a282fcb137a8fcc8935dc90b24c068ad0a25e5258a92a38c12fb222a96542d"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/msvc-windows-probe.json",
+      "job": 140813291211,
+      "decoded_log_lines": [
+        349,
+        370
+      ],
+      "utf8_bytes": 793,
+      "sha256": "502d4a193f62043bdacacd7c18ce4faa31b2c80f810407abe79e6efeaf31fb1d"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/zig-build-evidence.json",
+      "job": 140813290912,
+      "decoded_log_lines": [
+        284,
+        325
+      ],
+      "utf8_bytes": 1544,
+      "sha256": "404288f2538053d4bdeeb078790e556cbc31d95ec32578cd6028927890f6d8ec"
+    },
+    {
+      "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/zig-windows-probe.json",
+      "job": 140813290912,
+      "decoded_log_lines": [
+        326,
+        347
+      ],
+      "utf8_bytes": 793,
+      "sha256": "22983c0522d476ad470de860516611673b8bd213af922e2d4ccd28b250f0cc68"
+    }
+  ],
+  "provenance": "The four JSON payloads were printed twice by each completed job. Both copies parsed identically. The later payloads are preserved with only the GitHub timestamp prefix/line terminator removed; JSON formatting, values and original qualification flags are retained. These are completed-log receipts, not claims of original runner-file byte identity.",
+  "source_binding": {
+    "all_reported_sha256_match_exact_git_blobs": true,
+    "reported_comparisons": [
+      {
+        "mode": "msvc",
+        "name": "launcher.c",
+        "matches": true,
+        "expected": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+        "actual": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26"
+      },
+      {
+        "mode": "msvc",
+        "name": "probe_pe.py",
+        "matches": true,
+        "expected": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+        "actual": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3"
+      },
+      {
+        "mode": "msvc",
+        "name": "windows_child_probe.c",
+        "matches": true,
+        "expected": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+        "actual": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15"
+      },
+      {
+        "mode": "msvc",
+        "name": "launcher_core.h",
+        "matches": true,
+        "expected": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+        "actual": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b"
+      },
+      {
+        "mode": "msvc",
+        "name": "launcher.manifest",
+        "matches": true,
+        "expected": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+        "actual": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a"
+      },
+      {
+        "mode": "msvc",
+        "name": "launcher.rc",
+        "matches": true,
+        "expected": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+        "actual": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2"
+      },
+      {
+        "mode": "msvc",
+        "name": "build_msvc.ps1",
+        "matches": true,
+        "expected": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8",
+        "actual": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+      },
+      {
+        "mode": "zig",
+        "name": "launcher.c",
+        "matches": true,
+        "expected": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+        "actual": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26"
+      },
+      {
+        "mode": "zig",
+        "name": "launcher_core.h",
+        "matches": true,
+        "expected": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+        "actual": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b"
+      },
+      {
+        "mode": "zig",
+        "name": "launcher.rc",
+        "matches": true,
+        "expected": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+        "actual": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2"
+      },
+      {
+        "mode": "zig",
+        "name": "launcher.manifest",
+        "matches": true,
+        "expected": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+        "actual": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a"
+      },
+      {
+        "mode": "zig",
+        "name": "toolchain.lock.json",
+        "matches": true,
+        "expected": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50",
+        "actual": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+      }
+    ],
+    "source_inventory": [
+      {
+        "path": ".github/workflows/carr-native-launcher.yml",
+        "blob": "b3fb988da8ffa9312fdd09d788b25caecef825a8",
+        "bytes": 5804,
+        "sha256": "926fa16bbf2a62e8abd6b48fd4a875904cb0eb186caada104f053e53a2d49050"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/probe_windows.py",
+        "blob": "ce66b743c8614b88ec7f1a77e2423f86fc64474b",
+        "bytes": 6325,
+        "sha256": "dbb7249be2edf6047fb4e3ba5f12937c300024f9c5e46cbdb1daa0fc76ff6104"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/launcher.c",
+        "blob": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+        "bytes": 12761,
+        "sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/probe_pe.py",
+        "blob": "6dc2708791108b9ebf4656e3f8480945e337d10b",
+        "bytes": 4236,
+        "sha256": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/windows_child_probe.c",
+        "blob": "0cd3039053be35eb3e9f76960eccc7557d73e46d",
+        "bytes": 2526,
+        "sha256": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/launcher_core.h",
+        "blob": "456ff2695b5b5749290e054d1f8031e483999374",
+        "bytes": 2359,
+        "sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/launcher.manifest",
+        "blob": "cfaea634d9705ae75f23b9423350e051cce7b732",
+        "bytes": 929,
+        "sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/launcher.rc",
+        "blob": "7cf42ebb63320940ad33bda24747a292bd67ed63",
+        "bytes": 25,
+        "sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/build_msvc.ps1",
+        "blob": "5e4cb7103b78797fd46c1b0092b3b1c2d71b351d",
+        "bytes": 3335,
+        "sha256": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/toolchain.lock.json",
+        "blob": "75e7cc434ef2a50ab3f08fd1d0ab1a5b9eaedf91",
+        "bytes": 591,
+        "sha256": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+      },
+      {
+        "path": "carr-library/packaging/native-launcher/build_launcher.py",
+        "blob": "beb1c95f9ec999be261bda1c38593a4f849525d0",
+        "bytes": 5511,
+        "sha256": "bb47a3fb9b6e0ad73be48d6034b4cfd4452b3a6dbffb2a2dea3cc25447fab06c"
+      }
+    ]
+  },
+  "source_native_excerpt": {
+    "path": "carr-library/review/native-launcher-a9843de5-2026-11-28/source-native-excerpts.txt",
+    "utf8_bytes": 883,
+    "sha256": "c9e57137a8c242e7a9233febcf8de6fbb7fe0edb0f2fe2d9e3fdd5fd2144f5dc"
+  },
+  "artifacts": {
+    "returned": 0,
+    "binary_upload": "None; the workflow deliberately keeps executables on the ephemeral runner."
+  },
+  "conclusion": "The exact reviewed volatile-store launcher correction compiled under the unchanged MSVC build script and linker policy and passed all nine existing native Windows launcher checks. The same source also built with the existing pinned Zig compiler and passed all nine checks.",
+  "qualification_limits": [
+    "Actual native launcher execution with the existing synthetic child was measured, with identical PE/build hash binding in each mode.",
+    "The build-stage PE receipts retain windows_execution_verified=false; the separate later native receipts record native_launcher_execution_verified=true for those same hashes.",
+    "actual_python_installation_verified, authenticode_verified and nvda_verified remain false in both native receipts.",
+    "This launcher run does not qualify the separate Inno Install/Repair/Uninstall correction, full application package, physical capture or release readiness.",
+    "No source, workflow or ref was mutated while collecting these results."
+  ]
+}

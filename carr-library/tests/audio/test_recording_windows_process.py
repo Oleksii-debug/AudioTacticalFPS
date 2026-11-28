@@ -325,7 +325,8 @@ def drain_job(monkeypatch):
             events.append(('assign-job', handle))
             return True
         def QueryInformationJobObject(self, job, kind, pointer, size, length):
-            assert job == 101 and length is None
+            assert job == 101
+            assert (length is None) == (kind != 3)
             events.append(('query', kind))
             if self.on_query is not None:
                 self.on_query(kind)
@@ -342,6 +343,9 @@ def drain_job(monkeypatch):
                     len(self.identifiers) if self.inventory_count is None else self.inventory_count)
                 for index, pid in enumerate(self.identifiers):
                     value.processes[index] = pid
+                ctypes.cast(length, ctypes.POINTER(ctypes.c_uint32)).contents.value = (
+                    module._ProcessIds.processes.offset
+                    + min(value.listed, module._MAX_JOB_MEMBERS) * ctypes.sizeof(ctypes.c_size_t))
             else:
                 raise AssertionError(kind)
             return True
@@ -714,3 +718,206 @@ def test_notification_setup_failure_cleans_only_created_native_objects(monkeypat
         module._Job()
     assert ('terminate', 101) in events and ('close', 101) in events
     assert events.count(('close', 201)) == (0 if failure == 'create' else 1)
+
+
+def membership_replies(monkeypatch, kernel, events, replies):
+    """Return recorded native structures through the actual query wrapper."""
+    original = kernel.QueryInformationJobObject
+    observed = []
+
+    def query(job, kind, pointer, size, length):
+        result = original(job, kind, pointer, size, length)
+        if kind != 3:
+            return result
+        assert length is not None and size == ctypes.sizeof(module._ProcessIds)
+        reply = replies[min(len(observed), len(replies) - 1)]
+        value = ctypes.cast(pointer, ctypes.POINTER(module._ProcessIds)).contents
+        value.assigned, value.listed = reply['assigned'], reply['listed']
+        for index, pid in enumerate(reply.get('identifiers', ())):
+            value.processes[index] = pid
+        returned = reply.get('returned_length',
+            module._ProcessIds.processes.offset
+            + min(value.listed, module._MAX_JOB_MEMBERS) * ctypes.sizeof(ctypes.c_size_t))
+        ctypes.cast(length, ctypes.POINTER(ctypes.c_uint32)).contents.value = returned
+        observed.append((int(value.assigned), int(value.listed), returned))
+        events.append(('membership-reply', len(observed), int(value.assigned), int(value.listed)))
+        if reply.get('winerror') is not None:
+            kernel.error_code = reply['winerror']
+            return False
+        return result
+
+    monkeypatch.setattr(kernel, 'QueryInformationJobObject', query)
+    return observed
+
+
+def test_partial_membership_retries_before_termination_and_retains_complete_handles(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    observed = membership_replies(monkeypatch, kernel, events, [
+        {'assigned': 2, 'listed': 1, 'identifiers': (0,)},
+        {'assigned': 2, 'listed': 2, 'identifiers': (11, 22)},
+    ])
+    assert job.close(leader=leader)
+    assert [(a, n) for a, n, _length in observed] == [(2, 1), (2, 2)]
+    complete = events.index(('membership-reply', 2, 2, 2))
+    assert complete < events.index(('open-member', 22)) < events.index(('terminate-job', 101))
+    assert events.count(('open-member', 22)) == 1
+    member_waits = [event for event in events if event[:2] == ('wait-member', 1022)]
+    assert len(member_waits) == 1
+    assert events.index(('close', 1022)) < events.index(('close', 101))
+    assert job._shutdown_total == 2 and job._admission_failure is None
+    assert job.handle is None and job.port is None and not job._members
+    assert job._membership_query == {
+        'attempt': 2, 'api_success': 1, 'assigned': 2, 'listed': 2,
+        'capacity': module._MAX_JOB_MEMBERS, 'buffer_bytes': ctypes.sizeof(module._ProcessIds),
+        'returned_length': module._ProcessIds.processes.offset + 2 * ctypes.sizeof(ctypes.c_size_t),
+        'winerror': None,
+    }
+
+
+def test_permanently_partial_inventory_consumes_original_deadline_and_stays_latched(monkeypatch):
+    clock = [100.0]
+    monkeypatch.setattr(module, 'time', SimpleNamespace(
+        monotonic=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds)))
+    job, kernel, leader, events = drain_job(monkeypatch)
+    replies = [{'assigned': 2, 'listed': 1, 'identifiers': (0,)}]
+    observed = membership_replies(monkeypatch, kernel, events, replies)
+    def advance(kind):
+        if kind == 3:
+            clock[0] += 1.0
+    kernel.on_query = advance
+    with pytest.raises(TimeoutError, match='job has not confirmed shutdown') as failure:
+        job.close(leader=leader)
+    assert 105.0 <= clock[0] < 106.0
+    assert len(observed) == 5
+    assert job._shutdown_total is None and job._admission_failure is failure.value
+    assert job.handle == 101 and job.port == 201 and not job._members
+    assert events.count(('terminate-job', 101)) == 1
+    assert not any(event[0] in ('open-member', 'wait-member', 'close') for event in events)
+    note = failure.value.__notes__[-1]
+    assert "'attempt': 5" in note and "'assigned': 2" in note and "'listed': 1" in note
+    assert "'api_success': 1" in note and "'winerror': None" in note
+    # A later complete reply cannot replace failed pre-termination admission.
+    replies[:] = [{'assigned': 0, 'listed': 0}]
+    with pytest.raises(TimeoutError) as again:
+        job.close(leader=leader)
+    assert again.value is failure.value
+    assert len(observed) == 5 and events.count(('terminate-job', 101)) == 2
+    assert job.handle == 101 and job.port == 201
+
+
+@pytest.mark.parametrize('assigned,listed', [
+    (0, 1), (1, 2), (4097, 0), (4097, 4097), (4096, 4097), (0, 4097),
+])
+def test_invalid_or_over_cap_inventory_never_retries_or_opens_a_pid(monkeypatch, assigned, listed):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    replies = [{'assigned': assigned, 'listed': listed, 'identifiers': (0,)}]
+    observed = membership_replies(monkeypatch, kernel, events, replies)
+    message = 'bounded membership' if max(assigned, listed) > module._MAX_JOB_MEMBERS else 'invalid membership'
+    with pytest.raises(OSError, match=message) as failure:
+        job.close(leader=leader)
+    assert len(observed) == 1 and job._shutdown_total is None
+    assert job._admission_failure is failure.value and job.handle == 101 and job.port == 201
+    assert not any(event[0] in ('open-member', 'wait-member', 'close') for event in events)
+    assert events.count(('terminate-job', 101)) == 1
+    assert f"'assigned': {assigned}" in failure.value.__notes__[-1]
+    assert f"'listed': {listed}" in failure.value.__notes__[-1]
+    replies[:] = [{'assigned': 0, 'listed': 0}]
+    with pytest.raises(OSError) as again:
+        job.close(leader=leader)
+    assert again.value is failure.value and len(observed) == 1
+
+
+@pytest.mark.parametrize('identifiers', [(22, 22), (0,), (0x100000000,)])
+def test_complete_retry_still_rejects_invalid_process_identities(monkeypatch, identifiers):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    observed = membership_replies(monkeypatch, kernel, events, [
+        {'assigned': 2, 'listed': 1, 'identifiers': (0,)},
+        {'assigned': len(identifiers), 'listed': len(identifiers), 'identifiers': identifiers},
+    ])
+    with pytest.raises(OSError, match='invalid process inventory') as failure:
+        job.close(leader=leader)
+    assert len(observed) == 2 and job._admission_failure is failure.value
+    assert job._shutdown_total is None and job.handle == 101 and job.port == 201
+    assert not any(event[0] in ('open-member', 'wait-member', 'close') for event in events)
+    assert events.count(('terminate-job', 101)) == 1
+
+
+@pytest.mark.parametrize('boundary', ['coverage', 'fence', 'membership'])
+def test_complete_retry_preserves_lifetime_coverage_fence_and_member_authority(monkeypatch, boundary):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    complete = ({'assigned': 0, 'listed': 0} if boundary == 'coverage' else
+                {'assigned': 1, 'listed': 1, 'identifiers': (22,)})
+    observed = membership_replies(monkeypatch, kernel, events, [
+        {'assigned': 2, 'listed': 1, 'identifiers': (0,)}, complete,
+    ])
+    kernel.late_member = boundary == 'fence'
+    kernel.member = boundary != 'membership'
+    message = {
+        'coverage': 'historical.*no retained exit proof',
+        'fence': 'membership changed across termination',
+        'membership': 'membership changed during shutdown admission',
+    }[boundary]
+    with pytest.raises(OSError, match=message):
+        job.close(leader=leader)
+    assert len(observed) == 2 and job.handle == 101 and job.port == 201
+    assert ('close', 101) not in events and ('close', 201) not in events
+    assert not any(event[0] == 'wait-member' for event in events)
+    assert job._shutdown_total == (None if boundary == 'membership' else 2)
+    if boundary == 'fence':
+        assert job._members == {22: (1022, True)}
+        assert ('close', 1022) not in events
+    with pytest.raises(OSError, match=message):
+        job.close(leader=leader)
+    assert len(observed) == 2  # No requery/rebasing after termination.
+
+
+@pytest.mark.parametrize('winerror', [5, 234])
+def test_membership_query_api_error_is_captured_and_never_retried(monkeypatch, winerror):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    observed = membership_replies(monkeypatch, kernel, events, [
+        {'assigned': 2, 'listed': 1, 'identifiers': (0,),
+         'returned_length': module._ProcessIds.processes.offset, 'winerror': winerror},
+    ])
+    original_error = job.api.error
+    def native_error():
+        events.append(('capture-error', kernel.error_code))
+        return original_error()
+    monkeypatch.setattr(job.api, 'error', native_error)
+    with pytest.raises(OSError, match='native drain failure') as failure:
+        job.close(leader=leader)
+    assert failure.value.winerror == winerror
+    assert events.index(('capture-error', winerror)) < events.index(('terminate-job', 101))
+    assert len(observed) == 1 and job._admission_failure is failure.value
+    assert job._membership_query == {
+        'attempt': 1, 'api_success': 0, 'assigned': 2, 'listed': 1,
+        'capacity': module._MAX_JOB_MEMBERS, 'buffer_bytes': ctypes.sizeof(module._ProcessIds),
+        'returned_length': module._ProcessIds.processes.offset, 'winerror': winerror,
+    }
+    assert str(job._membership_query) in failure.value.__notes__[-1]
+    assert not any(event[0] in ('open-member', 'wait-member', 'close') for event in events)
+    with pytest.raises(OSError) as again:
+        job.close(leader=leader)
+    assert again.value is failure.value and len(observed) == 1
+    assert job.handle == 101 and job.port == 201
+
+
+def test_successful_membership_query_records_returned_length_without_reading_stale_error(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    kernel.error_code = 87  # Deliberately stale native error after a successful query.
+    original_error = job.api.error
+    def no_error_read():
+        raise AssertionError('Successful QueryInformationJobObject must not read LastError.')
+    monkeypatch.setattr(job.api, 'error', no_error_read)
+    try:
+        value = job._query(3, module._ProcessIds())
+        assert value.assigned == value.listed == 1 and value.processes[0] == 22
+        assert job._membership_query == {
+            'attempt': 1, 'api_success': 1, 'assigned': 1, 'listed': 1,
+            'capacity': module._MAX_JOB_MEMBERS, 'buffer_bytes': ctypes.sizeof(module._ProcessIds),
+            'returned_length': module._ProcessIds.processes.offset + ctypes.sizeof(ctypes.c_size_t),
+            'winerror': None,
+        }
+    finally:
+        monkeypatch.setattr(job.api, 'error', original_error)
+    assert job.close(leader=leader)
+    assert job.handle is None and job.port is None

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "base_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "actual_failure_job": 140804190945,
+  "path": "carr-library/tests/audio/test_process_deadline.py",
+  "before": "9f8a4e0e9231492794e381b100666e779fd312fe",
+  "after": "79948bafb1a91a6c4ffc3cc70260fec6a1b3b33d",
+  "sparse_tree": "8fd35771bcea3c22ba5424c8e2029ee93fa0fb3a",
+  "changes": [
+    {
+      "before": "                output.write_bytes(b'x' * 2048)\n",
+      "after": "                output.write_bytes(b'x' * 8192)\n"
+    },
+    {
+      "before": "            budget_options={'max_log_bytes': 1024, 'max_output_bytes': 1024})\n",
+      "after": "            budget_options={'max_log_bytes': 1024, 'max_output_bytes': 4096})\n"
+    }
+  ],
+  "preserved": {
+    "cases": 21,
+    "old_cases": 8,
+    "new_cases": 13,
+    "execution_budget_seconds": 5,
+    "all_assertions": true,
+    "production_unchanged": true
+  },
+  "basis": "AudioBudget.__post_init__ requires max_output_bytes >=4096; the repaired 8192-byte mutation still exceeds that actual admitted output budget. max_log_bytes remains1024.",
+  "review": "Locate exact two-line readback CLEAR",
+  "execution": "NOT_RUN"
+}

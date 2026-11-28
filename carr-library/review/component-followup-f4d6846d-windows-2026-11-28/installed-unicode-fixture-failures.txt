@@ -1,0 +1,54 @@
+_________ test_repair_retains_changed_and_foreign_files_then_rebuilds _________
+
+installed = (WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_repair_retains_changed_an0/I...d4e6bb57fe973c9001fcd82a4623c065252be554931f2c4be', 'ed45089fd0f28928fde4ce831d9092234548cb170f01fc7387d66d2257acdf19')
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_repair_retains_changed_an0')
+
+    def test_repair_retains_changed_and_foreign_files_then_rebuilds(installed, tmp_path):
+        root, payload, expected, setup = installed
+        original = root / 'app/README.txt'
+        original.write_bytes(b'changed by the user or damaged; retain these exact bytes')
+>       (root / 'app/foreign notes.txt').write_text('user notes \u03a9')
+
+tests\packaging\test_standard_installer.py:185: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\pathlib.py:1079: in write_text
+    return f.write(data)
+           ^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <encodings.cp1252.IncrementalEncoder object at 0x0000013B84CD4FD0>
+input = 'user notes \u03a9', final = False
+
+    def encode(self, input, final=False):
+>       return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       UnicodeEncodeError: 'charmap' codec can't encode character '\u03a9' in position 11: character maps to <undefined>
+
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\encodings\cp1252.py:19: UnicodeEncodeError
+_____ test_uninstall_removes_only_owned_program_and_leaves_external_data ______
+
+installed = (WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_uninstall_removes_only_ow0/I...4dad603b5198689a7996edd579b3d950310df90a9fd4eb8ff', 'ed45089fd0f28928fde4ce831d9092234548cb170f01fc7387d66d2257acdf19')
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_uninstall_removes_only_ow0')
+
+    def test_uninstall_removes_only_owned_program_and_leaves_external_data(installed, tmp_path):
+        root, _, expected, setup = installed
+        external = tmp_path / 'userdata'
+        external.mkdir()
+>       (external / 'book.txt').write_text('original Unicode prose \u03a9\\f[pause 2]\\r\\n')
+
+tests\packaging\test_standard_installer.py:313: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\pathlib.py:1079: in write_text
+    return f.write(data)
+           ^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <encodings.cp1252.IncrementalEncoder object at 0x0000013B84563F10>
+input = 'original Unicode prose \u03a9\\x0c[pause 2]\\r\\r\\n', final = False
+
+    def encode(self, input, final=False):
+>       return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       UnicodeEncodeError: 'charmap' codec can't encode character '\u03a9' in position 23: character maps to <undefined>
+
+C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\encodings\cp1252.py:19: UnicodeEncodeError
