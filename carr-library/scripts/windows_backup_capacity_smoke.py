@@ -523,7 +523,9 @@ def main(argv=None):
 
     outcomes = {}
     with TemporaryDirectory(prefix='carr-native-backup-capacity-') as temporary:
-        root = Path(temporary)
+        # The canonical restore API returns a resolved path. Bind the owned
+        # fixture root once, including Windows short-name expansion.
+        root = Path(temporary).resolve(strict=True)
         try:
             for name in MODULES:
                 module = importlib.import_module(name)
@@ -594,6 +596,14 @@ def main(argv=None):
                               and 'capacity_profile' not in manifest['pending'])
                     result_text = command(restore_item, selected=1,
                         folders=(backup_calls[1][1], restored_parent), checksum=backup_calls[1][2])
+                    print('DIAG: actual canonical restore binding ' + json.dumps(dict(
+                        calls=len(restore_calls), expected_profile=LARGE_SOURCE_PROFILE,
+                        actual_profile=str(restore_calls[0][0])[:64] if len(restore_calls) == 1 else None,
+                        expected_parent=str(restored_parent)[:512],
+                        actual_parent=str(restore_calls[0][1].parent)[:512] if len(restore_calls) == 1 else None,
+                        expected_checksum=backup_calls[1][2],
+                        actual_checksum=str(restore_calls[0][2])[:64] if len(restore_calls) == 1 else None),
+                        ensure_ascii=True), flush=True)
                     check('explicit large restore reaches the same canonical fresh-destination API',
                           len(restore_calls) == 1 and restore_calls[0][0] == LARGE_SOURCE_PROFILE
                           and restore_calls[0][1].parent == restored_parent
