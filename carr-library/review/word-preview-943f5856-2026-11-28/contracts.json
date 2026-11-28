@@ -1,0 +1,99 @@
+{
+  "schema": "carr-word-preview-observed-contracts/1",
+  "head": "943f585659c55481046266338f428e4a1043a9bd",
+  "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "job_id": 140898396534,
+  "required_suites": [
+    "tests/ui/test_word_citations.py"
+  ],
+  "source": {
+    "verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_word_citations.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "actual_pytest_summary": "======================== 22 passed in 73.52s (0:01:13) ========================",
+    "command": "& $env:CARR_PYTHON -B -X utf8 scripts/ci_check.py --jobs 2 @suites",
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed": {
+    "actual_installed_cases_pass": [
+      22
+    ],
+    "actual_pytest_summary": "22 passed in 72.03s (0:01:12)",
+    "command": "& $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-word-preview-results/installed.xml @suites",
+    "failed": 0,
+    "skipped": 0,
+    "isolated": true,
+    "empty_pytest_pythonpath": true,
+    "import_mode": "importlib",
+    "strict_expected_failures": true,
+    "policy": "Unchanged scripts/ci_check.py PYTEST_CHILD; original socket refusal and XFAIL/XPASS rejection.",
+    "junit_scope": "The original strict installed verdict reads every testcase and refuses failure/error/skipped."
+  },
+  "wheel": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "wheel_sha256": "655796d168bbad61dc08726d9a9a5a95a75459150b2476afe7a0cdd77d273304"
+  },
+  "source_binding": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "comparison_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "python_modules": 383,
+    "package_files": 476,
+    "all_package_git_blobs_unchanged": true,
+    "selected_paths": [
+      {
+        "path": ".github/workflows/carr-word-preview-evaluation.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9a017150e77c935deaeaa391e8d591985e591e2a",
+        "size": 13285,
+        "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/git/blobs/9a017150e77c935deaeaa391e8d591985e591e2a"
+      },
+      {
+        "path": "carr-library/tests/ui/test_word_citations.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+        "size": 15860,
+        "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/git/blobs/047bc60d692f3b976be2e86eada9af4bd08b1387"
+      },
+      {
+        "path": "carr-library/scripts/ci_check.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "801ae3d91b0bb287bcb10d987c4af37d234db722",
+        "size": 16399,
+        "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/git/blobs/801ae3d91b0bb287bcb10d987c4af37d234db722"
+      }
+    ],
+    "test_execution": "NOT_RUN until terminal logs are received"
+  },
+  "fixture": {
+    "git_blob": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+    "original_cases": 19,
+    "added_cases": 3,
+    "readiness_timeout_seconds": 10,
+    "formatter_timeout_seconds": 30,
+    "product_code_changed": false
+  },
+  "limits": {
+    "historical_five_failure_cause": "NOT_PROVEN",
+    "actual_Word_COM": "NOT_RUN",
+    "manual_NVDA": "NOT_RUN",
+    "full_platform_release": "NOT_CLAIMED",
+    "historical_pass_transfer": false
+  }
+}

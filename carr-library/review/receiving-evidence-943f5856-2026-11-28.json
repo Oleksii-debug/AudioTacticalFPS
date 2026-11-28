@@ -40,14 +40,30 @@
       "job": 140899152704,
       "kind": "Terminal actual bundled CORE spawn regression: two unchanged real-process cases passed, zero failures/errors/skips/XFAIL. Exact reviewed -c transport, 383module namespace/RECORD and before/after seal verified; full media/OCR/model wrapper not executed.",
       "qualification": "carr-library/review/receiving-943f-core-bundle-spawn-2026-11-28/provenance.json"
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "82a0ec0384d67145f3d60db9960cb8d28247c230",
+      "run": 46118770338,
+      "job": 140898396534,
+      "kind": "Terminal focused Word Windows:22source and22installed passed, zero failures/errors/skips; all383 emitted source/wheel/installed rows match. Original10-second readiness and30-second formatter unchanged. Historical failure exception cause remains unproven.",
+      "qualification": "carr-library/review/word-preview-943f5856-2026-11-28/receipt.json"
     }
   ],
   "candidate_runs": {
     "word": 46118770338,
     "standard_installation": 46118771937,
-    "bundle_spawn": 46119011105
+    "bundle_spawn": 46119011105,
+    "native": 46119978418,
+    "bibliography": 46119978377,
+    "bridge": 46119978409,
+    "canonical": 46119978374,
+    "main": 46119978375,
+    "v3": 46119978462,
+    "reader": 46119979623,
+    "components": 46119982340
   },
-  "execution": "Focused actual CORE bundle spawn is terminal SUCCESS. Linux standard source/installed is terminal SUCCESS. Windows standard and focused Word are queued at this checkpoint; broader ordinary/full receiving has not yet been dispatched at this head. No aggregate release or final wheel is qualified.",
+  "execution": "Focused Word and actual CORE bundle spawn are terminal SUCCESS; Linux standard is terminal SUCCESS. Windows standard is building after source and installed gates succeeded; native lifecycle result is pending. Independent ordinary, Reader/component and complete guarded Windows runs are dispatched on this exact head. PR127 remains2df. New historical 2df V3 failures are under diagnosis; no aggregate release or final wheel is qualified.",
   "latest_source_verification": {
     "python_modules": 383,
     "git_tree_rows_sha256": "0b7b07269abcde4961a02ba1b086d064881fd919996758f9b54b669e9fa69365",
@@ -58,5 +74,18 @@
   "ci_trigger_review": "Evidence branch name is outside current workflow push branch filters. All workflow and application source blobs remain exact candidate bytes.",
   "private_artifacts": "Only public source review, metadata, decoded logs and synthetic test evidence; no private model, recordings, runtime binaries or credentials.",
   "remaining_acceptance": "Complete exact-head required Windows/ordinary workflows; selected capture, human Windows11/NVDA and listening, actual authorized engines/languages, private signing/provider assembly and distribution rights remain separately required.",
-  "independent_review": "carr-library/review/receiving-943f5856-2026-11-28/targeted-independent-review.json"
+  "independent_review": "carr-library/review/receiving-943f5856-2026-11-28/targeted-independent-review.json",
+  "dispatch": {
+    "at": "2026-11-28 07:10:41 UTC",
+    "source": "943f585659c55481046266338f428e4a1043a9bd",
+    "evaluation_refs": [
+      "carr/ci-endpoint-evaluation-20261127",
+      "carr/reader-voice-controls-evaluation-20261127",
+      "carr/component-followup-evaluation-20261127"
+    ],
+    "fast_forward_leases_and_readbacks": "EXACT",
+    "scheduling": "Independent broad receiving proceeded in parallel while Word/WindowsStandard queued; same candidate bytes and all required acceptance conditions retained.",
+    "pr_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+  },
+  "root_word_review": "carr-library/review/receiving-943f5856-2026-11-28/word-independent-review.json"
 }

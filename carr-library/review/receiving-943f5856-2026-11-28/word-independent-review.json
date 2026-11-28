@@ -1,0 +1,28 @@
+{
+  "head": "943f585659c55481046266338f428e4a1043a9bd",
+  "log": {
+    "sha256": "19f0d06f2b673edc686275d7efd08e1a7aaaad6c56a3dd4e910d19cef69046dc",
+    "bytes": 267943
+  },
+  "source": {
+    "status": "PASS",
+    "suite": "tests/ui/test_word_citations.py",
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  "source_seconds": 73.52,
+  "installed_passed": 22,
+  "installed_failed": 0,
+  "installed_skipped": 0,
+  "installed_seconds": 72.03,
+  "inventory_rows": 383,
+  "all_emitted_rows_match": true,
+  "source_readiness_seconds": 10,
+  "formatter_seconds": 30,
+  "historical_failure_cause": "NOT_PROVEN",
+  "real_Word_COM": "NOT_RUN",
+  "human_NVDA": "NOT_RUN",
+  "qualification_transfer": false
+}

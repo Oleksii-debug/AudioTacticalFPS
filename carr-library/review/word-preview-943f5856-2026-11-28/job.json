@@ -1,0 +1,124 @@
+{
+  "id": 140898396534,
+  "run_id": 46118770338,
+  "workflow_name": "Resonance focused Word preview callback verification",
+  "head_branch": "carr/word-preview-evaluation-20261128",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46118770338",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzjLpdg",
+  "head_sha": "943f585659c55481046266338f428e4a1043a9bd",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140898396534",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118770338/job/140898396534",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T06:54:42Z",
+  "started_at": "2026-11-28T07:08:56Z",
+  "completed_at": "2026-11-28T07:12:11Z",
+  "name": "Word preview callbacks / windows-2022 / source and installed",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T07:08:57Z",
+      "completed_at": "2026-11-28T07:08:57Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T07:08:57Z",
+      "completed_at": "2026-11-28T07:08:58Z"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T07:08:58Z",
+      "completed_at": "2026-11-28T07:09:06Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T07:09:06Z",
+      "completed_at": "2026-11-28T07:09:06Z"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T07:09:06Z",
+      "completed_at": "2026-11-28T07:09:39Z"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T07:09:39Z",
+      "completed_at": "2026-11-28T07:09:39Z"
+    },
+    {
+      "name": "Require the exact source Word preview callback contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T07:09:39Z",
+      "completed_at": "2026-11-28T07:10:53Z"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T07:10:53Z",
+      "completed_at": "2026-11-28T07:12:06Z"
+    },
+    {
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T07:12:06Z",
+      "completed_at": "2026-11-28T07:12:07Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T07:12:07Z",
+      "completed_at": "2026-11-28T07:12:07Z"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-11-28T07:12:07Z",
+      "completed_at": "2026-11-28T07:12:09Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-11-28T07:12:09Z",
+      "completed_at": "2026-11-28T07:12:09Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140898396534",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490318,
+  "runner_name": "GitHub Actions 1000490318",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

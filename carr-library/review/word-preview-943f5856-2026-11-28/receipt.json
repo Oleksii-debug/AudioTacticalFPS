@@ -1,0 +1,171 @@
+{
+  "schema": "carr-exact-head-word-preview-receipt/1",
+  "status": "PASS_FOR_FOCUSED_SOURCE_AND_INSTALLED_CONTRACTS",
+  "recorded_at_utc": "2026-11-28 07:14:34 UTC",
+  "candidate": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "parent": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+    "package_python_modules": 383,
+    "package_files": 476
+  },
+  "workflow": {
+    "id": 46118770338,
+    "head_sha": "943f585659c55481046266338f428e4a1043a9bd",
+    "head_branch": "carr/word-preview-evaluation-20261128",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118770338",
+    "path": ".github/workflows/carr-word-preview-evaluation.yml",
+    "git_blob": "9a017150e77c935deaeaa391e8d591985e591e2a"
+  },
+  "job": {
+    "id": 140898396534,
+    "name": "Word preview callbacks / windows-2022 / source and installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:08:56Z",
+    "completed_at": "2026-11-28T07:12:11Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118770338/job/140898396534",
+    "runner_name": "GitHub Actions 1000490318",
+    "labels": [
+      "windows-2022"
+    ]
+  },
+  "tests": {
+    "required_suites": [
+      "tests/ui/test_word_citations.py"
+    ],
+    "source": {
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "seconds": 73.52
+    },
+    "installed": {
+      "passed": 22,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 72.03,
+      "actual_strict_marker": "INSTALLED_CASES_PASS 22"
+    },
+    "old_cases_preserved": 19,
+    "new_completion_contract_cases": 3,
+    "test_git_blob": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+    "readiness_timeout_seconds": 10,
+    "formatter_timeout_seconds": 30,
+    "phase_timeouts_minutes": {
+      "source": 12,
+      "installed": 12
+    }
+  },
+  "identity": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "executable": "D:\\a\\_temp\\carr-word-preview-python\\Scripts\\python.exe",
+    "prefix": "D:\\a\\_temp\\carr-word-preview-python",
+    "installed_package": "D:\\a\\_temp\\carr-word-preview-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "actual_full_python_rows": 383,
+    "actual_full_python_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "all_current_python_hashes_match": true,
+    "all_476_package_git_blobs_match_2df": true,
+    "whole_wheel": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+      "wheel_sha256": "655796d168bbad61dc08726d9a9a5a95a75459150b2476afe7a0cdd77d273304"
+    },
+    "comparison_transfers_test_results": false
+  },
+  "artifact": {
+    "id": 15253083193,
+    "name": "carr-word-preview-windows-2022-943f585659c55481046266338f428e4a1043a9bd-1",
+    "size_in_bytes": 23323,
+    "digest": "sha256:9dc2e88013001213ea4883c3c4161582fac2426a0623bec8161af2ca48869448",
+    "created_at": "2026-11-28T07:12:07Z",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253083193"
+  },
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/run.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e20d2c1cd63f1489a4e256c12b0350ede1d43c3",
+      "sha256": "ab5ea2f258edb2d89c921a25ea620b57c8f4a86c7a3ece3c8e6876a21308bf24",
+      "bytes": 14917,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "145609d99b02d061af9a925379fd80f0a116e973",
+      "sha256": "95adfdea0e460962beb189bada5c8c28ed9750e19fb3d28259ccfb6c7b2cb6a4",
+      "bytes": 4030,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/job-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ebd7dd8948a5305855b883ac86ec6847a222ced",
+      "sha256": "19f0d06f2b673edc686275d7efd08e1a7aaaad6c56a3dd4e910d19cef69046dc",
+      "bytes": 267943,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/source-installed-python-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "906bdf1402a7194c8180b2b8c53ce41adae5b70a",
+      "sha256": "25d64ac27f0ff0641532c0841e951e1a51e2b792d90ebbf367fef894098a52d8",
+      "bytes": 66975,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c918e145bc9f5e40580c57f086ebb1357d850c7",
+      "sha256": "45930d7b0b06b401571e8cd6be1c44a22dabc2939595759046621adc9379e787",
+      "bytes": 876,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/source-identity.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e71d820036612e336c4b9c709e05064a6152e53d",
+      "sha256": "1433be8dda37e2a12f29aa2748448dfff27831b44bdcefb2ec61eaee963a59b8",
+      "bytes": 103940,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "79a0810a08252efd2b6a5414884c629ee15c610a",
+      "sha256": "a2457b1a3b3878b16f33fb4c5d66525887468a22f5e01108de9310020286db1c",
+      "bytes": 3693,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "Exact decoded terminal GitHub job log encoded as UTF-8, including BOM and original line endings. Artifact ZIP digest is recorded separately.",
+  "interpretation": {
+    "current_result": "Both current focused Windows source and isolated installed contracts passed on this exact event head.",
+    "historical_five_failures": "The earlier empty error reports did not identify an exception type. The corrected completion-delivery fixture and this success do not prove the earlier failure cause.",
+    "manual_word_com": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "whole_release": "NOT_CLAIMED",
+    "broader_same_head_receiving": "Required separately; no result transfer from earlier or focused jobs."
+  },
+  "no_refs_changed": true
+}
