@@ -1,0 +1,118 @@
+{
+  "schema": "carr-import-config-caller-correction-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base": {
+    "commit": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+    "tree": "2579b34f4ddacb7e7702630ae76e31f6babcfb55"
+  },
+  "failure_evidence": {
+    "scope": "Completed Linux source and installed capacity suites at the exact base, reported and being durably retained by root.",
+    "run_id": 46132576738,
+    "job_id": 140940769223,
+    "decoded_log_utf8_bytes": 973690,
+    "decoded_log_sha256": "5461adf530a8cabfa59ab21785af6c36f81123f868e49f1a50213e5261002344",
+    "source": {
+      "passed": 950,
+      "failed": 25,
+      "skipped": 0,
+      "seconds": 223.66
+    },
+    "installed": {
+      "passed": 950,
+      "failed": 25,
+      "skipped": 0,
+      "seconds": 209.36
+    },
+    "config_import_failures_per_mode": 22,
+    "cause": "Both new batch callers import config_from_dict, which is absent from canonical extract/page_ocr.py."
+  },
+  "canonical_api": {
+    "path": "carr-library/src/carr_library/extract/page_ocr.py",
+    "blob": "2da809c386532166134435e8c09b0832131edd4f",
+    "decoding": "Config(**saved_settings), with validation in Config.__post_init__",
+    "serialization": "config_dict() omits automatic_languages when False; True remains explicit.",
+    "existing_batch_store_blob": "f9c73a33ff8a819dba086f7cd7dc8b776b670985",
+    "existing_batch_store_contract": "Both ordinary plan and saved journal validation already use the same Config(**settings) constructor."
+  },
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "before_blob": "0a41bbb7f1a8bd492bbdd26c4392be5b04af1ed2",
+      "after_blob": "1dfa39b1277a929ecf75d42f50f0f1af9d6281c4",
+      "before_utf8_bytes": 19424,
+      "after_utf8_bytes": 19398,
+      "before_sha256": "bf926afbab53993cd02890fc46e0d5a5d3aad4651be3d67643bf6e6d006acd99",
+      "after_sha256": "98f26a478e825edb3cf57a7706f970420c6084933e1db2a8bbca5352230b579d",
+      "full_cloud_readback": "EXACT",
+      "inverse": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_cli.py",
+      "before_blob": "2780bc1e65b2da8bde415cafcd4174bf702c968e",
+      "after_blob": "305bd28e3258ec9f7fcc82140241677a32580be8",
+      "before_utf8_bytes": 9256,
+      "after_utf8_bytes": 9230,
+      "before_sha256": "489821fc9559cf0a69c44554eb7ea7e0b126473cc5174ed01997c792ee9c165a",
+      "after_sha256": "bd8f47cd47dcf2fc6a4452a3cd386b46b0131e8a666bbade1747293baf5f6570",
+      "full_cloud_readback": "EXACT",
+      "inverse": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_scan_pages.py",
+      "before_blob": "f2606939ce9cfb8b1ecffe4e167d41d30c7fd762",
+      "after_blob": "8df874c7c58d8c3e9f184e923a26df89768db78d",
+      "before_utf8_bytes": 8823,
+      "after_utf8_bytes": 11289,
+      "before_sha256": "26a9471d19bb315356b714ccb51d342f581ee6f0795ea1a455df2f9008d75458",
+      "after_sha256": "3224513b7836e58c96d53c6647e02e77fe83df3d4b938b7bbac496c3dc730c4a",
+      "full_cloud_readback": "EXACT",
+      "inverse": "EXACT",
+      "old_source_is_exact_prefix": true
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_batch_cli.py",
+      "before_blob": "39b5e498ad48928d1c1dafbf32b2d11d78409869",
+      "after_blob": "658186be2f9a6b2cbc48a5dcf2792e636ecd1bcd",
+      "before_utf8_bytes": 6912,
+      "after_utf8_bytes": 9015,
+      "before_sha256": "77521f0472f6dc61e02ffa1d04c7a3e4fe0caae22ed69aa5867f39f7b4adf173",
+      "after_sha256": "1b67958fd94ee3967f4f10f554e546621c47bb899875a4b2e9fc9b48c79d5b0d",
+      "full_cloud_readback": "EXACT",
+      "inverse": "EXACT",
+      "old_source_is_exact_prefix": true
+    }
+  ],
+  "source_scope": "Only the nonexistent decoder imports/calls are replaced. No OCR adapter, serializer, model policy, extraction fingerprint input, worker protocol, resource limit, callback, deadline, or source authority changes.",
+  "tests": {
+    "old_cases_preserved": 23,
+    "additive_cases": 4,
+    "planned_total": 27,
+    "selectors": {
+      "tests/ingest/test_import_scan_pages.py": 16,
+      "tests/e2e/test_import_batch_cli.py": 11
+    },
+    "cases": [
+      "manual and automatic real-page continuation retains exact canonical settings",
+      "prepared real request retains immutable identity and exact bytes on repeated preparation",
+      "changed valid automatic-mode choice is refused for the same prepared request without mutation",
+      "isolated current-package CLI persists/reads/continues the chosen settings and refuses a new OCR choice on continuation"
+    ],
+    "execution": "NOT_RUN",
+    "runtime_or_ocr_quality": "NOT_ASSESSED"
+  },
+  "composition": {
+    "added_python_modules": 0,
+    "removed_files": 0,
+    "changed_application_modules": 2,
+    "baseline_application_python_count": 398,
+    "branch_or_ref_changes": false
+  },
+  "peer_review": {
+    "reviewer": "voice_reading",
+    "status": "SOURCE_REVIEWED_CLEAR_NOT_RUN",
+    "reviewed_tree": "34424925aa035a5895d035d2755ed386aa35b88c",
+    "scope": "Both exact production caller deltas and four additive real API/isolated CLI cases; existing validator, manual omission, explicit automatic flag, stable request identity and current CLI/prepare_request contracts.",
+    "old_test_prefixes": "EXACT",
+    "ocr_execution": "NOT_RUN"
+  }
+}

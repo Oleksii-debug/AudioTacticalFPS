@@ -1,5 +1,22 @@
 # Resonance V3 implementation and owner-test delivery status
 
+## Current receiving: repair of the observed capacity failures
+
+**SOURCE_REVIEWED / exact-successor execution NOT_RUN.** The Linux capacity
+trial on `936dc6cd65b15fa0a89ae9d01f66709437b1783b` executed 975 cases in
+each of source and isolated-installed modes: 950 passed, 25 failed, no skips.
+Its raw terminal log, failed node identities, artifact identity and causes are
+retained under `review/capacity-936-linux-2026-11-28/`.
+
+This successor uses the existing validated `Config(**settings)` in the two
+paged-import callers, registers the existing guarded incremental-backup console
+entrypoint, and supplies genuine distinct SQLite rows to the test of cancellation
+during validation. The original 10000-operation callback interval, assertions,
+exceptions, immutable saved settings and resource limits remain unchanged.
+Four new manual/automatic OCR-settings regressions are planned; they are not
+reported as executed. Full namespace remains 398 Python files with an updated
+committed capacity reference. The earlier translation/Director repairs are retained.
+
 ## Current receiving: repairs tied to the observed feature failures
 
 **SOURCE_REVIEWED / runtime NOT_RUN on this successor.** Based on capacity

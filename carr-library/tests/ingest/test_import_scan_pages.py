@@ -194,3 +194,45 @@ def test_repeated_cancel_cannot_append_unadvanced_durable_pages(tmp_path):
         app.continue_import_scan(workspace, first['batch_id'], cancelled=lambda: True)
     assert tuple((app.root / 'import-batches').glob('*.json')) == before
     assert app.browse(workspace) == ()
+
+
+@pytest.mark.parametrize('automatic', [False, True], ids=['manual', 'automatic'])
+def test_paged_ocr_config_keeps_legacy_bytes_and_prepared_request_identity(tmp_path, automatic):
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest.worker import prepare_request, request_identity
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Exact reviewed OCR settings')
+    root = sources(tmp_path, ('a.txt', 'b.txt'))
+    chosen = Config(languages='eng+ukr', automatic_languages=automatic)
+    expected = dict(languages='eng+ukr', dpi=300, timeout=30, max_pixels=20_000_000,
+                    orientation=False, model_policy='default', model_profile='installed')
+    if automatic:
+        expected['automatic_languages'] = True
+    legacy = app.plan_import_batch(workspace, [root], config=chosen)
+    first = app.plan_import_page(workspace, [root], config=chosen, max_files=1)
+    reopened = LibraryApp(app.root)
+    second = reopened.continue_import_scan(workspace, first['batch_id'], max_files=1)
+    assert legacy['config'] == first['config'] == second['config'] == expected
+    assert ('automatic_languages' in first['config']) is automatic
+    assert Config(**second['config']) == chosen
+    assert second['scan']['previous'] == first['batch_id']
+    validate_scan_relations({first['batch_id']: first, second['batch_id']: second})
+
+    row, = first['rows']
+    metadata = ImportBatchStore(reopened)._metadata(row, first)
+    arguments = dict(request_id=row['request_id'], expected_manifest=row['manifest'])
+    request = prepare_request(app.root, workspace, row['source'], metadata,
+                              Config(**first['config']), **arguments)
+    path = app.root / 'import-requests' / (row['request_id'] + '.json')
+    before = path.read_bytes()
+    repeated = prepare_request(app.root, workspace, row['source'], metadata, chosen, **arguments)
+    assert request['config'] == repeated['config'] == expected
+    assert request_identity(repeated) == request_identity(request)
+    assert path.read_bytes() == before
+    changed = replace(chosen, automatic_languages=not automatic)
+    with pytest.raises(ValueError, match='planned identity'):
+        prepare_request(app.root, workspace, row['source'], metadata, changed, **arguments)
+    assert path.read_bytes() == before
+    assert reopened.import_batch(workspace, first['batch_id'])['config'] == expected
+    assert app.browse(workspace) == ()

@@ -1,12 +1,12 @@
 {
   "schema": "carr-python-reference/1",
-  "base_commit": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
-  "status": "SOURCE_REFERENCE_NOT_RUNTIME_QUALIFICATION",
-  "derivation": "Same 398-file namespace as the capacity composition; five exact reviewed product repairs replace translation authority/cancellation, Director declaration binding and shared native/flat recovery implementation. No runtime qualification is transferred.",
+  "base_commit": "73010d4b24515296edb43f7f27969641a66d3e7c",
+  "status": "SOURCE_REVIEWED; exact successor execution pending",
+  "derivation": "All 398 Python paths retained from parent; update only the two observed OCR configuration callers using exact fetched UTF-8 bytes and Git blobs. No parent PASS is inherited.",
   "digests": {
-    "git_rows_sha256": "764afbb25259ebe0ae801371faacfec4e3c18f951d442872067b6ac86bab26bb",
-    "runtime_rows_sha256": "376922fe9987cfbb458d17ee5de39183870bf895b361a27172dfab5d2d60f7ca",
-    "compact_mapping_sha256": "175b0bd4a0960fef483ca2dbf15a390e0b9c80a6934c854f452fbf6a3a9bbf7b"
+    "git_rows_sha256": "e10d5dfa95720303052ac0965cb0b1e9278664c7a5698ed3597a6e6c16e74a62",
+    "runtime_rows_sha256": "1325da8551c44aaeaafc8f8db72123d3e8cc503ce67452de66da7e1f333cb504",
+    "compact_mapping_sha256": "ad4159441776e84f5fbf5354b86b1fe20f78c84a4325c81f6b32d2316934f147"
   },
   "git_rows": [
     {
@@ -607,11 +607,11 @@
     },
     {
       "path": "carr-library/src/carr_library/ingest/batch_cli.py",
-      "git_blob": "2780bc1e65b2da8bde415cafcd4174bf702c968e"
+      "git_blob": "305bd28e3258ec9f7fcc82140241677a32580be8"
     },
     {
       "path": "carr-library/src/carr_library/ingest/batch_pages.py",
-      "git_blob": "0a41bbb7f1a8bd492bbdd26c4392be5b04af1ed2"
+      "git_blob": "1dfa39b1277a929ecf75d42f50f0f1af9d6281c4"
     },
     {
       "path": "carr-library/src/carr_library/ingest/batch_scan.py",
@@ -2349,14 +2349,14 @@
       "sha256": "db1c5d742fa265feea81177f731c504b3e5eaba6c7c786c5e882ead7011daf96"
     },
     {
-      "bytes": 9256,
+      "bytes": 9230,
       "path": "carr_library/ingest/batch_cli.py",
-      "sha256": "489821fc9559cf0a69c44554eb7ea7e0b126473cc5174ed01997c792ee9c165a"
+      "sha256": "bd8f47cd47dcf2fc6a4452a3cd386b46b0131e8a666bbade1747293baf5f6570"
     },
     {
-      "bytes": 19424,
+      "bytes": 19398,
       "path": "carr_library/ingest/batch_pages.py",
-      "sha256": "bf926afbab53993cd02890fc46e0d5a5d3aad4651be3d67643bf6e6d006acd99"
+      "sha256": "98f26a478e825edb3cf57a7706f970420c6084933e1db2a8bbca5352230b579d"
     },
     {
       "bytes": 26823,
@@ -3744,8 +3744,8 @@
     "extract/runtime_identity.py": "16e1229ae1d4cebdc7c35330b8a072e62c4ac7d98873d579a3524707fa08fc70",
     "file_publication.py": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0",
     "ingest/asset_copy.py": "db1c5d742fa265feea81177f731c504b3e5eaba6c7c786c5e882ead7011daf96",
-    "ingest/batch_cli.py": "489821fc9559cf0a69c44554eb7ea7e0b126473cc5174ed01997c792ee9c165a",
-    "ingest/batch_pages.py": "bf926afbab53993cd02890fc46e0d5a5d3aad4651be3d67643bf6e6d006acd99",
+    "ingest/batch_cli.py": "bd8f47cd47dcf2fc6a4452a3cd386b46b0131e8a666bbade1747293baf5f6570",
+    "ingest/batch_pages.py": "98f26a478e825edb3cf57a7706f970420c6084933e1db2a8bbca5352230b579d",
     "ingest/batch_scan.py": "4412a304ecac7a492316cad6cbe0d8b0f00aa0bc45e263b1d6ac8af03bfd2471",
     "ingest/batches.py": "1bfdb7d32d27bf64a55850d9ba6fe1113fe7156910a06825c97f1e1605ad8cc8",
     "ingest/bundle.py": "e1c60c67722ca9f2e36913faa8b8fa6e5c923315cdda2bfc407b3a12a0f8f6c5",

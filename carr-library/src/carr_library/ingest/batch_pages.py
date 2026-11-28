@@ -214,14 +214,14 @@ def _classify(store, workspace, rows, previous, stopped):
 
 
 def _options(collections, recursive, config, cancelled):
-    from ..extract.page_ocr import Config, config_dict, config_from_dict
+    from ..extract.page_ocr import Config, config_dict
     if (not isinstance(collections, (list, tuple)) or len(collections) > 128
             or type(recursive) is not bool or not callable(cancelled)):
         raise ValueError('Invalid import scan-page options.')
     values = tuple(dict.fromkeys(collections))
     chosen = config or Config()
     settings = config_dict(chosen)
-    config_from_dict(settings)
+    Config(**settings)
     return values, settings
 
 

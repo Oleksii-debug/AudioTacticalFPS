@@ -30,7 +30,7 @@ def _profile(args):
 def run(argv):
     from ..application import LibraryApp
     from ..audio.cleanup import AudioCleanupPending, drain_pending_cleanup
-    from ..extract.page_ocr import Config, config_dict, config_from_dict
+    from ..extract.page_ocr import Config, config_dict
     from .batches import ImportBatchStore
 
     parser = argparse.ArgumentParser(
@@ -100,7 +100,7 @@ def run(argv):
                                 automatic_languages=args.auto_ocr_languages)
                 # Preserve the current omission of an unselected automatic
                 # mode so historical extraction fingerprints remain identical.
-                chosen = config_from_dict(config_dict(chosen))
+                chosen = Config(**config_dict(chosen))
                 result = app.plan_import_page(args.workspace, args.paths,
                     collections=args.collection, recursive=not args.no_recursive, config=chosen,
                     cancelled=stopped.is_set, import_budget=selected, **limits)

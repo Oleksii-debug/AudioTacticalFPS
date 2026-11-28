@@ -89,6 +89,14 @@ def test_actual_copy_progress_cancels_without_publishing_or_changing_source(tmp_
 def test_actual_copied_database_validation_progress_preserves_stop_reason(
         tmp_path, monkeypatch, failure):
     with closing(populated(tmp_path)) as storage:
+        # A single multi-MiB page exercises the copy callbacks, but its
+        # validation runs too few SQLite VM operations to exercise the
+        # progress handler. Add real distinct rows for this validation case.
+        storage.publish_revision('workspace', 'validation-edition',
+            'validation-revision', 'b' * 64, 'validation-fixture',
+            [Page(f'Validation row {number}: Railway source bytes.', None)
+             for number in range(2000)])
+        storage.check()
         actual_check = Storage._check
         validating = False
         seen, finished = [], []

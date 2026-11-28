@@ -1,0 +1,126 @@
+_ test_primary_incremental_command_and_declared_console_entrypoint_use_same_receipt _
+
+source = (<carr_library.application.LibraryApp object at 0x7f0283881310>, 'fa43b0281ffb41ee9536d115e145abf2')
+tmp_path = PosixPath('/tmp/carr-capacity-ux27nfii/pytest/test_primary_incremental_comma0')
+capsys = <_pytest.capture.CaptureFixture object at 0x7f02830b3810>
+
+    def test_primary_incremental_command_and_declared_console_entrypoint_use_same_receipt(source, tmp_path, capsys):
+        app, workspace = source
+        base_path = tmp_path / 'base'
+        checksum = create_backup(app, base_path)
+        layer = tmp_path / 'layer'
+        assert primary.main(['backup-incremental', 'create', '--data-dir', str(app.root),
+            '--output', str(layer), '--base', str(base_path), checksum, *choices()]) == 0
+        receipt = json.loads(capsys.readouterr().out)
+        assert receipt['path'] == str(layer) and receipt['base_required'] is True
+        selected = [entry for entry in importlib.metadata.entry_points(group='console_scripts')
+                    if entry.name == 'carr-backup-incremental']
+>       assert len(selected) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+tests/e2e/test_backup_resource_cli.py:127: AssertionError
+
+_ test_actual_copied_database_validation_progress_preserves_stop_reason[cancel] _
+
+tmp_path = PosixPath('/tmp/carr-capacity-ux27nfii/pytest/test_actual_copied_database_va0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0282f93410>
+failure = 'cancel'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'deadline'])
+    def test_actual_copied_database_validation_progress_preserves_stop_reason(
+            tmp_path, monkeypatch, failure):
+        with closing(populated(tmp_path)) as storage:
+            actual_check = Storage._check
+            validating = False
+            seen, finished = [], []
+            def checked(self):
+                nonlocal validating
+                filename = Path(self.db.execute('PRAGMA database_list').fetchone()[2])
+                if filename.name == 'snapshot.db' and filename.resolve().is_relative_to(tmp_path.resolve()):
+                    validating = True
+                result = actual_check(self)
+                if validating:
+                    finished.append(True)
+                return result
+            monkeypatch.setattr(Storage, '_check', checked)
+            error = TimeoutError('deadline during the actual full integrity checker')
+            def stopped():
+                if validating:
+                    seen.append(True)
+                    if failure == 'deadline':
+                        raise error
+                    return True
+                return False
+            target = tmp_path / 'validation-cancelled.db'
+            with pytest.raises(TimeoutError if failure == 'deadline' else InterruptedError) as caught:
+                storage.backup(target, cancelled=stopped)
+            if failure == 'deadline':
+                assert caught.value is error
+>           assert seen and not finished
+E           assert ([True] and not [True])
+
+tests/storage/test_backup_capacity.py:118: AssertionError
+_ test_actual_copied_database_validation_progress_preserves_stop_reason[deadline] _
+
+tmp_path = PosixPath('/tmp/carr-capacity-ux27nfii/pytest/test_actual_copied_database_va1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0283085690>
+failure = 'deadline'
+
+    @pytest.mark.parametrize('failure', ['cancel', 'deadline'])
+    def test_actual_copied_database_validation_progress_preserves_stop_reason(
+            tmp_path, monkeypatch, failure):
+        with closing(populated(tmp_path)) as storage:
+            actual_check = Storage._check
+            validating = False
+            seen, finished = [], []
+            def checked(self):
+                nonlocal validating
+                filename = Path(self.db.execute('PRAGMA database_list').fetchone()[2])
+                if filename.name == 'snapshot.db' and filename.resolve().is_relative_to(tmp_path.resolve()):
+                    validating = True
+                result = actual_check(self)
+                if validating:
+                    finished.append(True)
+                return result
+            monkeypatch.setattr(Storage, '_check', checked)
+            error = TimeoutError('deadline during the actual full integrity checker')
+            def stopped():
+                if validating:
+                    seen.append(True)
+                    if failure == 'deadline':
+                        raise error
+                    return True
+                return False
+            target = tmp_path / 'validation-cancelled.db'
+            with pytest.raises(TimeoutError if failure == 'deadline' else InterruptedError) as caught:
+                storage.backup(target, cancelled=stopped)
+            if failure == 'deadline':
+                assert caught.value is error
+>           assert seen and not finished
+E           assert ([True] and not [True])
+
+tests/storage/test_backup_capacity.py:118: AssertionError
+
+E             raise SystemExit(main())
+E                              ^^^^^^
+E           File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/installation_lease.py", line 344, in guarded
+E             return callback(*bound.args, **bound.kwargs)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/__main__.py", line 92, in main
+E             return batch_import_main(arguments[1:])
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/installation_lease.py", line 344, in guarded
+E             return callback(*bound.args, **bound.kwargs)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/batch_cli.py", line 157, in main
+E             return run(sys.argv[1:] if argv is None else argv)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/batch_cli.py", line 33, in run
+E             from ..extract.page_ocr import Config, config_dict, config_from_dict
+E         ImportError: cannot import name \'config_from_dict\' from \'carr_library.extract.page_ocr\' (/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/extract/page_ocr.py)
+E         ')
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/hostedtoolcache/Python/3.11.18/x64/bin/python', '-I', '-B', '-X', 'utf8', '-c', "\nimport json, runpy, sys\nfrom pathlib import Path\ncontract = json.loads(sys.argv[1])\nsys.path[:0] = contract['roots']\nimport carr_library\nfrom bootstrap.vendor.cairn_extractors import hasher\nassert Path(carr_library.__file__).resolve() == Path(contract['product'])\nassert Path(hasher.__file__).resolve() == Path(contract['hasher'])\nsys.argv = ['carr_library', 'import-batch', *sys.argv[2:]]\nrunpy.run_module('carr_library', run_name='__main__')\n", '{"product": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/__init__.py", "hasher": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/bootstrap/vendor/cairn_extractors/hasher.py", "roots": ["/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src", "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library"]}', '--data-dir', '/tmp/carr-capacity-ux27nfii/pytest/test_actual_cli_plan_continue_0/library \u0423\u043a\u0440\u0430\u0457\u043d\u0430', '--workspace', '7620158b1d0d47619cf080da91d1dc4a', 'plan', '/tmp/carr-capacity-ux27nfii/pytest/test_actual_cli_plan_continue_0/\u041e\u0440\u0438\u0433\u0456\u043d\u0430\u043b\u0438', '--page-files', '1', '--review-default-budget', '--source-mib', '2', '--memory-mib', '768', '--library-mib', '64', '--temporary-mib', '128', '--segment-mib', '1', '--steps', '2'], returncode=1, stdout='', stderr='Traceback (most recent call last):\n  File "<string>", line 11, in <module>\n  File "<frozen runpy>", line 229, in run_module\n  File "<frozen runpy>", line 88, in _run_code\n  File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/__main__.py", line 326, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/installation_lease.py", line 344, in guarded\n    return callback(*bound.args, **bound.kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/__main__.py", line 92, in main\n    return batch_import_main(arguments[1:])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/installation_lease.py", line 344, in guarded\n    return callback(*bound.args, **bound.kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/batch_cli.py", line 157, in main\n    return run(sys.argv[1:] if argv is None else argv)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/batch_cli.py", line 33, in run\n    from ..extract.page_ocr import Config, config_dict, config_from_dict\nImportError: cannot import name \'config_from_dict\' from \'carr_library.extract.page_ocr\' (/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/extract/page_ocr.py)\n').returncode
+
+tests/e2e/test_import_batch_cli.py:39: AssertionError

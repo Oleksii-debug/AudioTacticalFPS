@@ -1,0 +1,24 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head_sha": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+  "run_id": 46132576738,
+  "job_id": 140940769223,
+  "status": "completed",
+  "conclusion": "failure",
+  "raw": {
+    "sha256": "5461adf530a8cabfa59ab21785af6c36f81123f868e49f1a50213e5261002344",
+    "bytes": 973690
+  },
+  "artifact": {
+    "id": 15259191014,
+    "bytes": 150791,
+    "sha256": "cdd257717d55bc42b6ab365536bf22b66b9716dc4015087e42fe95bba27035ea"
+  },
+  "source_reference": {
+    "git_rows_sha256": "af79ef9977bd24aba1932e46a59fcaae6c06fddbec639fd8e6a024400a90c503",
+    "runtime_rows_sha256": "9443a44824fa7f4349716896b227671748f056a2ca1b466b15d67f0befd2a761",
+    "compact_mapping_sha256": "6416870d6ea939472560580e014c598221e24c51cfe56a010c4d2cdc6163058e"
+  },
+  "qualification": "Only the historical 936 Linux run. Exact successor execution remains pending."
+}

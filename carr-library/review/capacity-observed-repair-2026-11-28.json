@@ -1,0 +1,95 @@
+{
+  "schema": "carr-capacity-observed-fixture-repair/1",
+  "parent": "73010d4b24515296edb43f7f27969641a66d3e7c",
+  "status": "SOURCE_REVIEWED/NOT_RUN",
+  "observed": {
+    "schema": "carr-observed-capacity-regression/1",
+    "tested_head": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+    "run_id": 46132576738,
+    "job_id": 140940769223,
+    "status": "FAIL",
+    "source": {
+      "passed": 950,
+      "failed": 25,
+      "skipped": 0,
+      "seconds": 223.66
+    },
+    "installed": {
+      "passed": 950,
+      "failed": 25,
+      "skipped": 0,
+      "seconds": 209.36
+    },
+    "causes": [
+      {
+        "cases_per_mode": 22,
+        "cause": "Two new import callers reference absent config_from_dict; use existing Config decoder.",
+        "owner": "locate_project",
+        "state": "repair in progress"
+      },
+      {
+        "cases_per_mode": 1,
+        "cause": "Declared carr-backup-incremental console entrypoint absent from package metadata.",
+        "repair": "Register existing installed_entrypoint-guarded backup_incremental_cli.main."
+      },
+      {
+        "cases_per_mode": 2,
+        "cause": "One large logical page copies many bytes but validation performs fewer SQLite VM operations than the existing 10000-op progress interval.",
+        "repair": "Add 2000 actual distinct source rows only in cancellation-during-validation fixture. Preserve all assertions, callback identity, production interval and deadlines."
+      }
+    ],
+    "claim": "Historical failure; successor source reviewed only until exact-head rerun completes."
+  },
+  "changes": [
+    {
+      "path": "carr-library/pyproject.toml",
+      "base_blob": "5e73dcc7fb68ea22fd7bbd2c65c4eb783badde6a",
+      "before": {
+        "sha256": "077b46531e53539a9784a0feb17fb0c7b3227573400bf12187ea1b8da20c0e59",
+        "bytes": 4140
+      },
+      "after": {
+        "sha256": "c14f7dd259936889942738859a240dac5b144690f93ce224158438090b546d13",
+        "bytes": 4209
+      },
+      "hunks": [
+        {
+          "start": 68,
+          "removed": [],
+          "added": [
+            "carr-backup-incremental = \"carr_library.backup_incremental_cli:main\""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity.py",
+      "base_blob": "a3b32ca426f3fc51f4590774fc1eb24ff5246f90",
+      "before": {
+        "sha256": "509a27bdaa176211e60d3a84998af0ebff0e7bac071f7770269a8f34ab6295a4",
+        "bytes": 11073
+      },
+      "after": {
+        "sha256": "bef26fdf2d260e7fadad3646b1422464820868cb3e4b02988a4c55bc5272cc01",
+        "bytes": 11568
+      },
+      "hunks": [
+        {
+          "start": 91,
+          "removed": [],
+          "added": [
+            "        # A single multi-MiB page exercises the copy callbacks, but its",
+            "        # validation runs too few SQLite VM operations to exercise the",
+            "        # progress handler. Add real distinct rows for this validation case.",
+            "        storage.publish_revision('workspace', 'validation-edition',",
+            "            'validation-revision', 'b' * 64, 'validation-fixture',",
+            "            [Page(f'Validation row {number}: Railway source bytes.', None)",
+            "             for number in range(2000)])",
+            "        storage.check()"
+          ]
+        }
+      ]
+    }
+  ],
+  "unchanged": "No production cancellation interval, timeout, guard, old assertion or expected exception is changed."
+}

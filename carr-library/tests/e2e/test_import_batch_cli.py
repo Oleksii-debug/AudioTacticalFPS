@@ -135,3 +135,41 @@ def test_continuation_cannot_accept_a_new_resource_policy_from_cli(tmp_path):
                       '--source-mib', 1024, status=2)
     assert 'unrecognized arguments' in rejected.stderr
     assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize('automatic', [False, True], ids=['manual', 'automatic'])
+def test_actual_cli_ocr_choice_roundtrips_without_rebinding_saved_pages(tmp_path, automatic):
+    from carr_library.extract.page_ocr import Config
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Exact CLI OCR settings')
+    folder = tmp_path / 'sources'
+    folder.mkdir()
+    (folder / 'a.txt').write_text('First original for OCR settings.', encoding='utf-8')
+    (folder / 'b.txt').write_text('Second original for OCR settings.', encoding='utf-8')
+    flags = ('--auto-ocr-languages',) if automatic else ()
+    first = json.loads(invoke(app.root, workspace, 'plan', folder,
+        '--ocr-languages', 'eng+ukr', '--page-files', 1, *flags).stdout)
+    expected = dict(languages='eng+ukr', dpi=300, timeout=30, max_pixels=20_000_000,
+                    orientation=False, model_policy='default', model_profile='installed')
+    if automatic:
+        expected['automatic_languages'] = True
+    assert first['config'] == expected
+    assert ('automatic_languages' in first['config']) is automatic
+    assert Config(**first['config']) == Config(languages='eng+ukr', automatic_languages=automatic)
+    saved = app.root / 'import-batches' / (first['batch_id'] + '.json')
+    before = saved.read_bytes()
+    rejected = invoke(app.root, workspace, 'continue', first['batch_id'],
+                      '--ocr-languages', 'eng', status=2)
+    assert 'unrecognized arguments' in rejected.stderr
+    assert saved.read_bytes() == before
+    second = json.loads(invoke(app.root, workspace, 'continue', first['batch_id'],
+                               '--page-files', 1).stdout)
+    assert second['config'] == expected
+    assert second['scan']['previous'] == first['batch_id']
+    assert second['rows'][0]['file'] == 'b.txt'
+    shown = json.loads(invoke(app.root, workspace, 'show', second['batch_id']).stdout)
+    assert shown['config'] == expected
+    assert not list(app.root.glob('import-requests/*.json'))
+    assert not list(app.assets_dir.iterdir())
+    assert app.browse(workspace) == ()
